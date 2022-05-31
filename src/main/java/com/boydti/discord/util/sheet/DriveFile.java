@@ -28,7 +28,7 @@ import java.util.Locale;
 public class DriveFile {
     private static final String APPLICATION_NAME = "DriveFile";
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
-    private static final String TOKENS_DIRECTORY_PATH = "config" + java.io.File.separator + "tokens";
+    protected static final String TOKENS_DIRECTORY_PATH = "config" + java.io.File.separator + "tokens";
 
     /**
      * Global instance of the scopes required by this quickstart.
