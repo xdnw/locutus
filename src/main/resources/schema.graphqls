@@ -1,0 +1,1924 @@
+type Query {
+  me: ApiKeyDetails
+  treasures: [Treasure]
+  colors: [Color]
+  game_info: GameInfo
+  nations(
+    id: [Int]
+    nation_name: [String]
+    leader_name: [String]
+    alliance_id: [Int]
+    alliance_position: [Int]
+    color: [String]
+    created_after: DateTime
+    min_score: Double
+    max_score: Double
+    cities: [Int]
+    min_cities: Int
+    max_cities: Int
+    vmode: Boolean
+    discord: [String]
+    tax_id: [Int]
+    orderBy: [QueryNationsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): NationPaginator
+  alliances(
+    id: [Int]
+    name: [String]
+    color: [String]
+    orderBy: [QueryAlliancesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 100.
+    first: Int = 10
+
+    # The offset from which items are returned.
+    page: Int
+  ): AlliancePaginator
+  tradeprices(
+    # Limits number of fetched items. Maximum allowed value: 300.
+    first: Int = 30
+
+    # The offset from which items are returned.
+    page: Int
+  ): TradepricePaginator
+  trades(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    type: TradeType
+    nation_id: [Int]
+    offer_resource: [String]
+    buy_or_sell: String
+    accepted: Boolean
+    orderBy: [QueryTradesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): TradePaginator
+  wars(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    days_ago: Int
+
+    # By default, will return only active wars. Pass this as false to return all wars.
+    active: Boolean = true
+    nation_id: [Int]
+    alliance_id: [Int]
+    orderBy: [QueryWarsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): WarPaginator
+  bounties(
+    nation_id: [Int]
+    min_amount: Double
+    max_amount: Double
+    orderBy: [QueryBountiesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BountyPaginator
+  warattacks(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    war_id: [Int]
+    before: DateTime
+    after: DateTime
+    orderBy: [QueryWarattacksOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): WarAttackPaginator
+  treaties(
+    id: [Int]
+    orderBy: [QueryTreatiesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): TreatyPaginator
+  cities(
+    id: [Int]
+    nation_id: [Int]
+    orderBy: [QueryCitiesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): CityPaginator
+  bankrecs(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    stype: [Int]
+    rtype: [Int]
+
+    # A type stype or rtype can be.
+    or_type: [Int]
+    sid: [Int]
+    rid: [Int]
+
+    # An id sid or rid can be.
+    or_id: [Int]
+    orderBy: [QueryBankrecsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BankrecPaginator
+  baseball_games(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    team_id: [Int]
+    orderBy: [QueryBaseballGamesOrderByOrderByClause!]
+    open: Boolean
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BBGamePaginator
+  baseball_teams(
+    id: [Int]
+    orderBy: [QueryBaseballTeamsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BBTeamPaginator
+  baseball_players(
+    id: [Int]
+    team_id: [Int]
+    orderBy: [QueryBaseballPlayersOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BBPlayerPaginator
+  treasure_trades(
+    id: [Int]
+    nation_id: [Int]
+    min_id: Int
+    max_id: Int
+    orderBy: [QueryTreasureTradesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): TreasureTradePaginator
+  embargoes(
+    id: [Int]
+    nation_id: [Int]
+    min_id: Int
+    max_id: Int
+    orderBy: [QueryEmbargoesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): EmbargoPaginator
+}
+
+type ApiKeyDetails {
+  nation: Nation
+  key: String
+  requests: Int
+  max_requests: Int
+}
+
+type Nation {
+  id: Int
+  alliance_id: Int
+  alliance_position: AlliancePositionEnum
+  alliance_position_id: Int
+  alliance_position_info: AlliancePosition
+  alliance: Alliance
+  nation_name: String
+  leader_name: String
+  continent: String
+  warpolicy: String @deprecated(reason: "Use war_policy instead.")
+  war_policy: WarPolicy
+  dompolicy: String @deprecated(reason: "Use domestic_policy instead.")
+  domestic_policy: DomesticPolicy
+  color: String
+  num_cities: Int
+  cities: [City!]!
+  score: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  update_tz: Double
+  population: Int
+  flag: String
+  vmode: Int @deprecated(reason: "Use vacation_mode_turns instead.")
+  vacation_mode_turns: Int
+  beigeturns: Int @deprecated(reason: "Use beige_turns instead.")
+  beige_turns: Int
+  espionage_available: Boolean
+  last_active: DateTimeAuto
+  date: DateTimeAuto
+  soldiers: Int
+  tanks: Int
+  aircraft: Int
+  ships: Int
+  missiles: Int
+  nukes: Int
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  spies: Int
+  discord: String
+  treasures: [Treasure!]!
+
+  # All offensive wars within the last 14 days
+  offensive_wars: [War!]! @deprecated(reason: "Use wars instead")
+
+  # All defensive wars within the last 14 days
+  defensive_wars: [War!]! @deprecated(reason: "Use wars instead")
+
+  # All wars within the last 14 days
+  wars(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    active: Boolean
+    limit: Int
+    orderBy: [NationWarsOrderByOrderByClause!]
+  ): [War!]!
+
+  # All sent bank transactions within the last 14 days
+  sent_bankrecs: [Bankrec!]! @deprecated(reason: "Use bankrecs instead")
+
+  # All received bank transactions within the last 14 days
+  received_bankrecs: [Bankrec!]! @deprecated(reason: "Use bankrecs instead")
+
+  # All bank transactions within the last 14 day.
+  bankrecs(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    stype: [Int]
+    rtype: [Int]
+
+    # A type stype or rtype can be.
+    or_type: [Int]
+    sid: [Int]
+    rid: [Int]
+
+    # An id sid or rid can be.
+    or_id: [Int]
+    limit: Int
+    orderBy: [NationBankrecsOrderByOrderByClause!]
+  ): [Bankrec]
+  trades(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    type: TradeType
+    offer_resource: [String]
+    buy_or_sell: String
+    accepted: Boolean
+    orderBy: [NationTradesOrderByOrderByClause!]
+  ): [Trade]
+
+  # All tax records within the last 14 days, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  taxrecs(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    stype: [Int]
+    rtype: [Int]
+
+    # A type stype or rtype can be.
+    or_type: [Int]
+    sid: [Int]
+    rid: [Int]
+
+    # An id sid or rid can be.
+    or_id: [Int]
+    limit: Int
+    orderBy: [NationTaxrecsOrderByOrderByClause!]
+  ): [Bankrec]
+  bounties(before: DateTime, after: DateTime, limit: Int): [Bounty]
+  turns_since_last_city: Int
+  turns_since_last_project: Int
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  money: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  coal: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  oil: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  uranium: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  iron: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  bauxite: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  lead: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  gasoline: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  munitions: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  steel: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  aluminum: Double
+
+  # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  food: Double
+  projects: Int
+  project_bits: Int
+  ironw: Boolean @deprecated(reason: "Use iron_works instead")
+  iron_works: Boolean
+  bauxitew: Boolean @deprecated(reason: "Use bauxite_works instead")
+  bauxite_works: Boolean
+  armss: Boolean @deprecated(reason: "Use arms_stockpile instead")
+  arms_stockpile: Boolean
+  egr: Boolean @deprecated(reason: "Use emergency_gasoline_reserve instead")
+  emergency_gasoline_reserve: Boolean
+  massirr: Boolean @deprecated(reason: "Use mass_irrigation instead")
+  mass_irrigation: Boolean
+  itc: Boolean @deprecated(reason: "Use international_trade_center instead")
+  international_trade_center: Boolean
+  mlp: Boolean @deprecated(reason: "Use missile_launch_pad instead")
+  missile_launch_pad: Boolean
+  nrf: Boolean @deprecated(reason: "Use nuclear_research_facility instead")
+  nuclear_research_facility: Boolean
+  irond: Boolean @deprecated(reason: "Use iron_dome instead")
+  iron_dome: Boolean
+  vds: Boolean @deprecated(reason: "Use vital_defense_system instead")
+  vital_defense_system: Boolean
+  cia: Boolean @deprecated(reason: "Use central_intelligence_agency instead")
+  central_intelligence_agency: Boolean
+  cfce: Boolean @deprecated(reason: "Use center_for_civil_engineering instead")
+  center_for_civil_engineering: Boolean
+  propb: Boolean @deprecated(reason: "Use propaganda_bureau instead")
+  propaganda_bureau: Boolean
+  uap: Boolean @deprecated(reason: "Use uranium_enrichment_program instead")
+  uranium_enrichment_program: Boolean
+  city_planning: Boolean @deprecated(reason: "Use urban_planning instead")
+  urban_planning: Boolean
+  adv_city_planning: Boolean
+    @deprecated(reason: "Use advanced_urban_planning instead")
+  advanced_urban_planning: Boolean
+  space_program: Boolean
+  spy_satellite: Boolean
+  moon_landing: Boolean
+  pirate_economy: Boolean
+  recycling_initiative: Boolean
+  telecom_satellite: Boolean
+    @deprecated(reason: "Use telecommunications_satellite instead")
+  telecommunications_satellite: Boolean
+  green_tech: Boolean @deprecated(reason: "Use green_technologies instead")
+  green_technologies: Boolean
+  arable_land_agency: Boolean
+  clinical_research_center: Boolean
+  specialized_police_training: Boolean
+    @deprecated(reason: "Use specialized_police_training_program instead")
+  specialized_police_training_program: Boolean
+  adv_engineering_corps: Boolean
+    @deprecated(reason: "Use advanced_engineering_corps instead")
+  advanced_engineering_corps: Boolean
+  government_support_agency: Boolean
+  research_and_development_center: Boolean
+  resource_production_center: Boolean
+  wars_won: Int
+  wars_lost: Int
+  tax_id: Int
+  alliance_seniority: Int
+  baseball_team: BBTeam
+  gross_national_income: Double
+  gross_domestic_product: Double
+  soldier_casualties: Int
+  soldier_kills: Int
+  tank_casualties: Int
+  tank_kills: Int
+  aircraft_casualties: Int
+  aircraft_kills: Int
+  ship_casualties: Int
+  ship_kills: Int
+  missile_casualties: Int
+  missile_kills: Int
+  nuke_casualties: Int
+  nuke_kills: Int
+  spy_casualties: Int
+  spy_kills: Int
+  money_looted: Double
+}
+
+enum AlliancePositionEnum {
+  NOALLIANCE
+  APPLICANT
+  MEMBER
+  OFFICER
+  HEIR
+  LEADER
+}
+
+type AlliancePosition {
+  id: Int
+  date: DateTimeAuto
+  alliance_id: Int
+  name: String
+  creator_id: Int
+  last_editor_id: Int
+  date_modified: DateTimeAuto
+  position_level: Int
+  leader: Boolean
+  heir: Boolean
+  officer: Boolean
+  member: Boolean
+  permissions: Int
+  view_bank: Boolean
+  withdraw_bank: Boolean
+  change_permissions: Boolean
+  see_spies: Boolean
+  see_reset_timers: Boolean
+  tax_brackets: Boolean
+  post_announcements: Boolean
+  manage_announcements: Boolean
+  accept_applicants: Boolean
+  remove_members: Boolean
+  edit_alliance_info: Boolean
+  manage_treaties: Boolean
+  manage_market_share: Boolean
+  manage_embargoes: Boolean
+  promote_self_to_leader: Boolean
+}
+
+# A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`.
+scalar DateTimeAuto
+
+type Alliance {
+  id: Int
+  name: String
+  acronym: String
+  score: Double
+  color: String
+  date: DateTimeAuto
+  nations(
+    alliance_position: [Int]
+    color: [String]
+    min_score: Double
+    max_score: Double
+    cities: [Int]
+    min_cities: Int
+    max_cities: Int
+    tax_id: [Int]
+    vmode: Boolean
+    limit: Int
+    orderBy: [AllianceNationsOrderByOrderByClause!]
+  ): [Nation!]!
+  average_score: Double
+  sent_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
+  received_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
+  treaties(limit: Int): [Treaty!]!
+  alliance_positions: [AlliancePosition!]!
+  acceptmem: Boolean @deprecated(reason: "Use accept_members instead.")
+  accept_members: Boolean
+  flag: String
+  forumlink: String @deprecated(reason: "Use forum_link instead.")
+  forum_link: String
+  irclink: String @deprecated(reason: "Use discord_link instead.")
+  discord_link: String
+  wiki_link: String
+
+  # All bank transactions within the last 14 days, this field will not return alliance to alliance transactions unless you are in this alliance and have access to view its bank
+  bankrecs(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    stype: [Int]
+    rtype: [Int]
+
+    # A type stype or rtype can be.
+    or_type: [Int]
+    sid: [Int]
+    rid: [Int]
+
+    # An id sid or rid can be.
+    or_id: [Int]
+    limit: Int
+    orderBy: [AllianceBankrecsOrderByOrderByClause!]
+  ): [Bankrec]
+
+  # All tax records within the last 14 days, this field will return null unless you are in this alliance and have access to view its bank
+  taxrecs(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    stype: [Int]
+    rtype: [Int]
+
+    # A type stype or rtype can be.
+    or_type: [Int]
+    sid: [Int]
+    rid: [Int]
+
+    # An id sid or rid can be.
+    or_id: [Int]
+    limit: Int
+    orderBy: [AllianceTaxrecsOrderByOrderByClause!]
+  ): [Bankrec]
+
+  # This field will return null unless you are an officer or higher in this alliance
+  tax_brackets: [TaxBracket]
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  money: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  coal: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  oil: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  uranium: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  iron: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  bauxite: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  lead: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  gasoline: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  munitions: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  steel: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  aluminum: Double
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  food: Double
+}
+
+# Order by clause for Alliance.nations.orderBy.
+input AllianceNationsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceNationsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.nations.orderBy.
+enum AllianceNationsOrderByColumn {
+  ID
+  DATE
+  SOLDIERS
+  TANKS
+  AIRCRAFT
+  SHIPS
+  MISSILES
+  NUKES
+  CITIES
+}
+
+# Directions for ordering a list of records.
+enum SortOrder {
+  # Sort records in ascending order.
+  ASC
+
+  # Sort records in descending order.
+  DESC
+}
+
+type Treaty {
+  id: Int
+  date: DateTimeAuto
+  treaty_type: String
+  treaty_url: String
+  turns_left: Int
+  alliance1_id: Int
+  alliance1: Alliance
+  alliance2_id: Int
+  alliance2: Alliance
+}
+
+scalar DateTime
+
+# Order by clause for Alliance.bankrecs.orderBy.
+input AllianceBankrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceBankrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.bankrecs.orderBy.
+enum AllianceBankrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+type Bankrec {
+  # Unique identifier for each bank record
+  id: Int
+  date: DateTimeAuto
+
+  # Sending nation or alliance ID
+  sid: Int @deprecated(reason: "Use sender_id instead.")
+  sender_id: Int
+
+  # Sender type - 1 for nation & 2 for alliance
+  stype: Int @deprecated(reason: "Use sender_type instead.")
+  sender_type: Int
+  sender: Nation
+
+  # Recipient nation or alliance ID
+  rid: Int @deprecated(reason: "Use receiver_id instead.")
+  recipient_id: Int @deprecated(reason: "Use receiver_id instead.")
+  receiver_id: Int
+
+  # Receiver type - 1 for nation & 2 for alliance
+  rtype: Int @deprecated(reason: "Use receiver_type instead.")
+  recipient_type: Int @deprecated(reason: "Use receiver_type instead.")
+  receiver: Nation
+  receiver_type: Int
+
+  # Nation ID of the user that initiated the transaction
+  pid: Int @deprecated(reason: "Use banker_id instead.")
+  banker_id: Int
+  banker: Nation
+
+  # Note (if any) included with the transaction by the banker
+  note: String
+  money: Double
+  coal: Double
+  oil: Double
+  uranium: Double
+  iron: Double
+  bauxite: Double
+  lead: Double
+  gasoline: Double
+  munitions: Double
+  steel: Double
+  aluminum: Double
+  food: Double
+
+  # The unique identifier of the tax bracket
+  tax_id: Int
+}
+
+# Order by clause for Alliance.taxrecs.orderBy.
+input AllianceTaxrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceTaxrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.taxrecs.orderBy.
+enum AllianceTaxrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+type TaxBracket {
+  id: Int
+  alliance_id: Int
+  alliance: Alliance
+  date: DateTimeAuto
+  date_modified: DateTimeAuto
+  last_modifier_id: Int
+  last_modifier: Nation
+  tax_rate: Int
+  resource_tax_rate: Int
+  bracket_name: String
+}
+
+enum WarPolicy {
+  ATTRITION
+  TURTLE
+  BLITZKRIEG
+  FORTRESS
+  MONEYBAGS
+  PIRATE
+  TACTICIAN
+  GUARDIAN
+  COVERT
+  ARCANE
+}
+
+enum DomesticPolicy {
+  MANIFEST_DESTINY
+  OPEN_MARKETS
+  TECHNOLOGICAL_ADVANCEMENT
+  IMPERIALISM
+  URBANIZATION
+  RAPID_EXPANSION
+}
+
+type City {
+  id: Int
+  nation_id: Int
+  nation: Nation
+  name: String
+  date: Date
+  infrastructure: Double
+  land: Double
+  powered: Boolean
+  oilpower: Int @deprecated(reason: "Use oil_power instead")
+  oil_power: Int
+  windpower: Int @deprecated(reason: "Use wind_power instead")
+  wind_power: Int
+  coalpower: Int @deprecated(reason: "Use coal_power instead")
+  coal_power: Int
+  nuclearpower: Int @deprecated(reason: "Use nuclear_power instead")
+  nuclear_power: Int
+  coalmine: Int @deprecated(reason: "Use coal_mine instead")
+  coal_mine: Int
+  oilwell: Int @deprecated(reason: "Use oil_well instead")
+  oil_well: Int
+  uramine: Int @deprecated(reason: "Use uranium_mine instead")
+  uranium_mine: Int
+  barracks: Int
+  farm: Int
+  policestation: Int @deprecated(reason: "Use police_station instead")
+  police_station: Int
+  hospital: Int
+  recyclingcenter: Int @deprecated(reason: "Use recycling_center instead")
+  recycling_center: Int
+  subway: Int
+  supermarket: Int
+  bank: Int
+  mall: Int @deprecated(reason: "Use shopping_mall instead")
+  shopping_mall: Int
+  stadium: Int
+  leadmine: Int @deprecated(reason: "Use lead_mine instead")
+  lead_mine: Int
+  ironmine: Int @deprecated(reason: "Use iron_mine instead")
+  iron_mine: Int
+  bauxitemine: Int @deprecated(reason: "Use bauxite_mine instead")
+  bauxite_mine: Int
+  gasrefinery: Int @deprecated(reason: "Use oil_refinery instead")
+  oil_refinery: Int
+  aluminumrefinery: Int @deprecated(reason: "Use aluminum_refinery instead")
+  aluminum_refinery: Int
+  steelmill: Int @deprecated(reason: "Use steel_mill instead")
+  steel_mill: Int
+  munitionsfactory: Int @deprecated(reason: "Use munitions_factory instead")
+  munitions_factory: Int
+  factory: Int
+  airforcebase: Int @deprecated(reason: "Use hangar instead.")
+  hangar: Int
+  drydock: Int
+  nukedate: Date @deprecated(reason: "Use nuke_date instead.")
+  nuke_date: Date
+}
+
+# A date string with format `Y-m-d`, e.g. `2011-05-23`.
+scalar Date
+
+type Treasure {
+  name: String
+  color: String
+  continent: String
+  bonus: Int
+  spawndate: Date @deprecated(reason: "Use spawn_date instead.")
+  spawn_date: Date
+  nation_id: Int
+  nation: Nation
+}
+
+type War {
+  id: Int
+  date: DateTimeAuto
+  reason: String
+  war_type: WarType
+  groundcontrol: Int @deprecated(reason: "Use ground_control instead.")
+  ground_control: Int
+  airsuperiority: Int @deprecated(reason: "Use air_superiority instead.")
+  air_superiority: Int
+  navalblockade: Int @deprecated(reason: "Use naval_blockade instead.")
+  naval_blockade: Int
+  winner: Int @deprecated(reason: "Use winner_id instead.")
+  winner_id: Int
+  attacks(
+    min_id: Int
+    max_id: Int
+    war_id: [Int]
+    before: DateTime
+    after: DateTime
+    orderBy: [WarAttacksOrderByOrderByClause!]
+  ): [WarAttack!]!
+  turnsleft: Int @deprecated(reason: "Use turns_left instead.")
+  turns_left: Int
+  attid: Int @deprecated(reason: "Use att_id instead.")
+  att_id: Int
+  att_alliance_id: Int
+  attacker: Nation
+  defid: Int @deprecated(reason: "Use def_id instead.")
+  def_id: Int
+  def_alliance_id: Int
+  defender: Nation
+  attpoints: Int @deprecated(reason: "Use att_points instead.")
+  att_points: Int
+  defpoints: Int @deprecated(reason: "Use def_points instead.")
+  def_points: Int
+  attpeace: Boolean @deprecated(reason: "Use att_peace instead.")
+  att_peace: Boolean
+  defpeace: Boolean @deprecated(reason: "Use def_peace instead.")
+  def_peace: Boolean
+  att_resistance: Int
+  def_resistance: Int
+  att_fortify: Boolean
+  def_fortify: Boolean
+  att_gas_used: Double
+  def_gas_used: Double
+  att_mun_used: Double
+  def_mun_used: Double
+  att_alum_used: Int
+  def_alum_used: Int
+  att_steel_used: Int
+  def_steel_used: Int
+  att_infra_destroyed: Double
+  def_infra_destroyed: Double
+  att_money_looted: Double
+  def_money_looted: Double
+  att_soldiers_killed: Int
+  def_soldiers_killed: Int
+  att_tanks_killed: Int
+  def_tanks_killed: Int
+  att_aircraft_killed: Int
+  def_aircraft_killed: Int
+  att_ships_killed: Int
+  def_ships_killed: Int
+  att_missiles_used: Int
+  def_missiles_used: Int
+  att_nukes_used: Int
+  def_nukes_used: Int
+  att_infra_destroyed_value: Double
+  def_infra_destroyed_value: Double
+}
+
+enum WarType {
+  ORDINARY
+  ATTRITION
+  RAID
+}
+
+# Order by clause for War.attacks.orderBy.
+input WarAttacksOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: WarAttacksOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for War.attacks.orderBy.
+enum WarAttacksOrderByColumn {
+  ID
+  DATE
+}
+
+type WarAttack {
+  # the War Attacks API requires some logic to interpret. A tabulated display of the JSON logic can be found here politicsandwar.fandom.com/wiki/War_Attacks_API
+  id: Int
+  date: DateTimeAuto
+  attid: Int @deprecated(reason: "Use att_id instead.")
+  att_id: Int
+  attacker: Nation
+  defid: Int @deprecated(reason: "Use def_id instead.")
+  def_id: Int
+  defender: Nation
+  type: AttackType
+  warid: Int @deprecated(reason: "Use war_id instead.")
+  war_id: Int
+  war: War
+  victor: Int
+
+  # Success ranges from 0: Utter Failure to 3: Immense Triumph
+  success: Int
+
+  # Based on the type of the attack, attCas1 will return the casualties suffered by the attacker
+  # if it's an airstrike then planes lost / naval attack then ships lost
+  attcas1: Int
+
+  # Casualties of the defender, the casualties suffered by the primary unit of the type of battle
+  # for airstrikes: planes / ground battles: soldiers
+  defcas1: Int
+
+  # If the attack is a ground attack, attCas2 is used to display the tanks lost by the attacker
+  attcas2: Int
+
+  # If the attack is a ground attack, defCas2 is used to display the tanks lost by the defender - or if it's an airstrike on ships/tanks/soldiers/money,
+  # this field will return ships/tanks/soldiers/money sunk and defCas1 will return aircraft casualties of the defender
+  defcas2: Int
+  cityid: Int @deprecated(reason: "Use city_id instead.")
+  city_id: Int
+  infradestroyed: Double @deprecated(reason: "Use infra_destroyed instead.")
+  infra_destroyed: Double
+  improvementslost: Int @deprecated(reason: "Use improvements_lost instead.")
+  improvements_lost: Int
+  moneystolen: Double @deprecated(reason: "Use money_stolen instead.")
+  money_stolen: Double
+  loot_info: String
+  resistance_eliminated: Int
+  city_infra_before: Double
+  infra_destroyed_value: Double
+  att_mun_used: Double
+  def_mun_used: Double
+  att_gas_used: Double
+  def_gas_used: Double
+  aircraft_killed_by_tanks: Int
+}
+
+enum AttackType {
+  AIRVINFRA
+  AIRVSOLDIERS
+  AIRVTANKS
+  AIRVMONEY
+  AIRVSHIPS
+  AIRVAIR
+  GROUND
+  MISSILE
+  MISSILEFAIL
+  NUKE
+  NUKEFAIL
+  NAVAL
+  FORTIFY
+  PEACE
+  VICTORY
+  ALLIANCELOOT
+}
+
+# Order by clause for Nation.wars.orderBy.
+input NationWarsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationWarsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.wars.orderBy.
+enum NationWarsOrderByColumn {
+  ID
+  DATE
+}
+
+# Order by clause for Nation.bankrecs.orderBy.
+input NationBankrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationBankrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.bankrecs.orderBy.
+enum NationBankrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+enum TradeType {
+  GLOBAL
+  PERSONAL
+  ALLIANCE
+}
+
+# Order by clause for Nation.trades.orderBy.
+input NationTradesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationTradesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.trades.orderBy.
+enum NationTradesOrderByColumn {
+  ID
+  DATE
+  DATE_ACCEPTED
+  OFFER_RESOURCE
+  OFFER_AMOUNT
+  RETURN_AMOUNT
+}
+
+type Trade {
+  id: Int
+  type: TradeType
+  date: DateTimeAuto
+
+  # ID of the Nation Selling
+  sid: Int @deprecated(reason: "Use sender_id instead.")
+  sender_id: Int
+
+  # ID of the Nation Buying
+  rid: Int @deprecated(reason: "Use receiver_id instead.")
+  recipient_id: Int @deprecated(reason: "Use receiver_id instead.")
+  receiver_id: Int
+  sender: Nation
+  receiver: Nation
+  offer_resource: String
+  offer_amount: Int
+
+  # buy/sell
+  buy_or_sell: String
+
+  # Total in $ for the Trade
+  total: Int @deprecated(reason: "Use price instead")
+  price: Int
+  accepted: Boolean
+  date_accepted: DateTimeAuto
+  original_trade_id: Int
+}
+
+# Order by clause for Nation.taxrecs.orderBy.
+input NationTaxrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationTaxrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.taxrecs.orderBy.
+enum NationTaxrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+type Bounty {
+  id: Int
+  date: DateTimeAuto
+  nation_id: Int
+  nation: Nation
+  amount: Int
+  type: BountyType
+}
+
+enum BountyType {
+  ORDINARY
+  ATTRITION
+  RAID
+  NUCLEAR
+}
+
+type BBTeam {
+  id: Int
+  date: DateTimeAuto
+  nation_id: Int
+  nation: Nation
+  name: String
+  logo: String
+  home_jersey: String
+  away_jersey: String
+  stadium: String
+  quality: Int
+  seating: Int
+  rating: Double
+  wins: Int
+  glosses: Int
+  runs: Int
+  homers: Int
+  strikeouts: Int
+  games_played: Int
+  games(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    limit: Int
+    orderBy: [BBTeamGamesOrderByOrderByClause!]
+  ): [BBGame]
+  players: [BBPlayer]
+}
+
+# Order by clause for BBTeam.games.orderBy.
+input BBTeamGamesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: BBTeamGamesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for BBTeam.games.orderBy.
+enum BBTeamGamesOrderByColumn {
+  ID
+  DATE
+  HTSCORE
+  ATSCORE
+}
+
+type BBGame {
+  id: Int
+  date: DateTimeAuto
+  home_id: Int
+  away_id: Int
+  home_team: BBTeam
+  away_team: BBTeam
+  home_nation_id: Int
+  away_nation_id: Int
+  home_nation: Nation
+  away_nation: Nation
+  stadium_name: String
+  home_score: Int
+  away_score: Int
+  sim_text: String
+  highlights: String
+  home_revenue: Double
+  spoils: Double
+  open: Int
+  wager: Double
+}
+
+type BBPlayer {
+  id: Int
+  date: DateTimeAuto
+  nation_id: Int
+  nation: Nation
+  team_id: Int
+  team: BBTeam
+  name: String
+  age: Int
+  position: String
+  pitching: Double
+  batting: Double
+  speed: Double
+  awareness: Double
+  overall: Double
+  birthday: Int
+}
+
+type Color {
+  color: String
+  bloc_name: String
+  turn_bonus: Int
+}
+
+type GameInfo {
+  game_date: DateTimeAuto
+  radiation: Radiation
+}
+
+type Radiation {
+  global: Double
+  north_america: Double
+  south_america: Double
+  europe: Double
+  africa: Double
+  asia: Double
+  australia: Double
+  antarctica: Double
+}
+
+# Order by clause for Query.nations.orderBy.
+input QueryNationsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryNationsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.nations.orderBy.
+enum QueryNationsOrderByColumn {
+  ID
+  DATE
+  SOLDIERS
+  TANKS
+  AIRCRAFT
+  SHIPS
+  MISSILES
+  NUKES
+  CITIES
+}
+
+# A paginated list of Nation items.
+type NationPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Nation items.
+  data: [Nation!]!
+}
+
+# Information about pagination using a fully featured paginator.
+type PaginatorInfo {
+  # Number of items in the current page.
+  count: Int!
+
+  # Index of the current page.
+  currentPage: Int!
+
+  # Index of the first item in the current page.
+  firstItem: Int
+
+  # Are there more pages after this one?
+  hasMorePages: Boolean!
+
+  # Index of the last item in the current page.
+  lastItem: Int
+
+  # Index of the last available page.
+  lastPage: Int!
+
+  # Number of items per page.
+  perPage: Int!
+
+  # Number of total available items.
+  total: Int!
+}
+
+# Order by clause for Query.alliances.orderBy.
+input QueryAlliancesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryAlliancesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.alliances.orderBy.
+enum QueryAlliancesOrderByColumn {
+  ID
+  DATE
+  SCORE
+}
+
+# A paginated list of Alliance items.
+type AlliancePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Alliance items.
+  data: [Alliance!]!
+}
+
+# A paginated list of Tradeprice items.
+type TradepricePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Tradeprice items.
+  data: [Tradeprice!]!
+}
+
+type Tradeprice {
+  id: Int
+  date: Date
+  coal: Double
+  oil: Double
+  uranium: Double
+  iron: Double
+  bauxite: Double
+  lead: Double
+  gasoline: Double
+  munitions: Double
+  steel: Double
+  aluminum: Double
+  food: Double
+  credits: Double
+}
+
+# Order by clause for Query.trades.orderBy.
+input QueryTradesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryTradesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.trades.orderBy.
+enum QueryTradesOrderByColumn {
+  ID
+  DATE
+  DATE_ACCEPTED
+  OFFER_RESOURCE
+  OFFER_AMOUNT
+  RETURN_AMOUNT
+}
+
+# A paginated list of Trade items.
+type TradePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Trade items.
+  data: [Trade!]!
+}
+
+# Order by clause for Query.wars.orderBy.
+input QueryWarsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryWarsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.wars.orderBy.
+enum QueryWarsOrderByColumn {
+  ID
+  DATE
+}
+
+# A paginated list of War items.
+type WarPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of War items.
+  data: [War!]!
+}
+
+# Order by clause for Query.bounties.orderBy.
+input QueryBountiesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBountiesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.bounties.orderBy.
+enum QueryBountiesOrderByColumn {
+  ID
+  DATE
+  AMOUNT
+}
+
+# A paginated list of Bounty items.
+type BountyPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Bounty items.
+  data: [Bounty!]!
+}
+
+# Order by clause for Query.warattacks.orderBy.
+input QueryWarattacksOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryWarattacksOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.warattacks.orderBy.
+enum QueryWarattacksOrderByColumn {
+  ID
+  DATE
+}
+
+# A paginated list of WarAttack items.
+type WarAttackPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of WarAttack items.
+  data: [WarAttack!]!
+}
+
+# Order by clause for Query.treaties.orderBy.
+input QueryTreatiesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryTreatiesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.treaties.orderBy.
+enum QueryTreatiesOrderByColumn {
+  ID
+  DATE
+  TURNS_LEFT
+}
+
+# A paginated list of Treaty items.
+type TreatyPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Treaty items.
+  data: [Treaty!]!
+}
+
+# Order by clause for Query.cities.orderBy.
+input QueryCitiesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryCitiesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.cities.orderBy.
+enum QueryCitiesOrderByColumn {
+  ID
+  DATE
+  INFRASTRUCTURE
+  MAXINFRA
+  LAND
+}
+
+# A paginated list of City items.
+type CityPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of City items.
+  data: [City!]!
+}
+
+# Order by clause for Query.bankrecs.orderBy.
+input QueryBankrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBankrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.bankrecs.orderBy.
+enum QueryBankrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+# A paginated list of Bankrec items.
+type BankrecPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Bankrec items.
+  data: [Bankrec!]!
+}
+
+# Order by clause for Query.baseball_games.orderBy.
+input QueryBaseballGamesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBaseballGamesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.baseball_games.orderBy.
+enum QueryBaseballGamesOrderByColumn {
+  ID
+  DATE
+  HTSCORE
+  ATSCORE
+}
+
+# A paginated list of BBGame items.
+type BBGamePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BBGame items.
+  data: [BBGame!]!
+}
+
+# Order by clause for Query.baseball_teams.orderBy.
+input QueryBaseballTeamsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBaseballTeamsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.baseball_teams.orderBy.
+enum QueryBaseballTeamsOrderByColumn {
+  ID
+  DATE
+  QUALITY
+  SEATING
+  RATING
+  WINS
+  GLOSSES
+  RUNS
+  HOMERS
+  STRIKEOUTS
+  GAMES
+}
+
+# A paginated list of BBTeam items.
+type BBTeamPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BBTeam items.
+  data: [BBTeam!]!
+}
+
+# Order by clause for Query.baseball_players.orderBy.
+input QueryBaseballPlayersOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBaseballPlayersOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.baseball_players.orderBy.
+enum QueryBaseballPlayersOrderByColumn {
+  ID
+  DATE
+  AGE
+  PITCHING
+  BATTING
+  SPEED
+  AWARENESS
+  OVERALL
+}
+
+# A paginated list of BBPlayer items.
+type BBPlayerPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BBPlayer items.
+  data: [BBPlayer!]!
+}
+
+# Order by clause for Query.treasure_trades.orderBy.
+input QueryTreasureTradesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryTreasureTradesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.treasure_trades.orderBy.
+enum QueryTreasureTradesOrderByColumn {
+  ID
+  DATE
+}
+
+# A paginated list of TreasureTrade items.
+type TreasureTradePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of TreasureTrade items.
+  data: [TreasureTrade!]!
+}
+
+type TreasureTrade {
+  id: Int
+  offer_date: DateTimeAuto
+  accept_date: DateTimeAuto
+  sender_id: Int
+  sender: Nation
+  receiver_id: Int
+  receiver: Nation
+  buying: Boolean
+  selling: Boolean
+  treasure: String
+  money: Int
+  accepted: Boolean
+  rejected: Boolean
+  seller_cancelled: Boolean
+}
+
+# Order by clause for Query.embargoes.orderBy.
+input QueryEmbargoesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryEmbargoesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.embargoes.orderBy.
+enum QueryEmbargoesOrderByColumn {
+  ID
+  DATE
+}
+
+# A paginated list of Embargo items.
+type EmbargoPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Embargo items.
+  data: [Embargo!]!
+}
+
+type Embargo {
+  id: Int
+  date: Date
+  sender_id: Int
+  sender: Nation
+  receiver_id: Int
+  receiver: Nation
+  reason: String
+}
+
+type Mutation {
+  bankDeposit(
+    money: Double = 0.0
+    coal: Double = 0.0
+    oil: Double = 0.0
+    uranium: Double = 0.0
+    iron: Double = 0.0
+    bauxite: Double = 0.0
+    lead: Double = 0.0
+    gasoline: Double = 0.0
+    munitions: Double = 0.0
+    steel: Double = 0.0
+    aluminum: Double = 0.0
+    food: Double = 0.0
+    note: String
+  ): Bankrec!
+  bankWithdraw(
+    receiver: Int!
+    receiver_type: Int!
+    money: Double = 0.0
+    coal: Double = 0.0
+    oil: Double = 0.0
+    uranium: Double = 0.0
+    iron: Double = 0.0
+    bauxite: Double = 0.0
+    lead: Double = 0.0
+    gasoline: Double = 0.0
+    munitions: Double = 0.0
+    steel: Double = 0.0
+    aluminum: Double = 0.0
+    food: Double = 0.0
+    note: String
+  ): Bankrec!
+}
+
+type Subscription {
+  allianceCreate: Alliance
+  allianceDelete(id: [Int]): Alliance
+  allianceUpdate(id: [Int]): Alliance
+  alliancePositionCreate(id: [Int], alliance_id: [Int]): AlliancePosition
+  alliancePositionDelete(id: [Int], alliance_id: [Int]): AlliancePosition
+  alliancePositionUpdate(id: [Int], alliance_id: [Int]): AlliancePosition
+  bankrecCreate(sid: [Int], stype: [Int], rid: [Int], rtype: [Int]): Bankrec
+  bbgameCreate(team_id: [Int]): BBGame
+  bbgameDelete(id: [Int], team_id: [Int]): BBGame
+  bbgameUpdate(id: [Int], team_id: [Int]): BBGame
+  bbplayerCreate(team_id: [Int]): BBPlayer
+  bbplayerDelete(id: [Int], team_id: [Int]): BBPlayer
+  bbplayerUpdate(id: [Int], team_id: [Int]): BBPlayer
+  bbteamCreate(nation_id: [Int]): BBTeam
+  bbteamDelete(id: [Int], nation_id: [Int]): BBTeam
+  bbteamUpdate(id: [Int], nation_id: [Int]): BBTeam
+  bountyCreate(nation_id: [Int]): Bounty
+  bountyDelete(id: [Int], nation_id: [Int]): Bounty
+  bountyUpdate(id: [Int], nation_id: [Int]): Bounty
+  cityCreate(id: [Int], nation_id: [Int]): City
+  cityDelete(id: [Int], nation_id: [Int]): City
+  cityUpdate(id: [Int], nation_id: [Int]): City
+  embargoCreate(id: [Int], nation_id: [Int]): Embargo
+  embargoDelete(id: [Int], nation_id: [Int]): Embargo
+  nationCreate(id: [Int], alliance_id: [Int]): Nation
+  nationDelete(id: [Int], alliance_id: [Int]): Nation
+  nationUpdate(id: [Int], alliance_id: [Int]): Nation
+  taxBracketCreate(id: [Int], alliance_id: [Int]): TaxBracket
+  taxBracketDelete(id: [Int], alliance_id: [Int]): TaxBracket
+  taxBracketUpdate(id: [Int], alliance_id: [Int]): TaxBracket
+  tradeCreate(
+    nation_id: [Int]
+    offer_resource: [String]
+    buy_or_sell: String
+  ): Trade
+  tradeDelete(
+    id: [Int]
+    nation_id: [Int]
+    offer_resource: [String]
+    buy_or_sell: String
+  ): Trade
+  tradeUpdate(
+    id: [Int]
+    nation_id: [Int]
+    offer_resource: [String]
+    buy_or_sell: String
+  ): Trade
+  treasureTradeUpdate(id: [Int], nation_id: [Int]): TreasureTrade
+  treatyCreate(alliance_id: [Int]): Treaty
+  treatyUpdate(id: [Int], alliance_id: [Int]): Treaty
+  warCreate(nation_id: [Int], alliance_id: [Int]): War
+  warDelete(id: [Int], nation_id: [Int], alliance_id: [Int]): War
+  warUpdate(id: [Int], nation_id: [Int], alliance_id: [Int]): War
+  warAttackCreate(war_id: [Int]): WarAttack
+  warAttackDelete(war_id: [Int]): WarAttack
+}
+
+# A datetime and timezone string in ISO 8601 format `Y-m-dTH:i:sO`, e.g. `2020-04-20T13:53:12+02:00`.
+scalar DateTimeTz
+
+# Information about pagination using a simple paginator.
+type SimplePaginatorInfo {
+  # Number of items in the current page.
+  count: Int!
+
+  # Index of the current page.
+  currentPage: Int!
+
+  # Index of the first item in the current page.
+  firstItem: Int
+
+  # Index of the last item in the current page.
+  lastItem: Int
+
+  # Number of items per page.
+  perPage: Int!
+
+  # Are there more pages after this one?
+  hasMorePages: Boolean!
+}
+
+# Information about pagination using a Relay style cursor connection.
+type PageInfo {
+  # When paginating forwards, are there more items?
+  hasNextPage: Boolean!
+
+  # When paginating backwards, are there more items?
+  hasPreviousPage: Boolean!
+
+  # The cursor to continue paginating backwards.
+  startCursor: String
+
+  # The cursor to continue paginating forwards.
+  endCursor: String
+
+  # Total number of nodes in the paginated connection.
+  total: Int!
+
+  # Number of nodes in the current page.
+  count: Int!
+
+  # Index of the current page.
+  currentPage: Int!
+
+  # Index of the last available page.
+  lastPage: Int!
+}
+
+# Aggregate functions when ordering by a relation without specifying a column.
+enum OrderByRelationAggregateFunction {
+  # Amount of items.
+  COUNT
+}
+
+# Aggregate functions when ordering by a relation that may specify a column.
+enum OrderByRelationWithColumnAggregateFunction {
+  # Average.
+  AVG
+
+  # Minimum.
+  MIN
+
+  # Maximum.
+  MAX
+
+  # Sum.
+  SUM
+
+  # Amount of items.
+  COUNT
+}
+
+# Allows ordering a list of records.
+input OrderByClause {
+  # The column that is used for ordering.
+  column: String!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
