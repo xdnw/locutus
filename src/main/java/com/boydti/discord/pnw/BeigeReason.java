@@ -34,9 +34,9 @@ public enum BeigeReason {
     NO_RECENT_WARS("Enemy is has not declared a war in the past 20 days"),
     NO_RECENT_3_CONSECUTIVE_LOGINS("Enemy has not had 3 consecutive logins in the past 120 days"),
     NO_RECENT_5_CONSECUTIVE_LOGINS("Enemy has not had 5 consecutive logins in the past 120 days"),
-    INCORRECT_ENEMY_MMR("Enemy does not have 5 barracks/factories (rounded up)"),
+    INCORRECT_ENEMY_MMR("Enemy does not have 5 barracks/factories"),
 
-    USELESS("Enemy has no recent wars and no recent consecutive logins OR has less than 5 barracks/factories (rounded up)"),
+    USELESS("Enemy has no recent wars and no recent consecutive logins OR incorrect MMR"),
 
     NO_REASON("")
     ;
