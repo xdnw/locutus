@@ -173,7 +173,7 @@ public class SpreadSheet {
 
     private static final String APPLICATION_NAME = "Spreadsheet";
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
-    private static final String TOKENS_DIRECTORY_PATH = "tokens";
+    private static final String TOKENS_DIRECTORY_PATH = DriveFile.TOKENS_DIRECTORY_PATH;
 
     /**
      * Global instance of the scopes required by this quickstart.
