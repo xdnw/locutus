@@ -533,7 +533,7 @@ public class NationUpdateProcessor implements Runnable {
                 }
             }
         }
-        if (current != null && Settings.INSTANCE.LEGACY_SETTINGS.ATTACKER_DESKTOP_ALERTS.contains(current.getNation_id()) && (current.getSoldiers() > previous.getSoldiers() || current.getShips() > previous.getShips())) {
+        if (current != null && previous != null && Settings.INSTANCE.LEGACY_SETTINGS.ATTACKER_DESKTOP_ALERTS.contains(current.getNation_id()) && (current.getSoldiers() > previous.getSoldiers() || current.getShips() > previous.getShips())) {
             AlertUtil.openDesktop("https://politicsandwar.com/nation/war/");
         }
 

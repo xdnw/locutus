@@ -103,7 +103,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
         Locutus locutus = Locutus.create().start();
         // TODO test the command?
-        System.exit(1);
+//        System.exit(1);
     }
 
     public void setupCommands() {
@@ -111,7 +111,7 @@ public class SlashCommandManager extends ListenerAdapter {
         new DiscordCompleter().register(commands.getStore());
         new PWCompleter().register(commands.getStore());
 
-        commands.registerDefaults();
+//        commands.registerDefaults();
         System.out.println(commands.getCommands().printCommandMap());
 
         commands.getCommands().registerCommands(this);
@@ -124,7 +124,7 @@ public class SlashCommandManager extends ListenerAdapter {
         Guild guild = root.getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER); // testing
         System.out.println("remove:||Guild " + guild + " | " + toRegister.size());
         if (!toRegister.isEmpty()) {
-//            guild.updateCommands().addCommands(toRegister).queue();
+            guild.updateCommands().addCommands(toRegister).queue();
         }
     }
 
@@ -487,80 +487,85 @@ public class SlashCommandManager extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event)
     {
-        System.out.println("Slash command interaction");
-
-        MessageChannel channel = event.getChannel();
-        SlashCommandInteraction interaction = event.getInteraction();
-        InteractionHook hook = event.getHook();
-
-        event.deferReply(false).queue();
-
-        HookMessageChannel hookChannel = new HookMessageChannel(channel, hook);
-
-        String path = event.getCommandPath();
-        // TODO get command by path
-
-        Map<String, String> combined = new HashMap<>();
-        List<OptionMapping> options = event.getOptions();
-        for (OptionMapping option : options) {
-            combined.put(option.getName(), option.getAsString());
-        }
-
-        System.out.println("Path: " + path + " | values=" + combined);
-
-        List<String> pathArgs = StringMan.split(path, ' ');
-        Map.Entry<CommandCallable, String> cmdAndPath = commands.getCallableAndPath(pathArgs);
-        CommandCallable cmd = cmdAndPath.getKey();
-
-        LocalValueStore<Object> locals = new LocalValueStore<>(commands.getStore());
-        locals.addProvider(Key.of(User.class, Me.class), event.getUser());
-        locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
-        locals.addProvider(Key.of(MessageChannel.class, Me.class), hookChannel);
-
-        List<String> args = new ArrayList<>(); // empty because we are using a arg map instead of parsing a string
-        ArgumentStack stack = new ArgumentStack(args, locals, commands.getValidators(), commands.getPermisser());
-        locals.addProvider(stack);
-
         try {
-            cmd.validatePermissions(stack.getStore(), stack.getPermissionHandler());
+            System.out.println("Slash command interaction");
+
+            MessageChannel channel = event.getChannel();
+            SlashCommandInteraction interaction = event.getInteraction();
+            InteractionHook hook = event.getHook();
+
+            event.deferReply(false).queue();
+
+            HookMessageChannel hookChannel = new HookMessageChannel(channel, hook);
+
+            String path = event.getCommandPath();
+            // TODO get command by path
+
+            Map<String, String> combined = new HashMap<>();
+            List<OptionMapping> options = event.getOptions();
+            for (OptionMapping option : options) {
+                combined.put(option.getName(), option.getAsString());
+            }
+
+            System.out.println("Path: " + path + " | values=" + combined);
+
+            List<String> pathArgs = StringMan.split(path, ' ');
+            Map.Entry<CommandCallable, String> cmdAndPath = commands.getCallableAndPath(pathArgs);
+            CommandCallable cmd = cmdAndPath.getKey();
+
+            LocalValueStore<Object> locals = new LocalValueStore<>(commands.getStore());
+            locals.addProvider(Key.of(User.class, Me.class), event.getUser());
+            locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
+            locals.addProvider(Key.of(MessageChannel.class, Me.class), hookChannel);
+
+            List<String> args = new ArrayList<>(); // empty because we are using a arg map instead of parsing a string
+            ArgumentStack stack = new ArgumentStack(args, locals, commands.getValidators(), commands.getPermisser());
+            locals.addProvider(stack);
+
+            try {
+                cmd.validatePermissions(stack.getStore(), stack.getPermissionHandler());
+            } catch (Throwable e) {
+                e.printStackTrace();
+                RateLimitUtil.queue(hook.sendMessage("No permission: " + e.getMessage()));
+                return;
+            }
+
+            if (cmd instanceof ParametricCallable) {
+                ParametricCallable parametric = (ParametricCallable) cmd;
+
+                String cmdRaw = parametric.stringifyArgumentMap(combined, " ");
+                Message embedMessage = new MessageBuilder().setContent(cmdRaw).build();
+                locals.addProvider(Key.of(Message.class, Me.class), embedMessage);
+
+                String formatted = null;
+                try {
+                    Object[] parsed = parametric.parseArgumentMap(combined, stack);
+                    Object result = parametric.call(null, stack.getStore(), parsed);
+                    if (result != null) {
+                        formatted = (result + "").trim(); // MarkupUtil.markdownToHTML
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    formatted = e.getClass().getSimpleName() + ": " + e.getMessage();
+                }
+                if (formatted != null && !formatted.isEmpty()) {
+                    for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
+                        formatted = formatted.replaceAll(key, "");
+                    }
+                    RateLimitUtil.queue(hook.sendMessage(formatted));
+                } else {
+                    RateLimitUtil.queue(hook.sendMessage("(no output)"));
+                }
+            } else {
+                RateLimitUtil.queue(hook.sendMessage("Invalid command: " + StringMan.getString(args)));
+            }
         } catch (Throwable e) {
             e.printStackTrace();
-            RateLimitUtil.queue(hook.sendMessage("No permission: " + e.getMessage()));
-            return;
-        }
-
-        if (cmd instanceof ParametricCallable) {
-            ParametricCallable parametric = (ParametricCallable) cmd;
-
-            String cmdRaw = parametric.stringifyArgumentMap(combined, " ");
-            Message embedMessage = new MessageBuilder().setContent(cmdRaw).build();
-            locals.addProvider(Key.of(Message.class, Me.class), embedMessage);
-
-            String formatted = null;
-            try {
-                Object[] parsed = parametric.parseArgumentMap(combined, stack);
-                Object result = parametric.call(null, stack.getStore(), parsed);
-                if (result != null) {
-                    formatted = (result + "").trim(); // MarkupUtil.markdownToHTML
-                }
-            } catch (Throwable e) {
-                formatted = e.getClass().getSimpleName() + ": " + e.getMessage();
-            }
-            if (formatted != null && !formatted.isEmpty()) {
-                for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
-                    formatted = formatted.replaceAll(key, "");
-                }
-                RateLimitUtil.queue(hook.sendMessage(formatted));
-            } else {
-                RateLimitUtil.queue(hook.sendMessage("(no output)"));
-            }
-        } else {
-            RateLimitUtil.queue(hook.sendMessage("Invalid command: " + StringMan.getString(args)));
         }
     }
 
     @Command(desc = "Locutus command")
-    public String locutus(OnlineStatus status, Color color, Map<ResourceType, Double> rss, DBNation nation, Set<Role> roles) {
+    public String locutus2(OnlineStatus status, Color color, Map<ResourceType, Double> rss, DBNation nation, Set<Role> roles) {
         // delegate command
         return "Hello World ";
     }

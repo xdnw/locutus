@@ -28,6 +28,19 @@ public class MethodParser<T> implements Parser<T> {
     private boolean isConsumerInit;
     private boolean isConsumer;
 
+    @Override
+    public String toString() {
+        return "MethodParser{" +
+                "desc='" + desc + '\'' +
+                ", key=" + key +
+                ", method=" + method +
+                ", params=" + params +
+                ", object=" + object +
+                ", isConsumerInit=" + isConsumerInit +
+                ", isConsumer=" + isConsumer +
+                '}';
+    }
+
     public MethodParser(Object object, Method method, String desc) {
         this(object, method, desc, null, null);
     }
@@ -138,7 +151,6 @@ public class MethodParser<T> implements Parser<T> {
     @Override
     public T apply(ArgumentStack stack) {
         try {
-            Parameter[] methodParams = method.getParameters();
             Object[] args = new Object[params.size()];
             for (int i = 0; i < params.size(); i++) {
                 Key paramKey = params.get(i);

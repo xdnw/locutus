@@ -323,7 +323,7 @@ public class PoliticsAndWarV3 {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-//        Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = false;
+        Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = false;
         Locutus.create().start();
 
         System.out.println("Nation " + Settings.INSTANCE.NATION_ID);

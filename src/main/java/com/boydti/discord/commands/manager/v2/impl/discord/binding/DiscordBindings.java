@@ -50,7 +50,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "@member")
-    public static Member member(Guild guild, String name) {
+    public static Member member(@Me Guild guild, String name) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild");
         User user = user(name);
         Member member = guild.getMember(user);
@@ -84,7 +84,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "@role")
-    public static Role role(Guild guild, String role) {
+    public static Role role(@Me Guild guild, String role) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild");
         Role discordRole = DiscordUtil.getRole(guild, role);
         if (discordRole == null) throw new IllegalArgumentException("No role found for " + role);
@@ -92,7 +92,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "@role1,@role2")
-    public static Set<Role> roles(Guild guild, String input) {
+    public static Set<Role> roles(@Me Guild guild, String input) {
         Set<Role> roles = new LinkedHashSet<>();
         for (String arg : input.split(",")) {
             roles.add(role(guild, arg));
@@ -144,14 +144,14 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "#channel")
-    public MessageChannel channel(Guild guild, String channel) {
+    public MessageChannel channel(@Me Guild guild, String channel) {
         MessageChannel GuildMessageChannel = DiscordUtil.getChannel(guild, channel);
         if (GuildMessageChannel == null) throw new IllegalArgumentException("No channel found for " + channel);
         return GuildMessageChannel;
     }
 
     @Binding(examples = "#channel")
-    public TextChannel textChannel(Guild guild, String input) {
+    public TextChannel textChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
         if (channel == null) throw new IllegalArgumentException("No channel found for " + channel);
         if (!(channel instanceof TextChannel)) throw new IllegalArgumentException("Channel " + channel + " is not a " + TextChannel.class.getSimpleName() + " but is instead of type " + channel.getClass().getSimpleName());
@@ -159,7 +159,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "#channel")
-    public ICategorizableChannel categorizableChannel(Guild guild, String input) {
+    public ICategorizableChannel categorizableChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
         if (channel == null) throw new IllegalArgumentException("No channel found for " + channel);
         if (!(channel instanceof ICategorizableChannel)) throw new IllegalArgumentException("Channel " + channel + " is not a " + ICategorizableChannel.class.getSimpleName() + " but is instead of type " + channel.getClass().getSimpleName());
