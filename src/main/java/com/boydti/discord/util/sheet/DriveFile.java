@@ -35,7 +35,7 @@ public class DriveFile {
      * If modifying these scopes, delete your previously saved tokens/ folder.
      */
     private static final List<String> SCOPES = Arrays.asList(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE_APPDATA, DriveScopes.DRIVE_METADATA, DriveScopes.DRIVE);
-    private static final String CREDENTIALS_FILE_PATH = java.io.File.separator + "config" + java.io.File.separator + "credentials-drive.json";
+    private static final String CREDENTIALS_FILE_PATH = "credentials-drive.json";
     private final Drive service;
     private final String fileId;
 

@@ -180,7 +180,7 @@ public class SpreadSheet {
      * If modifying these scopes, delete your previously saved tokens/ folder.
      */
     private static final List<String> SCOPES = Collections.singletonList(SheetsScopes.SPREADSHEETS);
-    private static final String CREDENTIALS_FILE_PATH = File.separator + "config" + File.separator + "credentials-sheets.json";
+    private static final String CREDENTIALS_FILE_PATH = "credentials-sheets.json";
     private final Sheets service;
     private List<List<Object>> values;
     private final String spreadsheetId;
