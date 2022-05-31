@@ -26,7 +26,7 @@ hs_err_pid*
 .idea/
 build/
 database/
-config/
+/config/
 tokens/
 out/
 *.hprof
