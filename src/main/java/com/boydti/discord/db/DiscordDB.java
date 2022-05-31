@@ -68,6 +68,7 @@ public class DiscordDB extends DBMain {
             String json = new String(jsonBytes, StandardCharsets.UTF_8);
             ApiRecord record = gson.fromJson(json, type);
 
+            if (record.getNationId() == null || record.getApiKey() == null) continue;
             int nationId = record.getNationId();
             String key = record.getApiKey();
 
