@@ -1,7 +1,7 @@
 package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord._test.network.ProxyHandler;
+import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.GuildDB;
 import net.dv8tion.jda.api.entities.Guild;
