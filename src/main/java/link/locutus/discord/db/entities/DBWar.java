@@ -98,27 +98,27 @@ public class DBWar {
             int damage;
             switch (attack.attack_type) {
                 default:continue;
-                case AttackType.FORTIFY:
+                case FORTIFY:
 //                    result[(resI + 1) % 2] = Math.min(result[(resI + 1) % 2] + 10, 100);
                     continue;
-                case AttackType.GROUND:
+                case GROUND:
                     damage = 10;
                     break;
-                case AttackType.AIRSTRIKE1:
-                case AttackType.AIRSTRIKE2:
-                case AttackType.AIRSTRIKE3:
-                case AttackType.AIRSTRIKE4:
-                case AttackType.AIRSTRIKE5:
-                case AttackType.AIRSTRIKE6:
+                case AIRSTRIKE1:
+                case AIRSTRIKE2:
+                case AIRSTRIKE3:
+                case AIRSTRIKE4:
+                case AIRSTRIKE5:
+                case AIRSTRIKE6:
                     damage = 12;
                     break;
-                case AttackType.NAVAL:
+                case NAVAL:
                     damage = 14;
                     break;
-                case AttackType.MISSILE:
+                case MISSILE:
                     damage = 24;
                     break;
-                case AttackType.NUKE:
+                case NUKE:
                     damage = 31;
                     break;
             }
@@ -178,26 +178,26 @@ public class DBWar {
             long turn = TimeUtil.getTurn(attack.epoch);
             int mapUsed = 0;
             switch (attack.attack_type) {
-                case AttackType.FORTIFY:
+                case FORTIFY:
                     if (attack.attacker_nation_id == attacker_id) {
                         fortified = true;
                     }
-                case AttackType.GROUND:
+                case GROUND:
                     mapUsed = 3;
                     break;
-                case AttackType.AIRSTRIKE1:
-                case AttackType.AIRSTRIKE2:
-                case AttackType.AIRSTRIKE3:
-                case AttackType.AIRSTRIKE4:
-                case AttackType.AIRSTRIKE5:
-                case AttackType.AIRSTRIKE6:
-                case AttackType.NAVAL:
+                case AIRSTRIKE1:
+                case AIRSTRIKE2:
+                case AIRSTRIKE3:
+                case AIRSTRIKE4:
+                case AIRSTRIKE5:
+                case AIRSTRIKE6:
+                case NAVAL:
                     mapUsed = 4;
                     break;
-                case AttackType.MISSILE:
+                case MISSILE:
                     mapUsed = 8;
                     break;
-                case AttackType.NUKE:
+                case NUKE:
 
                     mapUsed = 12;
                     break;

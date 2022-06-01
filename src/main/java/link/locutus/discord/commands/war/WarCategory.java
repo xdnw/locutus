@@ -246,18 +246,18 @@ public class WarCategory {
 
             if (change) {
                 switch (attack.attack_type) {
-                    case AttackType.GROUND:
+                    case GROUND:
                         room.setGC(value);
                         break;
-                    case AttackType.AIRSTRIKE1:
-                    case AttackType.AIRSTRIKE2:
-                    case AttackType.AIRSTRIKE3:
-                    case AttackType.AIRSTRIKE4:
-                    case AttackType.AIRSTRIKE5:
-                    case AttackType.AIRSTRIKE6:
+                    case AIRSTRIKE1:
+                    case AIRSTRIKE2:
+                    case AIRSTRIKE3:
+                    case AIRSTRIKE4:
+                    case AIRSTRIKE5:
+                    case AIRSTRIKE6:
                         room.setAC(value);
                         break;
-                    case AttackType.NAVAL:
+                    case NAVAL:
                         room.setBlockade(value);
                         break;
                 }
@@ -278,52 +278,52 @@ public class WarCategory {
                 boolean showSuccess = false;
 
                 switch (attack.attack_type) {
-                    case AttackType.AIRSTRIKE1:
+                    case AIRSTRIKE1:
                         message = name1 + " issued " + attack.attack_type + " INFRA against " + name2;
                         showCasualties = true;
                         showInfra = true;
                         showSuccess = true;
                         break;
-                    case AttackType.AIRSTRIKE2:
-                    case AttackType.AIRSTRIKE3:
-                    case AttackType.AIRSTRIKE4:
-                    case AttackType.AIRSTRIKE5:
+                    case AIRSTRIKE2:
+                    case AIRSTRIKE3:
+                    case AIRSTRIKE4:
+                    case AIRSTRIKE5:
                         String typeStr = attack.attack_type + " " + attack.attack_type.getUnits()[1].getName();
                         message = name1 + " issued " + typeStr + " against " + name2;
                         showCasualties = true;
                         showInfra = true;
                         showSuccess = true;
                         break;
-                    case AttackType.AIRSTRIKE6:
+                    case AIRSTRIKE6:
                         message = name1 + " issued " + attack.attack_type + " AIRCRAFT against " + name2;
                         showCasualties = true;
                         showInfra = true;
                         showSuccess = true;
                         break;
-                    case AttackType.GROUND:
+                    case GROUND:
                         showLoot = true;
-                    case AttackType.NAVAL:
+                    case NAVAL:
                         message = name1 + " issued a " + attack.attack_type + " attack against " + name2;
                         showInfra = true;
                         showSuccess = true;
                         break;
-                    case AttackType.MISSILE:
-                    case AttackType.NUKE:
+                    case MISSILE:
+                    case NUKE:
                         message = name1 + " launched a " + attack.attack_type + " against " + name2;
                         showInfra = true;
                         showSuccess = true;
                         break;
-                    case AttackType.FORTIFY:
+                    case FORTIFY:
                         message = name1 + " fortified against " + name2;
                         break;
-                    case AttackType.VICTORY:
+                    case VICTORY:
                         room.setPlanning(false);
                         message = name1 + "looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + name2;
                         break;
-                    case AttackType.A_LOOT:
+                    case A_LOOT:
                         message = name1 + "looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getLooted(), true);
                         break;
-                    case AttackType.PEACE:
+                    case PEACE:
                         message = name1 + " agreed to peace with " + name2;
                         break;
                     default:

@@ -1,5 +1,6 @@
 package link.locutus.discord.util.sheet;
 
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.Alliance;
@@ -139,7 +140,11 @@ public class SpreadSheet {
             db.setInfo(key, spreadsheetId);
 
             DriveFile gdFile = new DriveFile(spreadsheetId);
-            gdFile.shareWithAnyone(DriveFile.DriveRole.WRITER);
+            try {
+                gdFile.shareWithAnyone(DriveFile.DriveRole.WRITER);
+            } catch (GoogleJsonResponseException e) {
+                e.printStackTrace();
+            }
 
         } else {
             spreadsheetId = sheetId;

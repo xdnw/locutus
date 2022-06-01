@@ -1468,7 +1468,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return isAllyOfRoot(type -> {
             if (type == null) return false;
             switch (type) {
-                case TreatyType.MDP:
+                case MDP:
                 case MDOAP:
                 case ODP:
                 case ODOAP:

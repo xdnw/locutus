@@ -96,7 +96,7 @@ public class WarCard {
         wn.setResistance(attacker ? attackerResistance : defenderResistance);
         wn.setActionPoints(attacker ? attackerMAP : defenderMAP);
         switch (war.warType) {
-            case WarType.RAID:
+            case RAID:
                 if (attacker) {
                     wn.setInfraFactor(0.25);
                     wn.setLootFactor(1);
@@ -105,7 +105,7 @@ public class WarCard {
                     wn.setLootFactor(1);
                 }
                 break;
-            case WarType.ORD:
+            case ORD:
                 if (attacker) {
                     wn.setInfraFactor(0.5);
                     wn.setLootFactor(0.5);
@@ -114,7 +114,7 @@ public class WarCard {
                     wn.setLootFactor(0.5);
                 }
                 break;
-            case WarType.ATT:
+            case ATT:
                 if (attacker) {
                     wn.setInfraFactor(1);
                     wn.setLootFactor(0.25);
@@ -310,11 +310,11 @@ public class WarCard {
         for (DBAttack attack : attacks) {
             if (attack.attacker_nation_id == war.attacker_id) attackerFortified = false; else defenderFortified = false;
             switch (attack.attack_type) {
-                case AttackType.FORTIFY:
+                case FORTIFY:
                     if (attack.attacker_nation_id == war.attacker_id) attackerFortified = true;
                     else defenderFortified = true;
                     break;
-                case AttackType.GROUND:
+                case GROUND:
                     switch (attack.success) {
                         case 3:
                             gcDate = attack.epoch;
@@ -324,12 +324,12 @@ public class WarCard {
                             if (groundControl != attack.attacker_nation_id) groundControl = 0;
                     }
                     break;
-                case AttackType.AIRSTRIKE1:
-                case AttackType.AIRSTRIKE2:
-                case AttackType.AIRSTRIKE3:
-                case AttackType.AIRSTRIKE4:
-                case AttackType.AIRSTRIKE5:
-                case AttackType.AIRSTRIKE6:
+                case AIRSTRIKE1:
+                case AIRSTRIKE2:
+                case AIRSTRIKE3:
+                case AIRSTRIKE4:
+                case AIRSTRIKE5:
+                case AIRSTRIKE6:
                     switch (attack.success) {
                         case 3:
                             acDate = attack.epoch;
@@ -339,7 +339,7 @@ public class WarCard {
                             if (airSuperiority != attack.attacker_nation_id) airSuperiority = 0;
                     }
                     break;
-                case AttackType.NAVAL:
+                case NAVAL:
                     switch (attack.success) {
                         case 3:
                             blockadeDate = attack.epoch;
@@ -349,7 +349,7 @@ public class WarCard {
                             if (blockaded != attack.defender_nation_id) blockaded = 0;
                     }
                     break;
-                case AttackType.VICTORY:
+                case VICTORY:
                     isActive = false;
                     break;
             }

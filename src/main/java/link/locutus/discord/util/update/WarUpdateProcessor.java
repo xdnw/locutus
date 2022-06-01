@@ -358,9 +358,9 @@ public class WarUpdateProcessor {
 
     public static AttackTypeSubCategory subCategorize(DBAttack root) {
         switch (root.attack_type) {
-            case AttackType.FORTIFY:
+            case FORTIFY:
                 return AttackTypeSubCategory.FORTIFY;
-            case AttackType.GROUND:
+            case GROUND:
                 int attTanks = (int) (root.att_gas_used * 100);
                 int defTanks = (int) (root.def_gas_used * 100);
                 int attSoldiers = (int) ((root.att_mun_used - root.att_gas_used) * 5000);
@@ -397,17 +397,17 @@ public class WarUpdateProcessor {
                     }
                     return AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_NECESSARY;
                 }
-            case AttackType.VICTORY:
+            case VICTORY:
                 return null;
-            case AttackType.A_LOOT:
+            case A_LOOT:
                 return null;
-            case AttackType.AIRSTRIKE1:
+            case AIRSTRIKE1:
                 return AttackTypeSubCategory.AIRSTRIKE_INFRA;
-            case AttackType.AIRSTRIKE4:
+            case AIRSTRIKE4:
                 return AttackTypeSubCategory.AIRSTRIKE_MONEY;
-            case AttackType.AIRSTRIKE2:
-            case AttackType.AIRSTRIKE3:
-            case AttackType.AIRSTRIKE5:
+            case AIRSTRIKE2:
+            case AIRSTRIKE3:
+            case AIRSTRIKE5:
                 int attAir = (int) (root.att_gas_used * 4);
                 if (attAir <= 3) {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
@@ -419,7 +419,7 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.AIRSTRIKE_NOT_DOGFIGHT_UNSUCCESSFUL;
                 }
                 return AttackTypeSubCategory.AIRSTRIKE_UNIT;
-            case AttackType.AIRSTRIKE6:
+            case AIRSTRIKE6:
                 attAir = (int) (root.att_gas_used * 4);
                 if (attAir <= 3) {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
@@ -428,7 +428,7 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.AIRSTRIKE_NO_KILLS_MAX;
                 }
                 return AttackTypeSubCategory.AIRSTRIKE_UNIT;
-            case AttackType.NAVAL:
+            case NAVAL:
                 int attShips = (int) (root.att_gas_used / 2);
                 if (root.defcas1 == 0) {
                     if (attShips == 1) {
@@ -437,11 +437,11 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.NAVY_NO_KILLS_MAX_SHIP;
                 }
                 return AttackTypeSubCategory.NAVY_KILL_UNITS;
-            case AttackType.PEACE:
+            case PEACE:
                 return null;
-            case AttackType.MISSILE:
+            case MISSILE:
                 return AttackTypeSubCategory.MISSILE;
-            case AttackType.NUKE:
+            case NUKE:
                 return AttackTypeSubCategory.NUKE;
         }
         return null;
@@ -455,20 +455,20 @@ public class WarUpdateProcessor {
 
         if (root.success == 0) {
             switch (root.attack_type) {
-                case AttackType.GROUND:
-                case AttackType.VICTORY:
-                case AttackType.FORTIFY:
-                case AttackType.A_LOOT:
-                case AttackType.MISSILE:
-                case AttackType.NUKE:
+                case GROUND:
+                case VICTORY:
+                case FORTIFY:
+                case A_LOOT:
+                case MISSILE:
+                case NUKE:
                     break;
-                case AttackType.AIRSTRIKE1:
-                case AttackType.AIRSTRIKE2:
-                case AttackType.AIRSTRIKE3:
-                case AttackType.AIRSTRIKE4:
-                case AttackType.AIRSTRIKE5:
+                case AIRSTRIKE1:
+                case AIRSTRIKE2:
+                case AIRSTRIKE3:
+                case AIRSTRIKE4:
+                case AIRSTRIKE5:
                     //
-                case AttackType.AIRSTRIKE6:
+                case AIRSTRIKE6:
 
 
                 default:
@@ -476,7 +476,7 @@ public class WarUpdateProcessor {
         }
 
         switch (root.attack_type) {
-            case AttackType.GROUND: {
+            case GROUND: {
                 int attTanks = (int) (root.att_gas_used * 100);
                 int defTanks = (int) (root.def_gas_used * 100);
                 int attSoldiers = (int) ((root.att_mun_used - root.att_gas_used) * 5000);
@@ -538,13 +538,13 @@ public class WarUpdateProcessor {
                 }
                 break;
             }
-            case AttackType.VICTORY:
+            case VICTORY:
                 break;
-            case AttackType.FORTIFY:
+            case FORTIFY:
                 break;
-            case AttackType.A_LOOT:
+            case A_LOOT:
                 break;
-            case AttackType.AIRSTRIKE2:
+            case AIRSTRIKE2:
                 if (root.attack_type == AttackType.AIRSTRIKE2 && root.defcas2 == 0) {
                     String message = "You performed an airstrike against enemy soldiers when the enemy has none";
                     return Map.entry(AuditType.AIRSTRIKE_SOLDIERS_NONE, message);
@@ -580,17 +580,17 @@ public class WarUpdateProcessor {
                     }
                 }
                 // if you have more soldiers than the enemy does
-            case AttackType.AIRSTRIKE3:
+            case AIRSTRIKE3:
                 if (root.attack_type == AttackType.AIRSTRIKE3 && root.defcas2 == 0 && defender.getTanks() == 0) {
                     return AuditType.AIRSTRIKE_TANKS_NONE.toPair();
                 }
-            case AttackType.AIRSTRIKE1:
-            case AttackType.AIRSTRIKE4:
-            case AttackType.AIRSTRIKE5:
+            case AIRSTRIKE1:
+            case AIRSTRIKE4:
+            case AIRSTRIKE5:
                 if (root.attack_type == AttackType.AIRSTRIKE5 && root.defcas2 == 0 && defender.getShips() == 0) {
                     return AuditType.AIRSTRIKE_SHIP_NONE.toPair();
                 }
-            case AttackType.AIRSTRIKE6: {
+            case AIRSTRIKE6: {
                 int attAir = (int) (root.att_gas_used * 4);
                 int defAir = defender.getAircraft() + root.defcas1;
 
@@ -669,7 +669,7 @@ public class WarUpdateProcessor {
                 }
                 break;
             }
-            case AttackType.NAVAL:
+            case NAVAL:
                 int defShips = (int) (root.def_gas_used / 2);
                 if (defender.getShips() == 0 && defShips == 0 && root.defcas1 == 0) {
                     int attShips = (int) (root.att_gas_used / 2);
@@ -692,12 +692,12 @@ public class WarUpdateProcessor {
                     }
                 }
                 break;
-            case AttackType.PEACE:
+            case PEACE:
                 break;
-            case AttackType.MISSILE:
+            case MISSILE:
                 // if you have more of a specific military unit than them
                 break;
-            case AttackType.NUKE:
+            case NUKE:
                 // if you have more of a specific military unit than them
                 break;
         }

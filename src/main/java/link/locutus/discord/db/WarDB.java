@@ -260,11 +260,11 @@ public class WarDB extends DBMain {
             for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(allianceId).entrySet()) {
                 Treaty treaty = entry.getValue();
                 switch (treaty.type) {
-                    case TreatyType.MDP:
-                    case TreatyType.MDOAP:
-                    case TreatyType.ODP:
-                    case TreatyType.ODOAP:
-                    case TreatyType.PROTECTORATE:
+                    case MDP:
+                    case MDOAP:
+                    case ODP:
+                    case ODOAP:
+                    case PROTECTORATE:
                         int other = treaty.from == allianceId ? treaty.to : treaty.from;
                         counters.addAll(Locutus.imp().getWarDb().getCounters(Collections.singleton(other)));
                 }
@@ -406,9 +406,9 @@ public class WarDB extends DBMain {
             }
             if (attack.attacker_nation_id == war.defender_id) isActive = true;
             switch (attack.attack_type) {
-                case AttackType.A_LOOT:
-                case AttackType.VICTORY:
-                case AttackType.PEACE:
+                case A_LOOT:
+                case VICTORY:
+                case PEACE:
                     endTurn = TimeUtil.getTurn(attack.epoch);
                     endDate = attack.epoch;
                     break;
@@ -418,11 +418,11 @@ public class WarDB extends DBMain {
         Set<Integer> attAA = new HashSet<>(Collections.singleton(war.attacker_aa));
         for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.attacker_aa).entrySet()) {
             switch (entry.getValue().type) {
-                case TreatyType.MDP:
-                case TreatyType.MDOAP:
-                case TreatyType.ODP:
-                case TreatyType.ODOAP:
-                case TreatyType.PROTECTORATE:
+                case MDP:
+                case MDOAP:
+                case ODP:
+                case ODOAP:
+                case PROTECTORATE:
                     attAA.add(entry.getKey());
             }
         }
@@ -430,11 +430,11 @@ public class WarDB extends DBMain {
         Set<Integer> defAA = new HashSet<>(Collections.singleton(war.defender_aa));
         for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.defender_aa).entrySet()) {
             switch (entry.getValue().type) {
-                case TreatyType.MDP:
-                case TreatyType.MDOAP:
-                case TreatyType.ODP:
-                case TreatyType.ODOAP:
-                case TreatyType.PROTECTORATE:
+                case MDP:
+                case MDOAP:
+                case ODP:
+                case ODOAP:
+                case PROTECTORATE:
                     defAA.add(entry.getKey());
             }
         }
@@ -1727,10 +1727,10 @@ public class WarDB extends DBMain {
         }
 
         switch (attack.attack_type) {
-            case AttackType.GROUND:
+            case GROUND:
                 if (attack.success < 0) break;
-            case AttackType.VICTORY:
-            case AttackType.A_LOOT:
+            case VICTORY:
+            case A_LOOT:
                 attack.money_looted = getLongDef0(rs, 17) * 0.01;
         }
 
@@ -1745,18 +1745,18 @@ public class WarDB extends DBMain {
         }
 
         switch (attack.attack_type) {
-            case AttackType.VICTORY:
-            case AttackType.FORTIFY:
-            case AttackType.A_LOOT:
-            case AttackType.PEACE:
+            case VICTORY:
+            case FORTIFY:
+            case A_LOOT:
+            case PEACE:
                 break;
             default:
                 attack.att_gas_used = getLongDef0(rs, 23) * 0.01;
                 attack.att_mun_used = getLongDef0(rs, 24) * 0.01;
                 attack.def_gas_used = getLongDef0(rs, 25) * 0.01;
                 attack.def_mun_used = getLongDef0(rs, 26) * 0.01;
-            case AttackType.MISSILE:
-            case AttackType.NUKE:
+            case MISSILE:
+            case NUKE:
                 attack.city_id = rs.getInt(14);
                 attack.attcas1 = rs.getInt(9);
                 attack.attcas2 = rs.getInt(10);
