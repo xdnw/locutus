@@ -22,7 +22,7 @@ plugins {
 
 apply plugin: "kotlin"
 
-group 'com.boydti'
+group 'link.locutus'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -86,10 +86,10 @@ dependencies {
 //    implementation group: 'org.bouncycastle', name: 'bcpkix-jdk15on', version: '1.69'
 
 
-    implementation "com.google.api-client:google-api-client:1.30.4"
-    implementation "com.google.oauth-client:google-oauth-client-jetty:1.30.4"
-    implementation "com.google.apis:google-api-services-sheets:v4-rev581-1.25.0"
-    implementation 'com.google.apis:google-api-services-drive:v3-rev110-1.23.0'
+    implementation 'com.google.api-client:google-api-client:1.33.0'
+    implementation 'com.google.oauth-client:google-oauth-client-jetty:1.32.1'
+    implementation 'com.google.apis:google-api-services-sheets:v4-rev20210629-1.32.1'
+    implementation 'com.google.apis:google-api-services-drive:v3-rev20211107-1.32.1'
     implementation 'de.erichseifert.gral:gral-core:0.11'
 
     implementation 'org.kefirsf:kefirbb:1.5'

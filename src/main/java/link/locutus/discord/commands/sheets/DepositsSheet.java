@@ -1,0 +1,224 @@
+package link.locutus.discord.commands.sheets;
+
+import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+import static link.locutus.discord.util.PnwUtil.convertedTotal;
+import static link.locutus.discord.util.PnwUtil.resourcesToString;
+
+public class DepositsSheet extends Command {
+    public DepositsSheet() {
+        super("DepositsSheet", "DepositSheet", CommandCategory.ECON, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.GOV);
+    }
+
+    @Override
+    public boolean checkPermission(Guild server, User user) {
+        return Roles.ECON.has(user, server);
+    }
+
+    @Override
+    public String help() {
+        return super.help() + " [nations] [offshores]";
+    }
+
+    @Override
+    public String desc() {
+        return "Get a list of nations and their deposits.\n" +
+                "Add `-b` to use 0/0 as the tax base\n" +
+                "Add `-o` to not include any manual deposit offsets\n" +
+                "Add `-d` to not include deposits\n" +
+                "Add `-t` to not include taxes\n" +
+                "Add `-l` to not include loans\n" +
+                "Add `-g` to not include grants`\n" +
+                "Add `-f` to force an update";
+    }
+
+    @Override
+    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+
+        Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
+
+        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.DEPOSITS_SHEET);
+
+        List<Object> header = new ArrayList<>(Arrays.asList(
+            "nation",
+            "cities",
+            "age",
+            "deposit",
+            "tax",
+            "loan",
+            "grant",
+            "total",
+            "last_deposit_day"
+        ));
+
+        for (ResourceType type : ResourceType.values()) {
+            if (type == ResourceType.CREDITS) continue;
+            header.add(type.name());
+        }
+
+        sheet.setHeader(header);
+
+        boolean useTaxBase = !flags.contains('b');
+        boolean useOffset = !flags.contains('o');
+        boolean noLoans = flags.contains('l');
+        boolean noGrants = flags.contains('g');
+        boolean noTaxes = flags.contains('t');
+        boolean noDeposits = flags.contains('d');
+
+        Set<Long> tracked = null;
+
+        List<DBNation> nations;
+        if (args.isEmpty()) {
+            Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            if (allianceId != null) {
+                nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+                nations.removeIf(n -> n.getPosition() <= 1);
+            } else {
+                Role role = Roles.MEMBER.toRole(guild);
+                if (role == null) throw new IllegalArgumentException("No `!KeyStore ALLIANCE_ID` set, or `!aliasRole MEMBER` set");
+                nations = new ArrayList<>();
+                for (Member member : guild.getMembersWithRoles(role)) {
+                    DBNation nation = DiscordUtil.getNation(member.getUser());
+                    nations.add(nation);
+                }
+                if (nations.isEmpty()) return "No members found";
+
+            }
+        } else if (args.size() >= 1) {
+            nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
+            if (args.size() == 2) {
+                Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(1));
+                tracked = new LinkedHashSet<>();
+                for (Integer alliance : alliances) tracked.add(alliance.longValue());
+                tracked = PnwUtil.expandCoalition(tracked);
+            }
+        } else {
+            return usage(event);
+        }
+
+        double[] aaTotalPositive = ResourceType.getBuffer();
+        double[] aaTotalNet = ResourceType.getBuffer();
+
+        long last = System.currentTimeMillis();
+        for (DBNation nation : nations) {
+            if (System.currentTimeMillis() - last > 5000) {
+                RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), "calculating for: " + nation.getNation()));
+                last = System.currentTimeMillis();
+            }
+            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, 0L, 0L);
+            double[] buffer = ResourceType.getBuffer();
+
+            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            header.set(1, nation.getCities());
+            header.set(2, nation.getAgeDays());
+            header.set(3, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSITS, buffer))));
+            header.set(4, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
+            header.set(5, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
+            header.set(6, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
+            double[] total = ResourceType.getBuffer();
+            for (Map.Entry<DepositType, double[]> entry : deposits.entrySet()) {
+                switch (entry.getKey()) {
+                    case GRANT:
+                        if (noGrants) continue;
+                        break;
+                    case LOAN:
+                        if (noLoans) continue;
+                        break;
+                    case TAX:
+                        if (noTaxes) continue;
+                        break;
+                    case DEPOSITS:
+                        if (noDeposits) continue;
+                        break;
+                }
+                double[] value = entry.getValue();
+                total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
+            }
+            header.set(7, String.format("%.2f", PnwUtil.convertedTotal(total)));
+            List<Transaction2> transactions = nation.getTransactions(Long.MAX_VALUE);
+            long lastDeposit = 0;
+            for (Transaction2 transaction : transactions) {
+                if (transaction.sender_id == nation.getNation_id()) {
+                    lastDeposit = Math.max(transaction.tx_datetime, lastDeposit);
+                }
+            }
+            if (lastDeposit == 0) {
+                header.set(8, "NEVER");
+            } else {
+                long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastDeposit);
+                header.set(8, days);
+            }
+            int i = 9;
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                header.set((i++), total[type.ordinal()]);
+            }
+            double[] normalized = PnwUtil.normalize(total);
+            if (PnwUtil.convertedTotal(normalized) > 0) {
+                aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, normalized);
+            }
+            aaTotalNet = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalNet, total);
+            sheet.addRow(header);
+        }
+
+        sheet.clearAll();
+        sheet.set(0, 0);
+
+        StringBuilder response = new StringBuilder();
+        response.append("<" + sheet.getURL() + ">");
+
+        StringBuilder footer = new StringBuilder();
+        footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
+
+        OffshoreInstance offshore = db.getOffshore();
+        if (offshore != null) {
+            double[] aaDeposits = offshore.getDeposits(db);
+            if (PnwUtil.convertedTotal(aaDeposits) > 0) {
+                for (int i = 0; i < aaDeposits.length; i++) {
+                    aaTotalNet[i] = aaDeposits[i] - aaTotalNet[i];
+                    aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
+
+                }
+                footer.append("\n**Net offshored (normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+                footer.append("\n**Net offshored**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
+            }
+        }
+
+        DiscordUtil.createEmbedCommand(event.getChannel(), "AA Total", footer.toString());
+
+
+        return response.toString();
+    }
+}

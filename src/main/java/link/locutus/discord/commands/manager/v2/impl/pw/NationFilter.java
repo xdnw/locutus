@@ -1,0 +1,8 @@
+package link.locutus.discord.commands.manager.v2.impl.pw;
+
+import link.locutus.discord.pnw.DBNation;
+
+import java.util.function.Predicate;
+
+public interface NationFilter extends Predicate<DBNation> {
+}
