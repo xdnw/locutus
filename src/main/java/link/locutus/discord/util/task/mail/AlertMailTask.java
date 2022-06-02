@@ -177,7 +177,7 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
 
     private void processCommands(Guild guild, Mail mail, List<String> strings) {
         String reply = strings.get(0);
-        if (reply.isEmpty() || reply.charAt(0) != (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX)) return;
+        if (reply.isEmpty() || reply.charAt(0) != (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX).charAt(0)) return;
 
         DBNation nation = DBNation.byId(mail.nationId);
         if (nation == null) return;

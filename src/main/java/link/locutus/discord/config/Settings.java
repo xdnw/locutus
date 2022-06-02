@@ -386,10 +386,10 @@ public class Settings extends Config {
 
         public static class COMMAND {
             @Comment("The prefix used for legacy commands (single character)")
-            public char LEGACY_COMMAND_PREFIX = '!';
+            public String LEGACY_COMMAND_PREFIX = "!";
 
             @Comment("The prefix used for v2 commands (single character)")
-            public char COMMAND_PREFIX = '$';
+            public String COMMAND_PREFIX = "!";
         }
     }
 
