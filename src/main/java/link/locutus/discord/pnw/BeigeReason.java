@@ -14,37 +14,47 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public enum BeigeReason {
-    INACTIVE("Nations who are inactive (2 days)"),
-    ALREADY_BEIGE_STACKED("Enemies already with enough beige to rebuild (6 days)"),
-    NO_ENEMY_OFFENSIVE_WARS("Enemies not declaring any offensive wars"),
-    MISSILE_TURRET("Enemies with high number of missiles"),
-    NUKE_TURRET("Enemies with high numbers of nukes"),
-    VACATION_MODE("You can beige enemies in Vacation Mode"),
-    BEIGE_CYCLE("If the enemy does not have beige, and two other strong nations can sit them whilst beige. DO NOT BEIGE DEFENSIVE WARS"),
-    BEIGE_CYCLE_4D("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 4d. DO NOT BEIGE DEFENSIVE WARS"),
-    BEIGE_CYCLE_1("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 2d. DO NOT BEIGE DEFENSIVE WARS"),
-    BLOCKADED("If you are being sat on/blockaded and need to restock on warchest"),
-    UNDER_C10_SLOG("If the enemy has less than 10 cities"),
-    NOT_AN_ENEMY("Non enemies are not subject to beige/cycle orders"),
-    APPLICANT("Applicants aren't subject to beige/cycle orders"),
-    DO_NOT_RAID("Try to peace nations that are on the Do Not Raid list"),
-    LOW_RESISTANCE("Low resistance, at risk of getting beiged"),
-    LOW_RESISTANCE_OFFENSIVE("Low resistance, at risk of getting beiged"),
-    OFFENSIVE_WAR("War is offensive"),
-    NO_RECENT_WARS("Enemy is has not declared a war in the past 20 days"),
-    NO_RECENT_3_CONSECUTIVE_LOGINS("Enemy has not had 3 consecutive logins in the past 120 days"),
-    NO_RECENT_5_CONSECUTIVE_LOGINS("Enemy has not had 5 consecutive logins in the past 120 days"),
-    INCORRECT_ENEMY_MMR("Enemy does not have 5 barracks/factories"),
+    VACATION_MODE("You can beige enemies in Vacation Mode", "vacation mode"),
 
-    USELESS("Enemy has no recent wars and no recent consecutive logins OR incorrect MMR"),
+    NOT_AN_ENEMY("Non enemies are not subject to beige/cycle orders", "not an enemy"),
+
+    INACTIVE("Nations who are inactive (2 days)", "inactive"),
+
+    APPLICANT("Applicants aren't subject to beige/cycle orders", "applicant"),
+    UNDER_C10_SLOG("If the enemy has less than 10 cities", "enemy under city 10"),
+    OFFENSIVE_WAR("War is offensive", "offensive war"),
+    ALREADY_BEIGE_STACKED("Enemies already with enough beige to rebuild (6 days)", "already beige stacked"),
+    NO_ENEMY_OFFENSIVE_WARS("Enemies not declaring any offensive wars", "no enemy offensives"),
+    MISSILE_TURRET("Enemies with high number of missiles", "5+ enemy missiles"),
+    NUKE_TURRET("Enemies with high numbers of nukes", "5+ enemy nukes"),
+    NO_RECENT_WARS("Enemy is has not declared a war in the past 20 days", "no recent enemy wars"),
+    NO_RECENT_3_CONSECUTIVE_LOGINS("Enemy has not had 3 consecutive logins in the past 120 days", "no 3 consecutive enemy logins"),
+    NO_RECENT_5_CONSECUTIVE_LOGINS("Enemy has not had 5 consecutive logins in the past 120 days", "no 5 consecutive enemy logins"),
+    INCORRECT_ENEMY_MMR("Enemy does not have 5 barracks/factories", "low barracks/factories"),
+    USELESS("Enemy has no recent wars and no recent consecutive logins OR incorrect MMR", "useless"),
+    BEIGE_CYCLE("If the enemy does not have beige, and two other strong nations can sit them whilst beige. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit"),
+    BEIGE_CYCLE_4D("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 4d. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit"),
+    BEIGE_CYCLE_1("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 2d. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit"),
+    BLOCKADED("If you are being sat on/blockaded and need to restock on warchest", "only if blockade breaking to restock on warchest"),
+    LOW_RESISTANCE("Low resistance, at risk of getting beiged (use your best judgement)", "only if you are risk of being beiged"),
+    LOW_RESISTANCE_OFFENSIVE("Low resistance, at risk of getting beiged (use your best judgement)", "only if you are risk of being beiged"),
+    DO_NOT_RAID("Try to peace nations that are on the Do Not Raid list"),
 
     NO_REASON("")
     ;
 
     private final String desc;
-
+    private final String approveMessage;
     BeigeReason(String desc) {
+        this(desc, null);
+    }
+    BeigeReason(String desc, String approveMessage) {
         this.desc = desc;
+        this.approveMessage = approveMessage;
+    }
+
+    public String getApproveMessage() {
+        return approveMessage;
     }
 
     public String getDescription() {

@@ -328,12 +328,18 @@ public class WarCommands {
             } else if (!enemies.contains(enemy.getAlliance_id())) {
                 body.append("**YES** (not an enemy)");
             } else {
-                Set<BeigeReason> permitted = BeigeReason.getAllowedBeigeReasons(db, nation, war, null);
+                List<BeigeReason> permitted = new ArrayList<>(BeigeReason.getAllowedBeigeReasons(db, nation, war, null));
 
                 if (permitted.isEmpty()) {
                     body.append("**AVOID DEFEATING** (ping milcom for more info, or assistance)");
                 } else {
-                    body.append("**YES**\n");
+                    Collections.sort(permitted);
+                    BeigeReason firstReason = permitted.get(0);
+                    body.append("**YES**");
+                    if (firstReason.getApproveMessage() != null) {
+                        body.append(" (" + firstReason.getApproveMessage() + ")");
+                    }
+                    body.append("\n");
                     for (BeigeReason reason : permitted) {
                         body.append(" - " + reason + ": " + reason.getDescription() + "\n");
                     }
@@ -344,7 +350,9 @@ public class WarCommands {
             DiscordUtil.createEmbedCommand(channel, title, body.toString());
 
         }
-        return "Note: Remember to talk in your war rooms, and if sitting on a weakened enemy, to keep a blockade up";
+        return "Notes:\n" +
+                " - These results are only valid if you are beiging right now. i.e. Do not consider it valid if another nation beiges the enemy first." +
+                " - Remember to talk in your war rooms, and if sitting on a weakened enemy, to keep a blockade up";
     }
 
     @Command(desc = "Find nations to gather intel on (sorted by infra * days since last intel)")

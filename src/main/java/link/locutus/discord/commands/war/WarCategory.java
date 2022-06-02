@@ -558,7 +558,7 @@ public class WarCategory {
         List<Category> noRange = new LinkedList<>();
         for (Category category : getCategories()) {
             CityRanges range = getRangeFromCategory(category);
-            if (range != null) categoryRanges.computeIfAbsent(range, f -> new LinkedList<>()).add(category)
+            if (range != null) categoryRanges.computeIfAbsent(range, f -> new LinkedList<>()).add(category);
             else noRange.add(category);
         }
 
