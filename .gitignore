@@ -31,7 +31,6 @@ tokens/
 out/
 *.hprof
 _test
-src/main/java/views
 src/main/resources/alliance_pages
 credentials-drive.json
 credentials-sheets.json
