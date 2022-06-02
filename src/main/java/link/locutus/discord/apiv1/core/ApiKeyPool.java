@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.core;
 
 import link.locutus.discord.apiv1.PoliticsAndWarAPIException;
+import link.locutus.discord.config.Settings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,7 +37,7 @@ public class ApiKeyPool {
         if (this.nextIndex >= this.apiKeyPool.size()) {
             this.nextIndex = 0;
         }
-        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `!KeyStore API_KEY`)");
+        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`)");
         String key = this.apiKeyPool.get(this.nextIndex++);
         usageStats.computeIfAbsent(key, f -> new AtomicInteger()).incrementAndGet();
         return key;

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade.sub;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -18,7 +19,7 @@ public class UnsubTrade extends Command {
 
     @Override
     public String help() {
-        return "!unsub-trade <resource>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unsub-trade <resource>";
     }
 
     @Override

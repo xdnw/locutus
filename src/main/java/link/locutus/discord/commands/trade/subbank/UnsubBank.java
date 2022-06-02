@@ -2,6 +2,7 @@ package link.locutus.discord.commands.trade.subbank;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -18,7 +19,7 @@ public class UnsubBank extends Command {
 
     @Override
     public String help() {
-        return "!UnsubBank <nation|alliance>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UnsubBank <nation|alliance>";
     }
 
     @Override

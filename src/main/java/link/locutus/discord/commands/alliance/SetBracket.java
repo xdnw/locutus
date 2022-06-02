@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -34,11 +35,11 @@ public class SetBracket extends Command {
     @Override
     public String desc() {
         return "List or set your tax bracket." +
-                "e.g. `!SetTaxes @user 25/25`\n" +
-                "or to also set internal: `!SetTaxes @user 100/100 25/25`\n" +
+                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetTaxes @user 25/25`\n" +
+                "or to also set internal: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetTaxes @user 100/100 25/25`\n" +
                 "Notes:\n" +
-                " - Internal tax rate affects what portion of taxes are not included in `!deposits` (typically used when 100/100 taxes)\n" +
-                " - Set the alliance internal tax rate with: `!KeyStore TAX_BASE` (retroactive)\n" +
+                " - Internal tax rate affects what portion of taxes are not included in `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits` (typically used when 100/100 taxes)\n" +
+                " - Set the alliance internal tax rate with: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore TAX_BASE` (retroactive)\n" +
                 " - This command is not retroactive and overrides the alliance internal taxrate";
     }
 

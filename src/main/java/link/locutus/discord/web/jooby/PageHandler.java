@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBindin
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.StockBinding;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -168,6 +169,10 @@ public class PageHandler implements Handler {
 
         try {
             String cmdStr = cmds.get(0);
+            if (cmdStr.isEmpty()) return;
+            if (cmdStr.charAt(0) == '!') cmdStr = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + cmdStr.substring(1);
+            if (cmdStr.charAt(0) == '$') cmdStr = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + cmdStr.substring(1);
+
             Context ctx = sse.ctx;
             JsonObject userJson = root.getDiscordUser(ctx);
             if (userJson == null) {
@@ -489,7 +494,7 @@ public class PageHandler implements Handler {
             }
             DBNation nation = DiscordUtil.getNation(id);
             if (nation == null) {
-                ctx.result("Please use <b>!verify</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
+                ctx.result("Please use <b>" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
                         "You are currently signed in as " + user.getName() + "#" + user.getDiscriminator() + ": " + MarkupUtil.htmlUrl("Logout", WebRoot.REDIRECT + "/logout"));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;

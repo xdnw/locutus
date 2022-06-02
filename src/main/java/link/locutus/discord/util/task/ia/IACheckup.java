@@ -431,7 +431,7 @@ public class IACheckup {
                 return checkBuyCity(nation);
 //                roi = roiMap.get(ROI.Investment.CITY_PROJECT);
 ////                if (roi != null && cities.size() < 25) {
-////                    String message = "!grant \"" + nation.getNation() + "\" " + roi.info + " 1";
+////                    String message = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant \"" + nation.getNation() + "\" " + roi.info + " 1";
 ////                    return new AbstractMap.SimpleEntry<>(roi.roi, message);
 ////                }
 //                if (roi == null) {
@@ -458,7 +458,7 @@ public class IACheckup {
 //                if (roi != null && roi.roi > 6 && nation.getDef() == 0 && (nation.getAvg_infra() < 600 || (nation.getCities() >= 10 && nation.getOff() == 0 && nation.getAvg_infra() > 1000))) {
 //                    double amt = (double) roi.info;
 //                    if (nation.getOff() > 0 && nation.getAvg_infra() < 800) amt = 800;
-//                    String message = "!grant \"" + nation.getNation() + "\" infra " + amt;
+//                    String message = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant \"" + nation.getNation() + "\" infra " + amt;
 //                    return new AbstractMap.SimpleEntry<>(roi.roi, message);
 //                }
 //                return null;
@@ -466,7 +466,7 @@ public class IACheckup {
                 return checkBuyLand(nation, cities);
 //                roi = roiMap.get(ROI.Investment.LAND);
 //                if (roi != null && roi.roi > 5) {
-//                    String message = "!grant \"" + nation.getNation() + "\" land " + roi.info;
+//                    String message = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant \"" + nation.getNation() + "\" land " + roi.info;
 //                    return new AbstractMap.SimpleEntry<>(roi.roi, message);
 //                }
 //                return null;
@@ -498,7 +498,7 @@ public class IACheckup {
                 return resources == null || resources.isEmpty() ? null : checkWarchest(nation, resources, db);
             case BEIGE_LOOT:
                 if (nation.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) == null) {
-                    String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? "!raid * 15 -beige" : "$raidNone *,#isbeige";
+                    String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid * 15 -beige" : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "raidNone *,#isbeige";
                     String shortDesc = "`" + cmd + "`";
                     String longDesc = "At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +
                             "To list raid targets currently on beige, use e.g.:\n" +
@@ -536,7 +536,7 @@ public class IACheckup {
             case CHECK_DEPOSITS: {
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) != null) return null;
                 String desc = "You can check your deposits using:\n" +
-                        "!deposits @user\n" +
+                        Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits @user\n" +
                         "(Try checking your deposits now)";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
@@ -554,7 +554,7 @@ public class IACheckup {
             }
             case GATHER_INTEL: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPYOP) != null) return null;
-                String desc = "Please use the `!IntelOp` command for a spy target\n" +
+                String desc = "Please use the `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "IntelOp` command for a spy target\n" +
                         " - go to their nation page, and click the espionage button\n" +
                         " - Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)\n\n" +
                         "Remember to purchase max spies every day";
@@ -563,13 +563,13 @@ public class IACheckup {
             case SPY_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPIES) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "`!spies https://politicsandwar.com/nation/id=6`\n";
+                        "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies https://politicsandwar.com/nation/id=6`\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case LOOT_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_LOOT) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "`!loot https://politicsandwar.com/nation/id=6`\n";
+                        "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "loot https://politicsandwar.com/nation/id=6`\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case GENERATE_CITY_BUILDS: {
@@ -623,9 +623,9 @@ public class IACheckup {
                 Integer cityId = cities.keySet().iterator().next();
                 String cityUrl = PnwUtil.getCityUrl(cityId);
                 String mmrStr = StringMan.join(mmr, "");
-                response.append("The `!OptimalBuild <city>` command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
-                        "`!OptimalBuild " + cityUrl + " infra=" + maxInfra + " mmr=" + mmrStr + "`\n\n" +
-                        "Note: For help on using the command, use `!? optimalbuild`");
+                response.append("The `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild <city>` command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
+                        "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild " + cityUrl + " infra=" + maxInfra + " mmr=" + mmrStr + "`\n\n" +
+                        "Note: For help on using the command, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "? optimalbuild`");
                 return new AbstractMap.SimpleEntry<>(false, response.toString());
             }
             case ROI: {
@@ -635,7 +635,7 @@ public class IACheckup {
                         "https://politicsandwar.com/nation/projects/\n" +
                         "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
                         "To see which projects the bot recommends (for a 120 day period), use:\n" +
-                        "> !roi %user% 120\n\n" +
+                        "> " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "roi %user% 120\n\n" +
                         "We recommend getting two resource projects after your 10th city";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
@@ -646,9 +646,9 @@ public class IACheckup {
                 if (diff  <= 2) return null;
 
                 String desc ="During Peace time, you can find targets to gather intel on using:\n" +
-                        "`!Intel`\n" +
+                        "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "Intel`\n" +
                         "During wartime, you can find enemies to spy using:\n" +
-                        "`!spyops enemies * -s`\n\n" +
+                        "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyops enemies * -s`\n\n" +
                         "(You should conduct a spy op every day)";
                 return new AbstractMap.SimpleEntry<>(diff, desc);
             }
@@ -720,7 +720,7 @@ public class IACheckup {
     private Map.Entry<Object, String> planRaid(DBNation nation) {
         if (nation.getMeta(NationMeta.INTERVIEW_COUNTER) == null) {
             String desc = "Raiding/warring is always better with friends. Find a good target. Use the command\n" +
-                    "`!counter <nation>`\n" +
+                    "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter <nation>`\n" +
                     "And see who is online and in range to raid that person with you.";
             return new AbstractMap.SimpleEntry<>(1, desc);
         }
@@ -730,7 +730,7 @@ public class IACheckup {
     private Map.Entry<Object, String> createWarRoom(DBNation nation) {
         if (nation.getMeta(NationMeta.INTERVIEW_WAR_ROOM) == null) {
             String desc = "War rooms are channels created to coordinate a war against an enemy target. They will be created automatically by the bot against active enemies.\n" +
-                    "To manually create a war room, use: `!WarRoom`";
+                    "To manually create a war room, use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarRoom`";
             return new AbstractMap.SimpleEntry<>(1, desc);
         }
         return null;
@@ -834,10 +834,10 @@ public class IACheckup {
             }
         }
 
-        String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? "!raid * 15 -beige<12" : "$raidNone *,#isbeige";
+        String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid * 15 -beige<12" : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "raidNone *,#isbeige";
         String longDesc = "Let's declare on a target as they come off beige:\n" +
                 "1. Use e.g. `" + cmd + "` to find a target that ends beige in the next 12 turns\n" +
-                "2. Set a reminder on your phone, or on discord using `!remindme`\n" +
+                "2. Set a reminder on your phone, or on discord using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "remindme`\n" +
                 "3. Get the war declaration page ready, and declare DURING turn change\n\n" +
                 "*Note:*\n" +
                 " - *If you don't get them on your first shot, try again later*\n" +
@@ -1138,13 +1138,13 @@ public class IACheckup {
         if (nation.getOff() >= targets.size() || targets.isEmpty()) return null;
         StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
-            resposnse.append("Please use `!war -p` or `!war` ");
+            resposnse.append("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "war -p` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "war` ");
         } else hasEnemies = false;
         if (hasRaids) {
             if (hasEnemies) resposnse.append("Please use ");
             else resposnse.append("or ");
 
-            String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? "!raid" : "$raidNone *";
+            String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid" : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "raidNone *";
             resposnse.append("`" + cmd + "` ");
         }
         resposnse.append("for some juicy targets");

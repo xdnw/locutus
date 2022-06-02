@@ -47,7 +47,7 @@ public class Settings extends Config {
     public String API_KEY_PRIMARY = "";
 
     @Comment({"A list of api keys the bot can use for requests (optional)",
-            "See: $validateApiKeys"})
+            "See: `{prefix}validateApiKeys`"})
     public List<String> API_KEY_POOL = Arrays.asList();
 
     @Comment({"The discord id of the bot (generated)",
@@ -94,7 +94,7 @@ public class Settings extends Config {
         @Comment({"If the discord bot is enabled at all",
                 " - Other components require the discord bot to be enabled"})
         public boolean DISCORD_BOT = true;
-        @Comment("If message commands e.g. `!who` or `$who` are enabled")
+        @Comment("If message commands e.g. `!who` is enabled")
         public boolean MESSAGE_COMMANDS = true;
         @Comment("If slash `/` commands are enabled (WIP)")
         public boolean SLASH_COMMANDS = false;
@@ -347,6 +347,9 @@ public class Settings extends Config {
         @Create
         public CACHE CACHE;
 
+        @Create
+        public COMMAND COMMAND;
+
         @Comment({
                 "User ids of people who can `!register` other nations",
                 "Only give this to trusted people, since it can be abused"
@@ -379,6 +382,14 @@ public class Settings extends Config {
             public boolean MEMBER_OVERRIDES = true;
             public boolean ONLINE_STATUS = true;
             public boolean EMOTE = false;
+        }
+
+        public static class COMMAND {
+            @Comment("The prefix used for legacy commands (single character)")
+            public char LEGACY_COMMAND_PREFIX = '!';
+
+            @Comment("The prefix used for v2 commands (single character)")
+            public char COMMAND_PREFIX = '$';
         }
     }
 

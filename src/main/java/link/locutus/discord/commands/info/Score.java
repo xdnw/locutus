@@ -2,6 +2,7 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -26,9 +27,9 @@ public class Score extends Command {
     @Override
     public String desc() {
         return "Calculate the score of various things. Each argument is option, and can go in any order e.g.\n" +
-                "`!score cities=10 projects=2 avg_infra=1.5k mmr=0251`\n" +
+                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "score cities=10 projects=2 avg_infra=1.5k mmr=0251`\n" +
                 "You can also specify a nation to use as a base e.g.\n" +
-                "`!score 'Mountania' avg_infra=2000`";
+                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "score 'Mountania' avg_infra=2000`";
     }
 
     @Override

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
@@ -362,7 +363,7 @@ public class WarCategory {
                         DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message);
                     } else {
                         String emoji = "\u2139";
-                        String cmd = "_!WarInfo " + attack.war_id;
+                        String cmd = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarInfo " + attack.war_id;
                         message += "\n\nPress " + emoji + " to view the war card";
                         DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message, emoji, cmd);
                     }
@@ -476,7 +477,7 @@ public class WarCategory {
         for (DBNation attacker : attackers) {
             User user = attacker.getUser();
             if (user == null) {
-                errorOutput.accept("No user for: " + attacker.getNation() + " |!w " + attacker.getAlliance() + ". Have they used `!verify` ?");
+                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAlliance() + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` ?");
                 continue;
             }
 

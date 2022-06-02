@@ -136,7 +136,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
 //                    body.append("Channel: " + interviewChannel.getAsMention() + "\n\n");
 //                    body.append("The first on the trigger, react with the " + emoji + " emoji");
 //
-//                    String pending = "!pending 'Interview Assigned' '@%user% in " + interviewChannel.getAsMention() + "'";
+//                    String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending 'Interview Assigned' '@%user% in " + interviewChannel.getAsMention() + "'";
 //
 //                    DiscordUtil.createEmbedCommand(alertChannel, title, body.toString(), emoji, pending);
 //

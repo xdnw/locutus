@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade.sub;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -28,7 +29,7 @@ public class TradeSubscriptions extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         Set<TradeDB.Subscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(event.getAuthor().getIdLong());
         if (subscriptions.isEmpty()) {
-            return "No subscriptions. Subscribe to get alerts using `!alert-trade`";
+            return "No subscriptions. Subscribe to get alerts using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "alert-trade`";
         }
 
         for (ResourceType type : ResourceType.values) {
@@ -50,7 +51,7 @@ public class TradeSubscriptions extends Command {
             if (body.length() == 0) continue;
 
             String emoji = "\u274c";
-            String unsubCommand = "!unsub-trade " + type.name();
+            String unsubCommand = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unsub-trade " + type.name();
 
             body.append("\n\n").append("*Press " + emoji + " to unsubscribe*");
 

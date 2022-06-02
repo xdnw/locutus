@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
@@ -23,7 +24,7 @@ public class Reroll extends Command {
 
     @Override
     public String help() {
-        return "!reroll <nation>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "reroll <nation>";
     }
 
     @Override
@@ -49,7 +50,7 @@ public class Reroll extends Command {
         }
         DBNation me = Locutus.imp().getNationDB().getNation(id);
         if (me == null) {
-            return "Invalid nation`" + arg0 + "`" + ". (Out of !sync ?)";
+            return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sync ?)";
         }
         if (me.getDate() == null) {
             me.getPnwNation();

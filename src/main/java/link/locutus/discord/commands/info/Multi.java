@@ -2,6 +2,7 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.task.nation.MultiReport;
@@ -17,7 +18,7 @@ public class Multi extends Command {
     }
     @Override
     public String help() {
-        return "!" + getClass().getSimpleName() + " <nation>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <nation>";
     }
 
     @Override

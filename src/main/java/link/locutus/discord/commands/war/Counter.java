@@ -13,8 +13,8 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.battle.SimulatedWar;
-import link.locutus.discord.util.battle.SimulatedWarNode;
+import link.locutus.discord.util.battle.sim.SimulatedWar;
+import link.locutus.discord.util.battle.sim.SimulatedWarNode;
 import link.locutus.discord.apiv1.domains.War;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -41,7 +41,7 @@ public class Counter extends Command {
     }
     @Override
     public String help() {
-        return "!counter <war> [alliance|coalition|role]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter <war> [alliance|coalition|role]";
     }
 
     @Override
@@ -63,7 +63,7 @@ public class Counter extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use !validate";
+            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
         }
         DBNation counter;
         int defenderId;

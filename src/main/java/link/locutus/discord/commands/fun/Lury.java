@@ -2,6 +2,7 @@ package link.locutus.discord.commands.fun;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.FileUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -22,7 +23,7 @@ public class Lury extends Command {
 
     @Override
     public String help() {
-        return "!lury";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "lury";
     }
 
     @Override

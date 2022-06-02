@@ -294,7 +294,7 @@ public class CommandManager {
             return false;
         }
 
-        if (content.equalsIgnoreCase("!threads")) {
+        if (content.equalsIgnoreCase(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "threads")) {
             threadDump();
             return false;
         }
@@ -323,11 +323,11 @@ public class CommandManager {
             Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
             Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
             if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`!KeyStore CHANNEL_BLACKLIST`)"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_BLACKLIST`)"));
                 return false;
             }
             if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`!KeyStore CHANNEL_WHITELIST`)"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_WHITELIST`)"));
                 return false;
             }
         }
@@ -357,7 +357,7 @@ public class CommandManager {
                         if (noPermMsg) {
                             DBNation nation = DiscordUtil.getNation(msgUser);
                             if (nation == null) {
-                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `!verify <nation-id>`"));
+                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify <nation-id>`"));
                                 return;
                             }
                             if (msgGuild != null) {
@@ -481,17 +481,17 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use `!aliasrole REGISTERED @someRole`"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole REGISTERED @someRole`"));
                 return true;
             } else if (!member.getRoles().contains(registeredRole)) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `!verify` to get masked with the role: " + registeredRole.getName()));
+                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` to get masked with the role: " + registeredRole.getName()));
                 return true;
             }
         }
         {
             Role memberRole = Roles.MEMBER.toRole(msgGuild);
             if (memberRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No member role set, please have an admin use `!aliasrole MEMBER @someRole`"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No member role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole MEMBER @someRole`"));
                 return true;
             } else if (!member.getRoles().contains(memberRole)) {
                 RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + memberRole.getName()));
@@ -502,7 +502,7 @@ public class CommandManager {
             Role adminRole = Roles.ADMIN.toRole(msgGuild);
             if (adminRole == null) {
                 if (!member.hasPermission(net.dv8tion.jda.api.Permission.ADMINISTRATOR)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No admin role set, please have an admin use `!aliasrole ADMIN @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No admin role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole ADMIN @someRole`"));
                     return true;
                 }
             } else if (!member.getRoles().contains(adminRole)) {
@@ -514,7 +514,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.MILCOM)) {
                 Role milcomRole = Roles.MILCOM.toRole(msgGuild);
                 if (milcomRole == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No milcom role set, please have an admin use `!aliasrole MILCOM (@someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No milcom role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole MILCOM (@someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(milcomRole)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + milcomRole.getName()));
@@ -525,7 +525,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.ECON)) {
                 Role role = Roles.ECON.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.ECON + " role set, please have an admin use `!aliasrole " + Roles.ECON + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.ECON + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.ECON + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
@@ -536,7 +536,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.INTERNAL_AFFAIRS)) {
                 Role role = Roles.INTERNAL_AFFAIRS.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `!aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
@@ -547,7 +547,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.FOREIGN_AFFAIRS)) {
                 Role role = Roles.FOREIGN_AFFAIRS.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `!aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));

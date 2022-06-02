@@ -29,7 +29,7 @@ public class GetBuild extends Command {
 
     @Override
     public String help() {
-        return "!getbuild <nation>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "getbuild <nation>";
     }
 
     @Override
@@ -51,7 +51,7 @@ public class GetBuild extends Command {
 
         Integer id = DiscordUtil.parseNationId(args.get(0));
         if (id == null) {
-            return "Not found: `!pnw-who <user>`";
+            return "Not found: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pnw-who <user>`";
         }
         DBNation nation = Locutus.imp().getNationDB().getNation(id);
         if (nation == null) {

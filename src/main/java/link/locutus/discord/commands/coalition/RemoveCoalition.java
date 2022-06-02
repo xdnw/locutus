@@ -3,6 +3,7 @@ package link.locutus.discord.commands.coalition;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -23,7 +24,7 @@ public class RemoveCoalition extends Command {
 
     @Override
     public String help() {
-        return "!removecoalition <coalition> [alliance]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition <coalition> [alliance]";
     }
 
     @Override
@@ -44,7 +45,7 @@ public class RemoveCoalition extends Command {
 
         switch (args.size()) {
             default:
-                return "Usage: !removecoalition <coalition> [alliance]";
+                return "Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition <coalition> [alliance]";
             case 1:
                 Locutus.imp().getGuildDB(event).removeCoalition(args.get(0));
                 return "Removed coalition: `" + coalition + "`";

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -27,7 +28,7 @@ public class RoleAlias extends Command {
 
     @Override
     public String help() {
-        return "!aliasrole <role> <discord-role>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole <role> <discord-role>";
     }
 
     @Override
@@ -68,7 +69,7 @@ public class RoleAlias extends Command {
                 response.append('\n');
             }
             response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Usage: `!aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
+            response.append("Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
             return response.toString().trim();
         }
         Roles role;

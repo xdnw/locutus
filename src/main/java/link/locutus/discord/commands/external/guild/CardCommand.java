@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -28,13 +29,13 @@ public class CardCommand extends Command implements Noformat {
     @Override
     public String desc() {
         return "Generate a card which runs a command when users react to it.\nPut commands inside \"quotes\".\n" +
-                "Prefix a command with a #channel e.g. `\"#channel !command\"` to have the command output go there\n\n" +
+                "Prefix a command with a #channel e.g. `\"#channel " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "command\"` to have the command output go there\n\n" +
                 "Prefix the command with:" +
-                "`~!command` to remove the user's reaction upon use and keep the card\n" +
-                "`_!command` to remove ALL reactions upon use and keep the card\n" +
-                "`.!command` to keep the card upon use\n\n" +
+                "`~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "command` to remove the user's reaction upon use and keep the card\n" +
+                "`_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "command` to remove ALL reactions upon use and keep the card\n" +
+                "`." + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "command` to keep the card upon use\n\n" +
                 "Example:\n" +
-                "`!embed 'Some Title' 'My First Embed' '~!say Hello {nation}' '!say Goodbye {nation}'`";
+                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "embed 'Some Title' 'My First Embed' '~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "say Hello {nation}' '" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "say Goodbye {nation}'`";
     }
 
     @Override

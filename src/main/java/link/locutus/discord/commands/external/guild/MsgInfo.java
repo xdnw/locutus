@@ -2,6 +2,7 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -21,7 +22,7 @@ public class MsgInfo extends Command {
     }
     @Override
     public String help() {
-        return "!msginfo <message-link>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "msginfo <message-link>";
     }
 
     @Override

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.PnwUtil;
@@ -47,7 +48,7 @@ public class IntelOp extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `!verify`";
+        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
         if (args.size() > 1) return usage(event);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);

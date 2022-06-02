@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -39,7 +40,7 @@ public class WarCat extends Command {
     @Override
     public String desc() {
         return "Run this command in a war room to assign it to a category e.g.\n" +
-                "`!WarCat raid` or `!WarCat @borg`";
+                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarCat raid` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarCat @borg`";
     }
 
     @Override

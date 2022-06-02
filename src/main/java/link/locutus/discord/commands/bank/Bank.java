@@ -3,6 +3,7 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -32,7 +33,7 @@ public class Bank extends Command {
 
     @Override
     public String help() {
-        return "!bank <alliance>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "bank <alliance>";
     }
 
     @Override
@@ -54,7 +55,7 @@ public class Bank extends Command {
         User user = event.getAuthor();
         DBNation banker = DiscordUtil.getNation(event);
         if (banker == null) {
-            return "Please use !validate";
+            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
         }
         Map<ResourceType, Double> totals = new HashMap<>();
 

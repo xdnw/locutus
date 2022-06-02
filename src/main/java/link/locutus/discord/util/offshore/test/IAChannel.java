@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore.test;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -88,7 +89,7 @@ public class IAChannel {
                 Map.Entry<Object, String> result = entry.getValue();
                 emojis.add(type.emoji);
             }
-            String cmd = "!checkcities " + nation.getNation_id();
+            String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkcities " + nation.getNation_id();
             IACheckup.createEmbed(channel, null, cmd, nation, audits, 0);
         }
 //        emojis.remove("");
@@ -120,11 +121,11 @@ public class IAChannel {
                         double add = 1;
                         double factor = 1 - 0.5 * ((double) i / history.size());
                         String content = DiscordUtil.trimContent(message.getContentRaw()).toLowerCase();
-                        if (content.contains("$setrank") || content.contains("!setrank") && rankChange) {
+                        if (content.contains(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setrank") || content.contains(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setrank") && rankChange) {
                             return senderNation;
-                        } else if (content.contains("!checkup")) {
+                        } else if (content.contains(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkup")) {
                             add += 8;
-                        } else if (content.contains("!verify")) {
+                        } else if (content.contains(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify")) {
                             add += 4;
                         }
                         numMessage.put(senderNation, numMessage.getOrDefault(senderNation, 0d) + factor * add);

@@ -61,7 +61,6 @@ public class IndexPages {
 
         String termLow = term.toLowerCase();
 
-        String cmdPrefix = "$";
         String urlBase = WebRoot.REDIRECT + "/" + db.getIdLong() + "/";
         String cmdUrl = urlBase + "command/";
 

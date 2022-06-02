@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.rankings.SphereGenerator;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.PendingTreaty;
@@ -190,7 +191,7 @@ public class FACommands {
     }
 
     @Command(desc = "Add alliances to an existing coalition\n" +
-            "Note: Use `$createCoalition` to use a nonstandard coalition")
+            "Note: Use `{prefix}createCoalition` to use a nonstandard coalition")
     @RolePermission(Roles.MEMBER)
     public String addCoalition(@Me User user, @Me GuildDB db, Set<NationOrAllianceOrGuild> alliances, @GuildCoalition String coalitionStr) {
         return createCoalition(user, db, alliances, coalitionStr);
@@ -210,7 +211,7 @@ public class FACommands {
     }
 
     @Command(desc = "Remove alliances to a coalition\n" +
-            "Note: Use `$deleteCoalition` to delete an entire coalition")
+            "Note: Use `{prefix}deleteCoalition` to delete an entire coalition")
     @RolePermission(Roles.MEMBER)
     public String removeCoalition(@Me User user, @Me GuildDB db, Set<NationOrAllianceOrGuild> alliances, @GuildCoalition String coalitionStr) {
         Coalition coalition = Coalition.getOrNull(coalitionStr);
@@ -277,7 +278,7 @@ public class FACommands {
         if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You do not have FOREIGN_AFFAIRS";
         Category category = db.getOrThrow(GuildDB.Key.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use `!KeyStore " + GuildDB.Key.EMBASSY_CATEGORY + " <category>`";
+            return "Embassies are disabled. To set it up, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore " + GuildDB.Key.EMBASSY_CATEGORY + " <category>`";
         }
         if (nation.getPosition() < Rank.OFFICER.id && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You are not an officer";
         User nationUser = nation.getUser();
@@ -291,14 +292,14 @@ public class FACommands {
             db.addCoalition(nation.getAlliance_id(), Coalition.MASKEDALLIANCES);
             GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildDB.Key.AUTOROLE);
             if (autoRoleValue == null || autoRoleValue == GuildDB.AutoRoleOption.FALSE) {
-                return "AutoRole is disabled. See `!KeyStore AutoRole`";
+                return "AutoRole is disabled. See `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoRole`";
             }
             db.getAutoRoleTask().syncDB();
             db.getAutoRoleTask().autoRole(member, f -> {});
             aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             role = aaRoles.get(nation.getAlliance_id());
             if (role == null) {
-                return "No alliance role found. Please try `!autorole`";
+                return "No alliance role found. Please try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "autorole`";
             }
         }
 

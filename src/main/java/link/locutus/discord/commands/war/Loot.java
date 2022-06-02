@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.NationMeta;
@@ -30,7 +31,7 @@ public class Loot extends Command {
     }
     @Override
     public String help() {
-        return "!loot <nation|alliance>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "loot <nation|alliance>";
     }
 
     @Override
@@ -53,7 +54,7 @@ public class Loot extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use !validate";
+            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
         }
 
         String arg0 = args.get(0);

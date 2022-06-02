@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -117,7 +118,7 @@ public class AutoRole extends Command {
             DBNation nation = DiscordUtil.getNation(mention.getUser());
             List<String> output = new ArrayList<>();
             Consumer<String> out = output::add;
-            if (nation == null) out.accept("That nation isn't registered: `!verify`");
+            if (nation == null) out.accept("That nation isn't registered: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`");
             task.autoRole(mention, out);
 
             if (!output.isEmpty()) {
@@ -128,11 +129,11 @@ public class AutoRole extends Command {
         response.append("Done!");
 
         if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: `!KeyStore AutoRole`");
+            response.append("\n - AutoRole disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoRole`");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
         if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: `!KeyStore AutoNick`");
+            response.append("\n - AutoNick disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoNick`");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
 

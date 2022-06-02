@@ -1,4 +1,4 @@
-package link.locutus.discord.util.battle;
+package link.locutus.discord.util.battle.sim;
 
 import java.util.Comparator;
 import java.util.List;

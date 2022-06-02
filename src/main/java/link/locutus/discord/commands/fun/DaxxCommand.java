@@ -2,6 +2,7 @@ package link.locutus.discord.commands.fun;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandManager;
+import link.locutus.discord.config.Settings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -30,7 +31,7 @@ public class DaxxCommand extends Command {
 
     @Override
     public String help() {
-        return "!daxx";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "daxx";
     }
 
     @Override

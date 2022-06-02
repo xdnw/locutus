@@ -22,7 +22,7 @@ public class AAMembers extends Command {
     }
     @Override
     public String help() {
-        return "!" + getAliases().get(0) + " <page>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getAliases().get(0) + " <page>";
     }
 
     @Override

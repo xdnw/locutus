@@ -3,6 +3,7 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.pnw.DBNation;
@@ -32,7 +33,7 @@ public class SetRank extends Command {
 
     @Override
     public String help() {
-        return "!setrank <user> <rank>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setrank <user> <rank>";
     }
 
     @Override
@@ -114,7 +115,7 @@ public class SetRank extends Command {
                     String title = "Disburse 3 days";
                     String body = "Use this once they have a suitable city build & color to send resources for the next 5 days";
                     String emoji = "\u2705";
-                    String cmd = "!disburse " + nation.getNation() + " 3 -f";
+                    String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "disburse " + nation.getNation() + " 3 -f";
 
                     DiscordUtil.createEmbedCommand(event.getChannel(), title, body, emoji, cmd);
                 }
@@ -160,7 +161,7 @@ public class SetRank extends Command {
                 }
             }
         } else if (!flags.contains('f')) {
-            return "No user registered to that nation. Did they use `!register` ? Add `-f` to override";
+            return "No user registered to that nation. Did they use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "register` ? Add `-f` to override";
         }
 
         StringBuilder response = new StringBuilder();
@@ -187,7 +188,7 @@ public class SetRank extends Command {
         }
 
         response.append(result);
-        response.append("\nSee also `$listAssignableRoles` / `$addRole @user <role>`");
+        response.append("\nSee also `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "listAssignableRoles` / `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addRole @user <role>`");
         return response.toString();
     }
 }

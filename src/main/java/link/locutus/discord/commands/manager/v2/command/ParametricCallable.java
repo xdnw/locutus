@@ -38,7 +38,6 @@ public class ParametricCallable implements ICommand {
     private final Set<Character> provideFlags;
     private final ArrayList<ParameterData> userParameters;
     private final Map<String, ParameterData> paramaterMap;
-    private final CommandCategory category;
     private final String desc;
     private final String help;
     private final ArrayList<String> aliases;
@@ -181,10 +180,8 @@ public class ParametricCallable implements ICommand {
         this.help = help.toString();
 
         StringBuilder desc = new StringBuilder();
-        desc.append(definition.desc());
+        desc.append(ICommand.formatDescription(definition));
         this.desc = desc.toString();
-
-        this.category = definition.category();
     }
 
     @Override
@@ -244,10 +241,6 @@ public class ParametricCallable implements ICommand {
             expanded.append(parameter.getExpandedDescription());
         }
         return expanded.toString();
-    }
-
-    public CommandCategory getCategory() {
-        return category;
     }
 
     @Override

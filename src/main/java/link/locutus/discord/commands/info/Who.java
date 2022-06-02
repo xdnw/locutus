@@ -37,7 +37,7 @@ public class Who extends Command {
 
     @Override
     public String help() {
-        return "!pw-who <nation|alliance|coalition>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pw-who <nation|alliance|coalition>";
     }
 
     @Override
@@ -48,7 +48,7 @@ public class Who extends Command {
                 "Use `-p` to list discord tag (ping)\n" +
                 "Use `-i` to list individual nation info\n" +
                 "Use `-c` to list individual nation channels" +
-                "e.g. `!who @borg`";
+                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "who @borg`";
     }
 
     @Override
@@ -63,7 +63,7 @@ public class Who extends Command {
         String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
 
         if (args.isEmpty()) {
-            return "Usage: `!pnw-who <discord-user>`";
+            return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pnw-who <discord-user>`";
         }
 
         StringBuilder response = new StringBuilder();
@@ -75,7 +75,7 @@ public class Who extends Command {
 
 
         if (nations.isEmpty()) {
-            return "Not found: `!pnw-who <user>`";
+            return "Not found: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pnw-who <user>`";
         }
         String title;
         if (nations.size() == 1) {
@@ -86,10 +86,10 @@ public class Who extends Command {
             Message msg = nation.toCard(event.getChannel(), false, showMoney);
 
             List<String> commands = new ArrayList<>();
-            commands.add("!multi " + nation.getNation_id());
-            commands.add("!wars " + nation.getNation_id());
-            commands.add("!revenue " + nation.getNation_id());
-            commands.add("!unithistory " + nation.getNation_id() + " <unit>");
+            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "multi " + nation.getNation_id());
+            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "wars " + nation.getNation_id());
+            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "revenue " + nation.getNation_id());
+            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unithistory " + nation.getNation_id() + " <unit>");
 
         } else {
             int allianceId = -1;

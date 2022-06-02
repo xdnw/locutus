@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -32,19 +33,19 @@ public class KeyStore extends Command implements Noformat {
 
     @Override
     public String help() {
-        return "!keystore <key> <value>";
+        return "" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore <key> <value>";
     }
 
     @Override
     public String desc() {
-        return "Use `!KeyStore <key>` for info about a setting\n" +
-                "Use `!KeyStore <key> null` to remove a setting\n" +
+        return "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore <key>` for info about a setting\n" +
+                "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore <key> null` to remove a setting\n" +
                 "Add `-a` to list all settings (even unavailable ones)";
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `!verify`";
+        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
 
         Integer page = DiscordUtil.parseArgInt(args, "page");
         GuildDB db = Locutus.imp().getGuildDB(event);
@@ -52,7 +53,7 @@ public class KeyStore extends Command implements Noformat {
         if (args.size() != 2) {
             if (args.size() == 1) {
                 GuildDB.Key key = GuildDB.Key.valueOf(args.get(0).toUpperCase());
-                String result = "Usage: `!keystore " + key.name() + " <value>`\n" + key.help().trim();
+                String result = "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore " + key.name() + " <value>`\n" + key.help().trim();
 
                 Object value = db.getOrNull(key, false);
                 if (value != null) {

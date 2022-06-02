@@ -36,8 +36,8 @@ public enum BeigeReason {
     BEIGE_CYCLE_4D("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 4d. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit - stay at 40 res until you are ready"),
     BEIGE_CYCLE_1("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 2d. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit - stay at 40 res until you are ready"),
     BLOCKADED("If you are being sat on/blockaded and need to restock on warchest", "only if blockade breaking to restock on warchest"),
-    LOW_RESISTANCE("Low resistance, at risk of getting beiged (use your best judgement)", "only if you are risk of being beiged"),
-    LOW_RESISTANCE_OFFENSIVE("Low resistance, at risk of getting beiged (use your best judgement)", "only if you are risk of being beiged"),
+    LOW_RESISTANCE("Low resistance, at risk of getting beiged (use your best judgement)", "only if you're at risk of being beiged"),
+    LOW_RESISTANCE_OFFENSIVE("Low resistance, at risk of getting beiged (use your best judgement)", "only if you're at risk of being beiged"),
     DO_NOT_RAID("Try to peace nations that are on the Do Not Raid list"),
 
     NO_REASON("")

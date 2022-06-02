@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
@@ -63,7 +64,7 @@ public class Spyops extends Command {
                 "Use `*` for op type to automatically find the best op type\n" +
                 "Available op types: " + StringMan.join(SpyCount.Operation.values(), ", ") + "\n" +
                 "Use `success>80` to specify a cutoff for spyop success\n\n" +
-                "e.g. `!spyop enemies spies` | `!spyop enemies * -s`\n" +
+                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyop enemies spies` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyop enemies * -s`\n" +
                 "Add `-s` to force an update of nations with full spy slots\n" +
                 "Add `-k` to prioritize kills";
     }
@@ -91,7 +92,7 @@ public class Spyops extends Command {
             }
 
             if (!flags.contains('f')) {
-                StringBuilder response = new StringBuilder("Use `!spies <enemy>` first to ensure the results are up to date");
+                StringBuilder response = new StringBuilder("Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <enemy>` first to ensure the results are up to date");
                 if (!flags.contains('s')) {
                     response.append(". Add `-s` to remove enemies who are already spy slotted");
                 }
@@ -126,7 +127,7 @@ public class Spyops extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use `!validate`";
+            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
         }
 
         SpyCount.Operation operation;
@@ -134,7 +135,7 @@ public class Spyops extends Command {
             operation = args.size() >= 1 ? SpyCount.Operation.valueOf(args.get(1).toUpperCase()) : SpyCount.Operation.INTEL;
 
             if (operation.unit == null && operation != SpyCount.Operation.SPIES) {
-                return "Try `!loot <nation>`, `!who <nation>`, `!spies <nation>` or (buggy) `!DebugGetRss <nation>`";
+                return "Try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "loot <nation>`, `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "who <nation>`, `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <nation>` or (buggy) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "DebugGetRss <nation>`";
             }
         } catch (IllegalArgumentException e) {
             if (!args.get(1).equalsIgnoreCase("*")) {

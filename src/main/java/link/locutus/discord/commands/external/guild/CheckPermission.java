@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -22,7 +23,7 @@ public class CheckPermission extends Command {
 
     @Override
     public String help() {
-        return "!checkpermission <command> <user>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkpermission <command> <user>";
     }
 
     @Override

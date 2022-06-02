@@ -305,7 +305,7 @@ public class AdminCommands {
                 response.append('\n');
             }
             response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Usage: `$aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
+            response.append("Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
             return response.toString().trim();
         }
 
@@ -313,7 +313,7 @@ public class AdminCommands {
 
         db.addRole(locutusRole, discordRole.getIdLong());
         return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + "\n" +
-                "To unregister, use `$unregisterRole <locutusRole>`";
+                "To unregister, use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "unregisterRole <locutusRole>`";
     }
 
     public String apiUsageStats(PoliticsAndWarV2 api) {

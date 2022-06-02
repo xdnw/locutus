@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -32,7 +33,7 @@ public class Revenue extends Command {
     }
     @Override
     public String help() {
-        return "!revenue [json|city-link|nation-link]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "revenue [json|city-link|nation-link]";
     }
 
     @Override
@@ -53,7 +54,7 @@ public class Revenue extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use !validate";
+            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
         }
 
         boolean force = flags.contains('f');

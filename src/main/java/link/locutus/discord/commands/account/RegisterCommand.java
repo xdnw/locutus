@@ -34,7 +34,7 @@ public class RegisterCommand extends Command {
 
     @Override
     public String help() {
-        return "!validate <nation-id>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate <nation-id>";
     }
 
     @Override
@@ -53,7 +53,7 @@ public class RegisterCommand extends Command {
         if (args.size() >= 2) {
             User mention = DiscordUtil.getMention(args.get(0));
             if (mention == null) {
-                return "To manually register, use !validate @mention <nation-link>";
+                return "To manually register, use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate @mention <nation-link>";
             }
             Integer nationId = DiscordUtil.parseNationId(args.get(1));
             if (nationId == null) {
@@ -88,7 +88,7 @@ public class RegisterCommand extends Command {
         if (args.size() != 1) {
             DBNation nation = DiscordUtil.getNation(event);
             if (nation == null) {
-                return "Usage: `!validate <nation link>`";
+                return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate <nation link>`";
             } else {
                 return nation.register(user, guild, false);
             }
@@ -148,7 +148,7 @@ public class RegisterCommand extends Command {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command `!validate " + nationId + "` again";
+                "5. Run the command `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate " + nationId + "` again";
 
         long id = user.getIdLong();
         boolean checkId = false;
@@ -161,7 +161,7 @@ public class RegisterCommand extends Command {
                         "2. Scroll down to where it says Discord Username:\n" +
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
-                        "5. Run the command `!validate " + nationId + "` again";
+                        "5. Run the command `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate " + nationId + "` again";
                 checkId = true;
             }
         }

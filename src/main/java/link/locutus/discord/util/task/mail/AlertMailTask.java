@@ -63,8 +63,8 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
 
             String replyEmoji = "\uD83D\uDCE7";
             String infoEmoji = "\u2139";
-            String reply = "_!say `!mail from:" + auth.getNationId() + " \"" + mail.leader + "\" " + url + " <response>`\n - " + url;
-            String info = "!checkmail " + url;
+            String reply = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "say `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "mail from:" + auth.getNationId() + " \"" + mail.leader + "\" " + url + " <response>`\n - " + url;
+            String info = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkmail " + url;
 
             String title = mail.leader + " in '" + mail.subject + "'";
 
@@ -155,9 +155,9 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                             Set<Character> flags = new HashSet<>(Arrays.asList('s', 'r'));
                             targets = cmd.run(null, nation, db, args, flags);
                         } else if (db == null) {
-                            targets = "Your alliance does not have Locutus setup. Use the command on discord instead:\n!spyops";
+                            targets = "Your alliance does not have Locutus setup. Use the command on discord instead:\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyops`";
                         } else {
-                            targets = "Your alliance does not have any enemies set. Use the command on discord instead:\n!spyops";
+                            targets = "Your alliance does not have any enemies set. Use the command on discord instead:\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyops`";
                         }
                         if (targets != null) {
                             String response = new MailRespondTask(auth, mail.leader, mail.id, MarkupUtil.bbcodeToHTML(targets), null).call();
@@ -177,7 +177,7 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
 
     private void processCommands(Guild guild, Mail mail, List<String> strings) {
         String reply = strings.get(0);
-        if (reply.isEmpty() || !reply.startsWith("!")) return;
+        if (reply.isEmpty() || reply.charAt(0) != (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX)) return;
 
         DBNation nation = DBNation.byId(mail.nationId);
         if (nation == null) return;

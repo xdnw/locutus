@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.dummy.DelegateChannelMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateContentMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
@@ -122,7 +123,7 @@ public class ChannelCommand extends Command {
             if (args.size() == 3) {
                 String arg = args.get(2).toLowerCase();
                 if (arg.equalsIgnoreCase("#interview")) {
-                    DelegateMessage msg = new DelegateContentMessage(event.getMessage(), "!interview " + author.getAsMention() + " 0");
+                    DelegateMessage msg = new DelegateContentMessage(event.getMessage(), Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "interview " + author.getAsMention() + " 0");
                     msg = new DelegateChannelMessage(msg, createdChannel);
                     MessageReceivedEvent finalEvent = new DelegateMessageEvent(event.isFromGuild() ? event.getGuild() : null, event.getResponseNumber(), msg);
                     Locutus.imp().getCommandManager().run(finalEvent);

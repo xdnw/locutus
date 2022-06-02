@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
@@ -52,14 +53,14 @@ public class ROI extends Command {
 
     @Override
     public String help() {
-        return "!" + getClass().getSimpleName() + " <alliance|nation|tax-url|*> [days]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <alliance|nation|tax-url|*> [days]";
     }
 
     @Override
     public String desc() {
         return "Find the ROI for various changes you can make to your nation, with a specified timeframe\n" +
                 "(typically how long you expect the changes, or peacetime to last)\n" +
-                "e.g. `!DebugROI @Borg 30`\n" +
+                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "DebugROI @Borg 30`\n" +
                 "Add `-r` to run it recursively for various infra levels";
     }
 
@@ -148,13 +149,13 @@ public class ROI extends Command {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
         if (guildDb == null || guildDb.getInfo(GuildDB.Key.ALLIANCE_ID) == null) {
-            return "Invalid guild. Please register your alliance id with: `!keystore ALLIANCE_ID <value>`";
+            return "Invalid guild. Please register your alliance id with: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID <value>`";
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
 
         String allianceStr = guildDb.getInfo(GuildDB.Key.ALLIANCE_ID);
-        if (allianceStr == null) return "Please use `!keystore ALLIANCE_ID <alliance-id>`";
+        if (allianceStr == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID <alliance-id>`";
         int allianceId = Integer.parseInt(allianceStr);
 
         PoliticsAndWarV2 api = guildDb.getApi();
@@ -388,7 +389,7 @@ public class ROI extends Command {
                     if (netProfit > 0 && !optimal.equals(existingCity)) {
                         double roi = ((netProfit / costConverted) * 100 * 7) / days;
 
-                        roiMap.add(new ROIResult(nation, Investment.BUILD, "!OptimalBuild " + days + " <city-url>", roi, cost, netProfit, profit));
+                        roiMap.add(new ROIResult(nation, Investment.BUILD, Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild " + days + " <city-url>", roi, cost, netProfit, profit));
                         baseProfit = baseOptimizedProfit;
                     }
                 }

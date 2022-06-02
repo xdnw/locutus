@@ -2,6 +2,7 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -29,7 +30,7 @@ public class InfraCost extends Command {
     @Override
     public String desc() {
         return "Calculate the costs of purchasing infra (from current to max) e.g.\n" +
-                "`!InfraCost 250 1000 true false`\n" +
+                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "InfraCost 250 1000 true false`\n" +
                 "Add e.g. `cities=5` to specify city count";
     }
 

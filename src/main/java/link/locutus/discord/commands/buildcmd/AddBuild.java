@@ -3,6 +3,7 @@ package link.locutus.discord.commands.buildcmd;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
@@ -24,7 +25,7 @@ public class AddBuild extends Command {
 
     @Override
     public String help() {
-        return "!addbuild [category] [city-min] [city-max] [build json...]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbuild [category] [city-min] [city-max] [build json...]";
     }
 
     @Override
@@ -73,7 +74,7 @@ public class AddBuild extends Command {
                 for (CityBuildRange range : list) {
                     if (range.getMin() == min) continue;
                     if (Math.max(min, range.getMin()) <= Math.min(max, range.getMax())) {
-                        response.append('\n').append(" - Overlaps with (category, min-city, max-city) " + category + " " + range.getMin() + " " + range.getMax() + ". Use `!delbuild " + category + " " + range.getMin() + "`");
+                        response.append('\n').append(" - Overlaps with (category, min-city, max-city) " + category + " " + range.getMin() + " " + range.getMax() + ". Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "delbuild " + category + " " + range.getMin() + "`");
                     }
                 }
                 return response.toString().trim();

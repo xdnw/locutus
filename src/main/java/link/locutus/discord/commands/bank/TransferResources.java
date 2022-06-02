@@ -2,6 +2,7 @@ package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -31,14 +32,14 @@ public class TransferResources extends Command {
 
     @Override
     public String help() {
-        return "!tr <resource> <amount>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "tr <resource> <amount>";
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         if (args.isEmpty()) return usage();
         DBNation me = DiscordUtil.getNation(event);
-        if (me == null) return "Please use `!verify`";
+        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
         if (me.isGray()) {
             me.getPnwNation();
             if (me.isGray()) {

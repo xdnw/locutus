@@ -28,7 +28,7 @@ public class BankSubscriptions extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         Set<BankDB.Subscription> subscriptions = Locutus.imp().getBankDB().getSubscriptions(event.getAuthor().getIdLong());
         if (subscriptions.isEmpty()) {
-            return "No subscriptions. Subscribe to get alerts using `!alert-bank`";
+            return "No subscriptions. Subscribe to get alerts using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "alert-bank`";
         }
 
         for (BankDB.Subscription sub : subscriptions) {
@@ -63,7 +63,7 @@ public class BankSubscriptions extends Command {
             body.append("Expires " + dateStr);
 
             String emoji = "\u274c";
-            String unsubCommand = "!UnsubBank " + url;
+            String unsubCommand = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UnsubBank " + url;
 
             DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString(), emoji, unsubCommand);
         }

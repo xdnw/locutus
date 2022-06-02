@@ -11,7 +11,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.battle.WarNation;
+import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;

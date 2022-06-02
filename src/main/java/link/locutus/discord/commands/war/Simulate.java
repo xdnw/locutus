@@ -2,12 +2,13 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.battle.SimulatedWar;
-import link.locutus.discord.util.battle.SimulatedWarNode;
-import link.locutus.discord.util.battle.WarNation;
+import link.locutus.discord.util.battle.sim.SimulatedWar;
+import link.locutus.discord.util.battle.sim.SimulatedWarNode;
+import link.locutus.discord.util.battle.sim.WarNation;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -24,7 +25,7 @@ public class Simulate extends Command {
     }
     @Override
     public String help() {
-        return "`!simulate <war>` or `!simulate <defender> <attacker> <type>`";
+        return "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate <war>` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate <defender> <attacker> <type>`";
     }
 
     @Override
@@ -58,7 +59,7 @@ public class Simulate extends Command {
         }
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Please use !validate";
+            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
         }
         SimulatedWarNode origin;
 

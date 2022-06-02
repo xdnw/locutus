@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade.sub;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -21,12 +22,12 @@ public class AlertTrades extends Command {
     }
     @Override
     public String help() {
-        return "!alert-trades <resource> <buy|sell> >/< <ppu> <duration>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "alert-trades <resource> <buy|sell> >/< <ppu> <duration>";
     }
 
     @Override
     public String desc() {
-        return "Subscribe (for a duration) to get alerts about trades e.g. `!alert-trades food buy < 75 3days`\n" +
+        return "Subscribe (for a duration) to get alerts about trades e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "alert-trades food buy < 75 3days`\n" +
                 " - Where `BUY` = BUYER WANTED page, and `SELL` = SELLER WANTED page";
     }
 
@@ -85,6 +86,6 @@ public class AlertTrades extends Command {
         db.subscribe(user, resource, date, isBuy, above, ppu, TradeDB.TradeAlertType.ABSOLUTE);
 
         return "Subscribed to `" + DiscordUtil.trimContent(event.getMessage().getContentRaw()).toUpperCase() + "`" +
-                "\nCheck your subscriptions with: `!trade-subs`";
+                "\nCheck your subscriptions with: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "trade-subs`";
     }
 }

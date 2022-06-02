@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.util.offshore.Grant;
@@ -71,7 +72,7 @@ public class GrantCommands {
             String body = db.generateEscrowedCard(receiver);
             body += "\nCommand run by: " + author.getAsMention();
 //            db.getEscrowed()
-            String cmd = "$approveEscrowed " + receiver.getNationUrl() + " " + PnwUtil.resourcesToString(actualDeposits) + " " + PnwUtil.resourcesToString(escrowed);
+            String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "approveEscrowed " + receiver.getNationUrl() + " " + PnwUtil.resourcesToString(actualDeposits) + " " + PnwUtil.resourcesToString(escrowed);
 
             String emoji = "\u2705";
             DiscordUtil.createEmbedCommand(channel, title, body, emoji, cmd);

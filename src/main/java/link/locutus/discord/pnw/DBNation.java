@@ -293,7 +293,7 @@ public class DBNation implements NationOrAlliance {
 //            output.append("Error validating your discord: " + e.getMessage() + "\n");
 //        }
 
-        output.append("Registration successful. Use `!?` for a list of commands.\n");
+        output.append("Registration successful. Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "?` for a list of commands.\n");
         if (guild != null) {
             Role role = Roles.REGISTERED.toRole(guild);
             if (role != null) {
@@ -315,7 +315,7 @@ public class DBNation implements NationOrAlliance {
             } else {
                 if (Roles.ADMIN.has(user, guild)) {
                     output.append("No role mapping found.");
-                    output.append("\nCreate a role mapping with `!aliasrole`");
+                    output.append("\nCreate a role mapping with `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole`");
                 }
             }
         }
@@ -691,7 +691,7 @@ public class DBNation implements NationOrAlliance {
             }
         }
         if (auth == null) {
-            throw new IllegalArgumentException("Please authenticate using `!login`");
+            throw new IllegalArgumentException("Please authenticate using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "login`");
         }
         return auth;
     }
@@ -2331,11 +2331,11 @@ public class DBNation implements NationOrAlliance {
     public Message toCard(MessageChannel channel, boolean spies, boolean money, boolean refresh) {
         String title = nation;
         String counterEmoji = "\uD83C\uDD98";
-        String counterCmd = "!counter " + getNationUrl();
+        String counterCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter " + getNationUrl();
         String simEmoji = "\uD83E\uDD16";
-        String simCommand = "!simulate " + getNationUrl();
+        String simCommand = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate " + getNationUrl();
         String refreshEmoji = "\uD83D\uDD04";
-        String refreshCmd = "!who " + getNationUrl();
+        String refreshCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "who " + getNationUrl();
 
         String response = toEmbedString(spies);
 

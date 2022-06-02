@@ -2,6 +2,7 @@ package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -64,7 +65,7 @@ public class Dm extends Command {
 
         if (mentions.size() > 1 && !flags.contains('f')) {
             String title = "Send " + mentions.size() + " messages";
-            String pending = "!pending " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
+            String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());

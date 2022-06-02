@@ -1,4 +1,4 @@
-package link.locutus.discord.util.battle;
+package link.locutus.discord.util.battle.sim;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.pnw.DBNation;

@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.external.guild.WarCat;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -44,7 +43,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
-import link.locutus.discord.util.battle.WarNation;
+import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
@@ -139,7 +138,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Only get the automatic beige alerts if you have the specified status on discord\n" +
-            "Note: You will still receive alerts for targets you have subscribed to via `$beigeReminder <nation>`",
+            "Note: You will still receive alerts for targets you have subscribed to via `{prefix}beigeReminder <nation>`",
             aliases = {"beigeAlertRequiredStatus", "setBeigeAlertRequiredStatus"})
     @WhitelistPermission
     @CoalitionPermission(Coalition.RAIDPERMS)
@@ -171,7 +170,7 @@ public class WarCommands {
             if (reminders.contains(nation)) toRemove.add(nation);
         }
 
-        if (toRemove.isEmpty()) return "No nations selected for removal. For a list of your current reminders, use `$beigeReminders`";
+        if (toRemove.isEmpty()) return "No nations selected for removal. For a list of your current reminders, use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeReminders`";
 
         StringBuilder response = new StringBuilder();
         for (DBNation nation : toRemove) {
@@ -226,12 +225,12 @@ public class WarCommands {
             response.append("Added beige reminder for " + target.getNationUrl() + " (in " + diffStr + " OR " + turns + " turns)\n");
         }
         response.append("\nSee also:\n" +
-                " - `$listBeigeReminders`\n" +
-                " - `$removeBeigeReminder <nation>`\n" +
-                " - `$setBeigeAlertRequiredStatus`\n" +
-                " - `$setBeigeAlertMode`\n" +
-                " - `$setBeigeAlertRequiredLoot`\n" +
-                " - `$setBeigeAlertScoreLeeway`");
+                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "listBeigeReminders`\n" +
+                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "removeBeigeReminder <nation>`\n" +
+                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertRequiredStatus`\n" +
+                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertMode`\n" +
+                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertRequiredLoot`\n" +
+                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertScoreLeeway`");
 
         return response.toString();
     }
@@ -442,7 +441,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Request your blockade be broken within a specific timeframe\n" +
-            "e.g. `$UnblockadeMe 4day \"i am low on warchest\"`")
+            "e.g. `{prefix}UnblockadeMe 4day \"i am low on warchest\"`")
     @RolePermission(Roles.MEMBER)
     public String unblockadeMe(@Me DBNation me, @Timediff long diff, @TextArea String note, @Switch('f') boolean force) throws IOException {
         if (diff > TimeUnit.DAYS.toMillis(5)) {
@@ -469,7 +468,7 @@ public class WarCommands {
                     "\nAdd `-f` to ignore this check";
         }
 
-        return "Added blockade request. See also `$cancelUnblockadeRequest`\n> " + Messages.BLOCKADE_HELP;
+        return "Added blockade request. See also `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "cancelUnblockadeRequest`\n> " + Messages.BLOCKADE_HELP;
     }
 
     @Command(desc = "Find blockade targets")
@@ -1052,7 +1051,7 @@ public class WarCommands {
                 if (nationNetValues.isEmpty()) {
                     String message;
                     if (onlyPriority) {
-                        message = "No targets found. Try `!war`";
+                        message = "No targets found. Try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "war`";
                     } else {
                         message = "No targets found:\n" +
                                 " - Add `-i` to include inactives\n" +
@@ -1130,7 +1129,7 @@ public class WarCommands {
 
 
     @Command(desc = "Find a raid target, with optional alliance and sorting (default: active nations, sorted by top city infra).\n\t" +
-            "To see a list of coalitions, use `!coalitions`.\n\t" +
+            "To see a list of coalitions, use `{prefix}coalitions`.\n\t" +
             "Add `-a` To include applicants\n" +
             "Add `-i` to include inactives\n" +
             "Add `-w` to filter out nations with strong ground\n" +
@@ -1161,7 +1160,7 @@ public class WarCommands {
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
         me = DiscordUtil.getNation(author);
-        if (me == null) return "Please use `!verify`";
+        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
         if (filterWeak) {
@@ -1405,7 +1404,7 @@ public class WarCommands {
             "Use `*` for the alliance to only include active wars against allies\n" +
             "Use `*` for op type to automatically find the best op type\n" +
             "Use `success>80` to specify a cutoff for spyop success\n\n" +
-            "e.g. `!spyop enemies spies` | `!spyop enemies * -s`")
+            "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
     public String Spyops(@Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch('s') boolean checkSlots, @Switch('d') boolean directMesssage, @Switch('k') boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
@@ -1419,7 +1418,7 @@ public class WarCommands {
             DiscordUtil.createEmbedCommand(channel, title, body.toString());
 
             if (true) {
-                StringBuilder response = new StringBuilder("Use `!spies <enemy>` first to ensure the results are up to date");
+                StringBuilder response = new StringBuilder("Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <enemy>` first to ensure the results are up to date");
                 if (!checkSlots) {
                     response.append(". Add `-s` to remove enemies who are already spy slotted");
                 }
@@ -1436,7 +1435,7 @@ public class WarCommands {
         double minSuccess = 50;
 
         if (me == null) {
-            return "Please use `!validate`";
+            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
         }
 
         boolean findOptimal = true;
@@ -1604,7 +1603,7 @@ public class WarCommands {
             "`<ignore-topX>` - filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
             "Add `-l` to remove targets with loot history\n" +
             "Add `-d` to list targets currently on the dnr\n\n" +
-            "e.g. `!IntelOpSheet 10d 'Error 404' 25`")
+            "e.g. `{prefix}IntelOpSheet 10d 'Error 404' 25`")
     @WhitelistPermission
     @RolePermission(Roles.MILCOM)
     public String IntelOpSheet(@Me GuildDB db, @Timestamp long time, Set<DBNation> attackers, @Default() Integer dnrTopX,
@@ -2487,7 +2486,7 @@ public class WarCommands {
                               @Switch('f') boolean force,
                               @Switch('d') boolean dm) throws IOException, GeneralSecurityException {
         if (!header.isEmpty() && !Roles.MAIL.has(author, guild)) {
-            return "You need the MAIL role on discord (see `!aliasRole`) to add the custom message: `" + header + "`";
+            return "You need the MAIL role on discord (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole`) to add the custom message: `" + header + "`";
         }
         Map<DBNation, Set<DBNation>> warDefAttMap = new HashMap<>();
         Map<DBNation, Set<DBNation>> spyDefAttMap = new HashMap<>();
@@ -2647,12 +2646,12 @@ public class WarCommands {
 
         String key = keys[0];
         Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-        if (nationId == null) return "Invalid `!KeyStore API_KEY`";
+        if (nationId == null) return "Invalid `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
         DBNation sender = DBNation.byId(nationId);
 
         if (!force) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
-            String pending = "!pending '" + title + "' " + DiscordUtil.trimContent(message.getContentRaw()) + " -f";
+            String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(message.getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : mailTargets.keySet()) alliances.add(nation.getAlliance_id());
@@ -3308,7 +3307,7 @@ public class WarCommands {
                 Set<Integer> allies = db.getAllies(true);
                 if (allies.isEmpty()) {
                     aaId = me.getAlliance_id();
-                    if (aaId == 0) return "No alliance or allies are set.\n`!KeyStore ALLIANCE_ID <alliance>`\nOR\n`!setcoalition <alliance> allies`";
+                    if (aaId == 0) return "No alliance or allies are set.\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID <alliance>`\nOR\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> allies`";
                     counterWith = new HashSet<>(new Alliance(aaId).getNations(true, 10000, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));
@@ -3445,7 +3444,7 @@ public class WarCommands {
                     return null;
                 }
                 if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * 1.75) {
-                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see `$score`). ", 'f');
+                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "score`). ", 'f');
                     return null;
                 }
                 if (attacker.getOff() >= attacker.getMaxOff() && !allowAttackersWithMaxOffensives) {
@@ -3506,7 +3505,7 @@ public class WarCommands {
 
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Run this command in a war room to assign it to a category\n" +
-            "`$WarCat raid`")
+            "`{prefix}WarCat raid`")
     public String warcat(@Me WarCategory warCat, @Me WarCategory.WarRoom waRoom, @Me TextChannel channel, @Filter("warcat.*") Category category) {
         if (category.equals(channel.getParentCategory())) {
             return "Already in category: " + category.getName();

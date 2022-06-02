@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -26,7 +27,7 @@ public class WarInfo extends Command {
 
     @Override
     public String help() {
-        return "!WarInfo <war-link|nation>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarInfo <war-link|nation>";
     }
 
     @Override

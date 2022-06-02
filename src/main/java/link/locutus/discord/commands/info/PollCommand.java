@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -38,7 +39,7 @@ public class PollCommand extends Command {
         Message message = DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString());
 
         String emoji = "\uD83D\uDD96";
-        String command = ".!dummy";
+        String command = "." + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "dummy";
 
         return null;
     }

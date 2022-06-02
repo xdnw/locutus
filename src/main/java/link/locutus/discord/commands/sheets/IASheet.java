@@ -45,7 +45,7 @@ public class IASheet extends Command {
         GuildDB db = Locutus.imp().getGuildDB(event);
         if (db == null) return "Not in guild";
         String allianceIdStr = db.getInfo(GuildDB.Key.ALLIANCE_ID);
-        if (allianceIdStr == null) return "Please use `!KeyStore ALLIANCE_ID <id>`";
+        if (allianceIdStr == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID <id>`";
         int allianceId = Integer.parseInt(allianceIdStr);
 
         if (args.size() != 1) return usage();

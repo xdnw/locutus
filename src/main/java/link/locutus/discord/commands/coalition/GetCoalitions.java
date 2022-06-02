@@ -3,6 +3,7 @@ package link.locutus.discord.commands.coalition;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -24,7 +25,7 @@ public class GetCoalitions extends Command {
 
     @Override
     public String help() {
-        return "!coalitions [filter]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions [filter]";
     }
 
     @Override
@@ -32,7 +33,7 @@ public class GetCoalitions extends Command {
         return "List all coalitions\n" +
                 "Add `-i` to list only IDs\n" +
                 "Add `-d` to ignore deleted AAs\n" +
-                "e.g. `!coalitions enemies`";
+                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions enemies`";
     }
 
     @Override
