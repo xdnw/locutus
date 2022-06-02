@@ -205,36 +205,36 @@ public class RaidUpdateProcessor implements Runnable {
                 for (Member member : members) {
                     PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
                     if (pnwUser == null) continue;
+                    DBNation nation = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
+                    if (nation == null || nation.getOff() >= nation.getMaxOff()) continue;
+                    if (nation.getScore() < minScore && nation.getScore() > maxScore) continue;
+                    if (optOut != null && member.getRoles().contains(optOut)) continue;
+                    if (nation.getOff() > 0 && Locutus.imp().getWarDb().getActiveWarByNation(nation.getNation_id(), defender.getNation_id()) != null) continue;
 
                     OnlineStatus status = member.getOnlineStatus();
                     if (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE) continue;
 
-                    DBNation nation = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
-                    if (nation == null || nation.getOff() >= 5 ||
-                            (nation.getAvg_infra() > 1250 && defender.getAlliance_id() != 0 && (defender.getPosition() > 1 || nation.getCities() > 7))
+                    membersInRange++;
+
+                    if ((nation.getAvg_infra() > 1250 && defender.getAlliance_id() != 0 && (defender.getPosition() > 1 || nation.getCities() > 7))
                             || nation.getActive_m() > 2880
 //                                        || nation.getSoldiers() < defender.getSoldiers()
                     ) continue;
 
-                    if (nation.getScore() >= minScore && nation.getScore() <= maxScore) {
-                        if (Locutus.imp().getWarDb().getActiveWarByNation(nation.getNation_id(), defender.getNation_id()) == null) {
-                            if (optOut != null && member.getRoles().contains(optOut)) continue;
-                            membersInRange++;
+                    if (optOut != null && member.getRoles().contains(optOut)) continue;
 
-                            long pair = MathMan.pairInt(nation.getNation_id(), defender.getNation_id());
-                            if (!pingFlag.containsKey(pair)) {
-                                mentions.append(member.getAsMention() + " ");
-                            }
-                            pingFlag.put(pair, true);
-                        }
+
+                    long pair = MathMan.pairInt(nation.getNation_id(), defender.getNation_id());
+                    if (!pingFlag.containsKey(pair)) {
+                        mentions.append(member.getAsMention() + " ");
                     }
+                    pingFlag.put(pair, true);
                 }
                 if (membersInRange > 0) {
                     DiscordUtil.createEmbedCommand(channel, title, finalMsg);
-                }
-
-                if (mentions.length() != 0) {
-                    RateLimitUtil.queue(channel.sendMessage("^ " + mentions + "(see pins to opt (out)"));
+                    if (mentions.length() != 0) {
+                        RateLimitUtil.queue(channel.sendMessage("^ " + mentions + "(see pins to opt (out)"));
+                    }
                 }
             }
         });
