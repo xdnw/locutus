@@ -2503,7 +2503,7 @@ public class BankCommands {
                     if (output != null) {
                         String msg = "Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getTypePrefix() + ":" + sender.getName() + "/" + sender.getIdLong();
                         RateLimitUtil.queue(output.sendMessage(msg));
-                        response.append("Reset deposit for " + root);
+                        response.append("Reset deposit for " + root.getGuild() + "\n");
                     }
                 }
                 response.append("Registered " + alliance + " as an offshore. See: https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit");

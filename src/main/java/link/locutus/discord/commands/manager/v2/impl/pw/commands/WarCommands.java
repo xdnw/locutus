@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.external.guild.WarCat;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -3399,6 +3400,15 @@ public class WarCommands {
         attackers.removeIf(f -> f.getUser() == null || db.getGuild().getMember(f.getUser()) == null);
         return warroom(channel, message, warCat, me, author, db, enemy, attackers, max, false, true, false, true, pingMembers, skipAddMembers, sendMail);
     }
+
+    @RolePermission(value = Roles.MILCOM)
+    @Command(desc = "Sorts the war rooms into  the correct category\n" +
+            "e.g. `warcat-c1-10`")
+    public String sortWarRooms(@Me WarCategory warCat) {
+        int moved = warCat.sort();
+        return "Done! Moved " + moved + " channels";
+    }
+
 
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Create a war room\n" +

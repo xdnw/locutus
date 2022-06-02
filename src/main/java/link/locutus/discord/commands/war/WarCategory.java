@@ -41,14 +41,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.MissingAccessException;
 
 import java.io.IOException;
-import java.util.AbstractMap;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -559,6 +552,61 @@ public class WarCategory {
         return room;
     }
 
+    public int sort() {
+        int moved = 0;
+        Map<CityRanges, List<Category>> categoryRanges = new HashMap<>();
+        List<Category> noRange = new LinkedList<>();
+        for (Category category : getCategories()) {
+            CityRanges range = getRangeFromCategory(category);
+            if (range != null) categoryRanges.computeIfAbsent(range, f -> new LinkedList<>()).add(category)
+            else noRange.add(category);
+        }
+
+        outer:
+        for (Map.Entry<Integer, WarRoom> entry : warRoomMap.entrySet()) {
+            WarRoom room = entry.getValue();
+            if (room.channel != null) {
+                Category category = room.channel.getParentCategory();
+                CityRanges range = getRangeFromCategory(category);
+                if (range != null && range.contains(room.target.getCities())) continue;
+
+                for (Map.Entry<CityRanges, List<Category>> rangeEntry : categoryRanges.entrySet()) {
+                    if (rangeEntry.getKey().contains(room.target.getCities())) {
+                        for (Category newCat : rangeEntry.getValue()) {
+                            if (newCat.getChannels().size() > 49) continue;
+                            room.channel.getManager().setParent(newCat);
+                            moved++;
+                            continue outer;
+                        }
+                    }
+                }
+
+                if (range != null && !noRange.isEmpty()) {
+                    for (Category newCat : noRange) {
+                        if (newCat.getChannels().size() > 49) continue;
+                        room.channel.getManager().setParent(newCat);
+                        moved++;
+                        continue outer;
+                    }
+                }
+
+            }
+        }
+        return moved;
+    }
+
+    private CityRanges getRangeFromCategory(Category category) {
+        String[] split = category.getName().split("-", 2);
+        if (split.length == 2) {
+            String filterStr = split[1];
+            if (filterStr.charAt(0) == 'c') {
+                if (!filterStr.contains("-")) filterStr += "+";
+                return CityRanges.parse(filterStr);
+            }
+        }
+        return null;
+    }
+
     public class WarRoom {
         public final DBNation target;
         private final Set<DBNation> participants;
@@ -811,15 +859,7 @@ public class WarCategory {
                         List<GuildChannel> channels = category.getChannels();
                         if (channels.size() >= 49) continue;
 
-                        CityRanges range = null;
-                        String[] split = category.getName().split("-", 2);
-                        if (split.length == 2) {
-                            String filterStr = split[1];
-                            if (filterStr.charAt(0) == 'c') {
-                                if (!filterStr.contains("-")) filterStr += "+";
-                                range = CityRanges.parse(filterStr);
-                            }
-                        }
+                        CityRanges range = getRangeFromCategory(category);
                         if (range != null) {
                             if (range.contains(target.getCities())) {
                                 useCat = category;

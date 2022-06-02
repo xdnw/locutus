@@ -99,7 +99,7 @@ public class Settings extends Config {
         @Comment("If slash `/` commands are enabled (WIP)")
         public boolean SLASH_COMMANDS = false;
         @Comment("If the web interface is enabled")
-        public boolean WEB = true;
+        public boolean WEB = false;
 
         @Comment({"Should databases be initialized on startup",
                 "false = they are initialized as needed (I havent done much optimization here, so thats probably shortly after startup anyway, lol)"})

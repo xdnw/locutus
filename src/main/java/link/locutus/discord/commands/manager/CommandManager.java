@@ -21,7 +21,6 @@ import link.locutus.discord.commands.account.HasRole;
 import link.locutus.discord.commands.account.question.Interview;
 import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
-import link.locutus.discord._test.command.wip.AllianceBuildupSheet;
 import link.locutus.discord.commands.alliance.Dm;
 import link.locutus.discord.commands.alliance.LeftAA;
 import link.locutus.discord.commands.alliance.ModifyTreaty;
@@ -45,7 +44,6 @@ import link.locutus.discord.commands.fun.Kev;
 import link.locutus.discord.commands.fun.Lury;
 import link.locutus.discord.commands.fun.Nev;
 import link.locutus.discord.commands.fun.SriCommand;
-import link.locutus.discord._test.command.wip.Audit;
 import link.locutus.discord.commands.info.ChannelCount;
 import link.locutus.discord.commands.info.CityCost;
 import link.locutus.discord.commands.info.DummyCommand;
@@ -98,7 +96,6 @@ import link.locutus.discord.commands.external.account.ForumScrape;
 import link.locutus.discord.commands.external.account.LoadUsers;
 import link.locutus.discord.commands.account.Say;
 import link.locutus.discord.commands.bank.Warchest;
-import link.locutus.discord._test.command.wip.debug.EmptyAATest;
 import link.locutus.discord.commands.fun.Jokes;
 import link.locutus.discord.commands.info.BeigeTurns;
 import link.locutus.discord.commands.info.ListMultisByAlliance;
@@ -674,9 +671,6 @@ public class CommandManager {
         this.register(new AddTaxBracket());
 
         // unfinished
-        this.register(new EmptyAATest());
-        this.register(new AllianceBuildupSheet());
-        this.register(new Audit());
         this.register(new LoanCommand());
         this.register(new Setup());
 

@@ -1,7 +1,6 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord._test.command.RaidCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -182,7 +181,7 @@ public class RaidUpdateProcessor implements Runnable {
         }
 
         String finalMsg = msg;
-        AlertUtil.forEachChannel(RaidCommand.class, GuildDB.Key.BEIGE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildDB.Key.BEIGE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 if (!guildDB.isWhitelisted() || !guildDB.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) return;

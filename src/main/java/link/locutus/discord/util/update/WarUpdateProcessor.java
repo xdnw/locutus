@@ -2,7 +2,6 @@ package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.war.WarCategory;
-import link.locutus.discord._test.command.RaidCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
@@ -752,7 +751,7 @@ public class WarUpdateProcessor {
                 PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(attacker.getNation_id());
                 if (user != null && user.getDiscordId() != null) {
                     GuildDB guildDb = Locutus.imp().getGuildDBByAA(attacker.getAlliance_id());
-                    if (guildDb != null && guildDb.getPermission(RaidCommand.class) > 0) {
+                    if (guildDb != null && guildDb.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) {
                         Guild guild = guildDb.getGuild();
                         if (guild != null) {
                             Member member = guild.getMemberById(user.getDiscordId());
