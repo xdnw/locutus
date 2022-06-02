@@ -1,0 +1,10 @@
+@args (String title, String content, String id)
+<br>
+<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#@id" aria-expanded="false" aria-controls="@id">
+    @title
+</button>
+<div class="collapse" id="@id">
+@raw(content)
+</div>
+<br>
+<hr/>

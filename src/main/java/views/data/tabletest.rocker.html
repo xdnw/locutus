@@ -1,0 +1,6 @@
+@import java.util.*
+
+@args (String title, String data)
+@views.main.template("Hello World") -> {
+    @views.data.table_data.template(title, data)
+}

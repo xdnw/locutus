@@ -1,0 +1,6 @@
+@args (String error, String stacktrace)
+
+@views.main.template("Alert") -> {
+<h1 class="text-primary">@error</h1>
+<p>@stacktrace</p>
+}
