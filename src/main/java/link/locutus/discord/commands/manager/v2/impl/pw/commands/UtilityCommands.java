@@ -1105,9 +1105,9 @@ public class UtilityCommands {
         List<AttackType> allowed = new ArrayList<>(List.of(AttackType.values));
         if (noGround) allowed.removeIf(f -> f == AttackType.GROUND);
         if (noShip) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.SHIP);
-        if (noAir) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.SHIP);
-        if (noMissile) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.SHIP);
-        if (noNuke) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.SHIP);
+        if (noAir) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.AIRCRAFT);
+        if (noMissile) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.MISSILE);
+        if (noNuke) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.NUKE);
         AttackTypeNode best = AttackTypeNode.findQuickest(allowed, resistance);
 
         return "Result: " + best.toString() + " MAP: " + best.map + " resistance:" + best.resistance;
