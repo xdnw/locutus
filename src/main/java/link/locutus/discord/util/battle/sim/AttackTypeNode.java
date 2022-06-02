@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.bytes.ByteSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashBigSet;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 
@@ -244,24 +245,34 @@ public class AttackTypeNode {
 
         Predicate<AttackTypeNode> goalFunc = f -> f.resistance >= resistance;
         Function<AttackTypeNode, Integer> valueFunc = f -> -f.map;
+
+        System.out.println("Allowed " + StringMan.getString(types));
+
         return findGoal(comparator, types, goalFunc, valueFunc, 1000);
     }
 
     public static AttackTypeNode findGoal(AttackTypeNodeComparator comparator, List<AttackType> types, Predicate<AttackTypeNode> goalFunc, Function<AttackTypeNode, Integer> valueFunc, long timeout) {
         ObjectArrayFIFOQueue<AttackTypeNode> queue = new ObjectArrayFIFOQueue<>();
         Set<AttackTypeNode> visited = new ObjectOpenHashBigSet<>();
-        for (AttackType type : types) {
-            AttackTypeNode node = new AttackTypeNode(type, comparator);
-            queue.enqueue(node);
-            visited.add(node);
-        }
 
         AttackTypeNode bestGoal = null;
         int bestGoalVal = Integer.MIN_VALUE;
         int numChecked = 0;
 
-        System.out.println("Allowed types " + StringMan.getString(types));
-        System.out.println("remove:||start");
+        for (AttackType type : types) {
+            AttackTypeNode next = new AttackTypeNode(type, comparator);
+            if (goalFunc.test(next)) {
+                int value = valueFunc.apply(next);
+                if (value > bestGoalVal) {
+                    bestGoalVal = value;
+                    bestGoal = next;
+                }
+                continue;
+            }
+            queue.enqueue(next);
+            visited.add(next);
+        }
+
         long start = System.currentTimeMillis();
 
         while (!queue.isEmpty()) {
@@ -293,6 +304,7 @@ public class AttackTypeNode {
                 }
             }
         }
+
         return bestGoal;
     }
 }
