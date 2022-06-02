@@ -1,5 +1,6 @@
 package link.locutus.discord.util.sheet;
 
+import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
@@ -123,7 +124,6 @@ public class SpreadSheet {
     public static SpreadSheet create(GuildDB db, GuildDB.Key key) throws GeneralSecurityException, IOException {
         String sheetId = db.getInfo(key);
 
-        String spreadsheetId;
         Sheets api = null;
 
         if (sheetId == null) {
@@ -136,21 +136,19 @@ public class SpreadSheet {
                     .setFields("spreadsheetId")
                     .execute();
 
-            spreadsheetId = spreadsheet.getSpreadsheetId();
-            db.setInfo(key, spreadsheetId);
-
-            DriveFile gdFile = new DriveFile(spreadsheetId);
+            sheetId = spreadsheet.getSpreadsheetId();
+            db.setInfo(key, sheetId);
+        }
+        if (true) {
+            DriveFile gdFile = new DriveFile(sheetId);
             try {
                 gdFile.shareWithAnyone(DriveFile.DriveRole.WRITER);
-            } catch (GoogleJsonResponseException e) {
+            } catch (GoogleJsonResponseException | TokenResponseException e) {
                 e.printStackTrace();
             }
-
-        } else {
-            spreadsheetId = sheetId;
         }
 
-        SpreadSheet sheet = create(spreadsheetId, api);
+        SpreadSheet sheet = create(sheetId, api);
 
         if (api != null) sheet.set(0, 0);
         return sheet;
@@ -177,7 +175,7 @@ public class SpreadSheet {
 
     private static final String APPLICATION_NAME = "Spreadsheet";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-    private static final String TOKENS_DIRECTORY_PATH = DriveFile.TOKENS_DIRECTORY_PATH;
+    private static final String TOKENS_DIRECTORY_PATH = "config" + java.io.File.separator + "tokens";
 
     /**
      * Global instance of the scopes required by this quickstart.

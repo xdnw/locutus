@@ -207,7 +207,7 @@ public class RaidUpdateProcessor implements Runnable {
                     if (pnwUser == null) continue;
                     DBNation nation = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
                     if (nation == null || nation.getOff() >= nation.getMaxOff()) continue;
-                    if (nation.getScore() < minScore && nation.getScore() > maxScore) continue;
+                    if (nation.getScore() < minScore || nation.getScore() > maxScore) continue;
                     if (optOut != null && member.getRoles().contains(optOut)) continue;
                     if (nation.getOff() > 0 && Locutus.imp().getWarDb().getActiveWarByNation(nation.getNation_id(), defender.getNation_id()) != null) continue;
 
@@ -222,7 +222,6 @@ public class RaidUpdateProcessor implements Runnable {
                     ) continue;
 
                     if (optOut != null && member.getRoles().contains(optOut)) continue;
-
 
                     long pair = MathMan.pairInt(nation.getNation_id(), defender.getNation_id());
                     if (!pingFlag.containsKey(pair)) {

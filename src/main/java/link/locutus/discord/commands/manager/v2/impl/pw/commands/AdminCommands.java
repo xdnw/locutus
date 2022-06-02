@@ -373,7 +373,7 @@ public class AdminCommands {
         }
         StringBuilder response = new StringBuilder();
         for (Map.Entry<String, String> e : failed.entrySet()) {
-            response.append(e.getKey() + ": " + e.getValue());
+            response.append(e.getKey() + ": " + e.getValue() + "\n");
         }
         for (Map.Entry<String, ApiKeyDetails> e : success.entrySet()) {
             String key = e.getKey();
@@ -381,12 +381,13 @@ public class AdminCommands {
             int natId = record.getNation().getId();
             DBNation nation = DBNation.byId(natId);
             if (nation != null) {
-                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAlliance() + " | " + nation.getPosition());
+                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAlliance() + " | " + nation.getPosition() + "\n");
             } else {
-                response.append(e.getKey() + ": " + e.getValue());
+                response.append(e.getKey() + ": " + e.getValue() + "\n");
             }
         }
-        return response + "\nDone!";
+        System.out.println(response); // keep
+        return "Done (see console)";
     }
 
     @Command()

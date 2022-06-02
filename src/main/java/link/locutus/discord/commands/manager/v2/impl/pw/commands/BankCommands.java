@@ -60,6 +60,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -2440,14 +2441,16 @@ public class BankCommands {
             for (Long announceChannel : announceChannels) {
                 GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(announceChannel);
                 if (channel != null) {
-                    DiscordUtil.createEmbedCommand(channel, title, body);
-                    Role adminRole = Roles.ADMIN.toRole(channel.getGuild());
-                    Member owner = channel.getGuild().getOwner();
-                    if (adminRole != null) {
-                        RateLimitUtil.queue((channel.sendMessage(adminRole.getAsMention())));
-                    } else if (owner != null) {
-                        RateLimitUtil.queue((channel.sendMessage(owner.getAsMention())));
-                    }
+                    try {
+                        DiscordUtil.createEmbedCommand(channel, title, body);
+                        Role adminRole = Roles.ADMIN.toRole(channel.getGuild());
+                        Member owner = channel.getGuild().getOwner();
+                        if (adminRole != null) {
+                            RateLimitUtil.queue((channel.sendMessage(adminRole.getAsMention())));
+                        } else if (owner != null) {
+                            RateLimitUtil.queue((channel.sendMessage(owner.getAsMention())));
+                        }
+                    } catch (InsufficientPermissionException ignore) {}
                 }
             }
 
