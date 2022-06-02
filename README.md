@@ -2,10 +2,10 @@
 
 Locutus is the All-In-One Discord bot for the web browser game Politics and War. Check out more information [here](https://discord.gg/vWXbgVAxfc)!
 
-# About this fork
+# Self Hosting
 
-This fork is mainly focused to improve the bot user interface.
+We are working for allow people to self host this bot!
 
 # What About The Future
 
-In the future i will maybe work something more of the user interface.
+We always look new technologies for better develop Locutus!
