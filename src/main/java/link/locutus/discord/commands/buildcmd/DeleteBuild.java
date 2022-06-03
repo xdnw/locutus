@@ -3,6 +3,7 @@ package link.locutus.discord.commands.buildcmd;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -18,7 +19,7 @@ public class DeleteBuild extends Command {
 
     @Override
     public String help() {
-        return "!delbuild <category> <min-cities>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "delbuild <category> <min-cities>";
     }
 
     @Override

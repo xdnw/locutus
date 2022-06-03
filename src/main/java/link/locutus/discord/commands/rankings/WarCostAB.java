@@ -3,6 +3,7 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CoalitionWarStatus;
 import link.locutus.discord.db.entities.CounterStat;
@@ -201,10 +202,10 @@ public class WarCostAB extends Command {
         String title = "Reimburse: ~$" + MathMan.format(PnwUtil.convertedTotal(total));
         String body = "Type: " + type + "\n" + "Amt: " + totalStr;
 
-        String cmd = "!addbalance " + nation.getNationUrl() + " " + totalStr + " \"" + note + "\"";
+        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + nation.getNationUrl() + " " + totalStr + " \"" + note + "\"";
 
         String infoEmoji = "\u2139";
-        String infoCmd = "!warinfo " + warUrl.toUrl();
+        String infoCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warinfo " + warUrl.toUrl();
 
         DiscordUtil.createEmbedCommand(channel, title, body, "\u2705", cmd, infoEmoji, infoCmd);
     }

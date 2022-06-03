@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -22,7 +23,7 @@ public class Inactive extends Command {
     }
     @Override
     public String help() {
-        return "!inactive <alliance|coalition|*> [days=7] [page]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive <alliance|coalition|*> [days=7] [page]";
     }
 
     @Override
@@ -83,8 +84,8 @@ public class Inactive extends Command {
             response.append('\n').append(nations.get(i).toMarkdown());
         }
         String title = "Inactive Players in `" + args.get(0) + "`" + "(" + page + "/" + pages + ")";
-        String prev = "!inactive " + args.get(0) + " " + days + " " + (page - 1) + (applicants ? " -a" : "");
-        String next = "!inactive " + args.get(0) + " " + days + " " + (page + 1) + (applicants ? " -a" : "");
+        String prev = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive " + args.get(0) + " " + days + " " + (page - 1) + (applicants ? " -a" : "");
+        String next = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive " + args.get(0) + " " + days + " " + (page + 1) + (applicants ? " -a" : "");
 
         List<String> actions = new ArrayList<>();
         if (page > 1) {

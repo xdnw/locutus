@@ -27,12 +27,12 @@ public class WarCommand_Old extends Command {
 
     @Override
     public String help() {
-        return "!war [alliance|coalition] [sort]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "war [alliance|coalition] [sort]";
     }
 
     @Override
     public String desc() {
-        return "Find a war target, with optional alliance and sorting (default: *, avg_infra). To see a list of coalitions, use `!coalitions`. Valid sort options are " + StringMan.getString(Locutus.imp().getNationDB().getColumns());
+        return "Find a war target, with optional alliance and sorting (default: *, avg_infra). To see a list of coalitions, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions`. Valid sort options are " + StringMan.getString(Locutus.imp().getNationDB().getColumns());
     }
 
     @Override
@@ -56,7 +56,7 @@ public class WarCommand_Old extends Command {
 
         switch (args.size()) {
             default:
-                return "Usage: `!war [alliance|coalition] [sort]";
+                return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "war [alliance|coalition] [sort]";
             case 2:
                 sort = args.get(1).toLowerCase();
                 if (!columns.contains(sort)) {
@@ -74,7 +74,7 @@ public class WarCommand_Old extends Command {
                 if (aa == null) {
                     GuildDB db = Locutus.imp().getGuildDB(event);
                     Set<Integer> enemies = db.getCoalitions().get("enemies");
-                    if (enemies == null) return "No enemies set. Please use `!setcoalition <alliance> enemies` or specify an enemy alliance/coalition as your second parameter";
+                    if (enemies == null) return "No enemies set. Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> enemies` or specify an enemy alliance/coalition as your second parameter";
                     nations = Locutus.imp().getNationDB().getNations(new HashSet<>(enemies));
                 } else if (aa.equalsIgnoreCase("*")) {
                     nations = Locutus.imp().getNationDB().getNationsSortedBy(sort).values();
@@ -92,7 +92,7 @@ public class WarCommand_Old extends Command {
                         if (aaId == null) {
                             Set<Integer> coa = Locutus.imp().getGuildDB(event).getCoalition(aaName);
                             if (coa.isEmpty()) {
-                                return "Invalid AA or Coalition (case sensitive): " + aaName + ". @see also: `!coalitions`";
+                                return "Invalid AA or Coalition (case sensitive): " + aaName + ". @see also: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions`";
                             }
                             aaIds.addAll(coa);
                         }
@@ -102,7 +102,7 @@ public class WarCommand_Old extends Command {
 
                 int myAir = Integer.parseInt(mePnwNation.getAircraft());
                 if (myAir < 100) {
-                    return "You don't have many planes. Did you instead mean to find a `!raid` target?";
+                    return "You don't have many planes. Did you instead mean to find a `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid` target?";
                 }
                 double minPlanes = myAir * 0.4;
                 double maxPlanes = myAir * 0.8;

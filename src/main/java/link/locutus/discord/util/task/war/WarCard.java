@@ -10,14 +10,12 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.battle.WarNation;
+import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.util.List;
@@ -423,13 +421,13 @@ public class WarCard {
 
     public void embed(MessageChannel channel, boolean addReactions) {
         String warUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
-        String cmd = "!WarInfo " + warUrl;
-        String sim = "~!simulate " + warUrl;
-        String counter = "~!counter " + warUrl;
-        String counterSpy = "~!counterspy " + warUrl + " *";
+        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarInfo " + warUrl;
+        String sim = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate " + warUrl;
+        String counter = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter " + warUrl;
+        String counterSpy = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counterspy " + warUrl + " *";
 
         String pendingEmoji = "\u2705";
-        String pending = "_!UpdateEmbed role:milcom 'description:{description}\n" +
+        String pending = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UpdateEmbed role:milcom 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'";
 

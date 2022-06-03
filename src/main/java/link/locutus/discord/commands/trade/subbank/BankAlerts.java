@@ -20,12 +20,12 @@ public class BankAlerts extends Command {
     }
     @Override
     public String help() {
-        return "!bank-alert <alliance|nation|*> <send|receive> <amount> <duration>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "bank-alert <alliance|nation|*> <send|receive> <amount> <duration>";
     }
 
     @Override
     public String desc() {
-        return "Subscribe (for a duration) to get alerts about bank transfers e.g. `!bank-alert \"The Blitzers\" receive 100M`";
+        return "Subscribe (for a duration) to get alerts about bank transfers e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "bank-alert \"The Blitzers\" receive 100M`";
     }
 
     @Override
@@ -75,6 +75,6 @@ public class BankAlerts extends Command {
             Locutus.imp().getBankDB().subscribe(user, id, isNation, date, isReceive, amount);
         }
         return "Subscribed to `" + DiscordUtil.trimContent(event.getMessage().getContentRaw()).toUpperCase() + "`" +
-                "\nCheck your subscriptions with: `!bank-alerts`";
+                "\nCheck your subscriptions with: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "bank-alerts`";
     }
 }

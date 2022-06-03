@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.Spyop;
@@ -50,7 +51,7 @@ public class IntelOpSheet extends Command {
                 "`<ignore-topX>` - filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
                 "Add `-l` to remove targets with loot history\n" +
                 "Add `-d` to list targets currently on the dnr\n\n" +
-                "e.g. `!IntelOpSheet 10d 'Error 404' 25`";
+                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "IntelOpSheet 10d 'Error 404' 25`";
     }
 
     @Override

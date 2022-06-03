@@ -14,6 +14,7 @@ import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.commands.stock.StockTrade;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.Alliance;
 import link.locutus.discord.pnw.DBNation;
@@ -712,8 +713,8 @@ public class StockCommands {
             UUID token = UUID.randomUUID();
             BankWith.authorized.add(token);
             String transferStr = StringMan.getString(transfer);
-            String transferCmd = "!transfer " + receiver + " " + transferStr + " #ignore -f -g:" + token;
-            String dmCmd = "!dm " + sender.getNationUrl() + " 'Your withdrawal of `" + transferStr + "` has been processed'";
+            String transferCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer " + receiver + " " + transferStr + " #ignore -f -g:" + token;
+            String dmCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "dm " + sender.getNationUrl() + " 'Your withdrawal of `" + transferStr + "` has been processed'";
             String command = transferCmd + "\n" + dmCmd;
             DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, command);
 

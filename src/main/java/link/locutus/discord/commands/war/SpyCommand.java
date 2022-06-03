@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.pnw.DBNation;
@@ -28,7 +29,7 @@ public class SpyCommand extends Command {
 
     @Override
     public String help() {
-        return "!spy <nation> [spies-used]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spy <nation> [spies-used]";
     }
 
     @Override
@@ -47,9 +48,9 @@ public class SpyCommand extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `!verify`";
+        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
         if (args.size() < 1 || args.size() > 3) {
-            return "Usage: `!spy <nation-link> [num-used] [safety]`";
+            return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spy <nation-link> [num-used] [safety]`";
         }
 
         Integer nationId = DiscordUtil.parseNationId(args.get(0));

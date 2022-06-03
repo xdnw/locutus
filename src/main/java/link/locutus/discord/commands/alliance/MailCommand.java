@@ -30,7 +30,7 @@ public class MailCommand extends Command implements Noformat {
 
     @Override
     public String help() {
-        return "`!mail <nation> <subject> <message...>` or `!mail <leader> <message-url> <message...>`";
+        return "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "mail <nation> <subject> <message...>` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "mail <leader> <message-url> <message...>`";
     }
 
     @Override
@@ -98,12 +98,12 @@ public class MailCommand extends Command implements Noformat {
 
 
             Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-            if (nationId == null) return "Invalid Key `!KeyStore API_KEY`";
+            if (nationId == null) return "Invalid Key `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
             DBNation sender = DBNation.byId(nationId);
 
             if (!flags.contains('f')) {
                 String title = "Send " + nations.size() + " messages";
-                String pending = "!pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()).replaceFirst(" ", " -f ");
+                String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()).replaceFirst(" ", " -f ");
 
                 Set<Integer> alliances = new LinkedHashSet<>();
                 for (DBNation nation : nations) alliances.add(nation.getAlliance_id());

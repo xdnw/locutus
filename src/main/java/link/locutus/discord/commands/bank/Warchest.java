@@ -39,7 +39,7 @@ public class Warchest extends Command {
 
     @Override
     public String help() {
-        return "!warchest <*|nations|tax_url> <resources> <note>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warchest <*|nations|tax_url> <resources> <note>";
     }
 
     @Override

@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -32,11 +33,11 @@ public class Runall extends Command implements Noformat {
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         String msg = DiscordUtil.trimContent(event.getMessage().getContentRaw());
-        msg = msg.replaceAll("!runall !", "");
-        String[] split = msg.split("\\r?\\n!");
+        msg = msg.replaceAll(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "runall " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX, "");
+        String[] split = msg.split("\\r?\\n" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX);
         for (int i = 0; i < split.length; i++) {
-            String cmd = "!" + split[i];
-            if (cmd.toLowerCase().startsWith("!runall")) continue;
+            String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + split[i];
+            if (cmd.toLowerCase().startsWith(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "runall")) continue;
             Message message = new DelegateMessage(event.getMessage()) {
                 @Nonnull
                 @Override

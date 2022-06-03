@@ -3,6 +3,7 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -28,7 +29,7 @@ public class EditAlliance extends Command {
 
     @Override
     public String help() {
-        return "!editalliance [attr] [value]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "editalliance [attr] [value]";
     }
 
     @Override

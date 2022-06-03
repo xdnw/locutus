@@ -1,36 +1,51 @@
 package link.locutus.discord.apiv1.enums;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import it.unimi.dsi.fastutil.objects.Object2ByteArrayMap;
+import it.unimi.dsi.fastutil.objects.Object2ByteMap;
+import it.unimi.dsi.fastutil.objects.Object2ByteMaps;
+import org.checkerframework.checker.units.qual.A;
+
+import java.util.*;
 
 public enum AttackType {
-    GROUND(MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT),
-    VICTORY,
-    FORTIFY,
-    A_LOOT("Alliance Loot"),
-    AIRSTRIKE1("Airstrike Infrastructure", MilitaryUnit.AIRCRAFT), // infra
-    AIRSTRIKE2("Airstrike Soldiers", MilitaryUnit.AIRCRAFT, MilitaryUnit.SOLDIER),
-    AIRSTRIKE3("Airstrike Tanks", MilitaryUnit.AIRCRAFT, MilitaryUnit.TANK),
-    AIRSTRIKE4("Airstrike Money", MilitaryUnit.AIRCRAFT, MilitaryUnit.MONEY),
-    AIRSTRIKE5("Airstrike Ships", MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP),
-    AIRSTRIKE6("Dogfight", MilitaryUnit.AIRCRAFT), // airstrike aircraft
-    NAVAL(MilitaryUnit.SHIP),
-    PEACE,
-    MISSILE(MilitaryUnit.MISSILE),
-    NUKE(MilitaryUnit.NUKE),
+    GROUND(3, 10, MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT),
+    VICTORY(0, 0),
+    FORTIFY(3, 0),
+    A_LOOT("Alliance Loot", 0, 0),
+    AIRSTRIKE1("Airstrike Infrastructure", 4, 12, MilitaryUnit.AIRCRAFT), // infra
+    AIRSTRIKE2("Airstrike Soldiers", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.SOLDIER),
+    AIRSTRIKE3("Airstrike Tanks", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.TANK),
+    AIRSTRIKE4("Airstrike Money", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.MONEY),
+    AIRSTRIKE5("Airstrike Ships", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP),
+    AIRSTRIKE6("Dogfight", 4, 12, MilitaryUnit.AIRCRAFT), // airstrike aircraft
+    NAVAL(4, 14, MilitaryUnit.SHIP),
+    PEACE(0, 0),
+    MISSILE(8, 18, MilitaryUnit.MISSILE),
+    NUKE(12, 25, MilitaryUnit.NUKE),
     ;
 
     private final MilitaryUnit[] units;
     private final String name;
+    private final int mapUsed;
+    private final int resistanceIT;
 
-    AttackType(MilitaryUnit... units) {
-        this(null, units);
+    AttackType(int mapUsed, int resistanceIT, MilitaryUnit... units) {
+        this(null, mapUsed, resistanceIT, units);
     }
 
-    AttackType(String name, MilitaryUnit... units) {
+    AttackType(String name, int mapUsed, int resistanceIT, MilitaryUnit... units) {
         this.units = units;
         this.name = name == null ? name() : name;
+        this.mapUsed = mapUsed;
+        this.resistanceIT = resistanceIT;
+    }
+
+    public int getResistanceIT() {
+        return resistanceIT;
+    }
+
+    public int getMapUsed() {
+        return mapUsed;
     }
 
     public String getName() {

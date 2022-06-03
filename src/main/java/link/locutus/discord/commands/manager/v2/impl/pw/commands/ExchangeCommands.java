@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.ExchangeCategory;
 import link.locutus.discord.commands.stock.StockDB;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
@@ -68,12 +69,12 @@ public class ExchangeCommands {
         exchange.createRoles();
 
         GuildMessageChannel exchangeChannel = exchange.getChannel();
-        RateLimitUtil.queue(exchangeChannel.sendMessage("Company info: `$exchange description <info>`\n" +
-                "Company name: `$exchange name <name>`\n" +
-                "Officers: `$exchange promote <user> <MEMBER|OFFICER|HEIR|LEADER>`\n" +
-                "Charter: `$exchange charter <doc-url>`\n" +
-                "Website: `$exchange website <url>`\n" +
-                "Color Roles: `$exchange color <rank> <color>`\n"
+        RateLimitUtil.queue(exchangeChannel.sendMessage("Company info: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange description <info>`\n" +
+                "Company name: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange name <name>`\n" +
+                "Officers: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange promote <user> <MEMBER|OFFICER|HEIR|LEADER>`\n" +
+                "Charter: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange charter <doc-url>`\n" +
+                "Website: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange website <url>`\n" +
+                "Color Roles: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange color <rank> <color>`\n"
         ));
 
         StringBuilder help = new StringBuilder("Created exchange: `" + symbol.toUpperCase() + "`. To have it listed on the exchange please complete the following:\n");
@@ -216,7 +217,7 @@ public class ExchangeCommands {
     public String owner(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation newOwner, @Switch('f') boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         User user = newOwner.getUser();
-        if (user == null) return newOwner.getNation() + " has not used `!verify`";
+        if (user == null) return newOwner.getNation() + " has not used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
 
         if (!force) {
             String title = "Transfer ownership to: " + newOwner.getNation() + " | " + newOwner.getAlliance();

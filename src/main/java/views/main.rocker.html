@@ -1,0 +1,6 @@
+@args (String title, RockerBody content)
+@views.main_head.template(title, null)
+@if(content != null) {
+    @content
+}
+@views.main_foot.template()

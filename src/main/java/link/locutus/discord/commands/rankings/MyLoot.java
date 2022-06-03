@@ -2,6 +2,7 @@ package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -34,7 +35,7 @@ public class MyLoot extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1 || !MathMan.isInteger(args.get(0))) return usage(event);
-        if (me == null) return "Please use `!validate`";
+        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
         return parent.onCommand(event, guild, author, me, new ArrayList<>(Arrays.asList(me.getNationUrl(), "*", args.get(0))), flags);
     }
 }

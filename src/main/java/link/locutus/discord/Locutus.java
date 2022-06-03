@@ -965,10 +965,10 @@ public final class Locutus extends ListenerAdapter {
         if (prefix) raw = raw.substring(1);
         boolean success = false;
 
-        String[] split = raw.split("\\r?\\n(?=[!|$])");
+        String[] split = raw.split("\\r?\\n(?=[" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "|" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "])");
         for (String cmd : split) {
             Command cmdObject = null;
-            boolean legacy = cmd.charAt(0) == '!';
+            boolean legacy = cmd.charAt(0) == Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.charAt(0);
             if (legacy) {
                 String cmdLabel = cmd.split(" ")[0].substring(1);
                 cmdObject = commandManager.getCommandMap().get(cmdLabel.toLowerCase());

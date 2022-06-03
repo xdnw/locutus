@@ -2,6 +2,7 @@ package link.locutus.discord.util.task.roles;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -415,7 +416,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         if (!isRegistered && !autoAll) {
             if (registeredRole == null) {
-                output.accept("No registered role exists. Please create one on discord, then use `!AliasRole REGISTERED @rolename`");
+                output.accept("No registered role exists. Please create one on discord, then use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "AliasRole REGISTERED @rolename`");
             } else {
                 output.accept(member.getEffectiveName() + " is NOT registered");
             }

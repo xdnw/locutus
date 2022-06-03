@@ -2,6 +2,7 @@ package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
@@ -29,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 public class WarSheet extends Command {
     @Override
     public String help() {
-        return "!" + getClass().getSimpleName() + " <allies> <enemies> [time]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <allies> <enemies> [time]";
     }
 
     @Override

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -32,7 +33,7 @@ public class Offshore extends Command {
 
     @Override
     public String help() {
-        return "!offshore <alliance-url> [aa-warchest] [#note]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "offshore <alliance-url> [aa-warchest] [#note]";
     }
 
     @Override
@@ -78,7 +79,7 @@ public class Offshore extends Command {
             Set<Integer> offshores = db.getCoalition("offshore");
             to = PnwUtil.parseAllianceId(args.get(0));
             if (to == null) return "Invalid alliance: " + args.get(0);
-            if (!offshores.contains(to)) return "Please add the offshore using `!setcoalition " + to + " offshore";
+            if (!offshores.contains(to)) return "Please add the offshore using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition " + to + " offshore";
         }
 
         Integer finalTo = to;

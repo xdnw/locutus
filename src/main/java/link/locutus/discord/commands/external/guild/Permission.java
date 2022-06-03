@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -25,7 +26,7 @@ public class Permission extends Command {
 
     @Override
     public String help() {
-        return "!permission <command> <value> [guild]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "permission <command> <value> [guild]";
     }
 
     @Override
@@ -48,7 +49,7 @@ public class Permission extends Command {
             }
         }
         if (cmd == null) {
-            return "Invalid cmd: `" + args.get(0) + "`" + ". For a list of commands use `!?`";
+            return "Invalid cmd: `" + args.get(0) + "`" + ". For a list of commands use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "?`";
         }
         GuildDB db;
         if (args.size() >= 3) {

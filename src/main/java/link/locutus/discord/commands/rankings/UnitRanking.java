@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import com.google.common.collect.BiMap;
@@ -22,7 +23,7 @@ public class UnitRanking extends Command {
     }
     @Override
     public String help() {
-        return "!PlaneRanking <alliances|coalition> <unit>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "PlaneRanking <alliances|coalition> <unit>";
     }
 
     @Override

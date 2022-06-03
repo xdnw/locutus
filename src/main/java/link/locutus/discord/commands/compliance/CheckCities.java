@@ -3,6 +3,7 @@ package link.locutus.discord.commands.compliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.pnw.DBNation;
@@ -80,7 +81,7 @@ public class CheckCities extends Command {
         }
 
         if (nations.isEmpty()) {
-            return "No nations found for: `" + args.get(0) + "`" + ". Have they used `!register` ?";
+            return "No nations found for: `" + args.get(0) + "`" + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "register` ?";
         }
 
         int allianceId = -1;
@@ -179,6 +180,6 @@ public class CheckCities extends Command {
     }
 
     private void createEmbed(DBNation nation, MessageReceivedEvent event, int failed, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult, Integer page) {
-        IACheckup.createEmbed(event.getChannel(), event.getMessage(), "!Checkup " + nation.getNation_id(), nation, auditResult, page);
+        IACheckup.createEmbed(event.getChannel(), event.getMessage(), Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "Checkup " + nation.getNation_id(), nation, auditResult, page);
     }
 }

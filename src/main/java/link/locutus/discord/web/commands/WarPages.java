@@ -5,6 +5,7 @@ import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.CounterStat;
@@ -175,7 +176,7 @@ public class WarPages {
             return TimeUtil.secToTime(TimeUnit.MINUTES, f.getNation(false).getActive_m());
         });
         table.addColumn("actions", false, false, f -> {
-            String cmd = "$autocounter " + f.attacker_id;
+            String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "autocounter " + f.attacker_id;
             String button = "<button cmd=\"" + cmd + "\" type=\"button\" class=\"btn-sm btn-primary\">Autocounter</button>";
             return button;
         });

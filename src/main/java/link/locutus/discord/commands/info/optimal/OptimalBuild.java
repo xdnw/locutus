@@ -49,7 +49,7 @@ public class OptimalBuild extends Command {
 
     @Override
     public String help() {
-        return "!OptimalBuild [days] <json|city-url>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild [days] <json|city-url>";
     }
 
     @Override
@@ -61,9 +61,9 @@ public class OptimalBuild extends Command {
     public String desc() {
         return "Optimize a build for a city e.g.\n" +
                 "For 30 days:" +
-                " - `!OptimalBuild 30 " + Settings.INSTANCE.PNW_URL() + "/city/id=XXXX`\n" +
+                " - `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild 30 " + Settings.INSTANCE.PNW_URL() + "/city/id=XXXX`\n" +
                 "For an indefinite time span:\n" +
-                " - `!OptimalBuild " + Settings.INSTANCE.PNW_URL() + "/city/id=XXXX`\n" +
+                " - `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild " + Settings.INSTANCE.PNW_URL() + "/city/id=XXXX`\n" +
                 "To specify an MMR, add e.g. `mmr=5050`\n" +
                 "To specify a continent, add e.g. `continent=australia`\n" +
                 "To specify an age (int days), add e.g. `age=150`\n" +
@@ -79,7 +79,7 @@ public class OptimalBuild extends Command {
                 "For radiation. `radiation=123`\n" +
                 "To specify a tax rate, use `tax=25/25`" +
                 "With an exported build:\n" +
-                "```!OptimalBuild 30 {\n" +
+                "```" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild 30 {\n" +
                 "    \"infra_needed\": 3850,\n" +
                 "    \"imp_total\": 77,\n" +
                 "    \"imp_coalpower\": 0,\n" +
@@ -120,7 +120,7 @@ public class OptimalBuild extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use `!validate`";
+            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
         }
         if (me.getAlliance_id() == 4648) return "No permission for this command";
         Integer days = null;
@@ -278,7 +278,7 @@ public class OptimalBuild extends Command {
                 if (content.contains("{")) {
                     return "Invalid city export json: ```" + content + "```";
                 } else if (args.size() >= 2 && MathMan.isInteger(args.get(1))) {
-                    return "Did you mean: `!OptimalBuild " + args.get(1) + " " + args.get(0) + "` ?";
+                    return "Did you mean: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild " + args.get(1) + " " + args.get(0) + "` ?";
                 } else {
                     return usage(event);
                 }
@@ -506,7 +506,7 @@ public class OptimalBuild extends Command {
         json = json.replaceAll(" ", "");
 
         String emoji = "\uD83D\uDCB8";
-        String command = "!grant %user% " + json;
+        String command = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant %user% " + json;
 
         if (true) {
             result.append(" Disease: " + optimized.getDisease(hasProject)).append("\n");

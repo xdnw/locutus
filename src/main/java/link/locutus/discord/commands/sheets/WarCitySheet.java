@@ -31,7 +31,7 @@ public class WarCitySheet extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Locutus.imp().getGuildDB(server).isValidAlliance() && Roles.MILCOM.has(user, server);
+        return Roles.MILCOM.has(user, server);
     }
 
     @Override

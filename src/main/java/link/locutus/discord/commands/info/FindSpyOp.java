@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBSpyUpdate;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -36,7 +37,7 @@ public class FindSpyOp extends Command {
     @Override
     public String desc() {
         return "See who was online at the time of a spy op e.g.\n" +
-                "`!findspyop \"08/05 04:33 pm\" 50`";
+                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "findspyop \"08/05 04:33 pm\" 50`";
     }
 
     @Override

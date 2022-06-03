@@ -2,6 +2,7 @@ package link.locutus.discord.commands.account.question;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -88,7 +89,7 @@ public class QuestionCommand<T extends Question> extends Command { private final
 
         List<String> reactions = new ArrayList<>();
         String[] options = question.getOptions();
-        String cmdBase = "!interview " + (index) + " " + author.getAsMention();
+        String cmdBase = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "interview " + (index) + " " + author.getAsMention();
 
         if (options.length == 0) {
             cmdBase += " Y";

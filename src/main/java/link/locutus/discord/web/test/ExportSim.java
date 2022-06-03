@@ -2,8 +2,8 @@ package link.locutus.discord.web.test;
 
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.battle.SimulatedWarNode;
-import link.locutus.discord.util.battle.WarNation;
+import link.locutus.discord.util.battle.sim.SimulatedWarNode;
+import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;

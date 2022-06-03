@@ -99,7 +99,7 @@ public class MailTargets extends Command {
         if (args.size() >= 4) {
             header = args.get(3);
 
-            if (!Roles.MAIL.has(author, guild)) return "You need the MAIL role on discord (see `!aliasRole`) to add the custom message: `" + header + "`";
+            if (!Roles.MAIL.has(author, guild)) return "You need the MAIL role on discord (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole`) to add the custom message: `" + header + "`";
         }
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
@@ -235,12 +235,12 @@ public class MailTargets extends Command {
 
         String key = keys[0];
         Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-        if (nationId == null) return "Invalid `!KeyStore API_KEY`";
+        if (nationId == null) return "Invalid `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
         DBNation sender = DBNation.byId(nationId);
 
         if (!flags.contains('f')) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
-            String pending = "!pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
+            String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : mailTargets.keySet()) alliances.add(nation.getAlliance_id());

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -29,7 +30,7 @@ public class LandCost extends Command {
     @Override
     public String desc() {
         return "Calculate the costs of purchasing land (from current to max) e.g.\n" +
-                "`!LandCost 250 1000`\n" +
+                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "LandCost 250 1000`\n" +
                 "Add e.g. `cities=5` to specify city count";
     }
 

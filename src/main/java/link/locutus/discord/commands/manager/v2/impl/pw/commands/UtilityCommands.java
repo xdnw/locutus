@@ -37,6 +37,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.battle.sim.AttackTypeNode;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
@@ -62,6 +63,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.VoiceChannel;
+import views.grant.nation;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -924,11 +926,11 @@ public class UtilityCommands {
         }
 
         if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: `!KeyStore AutoRole`");
+            response.append("\n - AutoRole disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoRole`");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
         if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: `!KeyStore AutoNick`");
+            response.append("\n - AutoNick disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoNick`");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
         return response.toString();
@@ -941,17 +943,17 @@ public class UtilityCommands {
 
         DBNation nation = DiscordUtil.getNation(member.getUser());
         Consumer<String> out = s -> RateLimitUtil.queue(channel.sendMessage(s));
-        if (nation == null) out.accept("That nation isn't registered: `!verify`");
+        if (nation == null) out.accept("That nation isn't registered: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`");
         task.autoRole(member, out);
 
         StringBuilder response = new StringBuilder("Done!");
 
         if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: `!KeyStore AutoRole`");
+            response.append("\n - AutoRole disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoRole`");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
         if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: `!KeyStore AutoNick`");
+            response.append("\n - AutoNick disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoNick`");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
         return response.toString();
@@ -959,7 +961,7 @@ public class UtilityCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON,Roles.FOREIGN_AFFAIRS}, any=true)
     @Command(desc = "Create an alliance sheet.\n" +
-            "See `$placeholders Alliance` for a list of placeholders")
+            "See `{prefix}placeholders Alliance` for a list of placeholders")
     @WhitelistPermission
     public String AllianceSheet(@Me Guild guild, @Me MessageChannel channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
                                 @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException, IllegalAccessException {
@@ -1092,9 +1094,23 @@ public class UtilityCommands {
         return disclaimer;
     }
 
-    @Command
+    @Command(desc = "Return number of turns a nation has left of beige color bloc")
     public String beigeTurns(DBNation nation) {
         return nation.getBeigeTurns() + " turns";
+    }
+
+    @Command(desc = "Return number of turns a nation has left of beige color bloc", aliases = {"fastBeige", "quickestBeige", "quickBeige", "fastestBeige"})
+    public String quickestBeige(@Range(min=1, max=100) int resistance, @Switch('g') boolean noGround, @Switch('s') boolean noShip, @Switch('a') boolean noAir, @Switch('m') boolean noMissile, @Switch('n') boolean noNuke) {
+        if (resistance > 1000 || resistance < 1) throw new IllegalArgumentException("Resistance must be between 1 and 100");
+        List<AttackType> allowed = new ArrayList<>(List.of(AttackType.values));
+        if (noGround) allowed.removeIf(f -> f == AttackType.GROUND);
+        if (noShip) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.SHIP);
+        if (noAir) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.AIRCRAFT);
+        if (noMissile) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.MISSILE);
+        if (noNuke) allowed.removeIf(f -> f.getUnits().length > 0 && f.getUnits()[0] == MilitaryUnit.NUKE);
+        AttackTypeNode best = AttackTypeNode.findQuickest(allowed, resistance);
+
+        return "Result: " + best.toString() + " MAP: " + best.map + " resistance:" + best.resistance;
     }
 
     @Command(desc = "Get info about your own nation")
@@ -1109,7 +1125,7 @@ public class UtilityCommands {
             "Use `-p` to list discord tag (ping)\n" +
             "Use `-i` to list individual nation info\n" +
             "Use `-c` to list individual nation channels" +
-            "e.g. `$who @borg`")
+            "e.g. `{prefix}who @borg`")
     public String who(@Me Message message, @Me Guild guild, @Me MessageChannel channel, @Me User author,
                       Set<DBNation> nations,
                       @Default() NationPlaceholder sortBy,
@@ -1127,7 +1143,7 @@ public class UtilityCommands {
         boolean isAdmin = Roles.ADMIN.hasOnRoot(author);
 
         if (nations.isEmpty()) {
-            return "Not found: `$who <user>`";
+            return "Not found: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "who <user>`";
         }
         String arg0;
         String title;
@@ -1140,10 +1156,10 @@ public class UtilityCommands {
             Message msg = nation.toCard(channel, false, showMoney);
 
             List<String> commands = new ArrayList<>();
-            commands.add("!multi " + nation.getNation_id());
-            commands.add("!wars " + nation.getNation_id());
-            commands.add("!revenue " + nation.getNation_id());
-            commands.add("!unithistory " + nation.getNation_id() + " <unit>");
+            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "multi " + nation.getNation_id());
+            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "wars " + nation.getNation_id());
+            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "revenue " + nation.getNation_id());
+            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unithistory " + nation.getNation_id() + " <unit>");
         } else {
             int allianceId = -1;
             for (DBNation nation : nations) {
@@ -1348,12 +1364,12 @@ public class UtilityCommands {
         StringBuilder result = new StringBuilder("Sheet: " + sheet.getURL() +
                 "\nTotal: `" + PnwUtil.resourcesToString(total) + "`" +
                 "\nWorth: $" + MathMan.format(PnwUtil.convertedTotal(total)));
-        result.append("\n\nUse `!disburse <sheet> #deposit`");
-        result.append("\nOr press \uD83C\uDFE6 to run `!addbalance <sheet> #deposit`");
+        result.append("\n\nUse `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "disburse <sheet> #deposit`");
+        result.append("\nOr press \uD83C\uDFE6 to run `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance <sheet> #deposit`");
 
         String title = "Nation Interest";
         String emoji = "\uD83C\uDFE6";
-        String cmd = "!addbalance " + sheet.getURL() + " #deposit";
+        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + sheet.getURL() + " #deposit";
         DiscordUtil.createEmbedCommand(channel, title, result.toString(), emoji, cmd);
 
         return null;
@@ -1371,11 +1387,11 @@ public class UtilityCommands {
         if (!dnr) {
             title = ("do NOT raid " + nation.getNation());
         }  else if (nation.getPosition() > 1 && nation.getActive_m() < 10000) {
-            title = ("You CAN raid " + nation.getNation() + " (however they are an active member of an alliance), see also: `!counterstats`");
+            title = ("You CAN raid " + nation.getNation() + " (however they are an active member of an alliance), see also: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counterstats`");
         } else if (nation.getPosition() > 1) {
-            title =  "You CAN raid " + nation.getNation() + " (however they are a member of an alliance), see also: `!counterstats`";
+            title =  "You CAN raid " + nation.getNation() + " (however they are a member of an alliance), see also: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counterstats`";
         } else if (nation.getAlliance_id() != 0) {
-            title =  "You CAN raid " + nation.getNation() + ", see also: `!counterstats`";
+            title =  "You CAN raid " + nation.getNation() + ", see also: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counterstats`";
         } else {
             title =  "You CAN raid " + nation.getNation();
         }

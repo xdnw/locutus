@@ -90,13 +90,13 @@ public class DiscordCommands {
     }
 
     @Command(desc="Generate a card which runs a command when users react to it.\nPut commands inside \"quotes\".\n" +
-            "Prefix a command with a #channel e.g. `\"#channel $embedcommand\"` to have the command output go there\n\n" +
+            "Prefix a command with a #channel e.g. `\"#channel {prefix}embedcommand\"` to have the command output go there\n\n" +
             "Prefix the command with:" +
-            "`~$command` to remove the user's reaction upon use and keep the card\n" +
-            "`_$command` to remove ALL reactions upon use and keep the card\n" +
-            "`.$command` to keep the card upon use\n\n" +
+            "`~{prefix}command` to remove the user's reaction upon use and keep the card\n" +
+            "`_{prefix}command` to remove ALL reactions upon use and keep the card\n" +
+            "`.{prefix}command` to keep the card upon use\n\n" +
             "Example:\n" +
-            "`$embed 'Some Title' 'My First Embed' '~$embedsay Hello {nation}' '$embedsay Goodbye {nation}'`",
+            "`{prefix}embed 'Some Title' 'My First Embed' '~{prefix}embedsay Hello {nation}' '{prefix}embedsay Goodbye {nation}'`",
     aliases = {"card", "embed"})
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String card(@Me MessageChannel channel, String title, String body, @TextArea List<String> commands) {
@@ -222,7 +222,7 @@ public class DiscordCommands {
             return "No embed commands found";
         }
 
-        String cmd = "!embed " + "\"" + title + "\" \"" + desc + "\" \"" + StringMan.join(reactions.values(), "\" \"") + "\"";
+        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "embed " + "\"" + title + "\" \"" + desc + "\" \"" + StringMan.join(reactions.values(), "\" \"") + "\"";
         return "```" + cmd + "```";
     }
 
@@ -300,7 +300,7 @@ public class DiscordCommands {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command `!validate " + nation.getNation_id() + "` again";
+                "5. Run the command `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate " + nation.getNation_id() + "` again";
 
         long id = user.getIdLong();
         boolean checkId = false;
@@ -313,7 +313,7 @@ public class DiscordCommands {
                         "2. Scroll down to where it says Discord Username:\n" +
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
-                        "5. Run the command `!validate " + nation.getNation_id() + "` again";
+                        "5. Run the command `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate " + nation.getNation_id() + "` again";
                 checkId = true;
             }
         }

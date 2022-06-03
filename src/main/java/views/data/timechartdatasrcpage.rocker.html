@@ -1,0 +1,8 @@
+@import com.google.gson.JsonObject
+
+@args (String title, JsonObject data, boolean time)
+@views.main.template(title) -> {
+<div class="bg-white container mt-3 rounded shadow py-1">
+@views.data.timechartdatasrc.template(title, data, time)
+</div>
+}

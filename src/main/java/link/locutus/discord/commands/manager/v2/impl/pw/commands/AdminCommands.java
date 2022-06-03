@@ -305,7 +305,7 @@ public class AdminCommands {
                 response.append('\n');
             }
             response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Usage: `$aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
+            response.append("Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
             return response.toString().trim();
         }
 
@@ -313,7 +313,7 @@ public class AdminCommands {
 
         db.addRole(locutusRole, discordRole.getIdLong());
         return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + "\n" +
-                "To unregister, use `$unregisterRole <locutusRole>`";
+                "To unregister, use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "unregisterRole <locutusRole>`";
     }
 
     public String apiUsageStats(PoliticsAndWarV2 api) {
@@ -373,7 +373,7 @@ public class AdminCommands {
         }
         StringBuilder response = new StringBuilder();
         for (Map.Entry<String, String> e : failed.entrySet()) {
-            response.append(e.getKey() + ": " + e.getValue());
+            response.append(e.getKey() + ": " + e.getValue() + "\n");
         }
         for (Map.Entry<String, ApiKeyDetails> e : success.entrySet()) {
             String key = e.getKey();
@@ -381,12 +381,13 @@ public class AdminCommands {
             int natId = record.getNation().getId();
             DBNation nation = DBNation.byId(natId);
             if (nation != null) {
-                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAlliance() + " | " + nation.getPosition());
+                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAlliance() + " | " + nation.getPosition() + "\n");
             } else {
-                response.append(e.getKey() + ": " + e.getValue());
+                response.append(e.getKey() + ": " + e.getValue() + "\n");
             }
         }
-        return response + "\nDone!";
+        System.out.println(response); // keep
+        return "Done (see console)";
     }
 
     @Command()

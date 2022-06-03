@@ -208,7 +208,7 @@ public class UnsortedCommands {
 
             List<Transaction2> transfers = entry.getValue();
             String title = inflow ? name + " > " + selfName : selfName + " > " + name;
-            String followCmd = "!inflows " + url + " " + timestamp;
+            String followCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inflows " + url + " " + timestamp;
 
             StringBuilder message = new StringBuilder();
 
@@ -225,7 +225,7 @@ public class UnsortedCommands {
 
             message.append(PnwUtil.resourcesToString(totals));
 
-            String infoCmd = "!pw-who " + url;
+            String infoCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pw-who " + url;
 //            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
             result.append(title + ": " + message).append("\n");
         }

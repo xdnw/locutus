@@ -1,0 +1,6 @@
+@import com.google.gson.JsonObject
+
+@args (String title, JsonObject data, boolean stacked)
+<canvas class="locutus-barchart" data-src="@data" title="@title" @if (stacked) {
+stacked
+}></canvas>

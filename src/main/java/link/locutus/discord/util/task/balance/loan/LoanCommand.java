@@ -2,6 +2,7 @@ package link.locutus.discord.util.task.balance.loan;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.pnw.DBNation;
@@ -157,7 +158,7 @@ public class LoanCommand extends Command {
                 case MISSED_PAYMENT:
                 case DEFAULTED:
             }
-            reactions.put(status.emoji, "~!updateloan " + loan.loanId + " " + status.name());
+            reactions.put(status.emoji, "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "updateloan " + loan.loanId + " " + status.name());
             body.append("\nPress " + status.emoji + " to mark as " + status.name());
         }
 

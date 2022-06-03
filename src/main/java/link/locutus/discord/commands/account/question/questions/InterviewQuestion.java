@@ -48,7 +48,7 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    VERIFY("please use `!verify <nation>` or tell us what your nation is so we can register you.", true) {
+    VERIFY("please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify <nation>` or tell us what your nation is so we can register you.", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) {
             return me != null;
@@ -107,17 +107,17 @@ public enum InterviewQuestion implements Question {
 //        }
 //    },
 
-    TAXES("A portion of your city income will be deposited into the alliance bank via taxes, and included in your personal `!deposits` (updated weekly)\n" +
+    TAXES("A portion of your city income will be deposited into the alliance bank via taxes, and included in your personal `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits` (updated weekly)\n" +
             "We want to provide an efficient centralized economy and can send you resources to run/grow your nation.\n" +
             "Note: your profit from raiding or trading is never taxed.\n\n" +
-            "Are you fine with with the default rate of 50%? (Note: You can change it at any time using `!SetTaxRate`)", false, "Y", "N") {
+            "Are you fine with with the default rate of 50%? (Note: You can change it at any time using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetTaxRate`)", false, "Y", "N") {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
                 Role ia = Roles.INTERVIEWER.toRole(guild);
                 if (ia != null) {
                     String mention = author.getAsMention();
-                    String msg = "Please use `!SetTaxRate " + mention + " 25/25` or `!SetTaxRate " + mention + " 50/50`";
+                    String msg = "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetTaxRate " + mention + " 25/25` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetTaxRate " + mention + " 50/50`";
                     RateLimitUtil.queue(channel.sendMessage(msg));
                 }
             }
@@ -320,7 +320,7 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    TARGETS("Type in `!raid` (or use the card in <#{guild.raid_info_channel}>) to get some targets to attack. You can declare FIVE offensive wars at a time.\n\n" +
+    TARGETS("Type in `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid` (or use the card in <#{guild.raid_info_channel}>) to get some targets to attack. You can declare FIVE offensive wars at a time.\n\n" +
             "You can checkout the raiding guide when you have time: <https://docs.google.com/document/d/1OAbR_pwza9bomKmJr7bjbRq40EPvbHmoj1_KdQM0GZs/edit>\n\n" +
             "tl;dr since you just have soldiers, do ground attacks. Inactive enemies don't generally fight back", true) {
         @Override
@@ -359,7 +359,7 @@ public enum InterviewQuestion implements Question {
     },
 
     CHECK_DEPOSITS("You can check your deposits using:\n" +
-            "!deposits <@{userid}>\n\n" +
+            Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits <@{userid}>\n\n" +
             "> We value your deposits using current market prices. You can withdraw any type of resource so long as your total is positive\n" +
             "> Likewise, debt can be repaid with any resource or $$.\n\n" +
             "Try checking your deposits now", true) {
@@ -431,9 +431,9 @@ public enum InterviewQuestion implements Question {
 
     SPY_COMMAND("For intel, we also have tools to estimate enemy spy count and resources without wasting a spy op. " +
             "Try using the commands e.g.:\n" +
-            "`!spies https://politicsandwar.com/nation/id=6`\n" +
+            "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies https://politicsandwar.com/nation/id=6`\n" +
             "and\n" +
-            "`!loot https://politicsandwar.com/nation/id=6`\n\n*note: loot estimates are a work in progress*", true) {
+            "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "loot https://politicsandwar.com/nation/id=6`\n\n*note: loot estimates are a work in progress*", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_SPIES) != null && me.getMeta(NationMeta.INTERVIEW_LOOT) != null;
@@ -514,9 +514,9 @@ public enum InterviewQuestion implements Question {
             Integer cityId = cities.keySet().iterator().next();
             String cityUrl = PnwUtil.getCityUrl(cityId);
             String mmrStr = StringMan.join(mmr, "");
-            response.append("The `!OptimalBuild <city>` command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
-                    "`!OptimalBuild " + cityUrl + " infra=" + maxInfra + " mmr=" + mmrStr + "`\n\n" +
-                    "*Note: For help on using the command, use `!? optimalbuild`, you can also use the card in <#695194325193195580>");
+            response.append("The `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild <city>` command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
+                    "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "OptimalBuild " + cityUrl + " infra=" + maxInfra + " mmr=" + mmrStr + "`\n\n" +
+                    "*Note: For help on using the command, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "? optimalbuild`, you can also use the card in <#695194325193195580>");
 
             return response.toString();
         }
@@ -535,7 +535,7 @@ public enum InterviewQuestion implements Question {
     },
 
     CHECKUP("You can use the the command:\n" +
-            "> !checkup %user%\n" +
+            "> " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkup %user%\n" +
             "To perform an automated audit on yourself", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
@@ -547,12 +547,12 @@ public enum InterviewQuestion implements Question {
             "https://politicsandwar.com/nation/projects/\n" +
             "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
             "To see which projects the bot recommends (for a 120 day period), use:\n" +
-            "> !roi %user% 120\n\n" +
+            "> " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "roi %user% 120\n\n" +
             "We recommend getting two resource projects after your 10th city", false),
 
     BEIGE_LOOT("At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +
             "To list raid targets currently on beige, use:\n" +
-            "> `!raid * 15 -beige`", true) {
+            "> `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid * 15 -beige`", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) != null;
@@ -561,19 +561,19 @@ public enum InterviewQuestion implements Question {
 
 
     RAID_TURN_CHANGE("Let's declare on a target as they come off beige:\n" +
-            "1. Use e.g. `!raid * 15 -beige<12` to find a target that ends beige in the next 12 turns\n" +
-            "2. Set a reminder on your phone, or on discord using `$beigeReminder`\n" +
+            "1. Use e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid * 15 -beige<12` to find a target that ends beige in the next 12 turns\n" +
+            "2. Set a reminder on your phone, or on discord using `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeReminder`\n" +
             "3. Get the war declaration page ready, and declare DURING turn change\n\n" +
             "*Note:*\n" +
             " - *If you don't get them on your first shot, try again later*\n" +
             " - *If you can't be active enough, just hit any gray nation during turn change*\n\n" +
             "See also:\n" +
-            " - `$removeBeigeReminder`\n" +
-            " - `$beigeReminders`\n" +
-            " - `$setBeigeAlertRequiredStatus`\n" +
-            " - `$setBeigeAlertMode`\n" +
-            " - `$setBeigeAlertRequiredLoot`\n" +
-            " - `$setBeigeAlertScoreLeeway`", true) {
+            " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "removeBeigeReminder`\n" +
+            " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeReminders`\n" +
+            " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertRequiredStatus`\n" +
+            " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertMode`\n" +
+            " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertRequiredLoot`\n" +
+            " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertScoreLeeway`", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
@@ -602,19 +602,19 @@ public enum InterviewQuestion implements Question {
     },
 
     PLAN_A_RAID_WITH_FRIENDS("Raiding is always better with friends. Find a good raid target. Use the command\n" +
-            "> `!counter <nation>`\n" +
+            "> `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter <nation>`\n" +
             "And see who is online and in range to raid that person with you.", false) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             if (me.getMeta(NationMeta.INTERVIEW_COUNTER) == null) {
-                throw new IllegalArgumentException("**Please use `!counter`**\n\n" + getContent());
+                throw new IllegalArgumentException("**Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter`**\n\n" + getContent());
             }
             return true;
         }
     },
 
     CREATE_A_WAR_ROOM("War rooms are channels created to coordinate a war against an enemy target. They will be created automatically by the bot against active enemies.\n" +
-            "To manually create a war room, use: `!WarRoom`", true) {
+            "To manually create a war room, use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarRoom`", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_WAR_ROOM) != null;

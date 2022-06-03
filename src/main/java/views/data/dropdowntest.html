@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://www.jqueryscript.net/demo/Searchable-Multi-select-jQuery-Dropdown/jquery.dropdown.js"></script>
+    <link rel="stylesheet" href="https://www.jqueryscript.net/demo/Searchable-Multi-select-jQuery-Dropdown/jquery.dropdown.css">
+</head>
+<body>
+<div class="demo">
+    <select style="display:none"  name="" multiple>
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="3" selected>Selected</option>
+        <option value="4" disabled>Disabled</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+    </select>
+</div>
+
+<script>
+$('.demo').dropdown({
+  // options here
+});
+</script>
+
+</body>
+</html>

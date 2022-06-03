@@ -18,21 +18,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.StockBinding;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.AttackCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.FunCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.LoanCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.StockCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
@@ -103,6 +89,7 @@ public class CommandManager2 {
         this.commands.registerCommands(new GrantCommands());
 
         this.commands.registerCommands(new TestCommands());
+//        this.commands.registerCommands(new UnsortedCommands());
 
         return this;
     }

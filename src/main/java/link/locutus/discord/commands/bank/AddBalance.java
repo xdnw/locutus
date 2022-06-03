@@ -3,6 +3,7 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.Alliance;
 import link.locutus.discord.pnw.DBNation;
@@ -57,7 +58,7 @@ public class AddBalance extends Command {
     }
 
     public String onCommand(Message message, MessageChannel channel, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `!verify`";
+        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
 
         if (args.isEmpty()) return usage(channel);
         String note = null;

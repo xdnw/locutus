@@ -309,10 +309,10 @@ public class GuildHandler {
 
         body.append("The first on the trigger, react with the " + emoji + " emoji");
 
-        String pending = "_!UpdateEmbed 'description:{description}\n" +
+        String pending = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'\n" +
-                "!interview " + author.getAsMention();
+                Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "interview " + author.getAsMention();
 
         DiscordUtil.createEmbedCommand(alertChannel, title, body.toString(), emoji, pending);
         if (mentionInterviewer) {
@@ -497,7 +497,7 @@ public class GuildHandler {
                     e.printStackTrace();
                 }
                 String emoji = "\u2705";
-                String pending = "_!UpdateEmbed 'description:{description}\n" +
+                String pending = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UpdateEmbed 'description:{description}\n" +
                         "\n" +
                         "Assigned to %user% in {timediff}'";
                 DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, pending);
@@ -713,7 +713,7 @@ public class GuildHandler {
         Set<Grant> grants = new HashSet<>();
 
         User user = nation.getUser();
-        if (user == null) throw new IllegalArgumentException("Nation is not verified: `!verify`");
+        if (user == null) throw new IllegalArgumentException("Nation is not verified: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`");
         Member member = getGuild().getMember(user);
         if (member == null) throw new IllegalArgumentException("There was an error verifying the nation");
 
@@ -1075,7 +1075,7 @@ public class GuildHandler {
             case UNIT:
                 throw new IllegalArgumentException("Units are not granted. Please get a warchest grant");
             case BUILD:
-                throw new IllegalArgumentException("Please use `!optimalbuild`");
+                throw new IllegalArgumentException("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "optimalbuild`");
                 // MMR_RAIDING:
                 // MMR_WARTIME:
                 // MMR_PEACE: c1-10=5001,c11+=5553
@@ -1178,7 +1178,7 @@ public class GuildHandler {
                 // disburse up to 5 days?
                 GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                 if (channel != null) {
-                    throw new IllegalArgumentException("Please use `!tr` or `!disburse` in " + channel.getAsMention() + " to request funds from your deposits");
+                    throw new IllegalArgumentException("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "tr` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "disburse` in " + channel.getAsMention() + " to request funds from your deposits");
                 }
                 throw new IllegalArgumentException("Please request resources in the resource request channel");
         }
@@ -1280,11 +1280,11 @@ public class GuildHandler {
 //                    case "#raw":
 //                    case "#tax":
 //                    case "#taxes":
-//                    case "!disperse":
-//                    case "!disburse":
+//                    case Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "disperse":
+//                    case Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "disburse":
 //                        currentMap = tax;
 //                        break;
-//                    case "!warchest":
+//                    case Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warchest":
 //                    case "#warchest":
 //                        if (!includeWarchest) continue;
 ////                        currentMap = warCost;
@@ -1384,13 +1384,13 @@ public class GuildHandler {
         AttackTypeBreakdown breakdown = parser.toBreakdown();
 
         String infoEmoji = "\uD83D\uDCC8";
-        String infoCommand = ".!warinfo " + war.toUrl();
+        String infoCommand = "." + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warinfo " + war.toUrl();
 
         String costEmoji = "\uD83D\uDCB8";
-        String costCommand = ".!WarCost " + war.toUrl();
+        String costCommand = "." + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarCost " + war.toUrl();
 
         String assignEmoji = "\u2705";
-        String assignCmd = ".!UpdateEmbed 'description:{description}\n" +
+        String assignCmd = "." + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'";
 
@@ -2098,12 +2098,12 @@ public class GuildHandler {
 
         //
         String warInfoEmoji = 0 + "\ufe0f\u20e3";
-        String warInfoCmd = "~!warinfo " + root.war_id;
+        String warInfoCmd = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warinfo " + root.war_id;
         String defInfoEmoji = 1 + "\ufe0f\u20e3";
-        String defInfoCmd = "~!warinfo " + defender.getNationUrl();
+        String defInfoCmd = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warinfo " + defender.getNationUrl();
 
         String emoji = "\u2705";
-        String pending = "_!UpdateEmbed 'description:{description}\n" +
+        String pending = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'";
         body.append("\npress " + emoji + " to assign yourself");
@@ -2393,7 +2393,7 @@ public class GuildHandler {
 
                     String title = "Approve Queued Transfer";
                     String body = db.generateEscrowedCard(receiver);
-                    String cmd = "$approveEscrowed " + receiver.getNationUrl() + " " + PnwUtil.resourcesToString(actualDeposits) + " " + PnwUtil.resourcesToString(actualDeposits);
+                    String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "approveEscrowed " + receiver.getNationUrl() + " " + PnwUtil.resourcesToString(actualDeposits) + " " + PnwUtil.resourcesToString(actualDeposits);
 
                     DiscordUtil.createEmbedCommand(channel, title, body, cmd);
                 }

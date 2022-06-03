@@ -149,7 +149,7 @@ public class IACommands {
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
-            return "No roles found. See `$addAssignableRoles`";
+            return "No roles found. See `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addAssignableRoles`";
         }
         assignable = new HashMap<>(assignable);
         if (!Roles.ADMIN.has(member)) {
@@ -181,8 +181,8 @@ public class IACommands {
         String value = GuildDB.Key.ASSIGNABLE_ROLES.toString(assignable);
         db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
 
-        return StringMan.getString(govRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via `$addRole` / `$removeRole`\n" +
-                " - To see a list of current mappings, use `!KeyStore ASSIGNABLE_ROLES`";
+        return StringMan.getString(govRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addRole` / `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "removeRole`\n" +
+                " - To see a list of current mappings, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ASSIGNABLE_ROLES`";
     }
 
     @Command(desc = "Remove permission from a role to add/remove roles from users (having manage roles perm on discord overrides this)")
@@ -211,11 +211,11 @@ public class IACommands {
         db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
 
         return response.toString() + "\n" +
-                " - To see a list of current mappings, use `!KeyStore ASSIGNABLE_ROLES`";
+                " - To see a list of current mappings, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ASSIGNABLE_ROLES`";
     }
 
     @Command(desc = "Add role to a user\n" +
-            "See: `$listAssignableRoles`")
+            "See: `{prefix}listAssignableRoles`")
     @RolePermission(value = {
             Roles.INTERNAL_AFFAIRS_STAFF,
             Roles.INTERNAL_AFFAIRS,
@@ -239,7 +239,7 @@ public class IACommands {
             }
         }
         if (!canAssign) {
-            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `$addAssignableRole`)";
+            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addAssignableRole`)";
         }
         if (member.getRoles().contains(addRole)) {
             return member + " already has " + addRole;
@@ -249,7 +249,7 @@ public class IACommands {
     }
 
     @Command(desc = "Remove a role to a user\n" +
-            "See: `$listAssignableRoles`")
+            "See: `{prefix}listAssignableRoles`")
     @RolePermission(value = {
             Roles.INTERNAL_AFFAIRS_STAFF,
             Roles.INTERNAL_AFFAIRS,
@@ -273,7 +273,7 @@ public class IACommands {
             }
         }
         if (!canAssign) {
-            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `$addAssignableRole`)";
+            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addAssignableRole`)";
         }
         if (!member.getRoles().contains(addRole)) {
             return member + " does not have " + addRole;
@@ -332,7 +332,7 @@ public class IACommands {
         RateLimitUtil.queue(channel.sendMessage("please wait..."));
         boolean result = new SimpleNationList(nations).updateSpies(false);
         if (!result) {
-            return "Could not update spies (see `!KeyStore API_KEY <key>`";
+            return "Could not update spies (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY <key>`";
         }
 
         long dayCutoff = TimeUtil.getDay() - 2;
@@ -636,7 +636,7 @@ public class IACommands {
             }
         }
 
-        response.append("\n\nTo assign a nation as your mentee, use `$mentee <nation>`");
+        response.append("\n\nTo assign a nation as your mentee, use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "mentee <nation>`");
         return response.toString();
     }
 
@@ -696,7 +696,7 @@ public class IACommands {
     }
 
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
-            "e.g. `$lootValueSheet #cities<10,#position>1,#active_m<2880,someAlliance`")
+            "e.g. `{prefix}lootValueSheet #cities<10,#position>1,#active_m<2880,someAlliance`")
     @WhitelistPermission
     @RolePermission(Roles.MILCOM)
     public String lootValueSheet(@Me GuildDB db, Set<DBNation> attackers, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -776,12 +776,12 @@ public class IACommands {
             keys = db.getOrThrow(GuildDB.Key.API_KEY);
         }
         Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-        if (nationId == null) return "Invalid `!KeyStore API_KEY`";
+        if (nationId == null) return "Invalid `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
         DBNation sender = DBNation.byId(nationId);
 
         if (!confirm) {
             String title = "Send " + nations.size() + " messages";
-            String pending = "!pending '" + title + "' " + DiscordUtil.trimContent(msgObj.getContentRaw()).replaceFirst(" ", " -f ");
+            String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(msgObj.getContentRaw()).replaceFirst(" ", " -f ");
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
@@ -825,8 +825,8 @@ public class IACommands {
 
     @Command(desc = "List or set your tax bracket.\n" +
             "Notes:\n" +
-            " - Internal tax rate affects what portion of taxes are not included in `!deposits` (typically used when 100/100 taxes)\n" +
-            " - Set the alliance internal tax rate with: `!KeyStore TAX_BASE` (retroactive)\n" +
+            " - Internal tax rate affects what portion of taxes are not included in `{prefix}deposits` (typically used when 100/100 taxes)\n" +
+            " - Set the alliance internal tax rate with: `{prefix}KeyStore TAX_BASE` (retroactive)\n" +
             " - This command is not retroactive and overrides the alliance internal taxrate", aliases = {"SetBracket", "SetTaxes", "SetTaxRate", "SetTaxBracket"})
     @RolePermission(Roles.MEMBER)
     @IsAlliance
@@ -836,7 +836,7 @@ public class IACommands {
 
         boolean isGov = Roles.ECON_LOW_GOV.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
         if (!isGov) {
-            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also `!KeyStore MEMBER_CAN_SET_BRACKET`)";
+            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore MEMBER_CAN_SET_BRACKET`)";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
         }
         if (internalRate != null && !isGov) {
@@ -991,7 +991,7 @@ public class IACommands {
                     String title = "Disburse 3 days";
                     String body = "Use this once they have a suitable city build & color to send resources for the next 5 days";
                     String emoji = "\u2705";
-                    String cmd = "!disburse " + nation.getNation() + " 3 -f";
+                    String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "disburse " + nation.getNation() + " 3 -f";
 
                     DiscordUtil.createEmbedCommand(channel, title, body, emoji, cmd);
                 }
@@ -1005,7 +1005,7 @@ public class IACommands {
                 }
             }
         } else if (!force) {
-            return "No user registered to that nation. Did they use `!register` ? Add `-f` to override";
+            return "No user registered to that nation. Did they use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "register` ? Add `-f` to override";
         }
 
         StringBuilder response = new StringBuilder();
@@ -1031,7 +1031,7 @@ public class IACommands {
             db.getHandler().onSetRank(author, channel, nation, rank);
         }
         response.append(result);
-        response.append("\nSee also `$listAssignableRoles` / `$addRole @user <role>`");
+        response.append("\nSee also `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "listAssignableRoles` / `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addRole @user <role>`");
         return response.toString();
     }
 
@@ -1135,7 +1135,7 @@ public class IACommands {
         String embed = "Output: <" + sheet.getURL() + ">\n" +
                 "Press to confirm";
         String emoji = "\u2705";
-        String cmd = "$mailSheet " + sheet.getURL();
+        String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "mailSheet " + sheet.getURL();
 
         DiscordUtil.createEmbedCommand(channel, title, embed, emoji, cmd);
 
@@ -1384,7 +1384,7 @@ public class IACommands {
                     }
                 }
                 RateLimitUtil.queue(((GuildMessageChannel) channel).getManager().setName(closeChar + channel.getName()));
-                return "Marked channel as closed. Auto deletion in >24h. Use `$open` to reopen. Use `$close` again to force close";
+                return "Marked channel as closed. Auto deletion in >24h. Use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "open` to reopen. Use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "close` again to force close";
             }
 
             Category archiveCategory = db.getOrNull(GuildDB.Key.ARCHIVE_CATEGORY);
@@ -1482,7 +1482,7 @@ public class IACommands {
             Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, filter);
 
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId == null) return "No alliance set `!KeyStore ALLIANCE_ID`";
+            if (aaId == null) return "No alliance set `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID`";
 
             IACategory cat = db.getIACategory();
             if (cat.getCategories().isEmpty()) return "No `interview` categories found";
@@ -1531,7 +1531,7 @@ public class IACommands {
                         User msgAuth = message.getAuthor();
                         if (msgAuth.isBot() || msgAuth.isSystem()) continue;
                         String content = DiscordUtil.trimContent(message.getContentRaw());
-                        if (content.startsWith("!") || content.startsWith("$")) continue;
+                        if (content.startsWith(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "") || content.startsWith(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "")) continue;
 
                         long msgTime = message.getTimeCreated().toEpochSecond();
 

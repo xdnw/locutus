@@ -14,6 +14,4 @@ public @interface Command {
 
     String help() default "";
     String desc() default "";
-
-    CommandCategory category() default CommandCategory.UNCATEGORIZED;
 }

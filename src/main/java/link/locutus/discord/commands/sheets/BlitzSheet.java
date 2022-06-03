@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.pnw.DBNation;
@@ -40,7 +41,7 @@ public class BlitzSheet extends Command {
 
     @Override
     public String help() {
-        return "!" + getClass().getSimpleName() + " <attackers> <defenders> [max-off=3] [same-aa-priority=0] [same-activity-priority=0] [turn=-1] [att-activity-threshold=0.5] [def-activity-threshold=0.1] [guilds]";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <attackers> <defenders> [max-off=3] [same-aa-priority=0] [same-activity-priority=0] [turn=-1] [att-activity-threshold=0.5] [def-activity-threshold=0.1] [guilds]";
     }
 
     @Override

@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
@@ -33,8 +34,8 @@ public class CopyPasta extends Command implements Noformat {
 
     @Override
     public String desc() {
-        return "Use `!copypasta <key>` to post a premade response\n" +
-                "Use `!copypasta <key> <message>` to set the response\n" +
+        return "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta <key>` to post a premade response\n" +
+                "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta <key> <message>` to set the response\n" +
                 "Use e.g. `ECON.key` as the key to restrict use to the econ role";
     }
 
@@ -80,7 +81,7 @@ public class CopyPasta extends Command implements Noformat {
                 }
             }
 
-            if (value == null) return "No message set for `" + args.get(0) + "`. Plase use `!copypasta <key> <message>`";
+            if (value == null) return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta <key> <message>`";
             if (event.getMessage().getEmbeds().isEmpty()) {
                 RateLimitUtil.queue(event.getMessage().delete());
             }
@@ -100,11 +101,11 @@ public class CopyPasta extends Command implements Noformat {
             String message = content.substring(start + 1);
             if (message.isEmpty() || message.equalsIgnoreCase("null")) {
                 db.deleteInfo("copypasta." + key);
-                return "Deleted message for `!copypasta " + args.get(0) + "`";
+                return "Deleted message for `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta " + args.get(0) + "`";
             } else {
                 db.setInfo("copypasta." + key, message);
-                return "Added message for `!copypasta " + args.get(0) + "`\n" +
-                        "Remove using `!copypasta " + args.get(0) + " null`";
+                return "Added message for `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta " + args.get(0) + "`\n" +
+                        "Remove using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta " + args.get(0) + " null`";
             }
         }
     }

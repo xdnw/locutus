@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.DBNation;
@@ -72,7 +73,7 @@ public class BankPages {
             nations.removeIf(n -> n.getPosition() <= 1);
         } else {
             Role role = Roles.MEMBER.toRole(guild);
-            if (role == null) throw new IllegalArgumentException("No `!KeyStore ALLIANCE_ID` set, or `!aliasRole MEMBER` set");
+            if (role == null) throw new IllegalArgumentException("No `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID` set, or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole MEMBER` set");
             nations = new ArrayList<>();
             for (Member member : guild.getMembersWithRoles(role)) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());

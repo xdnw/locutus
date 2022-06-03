@@ -28,7 +28,7 @@ public class MoneyTrades extends Command {
 
     @Override
     public String help() {
-        return "!trades <nation> <time>";
+        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "trades <nation> <time>";
     }
 
     @Override
@@ -90,7 +90,7 @@ public class MoneyTrades extends Command {
                 if (client != null) response.append(" | " + client.getAlliance());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
-                response.append("```!addbalance " + url + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit```");
+                response.append("```" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + url + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit```");
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {

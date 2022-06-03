@@ -3,6 +3,7 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.pnw.DBNation;
@@ -38,7 +39,7 @@ public class ModifyTreaty extends Command {
 
     @Override
     public String desc() {
-        return "Use `!treaties` to list the current treaties";
+        return "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "treaties` to list the current treaties";
     }
 
     @Override

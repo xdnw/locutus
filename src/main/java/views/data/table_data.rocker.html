@@ -1,0 +1,8 @@
+@import java.util.*
+
+@args (String title, String data)
+
+@if(title != null) {
+    <p class="h3">@?title</p>
+}
+<div class="locutus-table-container" data-src="@raw(data)"></div>

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.user.Roles;
 import net.dv8tion.jda.api.entities.Guild;
@@ -46,7 +47,7 @@ public class Setup extends Command {
             }
             String value = guildDb.getInfo(key);
             if (value == null) {
-                return "Please use `!KeyStore " + key.name() + " <value>`";
+                return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore " + key.name() + " <value>`";
             }
             try {
                 key.validate(guildDb, value);
@@ -57,7 +58,7 @@ public class Setup extends Command {
 
         for (Roles role : Roles.values()) {
             if (role.toRole(event.getGuild()) == null) {
-                return "Please use `!AliasRole " + role.name() + " <discord-role>`";
+                return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "AliasRole " + role.name() + " <discord-role>`";
             }
         }
 
@@ -70,11 +71,11 @@ public class Setup extends Command {
                 if (name != null) hasValidOffshore = true;
             }
             if (!hasValidOffshore) {
-                return "Please set an offshore using !setcoalition <alliance> offshore";
+                return "Please set an offshore using " + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setcoalition <alliance> offshore";
             }
 
             if (coalitions.getOrDefault("allies", new LinkedHashSet<>()).isEmpty()) {
-                return "Please set allies using `!setcoalition <alliance> allies";
+                return "Please set allies using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> allies";
             }
         }
 
