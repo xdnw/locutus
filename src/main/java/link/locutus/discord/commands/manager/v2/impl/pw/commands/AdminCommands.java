@@ -343,6 +343,12 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
+    public String testAlert(MessageChannel channel) {
+        return channel.sendMessage("Hello World").complete() + "";
+    }
+
+    @Command()
+    @RolePermission(value = Roles.ADMIN, root = true)
     public String rootApiUsageStats(boolean bank) {
         PoliticsAndWarV2 api = bank ? Locutus.imp().getRootPnwApi() : Locutus.imp().getBankApi();
         return apiUsageStats(api);
