@@ -1680,6 +1680,11 @@ public class DBNation implements NationOrAlliance {
         return getOff() + getDef();
     }
 
+    @Command(desc = "Number of active offensive and defensive wars")
+    public int getNumWarsSince(long date) {
+        return Locutus.imp().getWarDb().countWarsByNation(nation_id, date);
+    }
+
     public void setOff(int off) {
         this.off = off;
     }
