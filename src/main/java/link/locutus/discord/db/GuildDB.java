@@ -101,6 +101,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public GuildDB(Guild guild) throws SQLException, ClassNotFoundException {
         super("guilds/" + guild.getId());
         this.guild = guild;
+        System.out.println(guild + " | AA:" + getOrNull(Key.ALLIANCE_ID));
     }
 
     public void setAutoRoleTask(IAutoRoleTask autoRoleTask) {

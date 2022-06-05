@@ -39,6 +39,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.exceptions.MissingAccessException;
 
 import java.io.IOException;
@@ -665,7 +666,7 @@ public class WarCategory {
                     t1.get();
                     t2.get();
                     t3.get();
-                } catch (InterruptedException | ExecutionException e) {
+                } catch (InterruptedException | ExecutionException | InsufficientPermissionException e) {
                     e.printStackTrace();
                     return msg;
                 }
