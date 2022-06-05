@@ -49,7 +49,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public NationMetricDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        ParametricCallable cmd = get(id);
+        ParametricCallable cmd = get(getCmd(id));
         if (cmd == null) return null;
         Map.Entry<Type, Function<DBNation, Object>> typeFunction;
         try {

@@ -136,6 +136,11 @@ public class Placeholders<T> {
         return null;
     }
 
+    public String getCmd(String input) {
+        int argStart = input.indexOf('(');
+        return argStart != -1 ? input.substring(0, argStart) : input;
+    }
+
     public Map.Entry<Type, Function<T, Object>> getPlaceholderFunction(ValueStore store, String input) {
         List<String> args;
         int argStart = input.indexOf('(');
