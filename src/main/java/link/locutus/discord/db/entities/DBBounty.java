@@ -14,13 +14,15 @@ import java.sql.SQLException;
 import java.util.Set;
 
 public class DBBounty {
+    private final int id;
     private final long date;
     private final int nationId;
     private final int postedBy;
     private final WarType type;
     private final long amount;
 
-    public DBBounty(long date, int nationId, int postedBy, WarType type, long amount) {
+    public DBBounty(int id, long date, int nationId, int postedBy, WarType type, long amount) {
+        this.id = id;
         this.date = date;
         this.nationId = nationId;
         this.postedBy = postedBy;
@@ -28,8 +30,19 @@ public class DBBounty {
         this.amount = amount;
     }
 
+    @Deprecated
+    public static DBBounty fromLegacy(ResultSet rs) throws SQLException {
+        return new DBBounty(-1,
+                rs.getLong("date"),
+                rs.getInt("nation_id"),
+                rs.getInt("posted_by"),
+                WarType.values()[rs.getInt("attack_type")],
+                rs.getLong("amount"));
+    }
+
     public DBBounty(ResultSet rs) throws SQLException {
         this(
+                rs.getInt("id"),
                 rs.getLong("date"),
                 rs.getInt("nation_id"),
                 rs.getInt("posted_by"),
@@ -107,5 +120,9 @@ public class DBBounty {
         String embed = nation.toEmbedString(true);
         if (deanonymize && postedBy > 0) embed += "\nPosted by: " + PnwUtil.getName(postedBy, false);
         return DiscordUtil.createEmbedCommand(channel.getIdLong(), title, embed);
+    }
+
+    public int getId() {
+        return id;
     }
 }

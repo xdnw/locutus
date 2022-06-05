@@ -145,6 +145,18 @@ public final class Locutus extends ListenerAdapter {
     private Locutus() throws SQLException, ClassNotFoundException, LoginException, InterruptedException, NoSuchMethodException {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
+        if (Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.length() != 1) throw new IllegalStateException("COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
+        if (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.length() != 1) throw new IllegalStateException("LEGACY_COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
+        if (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.equalsIgnoreCase(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX)) {
+            throw new IllegalStateException("LEGACY_COMMAND_PREFIX cannot equal COMMAND_PREFIX in " + Settings.INSTANCE.getDefaultFile());
+        }
+        if (Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.matches("[._~]")) {
+            throw new IllegalStateException("COMMAND_PREFIX cannot be `.` or `_` or `~` in " + Settings.INSTANCE.getDefaultFile());
+        }
+        if (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.matches("[._~]")) {
+            throw new IllegalStateException("LEGACY_COMMAND_PREFIX cannot be `.` or `_` or `~` in " + Settings.INSTANCE.getDefaultFile());
+        }
+
         INSTANCE = this;
 
         this.logger = Logger.getLogger("LOCUTUS");
@@ -510,18 +522,18 @@ public final class Locutus extends ListenerAdapter {
         return forumDb;
     }
 
-    public Set<DBMain> getDatabases() {
-        Set<DBMain> databases = new HashSet<>();
-        databases.add(tradeManager.getTradeDb());
-        databases.add(forumDb);
-        databases.add(discordDB);
-        databases.add(nationDB);
-        databases.add(warDb);
-        databases.add(bankDb);
-        databases.add(stockDB);
-        databases.addAll(guildDatabases.values());
-        return databases;
-    }
+//    public Set<DBMain> getDatabases() {
+//        Set<DBMain> databases = new HashSet<>();
+//        databases.add(tradeManager.getTradeDb());
+//        databases.add(forumDb);
+//        databases.add(discordDB);
+//        databases.add(nationDB);
+//        databases.add(warDb);
+//        databases.add(bankDb);
+//        databases.add(stockDB);
+//        databases.addAll(guildDatabases.values());
+//        return databases;
+//    }
 
     public RaidUpdateProcessor getRaidProcessor() {
         return raidProcessor;
@@ -641,13 +653,15 @@ public final class Locutus extends ListenerAdapter {
 
         checkMailTasks();
 
-        commandManager.getExecutor().scheduleAtFixedRate(CaughtRunnable.wrap(() -> {
-            try {
-                WarDB.updateBounties(Locutus.imp().getWarDb());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }),1, 1, TimeUnit.HOURS);
+        if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
+            commandManager.getExecutor().scheduleAtFixedRate(CaughtRunnable.wrap(() -> {
+                try {
+                    Locutus.imp().getWarDb().updateBountiesV3();
+                } catch (Throwable e) {
+                    AlertUtil.error("Could not fetch bounties", e);
+                }
+            }), 1, 1, TimeUnit.HOURS);
+        }
 
 //            CheckAllTradesTask checkCreditTrades = new CheckAllTradesTask(CREDITS);
         commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(FOOD),73,60, TimeUnit.SECONDS);

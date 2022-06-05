@@ -131,17 +131,56 @@ public class PoliticsAndWarV3 {
         }
     }
 
+    public List<Bounty> fetchBounties(Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query) {
+        return fetchBounties(1000, filter, query, f -> ErrorResponse.EXIT, f -> true);
+    }
+
+    public List<Bounty> fetchBounties(int perPage, Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bounty> recResults) {
+        List<Bounty> allResults = new LinkedList<>();
+
+        handlePagination(page -> {
+                    BountiesQueryRequest request = new BountiesQueryRequest();
+                    if (filter != null) filter.accept(request);
+                    request.setFirst(perPage);
+                    request.setPage(page);
+
+                    BountyResponseProjection respProj = new BountyResponseProjection();
+                    query.accept(respProj);
+
+                    BountyPaginatorResponseProjection pagRespProj = new BountyPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(respProj);
+
+                    return new GraphQLRequest(request, pagRespProj);
+                }, errorBehavior, BountiesQueryResponse.class,
+                response -> {
+                    BountyPaginator paginator = response.bounties();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    BountyPaginator paginator = result.bounties();
+                    if (paginator != null) {
+                        List<Bounty> txs = paginator.getData();
+                        for (Bounty tx : txs) {
+                            if (recResults.test(tx)) allResults.add(tx);
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
     public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
         return fetchBankRecs(1000, filter, query, f -> ErrorResponse.EXIT, f -> true);
     }
-
 
     public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
         List<Bankrec> allResults = new LinkedList<>();
 
         handlePagination(page -> {
                     BankrecsQueryRequest request = new BankrecsQueryRequest();
-                    filter.accept(request);
+                    if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
                     request.setPage(page);
 
@@ -226,7 +265,7 @@ public class PoliticsAndWarV3 {
 
         handlePagination(page -> {
             NationsQueryRequest request = new NationsQueryRequest();
-            filter.accept(request);
+            if (filter != null) filter.accept(request);
             request.setFirst(perPage);
             request.setPage(page);
 
@@ -266,7 +305,7 @@ public class PoliticsAndWarV3 {
 
         handlePagination(page -> {
                     AlliancesQueryRequest request = new AlliancesQueryRequest();
-                    filter.accept(request);
+                    if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
                     request.setPage(page);
 
@@ -328,11 +367,14 @@ public class PoliticsAndWarV3 {
         System.out.println("ADMIN_USER_ID " + Settings.INSTANCE.ADMIN_USER_ID);
         System.out.println("APPLICATION_ID " + Settings.INSTANCE.APPLICATION_ID);
 
-        String endpoint = "https://api" + (Settings.INSTANCE.TEST ? "-test" : "") + ".politicsandwar.com/graphql";
         ApiKeyPool pool = new ApiKeyPool(Settings.INSTANCE.API_KEY_PRIMARY);
 
-        PoliticsAndWarV3 main = new PoliticsAndWarV3(endpoint, pool);
+        PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
         {
+            for (Bounty bounty : main.fetchBounties(null, f -> f.all$(-1))) {
+                System.out.println(bounty);
+            }
+
         }
 
         System.exit(1);

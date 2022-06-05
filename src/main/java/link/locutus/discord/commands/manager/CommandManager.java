@@ -241,8 +241,8 @@ public class CommandManager {
 
     public CommandManager(Locutus locutus) {
         this.locutus = locutus;
-        this.prefix1 = '!';
-        this.prefix2 = '$';
+        this.prefix1 = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.charAt(0);
+        this.prefix2 = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.charAt(0);
         this.commandMap = new LinkedHashMap<>();
         this.executor =new ScheduledThreadPoolExecutor(64);
 

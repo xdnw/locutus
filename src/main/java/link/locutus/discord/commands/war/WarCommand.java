@@ -343,7 +343,7 @@ public class WarCommand extends Command {
                         response.append("```");
                     }
                     if (filteredUpdeclare) {
-                        response.append("\n**note: Updeclares have been filted. Add `-f` to bypass**");
+                        response.append("\n**note: Updeclares have been removed. Add `-f` to bypass**");
                     } else if (isUpdeclare) {
                         response.append("\n**note: some of the targets have a lot more cities than you and may be unsuitable. It is not recommended to updeclare past " + Math.round(me.getCities() * 1.2) + " cities if there are more suitable attackers**");
                     }

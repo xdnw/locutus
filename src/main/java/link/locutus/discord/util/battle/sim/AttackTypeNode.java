@@ -246,8 +246,6 @@ public class AttackTypeNode {
         Predicate<AttackTypeNode> goalFunc = f -> f.resistance >= resistance;
         Function<AttackTypeNode, Integer> valueFunc = f -> -f.map;
 
-        System.out.println("Allowed " + StringMan.getString(types));
-
         return findGoal(comparator, types, goalFunc, valueFunc, 1000);
     }
 

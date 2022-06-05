@@ -1,12 +1,13 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
+import link.locutus.discord.pnw.Alliance;
 import link.locutus.discord.pnw.DBNation;
 
 import java.lang.reflect.Type;
 import java.util.function.Function;
 
-public class NationMetricDouble extends NationMetric<Double> {
-    public NationMetricDouble(String id, String desc, Function<DBNation, Double> parent) {
+public class AllianceInstanceMetricDouble extends AllianceInstanceMetric<Double> {
+    public AllianceInstanceMetricDouble(String id, String desc, Function<Alliance, Double> parent) {
         super(id, desc, Double.TYPE, (Function) parent);
     }
 
@@ -16,7 +17,7 @@ public class NationMetricDouble extends NationMetric<Double> {
     }
 
     @Override
-    public Double apply(DBNation nation) {
+    public Double apply(Alliance nation) {
         return (Double) super.apply(nation);
     }
 }

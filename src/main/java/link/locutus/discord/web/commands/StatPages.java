@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceMetricDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetric;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
 import link.locutus.discord.commands.rankings.SphereGenerator;
@@ -170,7 +171,10 @@ public class StatPages {
         int removeActiveM = 7200;
         boolean removeApps = true;
 
-        TimeNumericTable table = TimeNumericTable.create(title, metric, coalitions, groupBy, total, removeVM, removeActiveM, removeApps);
+        List<String> coalitionNames = TimeNumericTable.toCoalitionNames(coalitions);
+        List<List<DBNation>> nations = TimeNumericTable.toNations(coalitions, removeVM, removeActiveM, removeApps);
+
+        TimeNumericTable table = TimeNumericTable.create(title, metric, nations, coalitionNames, groupBy, total);
 
         JsonObject data = table.toHtmlJson();
         title = table.getName();

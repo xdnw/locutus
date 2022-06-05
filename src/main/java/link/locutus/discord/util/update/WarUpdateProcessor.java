@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -15,6 +16,7 @@ import link.locutus.discord.pnw.Alliance;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.war.WarCard;
@@ -39,10 +41,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.awt.Desktop;
@@ -56,6 +55,53 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class WarUpdateProcessor {
+    @Subscribe
+    public void onBountyCreate(BountyCreateEvent event) {
+        DBBounty bounty = event.bounty;
+        AlertUtil.forEachChannel(SyncBounties.class, GuildDB.Key.BOUNTY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+            @Override
+            public void accept(MessageChannel channel, GuildDB guildDB) {
+                Guild guild = guildDB.getGuild();
+                try {
+                    Message msg = bounty.toCard(channel, false);
+
+                    Role bountyRole = Roles.BOUNTY_ALERT.toRole(guild);
+                    if (bountyRole == null) return;
+                    List<Member> members = guild.getMembersWithRoles(bountyRole);
+                    StringBuilder mentions = new StringBuilder();
+
+                    DBNation enemy = Locutus.imp().getNationDB().getNation(bounty.getNationId());
+                    if (enemy == null || enemy.getDef() >= 3 || enemy.getVm_turns() != 0 || enemy.isBeige()) return;
+
+                    double minScore = enemy.getScore() / 1.75;
+                    double maxScore = enemy.getScore() / 0.75;
+
+                    for (Member member : members) {
+                        PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
+                        if (pnwUser == null) continue;
+
+                        DBNation nation = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
+                        if (nation == null) continue;
+
+                        if (nation.getScore() >= minScore && nation.getScore() <= maxScore) {
+                            mentions.append(member.getAsMention() + " ");
+                        }
+                    }
+                    if (mentions.length() != 0) {
+                        RateLimitUtil.queue(channel.sendMessage(mentions));
+                    }
+                } catch (Throwable ignore) {
+                    ignore.printStackTrace();
+                }
+            }
+        });
+    }
+
+    @Subscribe
+    public void onBountyRemove(BountyRemoveEvent event) {
+        // TODO idk
+    }
+
     public static void processWars(List<Map.Entry<DBWar, DBWar>> wars) {
         if (wars.isEmpty()) return;
 //

@@ -1,5 +1,9 @@
 package link.locutus.discord.db;
 
+import com.ptsmods.mysqlw.table.ColumnType;
+import com.ptsmods.mysqlw.table.TableIndex;
+import com.ptsmods.mysqlw.table.TablePreset;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
@@ -23,28 +27,43 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TradeDB extends DBMain {
+public class TradeDB extends DBMainV2 {
     public TradeDB() throws SQLException, ClassNotFoundException {
-        super("trade");
+        super(Settings.INSTANCE.DATABASE, "trade");
     }
+
 
     @Override
     public void createTables() {
-        {
-            String nations = "CREATE TABLE IF NOT EXISTS `TRADES` (`tradeId` INT NOT NULL PRIMARY KEY, `date` INT NOT NULL, seller INT NOT NULL, buyer INT NOT NULL, resource INT NOT NULL, isBuy INT NOT NULL, quantity INT NOT NULL, ppu INT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(nations);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        executeStmt("CREATE INDEX IF NOT EXISTS index_trade_date ON TRADES (date);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_trade_type ON TRADES (resource);");
+        TablePreset.create("TRADES")
+                .putColumn("tradeId", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("seller", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("buyer", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("resource", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("isBuy", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("quantity", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("ppu", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+
+                .addIndex(TableIndex.index("index_trade_date", "date", TableIndex.Type.INDEX))
+                .addIndex(TableIndex.index("index_trade_type", "resource", TableIndex.Type.INDEX))
+                .create(getDb())
+        ;
+
+        String query = TablePreset.create("SUBSCRIPTIONS_2")
+                .putColumn("user", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("resource", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("isBuy", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("above", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("ppu", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .buildQuery(getDb().getType());
+        query.replace(");", ", PRIMARY KEY(user, resource, isBuy, above, type));");
+        getDb().executeUpdate(query);
 
         {
-            String query = "CREATE TABLE IF NOT EXISTS `SUBSCRIPTIONS_2` (`user` INT NOT NULL, `resource` INT NOT NULL, `date` INT NOT NULL, `isBuy` INT NOT NULL, `above` INT NOT NULL, `ppu` INT NOT NULL, `type` INT NOT NULL, PRIMARY KEY(user, resource, isBuy, above, type))";
+            query = "CREATE TABLE IF NOT EXISTS `TRADEPRICE` (`resource` INT NOT NULL, `ppu` INT NOT NULL, `isBuy` INT NOT NULL, PRIMARY KEY(resource, ppu, isBuy))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(query);
                 stmt.executeBatch();
@@ -52,17 +71,8 @@ public class TradeDB extends DBMain {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-        };
-        {
-            String query = "CREATE TABLE IF NOT EXISTS `TRADEPRICE` (`resource` INT NOT NULL, `ppu` INT NOT NULL, `isBuy` INT NOT NULL, PRIMARY KEY(resource, ppu, isBuy))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(query);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
+        }
+        ;
     }
 
     public void setTradePrice(ResourceType type, int ppu, boolean isBuy) {

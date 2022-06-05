@@ -1680,7 +1680,7 @@ public class DBNation implements NationOrAlliance {
         return getOff() + getDef();
     }
 
-    @Command(desc = "Number of active offensive and defensive wars")
+    @Command(desc = "Number of offensive and defensive wars since date")
     public int getNumWarsSince(long date) {
         return Locutus.imp().getWarDb().countWarsByNation(nation_id, date);
     }
@@ -1820,31 +1820,32 @@ public class DBNation implements NationOrAlliance {
 
     @Override
     public String toString() {
-        return "{" +
-                "nation_id=" + nation_id +
-                ", nation='" + nation + '\'' +
-                ", leader='" + leader + '\'' +
-                ", alliance_id=" + alliance_id +
-                ", alliance=" + alliance +
-                ", active_m=" + active_m() +
-                ", score=" + score +
-                ", infra=" + infra +
-                ", cities=" + cities +
-                ", avg_infra=" + avg_infra +
-                ", war_policy='" + war_policy + '\'' +
-                ", soldiers=" + soldiers +
-                ", tanks=" + tanks +
-                ", aircraft=" + aircraft +
-                ", ships=" + ships +
-                ", missiles=" + missiles +
-                ", nukes=" + nukes +
-                ", vm_turns=" + vm_turns +
-                ", color='" + color + '\'' +
-                ", off=" + off +
-                ", def=" + def +
-//                ", money=" + money +
-                ", spies=" + spies +
-                '}';
+        return nation;
+//        return "{" +
+//                "nation_id=" + nation_id +
+//                ", nation='" + nation + '\'' +
+//                ", leader='" + leader + '\'' +
+//                ", alliance_id=" + alliance_id +
+//                ", alliance=" + alliance +
+//                ", active_m=" + active_m() +
+//                ", score=" + score +
+//                ", infra=" + infra +
+//                ", cities=" + cities +
+//                ", avg_infra=" + avg_infra +
+//                ", war_policy='" + war_policy + '\'' +
+//                ", soldiers=" + soldiers +
+//                ", tanks=" + tanks +
+//                ", aircraft=" + aircraft +
+//                ", ships=" + ships +
+//                ", missiles=" + missiles +
+//                ", nukes=" + nukes +
+//                ", vm_turns=" + vm_turns +
+//                ", color='" + color + '\'' +
+//                ", off=" + off +
+//                ", def=" + def +
+////                ", money=" + money +
+//                ", spies=" + spies +
+//                '}';
     }
 
     public Set<Integer> getEnemies() {

@@ -2,6 +2,7 @@ package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -48,6 +49,12 @@ public class Alliance implements NationList, NationOrAlliance {
         this.allianceId = allianceId;
     }
 
+    @Command(desc = "Number of offensive and defensive wars since date")
+    public int getNumWarsSince(long date) {
+        return Locutus.imp().getWarDb().countWarsByAlliance(allianceId, date);
+    }
+
+
     public static Set<Alliance> getTopX(int topX, boolean checkTreaty) {
         Set<Alliance> results = new LinkedHashSet<>();
         Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNations().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
@@ -76,6 +83,7 @@ public class Alliance implements NationList, NationOrAlliance {
     }
 
     @Override
+    @Command
     public int getId() {
         return allianceId;
     }
@@ -214,6 +222,7 @@ public class Alliance implements NationList, NationOrAlliance {
     double scoreCached = -1;
 
     @Override
+    @Command
     public double getScore() {
         if (scoreCached == -1) {
             scoreCached = new SimpleNationList(getNations(true, 0, true)).getScore();
@@ -223,6 +232,7 @@ public class Alliance implements NationList, NationOrAlliance {
 
     private Integer rank;
 
+    @Command(desc = "Rank by score")
     public int getRank() {
         if (rank == null) {
             Map<Integer, List<DBNation>> byScore = Locutus.imp().getNationDB().getNationsByAlliance(true, true, true, true);
@@ -236,6 +246,7 @@ public class Alliance implements NationList, NationOrAlliance {
         return rank;
     }
 
+    @Command
     public int getAlliance_id() {
         return allianceId;
     }

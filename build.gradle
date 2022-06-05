@@ -85,6 +85,7 @@ dependencies {
 // https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk15on
 //    implementation group: 'org.bouncycastle', name: 'bcpkix-jdk15on', version: '1.69'
 
+    implementation 'com.ptsmods:mysqlw:1.7'
 
     implementation 'com.google.api-client:google-api-client:1.33.0'
     implementation 'com.google.oauth-client:google-oauth-client-jetty:1.32.1'
@@ -185,7 +186,8 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     outputDir = new File("$buildDir/generated")
     modelPackageName = "com.politicsandwar.graphql.model"
     customTypesMapping = [
-            DateTime: "java.util.Date"
+            DateTime: "java.util.Date",
+            DateTimeAuto: "java.time.Instant"
     ]
     parentInterfaces {
         queryResolver = "graphql.kickstart.tools.GraphQLQueryResolver"

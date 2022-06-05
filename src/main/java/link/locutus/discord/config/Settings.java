@@ -47,7 +47,7 @@ public class Settings extends Config {
     public String API_KEY_PRIMARY = "";
 
     @Comment({"A list of api keys the bot can use for requests (optional)",
-            "See: `{prefix}validateApiKeys`"})
+            "See: `$validateApiKeys`"})
     public List<String> API_KEY_POOL = Arrays.asList();
 
     @Comment({"The discord id of the bot (generated)",
@@ -79,13 +79,14 @@ public class Settings extends Config {
     @Create
     public PROXY PROXY;
 
+    @Create
+    public DATABASE DATABASE;
+
     //
 
     public String PNW_URL() {
         return "https://" + (TEST ? "test." : "") + "politicsandwar.com";
     }
-    @Ignore
-    public String PREFIX = "";
     public int ALLIANCE_ID() {
         return Locutus.imp().getNationDB().getNation(NATION_ID).getAlliance_id();
     }
@@ -156,8 +157,9 @@ public class Settings extends Config {
         @Comment("If any turn related tasks are run (default: true)")
         public boolean ENABLE_TURN_TASKS = true;
 
-        @Comment("Runs the post update raid alerts (default: 1 second)")
-        public int RAID_UPDATE_PROCESSOR_SECONDS = 1;
+        @Comment({"Runs the post update raid alerts (default: 1 second)",
+        "Deprecated, use the beigeAlert stuff instead, which sets reminders before turn change"})
+        public int RAID_UPDATE_PROCESSOR_SECONDS = 0;
 
         @Comment("Runs the pre update beige reminders (default: 61 seconds)")
         public int BEIGE_REMINDER_SECONDS = 61;
@@ -172,7 +174,23 @@ public class Settings extends Config {
 
         @Comment("Fetches wars and then attacks (default 3 minutes)")
         public int WAR_ATTACK_SECONDS = 60 * 3;
+
+        @Comment("Fetches the bounties (default 1 hour)")
+        public int BOUNTY_UPDATE_SECONDS = 60 * 60;
         public boolean WAR_ATTACKS_ESCALATION_ALERTS = true;
+
+        @Comment({"Fetches spies in the background via the api (default: false)",
+                "If disabled, spies will be fetched when needed",
+                "*Requires setting the `trackspies` coalition in the root server"})
+        public boolean FETCH_SPIES_BACKGROUND_API = false;
+
+        @Comment({"Fetches spies in the background via webscrape (default: false)",
+                "If disabled, spies will be fetched when needed",
+                "*Requires setting the `trackspies` coalition in the root server"})
+        public boolean FETCH_SPIES_BACKGROUND_SCRAPE = false;
+
+        @Comment({"If network UIDs are fetched (for multi checking) (default: false)"})
+        public boolean FETCH_UUID = false;
 
         @Comment({"Fetch ingame mail of an authenticated nation and post it to a channel",
                 "Set the values to 0 to disable",
@@ -412,6 +430,30 @@ public class Settings extends Config {
         public boolean DEVELOPMENT = true;
     }
 
+    public static class DATABASE {
+        @Create
+        public MYSQL MYSQL;
+        @Create
+        public SQLITE SQLITE;
+
+        public static final class SQLITE {
+            @Comment("Should SQLite be used?")
+            public boolean USE = true;
+            @Comment("The directory to store the database in")
+            public String DIRECTORY = "database";
+        }
+
+        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")
+        public static final class MYSQL {
+            @Comment("Should MySQL be used?")
+            public boolean USE = false;
+            public String HOST = "localhost";
+            public int PORT = 3306;
+            public String USER = "root";
+            public String PASSWORD = "password";
+        }
+    }
+
     private File defaultFile = new File("config" + File.separator + "config.yaml");
 
     public File getDefaultFile() {
@@ -423,5 +465,4 @@ public class Settings extends Config {
         load(file);
         save(file);
     }
-
 }

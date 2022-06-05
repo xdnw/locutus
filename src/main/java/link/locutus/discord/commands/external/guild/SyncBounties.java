@@ -26,7 +26,7 @@ public class SyncBounties extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        WarDB.updateBounties(Locutus.imp().getWarDb());
+        Locutus.imp().getWarDb().updateBountiesV3();;
         return "Done!";
     }
 }

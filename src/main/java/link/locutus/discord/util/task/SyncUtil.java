@@ -123,120 +123,125 @@ public enum SyncUtil {
 
         NationUpdateProcessor.process(dbCache, nationMap, false, NationUpdateProcessor.UpdateType.MILITARY, start);
 
-        updater.accept(" - Estimating spy ops..");
-
         List<Map.Entry<Double, DBNation>> fetchSpiesList = new LinkedList<>();
+        if (Settings.INSTANCE.TASKS.FETCH_SPIES_BACKGROUND_API || Settings.INSTANCE.TASKS.FETCH_SPIES_BACKGROUND_SCRAPE) {
+            updater.accept(" - Estimating spy ops..");
 
-        long currentTurn = TimeUtil.getTurn();
-        String spyKey = "spies.";
+            long currentTurn = TimeUtil.getTurn();
+            String spyKey = "spies.";
 
-        Set<Integer> trackspiesIds = new HashSet<>();
+            Set<Integer> trackspiesIds = new HashSet<>();
 
-        trackspiesIds.addAll(Locutus.imp().getGuildDB(Locutus.imp().getServer()).getCoalition("trackspies"));
+            trackspiesIds.addAll(Locutus.imp().getGuildDB(Locutus.imp().getServer()).getCoalition("trackspies"));
 
-        // Update spy counts for alliances using `$spySheet`
-        for (GuildDB otherDb : Locutus.imp().getGuildDatabases().values()) {
-            if (!otherDb.isValidAlliance() || otherDb.isDelegateServer() || !otherDb.enabledSpySheet()) continue;
-            try {
-                Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
-                if (aaId != null) {
-                    PoliticsAndWarV2 api = otherDb.getApi();
-                    if (api == null) continue;
-                    if (checkVM && (TimeUtil.getTurn() % 12) == 0) {
-                        Set<DBNation> toUpdate = new LinkedHashSet<>();
-                        AllianceMembers members = api.getAllianceMembers(aaId);
-                        for (AllianceMembersContainer member : members.getNations()) {
-                            Integer spies = Integer.parseInt(member.getSpies());
-                            DBNation nation = Locutus.imp().getNationDB().getNation(member.getNationId());
-                            if (nation != null && !spies.equals(nation.getSpies())) {
-                                Locutus.imp().getNationDB().setSpies(nation.getNation_id(), spies);
-                                nation.setSpies(spies);
-                                toUpdate.add(nation);
+            if (Settings.INSTANCE.TASKS.FETCH_SPIES_BACKGROUND_API) {
+                // Update spy counts for alliances using `$spySheet`
+                for (GuildDB otherDb : Locutus.imp().getGuildDatabases().values()) {
+                    if (!otherDb.isValidAlliance() || otherDb.isDelegateServer() || !otherDb.enabledSpySheet())
+                        continue;
+                    try {
+                        Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
+                        if (aaId != null) {
+                            PoliticsAndWarV2 api = otherDb.getApi();
+                            if (api == null) continue;
+                            if (checkVM && (TimeUtil.getTurn() % 12) == 0) {
+                                Set<DBNation> toUpdate = new LinkedHashSet<>();
+                                AllianceMembers members = api.getAllianceMembers(aaId);
+                                for (AllianceMembersContainer member : members.getNations()) {
+                                    Integer spies = Integer.parseInt(member.getSpies());
+                                    DBNation nation = Locutus.imp().getNationDB().getNation(member.getNationId());
+                                    if (nation != null && !spies.equals(nation.getSpies())) {
+                                        Locutus.imp().getNationDB().setSpies(nation.getNation_id(), spies);
+                                        nation.setSpies(spies);
+                                        toUpdate.add(nation);
+                                    }
+                                }
+                                Locutus.imp().getNationDB().addNations(toUpdate);
                             }
                         }
-                        Locutus.imp().getNationDB().addNations(toUpdate);
+                        trackspiesIds.remove(aaId);
+                    } catch (Throwable ignore) {
                     }
                 }
-                trackspiesIds.remove(aaId);
-            } catch (Throwable ignore) {
             }
-        }
 
-        for (Map.Entry<Integer, DBNation> entry : nationMap.entrySet()) {
-            DBNation nation = entry.getValue();
-            if (!trackspiesIds.contains(nation.getAlliance_id())) continue;
+            if (Settings.INSTANCE.TASKS.FETCH_SPIES_BACKGROUND_SCRAPE) {
+                for (Map.Entry<Integer, DBNation> entry : nationMap.entrySet()) {
+                    DBNation nation = entry.getValue();
+                    if (!trackspiesIds.contains(nation.getAlliance_id())) continue;
 
-            if (nation.getCities() < 10) continue;
-            if (nation.getNumWars() == 0) continue;
-            if (nation.getVm_turns() != 0) continue;
+                    if (nation.getCities() < 10) continue;
+                    if (nation.getNumWars() == 0) continue;
+                    if (nation.getVm_turns() != 0) continue;
 //            if (nation.isBeige()) continue;
-            if (nation.getAlliance_id() == 0) continue;
-            if (nation.getPosition() <= 1) continue;
-            if (nation.getActive_m() > TimeUnit.DAYS.toMinutes(1)) continue;
+                    if (nation.getAlliance_id() == 0) continue;
+                    if (nation.getPosition() <= 1) continue;
+                    if (nation.getActive_m() > TimeUnit.DAYS.toMinutes(1)) continue;
 
-            ByteBuffer meta = nation.getMeta(NationMeta.UPDATE_SPIES);
-            long lastturn = meta == null ? 0 : meta.getLong();
+                    ByteBuffer meta = nation.getMeta(NationMeta.UPDATE_SPIES);
+                    long lastturn = meta == null ? 0 : meta.getLong();
 
-            long lastUpdate = TimeUtil.getTimeFromTurn(lastturn);
-            long lastActive = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(nation.getActive_m());
+                    long lastUpdate = TimeUtil.getTimeFromTurn(lastturn);
+                    long lastActive = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(nation.getActive_m());
 
-            long diff = currentTurn - lastturn;
-            if (diff > 1) {
-                if (diff <= 12 && nation.getSpies() != null) {
-                    if (diff < 6 && lastturn != 0 && nation.getSpies() > 15) {
-                       continue;
-                    }
-                    if (nation.getNumWars() == 0 && !nation.isBeige()) {
-                        continue;
-                    }
-                    if (lastActive < lastUpdate) {
-                        continue;
+                    long diff = currentTurn - lastturn;
+                    if (diff > 1) {
+                        if (diff <= 12 && nation.getSpies() != null) {
+                            if (diff < 6 && lastturn != 0 && nation.getSpies() > 15) {
+                                continue;
+                            }
+                            if (nation.getNumWars() == 0 && !nation.isBeige()) {
+                                continue;
+                            }
+                            if (lastActive < lastUpdate) {
+                                continue;
+                            }
+                        }
+                        double factor = diff;
+
+                        if (nation.getSpies() == null) {
+                            factor += 100;
+                        } else if (factor > 1) {
+                            if (trackspiesIds.contains(nation.getAlliance_id())) {
+                                factor += 12;
+                            } else if (trackspiesIds.contains(nation.getAlliance_id())) {
+                                factor += 6;
+                            } else if (factor < 24) {
+                                continue;
+                            }
+                        }
+                        AbstractMap.SimpleEntry<Double, DBNation> pair = new AbstractMap.SimpleEntry<>(factor, nation);
+                        fetchSpiesList.add(pair);
                     }
                 }
-                double factor = diff;
-
-                if (nation.getSpies() == null) {
-                    factor += 100;
-                } else if (factor > 1) {
-                    if (trackspiesIds.contains(nation.getAlliance_id())) {
-                        factor += 12;
-                    } else if (trackspiesIds.contains(nation.getAlliance_id())) {
-                        factor += 6;
-                    } else if (factor < 24) {
-                        continue;
-                    }
-                }
-                AbstractMap.SimpleEntry<Double, DBNation> pair = new AbstractMap.SimpleEntry<>(factor, nation);
-                fetchSpiesList.add(pair);
             }
         }
 //
-        updater.accept(" - Updating from cache...");
+        if (!fetchSpiesList.isEmpty()) {
+            fetchSpiesList.sort((o1, o2) -> {
+                return Double.compare(o2.getKey(), o1.getKey());
+            });
+            updater.accept(" - Estimating spy ops... (" + fetchSpiesList.size() + ")");
+            {
+                int i = 0;
+                for (Map.Entry<Double, DBNation> entry : fetchSpiesList) {
+                    DBNation nation = entry.getValue();
+                    if (nation.getAlliance_id() != 0) {
+                        String msg = " - Estimating spy ops for " + nation.getNation() + "... " + (i++) + "/" + fetchSpiesList.size();
+                        updater.accept(msg);
 
-        fetchSpiesList.sort((o1, o2) -> {
-            return Double.compare(o2.getKey(), o1.getKey());
-        });
+                        nation.setMeta(NationMeta.UPDATE_SPIES, TimeUtil.getTurn());
+                        nation.updateSpies(true);
 
-        updater.accept(" - Estimating spy ops... (" + fetchSpiesList.size() + ")");
-        {
-            int i = 0;
-            for (Map.Entry<Double, DBNation> entry : fetchSpiesList) {
-                DBNation nation = entry.getValue();
-                if (nation.getAlliance_id() != 0) {
-                    String msg = " - Estimating spy ops for " + nation.getNation() + "... " + (i++) + "/" + fetchSpiesList.size();
-                    updater.accept(msg);
-
-                    nation.setMeta(NationMeta.UPDATE_SPIES, TimeUtil.getTurn());
-                    nation.updateSpies(true);
-
-                    if (i > 30) {
-                        if (System.currentTimeMillis() - start > 60000) break;
+                        if (i > 30) {
+                            if (System.currentTimeMillis() - start > 60000) break;
+                        }
                     }
                 }
             }
         }
 
-        if (!Settings.INSTANCE.TEST && false) {
+        if (Settings.INSTANCE.TASKS.FETCH_UUID) {
 //            updater.accept(" - Uploading spreadsheets");
 //            new UpdateBalanceSheetTask(nationMap).call(); // deprecated, it can get updated via command
 

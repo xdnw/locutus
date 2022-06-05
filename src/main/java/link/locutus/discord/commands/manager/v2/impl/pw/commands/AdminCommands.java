@@ -156,9 +156,11 @@ public class AdminCommands {
             String personal = replaced + "\n\n - " + author.getAsMention() + " " + guild.getName();
 
             boolean result = sendDM && nation.sendDM(personal);
+            if (!result) {
+                failedToDM.add(nation.getNation_id());
+            }
             if (!result || sendMail) {
                 nation.sendMail(keys, subject, personal);
-                failedToDM.add(nation.getNation_id());
             }
 
             sentMessages.put(nation, replaced);

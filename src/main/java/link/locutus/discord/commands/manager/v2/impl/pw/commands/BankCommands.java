@@ -158,7 +158,7 @@ public class BankCommands {
     @Command(desc = "Generate csv of war cost by nation between alliances (for reimbursement)\n" +
             "Filters out wars where nations did not perform actions")
     @RolePermission(Roles.ADMIN)
-    public String warReimburseByNationCsv(Set<Alliance> allies, Set<Alliance> enemies, long cutoff, boolean removeWarsWithNoDefenderActions) {
+    public String warReimburseByNationCsv(Set<Alliance> allies, Set<Alliance> enemies, @Timestamp long cutoff, boolean removeWarsWithNoDefenderActions) {
         Set<Integer> allyIds = allies.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Set<Integer> enemyIds = enemies.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
 
@@ -709,15 +709,15 @@ public class BankCommands {
         return "Shifted " + PnwUtil.resourcesToString(toAdd) + " from " + from + " to " + to + " for " + nation.getNation();
     }
 
-    @Command(desc = "Transfer from the alliance bank (alliance deposits)")
+    @Command(desc = "Resets a nations deposits")
     @RolePermission(Roles.ECON)
-    public String resetDeposits(@Me GuildDB db, @Me DBNation me, DBNation nation, @Switch('g') boolean ignoreGrants, @Switch('l') boolean ignoreLoans, @Switch('t') boolean ignoreTaxes, @Switch('d') boolean ignoreDeposits) {
+    public String resetDeposits(@Me GuildDB db, @Me DBNation me, DBNation nation, @Switch('g') boolean ignoreGrants, @Switch('l') boolean ignoreLoans, @Switch('t') boolean ignoreTaxes, @Switch('d') boolean ignoreBankDeposits) {
         Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
 
         long now = System.currentTimeMillis();
 
         double[] deposits = depoByType.get(DepositType.DEPOSITS);
-        if (deposits != null && !ignoreDeposits) {
+        if (deposits != null && !ignoreBankDeposits) {
             db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
         }
 

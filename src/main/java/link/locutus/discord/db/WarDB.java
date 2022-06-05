@@ -1,6 +1,13 @@
 package link.locutus.discord.db;
 
+import com.politicsandwar.graphql.model.BountiesQueryRequest;
+import com.politicsandwar.graphql.model.Bounty;
+import com.politicsandwar.graphql.model.BountyResponseProjection;
+import com.ptsmods.mysqlw.table.ColumnType;
+import com.ptsmods.mysqlw.table.TableIndex;
+import com.ptsmods.mysqlw.table.TablePreset;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
@@ -12,6 +19,8 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.event.AttackEvent;
+import link.locutus.discord.event.BountyCreateEvent;
+import link.locutus.discord.event.BountyRemoveEvent;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.RateLimitUtil;
@@ -53,6 +62,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -70,17 +80,30 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-public class WarDB extends DBMain {
+public class WarDB extends DBMainV2 {
     private final ArrayDeque<DBAttack> allAttacks = new ArrayDeque<>();
-
     public WarDB() throws SQLException, ClassNotFoundException {
-        super("war", false);
+        super(Settings.INSTANCE.DATABASE, "war");
     }
 
     @Override
     public void createTables() {
+        {
+            TablePreset.create("BOUNTIES_V3")
+                    .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("posted_by", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("attack_type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("amount", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .create(getDb());
+        }
+
         {
             String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` INT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
@@ -108,16 +131,6 @@ public class WarDB extends DBMain {
         executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_defender ON WARS (defender_id);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_status ON WARS (status);");
 
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `BOUNTIES` (`date` INT NOT NULL, `nation_id` INT NOT NULL, `posted_by` INT NOT NULL, `attack_type` INT NOT NULL, `amount` INT NOT NULL, PRIMARY KEY(date, nation_id, attack_type, amount))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
         {
             String create = "CREATE TABLE IF NOT EXISTS `COUNTER_STATS` (`id` INT NOT NULL PRIMARY KEY, `type` INT NOT NULL, `active` INT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
@@ -486,13 +499,14 @@ public class WarDB extends DBMain {
         return stat;
     }
 
-    public Map<Integer, Set<DBBounty>> getBounties() {
+    @Deprecated
+    private Map<Integer, Set<DBBounty>> getBounties_legacy() {
             Map<Integer, Set<DBBounty>> map = new HashMap<>();
         query("SELECT * FROM `BOUNTIES` ORDER BY date DESC", (ThrowingConsumer<PreparedStatement>) stmt -> {
 
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
-                DBBounty bounty = new DBBounty(rs);
+                DBBounty bounty = DBBounty.fromLegacy(rs);
                 map.computeIfAbsent(bounty.getNationId(), f -> new LinkedHashSet<>()).add(bounty);
             }
         });
@@ -502,7 +516,7 @@ public class WarDB extends DBMain {
     public Set<DBBounty> getBounties(int nationId) {
         LinkedHashSet<DBBounty> result = new LinkedHashSet<>();
 
-        query("SELECT * FROM `BOUNTIES` WHERE nation_id = ? ORDER BY date DESC", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        query("SELECT * FROM `BOUNTIES_V3` WHERE nation_id = ? ORDER BY date DESC", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
@@ -513,181 +527,79 @@ public class WarDB extends DBMain {
         return result;
     }
 
+    public Map<Integer, List<DBBounty>> getBountiesByNation() {
+        return getBounties().stream().collect(Collectors.groupingBy(DBBounty::getId, Collectors.toList()));
+    }
 
-    public static synchronized void updateBounties(WarDB warDB) throws IOException {
-        Map<Integer, Set<DBBounty>> existingBounties = warDB.getBounties();
+    public Set<DBBounty> getBounties() {
+        LinkedHashSet<DBBounty> result = new LinkedHashSet<>();
+        query("SELECT * FROM `BOUNTIES_V3` ORDER BY date DESC", (ThrowingConsumer<PreparedStatement>) stmt -> {},
+                (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                DBBounty bounty = new DBBounty(rs);
+                result.add(bounty);
+            }
+        });
+        return result;
+    }
 
-        String html = FileUtil.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/world/bounties/");
-        Document dom = Jsoup.parse(html);
-        Element table = dom.getElementsByClass("nationtable").get(0);
-        Elements rows = table.getElementsByTag("tr");
-
-        Map<Integer, Set<DBBounty>> currentBounties = new HashMap<>();
+    public synchronized void updateBountiesV3() throws IOException {
+        Set<DBBounty> removedBounties = getBounties();
         Set<DBBounty> newBounties = new LinkedHashSet<>();
 
-        for (int i = 1; i < rows.size(); i++) {
-            Element row = rows.get(i);
-            Elements columns = row.getElementsByTag("td");
+        boolean callEvents = !removedBounties.isEmpty();
 
-            String dateStr = columns.get(0).text();
-            long date = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_A, dateStr);
-            int nationId = DiscordUtil.parseNationId(columns.get(1).getElementsByTag("A").get(0).attr("href").split("=")[1]);
-            WarType warType = WarType.parse(columns.get(3).text().toUpperCase());
-            Double amount = MathMan.parseDouble(columns.get(4).text());
+        PoliticsAndWarV3 v3 = Locutus.imp().getRootPnwApi().getV3();
+        Collection<Bounty> bounties = v3.fetchBounties(null, f -> f.all$(0));
 
-            long change = -amount.longValue();
-            DBBounty bounty = new DBBounty(date, nationId, 0, warType, amount.longValue());
+        if (bounties.isEmpty()) return;
+        bounties = new HashSet<>(bounties); // Ensure uniqueness (in case of pagination concurrency issues)
 
-            Set<DBBounty> myExistingBounties = existingBounties.get(nationId);
+        for (Bounty bounty : bounties) {
+            WarType type = WarType.parse(bounty.getType().name());
+            long date = bounty.getDate().toEpochMilli();
+            int id = bounty.getId();
+            int nationId = bounty.getNation_id();
+            long amount = bounty.getAmount();
 
-            if (myExistingBounties == null || !myExistingBounties.contains(bounty)) {
-//                Integer client = NationUpdateProcessor.getNationWithChange(change);
-//                if (client == null) {
-//                    client = -1;
-//                    long diff = System.currentTimeMillis() - date;
-//                    long diffMin = diff / (1000L * 60);
-//
-//                    String bountyHeader = "%% Bounty: " + amount + " | " + diffMin;
-//
-//                    for (Map.Entry<Integer, Long> entry : NationUpdateProcessor.balanceChange.entrySet()) {
-//                        if (entry.getValue() >= 0) continue;
-//                        DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
-//
-//                        if (nation != null && nation.getActive_m() <= 5) {
-//                            String bountyStr = " - $" + entry.getValue() + " | " + nation.getActive_m() + " | " + nation.getNation_id();
-//                            DBNation previous = NationUpdateProcessor.getPrevious(nation);
-//                            if (previous.getCities() < nation.getCities()) bountyStr += " | city";
-//                            if (!previous.hasUnsetMil() && previous.getSoldiers() < nation.getSoldiers()) bountyStr += " | soldiers: " + (nation.getSoldiers() - previous.getSoldiers());
-//                            if (!previous.hasUnsetMil() && previous.getTanks() < nation.getTanks()) bountyStr += " | tanks: " + (nation.getTanks() - previous.getTanks());
-//                            if (!previous.hasUnsetMil() && previous.getAircraft() < nation.getAircraft()) bountyStr += " | aircraft: " + (nation.getAircraft() - previous.getAircraft());
-//                            if (!previous.hasUnsetMil() && previous.getShips() < nation.getShips()) bountyStr += " | ships: " + (nation.getShips() - previous.getShips());
-//                            if (!previous.hasUnsetMil() && previous.getMissiles() < nation.getMissiles()) bountyStr += " | missiles: " + (nation.getMissiles() - previous.getMissiles());
-//                            if (!previous.hasUnsetMil() && previous.getNukes() < nation.getNukes()) bountyStr += " | nukes: " + (nation.getNukes() - previous.getNukes());
-//                            if (!previous.hasUnsetMil() && previous.getInfrahjk,l.;'0ol.,opl../mn 1`jkl;'
-//                            .lo9o,l,ki8 nju78h() < nation.getInfra()) bountyStr += " | infra: " + (nation.getInfra() - previous.getInfra());
-//                            if (!previous.hasUnsetMil() && previous.getDef() > nation.getDef()) bountyStr += " | defensive_wars: " + (nation.getDef() - previous.getDef());
-//                            if (!previous.hasUnsetMil() && previous.getScore() < nation.getScore()) bountyStr += " | score: " + (nation.getScore() - previous.getScore());
-//
-//                        }
-//                    }
-//                    if (client == -1) client = 0;
-//                }
-//                bounty = new DBBounty(date, nationId, client, warType, amount.longValue());
+            int postedBy = 0;
 
-                newBounties.add(bounty);
+            DBBounty dbBounty = new DBBounty(id, date, nationId, postedBy, type, amount);
+            if (removedBounties.contains(dbBounty)) {
+                removedBounties.remove(dbBounty);
+                continue;
             } else {
-                for (DBBounty other : myExistingBounties) {
-                    if (other.equals(bounty)) {
-                        bounty = other;
-                        break;
-                    }
-                }
-            }
-
-            currentBounties.computeIfAbsent(bounty.getNationId(), f -> new LinkedHashSet<>()).add(bounty);
-        }
-
-        if (currentBounties.isEmpty()) return;
-
-        {
-            try (PreparedStatement stmt = warDB.prepareQuery("DELETE FROM BOUNTIES")) {
-                stmt.executeUpdate();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        for (Map.Entry<Integer, Set<DBBounty>> entry : currentBounties.entrySet()) {
-            for (DBBounty bounty : entry.getValue()) {
-                warDB.addBounty(bounty);
+                newBounties.add(dbBounty);
             }
         }
 
+        for (DBBounty bounty : removedBounties) {
+            removeBounty(bounty);
+            if (callEvents) new BountyRemoveEvent(bounty).post();
+        }
         for (DBBounty bounty : newBounties) {
-            AlertUtil.forEachChannel(SyncBounties.class, GuildDB.Key.BOUNTY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
-                @Override
-                public void accept(MessageChannel channel, GuildDB guildDB) {
-                    Guild guild = guildDB.getGuild();
-                    try {
-                        Message msg = bounty.toCard(channel, false);
-
-                        Role bountyRole = Roles.BOUNTY_ALERT.toRole(guild);
-                        if (bountyRole == null) return;
-                        List<Member> members = guild.getMembersWithRoles(bountyRole);
-                        StringBuilder mentions = new StringBuilder();
-
-                        DBNation enemy = Locutus.imp().getNationDB().getNation(bounty.getNationId());
-                        if (enemy == null || enemy.getDef() >= 3 || enemy.getVm_turns() != 0 || enemy.isBeige()) return;
-
-                        double minScore = enemy.getScore() / 1.75;
-                        double maxScore = enemy.getScore() / 0.75;
-
-                        for (Member member : members) {
-                            PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
-                            if (pnwUser == null) continue;
-
-                            DBNation nation = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
-                            if (nation == null) continue;
-
-                            if (nation.getScore() >= minScore && nation.getScore() <= maxScore) {
-                                mentions.append(member.getAsMention() + " ");
-                            }
-                        }
-                        if (mentions.length() != 0) {
-                            RateLimitUtil.queue(channel.sendMessage(mentions));
-                        }
-                    } catch (Throwable ignore) {
-                        ignore.printStackTrace();
-                    }
-                }
-            });
-
-//            if (bounty.getPostedBy() != 0) {
-//                AlertUtil.forEachChannel(SyncBounties.class, GuildDB.Key.BOUNTY_DEANONYMIZED_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
-//                    @Override
-//                    public void accept(MessageChannel channel, GuildDB guildDB) {
-//                        Guild guild = guildDB.getGuild();
-//                        Message msg = bounty.toCard(channel, true);
-//
-//                        Role bountyRole = Roles.BOUNTY_ALERT.toRole(guild);
-//                        if (bountyRole == null) return;
-//                        List<Member> members = guild.getMembersWithRoles(bountyRole);
-//                        StringBuilder mentions = new StringBuilder();
-//
-//                        DBNation enemy = Locutus.imp().getNationDB().getNation(bounty.getNationId());
-//                        if (enemy == null) return;
-//
-//                        double minScore = enemy.getScore() / 1.75;
-//                        double maxScore = enemy.getScore() / 0.75;
-//
-//                        for (Member member : members) {
-//                            PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
-//                            if (pnwUser == null) continue;
-//
-//                            DBNation nation = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
-//                            if (nation == null) continue;
-//
-//                            if (nation.getScore() >= minScore && nation.getScore() <= maxScore) {
-//                                mentions.append(member.getAsMention() + " ");
-//                            }
-//                        }
-//                        if (mentions.length() != 0) {
-//                            link.locutus.discord.util.RateLimitUtil.queue(channel.sendMessage(mentions));
-//                        }
-//                    }
-//                });
-//            }
+            addBounty(bounty);
+            if (Settings.INSTANCE.LEGACY_SETTINGS.DEANONYMIZE_BOUNTIES) {
+                // TODO remove this
+            }
+            if (callEvents) new BountyCreateEvent(bounty).post();
         }
-
-
     }
 
     public void addBounty(DBBounty bounty) {
-        update("INSERT OR REPLACE INTO `BOUNTIES`(`date`, `nation_id`, `posted_by`, `attack_type`, `amount`) VALUES(?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, bounty.getDate());
-            stmt.setLong(2, bounty.getNationId());
-            stmt.setInt(3, bounty.getPostedBy());
-            stmt.setInt(4, bounty.getType().ordinal());
-            stmt.setLong(5, bounty.getAmount());
+        update("INSERT OR REPLACE INTO `BOUNTIES_V3`(`id, `date`, `nation_id`, `posted_by`, `attack_type`, `amount`) VALUES(?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, bounty.getId());
+            stmt.setLong(2, bounty.getDate());
+            stmt.setLong(3, bounty.getNationId());
+            stmt.setInt(4, bounty.getPostedBy());
+            stmt.setInt(5, bounty.getType().ordinal());
+            stmt.setLong(6, bounty.getAmount());
+        });
+    }
+
+    public void removeBounty(DBBounty bounty) {
+        update("DELETE FROM `BOUNTIES_V3` where `id` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, bounty.getId());
         });
     }
 
@@ -2223,5 +2135,27 @@ public class WarDB extends DBMain {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public int countWarsByNation(int nation_id, long date) {
+        String query = "SELECT COUNT(*) FROM `wars` WHERE date > ? AND (attacker_id = ? OR defender_id = ?)";
+        int[] result = new int[1];
+        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, date);
+            stmt.setInt(2, nation_id);
+            stmt.setInt(3, nation_id);
+        }, (ThrowingConsumer<ResultSet>) elem -> result[0] = elem.getInt(1));
+        return result[0];
+    }
+
+    public int countWarsByAlliance(int alliance_id, long date) {
+        String query = "SELECT COUNT(*) FROM `wars` WHERE date > ? AND (attacker_aa = ? OR defender_a = ?)";
+        int[] result = new int[1];
+        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, date);
+            stmt.setInt(2, alliance_id);
+            stmt.setInt(3, alliance_id);
+        }, (ThrowingConsumer<ResultSet>) elem -> result[0] = elem.getInt(1));
+        return result[0];
     }
 }
