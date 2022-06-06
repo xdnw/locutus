@@ -2148,6 +2148,26 @@ public class WarDB extends DBMainV2 {
         return result[0];
     }
 
+    public int countOffWarsByNation(int nation_id, long date) {
+        String query = "SELECT COUNT(*) FROM `wars` WHERE attacker_id = ? AND date > ?";
+        int[] result = new int[1];
+        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nation_id);
+            stmt.setLong(2, date);
+        }, (ThrowingConsumer<ResultSet>) elem -> result[0] = elem.getInt(1));
+        return result[0];
+    }
+
+    public int countDefWarsByNation(int nation_id, long date) {
+        String query = "SELECT COUNT(*) FROM `wars` WHERE defender_id = ? AND date > ?";
+        int[] result = new int[1];
+        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nation_id);
+            stmt.setLong(2, date);
+        }, (ThrowingConsumer<ResultSet>) elem -> result[0] = elem.getInt(1));
+        return result[0];
+    }
+
     public int countWarsByAlliance(int alliance_id, long date) {
         String query = "SELECT COUNT(*) FROM `wars` WHERE date > ? AND (attacker_aa = ? OR defender_a = ?)";
         int[] result = new int[1];
