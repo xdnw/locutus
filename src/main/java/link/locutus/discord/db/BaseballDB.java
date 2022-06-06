@@ -1,0 +1,204 @@
+package link.locutus.discord.db;
+
+import com.politicsandwar.graphql.model.BBGame;
+import com.politicsandwar.graphql.model.BBGameResponseProjection;
+import com.politicsandwar.graphql.model.Baseball_gamesQueryRequest;
+import com.ptsmods.mysqlw.query.QueryOrder;
+import com.ptsmods.mysqlw.query.SelectResults;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
+import com.ptsmods.mysqlw.table.ColumnType;
+import com.ptsmods.mysqlw.table.TableIndex;
+import com.ptsmods.mysqlw.table.TablePreset;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.config.Settings;
+import link.locutus.discord.event.BaseballGameEvent;
+import link.locutus.discord.util.scheduler.ThrowingConsumer;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+
+import static java.util.Collections.singletonMap;
+
+public class BaseballDB extends DBMainV2{
+    public BaseballDB(Settings.DATABASE config) throws SQLException {
+        super(config, "baseball");
+    }
+
+    @Override
+    protected void createTables() {
+        TablePreset.create("games")
+                .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("home_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("away_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("home_nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("away_nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("home_score", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("away_score", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("home_revenue", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("spoils", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("open", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("wager", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .create(getDb())
+        ;
+    }
+
+    public Integer getMaxGameId() {
+        List<BBGame> latestGame = getBaseballGames(f -> f.order("id", QueryOrder.OrderDirection.DESC).limit(1));
+        return latestGame.isEmpty() ? null : latestGame.get(0).getId();
+    }
+
+    public Integer getMinGameId() {
+        List<BBGame> latestGame = getBaseballGames(f -> f.order("id", QueryOrder.OrderDirection.ASC).limit(1));
+        return latestGame.isEmpty() ? null : latestGame.get(0).getId();
+    }
+
+    public void updateGames(boolean runEvents, boolean wagered, Integer minId, Integer maxId) {
+        Set<Integer> gameIds = getBaseballGameIds();
+
+        if (gameIds.isEmpty()) runEvents = false;
+
+        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        List<BBGame> games = v3.fetchBaseballGames(req -> {
+            if (wagered) req.setMin_wager(1);
+            if (minId != null) req.setMin_id(minId);
+            if (maxId != null) req.setMax_id(maxId);
+        }, game -> {
+            game.id();
+            game.date();
+            game.home_id();
+            game.away_id();
+            game.home_nation_id();
+            game.away_nation_id();
+            game.home_score();
+            game.away_score();
+            game.home_revenue();
+            game.spoils();
+            game.open();
+            game.wager();
+        });
+        games.removeIf(f -> f.getId() == null || gameIds.contains(f.getId()));
+
+        System.out.println("Add games " + games.size());
+        for (BBGame game : games) {
+            addGame(game);
+        }
+        if (runEvents) {
+            for (BBGame game : games) {
+                new BaseballGameEvent(game).post();
+            }
+        }
+    }
+
+    public int addGame(BBGame game) {
+        if (game.getHome_revenue() == null) game.setHome_revenue(0d);
+        if (game.getSpoils() == null) game.setSpoils(0d);
+        if (game.getWager() == null) game.setWager(0d);
+        if (game.getHome_score() == null) game.setHome_score(0);
+        if (game.getAway_score() == null) game.setAway_score(0);
+
+        if (game.getDate() == null || game.getId() == null) return 0;
+        if (game.getHome_id() == null) game.setHome_id(0);
+        if (game.getAway_id() == null) game.setAway_id(0);
+        if (game.getHome_nation_id() == null) game.setHome_nation_id(0);
+        if (game.getAway_nation_id() == null) game.setAway_nation_id(0);
+//        return getDb().insertUpdate("games",
+//                new String[] {"id",
+//                        "date",
+//                        "home_id",
+//                        "away_id",
+//                        "home_nation_id",
+//                        "away_nation_id",
+//                        "home_score",
+//                        "away_score",
+//                        "home_revenue",
+//                        "spoils",
+//                        "open",
+//                        "wager",
+//                },
+//                new Object[] {
+//                        game.getId(),
+//                        game.getDate().toEpochMilli(),
+//                        game.getHome_id(),
+//                        game.getAway_id(),
+//                        game.getHome_nation_id(),
+//                        game.getAway_nation_id(),
+//                        game.getHome_score(),
+//                        game.getAway_score(),
+//                        (int) (game.getHome_revenue() * 100),
+//                        (int) (game.getSpoils() * 100),
+//                        game.getOpen(),
+//                        (int) (game.getWager() * 100)
+//                },
+//                singletonMap("id", game.getId()), "id");
+        return update("INSERT OR IGNORE INTO `games` (`id`,`date`,`home_id`,`away_id`,`home_nation_id`,`away_nation_id`,`home_score`,`away_score`,`home_revenue`,`spoils`,`open`,`wager`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, game.getId());
+            stmt.setLong(2, game.getDate().toEpochMilli());
+            stmt.setInt(3, game.getHome_id());
+            stmt.setInt(4, game.getAway_id());
+            stmt.setInt(5, game.getHome_nation_id());
+            stmt.setInt(6, game.getAway_nation_id());
+            stmt.setInt(7, game.getHome_score());
+            stmt.setInt(8, game.getAway_score());
+            stmt.setLong(9, (long) (game.getHome_revenue() * 100));
+            stmt.setLong(10, (long) (game.getSpoils() * 100));
+            stmt.setInt(11, game.getOpen());
+            stmt.setLong(12, (long) (game.getWager() * 100));
+        });
+    }
+
+    public Set<Integer> getBaseballGameIds() {
+        Set<Integer> result = new LinkedHashSet<>();
+        SelectBuilder builder = getDb().selectBuilder("games")
+                .select("id");
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                result.add(rs.getInt("id"));
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public List<BBGame> getBaseballGames(Consumer<SelectBuilder> query) {
+        List<BBGame> result = new LinkedList<>();
+        SelectBuilder builder = getDb().selectBuilder("games")
+                .select("*");
+        if (query != null) query.accept(builder);
+        try (ResultSet rs = builder.executeRaw()) {
+                while (rs.next()) {
+                    BBGame game = new BBGame();
+                    game.setId(rs.getInt("id"));
+                    game.setDate(Instant.EPOCH.plusMillis(rs.getLong("date")));
+                    game.setHome_id(rs.getInt("home_id"));
+                    game.setAway_id(rs.getInt("away_id"));
+                    game.setHome_nation_id(rs.getInt("home_nation_id"));
+                    game.setAway_nation_id(rs.getInt("away_nation_id"));
+                    game.setHome_score(rs.getInt("home_score"));
+                    game.setAway_score(rs.getInt("away_score"));
+                    game.setHome_revenue(rs.getLong("home_revenue") * 0.01d);
+                    game.setSpoils(rs.getLong("spoils") * 0.01d);
+                    game.setOpen(rs.getInt("open"));
+                    game.setWager(rs.getLong("wager") * 0.01d);
+
+                    result.add(game);
+
+                }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}

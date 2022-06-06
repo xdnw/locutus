@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.politicsandwar.graphql.model.BBGame;
+import com.ptsmods.mysqlw.query.QueryCondition;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -13,6 +15,7 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.AttackCost;
@@ -450,6 +453,45 @@ public class StatCommands {
         }
         table.write(channel);
         return null;
+    }
+
+    @Command(desc = "Rank of nations by # of challenge baseball games")
+    public void baseballChallengeRanking(BaseballDB db, @Me MessageChannel channel, @Switch('f') boolean uploadFile) {
+        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
+
+        Map<Integer, Integer> mostWageredGames = new HashMap<>();
+        for (BBGame game : games) {
+            mostWageredGames.merge(game.getHome_nation_id(), 1, Integer::sum);
+            mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
+        }
+
+        String title = "# Challenge BB Games";
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> PnwUtil.getName(f, false));
+        ranks.build(null, channel, null, title);
+        if (uploadFile) {
+            DiscordUtil.upload(channel, title, ranks.toString());
+        }
+    }
+
+    @Command(desc = "Rank of nations by challenge baseball game earnings")
+    public void baseballChallengeEarningsRanking(BaseballDB db, @Me MessageChannel channel, @Switch('f') boolean uploadFile) {
+        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
+
+        Map<Integer, Long> mostWageredWinnings = new HashMap<>();
+        for (BBGame game : games) {
+            if (game.getHome_score() > game.getAway_score()) {
+                mostWageredWinnings.merge(game.getHome_nation_id(), game.getWager().longValue(), Long::sum);
+            } else if (game.getAway_score() > game.getHome_score()) {
+                mostWageredWinnings.merge(game.getAway_nation_id(), game.getWager().longValue(), Long::sum);
+            }
+        }
+
+        String title = "BB Challenge Earnings $";
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, false));
+        ranks.build(null, channel, null, title);
+        if (uploadFile) {
+            DiscordUtil.upload(channel, title, ranks.toString());
+        }
     }
 
     @Command(desc = "Generate ranking of war status by AA")

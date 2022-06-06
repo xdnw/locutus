@@ -175,6 +175,9 @@ public class Settings extends Config {
         @Comment("Fetches wars and then attacks (default 3 minutes)")
         public int WAR_ATTACK_SECONDS = 60 * 3;
 
+        @Comment("Fetches baseball games (default 2 hours)")
+        public int BASEBALL_SECONDS = 60 * 60 * 2;
+
         @Comment("Fetches the bounties (default 1 hour)")
         public int BOUNTY_UPDATE_SECONDS = 60 * 60;
         public boolean WAR_ATTACKS_ESCALATION_ALERTS = true;

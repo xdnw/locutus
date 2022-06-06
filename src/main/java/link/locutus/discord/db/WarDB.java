@@ -549,7 +549,7 @@ public class WarDB extends DBMainV2 {
 
         boolean callEvents = !removedBounties.isEmpty();
 
-        PoliticsAndWarV3 v3 = Locutus.imp().getRootPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
         Collection<Bounty> bounties = v3.fetchBounties(null, f -> f.all$(0));
 
         if (bounties.isEmpty()) return;
