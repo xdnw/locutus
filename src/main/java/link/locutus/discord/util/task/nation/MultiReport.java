@@ -181,7 +181,6 @@ public class MultiReport {
                     response.append("\n");
                 }
             }
-
         }
 
         return response.toString();

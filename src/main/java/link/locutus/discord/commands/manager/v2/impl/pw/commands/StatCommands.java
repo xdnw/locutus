@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -82,6 +83,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -468,8 +470,41 @@ public class StatCommands {
         String title = "# Challenge BB Games";
         RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> PnwUtil.getName(f, false));
         ranks.build(null, channel, null, title);
-        if (uploadFile) {
+        if (uploadFile && ranks.get().size() > 25) {
             DiscordUtil.upload(channel, title, ranks.toString());
+        }
+    }
+
+    @Command(desc = "List the baseball wager inflows for a nation id")
+    public void baseBallChallengeInflow(BaseballDB db, @Me MessageChannel channel, int nationId) {
+        List<BBGame> games = db.getBaseballGames(new Consumer<SelectBuilder>() {
+            @Override
+            public void accept(SelectBuilder f) {
+                f.where(QueryCondition.greater("wager", 0).and(QueryCondition.equals("home_nation_id", nationId).or(QueryCondition.equals("away_nation_id", nationId))));
+            }
+        });
+
+        if (games.isEmpty()) return "No games found";
+        
+        {
+            String title = "# Wagers with " + PnwUtil.getName(nationId, false);
+            Map<Integer, Integer> mostWageredGames = new HashMap<>();
+            for (BBGame game : games) {
+                mostWageredGames.merge(game.getHome_nation_id(), 1, Integer::sum);
+                mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
+            }
+            RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> PnwUtil.getName(f, false));
+            ranks.build(null, channel, null, title);
+        }
+        {
+            String title = "$ Wagered with " + PnwUtil.getName(nationId, false);
+            Map<Integer, Long> mostWageredWinnings = new HashMap<>();
+            for (BBGame game : games) {
+                int otherId = game.getAway_nation_id() == nationId ? game.getHome_nation_id() : game.getAway_nation_id();
+                mostWageredWinnings.merge(otherId, game.getWager().longValue(), Long::sum);
+            }
+            RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, false));
+            ranks.build(null, channel, null, title);
         }
     }
 
@@ -489,7 +524,7 @@ public class StatCommands {
         String title = "BB Challenge Earnings $";
         RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, false));
         ranks.build(null, channel, null, title);
-        if (uploadFile) {
+        if (uploadFile && ranks.get().size() > 25) {
             DiscordUtil.upload(channel, title, ranks.toString());
         }
     }
