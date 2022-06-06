@@ -476,7 +476,7 @@ public class StatCommands {
     }
 
     @Command(desc = "List the baseball wager inflows for a nation id")
-    public void baseBallChallengeInflow(BaseballDB db, @Me MessageChannel channel, int nationId) {
+    public String baseBallChallengeInflow(BaseballDB db, @Me MessageChannel channel, int nationId) {
         List<BBGame> games = db.getBaseballGames(new Consumer<SelectBuilder>() {
             @Override
             public void accept(SelectBuilder f) {
@@ -485,7 +485,7 @@ public class StatCommands {
         });
 
         if (games.isEmpty()) return "No games found";
-        
+
         {
             String title = "# Wagers with " + PnwUtil.getName(nationId, false);
             Map<Integer, Integer> mostWageredGames = new HashMap<>();
