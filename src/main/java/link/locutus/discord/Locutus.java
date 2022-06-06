@@ -11,18 +11,11 @@ import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.commands.trade.sub.CheckAllTradesTask;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
-import link.locutus.discord.db.BankDB;
-import link.locutus.discord.db.DBMain;
-import link.locutus.discord.db.DiscordDB;
-import link.locutus.discord.db.ForumDB;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.WarDB;
+import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.CityInfraLand;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
@@ -125,6 +118,7 @@ public final class Locutus extends ListenerAdapter {
 
     private final TradeManager tradeManager;
     private final WarDB warDb;
+    private BaseballDB baseBallDB;
     private final BankDB bankDb;
     private final ExecutorService executor;
 
@@ -484,6 +478,21 @@ public final class Locutus extends ListenerAdapter {
         return warDb;
     }
 
+    public BaseballDB getBaseballDB() {
+        if (this.baseBallDB == null) {
+            synchronized (this) {
+                if (this.baseBallDB == null) {
+                    try {
+                        baseBallDB = new BaseballDB(Settings.INSTANCE.DATABASE);
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+        return this.baseBallDB;
+    }
+
     public TradeManager getTradeManager() {
         return tradeManager;
     }
@@ -660,7 +669,20 @@ public final class Locutus extends ListenerAdapter {
                 } catch (Throwable e) {
                     AlertUtil.error("Could not fetch bounties", e);
                 }
-            }), 1, 1, TimeUnit.HOURS);
+            }), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, TimeUnit.SECONDS);
+        }
+
+        if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
+            commandManager.getExecutor().scheduleAtFixedRate(CaughtRunnable.wrap(() -> {
+                try {
+                    BaseballDB db = Locutus.imp().getBaseballDB();
+                    Integer minId = db.getMinGameId();
+                    if (minId != null) minId++;
+                    db.updateGames(true, false, minId, null);
+                } catch (Throwable e) {
+                    AlertUtil.error("Could not fetch baseball games", e);
+                }
+            }), Settings.INSTANCE.TASKS.BASEBALL_SECONDS, Settings.INSTANCE.TASKS.BASEBALL_SECONDS, TimeUnit.SECONDS);
         }
 
 //            CheckAllTradesTask checkCreditTrades = new CheckAllTradesTask(CREDITS);

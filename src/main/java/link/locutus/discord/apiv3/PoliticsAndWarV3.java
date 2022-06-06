@@ -1,7 +1,15 @@
 package link.locutus.discord.apiv3;
 
+import com.ptsmods.mysqlw.query.QueryCondition;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.WarAttacks;
+import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
@@ -17,9 +25,11 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.security.auth.login.LoginException;
+import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -163,6 +173,86 @@ public class PoliticsAndWarV3 {
                     if (paginator != null) {
                         List<Bounty> txs = paginator.getData();
                         for (Bounty tx : txs) {
+                            if (recResults.test(tx)) allResults.add(tx);
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
+    public List<BBGame> fetchBaseballGames(Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query) {
+        return fetchBaseballGames(1000, filter, query, f -> ErrorResponse.EXIT, f -> true);
+    }
+
+    public List<BBGame> fetchBaseballGames(int perPage, Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<BBGame> recResults) {
+        List<BBGame> allResults = new LinkedList<>();
+
+        handlePagination(page -> {
+                    Baseball_gamesQueryRequest request = new Baseball_gamesQueryRequest();
+                    if (filter != null) filter.accept(request);
+                    request.setFirst(perPage);
+                    request.setPage(page);
+
+                    BBGameResponseProjection respProj = new BBGameResponseProjection();
+                    query.accept(respProj);
+
+                    BBGamePaginatorResponseProjection pagRespProj = new BBGamePaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(respProj);
+
+                    return new GraphQLRequest(request, pagRespProj);
+                }, errorBehavior, Baseball_gamesQueryResponse.class,
+                response -> {
+                    BBGamePaginator paginator = response.baseball_games();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    BBGamePaginator paginator = result.baseball_games();
+                    if (paginator != null) {
+                        List<BBGame> txs = paginator.getData();
+                        for (BBGame tx : txs) {
+                            if (recResults.test(tx)) allResults.add(tx);
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
+    public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query) {
+        return fetchAttacks(1000, filter, query, f -> ErrorResponse.EXIT, f -> true);
+    }
+
+    public List<WarAttack> fetchAttacks(int perPage, Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<WarAttack> recResults) {
+        List<WarAttack> allResults = new LinkedList<>();
+
+        handlePagination(page -> {
+                    WarattacksQueryRequest request = new WarattacksQueryRequest();
+                    if (filter != null) filter.accept(request);
+                    request.setFirst(perPage);
+                    request.setPage(page);
+
+                    WarAttackResponseProjection respProj = new WarAttackResponseProjection();
+                    query.accept(respProj);
+
+                    WarAttackPaginatorResponseProjection pagRespProj = new WarAttackPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(respProj);
+
+                    return new GraphQLRequest(request, pagRespProj);
+                }, errorBehavior, WarattacksQueryResponse.class,
+                response -> {
+                    WarAttackPaginator paginator = response.warattacks();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    WarAttackPaginator paginator = result.warattacks();
+                    if (paginator != null) {
+                        List<WarAttack> txs = paginator.getData();
+                        for (WarAttack tx : txs) {
                             if (recResults.test(tx)) allResults.add(tx);
                         }
                     }
@@ -356,7 +446,7 @@ public class PoliticsAndWarV3 {
         return result.me();
     }
 
-    public static void main(String[] args) throws ParseException, LoginException, InterruptedException, SQLException, ClassNotFoundException {
+    public static void main(String[] args) throws ParseException, LoginException, InterruptedException, SQLException, ClassNotFoundException, IOException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
@@ -368,6 +458,31 @@ public class PoliticsAndWarV3 {
         System.out.println("APPLICATION_ID " + Settings.INSTANCE.APPLICATION_ID);
 
         ApiKeyPool pool = new ApiKeyPool(Settings.INSTANCE.API_KEY_PRIMARY);
+
+        System.out.println("Update games");
+
+        BaseballDB bbDb = Locutus.imp().getBaseballDB();
+        int max = bbDb.getMaxGameId();
+        int min = bbDb.getMinGameId();
+//        bbDb.updateGames(false, true,null, null);
+//        BaseballDB bbDb = Locutus.imp().getBaseballDB();//.updateGames(false);
+
+        List<BBGame> games = bbDb.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
+
+        Map<Integer, Integer> mostWageredGames = new HashMap<>();
+        Map<Integer, Integer> mostWageredWinnings = new HashMap<>();
+
+        for (BBGame game : games) {
+            mostWageredGames.merge(game.getHome_nation_id(), 1, Integer::sum);
+            mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
+            if (game.getHome_score() > game.getAway_score()) {
+                mostWageredWinnings.merge(game.getHome_nation_id(), game.getWager().intValue(), Integer::sum);
+            } else if (game.getAway_score() > game.getHome_score()) {
+                mostWageredWinnings.merge(game.getAway_nation_id(), game.getWager().intValue(), Integer::sum);
+            }
+        }
+
+        System.exit(1);
 
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
         {

@@ -164,6 +164,8 @@ type Query {
     team_id: [Int]
     orderBy: [QueryBaseballGamesOrderByOrderByClause!]
     open: Boolean
+    max_wager: Int
+    min_wager: Int
 
     # Limits number of fetched items. Maximum allowed value: 1000.
     first: Int = 50
@@ -899,10 +901,12 @@ type War {
   attid: Int @deprecated(reason: "Use att_id instead.")
   att_id: Int
   att_alliance_id: Int
+  att_alliance_position: AlliancePositionEnum
   attacker: Nation
   defid: Int @deprecated(reason: "Use def_id instead.")
   def_id: Int
   def_alliance_id: Int
+  def_alliance_position: AlliancePositionEnum
   defender: Nation
   attpoints: Int @deprecated(reason: "Use att_points instead.")
   att_points: Int

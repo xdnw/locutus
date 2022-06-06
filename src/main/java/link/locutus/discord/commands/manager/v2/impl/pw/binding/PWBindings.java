@@ -20,19 +20,12 @@ import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommand
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
-import link.locutus.discord.db.DiscordDB;
-import link.locutus.discord.db.ForumDB;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.WarDB;
+import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.pnw.Alliance;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.DBNation;
@@ -482,6 +475,11 @@ public class PWBindings extends BindingHelper {
     @Binding
     public StockDB stockDB() {
         return Locutus.imp().getStockDB();
+    }
+    @Binding
+    public BaseballDB baseballDB() {
+        if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS <= 0) throw new IllegalStateException("Baseball is not enabled");
+        return Locutus.imp().getBaseballDB();
     }
 
     @Binding
