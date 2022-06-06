@@ -1,5 +1,8 @@
 package link.locutus.discord.util.task.nation;
 
+import com.politicsandwar.graphql.model.BBGame;
+import com.ptsmods.mysqlw.query.QueryCondition;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
@@ -26,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MultiReport {
@@ -35,6 +39,8 @@ public class MultiReport {
     private final Map<Integer, Set<Map.Entry<DBWar, DBWar>>> illegalWarsByMulti;
     private final Map<Integer, Set<Offer>> illegalTradesByMulti;
 
+    private final Map<Integer, Long> challengeEarnings = new LinkedHashMap<>();
+    private final Map<Integer, Integer> challengeGames = new LinkedHashMap<>();
     private final Map<Integer, Set<Transaction2>> illegalTransfers = new HashMap<>();
     private final Map<Integer, Set<Map.Entry<Transaction2, Transaction2>>> illegalIndirectTransfers = new HashMap<>();
 
@@ -155,6 +161,24 @@ public class MultiReport {
                 } else {
                     List<String> msg = proxyTransfers.stream().map(e -> e.getKey().toSimpleString() + " -> " + e.getValue().toSimpleString()).collect(Collectors.toList());
                     response.append("\n3rd party transfers:\n - ").append(StringMan.join(msg, "\n - ")).append("\n\n");
+                }
+            }
+            {
+                Long earnings = challengeEarnings.get(nationId);
+                Integer numGames = challengeGames.get(nationId);
+
+                if (earnings != null || numGames != null) {
+                    response.append("BB Wagers:");
+                    if (simple) {
+                        if (numGames != null) response.append(" " + MathMan.format(numGames));
+                        if (earnings != null) response.append(" net $" + MathMan.format(earnings));
+                    } else {
+                        response.append("\n");
+                        if (earnings != null) response.append(" - Net: $" + MathMan.format(earnings)).append("\n");
+                        if (numGames != null)
+                            response.append(" - # Wagered Games: " + MathMan.format(numGames)).append("\n");
+                    }
+                    response.append("\n");
                 }
             }
 
@@ -330,7 +354,25 @@ public class MultiReport {
                     }
                 }
             }
+        }
 
+        {
+            calculateBBGames();
+        }
+    }
+
+    private void calculateBBGames() {
+        List<BBGame> games = getChallengeGames(nationId);
+        for (BBGame game : games) {
+            challengeGames.merge(game.getHome_nation_id(), 1, Integer::sum);
+            challengeGames.merge(game.getAway_nation_id(), 1, Integer::sum);
+            if (game.getHome_score() > game.getAway_score()) {
+                challengeEarnings.merge(game.getHome_nation_id(), game.getWager().longValue(), Long::sum);
+                challengeEarnings.merge(game.getAway_nation_id(), -game.getWager().longValue(), Long::sum);
+            } else if (game.getAway_score() > game.getHome_score()) {
+                challengeEarnings.merge(game.getAway_nation_id(), game.getWager().longValue(), Long::sum);
+                challengeEarnings.merge(game.getHome_nation_id(), -game.getWager().longValue(), Long::sum);
+            }
         }
     }
 
@@ -385,6 +427,15 @@ public class MultiReport {
             }
         }
         return warTransfers;
+    }
+
+    public List<BBGame> getChallengeGames(int nationid) {
+        return Locutus.imp().getBaseballDB().getBaseballGames(new Consumer<SelectBuilder>() {
+            @Override
+            public void accept(SelectBuilder f) {
+                f.where(QueryCondition.greater("wager", 0).and(QueryCondition.equals("home_nation_id", nationid).or(QueryCondition.equals("away_nation_id", nationid))));
+            }
+        });
     }
 
     public static long getTimeDiff(List<Map.Entry<Long, BigInteger>> mine, List<Map.Entry<Long, BigInteger>> other) {
