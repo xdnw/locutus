@@ -476,7 +476,7 @@ public class StatCommands {
     }
 
     @Command(desc = "List the baseball wager inflows for a nation id")
-    public void baseBallChallengeInflow(BaseballDB db, @Me MessageChannel channel, int nationId) {
+    public String baseBallChallengeInflow(BaseballDB db, @Me MessageChannel channel, int nationId) {
         List<BBGame> games = db.getBaseballGames(new Consumer<SelectBuilder>() {
             @Override
             public void accept(SelectBuilder f) {
@@ -506,6 +506,7 @@ public class StatCommands {
             RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, false));
             ranks.build(null, channel, null, title);
         }
+        return null;
     }
 
     @Command(desc = "Rank of nations by challenge baseball game earnings")
