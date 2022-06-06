@@ -1489,6 +1489,19 @@ public class DBNation implements NationOrAlliance {
         return cities;
     }
 
+    /**
+     *
+     * @return
+     */
+    @Command(desc="Get the min city count of the first matching city range\n" +
+            "c1-10, c11-15")
+    public int getCityGroup(CityRanges ranges) {
+        for (Map.Entry<Integer, Integer> range : ranges.getRanges()) {
+            if (cities >= range.getKey() && cities <= range.getValue()) return range.getKey();
+        }
+        return -1;
+    }
+
     public void setCities(int cities) {
         this.cities = cities;
     }
@@ -1683,6 +1696,16 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Number of offensive and defensive wars since date")
     public int getNumWarsSince(long date) {
         return Locutus.imp().getWarDb().countWarsByNation(nation_id, date);
+    }
+
+    @Command(desc = "Number of offensive wars since date")
+    public int getNumOffWarsSince(long date) {
+        return Locutus.imp().getWarDb().countOffWarsByNation(nation_id, date);
+    }
+
+    @Command(desc = "Number of defensive wars since date")
+    public int getNumDefWarsSince(long date) {
+        return Locutus.imp().getWarDb().countDefWarsByNation(nation_id, date);
     }
 
     public void setOff(int off) {

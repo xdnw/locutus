@@ -27,6 +27,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -94,6 +95,11 @@ public class PWBindings extends BindingHelper {
             build = CityBuild.of(json, true);
         }
         return build;
+    }
+
+    @Binding(value = "City ranges", examples = {"c1-10", "c11+"})
+    public CityRanges CityRanges(String input) {
+        return CityRanges.parse(input);
     }
 
     @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})

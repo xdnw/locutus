@@ -31,6 +31,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -429,6 +430,14 @@ public class WebPrimitiveBinding extends BindingHelper {
     public String taxRate(ParameterData param) {
         String pattern = "[0-9]{1,2}/[0-9]{1,2}";
         String placeholder = "100/100";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'", "placeholder='" + placeholder + "'");
+    }
+
+    @HtmlInput
+    @Binding(types= CityRanges.class)
+    public String CityRanges(ParameterData param) {
+        String pattern = "(c[0-9]{1,2}-[0-9]{1,2},?)+";
+        String placeholder = "c1-10";
         return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'", "placeholder='" + placeholder + "'");
     }
 
