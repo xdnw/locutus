@@ -1285,7 +1285,7 @@ public class DBNation implements NationOrAlliance {
         post.put("target_id", getNation_id() + "");
         String key = Locutus.imp().getRootPnwApi().getApiKeyUsageStats().entrySet().iterator().next().getKey();
         post.put("api_key", key);
-        auth.readStringFromURL(url, post);
+        Locutus.imp().getRootAuth().readStringFromURL(url, post);
 
         String actionStr = isCommend ? "commended" : "denounced";
         return "Borg has publicly " + actionStr +" the nation of " + getNation() + " led by " + getLeader()+ ".";
