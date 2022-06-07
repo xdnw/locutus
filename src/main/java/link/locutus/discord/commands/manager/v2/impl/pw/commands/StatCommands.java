@@ -485,7 +485,7 @@ public class StatCommands {
         });
 
         if (games.isEmpty()) return "No games found";
-        
+
         {
             String title = "# Wagers with " + PnwUtil.getName(nationId, false);
             Map<Integer, Integer> mostWageredGames = new HashMap<>();
