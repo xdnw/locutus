@@ -21,6 +21,7 @@ import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.event.NationRegisterEvent;
+import link.locutus.discord.event.TransactionEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -1032,7 +1033,8 @@ public class DBNation implements NationOrAlliance {
         if (existing != records.size()) {
             Locutus.imp().getBankDB().addTransactions(records2);
             for (int i = existing; i < records2.size(); i++) {
-                BankUpdateProcessor.process(records2.get(i));
+                Transaction2 tx = records2.get(i);
+                new TransactionEvent(tx).post();
             }
         } else { // Legacy fix
             List<Transaction2> toFix = new ArrayList<>();

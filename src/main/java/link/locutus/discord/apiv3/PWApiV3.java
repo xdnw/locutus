@@ -3,6 +3,7 @@ package link.locutus.discord.apiv3;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.event.TransactionEvent;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.FileUtil;
@@ -22,6 +23,7 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.update.BankUpdateProcessor;
 
 import java.io.IOException;
 import java.net.HttpRetryException;
@@ -247,6 +249,11 @@ public class PWApiV3 {
         Locutus.imp().getBankDB().addTransactions(newTransactions);
         // toUpdate
         Locutus.imp().getNationDB().addNations(toUpdate);
+
+        for (Transaction2 newTransaction : newTransactions) {
+            new TransactionEvent(newTransaction).post();
+        }
+
     }
 
     public void updateNations(int allianceId) throws IOException, ParseException {
