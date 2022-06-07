@@ -29,8 +29,11 @@ public class CheckPermission extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         if (args.size() != 2) return usage();
-        List<User> mentions = event.getMessage().getMentionedUsers();
-        boolean result = Locutus.imp().getCommandManager().getCommandMap().get(args.get(0)).checkPermission(DiscordUtil.getDefaultGuild(event), mentions.get(0));
+        User user = DiscordUtil.getUser(args.get(1));
+        if (user == null) return "Unknown user: `" + args.get(1) + "`";
+        Command cmd = Locutus.imp().getCommandManager().getCommandMap().get(args.get(0));
+        if (cmd == null) return "Unknown command: `" + args.get(0) + "`";
+        boolean result = cmd.checkPermission(DiscordUtil.getDefaultGuild(event), user);
         return "" + result;
     }
 }
