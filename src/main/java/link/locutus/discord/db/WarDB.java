@@ -1925,8 +1925,9 @@ public class WarDB extends DBMainV2 {
 
             for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : spyLoot.entrySet()) {
                 Map.Entry<Long, double[]> lootPair = entry.getValue();
-                AbstractMap.SimpleEntry<Long, double[]> epochLootPair = new AbstractMap.SimpleEntry<>(TimeUtil.getTimeFromTurn(lootPair.getKey()), lootPair.getValue());
-                nationLoot.put(entry.getKey(), epochLootPair);
+                Map.Entry<Long, double[]> epochLootPair = Map.entry(TimeUtil.getTimeFromTurn(lootPair.getKey()), lootPair.getValue());
+                Map.Entry<Long, double[]> existing = nationLoot.put(entry.getKey(), epochLootPair);
+                if (existing.getKey() > epochLootPair.getKey()) nationLoot.put(entry.getKey(), existing);
             }
         } else {
             nationLoot = new ConcurrentHashMap<>();

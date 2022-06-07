@@ -2120,148 +2120,146 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double estimateRssLootValue(double[] knownResources, Map.Entry<Long,double[]> lootHistory, double[] buffer, boolean fetchStats) {
-        if (vm_turns == 0) {
-            if (lootHistory != null) {
-                double[] loot = lootHistory.getValue();
-                for (int i = 0; i < loot.length; i++) {
-                    knownResources[i] = loot[i];
-                }
-            }
-            return PnwUtil.convertedTotal(knownResources);
-        }
-        if (getActive_m() > TimeUnit.DAYS.toMinutes(90)) {
-            return 0;
-        }
-        if (getActive_m() <= 10000) {
-            if (!fetchStats) {
-                return 0;
-            }
-            int days = 7;
-            long cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
-            List<Transaction2> transfers = Locutus.imp().getBankDB().getNationTransfers(nation_id, cutoffMs);
-            List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nation_id, cutoffMs);
-
-            Map<ResourceType, Double> offset = new HashMap<>();
-            Map<ResourceType, Double> bank = new HashMap<>();
-            Map<ResourceType, Double> trade = new HashMap<>();
-
-            long now = System.currentTimeMillis();
-            for (Transaction2 transfer : transfers) {
-                if (transfer.getDate() > now) continue;
-                int sign = transfer.getReceiver() == nation_id ? 1 : -1;
-                bank = PnwUtil.add(bank, PnwUtil.resourcesToMap(transfer.resources));
-            }
-
-            for (Offer offer : trades) {
-                Integer buyer = offer.getBuyer();
-                Integer seller = offer.getSeller();
-                int sign = (seller.equals(nation_id) ^ offer.isBuy()) ? -1 : 1;
-
-                long moneyOut = offer.getTotal();
-                trade.put(ResourceType.MONEY, trade.getOrDefault(ResourceType.MONEY, 0d) + (-1) * sign * moneyOut);
-                trade.put(offer.getResource(), trade.getOrDefault(offer.getResource(), 0d) + sign * offer.getAmount());
-            }
-
-            String dateStr = (ZonedDateTime.now(ZoneOffset.UTC).minusDays(days - 1).format(TimeUtil.YYYY_MM_DD));
-
-            // add up munition usage
-            // add up soldier losses
-
-            Map<ResourceType, Double> consumption = new HashMap<>();
-            Map<MilitaryUnit, Integer> unitLosses = new HashMap<>();
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, cutoffMs);
-            for (DBAttack attack : attacks) {
-                boolean attacker = attack.attacker_nation_id == nation_id;
-
-                Map<ResourceType, Double> attConsume = attack.getLosses(attacker, false, false, true, true);
-                consumption = PnwUtil.add(consumption, attConsume);
-
-                unitLosses = PnwUtil.add(unitLosses, attack.getUnitLosses(attacker));
-
-                Map<ResourceType, Double> loot = attack.getLoot();
-                if (loot != null && !loot.isEmpty() && (nation_id == (attack.getLooter()) || nation_id == (attack.getLooted()))) {
-                    int sign = (attack.getLooter() == nation_id) ? -1 : 1;
-                    for (Map.Entry<ResourceType, Double> entry : loot.entrySet()) {
-                        consumption.put(entry.getKey(), consumption.getOrDefault(entry.getKey(), 0d) + entry.getValue() * sign);
-                    }
-                    if (sign == 1) { // lost
-                        double factor = 1d / attack.getLootPercent();
-                        for (Map.Entry<ResourceType, Double> entry : loot.entrySet()) {
-                            offset.put(entry.getKey(), entry.getValue() * factor);
-                        }
-                    }
-                }
-            }
-
-            Map<MilitaryUnit, Integer> bought = new HashMap<>();
-
-            Map<ResourceType, Double> totals = new HashMap<>();
-            totals = PnwUtil.add(totals, bank);
-            totals = PnwUtil.add(totals, trade);
-            totals = PnwUtil.subResourcesToA(totals, consumption);
-            totals = PnwUtil.add(totals, offset);
-            for (Map.Entry<MilitaryUnit, Integer> entry : bought.entrySet()) {
-                MilitaryUnit unit = entry.getKey();
-                for (ResourceType resource : unit.getResources()) {
-                    Integer num = entry.getValue();
-                    if (num > 0) {
-                        totals.put(resource, totals.getOrDefault(resource, 0d) - unit.getRssAmt(resource) * num);
-                    }
-                }
-            }
-            for (Map.Entry<ResourceType, Double> entry : totals.entrySet()) {
-                knownResources[entry.getKey().ordinal()] = Math.max(0, entry.getValue());
-            }
-
-            return PnwUtil.convertedTotal(totals);
-        }
-        Map<Integer, JavaCity> cityMap = getCityMap(false, false);
-
-        double daysInactive = Math.min(90, TimeUnit.MINUTES.toDays(getActive_m()));
-        Arrays.fill(buffer, 0);
-        double rads = getRads();
-        for (Map.Entry<Integer, JavaCity> entry : cityMap.entrySet()) {
-            buffer = entry.getValue().profit(rads, p -> false, buffer, cities);
-        }
-//        if (buffer[0] > 500000) {
-//            daysInactive = Math.max(daysInactive, money / buffer[0]);
-//        }
-
         if (lootHistory != null) {
-            long diffMs = System.currentTimeMillis() - lootHistory.getKey();
-            long newDaysInactive = TimeUnit.MILLISECONDS.toDays(diffMs);
-
-            if (newDaysInactive <= daysInactive + 1) {
-                daysInactive = newDaysInactive;
-                double[] lootValue = lootHistory.getValue();
-                for (int i = 0; i < lootValue.length; i++) {
-                    knownResources[i] += lootValue[i];
-                }
+            double[] loot = lootHistory.getValue();
+            for (int i = 0; i < loot.length; i++) {
+                knownResources[i] = loot[i];
             }
         }
-
-        for (int i = 0; i < buffer.length; i++) {
-            ResourceType type = ResourceType.values[i];
-            if (!type.isManufactured()) {
-                continue;
-            }
-            double value = buffer[i];
-            if (value == 0) continue;
-            for (ResourceType input : type.getInputs()) {
-                double inputConsumed = buffer[input.ordinal()];
-                if (inputConsumed >= 0) continue;
-                double inputStored = knownResources[input.ordinal()];
-                value = Math.min((inputStored / (inputConsumed * daysInactive)) * 3, value);
-            }
-            buffer[i] = value;
-        }
-        for (int i = 2; i < buffer.length; i++) {
-            knownResources[i] = Math.max(0, knownResources[i] + (buffer[i] * daysInactive));
-        }
-        knownResources[0] = 0;
-        knownResources[1] = 0;
-
         return PnwUtil.convertedTotal(knownResources);
+//        if (getActive_m() > TimeUnit.DAYS.toMinutes(90)) {
+//            return 0;
+//        }
+//        if (getActive_m() <= 10000) {
+//            if (!fetchStats) {
+//                return 0;
+//            }
+//            int days = 7;
+//            long cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+//            List<Transaction2> transfers = Locutus.imp().getBankDB().getNationTransfers(nation_id, cutoffMs);
+//            List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nation_id, cutoffMs);
+//
+//            Map<ResourceType, Double> offset = new HashMap<>();
+//            Map<ResourceType, Double> bank = new HashMap<>();
+//            Map<ResourceType, Double> trade = new HashMap<>();
+//
+//            long now = System.currentTimeMillis();
+//            for (Transaction2 transfer : transfers) {
+//                if (transfer.getDate() > now) continue;
+//                int sign = transfer.getReceiver() == nation_id ? 1 : -1;
+//                bank = PnwUtil.add(bank, PnwUtil.resourcesToMap(transfer.resources));
+//            }
+//
+//            for (Offer offer : trades) {
+//                Integer buyer = offer.getBuyer();
+//                Integer seller = offer.getSeller();
+//                int sign = (seller.equals(nation_id) ^ offer.isBuy()) ? -1 : 1;
+//
+//                long moneyOut = offer.getTotal();
+//                trade.put(ResourceType.MONEY, trade.getOrDefault(ResourceType.MONEY, 0d) + (-1) * sign * moneyOut);
+//                trade.put(offer.getResource(), trade.getOrDefault(offer.getResource(), 0d) + sign * offer.getAmount());
+//            }
+//
+//            String dateStr = (ZonedDateTime.now(ZoneOffset.UTC).minusDays(days - 1).format(TimeUtil.YYYY_MM_DD));
+//
+//            // add up munition usage
+//            // add up soldier losses
+//
+//            Map<ResourceType, Double> consumption = new HashMap<>();
+//            Map<MilitaryUnit, Integer> unitLosses = new HashMap<>();
+//            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, cutoffMs);
+//            for (DBAttack attack : attacks) {
+//                boolean attacker = attack.attacker_nation_id == nation_id;
+//
+//                Map<ResourceType, Double> attConsume = attack.getLosses(attacker, false, false, true, true);
+//                consumption = PnwUtil.add(consumption, attConsume);
+//
+//                unitLosses = PnwUtil.add(unitLosses, attack.getUnitLosses(attacker));
+//
+//                Map<ResourceType, Double> loot = attack.getLoot();
+//                if (loot != null && !loot.isEmpty() && (nation_id == (attack.getLooter()) || nation_id == (attack.getLooted()))) {
+//                    int sign = (attack.getLooter() == nation_id) ? -1 : 1;
+//                    for (Map.Entry<ResourceType, Double> entry : loot.entrySet()) {
+//                        consumption.put(entry.getKey(), consumption.getOrDefault(entry.getKey(), 0d) + entry.getValue() * sign);
+//                    }
+//                    if (sign == 1) { // lost
+//                        double factor = 1d / attack.getLootPercent();
+//                        for (Map.Entry<ResourceType, Double> entry : loot.entrySet()) {
+//                            offset.put(entry.getKey(), entry.getValue() * factor);
+//                        }
+//                    }
+//                }
+//            }
+//
+//            Map<MilitaryUnit, Integer> bought = new HashMap<>();
+//
+//            Map<ResourceType, Double> totals = new HashMap<>();
+//            totals = PnwUtil.add(totals, bank);
+//            totals = PnwUtil.add(totals, trade);
+//            totals = PnwUtil.subResourcesToA(totals, consumption);
+//            totals = PnwUtil.add(totals, offset);
+//            for (Map.Entry<MilitaryUnit, Integer> entry : bought.entrySet()) {
+//                MilitaryUnit unit = entry.getKey();
+//                for (ResourceType resource : unit.getResources()) {
+//                    Integer num = entry.getValue();
+//                    if (num > 0) {
+//                        totals.put(resource, totals.getOrDefault(resource, 0d) - unit.getRssAmt(resource) * num);
+//                    }
+//                }
+//            }
+//            for (Map.Entry<ResourceType, Double> entry : totals.entrySet()) {
+//                knownResources[entry.getKey().ordinal()] = Math.max(0, entry.getValue());
+//            }
+//
+//            return PnwUtil.convertedTotal(totals);
+//        }
+//        Map<Integer, JavaCity> cityMap = getCityMap(false, false);
+//
+//        double daysInactive = Math.min(90, TimeUnit.MINUTES.toDays(getActive_m()));
+//        Arrays.fill(buffer, 0);
+//        double rads = getRads();
+//        for (Map.Entry<Integer, JavaCity> entry : cityMap.entrySet()) {
+//            buffer = entry.getValue().profit(rads, p -> false, buffer, cities);
+//        }
+////        if (buffer[0] > 500000) {
+////            daysInactive = Math.max(daysInactive, money / buffer[0]);
+////        }
+//
+//        if (lootHistory != null) {
+//            long diffMs = System.currentTimeMillis() - lootHistory.getKey();
+//            long newDaysInactive = TimeUnit.MILLISECONDS.toDays(diffMs);
+//
+//            if (newDaysInactive <= daysInactive + 1) {
+//                daysInactive = newDaysInactive;
+//                double[] lootValue = lootHistory.getValue();
+//                for (int i = 0; i < lootValue.length; i++) {
+//                    knownResources[i] += lootValue[i];
+//                }
+//            }
+//        }
+//
+//        for (int i = 0; i < buffer.length; i++) {
+//            ResourceType type = ResourceType.values[i];
+//            if (!type.isManufactured()) {
+//                continue;
+//            }
+//            double value = buffer[i];
+//            if (value == 0) continue;
+//            for (ResourceType input : type.getInputs()) {
+//                double inputConsumed = buffer[input.ordinal()];
+//                if (inputConsumed >= 0) continue;
+//                double inputStored = knownResources[input.ordinal()];
+//                value = Math.min((inputStored / (inputConsumed * daysInactive)) * 3, value);
+//            }
+//            buffer[i] = value;
+//        }
+//        for (int i = 2; i < buffer.length; i++) {
+//            knownResources[i] = Math.max(0, knownResources[i] + (buffer[i] * daysInactive));
+//        }
+//        knownResources[0] = 0;
+//        knownResources[1] = 0;
+//
+//        return PnwUtil.convertedTotal(knownResources);
     }
 
     public PNWUser getDBUser() {

@@ -1169,7 +1169,7 @@ public class NationDB extends DBMain {
     }
 
     public Map.Entry<Long, double[]> getLoot(int nationId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT WHERE id = ?")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT WHERE id = ? ORDER BY turn DESC LIMIT 1")) {
             stmt.setInt(1, nationId);
 
             try (ResultSet rs = stmt.executeQuery()) {
