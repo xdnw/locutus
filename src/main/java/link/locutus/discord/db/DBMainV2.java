@@ -2,12 +2,15 @@ package link.locutus.discord.db;
 
 import com.ptsmods.mysqlw.Database;
 import link.locutus.discord.config.Settings;
+import org.apache.http.util.TextUtils;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 

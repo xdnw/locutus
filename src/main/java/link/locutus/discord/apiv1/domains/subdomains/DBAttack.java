@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.domains.subdomains;
 
+import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
@@ -21,6 +22,22 @@ import java.util.regex.Pattern;
 import static link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS;
 
 public class DBAttack {
+    // TODO simplified version of attack for in memory usage
+    // Map<war id, map<attack id, attack_simplified>>
+    // 64 + 1 + 8 + 64 + 64 + 64 + 32 + 32 + 8 + 16 + varint = 353 bytes + varint
+    // 341gb
+    // date - long - possibly can drop if using id, and checking date against id
+    // isAttacker - boolean
+    // attack type - byte
+    // att_losses - long
+    // def_losses - long
+    // infra_destroyed_value - long
+    // att_used - int
+    // def_used - int
+    // improvements_destroyed - byte
+    // loot_percent - char (0-100%)
+    // varint array <resource, amount> => money looted
+
     public int war_attack_id;
     public long epoch;
     public int war_id;
@@ -34,7 +51,7 @@ public class DBAttack {
     public int defcas1;
     public int defcas2;
     public int defcas3;
-    public int city_id;
+//    public int city_id; // Not used
     public double infra_destroyed;
     public int improvements_destroyed;
     public double money_looted;
@@ -48,9 +65,11 @@ public class DBAttack {
     public double def_gas_used;
     public double def_mun_used;
 
+    public double infraPercent_cached;
+
     public DBAttack() {}
 
-    public DBAttack(int war_attack_id, long epoch, int war_id, int attacker_nation_id, int defender_nation_id, AttackType attack_type, int victor, int success, int attcas1, int attcas2, int defcas1, int defcas2, int defcas3, int city_id,
+    public DBAttack(int war_attack_id, long epoch, int war_id, int attacker_nation_id, int defender_nation_id, AttackType attack_type, int victor, int success, int attcas1, int attcas2, int defcas1, int defcas2, int defcas3,
                     double infra_destroyed, int improvements_destroyed, double money_looted, String note, double city_infra_before, double infra_destroyed_value, double att_gas_used, double att_mun_used, double def_gas_used, double def_mun_used) {
         this.war_attack_id = war_attack_id;
         this.epoch = epoch;
@@ -65,7 +84,6 @@ public class DBAttack {
         this.defcas1 = defcas1;
         this.defcas2 = defcas2;
         this.defcas3 = defcas3;
-        this.city_id = city_id;
         this.infra_destroyed = infra_destroyed;
         this.improvements_destroyed = improvements_destroyed;
         this.money_looted = money_looted;
@@ -85,6 +103,32 @@ public class DBAttack {
         this.att_mun_used = att_mun_used;
         this.def_gas_used = def_gas_used;
         this.def_mun_used = def_mun_used;
+    }
+
+    public DBAttack(WarAttack a) {
+        this(a.getId(),
+        a.getDate().toEpochMilli(),
+        a.getWar_id(),
+        a.getAtt_id(),
+        a.getDef_id(),
+        AttackType.fromV3(a.getType()),
+        a.getVictor(),
+        a.getSuccess(),
+        a.getAttcas1(),
+        a.getAttcas2(),
+        a.getDefcas1(),
+        a.getDefcas2(),
+        a.getAircraft_killed_by_tanks(),
+        a.getInfra_destroyed(),
+        a.getImprovements_lost(),
+        a.getMoney_stolen(),
+        a.getLoot_info(),
+        a.getCity_infra_before(),
+        a.getInfra_destroyed_value(),
+        a.getAtt_gas_used(),
+        a.getAtt_mun_used(),
+        a.getDef_gas_used(),
+        a.getDef_mun_used());
     }
 
     public Map<ResourceType, Double> getLoot() {
@@ -120,6 +164,10 @@ public class DBAttack {
             loot = parseNationLoot(note, loot);
             looted = victor == attacker_nation_id ? defender_nation_id : attacker_nation_id;
             lootPercent = 0.1;
+
+            String end = "% of the infrastructure in each of their cities.";
+            String[] split = note.substring(0, note.length() - end.length()).split(" ");
+            infraPercent_cached = Integer.parseInt(split[split.length - 1]);
         }
         if (loot != null) {
             optimizeLoot();
@@ -272,7 +320,7 @@ public class DBAttack {
                         Integer.parseInt(container.getDefcas1()),
                         Integer.parseInt(container.getDefcas2()),
                         (int) container.getAircraftKilledByTanks(),
-                        Integer.parseInt(container.getCityId()),
+//                        Integer.parseInt(container.getCityId()),
                         MathMan.parseDoubleDef0(container.getInfraDestroyed()),
                         MathMan.parseIntDef0(container.getImprovementsDestroyed()),
                         MathMan.parseDoubleDef0(container.getMoneyLooted()),
@@ -407,7 +455,6 @@ public class DBAttack {
                 ", defcas1=" + defcas1 +
                 ", defcas2=" + defcas2 +
                 ", defcas3=" + defcas3 +
-                ", city_id=" + city_id +
                 ", infra_destroyed=" + infra_destroyed +
                 ", improvements_destroyed=" + improvements_destroyed +
                 ", money_looted=" + money_looted +

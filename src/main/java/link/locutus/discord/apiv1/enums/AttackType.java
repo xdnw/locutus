@@ -24,6 +24,45 @@ public enum AttackType {
     NUKE(12, 25, MilitaryUnit.NUKE),
     ;
 
+    public static AttackType fromV3(com.politicsandwar.graphql.model.AttackType v3) {
+        switch (v3) {
+            case AIRVINFRA:
+                return AIRSTRIKE1;
+            case AIRVSOLDIERS:
+                return AIRSTRIKE2;
+            case AIRVTANKS:
+                return AIRSTRIKE3;
+            case AIRVMONEY:
+                return AIRSTRIKE4;
+            case AIRVSHIPS:
+                return AIRSTRIKE5;
+            case AIRVAIR:
+                return AIRSTRIKE6;
+            case GROUND:
+                return GROUND;
+            case MISSILE:
+                return MISSILE;
+            case MISSILEFAIL:
+                return MISSILE;
+            case NUKE:
+                return NUKE;
+            case NUKEFAIL:
+                return NUKE;
+            case NAVAL:
+                return NAVAL;
+            case FORTIFY:
+                return FORTIFY;
+            case PEACE:
+                return PEACE;
+            case VICTORY:
+                return VICTORY;
+            case ALLIANCELOOT:
+                return A_LOOT;
+            default:
+                throw new IllegalStateException("No v3 attack type found");
+        }
+    }
+
     private final MilitaryUnit[] units;
     private final String name;
     private final int mapUsed;
@@ -39,6 +78,7 @@ public enum AttackType {
         this.mapUsed = mapUsed;
         this.resistanceIT = resistanceIT;
     }
+
 
     public int getResistanceIT() {
         return resistanceIT;
