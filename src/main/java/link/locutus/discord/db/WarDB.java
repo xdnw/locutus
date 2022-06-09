@@ -1927,7 +1927,7 @@ public class WarDB extends DBMainV2 {
                 Map.Entry<Long, double[]> lootPair = entry.getValue();
                 Map.Entry<Long, double[]> epochLootPair = Map.entry(TimeUtil.getTimeFromTurn(lootPair.getKey()), lootPair.getValue());
                 Map.Entry<Long, double[]> existing = nationLoot.put(entry.getKey(), epochLootPair);
-                if (existing.getKey() > epochLootPair.getKey()) nationLoot.put(entry.getKey(), existing);
+                if (existing != null && existing.getKey() > epochLootPair.getKey()) nationLoot.put(entry.getKey(), existing);
             }
         } else {
             nationLoot = new ConcurrentHashMap<>();

@@ -352,6 +352,7 @@ public class CommandManager {
                     arg0 = arg0.substring(1);
 
                     Command cmd = commandMap.get(arg0.toLowerCase());
+                    if (cmd == null) return;
 
                     if (!cmd.checkPermission(msgGuild, msgUser)) {
                         if (noPermMsg) {
