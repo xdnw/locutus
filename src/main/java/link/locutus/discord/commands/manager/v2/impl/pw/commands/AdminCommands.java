@@ -629,14 +629,14 @@ public class AdminCommands {
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncSpySlots(@Me MessageChannel channel) throws IOException, ParseException {
-        Locutus.imp().getPnwApi().getV3().updateNations(true, false, false, false, false);
+        Locutus.imp().getPnwApi().getV3_legacy().updateNations(true, false, false, false, false);
         return "Done!";
     }
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncProjects(@Me MessageChannel channel) throws IOException, ParseException {
-        Locutus.imp().getPnwApi().getV3().updateNations(false, false, false, true, false);
+        Locutus.imp().getPnwApi().getV3_legacy().updateNations(false, false, false, true, false);
         return "Done!";
     }
 
