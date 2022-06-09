@@ -1,11 +1,13 @@
 package link.locutus.discord.util.update;
 
+import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.event.TransactionEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -30,7 +32,10 @@ import static link.locutus.discord.db.GuildDB.Key.DEPOSIT_ALERT_CHANNEL;
 import static link.locutus.discord.db.GuildDB.Key.WITHDRAW_ALERT_CHANNEL;
 
 public class BankUpdateProcessor {
-    public static void process(Transaction2 transfer) {
+    @Subscribe
+    public static void process(TransactionEvent event) {
+        Transaction2 transfer = event.getTransaction();
+
         if (transfer.note != null && transfer.note.contains("of the alliance bank inventory.")) return;
         if (!transfer.isReceiverNation() && !transfer.isSenderNation()) return;
         if (!transfer.isReceiverAA() && !transfer.isSenderAA()) return;

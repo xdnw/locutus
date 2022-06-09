@@ -5,7 +5,7 @@ import link.locutus.discord.pnw.DBNation;
 import java.util.List;
 import java.util.Map;
 
-public class AllianceCreateEvent {
+public class AllianceCreateEvent extends Event {
     private final Map<Integer, String> previousAlliances;
     private final int allianceId;
     private final List<DBNation> members;

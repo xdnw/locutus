@@ -855,7 +855,7 @@ public class CommandManager {
         this.register(new InterviewSheet());
 
         this.register(new FASheet());
-        this.register(new OptimalTrades());
+//        this.register(new OptimalTrades());
 
         //// later
         this.register(new ListMultisByAlliance());

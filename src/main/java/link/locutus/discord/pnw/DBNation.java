@@ -21,6 +21,7 @@ import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.event.NationRegisterEvent;
+import link.locutus.discord.event.TransactionEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -1032,7 +1033,8 @@ public class DBNation implements NationOrAlliance {
         if (existing != records.size()) {
             Locutus.imp().getBankDB().addTransactions(records2);
             for (int i = existing; i < records2.size(); i++) {
-                BankUpdateProcessor.process(records2.get(i));
+                Transaction2 tx = records2.get(i);
+                new TransactionEvent(tx).post();
             }
         } else { // Legacy fix
             List<Transaction2> toFix = new ArrayList<>();
@@ -1285,7 +1287,7 @@ public class DBNation implements NationOrAlliance {
         post.put("target_id", getNation_id() + "");
         String key = Locutus.imp().getRootPnwApi().getApiKeyUsageStats().entrySet().iterator().next().getKey();
         post.put("api_key", key);
-        auth.readStringFromURL(url, post);
+        Locutus.imp().getRootAuth().readStringFromURL(url, post);
 
         String actionStr = isCommend ? "commended" : "denounced";
         return "Borg has publicly " + actionStr +" the nation of " + getNation() + " led by " + getLeader()+ ".";
