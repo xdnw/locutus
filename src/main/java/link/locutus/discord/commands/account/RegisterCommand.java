@@ -39,7 +39,7 @@ public class RegisterCommand extends Command {
 
     @Override
     public String desc() {
-        return "Register your nation in the database.";
+        return "Register your nation in the database.\nExample : $validate 1234";
     }
 
     @Override
@@ -53,7 +53,7 @@ public class RegisterCommand extends Command {
         if (args.size() >= 2) {
             User mention = DiscordUtil.getMention(args.get(0));
             if (mention == null) {
-                return "To manually register a nation, use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate @user <nation-id> or <nation-url> or <leader-name";
+                return "To manually register a nation, use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate @user <nation-id> or <nation-url> or <leader-name\nExample : $validate 1234";
             }
             Integer nationId = DiscordUtil.parseNationId(args.get(1));
             if (nationId == null) {
@@ -88,7 +88,7 @@ public class RegisterCommand extends Command {
         if (args.size() != 1) {
             DBNation nation = DiscordUtil.getNation(event);
             if (nation == null) {
-                return "Please use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate <nation-id> or <nation-url> or <leader-name>`";
+                return "Please use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate <nation-id> or <nation-url> or <leader-name>`\nExample : $validate 1234";
             } else {
                 return nation.register(user, guild, false);
             }
