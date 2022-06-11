@@ -85,6 +85,14 @@ public class RegisterCommand extends Command {
 
             return register(event, mention, nationId, true);
         }
+        if (args.size() != 1) {
+            DBNation nation = DiscordUtil.getNation(event);
+            if (nation == null) {
+                return "Please use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate <nation-id> or <nation-url> or <leader-name>`";
+            } else {
+                return nation.register(user, guild, false);
+            }
+        }
         if (args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.ADMIN.hasOnRoot(event.getAuthor())) {
                 return "No permission.";
