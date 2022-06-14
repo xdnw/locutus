@@ -2935,6 +2935,9 @@ public class DBNation implements NationOrAlliance {
             return 0;
         }
     }
+    public Activity getActivity() {
+        return new Activity(getNation_id());
+    }
 
     public Activity getActivity(long turns) {
         return new Activity(getNation_id(), turns);

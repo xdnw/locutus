@@ -201,8 +201,11 @@ public final class Locutus extends ListenerAdapter {
             }
         }
 
-        List<String> pool = new ArrayList<>(List.of(Settings.INSTANCE.API_KEY_PRIMARY));
+        List<String> pool = new ArrayList<>();
         pool.addAll(Settings.INSTANCE.API_KEY_POOL);
+        if (pool.isEmpty()) {
+            pool.add(Settings.INSTANCE.API_KEY_PRIMARY);
+        }
 
         this.pnwApi = new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
         this.bankApi = this.pnwApi;
@@ -359,8 +362,10 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public PoliticsAndWarV2 getApi(int alliance) {
-        if (alliance == Settings.INSTANCE.ALLIANCE_ID() || alliance == 0) {
+        if (alliance == Settings.INSTANCE.ALLIANCE_ID()) {
             return Locutus.imp().getRootPnwApi();
+        } else if (alliance == 0) {
+            return Locutus.imp().getPnwApi();
         } else {
             GuildDB guildDb = Locutus.imp().getGuildDBByAA(alliance);
             if (guildDb == null) {

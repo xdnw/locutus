@@ -57,7 +57,7 @@ public class AlertUtil {
                     continue;
                 }
                 channelConsumer.accept(channel, guildDB);
-            } catch (MissingAccessException e) {
+            } catch (InsufficientPermissionException e) {
                 guildDB.deleteInfo(key);
             } catch (Throwable e) {
                 e.printStackTrace();

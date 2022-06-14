@@ -63,6 +63,7 @@ import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.exceptions.MissingAccessException;
 
 import java.io.IOException;
@@ -1774,7 +1775,7 @@ public class GuildHandler {
                             }
                         }
                     }
-                } catch (MissingAccessException e) {
+                } catch (InsufficientPermissionException e) {
                     if (offensive) {
                         db.deleteInfo(GuildDB.Key.OFFENSIVE_WAR_CHANNEL);
                     } else {
