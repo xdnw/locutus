@@ -336,7 +336,7 @@ public class PnwUtil {
                                 return;
                             }
                             type = DepositType.GRANT;
-                        } catch (NumberFormatException e) {
+                        } catch (IllegalArgumentException e) {
                             e.printStackTrace();
                             type = DepositType.LOAN;
                         }

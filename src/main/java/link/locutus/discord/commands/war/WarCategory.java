@@ -176,7 +176,7 @@ public class WarCategory {
                     room.updateParticipants(from, to, from == null);
                 }
             }
-        } catch (MissingAccessException e) {
+        } catch (InsufficientPermissionException e) {
             db.setInfo(GuildDB.Key.ENABLE_WAR_ROOMS, "false");
         } catch (Throwable e) {
             e.printStackTrace();

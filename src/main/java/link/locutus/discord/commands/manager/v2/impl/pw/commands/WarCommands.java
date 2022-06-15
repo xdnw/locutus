@@ -1910,11 +1910,21 @@ public class WarCommands {
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
+    @Command(desc = "Generate a sheet of nation activity from a nation id\n" +
+            "(use normal activity sheet unless you need the activity of a deleted nation)   ")
+    @WhitelistPermission
+    public String ActivitySheetFromId(@Me GuildDB db, int nationId, @Default("2w") @Timestamp long trackTime, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        DBNation nation = new DBNation();
+        nation.setNation_id(nationId);
+        return ActivitySheet(db, Collections.singleton(nation), trackTime, sheet);
+    }
+
+    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation activity\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in")
     @WhitelistPermission
-    public String ActivitySheet(@Me GuildDB db, Set<DBNation> nations, @Default("2w") @Timediff long trackTime, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String ActivitySheet(@Me GuildDB db, Set<DBNation> nations, @Default("2w") @Timestamp long trackTime, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVITY_SHEET);
         }
@@ -1946,7 +1956,13 @@ public class WarCommands {
             header.set(3, nation.getAvg_infra());
             header.set(4, nation.getScore());
 
-            Activity activity = nation.getActivity(TimeUnit.MILLISECONDS.toHours(trackTime) / 2);
+            Activity activity;
+            if (trackTime == 0) {
+                activity = nation.getActivity();
+            } else {
+                long diff = System.currentTimeMillis() - trackTime;
+                activity = nation.getActivity(TimeUnit.MILLISECONDS.toHours(diff) / 2);
+            }
             double[] byDay = activity.getByDay();
             double[] byDayTurn = activity.getByDayTurn();
 
