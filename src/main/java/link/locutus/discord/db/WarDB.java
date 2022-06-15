@@ -585,7 +585,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void addBounty(DBBounty bounty) {
-        update("INSERT OR REPLACE INTO `BOUNTIES_V3`(`id, `date`, `nation_id`, `posted_by`, `attack_type`, `amount`) VALUES(?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `BOUNTIES_V3`(`id, `date`, `nation_id`, `posted_by`, `attack_type`, `amount`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, bounty.getId());
             stmt.setLong(2, bounty.getDate());
             stmt.setLong(3, bounty.getNationId());
