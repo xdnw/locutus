@@ -1,4 +1,5 @@
 import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
+import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 
 buildscript {
     ext.kotlin_version = '1.5.30'
@@ -7,20 +8,29 @@ buildscript {
 //    }
     repositories {
         mavenCentral()
+        gradlePluginPortal()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
     }
     dependencies {
 //        classpath "io.jooby:jooby-gradle-plugin:2.8.5"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "com.github.jengelman.gradle.plugins:shadow:6.1.0"
     }
 }
+
 plugins {
     id 'java'
     id "idea"
     id "com.fizzed.rocker" version "1.3.0"
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0"
+    id "com.github.johnrengelman.shadow" version "6.1.0"
 }
 
 apply plugin: "kotlin"
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'java'
 
 group 'link.locutus'
 version '1.0-SNAPSHOT'
@@ -55,6 +65,10 @@ compileTestJava.options.compilerArgs.add '-parameters'
 dependencies {
 //    implementation name: 'pw4j-1.6.1'
 //    implementation 'io.github.adorable-skullmaster:pw4j:1.6.0'
+
+
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+    implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25'
 
     implementation "org.xerial:sqlite-jdbc:3.30.1"
     implementation "com.google.code.gson:gson:2.8.6"
@@ -204,3 +218,18 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     supportUnknownFields = true
     unknownFieldsPropertyName = "additionalFields"
 }
+
+jar {
+    manifest {
+        attributes(
+                'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+                'Main-Class': 'link.locutus.discord.Locutus'
+        )
+    }
+}
+
+shadowJar {
+    archiveName = "${name}-${project.name}-${version}.jar"
+}
+
+build.dependsOn(shadowJar);
