@@ -1,6 +1,6 @@
 # Welcome to Locutus!
 
-Locutus is the All-In-One Discord bot for the web browser game Politics and War. Check out more information [here](https://discord.gg/vWXbgVAxfc)!
+Locutus is the All-In-One Discord bot for the web browser game Politics and War with over 300 commands  Check out more information [here](https://docs.google.com/document/d/1Qq6Qe7KtCy-Dlqktz8bhNfrUpcbf7oM8F6gRVNR28Dw/edit)!
 
 # Self Hosting
 
