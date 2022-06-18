@@ -10,7 +10,7 @@ We are working to allow people to self host this bot!
 
 We always look to improve Locutus!
 
-# Excerpts
+# Website GUI Images
 ![Image](https://i.imgur.com/ySVmyN5.png)
 ![Image](https://i.imgur.com/sjDys3J.png)
 ![Image](https://i.imgur.com/tugOkSN.png)
