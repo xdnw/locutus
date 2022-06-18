@@ -2334,7 +2334,7 @@ public class GuildHandler {
 
         String title = blockaded.getNation() + " " + titleSuffix;
         StringBuilder body = new StringBuilder();
-        body.append("**Defender:** " + blockaded.getNationUrlMarkup(true)).append("\n");
+        body.append("**Defender:** " + blockaded.getNationUrlMarkup(true) + " | " + blockaded.getAllianceUrlMarkup(true)).append("\n");
         body.append(blockaded.toMarkdown(true, false, true, false, false)).append("\n");
         body.append(blockaded.toMarkdown(true, false, false, true, false)).append("\n");
         body.append("\n");

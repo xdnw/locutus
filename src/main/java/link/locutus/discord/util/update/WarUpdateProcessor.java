@@ -218,6 +218,11 @@ public class WarUpdateProcessor {
                 if (db != null) {
                     db.getHandler().beigeAlert(root);
                 }
+                for (GuildDB other : Locutus.imp().getGuildDatabases().values()) {
+                    if (other == db) continue;
+                    if (!other.getAllies(false).contains(aaId)) continue;
+                    other.getHandler().beigeAlert(root);
+                }
             }
         }
 

@@ -379,18 +379,26 @@ public class BlitzGenerator {
 
         for (DBNation attacker : colA) {
             double attActive = activityFactor(attacker, true);
-            if (attActive <= attActiveThreshold) continue;
+            if (attActive <= attActiveThreshold) {
+                continue;
+            }
 
             for (DBNation defender : colB) {
-                if (defender.getCities() > attacker.getCities() * maxCityRatio) continue;
-                if (defender.getAircraft() * maxGroundRatio > attacker.getAircraft()) continue;
-                if (defender.getGroundStrength(true, defender.getAircraft() < attacker.getAircraft() * 0.66) * maxGroundRatio > attacker.getGroundStrength(true, false)) {
+                if (defender.getCities() > attacker.getCities() * maxCityRatio) {
+                    continue;
+                }
+                if (defender.getAircraft() > attacker.getAircraft() * maxAirRatio) {
+                    continue;
+                }
+                if (defender.getGroundStrength(true, defender.getAircraft() > attacker.getAircraft() * 0.66) > attacker.getGroundStrength(true, false) * maxGroundRatio) {
                     continue;
                 }
 
                 double defActive = activityFactor(defender, false);
 
-                if (defActive <= defActiveThreshold) continue;
+                if (defActive <= defActiveThreshold) {
+                    continue;
+                }
 
                 double minScore = attacker.getScore() * 0.75;
                 double maxScore = attacker.getScore() * 1.75;
@@ -464,7 +472,7 @@ public class BlitzGenerator {
                     continue;
                 }
                 if (maxAttacks++ >= maxAttacksPerNation) break;
-                if (defender.getStrength() >= attacker.getStrength()) continue;
+//                if (defender.getStrength() >= attacker.getStrength() * (maxGroundRatio + maxAirRatio)) continue;
 
                 attTargets.computeIfAbsent(attacker, f -> new ArrayList<>()).add(defender);
                 defTargets.computeIfAbsent(defender, f -> new ArrayList<>()).add(attacker);

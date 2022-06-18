@@ -204,7 +204,7 @@ public class DBNation implements NationOrAlliance {
         if (last_active > (2 << 29)) {
             this.last_active = last_active;
         } else {
-            this.last_active = System.currentTimeMillis() - last_active;
+            this.last_active = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(last_active);
         }
         this.score = score;
         this.infra = infra;
@@ -2760,7 +2760,7 @@ public class DBNation implements NationOrAlliance {
         alliance = pnwNation.getAlliance();
         nation = pnwNation.getName();
         leader = pnwNation.getLeadername();
-        last_active = System.currentTimeMillis() - TimeUnit.MILLISECONDS.toMillis(pnwNation.getMinutessinceactive());
+        last_active = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(pnwNation.getMinutessinceactive());
         score = MathMan.parseDouble(pnwNation.getScore());
         infra = (int) pnwNation.getTotalinfrastructure();
         cities = pnwNation.getCities();
