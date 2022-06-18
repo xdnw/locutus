@@ -171,13 +171,13 @@ public class AlertUtil {
 
     static
     {
-        Image image = Toolkit.getDefaultToolkit().createImage("icon.png");
-        SystemTray tray = SystemTray.getSystemTray();
-
-        trayIcon = new TrayIcon(image);
         try {
+            Image image = Toolkit.getDefaultToolkit().createImage("icon.png");
+            SystemTray tray = SystemTray.getSystemTray();
+
+            trayIcon = new TrayIcon(image);
             tray.add(trayIcon);
-        } catch (AWTException e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -193,7 +193,9 @@ public class AlertUtil {
     }
 
     public static void displayTray(String title, String body) {
-        trayIcon.displayMessage(title, body, TrayIcon.MessageType.INFO);
+        if (trayIcon != null) {
+            trayIcon.displayMessage(title, body, TrayIcon.MessageType.INFO);
+        }
     }
 
     private static final Cache<String, Boolean> PING_BUFFER = CacheBuilder.newBuilder()
