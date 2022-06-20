@@ -4,11 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DiscordMeta;
-import link.locutus.discord.db.entities.Transfer;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
@@ -582,7 +579,7 @@ public class TradeManager {
         message.append("\n3. Sell to the alliance by depositing with the note `#cash`");
         Set<String> tradePartnerNames = new LinkedHashSet<>();
         for (Integer aaId : tradePartners) {
-            Alliance aa = new Alliance(aaId);
+            DBAlliance aa = new DBAlliance(aaId);
             if (aa.exists()) tradePartnerNames.add(aa.getName());
         }
         message.append("\n4. Trade with nations in any of our trade partners: `" + StringMan.getString(tradePartnerNames) + "`");

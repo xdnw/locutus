@@ -4,11 +4,9 @@ import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
@@ -18,19 +16,12 @@ import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarParser;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -81,6 +72,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -132,7 +124,7 @@ public class StatCommands {
     @Command(desc = "View an alliances stats for counters")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String counterStats(@Me MessageChannel channel, Alliance alliance) {
+    public String counterStats(@Me MessageChannel channel, DBAlliance alliance) {
         List<Map.Entry<DBWar, CounterStat>> counters = Locutus.imp().getWarDb().getCounters(Collections.singleton(alliance.getAlliance_id()));
 
         if (counters.isEmpty()) return "No data (to include treatied alliances, append `-a`";
@@ -180,7 +172,7 @@ public class StatCommands {
     }
 
     @Command
-    public String metricTierGraph(@Me MessageChannel channel, NationMetricDouble metric, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('t') boolean total) throws IOException {
+    public String attributeTierGraph(@Me MessageChannel channel, NationAttributeDouble metric, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('t') boolean total) throws IOException {
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
 
@@ -443,7 +435,6 @@ public class StatCommands {
             }
         }
 
-        double[] buffer = new double[2];
         TimeDualNumericTable<Void> table = new TimeDualNumericTable<Void>("Nations by score range", "score", "nations", "coalition 1", "coalition 2") {
             @Override
             public void add(long score, Void ignore) {
@@ -458,17 +449,50 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank of nations by # of challenge baseball games")
-    public void baseballChallengeRanking(BaseballDB db, @Me MessageChannel channel, @Switch('f') boolean uploadFile) {
+    public void baseballRanking(BaseballDB db, @Me MessageChannel channel, @Timestamp long date, @Switch('f') boolean uploadFile, @Switch('a') boolean byAlliance) {
+        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
+
+        Map<Integer, Integer> mostGames = new HashMap<>();
+        for (BBGame game : games) {
+            if (byAlliance) {
+                DBNation home = DBNation.byId(game.getHome_nation_id());
+                DBNation away = DBNation.byId(game.getAway_nation_id());
+                if (home != null) mostGames.merge(home.getAlliance_id(), 1, Integer::sum);
+                if (away != null) mostGames.merge(away.getAlliance_id(), 1, Integer::sum);
+            } else {
+                mostGames.merge(game.getHome_nation_id(), 1, Integer::sum);
+                mostGames.merge(game.getAway_nation_id(), 1, Integer::sum);
+            }
+        }
+
+        String title = "# BB Games (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
+        ranks.build(null, channel, null, title);
+        if (uploadFile && ranks.get().size() > 25) {
+            DiscordUtil.upload(channel, title, ranks.toString());
+        }
+    }
+
+    @Command(desc = "Rank of nations by # of challenge baseball games")
+    public void baseballChallengeRanking(BaseballDB db, @Me MessageChannel channel, @Switch('f') boolean uploadFile, @Switch('a') boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
 
-        Map<Integer, Integer> mostWageredGames = new HashMap<>();
+        Map<Integer, Integer> mostGames = new HashMap<>();
         for (BBGame game : games) {
-            mostWageredGames.merge(game.getHome_nation_id(), 1, Integer::sum);
-            mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
+            if (byAlliance) {
+
+                DBNation home = DBNation.byId(game.getHome_nation_id());
+                DBNation away = DBNation.byId(game.getAway_nation_id());
+                if (home != null) mostGames.merge(home.getAlliance_id(), 1, Integer::sum);
+                if (away != null) mostGames.merge(away.getAlliance_id(), 1, Integer::sum);
+            } else {
+                mostGames.merge(game.getHome_nation_id(), 1, Integer::sum);
+                mostGames.merge(game.getAway_nation_id(), 1, Integer::sum);
+            }
         }
 
         String title = "# Challenge BB Games";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> PnwUtil.getName(f, false));
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
         ranks.build(null, channel, null, title);
         if (uploadFile && ranks.get().size() > 25) {
             DiscordUtil.upload(channel, title, ranks.toString());
@@ -476,11 +500,14 @@ public class StatCommands {
     }
 
     @Command(desc = "List the baseball wager inflows for a nation id")
-    public String baseBallChallengeInflow(BaseballDB db, @Me MessageChannel channel, int nationId) {
+    public String baseBallChallengeInflow(BaseballDB db, @Me MessageChannel channel, int nationId, @Default("timestamp:0") @Timestamp long dateSince) {
         List<BBGame> games = db.getBaseballGames(new Consumer<SelectBuilder>() {
             @Override
             public void accept(SelectBuilder f) {
-                f.where(QueryCondition.greater("wager", 0).and(QueryCondition.equals("home_nation_id", nationId).or(QueryCondition.equals("away_nation_id", nationId))));
+                f.where(QueryCondition.greater("wager", 0)
+                        .and(QueryCondition.equals("home_nation_id", nationId).or(QueryCondition.equals("away_nation_id", nationId)))
+                        .and(QueryCondition.greater("date", dateSince))
+                );
             }
         });
 
@@ -510,20 +537,57 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank of nations by challenge baseball game earnings")
-    public void baseballChallengeEarningsRanking(BaseballDB db, @Me MessageChannel channel, @Switch('f') boolean uploadFile) {
+    public void baseballEarningsRanking(BaseballDB db, @Me MessageChannel channel, @Timestamp long date, @Switch('f') boolean uploadFile, @Switch('a') boolean byAlliance) {
+        List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
+
+        Map<Integer, Long> mostWageredWinnings = new HashMap<>();
+        for (BBGame game : games) {
+            int id;
+            if (game.getHome_score() > game.getAway_score()) {
+                id = game.getHome_nation_id();
+
+            } else if (game.getAway_score() > game.getHome_score()) {
+                id = game.getAway_nation_id();
+            } else continue;
+            if (byAlliance) {
+                DBNation nation = DBNation.byId(id);
+                if (nation == null) continue;
+                id = nation.getAlliance_id();
+            }
+            mostWageredWinnings.merge(id, game.getSpoils().longValue(), Long::sum);
+        }
+
+        String title = "BB Earnings $ (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
+        ranks.build(null, channel, null, title);
+        if (uploadFile && ranks.get().size() > 25) {
+            DiscordUtil.upload(channel, title, ranks.toString());
+        }
+    }
+
+    @Command(desc = "Rank of nations by challenge baseball game earnings")
+    public void baseballChallengeEarningsRanking(BaseballDB db, @Me MessageChannel channel, @Switch('f') boolean uploadFile, @Switch('a') boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
 
         Map<Integer, Long> mostWageredWinnings = new HashMap<>();
         for (BBGame game : games) {
+            int id;
             if (game.getHome_score() > game.getAway_score()) {
-                mostWageredWinnings.merge(game.getHome_nation_id(), game.getWager().longValue(), Long::sum);
+                id = game.getHome_nation_id();
+
             } else if (game.getAway_score() > game.getHome_score()) {
-                mostWageredWinnings.merge(game.getAway_nation_id(), game.getWager().longValue(), Long::sum);
+                id = game.getAway_nation_id();
+            } else continue;
+            if (byAlliance) {
+                DBNation nation = DBNation.byId(id);
+                if (nation == null) continue;
+                id = nation.getAlliance_id();
             }
+            mostWageredWinnings.merge(id, game.getWager().longValue(), Long::sum);
         }
 
         String title = "BB Challenge Earnings $";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, false));
+        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
         ranks.build(null, channel, null, title);
         if (uploadFile && ranks.get().size() > 25) {
             DiscordUtil.upload(channel, title, ranks.toString());
@@ -737,9 +801,9 @@ public class StatCommands {
     }
 
     @Command
-    public String allianceMetricsCompareByTurn(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<Alliance> alliances, @Timestamp long time) throws IOException {
+    public String allianceMetricsCompareByTurn(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> alliances, @Timestamp long time) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
-        Set<Alliance>[] coalitions = alliances.stream().map(f -> Collections.singleton(f)).collect(Collectors.toList()).toArray(new Set[0]);
+        Set<DBAlliance>[] coalitions = alliances.stream().map(f -> Collections.singleton(f)).collect(Collectors.toList()).toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(f -> f.getName()).collect(Collectors.toList());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalitions);
         table.write(channel);
@@ -747,7 +811,7 @@ public class StatCommands {
     }
 
     @Command(aliases = {})
-    public String allianceMetricsAB(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<Alliance> coalition1, Set<Alliance> coalition2, @Timestamp long time) throws IOException {
+    public String allianceMetricsAB(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Timestamp long time) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, null, coalition1, coalition2);
         table.write(channel);
@@ -775,7 +839,7 @@ public class StatCommands {
         for (Map.Entry<Integer, Set<DBNation>> entry : natByAA.entrySet()) {
             Integer aaId = entry.getKey();
 
-            Alliance alliance = new Alliance(aaId);
+            DBAlliance alliance = new DBAlliance(aaId);
             SAllianceContainer sAlliance = alliances.get(aaId);
 
             SimpleNationList list = new SimpleNationList(entry.getValue());
@@ -811,7 +875,7 @@ public class StatCommands {
                                 }
                             }
 
-                        for (Method method : Alliance.class.getDeclaredMethods()) {
+                        for (Method method : DBAlliance.class.getDeclaredMethods()) {
                             if (method.getParameters().length != 0) continue;
                             Class type = method.getReturnType();
                             if (type == String.class || ClassUtils.isPrimitiveOrWrapper(type)) {
@@ -839,7 +903,7 @@ public class StatCommands {
     }
 
     @Command
-    public String allianceMetricsByTurn(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<Alliance> coalition, @Timestamp long time) throws IOException {
+    public String allianceMetricsByTurn(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition, @Timestamp long time) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         List<String> coalitionNames = Arrays.asList(metric.name());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalition);
@@ -984,7 +1048,7 @@ public class StatCommands {
 
             header = new ArrayList<>();
             header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
-            header.add(MarkupUtil.sheetUrl(nation.getAlliance(), nation.getAllianceUrl()));
+            header.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
 
             int numWars = activeCost.getNumWars();
             header.add(numWars);
@@ -1106,7 +1170,7 @@ public class StatCommands {
             };
             warCost.addCost(attacks, isPrimary, f -> !isPrimary.apply(f));
 
-            Alliance alliance = new Alliance(entry.getKey());
+            DBAlliance alliance = new DBAlliance(entry.getKey());
 
 
             ArrayList<Object> row = new ArrayList<>();

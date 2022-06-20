@@ -7,7 +7,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.trade.Offer;
 import com.google.common.hash.Hashing;

@@ -7,8 +7,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -316,7 +316,7 @@ public class Deposits extends Command {
                         }
 
                         if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE)) && guildDb.isValidAlliance() && guildDb.hasAuth()) {
-                            Alliance alliance = guildDb.getAlliance();
+                            DBAlliance alliance = guildDb.getAlliance();
                             if (alliance != null && me.getAlliance_id() == alliance.getAlliance_id()) {
                                 try {
                                     Map<ResourceType, Double> stockpile = alliance.getStockpile();
@@ -367,7 +367,7 @@ public class Deposits extends Command {
     public void appendNation(Integer nationId, Map<ResourceType, Double> value, StringBuilder response) {
         DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
         String name = nation != null ? nation.getNation() : "";
-        String alliance = nation != null ? nation.getAlliance() : "";
+        String alliance = nation != null ? nation.getAllianceName() : "";
         String link = nation != null ? "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nationId : "";
         response.append('\n')
                 .append(name).append(" | ")

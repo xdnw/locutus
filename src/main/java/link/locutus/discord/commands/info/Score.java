@@ -3,7 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -146,7 +146,7 @@ public class Score extends Command {
             nation.setMMR((mmrStr.charAt(0) - '0'), (mmrStr.charAt(1) - '0'), (mmrStr.charAt(2) - '0'), (mmrStr.charAt(3) - '0'));
         }
 
-        double score = nation.estimateScore(true);
+        double score = nation.estimateScore();
 
         if (score == 0) return usage(event);
 

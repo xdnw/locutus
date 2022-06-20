@@ -6,18 +6,18 @@ import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.event.*;
 import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.event.NationBlockadedEvent;
 import link.locutus.discord.event.NationUnblockadedEvent;
 import link.locutus.discord.event.WarCreateEvent;
 import link.locutus.discord.event.WarUpdateEvent;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.bounty.BountyCreateEvent;
+import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
@@ -828,7 +828,7 @@ public class WarUpdateProcessor {
             WarCard card = new WarCard(current.warId);
             CounterStat stat = card.getCounterStat();
 
-            Alliance defAA = new Alliance(defender.getAlliance_id());
+            DBAlliance defAA = new DBAlliance(defender.getAlliance_id());
             ByteBuffer lastWarringBuf = defAA.getMeta(AllianceMeta.LAST_AT_WAR_TURN);
 
             if (lastWarringBuf == null || TimeUtil.getTurn() - lastWarringBuf.getLong() > 24) {
@@ -902,10 +902,10 @@ public class WarUpdateProcessor {
 
     public static void checkActiveConflicts() {
         int topX = 80;
-        Set<Alliance> top = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
+        Set<DBAlliance> top = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
 
-        Map<Alliance, Double> warRatio = new HashMap<>();
-        for (Alliance alliance : top) {
+        Map<DBAlliance, Double> warRatio = new HashMap<>();
+        for (DBAlliance alliance : top) {
             List<DBNation> nations = alliance.getNations(true, 1440, true);
             nations.removeIf(DBNation::isGray);
             DBNation total = new SimpleNationList(nations).getTotal();
@@ -927,11 +927,11 @@ public class WarUpdateProcessor {
             }
         }
 
-        Map<Alliance, Boolean> isAtWar = new HashMap<>();
-        Map<Alliance, String> warInfo = new HashMap<>();
+        Map<DBAlliance, Boolean> isAtWar = new HashMap<>();
+        Map<DBAlliance, String> warInfo = new HashMap<>();
 
-        for (Map.Entry<Alliance, Double> entry : warRatio.entrySet()) {
-            Alliance aa = entry.getKey();
+        for (Map.Entry<DBAlliance, Double> entry : warRatio.entrySet()) {
+            DBAlliance aa = entry.getKey();
             Set<DBNation> nations = new HashSet<>(aa.getNations(true, 1440, true));
             nations.removeIf(DBNation::isGray);
             DBNation total = new SimpleNationList(nations).getTotal();
@@ -973,7 +973,7 @@ public class WarUpdateProcessor {
         long currentTurn = TimeUtil.getTurn();
         long warTurnThresheld = 7 * 12;
 
-        for (Alliance alliance : top) {
+        for (DBAlliance alliance : top) {
             ByteBuffer previousPctBuf = alliance.getMeta(AllianceMeta.LAST_BLITZ_PCT);
             ByteBuffer warringBuf = alliance.getMeta(AllianceMeta.IS_WARRING);
             ByteBuffer lastWarBuf = alliance.getMeta(AllianceMeta.LAST_AT_WAR_TURN);

@@ -16,7 +16,7 @@ import java.util.function.Predicate;
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
 public class Projects {
-    public static final Project ADVANCED_URBAN_PLANNING = new Builder("advanced_urban_planning")
+    public static final Project ADVANCED_URBAN_PLANNING = new Builder("advanced_urban_planning", 15)
             .cost(URANIUM, 10000)
             .cost(ALUMINUM, 40000)
             .cost(STEEL, 20000)
@@ -25,7 +25,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getAdv_city_planning()))
             .build();
 
-    public static final Project ARMS_STOCKPILE = new Builder("arms_stockpile")
+    public static final Project ARMS_STOCKPILE = new Builder("arms_stockpile", 2)
             .image("armsstockpile.png")
             .cost(ALUMINUM, 125)
             .cost(STEEL, 125)
@@ -33,7 +33,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getArmsstockpile()))
             .build();
 
-    public static final Project BAUXITEWORKS = new Builder("bauxite_works")
+    public static final Project BAUXITEWORKS = new Builder("bauxite_works", 1)
             .image("bauxiteworks.png")
             .cost(STEEL, 750)
             .cost(GASOLINE, 1500)
@@ -42,7 +42,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getBauxiteworks()))
             .build();
 
-    public static final Project CENTER_FOR_CIVIL_ENGINEERING = new Builder("center_for_civil_engineering")
+    public static final Project CENTER_FOR_CIVIL_ENGINEERING = new Builder("center_for_civil_engineering", 11)
             .image("cfce.png")
             .cost(OIL, 1000)
             .cost(IRON, 1000)
@@ -51,7 +51,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getCenciveng()))
             .build();
 
-    public static final Project URBAN_PLANNING = new Builder("urban_planning")
+    public static final Project URBAN_PLANNING = new Builder("urban_planning", 14)
             .cost(COAL, 10000)
             .cost(OIL, 10000)
             .cost(ALUMINUM, 20000)
@@ -61,7 +61,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getCity_planning()))
             .build();
 
-    public static final Project EMERGENCY_GASOLINE_RESERVE = new Builder("emergency_gasoline_reserve")
+    public static final Project EMERGENCY_GASOLINE_RESERVE = new Builder("emergency_gasoline_reserve", 3)
             .image("emergencygasolinereserve.png")
             .cost(ALUMINUM, 125)
             .cost(STEEL, 125)
@@ -70,7 +70,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getEmgasreserve()))
             .build();
 
-    public static final Project INTELLIGENCE_AGENCY = new Builder("central_intelligence_agency")
+    public static final Project INTELLIGENCE_AGENCY = new Builder("central_intelligence_agency", 10)
             .image("cia.png")
             .cost(STEEL, 500)
             .cost(GASOLINE, 500)
@@ -78,7 +78,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getIntagncy()))
             .build();
 
-    public static final Project INTERNATIONAL_TRADE_CENTER = new Builder("international_trade_center")
+    public static final Project INTERNATIONAL_TRADE_CENTER = new Builder("international_trade_center", 5)
             .image("internationaltradecenter.png")
             .cost(ALUMINUM, 2500)
             .cost(STEEL, 2500)
@@ -88,7 +88,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getInttradecenter()))
             .build();
 
-    public static final Project IRON_DOME = new Builder("iron_dome")
+    public static final Project IRON_DOME = new Builder("iron_dome", 8)
             .image("irondome.png")
             .cost(ALUMINUM, 500)
             .cost(STEEL, 1250)
@@ -97,7 +97,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getIrondome()))
             .build();
 
-    public static final Project IRON_WORKS = new Builder("iron_works")
+    public static final Project IRON_WORKS = new Builder("iron_works", 0)
             .image("ironworks.png")
             .cost(ALUMINUM, 750)
             .cost(GASOLINE, 1500)
@@ -106,7 +106,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getIronworks()))
             .build();
 
-    public static final Project MASS_IRRIGATION = new Builder("mass_irrigation")
+    public static final Project MASS_IRRIGATION = new Builder("mass_irrigation", 4)
             .image("massirrigation.png")
             .cost(ALUMINUM, 500)
             .cost(STEEL, 500)
@@ -115,7 +115,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getMassirrigation()))
             .build();
 
-    public static final Project MISSILE_LAUNCH_PAD = new Builder("missile_launch_pad")
+    public static final Project MISSILE_LAUNCH_PAD = new Builder("missile_launch_pad", 6)
             .image("missilelaunchpad.png")
             .cost(STEEL, 1000)
             .cost(GASOLINE, 350)
@@ -123,7 +123,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getMissilelpad()))
             .build();
 
-    public static final Project MOON_LANDING = new Builder("moon_landing")
+    public static final Project MOON_LANDING = new Builder("moon_landing", 18)
             .image("moon_landing.png")
             .cost(OIL, 5000)
             .cost(MUNITIONS, 5000)
@@ -135,7 +135,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getMoon_landing()))
             .build();
 
-    public static final Project NUCLEAR_RESEARCH_FACILITY = new Builder("nuclear_research_facility")
+    public static final Project NUCLEAR_RESEARCH_FACILITY = new Builder("nuclear_research_facility", 7)
             .image("nrf.png")
             .cost(STEEL, 5000)
             .cost(GASOLINE, 7500)
@@ -143,14 +143,14 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getNuclearresfac()))
             .build();
 
-    public static final Project PROPAGANDA_BUREAU = new Builder("propaganda_bureau")
+    public static final Project PROPAGANDA_BUREAU = new Builder("propaganda_bureau", 12)
             .image("pb.png")
             .cost(ALUMINUM, 1500)
             .cost(MONEY, 15000000)
             .get(nation -> Integer.parseInt(nation.getPropbureau()))
             .build();
 
-    public static final Project SPACE_PROGRAM = new Builder("space_program")
+    public static final Project SPACE_PROGRAM = new Builder("space_program", 16)
             .image("space_program.png")
             .cost(URANIUM, 20000)
             .cost(OIL, 20000)
@@ -162,7 +162,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getSpace_program()))
             .build();
 
-    public static final Project SPY_SATELLITE = new Builder("spy_satellite")
+    public static final Project SPY_SATELLITE = new Builder("spy_satellite", 17)
             .image("spy_satellite.png")
             .cost(OIL, 10000)
             .cost(IRON, 10000)
@@ -173,7 +173,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getSpy_satellite()))
             .build();
 
-    public static final Project URANIUM_ENRICHMENT_PROGRAM = new Builder("uranium_enrichment_program")
+    public static final Project URANIUM_ENRICHMENT_PROGRAM = new Builder("uranium_enrichment_program", 13)
             .image("uap.png")
             .cost(ALUMINUM, 1000)
             .cost(GASOLINE, 1000)
@@ -183,7 +183,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getUraniumenrich()))
             .build();
 
-    public static final Project VITAL_DEFENSE_SYSTEM = new Builder("vital_defense_system")
+    public static final Project VITAL_DEFENSE_SYSTEM = new Builder("vital_defense_system", 9)
             .image("vds.png")
             .cost(ALUMINUM, 3000)
             .cost(STEEL, 6500)
@@ -192,13 +192,13 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getVitaldefsys()))
             .build();
 
-    public static final Project RECYCLING_INITIATIVE = new Builder("recycling_initiative")
+    public static final Project RECYCLING_INITIATIVE = new Builder("recycling_initiative", 20)
             .cost(FOOD, 100000)
             .cost(MONEY, 10000000)
             .get(nation -> 0)
             .build();
 
-    public static final Project PIRATE_ECONOMY = new Builder("pirate_economy")
+    public static final Project PIRATE_ECONOMY = new Builder("pirate_economy", 19)
             .cost(ALUMINUM, 10000)
             .cost(MUNITIONS, 10000)
             .cost(GASOLINE, 10000)
@@ -207,7 +207,7 @@ public class Projects {
             .get(nation -> 0)
             .build();
 
-    public static final Project GREEN_TECHNOLOGIES = new Builder("green_tech")
+    public static final Project GREEN_TECHNOLOGIES = new Builder("green_tech", 22)
             .cost(ALUMINUM, 3000)
             .cost(STEEL, 6500)
             .cost(GASOLINE, 5000)
@@ -215,7 +215,7 @@ public class Projects {
             .get(nation -> 0)
             .build();
 
-    public static final Project TELECOMMUNICATIONS_SATELLITE = new Builder("telecommunications_satellite")
+    public static final Project TELECOMMUNICATIONS_SATELLITE = new Builder("telecommunications_satellite", 21)
             .cost(URANIUM, 10000)
             .cost(IRON, 10000)
             .cost(OIL, 10000)
@@ -224,7 +224,7 @@ public class Projects {
             .get(nation -> Integer.parseInt(nation.getTelecommunications_satellite()))
             .build();
 
-    public static final Project ADVANCED_ENGINEERING_CORPS = new Builder("advanced_engineering_corps")
+    public static final Project ADVANCED_ENGINEERING_CORPS = new Builder("advanced_engineering_corps", 26)
             .image("advanced_engineering_corps.jpg")
             .cost(URANIUM, 1000)
             .cost(MUNITIONS, 10000)
@@ -233,27 +233,27 @@ public class Projects {
             .get(nation -> 0)
             .build();
 
-    public static final Project ARABLE_LAND_AGENCY = new Builder("arable_land_agency")
+    public static final Project ARABLE_LAND_AGENCY = new Builder("arable_land_agency", 23)
             .cost(COAL, 1500)
             .cost(LEAD, 1500)
             .cost(MONEY, 3000000)
             .get(nation -> 0)
             .build();
 
-    public static final Project CLINICAL_RESEARCH_CENTER = new Builder("clinical_research_center")
+    public static final Project CLINICAL_RESEARCH_CENTER = new Builder("clinical_research_center", 24)
             .cost(FOOD, 100000)
             .cost(MONEY, 10000000)
             .get(nation -> 0)
             .build();
 
-    public static final Project SPECIALIZED_POLICE_TRAINING_PROGRAM = new Builder("specialized_police_training_program")
+    public static final Project SPECIALIZED_POLICE_TRAINING_PROGRAM = new Builder("specialized_police_training_program", 25)
             .image("specialized_police_training_program.jpg")
             .cost(FOOD, 100000)
             .cost(MONEY, 10000000)
             .get(nation -> 0)
             .build();
 
-    public static final Project RESEARCH_AND_DEVELOPMENT_CENTER = new Builder("research_and_development_center")
+    public static final Project RESEARCH_AND_DEVELOPMENT_CENTER = new Builder("research_and_development_center", 28)
             .image("research_and_development_center.jpg")
             .cost(URANIUM, 1000)
             .cost(ALUMINUM, 5000)
@@ -262,14 +262,14 @@ public class Projects {
             .get(nation -> 0)
             .build();
 
-    public static final Project RESOURCE_PRODUCTION_CENTER = new Builder("resource_production_center")
+    public static final Project RESOURCE_PRODUCTION_CENTER = new Builder("resource_production_center", 29)
             .image("resource_production_center.jpg")
             .cost(FOOD, 1000)
             .cost(MONEY, 500000)
             .get(nation -> 0)
             .build();
 
-    public static final Project GOVERNMENT_SUPPORT_AGENCY = new Builder("government_support_agency")
+    public static final Project GOVERNMENT_SUPPORT_AGENCY = new Builder("government_support_agency", 27)
             .image("government_support_agency.jpg")
             .cost(FOOD, 200000)
             .cost(ALUMINUM, 10000)
@@ -277,18 +277,24 @@ public class Projects {
             .get(nation -> 0)
             .build();
 
+    public static int getScore() {
+        return 20;
+    }
+
 
     // Recycling Initiative
 
     public static class Builder {
+        private final int id;
         private String apiName,imageName;
         private Map<ResourceType, Double> resources = new EnumMap<>(ResourceType.class);
         private Function<Nation, Integer> get;
         private ResourceType output;
 
-        public Builder(String apiName) {
+        public Builder(String apiName, int id) {
             this.apiName = apiName;
             this.imageName = apiName;
+            this.id = id;
         }
 
         public Builder image(String imageName) {
@@ -312,7 +318,7 @@ public class Projects {
         }
 
         public Project build() {
-            return new AProject(apiName, imageName, resources, get, output);
+            return new AProject(id, apiName, imageName, resources, get, output);
         }
     }
 

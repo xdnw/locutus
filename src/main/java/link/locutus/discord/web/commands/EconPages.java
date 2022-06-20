@@ -14,7 +14,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;

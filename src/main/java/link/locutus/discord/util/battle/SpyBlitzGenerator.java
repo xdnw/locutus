@@ -2,8 +2,8 @@ package link.locutus.discord.util.battle;
 
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.util.PnwUtil;
@@ -47,7 +47,7 @@ public class SpyBlitzGenerator {
 
     private Map<Integer, Double> allianceWeighting = new HashMap<>();
 
-    public SpyBlitzGenerator setAllianceWeighting(Alliance alliance, double weight) {
+    public SpyBlitzGenerator setAllianceWeighting(DBAlliance alliance, double weight) {
         allianceWeighting.put(alliance.getAlliance_id(), weight);
         return this;
     }

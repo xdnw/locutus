@@ -7,8 +7,8 @@ import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -88,7 +88,7 @@ public class WarRanking extends Command {
         }).sumValues(f -> 1d);
         if (flags.contains('n') && byAA) {
             ranksUnsorted = ranksUnsorted.adapt((aaId, numWars) -> {
-                int num = new Alliance(aaId).getNations(true, flags.contains('i') ? 2440 : Integer.MAX_VALUE, true).size();
+                int num = new DBAlliance(aaId).getNations(true, flags.contains('i') ? 2440 : Integer.MAX_VALUE, true).size();
                 if (num == 0) return 0d;
                 return numWars.doubleValue() / (double) num;
             });

@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.Transfer;
@@ -39,6 +40,12 @@ import java.util.concurrent.TimeUnit;
 public class BankDB extends DBMain {
     public BankDB() throws SQLException, ClassNotFoundException {
         super("bank");
+    }
+
+    public void updateNewBankRecs() {
+        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+
+
     }
 
     @Override
@@ -580,17 +587,17 @@ public class BankDB extends DBMain {
         }
     }
 
-    public void addTransactions(List<Transaction2> transactions) {
-        if (transactions.isEmpty()) return;
+    public int[] addTransactions(List<Transaction2> transactions) {
+        if (transactions.isEmpty()) return new int[0];
         invalidateTXCache();
         String query = transactions.get(0).createInsert("TRANSACTIONS_2", true);
-        executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::set);
+        return executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::set);
     }
 
-    public void addTransaction(Transaction2 tx) {
+    public int addTransaction(Transaction2 tx) {
         invalidateTXCache();
         String sql = tx.createInsert("TRANSACTIONS_2", true);
-        update(sql, (ThrowingConsumer<PreparedStatement>) tx::set);
+        return update(sql, (ThrowingConsumer<PreparedStatement>) tx::set);
     }
 
     public List<TaxDeposit> getTaxesPaid(int nation, int alliance) {

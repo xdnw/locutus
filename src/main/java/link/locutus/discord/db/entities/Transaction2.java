@@ -1,5 +1,7 @@
 package link.locutus.discord.db.entities;
 
+import com.google.gson.JsonElement;
+import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -63,6 +65,34 @@ public class Transaction2 {
         this.resources = resources;
     }
 
+    public static Transaction2 fromApiV3(Bankrec rec) {
+        Transaction2 tx = new Transaction2(
+                rec.getId(),
+                rec.getDate().toEpochMilli(),
+                rec.getSender_id(),
+                rec.getSender_type(),
+                rec.getReceiver_id(),
+                rec.getReceiver_type(),
+                rec.getBanker_id(),
+                rec.getNote(),
+                ResourceType.getBuffer()
+        );
+        tx.resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
+        tx.resources[ResourceType.COAL.ordinal()] = rec.getCoal();
+        tx.resources[ResourceType.OIL.ordinal()] = rec.getOil();
+        tx.resources[ResourceType.URANIUM.ordinal()] = rec.getUranium();
+        tx.resources[ResourceType.IRON.ordinal()] = rec.getIron();
+        tx.resources[ResourceType.BAUXITE.ordinal()] = rec.getBauxite();
+        tx.resources[ResourceType.LEAD.ordinal()] = rec.getLead();
+        tx.resources[ResourceType.GASOLINE.ordinal()] = rec.getGasoline();
+        tx.resources[ResourceType.MUNITIONS.ordinal()] = rec.getMunitions();
+        tx.resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
+        tx.resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
+        tx.resources[ResourceType.FOOD.ordinal()] = rec.getFood();
+        return tx;
+    }
+
+    @Deprecated
     public static Transaction2 fromAPiv3(JsonObject json) throws ParseException {
         int id = Integer.parseInt(json.get("id").getAsString());
         long date = Instant.parse(json.get("date").getAsString()).toEpochMilli();
@@ -71,7 +101,8 @@ public class Transaction2 {
         int rid = json.get("rid").getAsInt();
         int rtype = json.get("rtype").getAsInt();
         int pid = json.get("pid").getAsInt();
-        String note = json.get("note").getAsString();
+        JsonElement noteObj = json.get("note");
+        String note = noteObj.isJsonNull() ? "" : noteObj.getAsString();
         Transaction2 tx = new Transaction2(id, date, sid, stype, rid, rtype, pid, note, ResourceType.getBuffer());
 
         tx.resources[ResourceType.MONEY.ordinal()] = json.get("money").getAsDouble();

@@ -29,7 +29,7 @@ import java.util.Set;
 
 public class TradeDB extends DBMainV2 {
     public TradeDB() throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, "trade");
+        super("trade");
     }
 
 

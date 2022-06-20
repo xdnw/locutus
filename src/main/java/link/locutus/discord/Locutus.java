@@ -16,7 +16,7 @@ import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.CityInfraLand;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
@@ -67,18 +67,14 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Logger;
 

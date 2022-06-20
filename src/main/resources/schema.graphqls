@@ -11,8 +11,8 @@ type Query {
     alliance_position: [Int]
     color: [String]
     created_after: DateTime
-    min_score: Double
-    max_score: Double
+    min_score: Float
+    max_score: Float
     cities: [Int]
     min_cities: Int
     max_cities: Int
@@ -87,8 +87,8 @@ type Query {
   ): WarPaginator
   bounties(
     nation_id: [Int]
-    min_amount: Double
-    max_amount: Double
+    min_amount: Float
+    max_amount: Float
     orderBy: [QueryBountiesOrderByOrderByClause!]
 
     # Limits number of fetched items. Maximum allowed value: 1000.
@@ -246,10 +246,10 @@ type Nation {
   color: String
   num_cities: Int
   cities: [City!]!
-  score: Double
+  score: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  update_tz: Double
+  update_tz: Float
   population: Int
   flag: String
   vmode: Int @deprecated(reason: "Use vacation_mode_turns instead.")
@@ -349,40 +349,40 @@ type Nation {
   turns_since_last_project: Int
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  money: Double
+  money: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  coal: Double
+  coal: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  oil: Double
+  oil: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  uranium: Double
+  uranium: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  iron: Double
+  iron: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  bauxite: Double
+  bauxite: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  lead: Double
+  lead: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  gasoline: Double
+  gasoline: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  munitions: Double
+  munitions: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  steel: Double
+  steel: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  aluminum: Double
+  aluminum: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  food: Double
+  food: Float
   projects: Int
   project_bits: Int
   ironw: Boolean @deprecated(reason: "Use iron_works instead")
@@ -444,8 +444,8 @@ type Nation {
   tax_id: Int
   alliance_seniority: Int
   baseball_team: BBTeam
-  gross_national_income: Double
-  gross_domestic_product: Double
+  gross_national_income: Float
+  gross_domestic_product: Float
   soldier_casualties: Int
   soldier_kills: Int
   tank_casualties: Int
@@ -460,7 +460,7 @@ type Nation {
   nuke_kills: Int
   spy_casualties: Int
   spy_kills: Int
-  money_looted: Double
+  money_looted: Float
 }
 
 enum AlliancePositionEnum {
@@ -510,14 +510,14 @@ type Alliance {
   id: Int
   name: String
   acronym: String
-  score: Double
+  score: Float
   color: String
   date: DateTimeAuto
   nations(
     alliance_position: [Int]
     color: [String]
-    min_score: Double
-    max_score: Double
+    min_score: Float
+    max_score: Float
     cities: [Int]
     min_cities: Int
     max_cities: Int
@@ -526,7 +526,7 @@ type Alliance {
     limit: Int
     orderBy: [AllianceNationsOrderByOrderByClause!]
   ): [Nation!]!
-  average_score: Double
+  average_score: Float
   sent_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
   received_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
   treaties(limit: Int): [Treaty!]!
@@ -584,40 +584,40 @@ type Alliance {
   tax_brackets: [TaxBracket]
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  money: Double
+  money: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  coal: Double
+  coal: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  oil: Double
+  oil: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  uranium: Double
+  uranium: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  iron: Double
+  iron: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  bauxite: Double
+  bauxite: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  lead: Double
+  lead: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  gasoline: Double
+  gasoline: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  munitions: Double
+  munitions: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  steel: Double
+  steel: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  aluminum: Double
+  aluminum: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  food: Double
+  food: Float
 }
 
 # Order by clause for Alliance.nations.orderBy.
@@ -724,18 +724,18 @@ type Bankrec {
 
   # Note (if any) included with the transaction by the banker
   note: String
-  money: Double
-  coal: Double
-  oil: Double
-  uranium: Double
-  iron: Double
-  bauxite: Double
-  lead: Double
-  gasoline: Double
-  munitions: Double
-  steel: Double
-  aluminum: Double
-  food: Double
+  money: Float
+  coal: Float
+  oil: Float
+  uranium: Float
+  iron: Float
+  bauxite: Float
+  lead: Float
+  gasoline: Float
+  munitions: Float
+  steel: Float
+  aluminum: Float
+  food: Float
 
   # The unique identifier of the tax bracket
   tax_id: Int
@@ -809,8 +809,8 @@ type City {
   nation: Nation
   name: String
   date: Date
-  infrastructure: Double
-  land: Double
+  infrastructure: Float
+  land: Float
   powered: Boolean
   oilpower: Int @deprecated(reason: "Use oil_power instead")
   oil_power: Int
@@ -920,18 +920,18 @@ type War {
   def_resistance: Int
   att_fortify: Boolean
   def_fortify: Boolean
-  att_gas_used: Double
-  def_gas_used: Double
-  att_mun_used: Double
-  def_mun_used: Double
+  att_gas_used: Float
+  def_gas_used: Float
+  att_mun_used: Float
+  def_mun_used: Float
   att_alum_used: Int
   def_alum_used: Int
   att_steel_used: Int
   def_steel_used: Int
-  att_infra_destroyed: Double
-  def_infra_destroyed: Double
-  att_money_looted: Double
-  def_money_looted: Double
+  att_infra_destroyed: Float
+  def_infra_destroyed: Float
+  att_money_looted: Float
+  def_money_looted: Float
   att_soldiers_killed: Int
   def_soldiers_killed: Int
   att_tanks_killed: Int
@@ -944,8 +944,8 @@ type War {
   def_missiles_used: Int
   att_nukes_used: Int
   def_nukes_used: Int
-  att_infra_destroyed_value: Double
-  def_infra_destroyed_value: Double
+  att_infra_destroyed_value: Float
+  def_infra_destroyed_value: Float
 }
 
 enum WarType {
@@ -1004,20 +1004,20 @@ type WarAttack {
   defcas2: Int
   cityid: Int @deprecated(reason: "Use city_id instead.")
   city_id: Int
-  infradestroyed: Double @deprecated(reason: "Use infra_destroyed instead.")
-  infra_destroyed: Double
+  infradestroyed: Float @deprecated(reason: "Use infra_destroyed instead.")
+  infra_destroyed: Float
   improvementslost: Int @deprecated(reason: "Use improvements_lost instead.")
   improvements_lost: Int
-  moneystolen: Double @deprecated(reason: "Use money_stolen instead.")
-  money_stolen: Double
+  moneystolen: Float @deprecated(reason: "Use money_stolen instead.")
+  money_stolen: Float
   loot_info: String
   resistance_eliminated: Int
-  city_infra_before: Double
-  infra_destroyed_value: Double
-  att_mun_used: Double
-  def_mun_used: Double
-  att_gas_used: Double
-  def_gas_used: Double
+  city_infra_before: Float
+  infra_destroyed_value: Float
+  att_mun_used: Float
+  def_mun_used: Float
+  att_gas_used: Float
+  def_gas_used: Float
   aircraft_killed_by_tanks: Int
 }
 
@@ -1191,7 +1191,7 @@ type BBTeam {
   stadium: String
   quality: Int
   seating: Int
-  rating: Double
+  rating: Float
   wins: Int
   glosses: Int
   runs: Int
@@ -1242,10 +1242,10 @@ type BBGame {
   away_score: Int
   sim_text: String
   highlights: String
-  home_revenue: Double
-  spoils: Double
+  home_revenue: Float
+  spoils: Float
   open: Int
-  wager: Double
+  wager: Float
 }
 
 type BBPlayer {
@@ -1258,11 +1258,11 @@ type BBPlayer {
   name: String
   age: Int
   position: String
-  pitching: Double
-  batting: Double
-  speed: Double
-  awareness: Double
-  overall: Double
+  pitching: Float
+  batting: Float
+  speed: Float
+  awareness: Float
+  overall: Float
   birthday: Int
 }
 
@@ -1278,14 +1278,14 @@ type GameInfo {
 }
 
 type Radiation {
-  global: Double
-  north_america: Double
-  south_america: Double
-  europe: Double
-  africa: Double
-  asia: Double
-  australia: Double
-  antarctica: Double
+  global: Float
+  north_america: Float
+  south_america: Float
+  europe: Float
+  africa: Float
+  asia: Float
+  australia: Float
+  antarctica: Float
 }
 
 # Order by clause for Query.nations.orderBy.
@@ -1383,18 +1383,18 @@ type TradepricePaginator {
 type Tradeprice {
   id: Int
   date: Date
-  coal: Double
-  oil: Double
-  uranium: Double
-  iron: Double
-  bauxite: Double
-  lead: Double
-  gasoline: Double
-  munitions: Double
-  steel: Double
-  aluminum: Double
-  food: Double
-  credits: Double
+  coal: Float
+  oil: Float
+  uranium: Float
+  iron: Float
+  bauxite: Float
+  lead: Float
+  gasoline: Float
+  munitions: Float
+  steel: Float
+  aluminum: Float
+  food: Float
+  credits: Float
 }
 
 # Order by clause for Query.trades.orderBy.
@@ -1752,35 +1752,35 @@ type Embargo {
 
 type Mutation {
   bankDeposit(
-    money: Double = 0.0
-    coal: Double = 0.0
-    oil: Double = 0.0
-    uranium: Double = 0.0
-    iron: Double = 0.0
-    bauxite: Double = 0.0
-    lead: Double = 0.0
-    gasoline: Double = 0.0
-    munitions: Double = 0.0
-    steel: Double = 0.0
-    aluminum: Double = 0.0
-    food: Double = 0.0
+    money: Float = 0.0
+    coal: Float = 0.0
+    oil: Float = 0.0
+    uranium: Float = 0.0
+    iron: Float = 0.0
+    bauxite: Float = 0.0
+    lead: Float = 0.0
+    gasoline: Float = 0.0
+    munitions: Float = 0.0
+    steel: Float = 0.0
+    aluminum: Float = 0.0
+    food: Float = 0.0
     note: String
   ): Bankrec!
   bankWithdraw(
     receiver: Int!
     receiver_type: Int!
-    money: Double = 0.0
-    coal: Double = 0.0
-    oil: Double = 0.0
-    uranium: Double = 0.0
-    iron: Double = 0.0
-    bauxite: Double = 0.0
-    lead: Double = 0.0
-    gasoline: Double = 0.0
-    munitions: Double = 0.0
-    steel: Double = 0.0
-    aluminum: Double = 0.0
-    food: Double = 0.0
+    money: Float = 0.0
+    coal: Float = 0.0
+    oil: Float = 0.0
+    uranium: Float = 0.0
+    iron: Float = 0.0
+    bauxite: Float = 0.0
+    lead: Float = 0.0
+    gasoline: Float = 0.0
+    munitions: Float = 0.0
+    steel: Float = 0.0
+    aluminum: Float = 0.0
+    food: Float = 0.0
     note: String
   ): Bankrec!
 }

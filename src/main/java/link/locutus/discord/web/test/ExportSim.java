@@ -1,6 +1,6 @@
 package link.locutus.discord.web.test;
 
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.battle.sim.SimulatedWarNode;
 import link.locutus.discord.util.battle.sim.WarNation;

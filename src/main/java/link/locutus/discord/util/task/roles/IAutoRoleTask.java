@@ -1,7 +1,7 @@
 package link.locutus.discord.util.task.roles;
 
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.Member;
 
 import java.util.Map;

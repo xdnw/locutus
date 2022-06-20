@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Announcement;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -41,7 +41,7 @@ public class AlliancePages {
             row.add(MarkupUtil.htmlUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
             row.add(timeRank.getValue());
             if (nation != null) {
-                row.add(MarkupUtil.htmlUrl(nation.getAlliance(), nation.getAllianceUrl()));
+                row.add(MarkupUtil.htmlUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 row.add(Rank.byId(nation.getPosition()));
                 String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
                 if (nation.getVm_turns() != 0) {

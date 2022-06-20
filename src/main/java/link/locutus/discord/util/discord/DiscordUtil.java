@@ -14,7 +14,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.InterviewMessage;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -1274,8 +1274,7 @@ public class DiscordUtil {
                                         }
                                     }
                                 });
-                            }
-                            else if (method.getReturnType() == int.class || method.getReturnType() == long.class || method.getReturnType() == double.class) {
+                            } else if (method.getReturnType() == int.class || method.getReturnType() == long.class || method.getReturnType() == double.class) {
                                 hasMethod = true;
                                 nations.removeIf(new Predicate<DBNation>() {
                                     @Override

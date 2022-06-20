@@ -10,9 +10,9 @@ import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Announcement;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -134,7 +134,7 @@ public class IndexPages {
             }
         }
 
-        for (Alliance alliance : Locutus.imp().getNationDB().getAlliances(false, false, false, 9999)) {
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances(false, false, false, 9999)) {
             double val = 0;
             String name = alliance.getName();
             if ((alliance.getId() + "").equals(termLow)) {
@@ -297,7 +297,7 @@ public class IndexPages {
     @Command()
     @RolePermission(Roles.MEMBER)
     public Object allianceIndex(@Me User user, int allianceId) {
-        Alliance alliance = new Alliance(allianceId);
+        DBAlliance alliance = new DBAlliance(allianceId);
         GuildDB db = alliance.getGuildDB();
         Guild guild = db != null ? db.getGuild() : null;
 

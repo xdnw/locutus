@@ -15,6 +15,16 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
 public class EncryptionUtil {
+    public enum Algorithm {
+        DEFAULT("AES/CFB/PKCS5PADDING"),
+        LEGACY("AES/ECB/PKCS5PADDING");
+
+        public final String value;
+
+        Algorithm(String value) {
+            this.value = value;
+        }
+    }
     public static byte[] generateKey() throws NoSuchAlgorithmException {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(256); // for example
@@ -22,17 +32,24 @@ public class EncryptionUtil {
         return secretKey.getEncoded();
     }
 
-    public static byte[] encrypt(byte[] input, byte[] key) throws Exception
+    public static byte[] encrypt2(byte[] input, byte[] key) throws Exception {
+        return encrypt2(input, key, Algorithm.DEFAULT);
+    }
+
+    public static byte[] encrypt2(byte[] input, byte[] key, Algorithm algorithm) throws Exception
     {
-        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        Cipher cipher = Cipher.getInstance(algorithm.value);
         SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
         cipher.init(Cipher.ENCRYPT_MODE, secretKey);
         return cipher.doFinal(input);
     }
 
-    public static byte[] decrypt(byte[] input, byte[] key) throws Exception
+    public static byte[] decrypt2(byte[] input, byte[] key) throws Exception {
+        return decrypt2(input, key, Algorithm.DEFAULT);
+    }
+    public static byte[] decrypt2(byte[] input, byte[] key, Algorithm algorithm) throws Exception
     {
-        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5PADDING");
+        Cipher cipher = Cipher.getInstance(algorithm.value);
         SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
         cipher.init(Cipher.DECRYPT_MODE, secretKey);
         return cipher.doFinal(input);

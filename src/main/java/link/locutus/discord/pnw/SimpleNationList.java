@@ -1,5 +1,7 @@
 package link.locutus.discord.pnw;
 
+import link.locutus.discord.db.entities.DBNation;
+
 import java.util.Collection;
 
 public class SimpleNationList implements NationList {

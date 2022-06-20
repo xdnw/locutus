@@ -1,7 +1,7 @@
 package link.locutus.discord.util.task;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 
 import java.io.IOException;

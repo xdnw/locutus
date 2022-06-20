@@ -5,7 +5,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -379,18 +379,31 @@ public class BlitzGenerator {
 
         for (DBNation attacker : colA) {
             double attActive = activityFactor(attacker, true);
-            if (attActive <= attActiveThreshold) continue;
+            if (attActive <= attActiveThreshold) {
+                System.out.println("Inactive Att");
+                continue;
+            }
 
             for (DBNation defender : colB) {
-                if (defender.getCities() > attacker.getCities() * maxCityRatio) continue;
-                if (defender.getAircraft() * maxGroundRatio > attacker.getAircraft()) continue;
-                if (defender.getGroundStrength(true, defender.getAircraft() < attacker.getAircraft() * 0.66) * maxGroundRatio > attacker.getGroundStrength(true, false)) {
+                if (defender.getCities() > attacker.getCities() * maxCityRatio) {
+                    System.out.println("Insufficient cities");
+                    continue;
+                }
+                if (defender.getAircraft() > attacker.getAircraft() * maxAirRatio) {
+                    System.out.println("Insufficient Air");
+                    continue;
+                }
+                if (defender.getGroundStrength(true, defender.getAircraft() > attacker.getAircraft() * 0.66) > attacker.getGroundStrength(true, false) * maxGroundRatio) {
+                    System.out.println("Insufficient Ground");
                     continue;
                 }
 
                 double defActive = activityFactor(defender, false);
 
-                if (defActive <= defActiveThreshold) continue;
+                if (defActive <= defActiveThreshold) {
+                    System.out.println("Inactive def");
+                    continue;
+                }
 
                 double minScore = attacker.getScore() * 0.75;
                 double maxScore = attacker.getScore() * 1.75;
@@ -464,7 +477,7 @@ public class BlitzGenerator {
                     continue;
                 }
                 if (maxAttacks++ >= maxAttacksPerNation) break;
-                if (defender.getStrength() >= attacker.getStrength()) continue;
+                if (defender.getStrength() >= attacker.getStrength() * (maxGroundRatio + maxAirRatio)) continue;
 
                 attTargets.computeIfAbsent(attacker, f -> new ArrayList<>()).add(defender);
                 defTargets.computeIfAbsent(defender, f -> new ArrayList<>()).add(attacker);

@@ -5,8 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -79,7 +79,7 @@ public class AddBalance extends Command {
         OffshoreInstance offshore = guildDb.getOffshore();
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
-        Map<Alliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
+        Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
         Map<GuildDB, Map<ResourceType, Double>> fundsToSendGuilds = new LinkedHashMap<>();
 
         String arg = args.get(0);
@@ -103,7 +103,7 @@ public class AddBalance extends Command {
                         rssEntry.setValue(-rssEntry.getValue());
                     }
                 }
-                for (Map.Entry<Alliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
+                for (Map.Entry<DBAlliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
                     for (Map.Entry<ResourceType, Double> rssEntry : entry.getValue().entrySet()) {
                         rssEntry.setValue(-rssEntry.getValue());
                     }
@@ -127,7 +127,7 @@ public class AddBalance extends Command {
                         return "Invalid nation/alliance: `" + arg + "`";
                     }
                     Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
-                    fundsToSendAAs.put(new Alliance(alliance), transfer);
+                    fundsToSendAAs.put(new DBAlliance(alliance), transfer);
                 }
             } else {
                 Map<ResourceType, Double> transfer = new HashMap<>();
@@ -175,7 +175,7 @@ public class AddBalance extends Command {
         }
 
         Map<ResourceType, Double> total = new HashMap<>();
-        for (Map.Entry<Alliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
+        for (Map.Entry<DBAlliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
             total = PnwUtil.add(total, entry.getValue());
         }
         for (Map.Entry<GuildDB, Map<ResourceType, Double>> entry : fundsToSendGuilds.entrySet()) {
@@ -252,8 +252,8 @@ public class AddBalance extends Command {
 
         if (!fundsToSendAAs.isEmpty()) {
             if (Roles.ECON.has(author, guildDb.getGuild())) {
-                for (Map.Entry<Alliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
-                    Alliance sender = entry.getKey();
+                for (Map.Entry<DBAlliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
+                    DBAlliance sender = entry.getKey();
                     double[] amount = PnwUtil.resourcesToArray(entry.getValue());
                     guildDb.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
                     totalAdded = PnwUtil.add(totalAdded, entry.getValue());

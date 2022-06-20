@@ -1,15 +1,15 @@
 package link.locutus.discord.commands.trade;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv3.PWApiV3;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -76,8 +76,8 @@ public class FindProducer extends Command {
         if (args.size() == 1 || args.get(0).equalsIgnoreCase("*")) {
             int topX = 80;
             Set<Integer> allowedAAs = new HashSet<>();
-            Set<Alliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
-            for (Alliance topAlliance : topAlliances) allowedAAs.add(topAlliance.getAlliance_id());
+            Set<DBAlliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
+            for (DBAlliance topAlliance : topAlliances) allowedAAs.add(topAlliance.getAlliance_id());
             nations.removeIf(f -> !allowedAAs.contains(f.getAlliance_id()) || f.getPosition() <= 1);
 
             nations.removeIf(n -> n.getAlliance_id() == 0 || n.getVm_turns() != 0 ||
@@ -96,10 +96,10 @@ public class FindProducer extends Command {
 
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
-        Map<Integer, Map<Integer, PWApiV3.CityDataV3>> allCities = Locutus.imp().getNationDB().getCitiesV3(nationIds);
+        Map<Integer, Map<Integer, DBCity>> allCities = Locutus.imp().getNationDB().getCitiesV3(nationIds);
         double[] profitBuffer = ResourceType.getBuffer();
         for (DBNation nation : nations) {
-            Map<Integer, PWApiV3.CityDataV3> v3Cities = allCities.get(nation.getNation_id());
+            Map<Integer, DBCity> v3Cities = allCities.get(nation.getNation_id());
             if (v3Cities == null || v3Cities.isEmpty()) continue;
 
             Map<Integer, JavaCity> cities = Locutus.imp().getNationDB().toJavaCity(v3Cities);

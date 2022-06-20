@@ -1,7 +1,6 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.TimeUtil;
 
 import java.time.DayOfWeek;

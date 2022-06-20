@@ -4,6 +4,8 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -137,7 +139,7 @@ public interface NationList {
         }
         boolean hasUpdated = false;
         for (Integer allianceId : alliances) {
-            if (new Alliance(allianceId).updateSpies(false)) {
+            if (new DBAlliance(allianceId).updateSpies(false)) {
                 toUpdate.removeIf(f -> f.getPosition() > Rank.APPLICANT.id && f.getAlliance_id() == allianceId);
                 hasUpdated = true;
             }

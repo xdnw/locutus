@@ -7,7 +7,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -303,7 +303,7 @@ public class WarCommand extends Command {
                         response.append('\n')
                                 .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                                 .append(" | " + String.format("%16s", nation.getNation()))
-                                .append(" | " + String.format("%16s", nation.getAlliance()));
+                                .append(" | " + String.format("%16s", nation.getAllianceName()));
 
                         if (whitelisted) {
                             double total = nation.lootTotal();

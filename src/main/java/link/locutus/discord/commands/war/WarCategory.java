@@ -9,7 +9,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -24,7 +24,6 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.apiv1.enums.AttackType;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Category;
@@ -478,13 +477,13 @@ public class WarCategory {
         for (DBNation attacker : attackers) {
             User user = attacker.getUser();
             if (user == null) {
-                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAlliance() + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` ?");
+                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` ?");
                 continue;
             }
 
             Member member = guild.getMemberById(user.getIdLong());
             if (member == null) {
-                errorOutput.accept("No member for: " + attacker.getNation() + " | " + attacker.getAlliance() + ". Are they on this discord?");
+                errorOutput.accept("No member for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Are they on this discord?");
                 continue;
             }
 
@@ -688,7 +687,7 @@ public class WarCategory {
                     if (participant != null && (participants.contains(participant) || participant.getActive_m() < 2880)) {
                         String typeStr = defensive ? "\uD83D\uDEE1 " : "\uD83D\uDD2A ";
                         body.append(typeStr).append("`" + participant.getNation() + "`")
-                                .append(" | ").append(participant.getAlliance());
+                                .append(" | ").append(participant.getAllianceName());
 
                         WarCard card = new WarCard(war, false);
                         if (card.blockaded == participant.getNation_id()) body.append("\u26F5");

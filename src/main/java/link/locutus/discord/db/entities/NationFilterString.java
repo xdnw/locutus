@@ -1,6 +1,5 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 

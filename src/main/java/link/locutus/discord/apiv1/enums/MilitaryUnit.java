@@ -1,7 +1,7 @@
 package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -10,6 +10,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import views.grant.nation;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,7 +24,7 @@ public enum MilitaryUnit {
     AIRCRAFT("aircraft", 0.3,4000, new double[]{5}, ResourceType.ALUMINUM),
     SHIP("navy", 1, 50000, new double[]{30}, ResourceType.STEEL),
 
-    MONEY(null, 0, 1),
+    MONEY(null, 0, 1), // Is a unit type because you can airstrike money
 
     MISSILE("missiles", 5, 150000, new double[]{100, 75, 75}, ResourceType.ALUMINUM, ResourceType.GASOLINE, ResourceType.MUNITIONS) {
         @Override
@@ -72,6 +73,24 @@ public enum MilitaryUnit {
         this.resources = resource;
         this.rssAmt = rssAmt;
         this.score = score;
+    }
+
+    public int getMaxPerDay(int cities, Predicate<Project> hasProject) {
+        MilitaryBuilding building = getBuilding();
+        int cap;
+        if (building != null) {
+            cap = building.cap() * building.perDay() * cities;
+            if (hasProject.test(Projects.PROPAGANDA_BUREAU)) {
+                cap *= 1.1;
+            }
+        } else {
+            cap = 0;
+            if (this == MISSILE) {
+                if (hasProject.test(Projects.MISSILE_LAUNCH_PAD)) cap++;
+                if (hasProject.test(Projects.MOON_LANDING)) cap++;
+            } else if (this == NUKE && hasProject.test(Projects.NUCLEAR_RESEARCH_FACILITY)) cap++;
+        }
+        return cap;
     }
 
     public int getCap(DBNation nation, boolean update) {

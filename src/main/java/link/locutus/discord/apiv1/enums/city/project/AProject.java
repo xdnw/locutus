@@ -12,10 +12,12 @@ public class AProject implements Project {
     private final ResourceType output;
     private final String apiName;
     private final String imageName;
+    private final int id;
     private String name;
     private int index;
 
-    public AProject(String apiName, String imageName, Map<ResourceType, Double> cost, Function<Nation, Integer> get, ResourceType output) {
+    public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, Function<Nation, Integer> get, ResourceType output) {
+        this.id = id;
         this.cost = cost;
         this.get = get;
         this.output = output;
@@ -47,6 +49,10 @@ public class AProject implements Project {
         this.index = index;
     }
 
+    public int getId() {
+        return id;
+    }
+
     @Override
     public String getImageName() {
         return imageName;
@@ -59,6 +65,15 @@ public class AProject implements Project {
 
     @Override
     public int ordinal() {
+        return id;
+    }
+
+    @Override
+    public boolean hasLegacy(long bitMask) {
+        return (bitMask & (1L << index + 1)) != 0;
+    }
+
+    public int getLegacyIndex() {
         return index;
     }
 }

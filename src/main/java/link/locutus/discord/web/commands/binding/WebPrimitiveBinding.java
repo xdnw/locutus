@@ -14,7 +14,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.binding.annotation.RegisteredRole;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
@@ -30,9 +30,9 @@ import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -164,7 +164,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getAsMention());
             DBNation nation = DiscordUtil.getNation(obj);
             if (nation != null) {
-                subtext.add(nation.getNation() + " - " + nation.getAlliance() + " - " + Rank.byId(nation.getPosition()));
+                subtext.add(nation.getNation() + " - " + nation.getAllianceName() + " - " + Rank.byId(nation.getPosition()));
             } else {
                 subtext.add("");
             }
@@ -180,7 +180,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getAsMention());
             DBNation nation = DiscordUtil.getNation(obj.getUser());
             if (nation != null) {
-                subtext.add(nation.getNation() + " - " + nation.getAlliance() + " - " + Rank.byId(nation.getPosition()));
+                subtext.add(nation.getNation() + " - " + nation.getAllianceName() + " - " + Rank.byId(nation.getPosition()));
             } else {
                 subtext.add("");
             }
@@ -216,10 +216,10 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
-    @Binding(types = NationMetricDouble.class)
+    @Binding(types = NationAttributeDouble.class)
     public String nationMetricDouble(ArgumentStack stack, ParameterData param) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        List<NationMetricDouble> options = placeholders.getMetricsDouble(stack.getStore());
+        List<NationAttributeDouble> options = placeholders.getMetricsDouble(stack.getStore());
 
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getName());
@@ -357,7 +357,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getId());
             String sub;
             if (obj.getPosition() > 1) {
-                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAlliance() + " - " + Rank.byId(obj.getPosition());
+                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAllianceName() + " - " + Rank.byId(obj.getPosition());
             } else {
                 sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore());
             }
@@ -403,7 +403,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             options.add(Locutus.imp().getGuildDB(guild));
         }
         for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(new Alliance(entry.getKey()));
+            options.add(new DBAlliance(entry.getKey()));
         }
         for (DBNation nation : nations) {
             options.add(nation);
@@ -416,7 +416,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             } else if (obj.isNation()) {
                 names.add(obj.getName());
                 values.add(obj.getId());
-                subtext.add("nation - " + obj.asNation().getAlliance());
+                subtext.add("nation - " + obj.asNation().getAllianceName());
             } else if (obj.isGuild()) {
                 names.add(formatGuildName(obj.asGuild().getGuild()));
                 values.add("guild:" + obj.getIdLong());
@@ -442,20 +442,20 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
-    @Binding(types=Alliance.class, examples = {"'Error 404'", "7413", "https://politicsandwar.com/alliance/id=7413"})
+    @Binding(types= DBAlliance.class, examples = {"'Error 404'", "7413", "https://politicsandwar.com/alliance/id=7413"})
     public String alliance(ParameterData param) {
         return alliance(param, false);
     }
 
     public String alliance(ParameterData param, boolean multiple) {
         BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
-        List<Alliance> options = new ArrayList<>(alliances.size());
+        List<DBAlliance> options = new ArrayList<>(alliances.size());
         for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(new Alliance(entry.getKey()));
+            options.add(new DBAlliance(entry.getKey()));
         }
-        Collections.sort(options, new Comparator<Alliance>() {
+        Collections.sort(options, new Comparator<DBAlliance>() {
             @Override
-            public int compare(Alliance o1, Alliance o2) {
+            public int compare(DBAlliance o1, DBAlliance o2) {
                 return Double.compare(o2.getScore(), o1.getScore());
             }
         });
@@ -500,7 +500,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getId());
             String sub;
             if (obj.getPosition() > 1) {
-                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAlliance() + " - " + Rank.byId(obj.getPosition());
+                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAllianceName() + " - " + Rank.byId(obj.getPosition());
             } else {
                 sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore());
             }
@@ -543,13 +543,13 @@ public class WebPrimitiveBinding extends BindingHelper {
 
     public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
     public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
-    public final Set<NationMetricDouble> NATION_METRIC_KEY = null;
+    public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
     public final Set<DBNation> NATIONS_KEY = null;
     public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
     public final Set<NationOrAllianceOrGuild> NATIONS_OR_ALLIANCE_OR_GUILD_KEY = null;
     public final Set<Role> ROLES_KEY = null;
     public final Set<Member> MEMBERS_KEY = null;
-    public final Set<Alliance> ALLIANCES_KEY = null;
+    public final Set<DBAlliance> ALLIANCES_KEY = null;
     public final List<ResourceType> RESOURCE_LIST_KEY = null;
     public final Set<WarStatus> WARSTATUSES_KEY = null;
     public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
@@ -662,7 +662,7 @@ public class WebPrimitiveBinding extends BindingHelper {
                         ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
 
                         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-                        List<NationMetricDouble> options = placeholders.getMetricsDouble(valueStore);
+                        List<NationAttributeDouble> options = placeholders.getMetricsDouble(valueStore);
 
                         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
                             names.add(obj.getName());

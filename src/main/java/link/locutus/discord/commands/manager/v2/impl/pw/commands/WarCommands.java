@@ -18,20 +18,10 @@ import link.locutus.discord.commands.sheets.SpySheet;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.db.entities.CityInfraLand;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.CounterType;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.WarParser;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -315,7 +305,7 @@ public class WarCommands {
         for (DBWar war : wars) {
             DBNation enemy = war.getNation(!war.isAttacker(nation));
 
-            String title = (war.isAttacker(nation) ? "Off" : "Def") + ": " + enemy.getNation() + " | " + enemy.getAlliance();
+            String title = (war.isAttacker(nation) ? "Off" : "Def") + ": " + enemy.getNation() + " | " + enemy.getAllianceName();
             StringBuilder body = new StringBuilder();
             body.append(war.toUrl()).append("\n");
             String info = war.getWarInfoEmbed(war.isAttacker(nation), true);
@@ -605,7 +595,7 @@ public class WarCommands {
                 }
             }
             response.append("<" + ally.getNationUrl() + ">");
-            response.append(" | " + ally.getAlliance());
+            response.append(" | " + ally.getAllianceName());
             response.append("\n```")
             .append(String.format("%5s", (int) ally.getScore())).append(" ns").append(" | ")
             .append(String.format("%2s", ally.getCities())).append(" \uD83C\uDFD9").append(" | ")
@@ -711,12 +701,12 @@ public class WarCommands {
 
         for (Integer aaId : aaIds) {
             List<DBNation> canCounter = new LinkedList<>();
-            Alliance alliance = new Alliance(aaId);
-            Set<Alliance> alliances = new HashSet<>(Arrays.asList(alliance));
+            DBAlliance alliance = new DBAlliance(aaId);
+            Set<DBAlliance> alliances = new HashSet<>(Arrays.asList(alliance));
             if (includeAllies) {
                 alliances.addAll(alliance.getTreatiedAllies());
             }
-            for (Alliance ally : alliances) {
+            for (DBAlliance ally : alliances) {
                 canCounter.addAll(ally.getNations(true, 10000, true));
             }
 
@@ -831,7 +821,7 @@ public class WarCommands {
             response.append('\n')
                     .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                     .append(" | " + String.format("%16s", nation.getNation()))
-                    .append(" | " + String.format("%16s", nation.getAlliance()));
+                    .append(" | " + String.format("%16s", nation.getAllianceName()));
 
             if (whitelisted) {
                 double total = nation.lootTotal();
@@ -1078,7 +1068,7 @@ public class WarCommands {
                 response.append('\n')
                         .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                         .append(" | " + String.format("%16s", nation.getNation()))
-                        .append(" | " + String.format("%16s", nation.getAlliance()));
+                        .append(" | " + String.format("%16s", nation.getAllianceName()));
 
                 if (whitelisted) {
                     double total = nation.lootTotal();
@@ -1803,14 +1793,14 @@ public class WarCommands {
                            @Switch('k') boolean prioritizeKills,
                            @Switch('s') SpreadSheet sheet,
                            @Switch('d') @Default("3") Integer maxDef,
-                           @Switch('p') Set<Alliance> prioritizeAlliances) throws GeneralSecurityException, IOException {
+                           @Switch('p') Set<DBAlliance> prioritizeAlliances) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
         }
 
         SpyBlitzGenerator generator = new SpyBlitzGenerator(attackers, defenders, allowedTypes, forceUpdate, maxDef, checkEspionageSlots, 0, prioritizeKills);
         if (prioritizeAlliances != null) {
-            for (Alliance alliance : prioritizeAlliances) {
+            for (DBAlliance alliance : prioritizeAlliances) {
                 generator.setAllianceWeighting(alliance, 1.2);
             }
 
@@ -1871,7 +1861,7 @@ public class WarCommands {
 
             ArrayList<Object> row = new ArrayList<>();
             row.add(MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getScore());
@@ -1896,7 +1886,7 @@ public class WarCommands {
 //                attStr += "|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies;
 
                 if (multipleAAs) {
-                    attStr += "|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "|" + other.getAlliance();
+                    attStr += "|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "|" + other.getAllianceName();
                 } else {
                     attStr += "|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies;
                 }
@@ -1941,7 +1931,7 @@ public class WarCommands {
         for (DBNation nation : nations) {
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            header.set(1, MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
             header.set(2, nation.getCities());
             header.set(3, nation.getAvg_infra());
             header.set(4, nation.getScore());
@@ -2128,7 +2118,7 @@ public class WarCommands {
     private void setRowMMRSheet(String name, List<Object> row, DBNation nation, Integer lastSpies, double barracks, double factories, double hangars, double drydocks, double soldierBuy, double tankBuy, double airBuy, double navyBuy) {
         row.set(0, name);
         row.set(1, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-        row.set(2, MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+        row.set(2, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
         row.set(3, nation.getCities());
         row.set(4, nation.getAvg_infra());
         row.set(5, nation.getScore());
@@ -2164,7 +2154,7 @@ public class WarCommands {
     @RolePermission(Roles.MILCOM)
     @Command
     @WhitelistPermission
-    public String DeserterSheet(@Me GuildDB db, Set<Alliance> alliances, @Timestamp long cuttOff,
+    public String DeserterSheet(@Me GuildDB db, Set<DBAlliance> alliances, @Timestamp long cuttOff,
                                 @Default("*") Set<DBNation> filter,
                                 @Switch('a') boolean ignoreInactive,
                                 @Switch('v') boolean ignoreVM,
@@ -2239,7 +2229,7 @@ public class WarCommands {
             Integer prevAA = nationPreviousAA.get(defender.getNation_id());
             String prevAAName = PnwUtil.getName(prevAA, true);
             row.add(MarkupUtil.sheetUrl(prevAAName, PnwUtil.getUrl(prevAA, true)));
-            row.add(MarkupUtil.sheetUrl(defender.getAlliance(), defender.getAllianceUrl()));
+            row.add(MarkupUtil.sheetUrl(defender.getAllianceName(), defender.getAllianceUrl()));
 
             row.add(dateStr);
             row.add(rank.name());
@@ -2272,7 +2262,7 @@ public class WarCommands {
     @RolePermission(Roles.MILCOM)
     @Command(desc = "List of nations and their relative military")
     @WhitelistPermission
-    public String combatantSheet(@Me GuildDB db, Set<Alliance> alliances) {
+    public String combatantSheet(@Me GuildDB db, Set<DBAlliance> alliances) {
         Set<Integer> alliancesIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliancesIds, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
         wars.removeIf(w -> {
@@ -2335,7 +2325,7 @@ public class WarCommands {
                 DBNation kill = kills.get(loss);
 
                 header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-                header.set(1, MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+                header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
                 header.set(2, nation.getCities());
                 header.set(3, nation.getAvg_infra());
                 header.set(4, nation.getScore());
@@ -2625,7 +2615,7 @@ public class WarCommands {
                     Spyop spyop = mySpyOps.get(i);
                     String safety = spyop.safety == 3 ? "covert" : spyop.safety == 2 ? "normal" : "quick";
 
-                    String name = spyop.defender.getNation() + " | " + spyop.defender.getAlliance();
+                    String name = spyop.defender.getNation() + " | " + spyop.defender.getAllianceName();
                     String nationUrl = MarkupUtil.htmlUrl(name, "https://tinyurl.com/y26weu7d/id=" + spyop.defender.getNation_id());
 
                     String spyUrl = baseUrl + spyop.defender.getNation_id();
@@ -2807,7 +2797,7 @@ public class WarCommands {
             DBNation defender = entry.getKey();
             List<DBNation> attackers = entry.getValue();
             ArrayList<Object> row = new ArrayList<>();
-            row.add(MarkupUtil.sheetUrl(defender.getAlliance(), defender.getAllianceUrl()));
+            row.add(MarkupUtil.sheetUrl(defender.getAllianceName(), defender.getAllianceUrl()));
             row.add(MarkupUtil.sheetUrl(defender.getNation(), defender.getNationUrl()));
 
             row.add(defender.getCities());
@@ -2866,7 +2856,7 @@ public class WarCommands {
         double maxScore = Math.floor(nation.getScore() * 1.75);
         note.append("War Range: " + MathMan.format(minScore) + "-" + MathMan.format(maxScore) + " (" + score + ")").append("\n");
         note.append("ID: " + nation.getNation_id()).append("\n");
-        note.append("Alliance: " + nation.getAlliance()).append("\n");
+        note.append("Alliance: " + nation.getAllianceName()).append("\n");
         note.append("Cities: " + nation.getCities()).append("\n");
         note.append("avg_infra: " + nation.getAvg_infra()).append("\n");
         note.append("soldiers: " + nation.getSoldiers()).append("\n");
@@ -2963,13 +2953,13 @@ public class WarCommands {
             headers.set(11, card.attackerMAP);
             headers.set(12, card.attackerResistance);
             headers.set(13, MarkupUtil.sheetUrl(att.getNation(), att.getNationUrl()));
-            headers.set(14, MarkupUtil.sheetUrl(att.getAlliance(), att.getAllianceUrl()));
+            headers.set(14, MarkupUtil.sheetUrl(att.getAllianceName(), att.getAllianceUrl()));
 
             long turnStart = TimeUtil.getTurn(war.date);
             long turns = 60 - (TimeUtil.getTurn() - turnStart);
             headers.set(15, turns);
 
-            headers.set(16, MarkupUtil.sheetUrl(def.getAlliance(), def.getAllianceUrl()));
+            headers.set(16, MarkupUtil.sheetUrl(def.getAllianceName(), def.getAllianceUrl()));
             headers.set(17, MarkupUtil.sheetUrl(def.getNation(), def.getNationUrl()));
             headers.set(18, card.defenderResistance);
             headers.set(19, card.defenderMAP);
@@ -2998,7 +2988,7 @@ public class WarCommands {
             "Add `-i` to filter out inactive members\n" +
             "Add `-e` to include enemies not attacking")
     @WhitelistPermission
-    public String counterSheet(@Me GuildDB db, @Default() Set<DBNation> enemyFilter, @Default() Set<Alliance> allies, @Switch('a') boolean excludeApplicants, @Switch('i') boolean excludeInactives, @Switch('e') boolean includeAllEnemies, @Switch('s') String sheetUrl) throws IOException, GeneralSecurityException {
+    public String counterSheet(@Me GuildDB db, @Default() Set<DBNation> enemyFilter, @Default() Set<DBAlliance> allies, @Switch('a') boolean excludeApplicants, @Switch('i') boolean excludeInactives, @Switch('e') boolean includeAllEnemies, @Switch('s') String sheetUrl) throws IOException, GeneralSecurityException {
         boolean includeProtectorates = true;
         boolean includeCoalition = true;
         boolean includeMDP = true;
@@ -3022,7 +3012,7 @@ public class WarCommands {
         }
 
         if (allies != null) {
-            for (Alliance ally : allies) alliesIds.add(ally.getAlliance_id());
+            for (DBAlliance ally : allies) alliesIds.add(ally.getAlliance_id());
         }
 
         Map<DBNation, List<DBWar>> enemies = new HashMap<>();
@@ -3182,7 +3172,7 @@ public class WarCommands {
             }
 
             row.add(MarkupUtil.sheetUrl(enemy.getNation(), PnwUtil.getUrl(enemy.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(enemy.getAlliance(), PnwUtil.getUrl(enemy.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(enemy.getAllianceName(), PnwUtil.getUrl(enemy.getAlliance_id(), true)));
             row.add(actionStr);
             row.add( rank == null ? "" : rank.name());
 
@@ -3204,7 +3194,7 @@ public class WarCommands {
                 DBWar war = wars.get(i);
                 String url = war.toUrl();
                 DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
-                String warStr = defender.getNation() + "|" + defender.getAlliance();
+                String warStr = defender.getNation() + "|" + defender.getAllianceName();
                 row.add(MarkupUtil.sheetUrl(warStr, url));
             }
 
@@ -3308,12 +3298,12 @@ public class WarCommands {
                 if (allies.isEmpty()) {
                     aaId = me.getAlliance_id();
                     if (aaId == 0) return "No alliance or allies are set.\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID <alliance>`\nOR\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> allies`";
-                    counterWith = new HashSet<>(new Alliance(aaId).getNations(true, 10000, true));
+                    counterWith = new HashSet<>(new DBAlliance(aaId).getNations(true, 10000, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));
                 }
             } else {
-                counterWith = new HashSet<>(new Alliance(aaId).getNations(true, 10000, true));
+                counterWith = new HashSet<>(new DBAlliance(aaId).getNations(true, 10000, true));
             }
         }
         counterWith.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= Rank.APPLICANT.id || (f.getCities() < 10 && f.getActive_m() > 4880));
@@ -3396,7 +3386,7 @@ public class WarCommands {
                               DBNation enemy, @Default Set<DBNation> attackers, @Default("3") @Range(min=0) int max
             , @Switch('p') boolean pingMembers, @Switch('a') boolean skipAddMembers, @Switch('m') boolean sendMail) {
         if (attackers == null) {
-            Alliance alliance = db.getAlliance();
+            DBAlliance alliance = db.getAlliance();
             if (alliance != null) {
                 attackers = new HashSet<>(alliance.getNations(true, 2440, true));
             } else {
@@ -3527,17 +3517,17 @@ public class WarCommands {
         List<String> results = blitzTargetCache.getOrDefault(db.getGuild().getIdLong() + topX, new ArrayList<>());
         if (results.isEmpty()) {
 
-            List<Alliance> alliances = new ArrayList<>(Locutus.imp().getNationDB().getAlliances(true, true, true, 1000));
-            Set<Alliance> top30 = new LinkedHashSet<>(Locutus.imp().getNationDB().getAlliances(true, true, true, topX));
+            List<DBAlliance> alliances = new ArrayList<>(Locutus.imp().getNationDB().getAlliances(true, true, true, 1000));
+            Set<DBAlliance> top30 = new LinkedHashSet<>(Locutus.imp().getNationDB().getAlliances(true, true, true, topX));
 
             outer:
-            for (Alliance alliance : alliances) {
+            for (DBAlliance alliance : alliances) {
                 if (top30.contains(alliance)) continue;
                 List<DBNation> nations = alliance.getNations(true, 5000, true);
                 if (nations.size() <= 2) continue;
                 for (Map.Entry<Integer, Treaty> entry : alliance.getDefenseTreaties().entrySet()) {
                     if (dnr.contains(entry.getKey())) continue outer;
-                    if (top30.contains(new Alliance(entry.getKey()))) continue outer;
+                    if (top30.contains(new DBAlliance(entry.getKey()))) continue outer;
                 }
                 int slots = 0;
                 for (DBNation nation : nations) {
@@ -3550,7 +3540,7 @@ public class WarCommands {
                 int largestAlly = myRank;
                 boolean hasProtection = false;
                 for (Map.Entry<Integer, Treaty> entry : alliance.getDefenseTreaties().entrySet()) {
-                    Alliance other = new Alliance(entry.getKey());
+                    DBAlliance other = new DBAlliance(entry.getKey());
                     int min = alliances.indexOf(other);
                     if (min != -1 && min < largestAlly) {
                         largestAlly = min;
@@ -3559,7 +3549,7 @@ public class WarCommands {
                 }
                 String protectionStr = hasProtection ? " Allied: #" + largestAlly : "";
 
-                List<Alliance> sphere = alliance.getSphereRanked();
+                List<DBAlliance> sphere = alliance.getSphereRanked();
                 String sphereStr = sphere.isEmpty() ? "None" : sphere.get(0).getMarkdownUrl();
 
                 results.add(alliance.getMarkdownUrl() + " #" + myRank + protectionStr + " | sphere?:" + sphereStr + " | members:" + nations.size() + " | slots:" + slots);

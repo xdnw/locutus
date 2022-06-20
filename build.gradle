@@ -186,6 +186,7 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     outputDir = new File("$buildDir/generated")
     modelPackageName = "com.politicsandwar.graphql.model"
     customTypesMapping = [
+            Date: "java.util.Date",
             DateTime: "java.util.Date",
             DateTimeAuto: "java.time.Instant"
     ]

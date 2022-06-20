@@ -3,7 +3,7 @@ package link.locutus.discord.web.endpoints.stats;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.endpoints.Endpoint;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;

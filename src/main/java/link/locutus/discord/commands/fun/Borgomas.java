@@ -5,8 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -71,7 +71,7 @@ public class Borgomas extends Command {
                 message = "You open your present to find a 10kg hunk of coal...\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
                 resources = Collections.singletonMap(ResourceType.COAL, 0.01);
             } else {
-                List<DBNation> members = new Alliance(me.getAlliance_id()).getNations(true, 7200, true);
+                List<DBNation> members = new DBAlliance(me.getAlliance_id()).getNations(true, 7200, true);
                 members.removeIf(f -> f.getActive_m() > 2880 && f.isGray());
                 members.add(me);
                 DBNation maxNation = null;

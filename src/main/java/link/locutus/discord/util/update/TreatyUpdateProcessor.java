@@ -2,8 +2,7 @@ package link.locutus.discord.util.update;
 
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.event.TreatyUpdateEvent;
-import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -39,8 +38,8 @@ public class TreatyUpdateProcessor {
         }
 
         Treaty existing = previous == null ? current : previous;
-        Alliance fromAA = new Alliance(existing.from);
-        Alliance toAA = new Alliance(existing.to);
+        DBAlliance fromAA = new DBAlliance(existing.from);
+        DBAlliance toAA = new DBAlliance(existing.to);
 
         StringBuilder body = new StringBuilder();
         body.append("From: " + PnwUtil.getMarkdownUrl(current.from, true)).append("\n");

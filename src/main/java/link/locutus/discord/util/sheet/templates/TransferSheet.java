@@ -1,8 +1,8 @@
 package link.locutus.discord.util.sheet.templates;
 
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -38,8 +38,8 @@ public class TransferSheet extends SpreadSheet {
         return result;
     }
 
-    public Map<Alliance, Map<ResourceType, Double>> getAllianceTransfers() {
-        Map<Alliance, Map<ResourceType, Double>> result = new LinkedHashMap<>();
+    public Map<DBAlliance, Map<ResourceType, Double>> getAllianceTransfers() {
+        Map<DBAlliance, Map<ResourceType, Double>> result = new LinkedHashMap<>();
         for (Map.Entry<NationOrAlliance, Map<ResourceType, Double>> entry : transfers.entrySet()) {
             if (entry.getKey().isAlliance()) {
                 result.put(entry.getKey().asAlliance(), entry.getValue());
@@ -50,7 +50,7 @@ public class TransferSheet extends SpreadSheet {
 
     public TransferSheet write(Map<NationOrAlliance, double[]> transfer) {
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
-        Map<Alliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
+        Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
 
         for (Map.Entry<NationOrAlliance, double[]> entry : transfer.entrySet()) {
             NationOrAlliance key = entry.getKey();
@@ -63,7 +63,7 @@ public class TransferSheet extends SpreadSheet {
         return write(fundsToSendNations, fundsToSendAAs);
     }
 
-    public TransferSheet write(Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<Alliance, Map<ResourceType, Double>> fundsToSendAAs) {
+    public TransferSheet write(Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs) {
         transfers.putAll(fundsToSendNations);
         transfers.putAll(fundsToSendAAs);
         return write();
@@ -115,7 +115,7 @@ public class TransferSheet extends SpreadSheet {
                 Integer allianceId = PnwUtil.parseAllianceId(nameStr);
                 if (allianceId == null) invalidNationOrAlliance.add(nameStr);
                 else {
-                    transfers.put(new Alliance(allianceId), transfer);
+                    transfers.put(new DBAlliance(allianceId), transfer);
                 }
             } else {
                 DBNation nation = DiscordUtil.parseNation(nameStr);
@@ -140,14 +140,14 @@ public class TransferSheet extends SpreadSheet {
             NationOrAlliance nationOrAA = entry.getKey();
 
             if (nationOrAA.isAlliance()) {
-                Alliance aa = nationOrAA.asAlliance();
+                DBAlliance aa = nationOrAA.asAlliance();
                 row.add(aa.getUrl());
                 row.add(MarkupUtil.sheetUrl(aa.getName(), aa.getUrl()));
                 row.add(-1);
             } else {
                 DBNation nation = nationOrAA.asNation();
                 row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
-                row.add(MarkupUtil.sheetUrl(nation.getAlliance(), nation.getAllianceUrl()));
+                row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 row.add(nation.getCities());
             }
             Map<ResourceType, Double> transfer = entry.getValue();

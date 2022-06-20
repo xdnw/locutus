@@ -1,12 +1,9 @@
 package link.locutus.discord.commands.rankings.table;
 
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.Metric;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetric;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
@@ -41,38 +38,38 @@ public abstract class TimeNumericTable<T> {
 
             Set<DBNation> nations = coalition.stream().flatMap(f -> f.getNations(removeVM, removeInactiveM, removeApps).stream()).collect(Collectors.toSet());
      */
-    public static  List<DBNation> toNations(Alliance alliance, boolean removeVM, int removeInactiveM, boolean removeApps) {
+    public static  List<DBNation> toNations(DBAlliance alliance, boolean removeVM, int removeInactiveM, boolean removeApps) {
         List<DBNation> nations = alliance.getNations(removeVM, removeInactiveM, removeApps);
         nations.removeIf(f -> f.hasUnsetMil());
         return nations;
     }
 
-    public static List<String> toCoalitionNames(List<Set<Alliance>> coalitions) {
+    public static List<String> toCoalitionNames(List<Set<DBAlliance>> coalitions) {
         List<String> result = new ArrayList<>();
-        for (Set<Alliance> coalition : coalitions) {
+        for (Set<DBAlliance> coalition : coalitions) {
             String coalitionName = coalition.stream().map(f -> f.getName()).collect(Collectors.joining(","));
             result.add(coalitionName);
         }
         return result;
     }
 
-    public static List<List<DBNation>> toNations(List<Set<Alliance>> toNationCoalitions, boolean removeVM, int removeInactiveM, boolean removeApps) {
+    public static List<List<DBNation>> toNations(List<Set<DBAlliance>> toNationCoalitions, boolean removeVM, int removeInactiveM, boolean removeApps) {
         List<List<DBNation>> result = new ArrayList<>();
-        for (Set<Alliance> alliances : toNationCoalitions) {
+        for (Set<DBAlliance> alliances : toNationCoalitions) {
             List<DBNation> nations = alliances.stream().flatMap(f -> f.getNations(removeVM, removeInactiveM, removeApps).stream()).collect(Collectors.toList());
             result.add(nations);
         }
         return result;
     }
 
-    public static TimeNumericTable create(String title, Set<NationMetricDouble> metrics, Collection<Alliance> alliances, NationMetricDouble groupBy, boolean total, boolean removeVM, int removeActiveM, boolean removeApps) {
+    public static TimeNumericTable create(String title, Set<NationAttributeDouble> metrics, Collection<DBAlliance> alliances, NationAttributeDouble groupBy, boolean total, boolean removeVM, int removeActiveM, boolean removeApps) {
 //        List<String> coalitionNames = alliances.stream().map(f -> f.getName()).collect(Collectors.toList());
-        List<Set<Alliance>> aaSingleton = Collections.singletonList(new HashSet<>(alliances));
+        List<Set<DBAlliance>> aaSingleton = Collections.singletonList(new HashSet<>(alliances));
         List<DBNation> nations = toNations(aaSingleton, removeVM, removeActiveM, removeApps).get(0);
         return create(title, (Set) metrics, nations, groupBy, total);
     }
 
-    public static <T> TimeNumericTable create(String title, Set<Metric<T, Double>> metrics, Collection<T> coalition, Metric<T, Double> groupBy, boolean total) {
+    public static <T> TimeNumericTable create(String title, Set<Attribute<T, Double>> metrics, Collection<T> coalition, Attribute<T, Double> groupBy, boolean total) {
         Set<T> nations = new HashSet<>();
         for (T nation : coalition) {
             nations.add(nation);
@@ -80,7 +77,7 @@ public abstract class TimeNumericTable<T> {
         return create(title, metrics, nations, groupBy, total);
     }
 
-    public static <T> TimeNumericTable create(String titlePrefix, Metric<T, Double> metric, List<List<T>> coalitions, List<String> coalitionNames, Metric<T, Double> groupBy, boolean total) {
+    public static <T> TimeNumericTable create(String titlePrefix, Attribute<T, Double> metric, List<List<T>> coalitions, List<String> coalitionNames, Attribute<T, Double> groupBy, boolean total) {
         String[] labels = coalitionNames.toArray(new String[0]);
 
         Function<T, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
@@ -137,9 +134,9 @@ public abstract class TimeNumericTable<T> {
         return table;
     }
 
-    public static <T> TimeNumericTable create(String title, Set<Metric<T, Double>> metrics, Set<T> coalition, Metric<T, Double> groupBy, boolean total) {
-        List<Metric<T, Double>> metricsList = new ArrayList<>(metrics);
-        String[] labels = metrics.stream().map(Metric::getName).toArray(String[]::new);
+    public static <T> TimeNumericTable create(String title, Set<Attribute<T, Double>> metrics, Set<T> coalition, Attribute<T, Double> groupBy, boolean total) {
+        List<Attribute<T, Double>> metricsList = new ArrayList<>(metrics);
+        String[] labels = metrics.stream().map(Attribute::getName).toArray(String[]::new);
 
         Function<T, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
         Map<Integer, List<T>> byTier = new HashMap<>();
@@ -160,7 +157,7 @@ public abstract class TimeNumericTable<T> {
                     Arrays.fill(buffer, 0);
                 } else {
                     for (int i = 0; i < metricsList.size(); i++) {
-                        Metric<T, Double> metric = metricsList.get(i);
+                        Attribute<T, Double> metric = metricsList.get(i);
                         double valueTotal = 0;
                         int count = 0;
 

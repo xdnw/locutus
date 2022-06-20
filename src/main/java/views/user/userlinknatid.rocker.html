@@ -1,5 +1,5 @@
 @import link.locutus.discord.util.discord.DiscordUtil
-@import link.locutus.discord.pnw.DBNation
+@import link.locutus.discord.db.entities.DBNation
 
 @args(int nationId)
 @views.user.userlink.template(DiscordUtil.getUserIdByNationId(nationId), DiscordUtil.getUserByNationId(nationId), DBNation.byId(nationId))

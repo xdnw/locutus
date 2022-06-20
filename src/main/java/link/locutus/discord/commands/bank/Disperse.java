@@ -5,8 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -104,7 +104,7 @@ public class Disperse extends Command {
         }
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
-        Map<Alliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
+        Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
 
         String arg = args.get(0);
         if (arg.startsWith("https://docs.google.com/spreadsheets/d/") || arg.startsWith("sheet:")) {
@@ -184,7 +184,7 @@ public class Disperse extends Command {
         }
     }
 
-    public static String disperse(GuildDB db, Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<Alliance, Map<ResourceType, Double>> fundsToSendAAs, String note, MessageChannel channel, String title) throws GeneralSecurityException, IOException {
+    public static String disperse(GuildDB db, Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs, String note, MessageChannel channel, String title) throws GeneralSecurityException, IOException {
         if (fundsToSendNations.isEmpty() && fundsToSendAAs.isEmpty()) {
             return "No funds need to be sent";
         }
@@ -194,14 +194,14 @@ public class Disperse extends Command {
             total = PnwUtil.add(total, entry.getValue());
             postScript.add(PnwUtil.getPostScript(entry.getKey().getNation(), true, entry.getValue(), note));
         }
-        for (Map.Entry<Alliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
+        for (Map.Entry<DBAlliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
             postScript.add(PnwUtil.getPostScript(entry.getKey().getName(), false, entry.getValue(), note));
         }
 
         if (fundsToSendNations.size() == 1 && fundsToSendAAs.isEmpty()) {
             Map.Entry<DBNation, Map<ResourceType, Double>> entry = fundsToSendNations.entrySet().iterator().next();
             DBNation nation = entry.getKey();
-            title += " to " + nation.getNation() + " | " + nation.getAlliance();
+            title += " to " + nation.getNation() + " | " + nation.getAllianceName();
 
             Map<ResourceType, Double> transfer = entry.getValue();
             String post = JsonUtil.toPrettyFormat(PnwUtil.getPostScript(nation.getNation(), true, transfer, note));

@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import com.google.common.base.Function;
 import net.dv8tion.jda.api.entities.Guild;
@@ -60,7 +60,7 @@ public class AAMembers extends Command {
                 String infra = n.toMarkdown(false, false, true);
 
                 StringBuilder response = new StringBuilder();
-                response.append(n.getNation()).append(" | ").append(n.getAlliance()).append(" | ").append(active);
+                response.append(n.getNation()).append(" | ").append(n.getAllianceName()).append(" | ").append(active);
                 if (user != null) {
                     response.append('\n').append(user.getDiscordName()).append(" | ").append("`<@!").append(user.getDiscordId()).append(">`");
                 }

@@ -4,8 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.MarkupUtil;
@@ -66,14 +66,14 @@ public class MilitaryRanking extends Command {
         Map<Integer, Double> sphereScore = new HashMap<>();
         Map<Integer, Map<Integer, NationList>> sphereAllianceMembers = new HashMap<>();
 
-        Map<Integer, Alliance> aaCache = new HashMap<>();
+        Map<Integer, DBAlliance> aaCache = new HashMap<>();
 
         int topX = 80;
         for (Map.Entry<Integer, List<DBNation>> entry : byAA.entrySet()) {
             if (topX-- <= 0) break;
             Integer aaId = entry.getKey();
-            Alliance alliance = aaCache.computeIfAbsent(aaId, f -> new Alliance(aaId));
-            List<Alliance> sphere = alliance.getSphereRankedCached(aaCache);
+            DBAlliance alliance = aaCache.computeIfAbsent(aaId, f -> new DBAlliance(aaId));
+            List<DBAlliance> sphere = alliance.getSphereRankedCached(aaCache);
             int sphereId = sphere.get(0).getAlliance_id();
 
             {
@@ -84,7 +84,7 @@ public class MilitaryRanking extends Command {
 
             if (!sphereScore.containsKey(sphereId)) {
                 List<DBNation> nations = new ArrayList<>();
-                for (Alliance other : sphere) {
+                for (DBAlliance other : sphere) {
                     nations.addAll(other.getNations(true, 2880, true));
                 }
                 SimpleNationList nationList = new SimpleNationList(nations);
@@ -148,7 +148,7 @@ public class MilitaryRanking extends Command {
 
                 ArrayList<Object> row = new ArrayList<>();
                 if (aaId != 0) {
-                    Alliance alliance = new Alliance(aaId);
+                    DBAlliance alliance = new DBAlliance(aaId);
                     row.add(MarkupUtil.sheetUrl(alliance.getName(), alliance.getUrl()));
                 } else {
                     row.add("");

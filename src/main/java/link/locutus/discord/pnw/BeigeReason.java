@@ -1,6 +1,7 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;

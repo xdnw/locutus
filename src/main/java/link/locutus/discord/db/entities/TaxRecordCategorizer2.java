@@ -4,8 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -258,7 +256,7 @@ public class TaxRecordCategorizer2 {
             }
         }
 
-        this.allNations = new Alliance(getAaId()).getNations(true, 0, true);
+        this.allNations = new DBAlliance(getAaId()).getNations(true, 0, true);
         this.allNations.removeIf(f -> !acceptsNation.test(f.getNation_id()));
         this.nationsByBracket = new Int2ObjectOpenHashMap<>();
         this.bracketsByNation = new Int2ObjectOpenHashMap<>();

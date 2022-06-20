@@ -2,7 +2,7 @@ package link.locutus.discord.util.task.tax;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.balance.GetPageTask;
 import com.google.common.base.Charsets;

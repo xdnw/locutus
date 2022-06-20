@@ -5,8 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -85,7 +85,7 @@ public class NationSheet extends Command implements Noformat {
                 }
             }
             for (Integer allianceId : alliances) {
-                if (new Alliance(allianceId).updateSpies(false)) {
+                if (new DBAlliance(allianceId).updateSpies(false)) {
                     toUpdate.removeIf(f -> f.getPosition() > Rank.APPLICANT.id && f.getAlliance_id() == allianceId);
                 }
             }

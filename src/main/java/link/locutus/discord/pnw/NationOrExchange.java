@@ -3,6 +3,7 @@ package link.locutus.discord.pnw;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.StockDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -88,7 +89,7 @@ public class NationOrExchange {
                 body.append("\nFrom: " + MarkupUtil.htmlUrl(this.getName(), this.getUrl()));
                 if (this.isNation() && getNation().getAlliance_id() != 0) {
                     body.append(" | ");
-                    body.append(MarkupUtil.htmlUrl(getNation().getAlliance(), getNation().getAllianceUrl()));
+                    body.append(MarkupUtil.htmlUrl(getNation().getAllianceName(), getNation().getAllianceUrl()));
                 }
             }
             body.append("\nAmount: " + MathMan.format(amount) + "x" + exchange.symbol);
@@ -127,7 +128,7 @@ public class NationOrExchange {
     public String getUrlMarkup() {
         String name = this.getName();
         if (isNation()) {
-            name += " | " + MarkupUtil.htmlUrl(getNation().getAlliance(), getNation().getAllianceUrl());
+            name += " | " + MarkupUtil.htmlUrl(getNation().getAllianceName(), getNation().getAllianceUrl());
         } else {
             name = "EX:" + name;
         }

@@ -17,11 +17,8 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.CityInfraLand;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
@@ -389,7 +386,7 @@ public class AdminCommands {
             int natId = record.getNation().getId();
             DBNation nation = DBNation.byId(natId);
             if (nation != null) {
-                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAlliance() + " | " + nation.getPosition() + "\n");
+                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAllianceName() + " | " + nation.getPosition() + "\n");
             } else {
                 response.append(e.getKey() + ": " + e.getValue() + "\n");
             }
@@ -505,7 +502,7 @@ public class AdminCommands {
 
                 Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 if (aaId != null) {
-                    Alliance alliance = new Alliance(aaId);
+                    DBAlliance alliance = new DBAlliance(aaId);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
                     nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                     nations.removeIf(f -> f.getActive_m() > 10000);
@@ -535,7 +532,7 @@ public class AdminCommands {
 
                 Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 if (aaId != null) {
-                    Alliance alliance = new Alliance(aaId);
+                    DBAlliance alliance = new DBAlliance(aaId);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
                     nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                     nations.removeIf(f -> f.getActive_m() > 10000);
@@ -554,7 +551,7 @@ public class AdminCommands {
                     response.append("\nAA owner is inactive: " + id + " | " + owner.getIdLong() + " | " + nation.getNationUrl() + " | " + nation.getActive_m() + "m");
                     continue;
                 }
-                Alliance alliance = new Alliance(id.intValue());
+                DBAlliance alliance = new DBAlliance(id.intValue());
                 if (!alliance.exists()) {
                     response.append("\nAA does not exist: " + id);
                     continue;
@@ -643,7 +640,7 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncBanks(@Me GuildDB db, @Me MessageChannel channel, @Default Alliance alliance, @Default @Timestamp Long timestamp) throws IOException, ParseException {
+    public String syncBanks(@Me GuildDB db, @Me MessageChannel channel, @Default DBAlliance alliance, @Default @Timestamp Long timestamp) throws IOException, ParseException {
         if (alliance != null) {
             db = alliance.getGuildDB();
             if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);

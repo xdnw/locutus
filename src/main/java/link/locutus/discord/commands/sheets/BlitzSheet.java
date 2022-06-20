@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -73,7 +73,7 @@ public class BlitzSheet extends Command {
         double maxScore = Math.floor(nation.getScore() * 1.75);
         note.append("War Range: " + MathMan.format(minScore) + "-" + MathMan.format(maxScore) + " (" + score + ")").append("\n");
         note.append("ID: " + nation.getNation_id()).append("\n");
-        note.append("Alliance: " + nation.getAlliance()).append("\n");
+        note.append("Alliance: " + nation.getAllianceName()).append("\n");
         note.append("Cities: " + nation.getCities()).append("\n");
         note.append("avg_infra: " + nation.getAvg_infra()).append("\n");
         note.append("soldiers: " + nation.getSoldiers()).append("\n");
@@ -170,7 +170,7 @@ public class BlitzSheet extends Command {
             DBNation defender = entry.getKey();
             List<DBNation> attackers = entry.getValue();
             ArrayList<Object> row = new ArrayList<>();
-            row.add(MarkupUtil.sheetUrl(defender.getAlliance(), defender.getAllianceUrl()));
+            row.add(MarkupUtil.sheetUrl(defender.getAllianceName(), defender.getAllianceUrl()));
 
 //                if (flags.contains('i')) {
 //                    row.set(1, defender.getNation_id());

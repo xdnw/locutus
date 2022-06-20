@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -110,7 +110,7 @@ public class MailCommand extends Command implements Noformat {
                 String embedTitle = title + " to ";
                 if (nations.size() == 1) {
                     DBNation nation = nations.iterator().next();
-                    embedTitle += nations.size() == 1 ? nation.getName() + " | " + nation.getAlliance() : "nations";
+                    embedTitle += nations.size() == 1 ? nation.getName() + " | " + nation.getAllianceName() : "nations";
                 } else {
                     embedTitle += " nations";
                 }

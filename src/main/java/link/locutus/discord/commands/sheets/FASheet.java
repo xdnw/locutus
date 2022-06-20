@@ -4,8 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -77,7 +77,7 @@ public class FASheet extends Command {
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         for (Map.Entry<Integer, String> entry : notes.entrySet()) {
             Integer aaId = entry.getKey();
-            Alliance aa = new Alliance(aaId);
+            DBAlliance aa = new DBAlliance(aaId);
 
             String note = notes.getOrDefault(aaId, "");
             String last = lastContacted.getOrDefault(aaId, "");

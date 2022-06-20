@@ -8,7 +8,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.CounterType;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -248,7 +248,7 @@ public class CounterSheet extends Command {
             }
 
             row.add(MarkupUtil.sheetUrl(enemy.getNation(), PnwUtil.getUrl(enemy.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(enemy.getAlliance(), PnwUtil.getUrl(enemy.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(enemy.getAllianceName(), PnwUtil.getUrl(enemy.getAlliance_id(), true)));
             row.add(actionStr);
             row.add( rank == null ? "" : rank.name());
 
@@ -270,7 +270,7 @@ public class CounterSheet extends Command {
                 DBWar war = wars.get(i);
                 String url = war.toUrl();
                 DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
-                String warStr = defender.getNation() + "|" + defender.getAlliance();
+                String warStr = defender.getNation() + "|" + defender.getAllianceName();
                 row.add(MarkupUtil.sheetUrl(warStr, url));
             }
 

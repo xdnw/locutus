@@ -19,8 +19,7 @@ import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -39,11 +38,6 @@ import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
@@ -565,7 +559,7 @@ public class IACommands {
         }
 
         if (db.isValidAlliance()) {
-            Alliance alliance = db.getAlliance();
+            DBAlliance alliance = db.getAlliance();
             List<DBNation> members = alliance.getNations(true, 2880, true);
             members.removeIf(f -> !mentees.contains(f));
 
@@ -788,7 +782,7 @@ public class IACommands {
             String embedTitle = title + " to ";
             if (nations.size() == 1) {
                 DBNation nation = nations.iterator().next();
-                embedTitle += nations.size() == 1 ? nation.getName() + " | " + nation.getAlliance() : "nations";
+                embedTitle += nations.size() == 1 ? nation.getName() + " | " + nation.getAllianceName() : "nations";
             } else {
                 embedTitle += " nations";
             }
@@ -1102,7 +1096,7 @@ public class IACommands {
                 bodyFormat += cmdMsg;
 
                 header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
-                header.set(1, MarkupUtil.sheetUrl(nation.getAlliance(), nation.getAllianceUrl()));
+                header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 header.set(2, "");
                 header.set(3, subjectFormat);
                 header.set(4, bodyFormat);
@@ -1246,7 +1240,7 @@ public class IACommands {
         if (nation != null) {
             response.append(" | N:" + nation.getNation());
             if (aaId != null && aaId != nation.getNation_id()) {
-                response.append(" | AA:" + nation.getAlliance());
+                response.append(" | AA:" + nation.getAllianceName());
             }
             if (nation.getPosition() <= 1) {
                 response.append(" | applicant");

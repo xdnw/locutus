@@ -1,19 +1,14 @@
 package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.BBGame;
-import com.politicsandwar.graphql.model.BBGameResponseProjection;
-import com.politicsandwar.graphql.model.Baseball_gamesQueryRequest;
 import com.ptsmods.mysqlw.query.QueryOrder;
-import com.ptsmods.mysqlw.query.SelectResults;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
-import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.event.BaseballGameEvent;
+import link.locutus.discord.event.baseball.BaseballGameEvent;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.sql.PreparedStatement;
@@ -25,8 +20,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-
-import static java.util.Collections.singletonMap;
 
 public class BaseballDB extends DBMainV2{
     public BaseballDB(Settings.DATABASE config) throws SQLException {

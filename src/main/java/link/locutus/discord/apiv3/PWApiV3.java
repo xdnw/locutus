@@ -2,9 +2,10 @@ package link.locutus.discord.apiv3;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.event.TransactionEvent;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
@@ -18,18 +19,14 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.util.update.BankUpdateProcessor;
 
 import java.io.IOException;
 import java.net.HttpRetryException;
 import java.nio.charset.StandardCharsets;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +37,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Deprecated
@@ -117,60 +113,11 @@ public class PWApiV3 {
         }
     }
 
-    public static class CityDataV3 {
-        public int id;
-        public long created;
-        public long fetched;
-        public double land;
-        public double infra;
-        public boolean powered;
-        public byte[] buildings = new byte[Buildings.size()];
-
-        public CityDataV3() {
-
-        }
-
-        public CityDataV3(ResultSet rs) throws SQLException {
-            id = rs.getInt("id");
-            created = rs.getLong("created");
-            infra = rs.getInt("infra") / 100d;
-            land = rs.getInt("land") / 100d;
-            powered = rs.getBoolean("powered");
-            buildings = rs.getBytes("improvements");
-            fetched = rs.getLong("update_flag");
-        }
-
-        public CityDataV3(int id, JavaCity city) {
-            this(id, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(city.getAge()), city);
-        }
-
-        public CityDataV3(int id, long date, JavaCity city) {
-            this.id = id;
-            this.created = date;
-            this.infra = city.getInfra();
-            this.land = city.getLand();
-            this.buildings = city.getBuildings();
-            this.powered = city.getMetrics(f -> false).powered;
-        }
-
-        public JavaCity toJavaCity(DBNation nation) {
-            return toJavaCity(nation::hasProject);
-        }
-
-        public JavaCity toJavaCity(Predicate<Project> hasProject) {
-            JavaCity javaCity = new JavaCity(buildings, infra, land, (int) TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - created));
-            if (!powered && javaCity.getPoweredInfra() >= infra) {
-                javaCity.getMetrics(hasProject).powered = false;
-            }
-            return javaCity;
-        }
-    }
-
     public void updateNations(ThrowingConsumer<ThrowingConsumer<String>> taskConsumer, boolean spies, boolean tx, boolean city, boolean project, boolean policy) throws IOException, ParseException {
         Set<DBNation> toUpdate = new HashSet<>();
         long turn = TimeUtil.getTurn();
 
-        Map<Integer, Map<Integer, CityDataV3>> allCities = new HashMap<>();
+        Map<Integer, Map<Integer, DBCity>> allCities = new HashMap<>();
         long txCutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14);
         Set<Integer> existingTransactions = Locutus.imp().getBankDB().getTransactions(txCutoff, true).stream().map(f -> f.tx_id).collect(Collectors.toSet());
 
@@ -200,9 +147,9 @@ public class PWApiV3 {
             }
         };
 
-        BiConsumer<Integer, Map<Integer, CityDataV3>> cityConsumer = !city ? null : new BiConsumer<Integer, Map<Integer, CityDataV3>>() {
+        BiConsumer<Integer, Map<Integer, DBCity>> cityConsumer = !city ? null : new BiConsumer<Integer, Map<Integer, DBCity>>() {
             @Override
-            public void accept(Integer nationId, Map<Integer, CityDataV3> cities) {
+            public void accept(Integer nationId, Map<Integer, DBCity> cities) {
                 if (!cities.isEmpty()) {
                     allCities.put(nationId, cities);
                 }
@@ -294,7 +241,7 @@ public class PWApiV3 {
         }, true, true, true, true, true);
     }
 
-    private void fetchNations(String filters, Integer perPage, BiConsumer<DBNation, Boolean> spyConsumer, BiConsumer<Integer, List<Transaction2>> txConsumer, BiConsumer<Integer, Map<Integer, CityDataV3>> citiesConsumer, BiConsumer<DBNation, Set<Project>> projectConsumer, BiConsumer<DBNation, DomesticPolicy> domesticPolicy) throws IOException, ParseException {
+    private void fetchNations(String filters, Integer perPage, BiConsumer<DBNation, Boolean> spyConsumer, BiConsumer<Integer, List<Transaction2>> txConsumer, BiConsumer<Integer, Map<Integer, DBCity>> citiesConsumer, BiConsumer<DBNation, Set<Project>> projectConsumer, BiConsumer<DBNation, DomesticPolicy> domesticPolicy) throws IOException, ParseException {
         long fetched = System.currentTimeMillis();
 
         if (perPage == null) perPage = PER_PAGE;
@@ -375,12 +322,12 @@ public class PWApiV3 {
         return projects;
     }
 
-    public Map<Integer, CityDataV3> readCities(JsonArray citiesJson, long fetched) throws ParseException {
-        Map<Integer, CityDataV3> cities = new HashMap<>();
+    public Map<Integer, DBCity> readCities(JsonArray citiesJson, long fetched) throws ParseException {
+        Map<Integer, DBCity> cities = new HashMap<>();
         for (JsonElement cityElem : citiesJson) {
             JsonObject city = cityElem.getAsJsonObject();
 
-            CityDataV3 cityV3 = new CityDataV3();
+            DBCity cityV3 = new DBCity();
             cityV3.fetched = fetched;
 
             for (Map.Entry<String, JsonElement> entry : city.entrySet()) {

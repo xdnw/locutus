@@ -7,7 +7,7 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -520,7 +520,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
                     Role role = allianceRoles.get(alliance_id);
                     if (role == null && alliance_id != 0) {
-                        role = createRole(position, guild, alliance_id, nation.getAlliance());
+                        role = createRole(position, guild, alliance_id, nation.getAllianceName());
                         if (role != null) {
                             allianceRoles.put(alliance_id, role);
                         }

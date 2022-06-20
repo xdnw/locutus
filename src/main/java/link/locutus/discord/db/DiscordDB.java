@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.ptsmods.mysqlw.query.SelectResults;
 import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
@@ -34,12 +35,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class DiscordDB extends DBMain {
+public class DiscordDB extends DBMainV2 {
     public DiscordDB() throws SQLException, ClassNotFoundException {
         super("locutus");
+        migrateCredentials();
     }
 
     @Override
@@ -47,6 +50,9 @@ public class DiscordDB extends DBMain {
             executeStmt("CREATE TABLE IF NOT EXISTS `USERS` (`nation_id` INT NOT NULL, `discord_id` INT, `discord_name` VARCHAR, PRIMARY KEY(discord_id))");
             executeStmt("CREATE TABLE IF NOT EXISTS `UUIDS` (`nation_id` INT NOT NULL, `uuid` BLOB NOT NULL, `date` INT NOT NULL, PRIMARY KEY(nation_id, uuid, date))");
             executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
+
+            executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS2` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
+
             executeStmt("CREATE TABLE IF NOT EXISTS `VERIFIED` (`nation_id` INT NOT NULL PRIMARY KEY)");
 
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_META` (`key` INT NOT NULL, `id` INT NOT NULL, `value` BLOB NOT NULL, PRIMARY KEY(`key`, `id`))");
@@ -208,6 +214,19 @@ public class DiscordDB extends DBMain {
         });
     }
 
+    private void migrateCredentials() {
+        Set<Integer> ids = new HashSet<>();
+        for (SelectResults.SelectResultRow row : getDb().selectBuilder("credentials").select("discordId").execute()) {
+            ids.add(row.get("discordid", Integer.class));
+        }
+        for (int discordId : ids) {
+            Map.Entry<String, String> userPass = getUserPass(discordId, "credentials", EncryptionUtil.Algorithm.LEGACY);
+            addUserPass(discordId, userPass.getKey(), userPass.getValue());
+        }
+
+        executeStmt("DROP TABLE CREDENTIALS");
+    }
+
     public void addUserPass(long discordId, String user, String password) {
         try {
             String secretStr = Settings.INSTANCE.CLIENT_SECRET;
@@ -215,10 +234,10 @@ public class DiscordDB extends DBMain {
             byte[] secret = secretStr.getBytes(StandardCharsets.ISO_8859_1);
             byte[] salt = EncryptionUtil.generateKey();
 
-            byte[] userEnc = EncryptionUtil.encrypt(EncryptionUtil.encrypt(user.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
-            byte[] passEnc = EncryptionUtil.encrypt(EncryptionUtil.encrypt(password.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
+            byte[] userEnc = EncryptionUtil.encrypt2(EncryptionUtil.encrypt2(user.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
+            byte[] passEnc = EncryptionUtil.encrypt2(EncryptionUtil.encrypt2(password.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
 
-            update("INSERT OR REPLACE INTO `CREDENTIALS` (`discordid`, `user`, `password`, `salt`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            update("INSERT OR REPLACE INTO `CREDENTIALS2` (`discordid`, `user`, `password`, `salt`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
                 stmt.setLong(1, discordId);
                 stmt.setString(2, Base64.encodeBase64String(userEnc));
                 stmt.setString(3, Base64.encodeBase64String(passEnc));
@@ -229,11 +248,15 @@ public class DiscordDB extends DBMain {
         }
     }
 
-    public Map.Entry<String, String> getUserPass(long discordId) {
+    private Map.Entry<String, String> getUserPass(long discordId) {
+        return getUserPass(discordId, "credentials2", EncryptionUtil.Algorithm.DEFAULT);
+    }
+
+    private Map.Entry<String, String> getUserPass(long discordId, String table, EncryptionUtil.Algorithm algorithm) {
         if (discordId == Settings.INSTANCE.ADMIN_USER_ID && !Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
             return Map.entry(Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
         }
-        try (PreparedStatement stmt = prepareQuery("select * FROM CREDENTIALS WHERE `discordid` = ?")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM " + table + " WHERE `discordid` = ?")) {
             stmt.setLong(1, discordId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -244,8 +267,8 @@ public class DiscordDB extends DBMain {
                     byte[] userEnc = Base64.decodeBase64(rs.getString("user"));
                     byte[] passEnc = Base64.decodeBase64(rs.getString("password"));
 
-                    byte[] userBytes = EncryptionUtil.decrypt(EncryptionUtil.decrypt(userEnc, salt), secret);
-                    byte[] passBytes = EncryptionUtil.decrypt(EncryptionUtil.decrypt(passEnc, salt), secret);
+                    byte[] userBytes = EncryptionUtil.decrypt2(EncryptionUtil.decrypt2(userEnc, salt, algorithm), secret, algorithm);
+                    byte[] passBytes = EncryptionUtil.decrypt2(EncryptionUtil.decrypt2(passEnc, salt, algorithm), secret, algorithm);
                     String user = new String(userBytes, StandardCharsets.ISO_8859_1);
                     String pass = new String(passBytes, StandardCharsets.ISO_8859_1);
 

@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -214,7 +214,7 @@ public class MailTargets extends Command {
                     Spyop spyop = mySpyOps.get(i);
                     String safety = spyop.safety == 3 ? "covert" : spyop.safety == 2 ? "normal" : "quick";
 
-                    String name = spyop.defender.getNation() + " | " + spyop.defender.getAlliance();
+                    String name = spyop.defender.getNation() + " | " + spyop.defender.getAllianceName();
                     String nationUrl = MarkupUtil.htmlUrl(name, "https://tinyurl.com/y26weu7d/id=" + spyop.defender.getNation_id());
 
                     String spyUrl = baseUrl + spyop.defender.getNation_id();

@@ -2,7 +2,6 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.task.tax.GetNationsFromTaxBracket;
 
 import java.util.ArrayList;

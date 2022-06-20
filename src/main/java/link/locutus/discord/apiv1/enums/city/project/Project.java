@@ -1,7 +1,7 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
 import java.util.Map;
@@ -22,8 +22,11 @@ public interface Project {
     ResourceType getOutput();
 
     default boolean has(long bitMask) {
-        return (bitMask & (1 << ordinal() + 1)) != 0;
+        return (bitMask & (1L << ordinal())) != 0;
     }
+
+    @Deprecated
+    boolean hasLegacy(long bitMask);
 
     String getImageName();
 

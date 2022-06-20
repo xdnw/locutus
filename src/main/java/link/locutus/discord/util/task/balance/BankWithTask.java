@@ -2,8 +2,8 @@ package link.locutus.discord.util.task.balance;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -56,7 +56,7 @@ public class BankWithTask implements Callable<String> {
 
                 double[] resources = ResourceType.getBuffer();
                 if (table == null || table.text().contains("You do not have permission")) {
-                    resources = PnwUtil.resourcesToArray(new Alliance(auth.getAllianceId()).getStockpile());
+                    resources = PnwUtil.resourcesToArray(new DBAlliance(auth.getAllianceId()).getStockpile());
                 } else {
                     resources[ResourceType.MONEY.ordinal()] = MathMan.parseDouble(table.select("td:contains(Money)").first().nextElementSibling().text());
                     resources[ResourceType.FOOD.ordinal()] = MathMan.parseDouble(table.select("td:contains(Food)").first().nextElementSibling().text());

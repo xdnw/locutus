@@ -5,8 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -121,7 +121,7 @@ public class WarCostByAASheet extends Command {
             };
             warCost.addCost(attacks, isPrimary, f -> !isPrimary.apply(f));
 
-            Alliance alliance = new Alliance(entry.getKey());
+            DBAlliance alliance = new DBAlliance(entry.getKey());
 
 
             ArrayList<Object> row = new ArrayList<>();

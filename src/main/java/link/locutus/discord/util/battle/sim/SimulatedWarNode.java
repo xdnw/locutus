@@ -1,7 +1,7 @@
 package link.locutus.discord.util.battle.sim;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;

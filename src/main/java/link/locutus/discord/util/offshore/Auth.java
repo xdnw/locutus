@@ -7,7 +7,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;

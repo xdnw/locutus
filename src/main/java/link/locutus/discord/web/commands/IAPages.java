@@ -5,10 +5,10 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.InterviewMessage;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -159,7 +159,7 @@ public class IAPages {
         IACheckup checkup = new IACheckup(db, db.getAlliance_id(), true);
         Map<IACheckup.AuditType, Map<DBNation, String>> allianceAuditResults = new LinkedHashMap<>();
 
-        Alliance alliance = db.getAlliance();
+        DBAlliance alliance = db.getAlliance();
         List<DBNation> allNations = alliance.getNations(true, 0, true);
         Collections.sort(allNations, Comparator.comparingInt(DBNation::getCities));
 
@@ -299,7 +299,7 @@ public class IAPages {
             lastMentorTxByNationId.put(mentorId, transaction.tx_datetime);
         }
 
-        Alliance alliance = db.getAlliance();
+        DBAlliance alliance = db.getAlliance();
         List<DBNation> members = alliance.getNations(true, 2880, true);
         members.removeIf(f -> !mentees.contains(f));
 

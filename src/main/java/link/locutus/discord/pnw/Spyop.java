@@ -1,5 +1,6 @@
 package link.locutus.discord.pnw;
 
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.SpyCount;
 
 public class Spyop {

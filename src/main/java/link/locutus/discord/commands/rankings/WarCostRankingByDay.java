@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.WarAttackParser;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import de.erichseifert.gral.data.DataTable;
 import de.erichseifert.gral.data.Row;

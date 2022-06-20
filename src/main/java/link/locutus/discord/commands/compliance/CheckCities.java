@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
@@ -146,7 +146,7 @@ public class CheckCities extends Command {
                     }
                 } else if (flags.contains('m')) {
                     if (auth == null) return "No authentication found";
-                    String title = nation.getAlliance() + " automatic checkup";
+                    String title = nation.getAllianceName() + " automatic checkup";
 
                     String input = output.toString().replace("_", " ").replace(" * ", " STARPLACEHOLDER ");
                     String markdown = MarkupUtil.markdownToHTML(input);

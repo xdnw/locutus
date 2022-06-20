@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBSpyUpdate;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
@@ -155,7 +155,7 @@ public class FindSpyOp extends Command {
         for (Map.Entry<DBNation, Map.Entry<Double, String>> entry : sorted) {
             DBNation att = entry.getKey();
 
-            response.append(att.getNation() + " | " + att.getAlliance() + "\n");
+            response.append(att.getNation() + " | " + att.getAllianceName() + "\n");
             response.append(entry.getValue().getValue()).append("\n\n");
         }
 

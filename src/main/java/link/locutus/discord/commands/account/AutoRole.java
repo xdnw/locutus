@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -92,7 +92,7 @@ public class AutoRole extends Command {
                     if (nation != null) {
                         String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
                         if (nation.getActive_m() > 10000) active = "**" + active + "**";
-                        response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAlliance());
+                        response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAllianceName());
                     }
                     response.append(" - ").append(entry.getValue());
                     response.append("\n");

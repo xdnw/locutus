@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.enums.city;
 
 import link.locutus.discord.commands.info.optimal.CityBranch;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -35,16 +35,16 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class JavaCity {
-    private byte[] buildings;
+    private final byte[] buildings;
     private int numBuildings = -1;
     private double infra;
-
-    private Integer age;
-    private Double land;
+    private double land_;
+    private long dateCreated;
 
     private Metrics metrics;
 
@@ -73,8 +73,8 @@ public class JavaCity {
         }
         this.numBuildings = other.numBuildings;
         this.infra = other.infra;
-        this.age = other.age;
-        this.land = other.land;
+        this.dateCreated = other.dateCreated;
+        this.land_ = other.land_;
     }
 
     public void clearMetrics() {
@@ -213,18 +213,18 @@ public class JavaCity {
         initImpTotal();
     }
 
-    public JavaCity(byte[] buildings, double infra, double land, int age) {
+    public JavaCity(byte[] buildings, double infra, double land, long dateCreated) {
         this.buildings = buildings;
-        this.age = age;
-        this.land = land;
+        this.dateCreated = dateCreated;
+        this.land_ = land;
         this.infra = infra;
         initImpTotal();
     }
 
     public JavaCity() {
         this.buildings = new byte[Buildings.size()];
-        age = 0;
-        land = 0d;
+        dateCreated = Long.MAX_VALUE;
+        land_ = 0d;
         this.numBuildings = 0;
     }
 
@@ -345,8 +345,8 @@ public class JavaCity {
 
     public JavaCity(City city) {
         this.buildings = new byte[Buildings.size()];
-        age = city.getAge();
-        this.land = Double.parseDouble(city.getLand());
+        this.dateCreated = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(city.getAge());
+        this.land_ = Double.parseDouble(city.getLand());
 
         metrics = new Metrics();
         metrics.disease = city.getDisease();
@@ -393,8 +393,8 @@ public class JavaCity {
         this.buildings = other.buildings.clone();
         this.numBuildings = other.numBuildings;
         this.infra = other.infra;
-        this.age = other.age;
-        this.land = other.land;
+        this.dateCreated = other.dateCreated;
+        this.land_ = other.land_;
     }
 
     private transient int hashCode = 0;
@@ -837,7 +837,8 @@ public class JavaCity {
     }
 
     public int getAge() {
-        return age == null ? 0 : age;
+        if (dateCreated <= 0) return 0;
+        return (int) TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - dateCreated);
     }
 
     public double getFreeInfra() {
@@ -849,19 +850,21 @@ public class JavaCity {
     }
 
     public Double getLand() {
-        return land == null ? infra : land;
+        if (land_ <= 0) return infra;
+        return land_;
     }
     public JavaCity setInfra(double infra) {
         this.infra = infra;
         return this;
     }
 
-    public void setAge(Integer age) {
-        this.age = age;
+    public JavaCity setAge(Integer age) {
+        this.dateCreated = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(age);
+        return this;
     }
 
     public JavaCity setLand(Double land) {
-        this.land = land;
+        this.land_ = land;
         return this;
     }
 

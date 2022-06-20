@@ -18,6 +18,10 @@ public class DBMainV2 implements Closeable {
     private boolean isDelegate;
     private final Database db;
 
+    public DBMainV2(String name) throws SQLException {
+        this(Settings.INSTANCE.DATABASE, name);
+    }
+
     public DBMainV2(Settings.DATABASE config, String name) throws SQLException {
         if (config.SQLITE.USE == config.MYSQL.USE) {
             throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");

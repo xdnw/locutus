@@ -1,7 +1,7 @@
 package link.locutus.discord.util.offshore;
 
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;

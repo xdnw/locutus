@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -219,7 +219,7 @@ public class MMRSheet extends Command {
     public void setRow(String name, List<Object> row, DBNation nation, double barracks, double factories, double hangars, double drydocks, double soldierBuy, double tankBuy, double airBuy, double navyBuy) {
         row.set(0, name);
         row.set(1, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-        row.set(2, MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+        row.set(2, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
         row.set(3, nation.getCities());
         row.set(4, nation.getAvg_infra());
         row.set(5, nation.getScore());

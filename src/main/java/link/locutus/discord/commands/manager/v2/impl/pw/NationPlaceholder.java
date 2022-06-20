@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw;
 
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 
 import java.util.function.Function;
 

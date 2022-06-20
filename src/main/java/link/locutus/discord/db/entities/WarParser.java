@@ -1,8 +1,6 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -37,8 +35,8 @@ public class WarParser {
     private Map<Integer, DBWar> wars;
     private List<DBAttack> attacks;
 
-    public static WarParser ofAANatobj(Collection<Alliance> coal1Alliances, Collection<DBNation> coal1Nations, Collection<Alliance> coal2Alliances, Collection<DBNation> coal2Nations, long start, long end) {
-        return ofNatObj(coal1Alliances == null ? null : coal1Alliances.stream().map(Alliance::getAlliance_id).collect(Collectors.toSet()), coal1Nations, coal2Alliances == null ? null : coal2Alliances.stream().map(Alliance::getAlliance_id).collect(Collectors.toSet()), coal2Nations, start, end);
+    public static WarParser ofAANatobj(Collection<DBAlliance> coal1Alliances, Collection<DBNation> coal1Nations, Collection<DBAlliance> coal2Alliances, Collection<DBNation> coal2Nations, long start, long end) {
+        return ofNatObj(coal1Alliances == null ? null : coal1Alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet()), coal1Nations, coal2Alliances == null ? null : coal2Alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet()), coal2Nations, start, end);
     }
 
     public static WarParser ofNatObj(Collection<Integer> coal1Alliances, Collection<DBNation> coal1Nations, Collection<Integer> coal2Alliances, Collection<DBNation> coal2Nations, long start, long end) {

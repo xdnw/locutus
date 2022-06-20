@@ -6,9 +6,9 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceMeta;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
@@ -153,7 +153,7 @@ public class BankWith extends Command {
             }
 
         } else {
-            receiver = new Alliance(alliance);
+            receiver = new DBAlliance(alliance);
         }
 
         if (args.size() == 2 && args.get(1).contains("$")) {
@@ -312,7 +312,7 @@ public class BankWith extends Command {
                 title = PnwUtil.resourcesToString(transfer);
             }
             title += " to " + (receiver.isAlliance() ? "AA " : "") + receiver.getName();
-            if (receiver.isNation()) title += " | " + receiver.asNation().getAlliance();
+            if (receiver.isNation()) title += " | " + receiver.asNation().getAllianceName();
             String body = note + (note.isEmpty() ? "" : "\n") + "Press \u2705 to confirm";
 
             if (false) { // TODO alert if nation has deposits, but -e is used for temporary expiring transfer
@@ -384,7 +384,7 @@ public class BankWith extends Command {
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE && aaId2 != null) {
                         if (!guildDb.getCoalition("enemies").isEmpty())
                             return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`) and `enemies` is set (see: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions`)";
-                        Alliance aaObj = new Alliance(aaId2);
+                        DBAlliance aaObj = new DBAlliance(aaId2);
                         ByteBuffer warringBuf = aaObj.getMeta(AllianceMeta.IS_WARRING);
                         if (warringBuf != null && warringBuf.get() == 1)
                             return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`)";

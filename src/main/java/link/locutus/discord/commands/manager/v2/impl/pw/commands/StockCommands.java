@@ -16,8 +16,8 @@ import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.commands.stock.StockTrade;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -664,7 +664,7 @@ public class StockCommands {
 
         if (!force) {
             String title = "Confirm transfer worth: $" + MathMan.format(PnwUtil.convertedTotal(resources));
-            String body = "Amount: " + PnwUtil.resourcesToString(resources) + "\nTo:" + receiver.getNation() + " | " + receiver.getAlliance();
+            String body = "Amount: " + PnwUtil.resourcesToString(resources) + "\nTo:" + receiver.getNation() + " | " + receiver.getAllianceName();
             DiscordUtil.pending(channel, message, title, body, 'f');
             return null;
         }
@@ -724,7 +724,7 @@ public class StockCommands {
     }
 
     @Command(desc = "Withdraw your cash/resources from the exchange")
-    public String withdrawAA(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, Alliance alliance, Map<ResourceType, Double> resources, @Switch('f') boolean force) {
+    public String withdrawAA(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, DBAlliance alliance, Map<ResourceType, Double> resources, @Switch('f') boolean force) {
         if (!force) {
             String title = "Confirm transfer worth: $" + MathMan.format(PnwUtil.convertedTotal(resources));
             String body = "Amount: " + PnwUtil.resourcesToString(resources) + "\nTo AA:" + alliance.getName() + "(" + alliance.getNations(true, 0, true).size() + " members)";

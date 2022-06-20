@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -360,7 +360,7 @@ public class SpySheet extends Command {
 
             ArrayList<Object> row = new ArrayList<>();
             row.add(MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getScore());
@@ -380,7 +380,7 @@ public class SpySheet extends Command {
                 attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "\"";
 
                 if (multipleAAs) {
-                    attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "|" + attacker.getAlliance() + "\"";
+                    attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "|" + attacker.getAllianceName() + "\"";
                 } else {
                     attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "\"";
                 }

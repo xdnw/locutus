@@ -3,7 +3,7 @@ package link.locutus.discord.apiv1.domains.subdomains;
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -66,6 +66,7 @@ public class DBAttack {
     public double def_mun_used;
 
     public double infraPercent_cached;
+    public int city_cached;
 
     public DBAttack() {}
 
@@ -129,6 +130,8 @@ public class DBAttack {
         a.getAtt_mun_used(),
         a.getDef_gas_used(),
         a.getDef_mun_used());
+
+        if (a.getCity_id() != null) this.city_cached = a.getCity_id();
     }
 
     public Map<ResourceType, Double> getLoot() {
@@ -468,5 +471,9 @@ public class DBAttack {
                 ", def_gas_used=" + def_gas_used +
                 ", def_mun_used=" + def_mun_used +
                 '}';
+    }
+
+    public DBNation getNation(boolean attacker) {
+        return DBNation.byId(attacker ? attacker_nation_id : defender_nation_id);
     }
 }

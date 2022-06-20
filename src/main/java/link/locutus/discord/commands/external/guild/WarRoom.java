@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -189,14 +189,14 @@ public class WarRoom extends Command {
         for (DBNation attacker : attackers) {
             User user = attacker.getUser();
             if (user == null) {
-                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAlliance() + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` ?");
+                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` ?");
                 continue;
             }
 
             guild = channel.getGuild();
             Member member = guild.getMemberById(user.getIdLong());
             if (member == null) {
-                errorOutput.accept("No member for: " + attacker.getNation() + " | " + attacker.getAlliance() + ". Are they on this discord?");
+                errorOutput.accept("No member for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Are they on this discord?");
                 continue;
             }
 

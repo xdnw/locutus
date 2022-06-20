@@ -1,8 +1,8 @@
 package link.locutus.discord.util.task;
 
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -20,19 +20,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
 public class TrackLeaderMilitary implements Runnable {
-    private final Set<Alliance> alliances;
+    private final Set<DBAlliance> alliances;
 
-    public TrackLeaderMilitary(Set<Alliance> alliances) {
+    public TrackLeaderMilitary(Set<DBAlliance> alliances) {
         this.alliances = alliances;
     }
 
     public TrackLeaderMilitary(int topX) {
-        this(Alliance.getTopX(topX, false));
+        this(DBAlliance.getTopX(topX, false));
     }
 
     public void run() {
         Set<DBNation> toCheck = new HashSet<>();
-        for (Alliance alliance : alliances) {
+        for (DBAlliance alliance : alliances) {
             List<DBNation> nations = alliance.getNations(true, 120, true);
             nations.removeIf(f -> f.getPosition() < Rank.OFFICER.id);
             toCheck.addAll(nations);
@@ -74,7 +74,7 @@ public class TrackLeaderMilitary implements Runnable {
                     mmrToTotal[1] >= mmrFromTotal[1] &&
                     mmrToTotal[2] >= mmrFromTotal[2]
             ) {
-                String title = "MMR:" + nation.getNation() + " | " + nation.getAlliance();
+                String title = "MMR:" + nation.getNation() + " | " + nation.getAllianceName();
                 StringBuilder body = new StringBuilder();
                 body.append(nation.getNationUrlMarkup(true)).append(" | ");
                 body.append(nation.getAllianceUrlMarkup(true)).append(" | ");

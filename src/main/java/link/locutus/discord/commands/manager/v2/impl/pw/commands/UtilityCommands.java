@@ -17,16 +17,8 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.CityInfraLand;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBSpyUpdate;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.WarParser;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -63,7 +55,6 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.VoiceChannel;
-import views.grant.nation;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -114,7 +105,7 @@ public class UtilityCommands {
     @Command(desc = "Find potential offshores used by an alliance")
     @RolePermission(Roles.ECON)
     @WhitelistPermission
-    public String findOffshore(@Me MessageChannel channel, @Me Message message, Alliance alliance, @Default @Timestamp Long cutoffMs) {
+    public String findOffshore(@Me MessageChannel channel, @Me Message message, DBAlliance alliance, @Default @Timestamp Long cutoffMs) {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
 
         List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
@@ -256,7 +247,7 @@ public class UtilityCommands {
         for (Map.Entry<DBNation, Map.Entry<Double, String>> entry : sorted) {
             DBNation att = entry.getKey();
 
-            response.append(att.getNation() + " | " + att.getAlliance() + "\n");
+            response.append(att.getNation() + " | " + att.getAllianceName() + "\n");
             response.append(entry.getValue().getValue()).append("\n\n");
         }
 
@@ -272,7 +263,7 @@ public class UtilityCommands {
         Map<Integer, List<DBNation>> map = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true);
         outer:
         for (Map.Entry<Integer, List<DBNation>> entry : map.entrySet()) {
-            Alliance aa = new Alliance(entry.getKey());
+            DBAlliance aa = new DBAlliance(entry.getKey());
             int aaid = aa.getAlliance_id();
             List<DBNation> members = entry.getValue();
 
@@ -354,7 +345,7 @@ public class UtilityCommands {
                         Rank rank = timeRank.getValue();
                         if (rank.id >= Rank.OFFICER.id) {
                             List<DBNation> alliance = map.get(previousAA);
-                            if (new Alliance(previousAA).getScore() < 50000) continue;
+                            if (new DBAlliance(previousAA).getScore() < 50000) continue;
                             previousOfficer.add(PnwUtil.getName(previousAA, true));
 
                         }
@@ -373,7 +364,7 @@ public class UtilityCommands {
     @Command
     @WhitelistPermission
     @RolePermission(value = {Roles.ECON, Roles.MILCOM}, any = true)
-    public String findOffshores(@Timestamp long cutoff, Set<Alliance> enemiesList, @Default() Set<Alliance> alliesList) {
+    public String findOffshores(@Timestamp long cutoff, Set<DBAlliance> enemiesList, @Default() Set<DBAlliance> alliesList) {
         if (alliesList == null) alliesList = Collections.emptySet();
         Set<Integer> enemies = enemiesList.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Set<Integer> allies = alliesList.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
@@ -398,13 +389,13 @@ public class UtilityCommands {
                 if (nation.getActive_m() > 7200) continue outer;
             }
 
-            Set<Alliance> treaties = new Alliance(aaId).getTreatiedAllies();
-            for (Alliance treaty : treaties) {
+            Set<DBAlliance> treaties = new DBAlliance(aaId).getTreatiedAllies();
+            for (DBAlliance treaty : treaties) {
                 if (allies.contains(treaty.getAlliance_id())) continue outer;
             }
 
 
-            for (Alliance treatiedAlly : treaties) {
+            for (DBAlliance treatiedAlly : treaties) {
                 if (enemies.contains(treatiedAlly.getAlliance_id())) {
                     offshoresTreaty.put(aaId, treatiedAlly.getAlliance_id());
                 }
@@ -608,7 +599,7 @@ public class UtilityCommands {
         }).sumValues(f -> 1d);
         if (normalizePerMember && !rankByNation) {
             ranksUnsorted = ranksUnsorted.adapt((aaId, numWars) -> {
-                int num = new Alliance(aaId).getNations(true, ignore2dInactives ? 2440 : Integer.MAX_VALUE, true).size();
+                int num = new DBAlliance(aaId).getNations(true, ignore2dInactives ? 2440 : Integer.MAX_VALUE, true).size();
                 if (num == 0) return 0d;
                 return numWars.doubleValue() / (double) num;
             });
@@ -729,7 +720,7 @@ public class UtilityCommands {
         if (builtMMR != null) {
             nation.setMMR((builtMMR.charAt(0) - '0'), (builtMMR.charAt(1) - '0'), (builtMMR.charAt(2) - '0'), (builtMMR.charAt(3) - '0'));
         }
-        double score = nation.estimateScore(true);
+        double score = nation.estimateScore();
 
         if (score == 0) throw new IllegalArgumentException("No arguments provided");
 
@@ -918,7 +909,7 @@ public class UtilityCommands {
                 if (nation != null) {
                     String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
                     if (nation.getActive_m() > 10000) active = "**" + active + "**";
-                    response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAlliance());
+                    response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAllianceName());
                 }
                 response.append(" - ").append(entry.getValue());
                 response.append("\n");
@@ -992,7 +983,7 @@ public class UtilityCommands {
         for (Map.Entry<Integer, DBNation> entry : totals.entrySet()) {
             SAllianceContainer alliance = alliances.get(entry.getKey());
             if (alliance == null) continue;
-            Alliance dbAlliance = new Alliance(entry.getKey());
+            DBAlliance dbAlliance = new DBAlliance(entry.getKey());
 
             DBNation nation = entry.getValue();
             for (int i = 0; i < columns.size(); i++) {
@@ -1007,7 +998,7 @@ public class UtilityCommands {
                     }
                 }
 
-                for (Field field : Alliance.class.getDeclaredFields()) {
+                for (Field field : DBAlliance.class.getDeclaredFields()) {
                     String placeholder = "{" + field.getName() + "}";
                     if (arg.contains(placeholder)) {
                         field.setAccessible(true);
@@ -1099,7 +1090,7 @@ public class UtilityCommands {
         return nation.getBeigeTurns() + " turns";
     }
 
-    @Command(desc = "Return number of turns a nation has left of beige color bloc", aliases = {"fastBeige", "quickestBeige", "quickBeige", "fastestBeige"})
+    @Command(desc = "Return quickest attacks to beige an enemy", aliases = {"fastBeige", "quickestBeige", "quickBeige", "fastestBeige"})
     public String quickestBeige(@Range(min=1, max=100) int resistance, @Switch('g') boolean noGround, @Switch('s') boolean noShip, @Switch('a') boolean noAir, @Switch('m') boolean noMissile, @Switch('n') boolean noNuke) {
         if (resistance > 1000 || resistance < 1) throw new IllegalArgumentException("Resistance must be between 1 and 100");
         List<AttackType> allowed = new ArrayList<>(List.of(AttackType.values));
@@ -1263,7 +1254,7 @@ public class UtilityCommands {
                 StringBuilder entry = new StringBuilder();
                 entry.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                         .append(" | " + String.format("%16s", nation.getNation()))
-                        .append(" | " + String.format("%16s", nation.getAlliance()))
+                        .append(" | " + String.format("%16s", nation.getAllianceName()))
                         .append("\n```")
 //                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
                         .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
@@ -1346,7 +1337,7 @@ public class UtilityCommands {
             DBNation nation = entry.getKey();
 
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
-            row.add(MarkupUtil.sheetUrl(nation.getAlliance(), nation.getAllianceUrl()));
+            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
             row.add(nation.getCities());
             Map<ResourceType, Double> transfer = entry.getValue();
             for (ResourceType type : ResourceType.values) {
@@ -1428,11 +1419,11 @@ public class UtilityCommands {
 
     @Command(desc = "List alliances by their new members over a timeframe")
     public String recruitmentRankings(@Me User author, @Me MessageChannel channel, @Me Message message, @Timestamp long cutoff, @Default("80") int topX) {
-        Set<Alliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
+        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
 
-        Map<Alliance, Integer> rankings = new HashMap<Alliance, Integer>();
+        Map<DBAlliance, Integer> rankings = new HashMap<DBAlliance, Integer>();
 
-        for (Alliance alliance : alliances) {
+        for (DBAlliance alliance : alliances) {
             Set<Integer> applied = new HashSet<>();
             Set<DBNation> potentialMembers = new HashSet<>();
 

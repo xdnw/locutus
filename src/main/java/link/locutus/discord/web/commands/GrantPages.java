@@ -9,7 +9,7 @@ import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.ArrayList;

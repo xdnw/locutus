@@ -11,7 +11,7 @@ import link.locutus.discord.commands.stock.ExchangeCategory;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -220,7 +220,7 @@ public class ExchangeCommands {
         if (user == null) return newOwner.getNation() + " has not used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
 
         if (!force) {
-            String title = "Transfer ownership to: " + newOwner.getNation() + " | " + newOwner.getAlliance();
+            String title = "Transfer ownership to: " + newOwner.getNation() + " | " + newOwner.getAllianceName();
             String desc = "User: " + user.getAsMention() + "\nPress to confirm";
             DiscordUtil.pending(channel, message, title, desc, 'f');
             return null;
@@ -281,7 +281,7 @@ public class ExchangeCommands {
             if (exchange.isAlliance()) {
                 note = "\nNote: This overrides ";
             }
-            return type + " " + user.getName() + " | " + user.getAlliance() + " to " + rank + note;
+            return type + " " + user.getName() + " | " + user.getAllianceName() + " to " + rank + note;
         }
     }
 

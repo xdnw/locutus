@@ -4,8 +4,8 @@ import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -247,7 +247,7 @@ public class SpreadSheet {
         }
     }
 
-    public Map<String, Boolean> parseTransfers(Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<Alliance, Map<ResourceType, Double>> fundsToSendAAs) {
+    public Map<String, Boolean> parseTransfers(Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs) {
         Map<String, Boolean> result = new LinkedHashMap<String, Boolean>();
         List<List<Object>> rows = get("A:Z");
         List<Object> header = rows.get(0);
@@ -290,7 +290,7 @@ public class SpreadSheet {
                 if (allianceId == null) result.put(nameStr, false);
                 else {
                     result.put(nameStr, true);
-                    Alliance alliance = new Alliance(allianceId);
+                    DBAlliance alliance = new DBAlliance(allianceId);
                     Map<ResourceType, Double> existing = fundsToSendAAs.computeIfAbsent(alliance, f -> new EnumMap<>(ResourceType.class));
                     fundsToSendAAs.put(alliance, PnwUtil.add(existing, transfer));
                 }

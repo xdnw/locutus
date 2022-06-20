@@ -1,6 +1,6 @@
 package link.locutus.discord.util.trade;
 
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
 import java.util.ArrayList;

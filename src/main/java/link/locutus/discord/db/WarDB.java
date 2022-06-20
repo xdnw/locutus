@@ -2,57 +2,32 @@ package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.table.ColumnType;
-import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
-import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.CityInfraLand;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.CounterType;
-import link.locutus.discord.db.entities.DBBounty;
-import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.event.AttackEvent;
-import link.locutus.discord.event.BountyCreateEvent;
-import link.locutus.discord.event.BountyRemoveEvent;
-import link.locutus.discord.pnw.DBNation;
-import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.event.bounty.BountyCreateEvent;
+import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.update.NationUpdateProcessor;
 import link.locutus.discord.util.update.WarUpdateProcessor;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
-import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.Role;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -60,7 +35,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.time.Instant;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -77,9 +51,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -617,6 +588,10 @@ public class WarDB extends DBMainV2 {
         List<DBWar> newWars = new ArrayList<>();
 
         for (DBWar war : dbWars) {
+            {
+                Locutus.imp().getNationDB().setNationActive(war.attacker_id, war.date);
+            }
+
             DBWar existing = lastActive.get(war.warId);
             if (war.equals(existing)) continue;
             prevWars.add(existing);
@@ -1363,54 +1338,41 @@ public class WarDB extends DBMainV2 {
         return null;
     }
 
-    private List<DBAttack> getAttackSince(Integer maxId) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
-        List<WarAttack> attacks = v3.fetchAttacks(r -> {
-            if (maxId != null) r.setMin_id(maxId + 1);
-            QueryWarattacksOrderByOrderByClause order = QueryWarattacksOrderByOrderByClause.builder()
-                    .setColumn(QueryWarattacksOrderByColumn.ID)
-                    .setOrder(SortOrder.ASC)
-                    .build();
-            r.setOrderBy(List.of(order));
-        }, p -> {
-            p.id();
-            p.date();
-            p.war_id();
-            p.att_id();
-            p.def_id();
-            p.type();
-            p.victor();
-            p.success();
-            p.attcas1();
-            p.attcas2();
-            p.defcas1();
-            p.defcas2();
-            p.aircraft_killed_by_tanks();
-            p.infra_destroyed();
-            p.improvements_lost();
-            p.money_stolen();
-            p.loot_info();
-            p.city_infra_before();
-            p.infra_destroyed_value();
-            p.att_gas_used();
-            p.att_mun_used();
-            p.def_gas_used();
-            p.def_mun_used();
-        });
-        return attacks.stream().map(DBAttack::new).collect(Collectors.toList());
-    }
-
     public synchronized boolean updateAttacks(Integer maxId, boolean runAlerts) {
         if (maxId == null) maxId = getLatestAttackId();
+        if (maxId == null || maxId == 0) runAlerts = false;
 
-        List<DBAttack> newAttacks = getAttackSince(maxId);
+
+        List<DBAttack> newAttacks = Locutus.imp().getPnwApi().getV3()
+                .fetchAttacksSince(maxId).stream().map(DBAttack::new)
+                .collect(Collectors.toList());
 
         Map<DBAttack, Double> attackInfraPctMembers = new HashMap<>();
-        Map<DBAttack, Double> attackInfraPctOthers = new HashMap<>();
         List<DBAttack> dbAttacks = new ArrayList<>();
+
+        List<DBAttack> dirtyCities = new LinkedList<>();
 
         long now = System.currentTimeMillis();
         for (DBAttack attack : newAttacks) {
+            if (runAlerts)
+            {
+                Locutus.imp().getNationDB().setNationActive(attack.attacker_nation_id, attack.epoch);
+                Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses(true);
+                Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses(false);
+                if (!attLosses.isEmpty()) {
+                    Locutus.imp().getNationDB().updateNationUnits(attack.attacker_nation_id, attack.epoch, attLosses);
+                }
+                if (!defLosses.isEmpty()) {
+                    Locutus.imp().getNationDB().updateNationUnits(attack.defender_nation_id, attack.epoch, defLosses);
+                }
+            }
+            if (attack.city_infra_before > 0 && attack.infra_destroyed > 0 && attack.city_cached != 0 && attack.attack_type != AttackType.VICTORY && attack.attack_type != AttackType.A_LOOT) {
+                double infra = attack.city_infra_before - attack.infra_destroyed;
+                Locutus.imp().getNationDB().setCityInfraFromAttack(attack.defender_nation_id, attack.city_cached, infra, attack.epoch);
+            }
+            if (attack.improvements_destroyed > 0 && attack.city_cached != 0) {
+                dirtyCities.add(attack);
+            }
             if (attack.epoch > now) {
                 attack.epoch = now;
             }
@@ -1432,17 +1394,8 @@ public class WarDB extends DBMainV2 {
                     if (defender != null && attack.infra_destroyed_value == 0) {
                         double pct = attack.infraPercent_cached;
 
-                        DBAttack existingAttack = null;//attackMap.get(attack.war_attack_id);
-                        if (existingAttack == null) {
-                            if (defender.getPosition() > 1) {
-                                attackInfraPctMembers.put(attack, pct);
-                            } else {
-                                attackInfraPctOthers.put(attack, pct);
-                            }
-                        } else {
-                            attack.infra_destroyed = existingAttack.infra_destroyed;
-                            attack.infra_destroyed_value = existingAttack.infra_destroyed_value;
-                            attack.city_infra_before = existingAttack.city_infra_before;
+                        if (runAlerts) {
+                            attackInfraPctMembers.put(attack, pct);
                         }
                     }
                 }
@@ -1452,46 +1405,35 @@ public class WarDB extends DBMainV2 {
             dbAttacks.add(attack);
         }
 
-        if (!attackInfraPctMembers.isEmpty() || !attackInfraPctOthers.isEmpty())
-        { // update infra
-            if (!attackInfraPctMembers.isEmpty()) {
-                attackInfraPctMembers.putAll(attackInfraPctOthers);
-                attackInfraPctOthers.clear();
+        if (!attackInfraPctMembers.isEmpty()) { // update infra
 
-                Map<Integer, Map<Integer, CityInfraLand>> cityInfraByNation = Locutus.imp().getNationDB().updateCities();
-                for (Map.Entry<DBAttack, Double> entry : attackInfraPctMembers.entrySet()) {
-                    DBAttack attack = entry.getKey();
-                    double pct = entry.getValue();
-                    Map<Integer, CityInfraLand> cities = cityInfraByNation.get(attack.defender_nation_id);
-                    if (cities == null || cities.isEmpty()) {
-                        attackInfraPctOthers.put(attack, pct);
-                        continue;
-                    }
+            // get infra before
+            for (Map.Entry<DBAttack, Double> entry : attackInfraPctMembers.entrySet()) {
+                DBAttack attack = entry.getKey();
+                double pct = entry.getValue();
+                Map<Integer, DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(attack.defender_nation_id);
+                if (cities != null && !cities.isEmpty()) {
                     attack.infra_destroyed = 0d;
-                    for (Map.Entry<Integer, CityInfraLand> cityEntry : cities.entrySet()) {
-                        CityInfraLand city = cityEntry.getValue();
+                    attack.infra_destroyed_value = 0d;
+                    for (DBCity city : cities.values()) {
                         double infraStart = city.infra;
                         double infraEnd = (city.infra) / (1 - pct);
-
                         attack.infra_destroyed += infraEnd - infraStart;
                         if (infraEnd > infraStart) {
                             attack.infra_destroyed_value += PnwUtil.calculateInfra(infraStart, infraEnd);
+                            Locutus.imp().getNationDB().setCityInfraFromAttack(attack.defender_nation_id, city.id, infraEnd, attack.epoch);
                         }
                     }
                 }
             }
+        }
 
-            for (Map.Entry<DBAttack, Double> entry : attackInfraPctOthers.entrySet()) {
-                DBAttack attack = entry.getKey();
-                double pct = entry.getValue();
-                DBNation defender = Locutus.imp().getNationDB().getNation(attack.defender_nation_id);
-                if (defender == null) continue;
-                int avgInfra = defender.getAvg_infra();
-                long totalInfra = avgInfra * defender.getCities();
-                attack.infra_destroyed = totalInfra * pct;
-                attack.infra_destroyed_value = PnwUtil.calculateInfra(avgInfra, avgInfra / (1d - pct)) * defender.getCities();
+        if (runAlerts) {
+            for (DBAttack attack : dirtyCities) {
+                Locutus.imp().getNationDB().markCityDirty(attack.defender_nation_id, attack.city_cached, attack.epoch);
             }
         }
+
 
         { // add to db
             for (DBAttack attack : dbAttacks) {

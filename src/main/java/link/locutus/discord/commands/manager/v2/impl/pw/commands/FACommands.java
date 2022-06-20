@@ -11,11 +11,8 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.PendingTreaty;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -46,9 +43,9 @@ import java.util.Set;
 public class FACommands {
     @Command(desc = "Generate a named coalition by the treaty web of an alliance")
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String generateSphere(@Me GuildDB db, String coalition, Alliance rootAlliance, @Default("80") int topX) {
+    public String generateSphere(@Me GuildDB db, String coalition, DBAlliance rootAlliance, @Default("80") int topX) {
         SphereGenerator sphereGen = new SphereGenerator(topX);
-        Map.Entry<Integer, List<Alliance>> sphere = sphereGen.getSphere(rootAlliance);
+        Map.Entry<Integer, List<DBAlliance>> sphere = sphereGen.getSphere(rootAlliance);
         if (sphere == null) {
             return "No sphere found for " + rootAlliance.getName();
         }
@@ -61,7 +58,7 @@ public class FACommands {
                 db.removeCoalition(id, coalition);
             }
         }
-        for (Alliance alliance : sphere.getValue()) {
+        for (DBAlliance alliance : sphere.getValue()) {
             db.addCoalition(alliance.getIdLong(), coalition);
         }
         return "Set Coalition: `" + coalition + "` to `" + StringMan.getString( sphere.getValue()) + "`";
@@ -70,7 +67,7 @@ public class FACommands {
     @Command(desc = "Send a treaty to an alliance")
     @IsAuthenticated
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String sendTreaty(@Me User user, @Me GuildDB db, Alliance alliance, TreatyType type, int days, @Default String message) {
+    public String sendTreaty(@Me User user, @Me GuildDB db, DBAlliance alliance, TreatyType type, int days, @Default String message) {
         if (message != null && !message.isEmpty() && !Roles.ADMIN.has(user, db.getGuild())) {
             return "Admin is required to send a treaty with a message";
         }
@@ -81,7 +78,7 @@ public class FACommands {
     @Command
     @IsAuthenticated
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String approveTreaty(@Me User user, @Me GuildDB db, Alliance alliance) {
+    public String approveTreaty(@Me User user, @Me GuildDB db, DBAlliance alliance) {
         Auth auth = db.getAuth();
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);
@@ -97,7 +94,7 @@ public class FACommands {
     @Command
     @IsAuthenticated
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String cancelTreaty(@Me User user, @Me DBNation me, @Me GuildDB db, Alliance alliance) {
+    public String cancelTreaty(@Me User user, @Me DBNation me, @Me GuildDB db, DBAlliance alliance) {
 
         Auth auth = db.getAuth();
         List<PendingTreaty> treaties = auth.getTreaties();
@@ -182,7 +179,7 @@ public class FACommands {
             if (aaOrGuild.isNation()) {
                 Integer aaId = Locutus.imp().getNationDB().getAllianceId(aaOrGuild.getName());
                 if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
-                aaOrGuild = new Alliance(aaId);
+                aaOrGuild = new DBAlliance(aaId);
             }
             db.addCoalition(aaOrGuild.getIdLong(), coalitionStr);
             response.append("Added " + aaOrGuild.getName() + " to " + coalitionStr).append("\n");
@@ -225,7 +222,7 @@ public class FACommands {
             if (aaOrGuild.isNation()) {
                 Integer aaId = Locutus.imp().getNationDB().getAllianceId(aaOrGuild.getName());
                 if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
-                aaOrGuild = new Alliance(aaId);
+                aaOrGuild = new DBAlliance(aaId);
             }
             db.removeCoalition(aaOrGuild.getIdLong(), coalitionStr);
             response.append("Removed " + aaOrGuild.getName() + " from " + coalitionStr).append("\n");
@@ -234,7 +231,7 @@ public class FACommands {
     }
 
     @Command
-    public String treaties(@Me MessageChannel channel, @Me GuildDB db, Set<Alliance> alliances, @Switch('f') boolean listExpired) {
+    public String treaties(@Me MessageChannel channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch('f') boolean listExpired) {
         StringBuilder response = new StringBuilder();
         if (alliances.size() == 1 && alliances.iterator().next().equals(db.getOrNull(GuildDB.Key.ALLIANCE_ID))) {
             Auth auth = db.getAuth(Rank.OFFICER.id);
@@ -248,7 +245,7 @@ public class FACommands {
             }
         }
         Set<Treaty> allTreaties = new LinkedHashSet<>();
-        for (Alliance alliance : alliances) {
+        for (DBAlliance alliance : alliances) {
             Map<Integer, Treaty> treaties = alliance.getTreaties();
 
             for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
@@ -314,7 +311,7 @@ public class FACommands {
             return "You must be an officer to create an embassy";
         }
 
-        String embassyName = nation.getAlliance() + "-" + nation.getAlliance_id();
+        String embassyName = nation.getAllianceName() + "-" + nation.getAlliance_id();
 
         TextChannel channel = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category));
         updateEmbassyPerms(channel, role, nationUser, true);

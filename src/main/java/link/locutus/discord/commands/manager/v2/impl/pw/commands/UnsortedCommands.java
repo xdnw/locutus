@@ -31,8 +31,8 @@ import link.locutus.discord.commands.trade.FindProducer;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -83,7 +83,7 @@ public class UnsortedCommands {
         PoliticsAndWarV2 api;
 
         if (nationOrAlliance.isAlliance()) {
-            Alliance alliance = nationOrAlliance.asAlliance();
+            DBAlliance alliance = nationOrAlliance.asAlliance();
             GuildDB otherDb = alliance.getGuildDB();
             if (otherDb == null) return "No guild found for " + alliance;
             if (!Roles.ECON_LOW_GOV.has(author, otherDb.getGuild())) {
@@ -308,7 +308,7 @@ public class UnsortedCommands {
                 String infra = n.toMarkdown(false, false, true);
 
                 StringBuilder response = new StringBuilder();
-                response.append(n.getNation()).append(" | ").append(n.getAlliance()).append(" | ").append(active);
+                response.append(n.getNation()).append(" | ").append(n.getAllianceName()).append(" | ").append(active);
                 if (user != null) {
                     response.append('\n').append(user.getDiscordName()).append(" | ").append("`<@!").append(user.getDiscordId()).append(">`");
                 }

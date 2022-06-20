@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -87,14 +87,14 @@ public class MoneyTrades extends Command {
             String name = PnwUtil.getName(clientId, false);
             if (flags.contains('a')) {
                 response.append("\n**" + name);
-                if (client != null) response.append(" | " + client.getAlliance());
+                if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
                 response.append("```" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + url + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit```");
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {
-                    response.append(String.format("%16s", client.getAlliance()));
+                    response.append(String.format("%16s", client.getAllianceName()));
                 }
                 response.append(String.format("%16s", PnwUtil.resourcesToString(entry.getValue())))
                         .append("```");

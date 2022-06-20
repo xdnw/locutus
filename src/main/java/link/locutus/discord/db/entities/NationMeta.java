@@ -1,6 +1,5 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.OnlineStatus;

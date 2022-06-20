@@ -12,7 +12,7 @@ import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.CounterType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.TimeUtil;

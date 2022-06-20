@@ -2,8 +2,7 @@ package link.locutus.discord.util.update;
 
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.event.AllianceCreateEvent;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;

@@ -6,11 +6,10 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceMetric;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceMetric;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceMetricDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
-import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.db.entities.DBAlliance;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -19,11 +18,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public class AlliancePlaceholders extends Placeholders<Alliance> {
-    private Map<String, AllianceInstanceMetric> customMetrics = new HashMap<>();
+public class AlliancePlaceholders extends Placeholders<DBAlliance> {
+    private Map<String, AllianceInstanceAttribute> customMetrics = new HashMap<>();
 
     public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
-        super(Alliance.class, new Alliance(0), store, validators, permisser);
+        super(DBAlliance.class, new DBAlliance(0), store, validators, permisser);
     }
 
 //    public <T> AllianceInstanceMetric addMetric(String name, String desc, Class<T> type, Function<Alliance, T> func) {
@@ -31,28 +30,28 @@ public class AlliancePlaceholders extends Placeholders<Alliance> {
 //        customMetrics.put(name, metric);
 //    }
 
-    public List<AllianceInstanceMetric> getMetrics(ValueStore store) {
-        List<AllianceInstanceMetric> result = new ArrayList<>();
+    public List<AllianceInstanceAttribute> getMetrics(ValueStore store) {
+        List<AllianceInstanceAttribute> result = new ArrayList<>();
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
-            Map.Entry<Type, Function<Alliance, Object>> typeFunction = getPlaceholderFunction(store, id);
+            Map.Entry<Type, Function<DBAlliance, Object>> typeFunction = getPlaceholderFunction(store, id);
             if (typeFunction == null) continue;
 
-            AllianceInstanceMetric metric = new AllianceInstanceMetric(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getKey(), typeFunction.getValue());
+            AllianceInstanceAttribute metric = new AllianceInstanceAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getKey(), typeFunction.getValue());
             result.add(metric);
         }
         return result;
     }
 
-    public AllianceInstanceMetricDouble getMetricDouble(ValueStore store, String id) {
+    public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id) {
         return getMetricDouble(store, id, false);
 
     }
 
-    public AllianceInstanceMetricDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
+    public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
         ParametricCallable cmd = get(id);
         if (cmd == null) return null;
-        Map.Entry<Type, Function<Alliance, Object>> typeFunction;
+        Map.Entry<Type, Function<DBAlliance, Object>> typeFunction;
         try {
             typeFunction = getPlaceholderFunction(store, id);
         } catch (CommandUsageException ignore) {
@@ -65,8 +64,8 @@ public class AlliancePlaceholders extends Placeholders<Alliance> {
             return null;
         }
 
-        Function<Alliance, Object> genericFunc = typeFunction.getValue();
-        Function<Alliance, Double> func;
+        Function<DBAlliance, Object> genericFunc = typeFunction.getValue();
+        Function<DBAlliance, Double> func;
         Type type = typeFunction.getKey();
         if (type == int.class || type == Integer.class) {
             func = aa -> ((Integer) genericFunc.apply(aa)).doubleValue();
@@ -83,21 +82,21 @@ public class AlliancePlaceholders extends Placeholders<Alliance> {
         } else {
             return null;
         }
-        return new AllianceInstanceMetricDouble(cmd.getPrimaryCommandId(), cmd.simpleDesc(), func);
+        return new AllianceInstanceAttributeDouble(cmd.getPrimaryCommandId(), cmd.simpleDesc(), func);
     }
 
-    public List<AllianceInstanceMetricDouble> getMetricsDouble(ValueStore store) {
-        List<AllianceInstanceMetricDouble> result = new ArrayList<>();
+    public List<AllianceInstanceAttributeDouble> getMetricsDouble(ValueStore store) {
+        List<AllianceInstanceAttributeDouble> result = new ArrayList<>();
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
-            AllianceInstanceMetricDouble metric = getMetricDouble(store, id, true);
+            AllianceInstanceAttributeDouble metric = getMetricDouble(store, id, true);
             if (metric != null) {
                 result.add(metric);
             }
         }
-        for (Map.Entry<String, AllianceInstanceMetric> entry : customMetrics.entrySet()) {
+        for (Map.Entry<String, AllianceInstanceAttribute> entry : customMetrics.entrySet()) {
             String id = entry.getKey();
-            AllianceInstanceMetricDouble metric = getMetricDouble(store, id, true);
+            AllianceInstanceAttributeDouble metric = getMetricDouble(store, id, true);
             if (metric != null) {
                 result.add(metric);
             }

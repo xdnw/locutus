@@ -9,22 +9,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.Announcement;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBLoan;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.DiscordMeta;
-import link.locutus.discord.db.entities.InterviewMessage;
-import link.locutus.discord.db.entities.MMRMatcher;
-import link.locutus.discord.db.entities.NationFilterString;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.util.RateLimitUtil;
@@ -516,7 +504,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     @Override
     public String getName() {
-        Alliance aa = getAlliance();
+        DBAlliance aa = getAlliance();
         return aa != null ? aa.getName() : guild.getName() + "/" + guild.getIdLong();
     }
 
@@ -1599,9 +1587,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //        return !nations.isEmpty();
     }
 
-    public Alliance getAlliance() {
+    public DBAlliance getAlliance() {
         if (isValidAlliance()) {
-            return new Alliance((Integer) getOrNull(Key.ALLIANCE_ID));
+            return new DBAlliance((Integer) getOrNull(Key.ALLIANCE_ID));
         }
         return null;
     }
@@ -1803,6 +1791,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         throw new IllegalArgumentException("Key was rejected: " + e.getMessage());
                     }
                 }
+
+
                 return value;
             }
 
@@ -2332,7 +2322,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        DELETION_ALERT_CHANNEL() {
+        DELETION_ALERT_CHANNEL(false, null, CommandCategory.GAME_INFO_AND_TOOLS) {
             @Override
             public boolean allowed(GuildDB db) {
                 return db.getPermission(BankAlerts.class) > 0;
@@ -2470,7 +2460,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        DO_NOT_RAID_TOP_X() {
+        DO_NOT_RAID_TOP_X(true, ALLIANCE_ID, CommandCategory.FOREIGN_AFFAIRS) {
             @Override
             public String validate(GuildDB db, String value) {
                 return Integer.parseInt(value) + "";
@@ -2805,7 +2795,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (db.isWhitelisted()) return true;
                 Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
                 if (aaId == null) return false;
-                return new Alliance(aaId).getRank() <= 25;
+                return new DBAlliance(aaId).getRank() <= 25;
             }
 
             @Override
@@ -2820,7 +2810,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (db.isWhitelisted()) return true;
                 Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
                 if (aaId == null) return false;
-                return new Alliance(aaId).getRank() <= 25;
+                return new DBAlliance(aaId).getRank() <= 25;
             }
 
             @Override
@@ -2855,7 +2845,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (db.isWhitelisted()) return true;
                 Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
                 if (aaId == null) return false;
-                return new Alliance(aaId).getRank() <= 25;
+                return new DBAlliance(aaId).getRank() <= 25;
             }
         },
 

@@ -1,7 +1,7 @@
 package link.locutus.discord.util.task.balance;
 
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.FileUtil;
 import org.jsoup.Jsoup;

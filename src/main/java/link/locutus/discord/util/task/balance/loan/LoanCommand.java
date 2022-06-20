@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBLoan;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -127,7 +127,7 @@ public class LoanCommand extends Command {
 
         DBNation nation = Locutus.imp().getNationDB().getNation(loan.nationId);
         if (nation != null) {
-            body.append("\n**Nation**: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + " | " + MarkupUtil.markdownUrl(nation.getAlliance(), nation.getAllianceUrl()));
+            body.append("\n**Nation**: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + " | " + MarkupUtil.markdownUrl(nation.getAllianceName(), nation.getAllianceUrl()));
         } else {
             body.append("\n**Nation**: ~~<DELETED>~~");
         }

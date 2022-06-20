@@ -4,8 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -73,14 +73,14 @@ public class AllianceAttackTypeRanking extends Command {
             }
         }
 
-        Set<Alliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, Integer.parseInt(args.get(3)));
+        Set<DBAlliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, Integer.parseInt(args.get(3)));
         Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(2));
         if (alliances == null) return "Invalid alliances: `" + args.get(2) + "`";
 
-        SummedMapRankBuilder<Alliance, Double> builder = new SummedMapRankBuilder<>();
+        SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>();
 
         for (Map.Entry<Integer, Integer> entry : attackOfType.entrySet()) {
-            Alliance aa = new Alliance(entry.getKey());
+            DBAlliance aa = new DBAlliance(entry.getKey());
 
             if (!alliances.contains(aa.getAlliance_id()) || !topAlliances.contains(aa)) continue;
 

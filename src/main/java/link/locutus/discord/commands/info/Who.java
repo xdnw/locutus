@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.war.SpyCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -194,7 +194,7 @@ public class Who extends Command {
                 StringBuilder entry = new StringBuilder();
                 entry.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                         .append(" | " + String.format("%16s", nation.getNation()))
-                        .append(" | " + String.format("%16s", nation.getAlliance()))
+                        .append(" | " + String.format("%16s", nation.getAllianceName()))
                         .append("\n```")
 //                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
                         .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")

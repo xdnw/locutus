@@ -7,20 +7,11 @@ import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.event.*;
-import link.locutus.discord.event.AllianceCreateEvent;
-import link.locutus.discord.event.NationActiveEvent120;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.event.NationBlockadedEvent;
-import link.locutus.discord.event.NationBuyCityEvent;
-import link.locutus.discord.event.NationChangePositionEvent;
-import link.locutus.discord.event.NationKickedFromAllianceEvent;
+import link.locutus.discord.event.nation.NationChangePositionEvent;
 import link.locutus.discord.event.NationUnblockadedEvent;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.AuditType;
@@ -30,7 +21,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.trade.Offer;
@@ -44,7 +34,6 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.event.NationActiveEvent5;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -290,7 +279,7 @@ public class NationUpdateProcessor implements Runnable {
                     if (previous != null && previous + 2 >= active) continue;
                     ACTIVITY_ALERTS.put(aaId, active);
 
-                    Alliance alliance = new Alliance(aaId);
+                    DBAlliance alliance = new DBAlliance(aaId);
                     String title = alliance.getName() + " is " + MathMan.format(100d * active / members) + "% online";
                     StringBuilder body = new StringBuilder();
                     body.append(alliance.getMarkdownUrl()).append("\n");
@@ -395,7 +384,7 @@ public class NationUpdateProcessor implements Runnable {
         if (cache.isEmpty()) return;
 
         Map<Integer, String> previousAAs = new HashMap<>();
-        for (DBNation nation : cache.values()) previousAAs.put(nation.getAlliance_id(), nation.getAlliance());
+        for (DBNation nation : cache.values()) previousAAs.put(nation.getAlliance_id(), nation.getAllianceName());
 
         if (previousAAs.isEmpty()) return;
 
@@ -414,7 +403,7 @@ public class NationUpdateProcessor implements Runnable {
             String name = null;
             for (DBNation value : update.values()) {
                 if (value.getAlliance_id() == aaId) {
-                    name = value.getAlliance();
+                    name = value.getAllianceName();
                     members.add(value);
                 }
             }
@@ -536,11 +525,11 @@ public class NationUpdateProcessor implements Runnable {
         checkKick(previous, current);
 
         if (current != null && !current.hasUnsetMil() && type == UpdateType.DONE && current.getActive_m() < 60 && current.getActive_m() > 15) {
-            if (Math.abs(Math.round(current.estimateScore(true)) - Math.round(current.getScore())) > 19) {
+            if (Math.abs(Math.round(current.estimateScore()) - Math.round(current.getScore())) > 19) {
                 if (projectUpdateCache.getOrDefault(current.getNation_id(), 0) == 1) {
                     projectUpdateCache.put(current.getNation_id(), 2);
                     current.updateProjects();
-                    boolean incorrect = Math.abs(Math.round(current.estimateScore(true)) - Math.round(current.getScore())) > 19;
+                    boolean incorrect = Math.abs(Math.round(current.estimateScore()) - Math.round(current.getScore())) > 19;
                 } else {
                     projectUpdateCache.put(current.getNation_id(), 1);
                 }
@@ -643,19 +632,19 @@ public class NationUpdateProcessor implements Runnable {
                 boolean leftVMBeige = false;
                 String title;
                 if (previous.isBeige() && !current.isBeige() && current.getActive_m() < 10000) {
-                    title = "Left Beige: " + current.getNation() + " | " + current.getAlliance();
+                    title = "Left Beige: " + current.getNation() + " | " + current.getAllianceName();
                     leftVMBeige = true;
                 } else if (previous.getVm_turns() > 0 && current.getVm_turns() == 0) {
-                    title = "Left VM: " + current.getNation() + " | " + current.getAlliance();
+                    title = "Left VM: " + current.getNation() + " | " + current.getAllianceName();
                     leftVMBeige = true;
                 } else if (previous.getActive_m() <= 10080 && current.getActive_m() > 10080) {
-                    title = "Inactive: " + current.getNation() + " | " + current.getAlliance();
+                    title = "Inactive: " + current.getNation() + " | " + current.getAllianceName();
                     leftVMBeige = true;
                 } else if (previous.getAlliance_id() != 0 && current.getAlliance_id() == 0 && current.getActive_m() > 1440) {
-                    title = "Removed: " + current.getNation() + " | " + current.getAlliance();
+                    title = "Removed: " + current.getNation() + " | " + current.getAllianceName();
                     leftVMBeige = true;
                 } else if (previous.getDef() >= 3 && current.getDef() < 3 && !current.isBeige()) {
-                    title = "Unslotted: " + current.getNation() + " | " + current.getAlliance();
+                    title = "Unslotted: " + current.getNation() + " | " + current.getAllianceName();
 //                    leftVMBeige = true;
                 } else {
                     title = null;
@@ -824,10 +813,10 @@ public class NationUpdateProcessor implements Runnable {
 
     private static void checkOfficerLeave(DBNation previous, DBNation current) {
         if (current == null || previous == null || previous.getPosition() < Rank.OFFICER.id || previous.getAlliance_id() == current.getAlliance_id() || current.getActive_m() > 4880) return;
-        Alliance alliance = new Alliance(previous.getAlliance_id());
+        DBAlliance alliance = new DBAlliance(previous.getAlliance_id());
 
         if (alliance.getRank() < 50) {
-            String title = current.getNation() + " (" + Rank.byId(previous.getPosition()) + ") leaves " + previous.getAlliance();
+            String title = current.getNation() + " (" + Rank.byId(previous.getPosition()) + ") leaves " + previous.getAllianceName();
             String body = current.toEmbedString(false);
             AlertUtil.forEachChannel(f -> true, GuildDB.Key.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
@@ -840,9 +829,9 @@ public class NationUpdateProcessor implements Runnable {
 
     private static void checkOfficerDelete(DBNation previous, DBNation current) {
         if (current != null || previous == null || previous.getPosition() < Rank.OFFICER.id || current.getActive_m() > 10000) return;
-        Alliance alliance = new Alliance(previous.getAlliance_id());
+        DBAlliance alliance = new DBAlliance(previous.getAlliance_id());
         if (alliance.getRank() < 50) {
-            String title = previous.getNation() + " (" + Rank.byId(previous.getPosition()) + ") leaves " + previous.getAlliance();
+            String title = previous.getNation() + " (" + Rank.byId(previous.getPosition()) + ") leaves " + previous.getAllianceName();
             String body = previous.toEmbedString(false);
             AlertUtil.forEachChannel(f -> true, GuildDB.Key.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
@@ -855,7 +844,7 @@ public class NationUpdateProcessor implements Runnable {
 
     private static void checkExodus(DBNation previous, DBNation current) {
         if (current == null || previous == null || previous.getAlliance_id() == current.getAlliance_id() || current.getActive_m() > 4880 || previous.getAlliance_id() == 0 || previous.getPosition() == 1) return;
-        Alliance alliance = new Alliance(previous.getAlliance_id());
+        DBAlliance alliance = new DBAlliance(previous.getAlliance_id());
         if (alliance.getRank() > 120) return;
 
         List<String> departureInfo = new ArrayList<>();
@@ -961,7 +950,7 @@ public class NationUpdateProcessor implements Runnable {
             }
 
             String type = current.getVm_turns() != 0 && previous.getVm_turns() == 0 ? "VM" : "DELETION";
-            String title = type + " | " + current.getNation() + " | " + current.getAlliance();
+            String title = type + " | " + current.getNation() + " | " + current.getAllianceName();
 
             try {
                 for (Map.Entry<Long, GuildDB> entry : Locutus.imp().getGuildDatabases().entrySet()) {
@@ -1024,8 +1013,8 @@ public class NationUpdateProcessor implements Runnable {
         if (previous.getPosition() == current.getPosition() && previous.getAlliance_id() == current.getAlliance_id()) return;
         if (previous.getPosition() != Rank.LEADER.id && current.getPosition() != Rank.LEADER.id) return;
 
-        Alliance aa1 = new Alliance(previous.getAlliance_id());
-        Alliance aa2 = new Alliance(current.getAlliance_id());
+        DBAlliance aa1 = new DBAlliance(previous.getAlliance_id());
+        DBAlliance aa2 = new DBAlliance(current.getAlliance_id());
 
         boolean isRelevant = (previous.getAlliance_id() != 0 && aa1.getRank() < 80)
                 || (current.getAlliance_id() != 0 && current.getAlliance_id() != previous.getAlliance_id() && aa2.getRank() < 80);
@@ -1068,7 +1057,7 @@ public class NationUpdateProcessor implements Runnable {
             AlertUtil.forEachChannel(BankAlerts.class, GuildDB.Key.DELETION_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB db) {
-                    String title = "Detected " + finalType + ": " + previous.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAlliance();
+                    String title = "Detected " + finalType + ": " + previous.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAllianceName();
                     AlertUtil.displayChannel(title, finalBody, channel.getIdLong());
                 }
             });

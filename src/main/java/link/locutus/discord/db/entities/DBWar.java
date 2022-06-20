@@ -2,7 +2,6 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -13,7 +12,6 @@ import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv1.enums.AttackType;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -58,7 +56,7 @@ public class DBWar {
             String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
             body.append(typeStr);
             body.append("`" + enemy.getNation() + "`")
-                    .append(" | ").append(enemy.getAlliance()).append(":");
+                    .append(" | ").append(enemy.getAllianceName()).append(":");
         }
         if (loot && isAttacker) {
             double lootValue = enemy.lootTotal();

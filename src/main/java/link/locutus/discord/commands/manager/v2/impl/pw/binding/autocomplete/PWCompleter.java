@@ -9,21 +9,17 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetric;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.SpyCount;
@@ -82,7 +78,7 @@ public class PWCompleter extends BindingHelper {
         if (input.isEmpty()) return null;
 
         List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
-        options.addAll(Locutus.imp().getNationDB().getAlliances().keySet().stream().map(Alliance::new).collect(Collectors.toList()));
+        options.addAll(Locutus.imp().getNationDB().getAlliances().keySet().stream().map((Integer t) -> new DBAlliance(allianceId, dateCreated, name, acronym, color, flag, forum_link, discord_link, wiki_link)).collect(Collectors.toList()));
 
         options = StringMan.getClosest(input, options, new Function<NationOrAlliance, String>() {
             @Override
@@ -124,11 +120,11 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={NationMetricDouble.class})
+    @Binding(types={NationAttributeDouble.class})
     public List<String> NationPlaceholder(ArgumentStack stack, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         List<String> options = placeholders.getMetricsDouble(stack.getStore())
-                .stream().map(NationMetric::getName).collect(Collectors.toList());
+                .stream().map(NationAttribute::getName).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 
@@ -139,7 +135,7 @@ public class PWCompleter extends BindingHelper {
     }
 
     public final List<ResourceType> RESOURCE_LIST_KEY = null;
-    public final Set<Alliance> ALLIANCES_KEY = null;
+    public final Set<DBAlliance> ALLIANCES_KEY = null;
     public final Set<WarStatus> WARSTATUSES_KEY = null;
     public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
     public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
@@ -149,7 +145,7 @@ public class PWCompleter extends BindingHelper {
     public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
     public final Set<DBNation> NATIONS_KEY = null;
     public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
-    public final Set<NationMetricDouble> NATION_METRIC_KEY = null;
+    public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
 
     {
         try {

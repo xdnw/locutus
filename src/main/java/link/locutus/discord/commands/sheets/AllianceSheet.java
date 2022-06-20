@@ -6,8 +6,8 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -81,7 +81,7 @@ public class AllianceSheet extends Command implements Noformat {
         for (Map.Entry<Integer, DBNation> entry : totals.entrySet()) {
             SAllianceContainer alliance = alliances.get(entry.getKey());
             if (alliance == null) continue;
-            Alliance dbAlliance = new Alliance(entry.getKey());
+            DBAlliance dbAlliance = new DBAlliance(entry.getKey());
 
             DBNation nation = entry.getValue();
             for (int i = 1; i < args.size(); i++) {
@@ -96,7 +96,7 @@ public class AllianceSheet extends Command implements Noformat {
                     }
                 }
 
-                for (Field field : Alliance.class.getDeclaredFields()) {
+                for (Field field : DBAlliance.class.getDeclaredFields()) {
                     String placeholder = "{" + field.getName() + "}";
                     if (arg.contains(placeholder)) {
                         field.setAccessible(true);

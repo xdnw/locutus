@@ -18,7 +18,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.Transfer;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -583,14 +583,14 @@ public class TradeCommands {
             String name = PnwUtil.getName(clientId, false);
             if (addBalance) {
                 response.append("\n**" + name);
-                if (client != null) response.append(" | " + client.getAlliance());
+                if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
                 response.append("```" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + url + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit```");
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {
-                    response.append(String.format("%16s", client.getAlliance()));
+                    response.append(String.format("%16s", client.getAllianceName()));
                 }
                 response.append(String.format("%16s", PnwUtil.resourcesToString(entry.getValue())))
                         .append("```");

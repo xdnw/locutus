@@ -4,9 +4,9 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -47,12 +47,10 @@ public class OffshoreInstance {
     private final int allianceId;
     private final Set<Long> offshoreAAs;
 
-    private final PoliticsAndWarV2 api;
     private final Auth auth;
 
     public OffshoreInstance(Auth auth, GuildDB db, int allianceId) {
         this.auth = auth;
-        this.api = db.getApi(false);
         this.offshoreAAs = new LinkedHashSet<>(db.getCoalitionRaw(Coalition.OFFSHORE));
         offshoreAAs.add((long) allianceId);
         this.allianceId = allianceId;
@@ -63,7 +61,7 @@ public class OffshoreInstance {
     }
 
     public PoliticsAndWarV2 getApi() {
-        return api;
+        return getGuildDB().getApi(false);
     }
 
     public Auth getAuth() {
@@ -92,7 +90,7 @@ public class OffshoreInstance {
 
     public synchronized boolean sync(Long latest, boolean checkLast) {
         try {
-            AllianceBankContainer funds = api.getBank(allianceId).getAllianceBanks().get(0);
+            AllianceBankContainer funds = getApi().getBank(allianceId).getAllianceBanks().get(0);
             Map<ResourceType, Double> totals = PnwUtil.adapt(funds);
             if (lastFunds != null && checkLast) {
                 if (lastFunds.equals(totals)) return true;
@@ -348,7 +346,7 @@ public class OffshoreInstance {
 //        }
 //    }
 
-    public Map<ResourceType, Double> getOffshoredBalance(Alliance alliance) {
+    public Map<ResourceType, Double> getOffshoredBalance(DBAlliance alliance) {
         GuildDB db = alliance.getGuildDB();
         if (db == null) return new HashMap<>();
         if (db.getOffshore() != this) return new HashMap<>();
@@ -569,8 +567,8 @@ public class OffshoreInstance {
         synchronized (BANK_LOCK) {
             Map.Entry<TransferStatus, String> result = transfer(nation, transfer, note);
             if (result.getKey() == TransferStatus.MULTI && nation.getPosition() > 1) {
-                Alliance alliance = new Alliance(nation);
-                GuildDB db = alliance.getGuildDB();
+                DBAlliance alliance = nation.getAlliance();
+                GuildDB db = alliance == null ? null : alliance.getGuildDB();
                 if (db != null) {
                     OffshoreInstance bank = db.getHandler().getBank();
 
@@ -636,11 +634,11 @@ public class OffshoreInstance {
         }
     }
 
-    public Map.Entry<TransferStatus, String> transfer(Alliance alliance, Map<ResourceType, Double> transfer) {
+    public Map.Entry<TransferStatus, String> transfer(DBAlliance alliance, Map<ResourceType, Double> transfer) {
         return transfer(alliance, transfer, "#deposit");
     }
 
-    public Map.Entry<TransferStatus, String> transfer(Alliance alliance, Map<ResourceType, Double> transfer, String note) {
+    public Map.Entry<TransferStatus, String> transfer(DBAlliance alliance, Map<ResourceType, Double> transfer, String note) {
         if (!TimeUtil.checkTurnChange()) return new AbstractMap.SimpleEntry<>(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
         if (!alliance.exists()) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "The alliance does not exist");
@@ -702,8 +700,8 @@ public class OffshoreInstance {
         return Locutus.imp().getGuildDBByAA(allianceId);
     }
 
-    public Alliance getAlliance() {
-        return new Alliance(allianceId);
+    public DBAlliance getAlliance() {
+        return Locutus.imp().getNationDB().getAlliance(allianceId);
     }
 
     public enum TransferStatus {

@@ -17,4 +17,8 @@ public enum  NationColor {
     RED,
     WHITE,
     YELLOW,
+
+    ;
+
+    public static final NationColor[] values = values();
 }

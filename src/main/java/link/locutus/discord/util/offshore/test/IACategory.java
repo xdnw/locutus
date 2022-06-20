@@ -3,14 +3,8 @@ package link.locutus.discord.util.offshore.test;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.CounterType;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.InterviewMessage;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
@@ -60,7 +54,7 @@ import java.util.stream.Collectors;
 
 public class IACategory {
     private final GuildDB db;
-    private final Alliance alliance;
+    private final DBAlliance alliance;
     private final Map<DBNation, IAChannel> channelMap = new HashMap<>();
     private final Guild guild;
     private MessageChannel output;
@@ -92,7 +86,7 @@ public class IACategory {
             this.output = null;
         }
         this.guild = db.getGuild();
-        this.alliance = new Alliance((Integer) db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
+        this.alliance = new DBAlliance((Integer) db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
         fetchChannels();
     }
 

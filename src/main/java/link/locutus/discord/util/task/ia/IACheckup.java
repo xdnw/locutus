@@ -5,15 +5,7 @@ import link.locutus.discord.commands.sheets.ROI;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.MMRMatcher;
-import link.locutus.discord.db.entities.NationFilterString;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -1213,7 +1205,7 @@ public class IACheckup {
             allianceColor = NationColor.valueOf(alliance.getColor().toUpperCase());
         }
         else {
-            List<DBNation> members = new link.locutus.discord.pnw.Alliance(nation).getNations(true, 1440, true);
+            List<DBNation> members = new DBAlliance(nation).getNations(true, 1440, true);
             Map<NationColor, Integer> mostCommon = new HashMap<>();
             for (DBNation member : members) {
                 if (member.isBeige() || member.isGray()) continue;

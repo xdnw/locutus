@@ -1,15 +1,8 @@
 package link.locutus.discord.apiv3;
 
-import com.ptsmods.mysqlw.query.QueryCondition;
-import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.WarAttacks;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BaseballDB;
+import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
@@ -29,13 +22,23 @@ import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.time.Instant;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class PoliticsAndWarV3 {
+    public static int NATIONS_PER_PAGE = 500;
+    public static int CITIES_PER_PAGE = 500;
+    public static int TREATIES_PER_PAGE = 1000;
+    public static int BANKRECS_PER_PAGE = 1000;
+    public static int ALLIANCES_PER_PAGE = 100;
+    public static int ATTACKS_PER_PAGE = 1000;
+    public static int WARS_PER_PAGE = 1000;
+    public static int TRADES_PER_PAGE = 1000;
+    public static int BOUNTIES_PER_PAGE = 1000;
+    public static int BASEBALL_PER_PAGE = 1000;
+
     private final String endpoint;
     private final RestTemplate restTemplate;
     private final ApiKeyPool pool;
@@ -65,10 +68,52 @@ public class PoliticsAndWarV3 {
         THROW
     }
 
+    private static class RateLimit {
+        public int limit;
+        public int intervalMs;
+        public long resetAfterMs;
+        public int remaining;
+        public long resetMs;
+
+        public void reset(long now) {
+            if (now > resetMs) {
+                remaining = limit;
+
+                long remainder = (now - resetMs) % intervalMs;
+
+                resetAfterMs = intervalMs - remainder;
+                resetMs = now + resetAfterMs;
+            }
+        }
+    }
+
+    private static final RateLimit rateLimitGlobal = new RateLimit();
+
     public <T> T readTemplate(GraphQLRequest graphQLRequest, Class<T> resultBody) {
+        if (rateLimitGlobal.intervalMs != 0) {
+            synchronized (rateLimitGlobal) {
+                long now = System.currentTimeMillis();
+                rateLimitGlobal.reset(now);
+
+                if (rateLimitGlobal.remaining <= 0) {
+                    long sleepMs = rateLimitGlobal.resetMs - now;
+                    if (sleepMs > 0) {
+                        try {
+                            Thread.sleep(sleepMs + 1000);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+                rateLimitGlobal.reset(System.currentTimeMillis());
+                rateLimitGlobal.remaining--;
+            }
+        }
+
         ResponseEntity<T> exchange = null;
 
-        int j = 0;
+        int badKey = 0;
+        int backOff = 0;
         while (true) {
             String key = pool.getNextApiKey();
             String url = getUrl(key);
@@ -78,12 +123,41 @@ public class PoliticsAndWarV3 {
                         httpEntity(graphQLRequest),
                         resultBody);
                 break;
+            } catch (HttpClientErrorException.TooManyRequests e) {
+                try {
+                    Thread.sleep((long) (60000 * Math.pow(2, backOff)));
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+                backOff++;
             } catch (HttpClientErrorException.Unauthorized e) {
-                if (j++ > 4) {
+                if (badKey++ > 4) {
                     e.printStackTrace();
                     throw e;
                 }
                 pool.removeKey(key);
+            } catch (HttpClientErrorException e) {
+                AlertUtil.error(e.getMessage(), e);
+                e.printStackTrace();
+                throw e;
+            }
+        }
+        HttpHeaders header = exchange.getHeaders();
+        synchronized (rateLimitGlobal) {
+            if (header.containsKey("X-RateLimit-Reset-After")) {
+                rateLimitGlobal.resetAfterMs = Long.parseLong(header.get("X-RateLimit-Reset-After").get(0)) * 1000L;
+            }
+            if (header.containsKey("X-RateLimit-Limit")) {
+                rateLimitGlobal.limit = Integer.parseInt(header.get("X-RateLimit-Limit").get(0));
+            }
+            if (header.containsKey("X-RateLimit-Remaining")) {
+                rateLimitGlobal.remaining = Integer.parseInt(header.get("X-RateLimit-Remaining").get(0));
+            }
+            if (header.containsKey("X-RateLimit-Reset")) {
+                rateLimitGlobal.resetMs = Long.parseLong(header.get("X-RateLimit-Reset").get(0)) * 1000L;
+            }
+            if (header.containsKey("X-RateLimit-Interval")) {
+                rateLimitGlobal.intervalMs = Integer.parseInt(header.get("X-RateLimit-Interval").get(0)) * 1000;
             }
         }
         T result = exchange.getBody();
@@ -182,7 +256,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<BBGame> fetchBaseballGames(Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query) {
-        return fetchBaseballGames(1000, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchBaseballGames(BOUNTIES_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
     }
 
     public List<BBGame> fetchBaseballGames(int perPage, Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<BBGame> recResults) {
@@ -221,8 +295,52 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
+    public List<WarAttack> fetchAttacksSince(Integer maxId) {
+        return fetchAttacks(r -> {
+            if (maxId != null) r.setMin_id(maxId + 1);
+            QueryWarattacksOrderByOrderByClause order = QueryWarattacksOrderByOrderByClause.builder()
+                    .setColumn(QueryWarattacksOrderByColumn.ID)
+                    .setOrder(SortOrder.ASC)
+                    .build();
+            r.setOrderBy(List.of(order));
+        });
+    }
+
+    public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter) {
+        return fetchAttacks(ATTACKS_PER_PAGE, filter, new Consumer<WarAttackResponseProjection>() {
+            @Override
+            public void accept(WarAttackResponseProjection p) {
+                p.id();
+                p.date();
+                p.war_id();
+                p.att_id();
+                p.def_id();
+                p.type();
+                p.victor();
+                p.success();
+                p.attcas1();
+                p.attcas2();
+                p.defcas1();
+                p.defcas2();
+                p.aircraft_killed_by_tanks();
+                p.infra_destroyed();
+                p.improvements_lost();
+                p.money_stolen();
+                p.loot_info();
+                p.city_infra_before();
+                p.infra_destroyed_value();
+                p.att_gas_used();
+                p.att_mun_used();
+                p.def_gas_used();
+                p.def_mun_used();
+
+                p.city_id();
+            }
+        }, f -> ErrorResponse.EXIT, f -> true);
+    }
+
     public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query) {
-        return fetchAttacks(1000, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchAttacks(ATTACKS_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
     }
 
     public List<WarAttack> fetchAttacks(int perPage, Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<WarAttack> recResults) {
@@ -261,8 +379,156 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
+    public List<War> fetchWars(int perPage, Consumer<WarsQueryRequest> filter, Consumer<WarResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<War> recResults) {
+        List<War> allResults = new LinkedList<>();
+
+        handlePagination(page -> {
+                    WarsQueryRequest request = new WarsQueryRequest();
+                    if (filter != null) filter.accept(request);
+                    request.setFirst(perPage);
+                    request.setPage(page);
+
+                    WarResponseProjection respProj = new WarResponseProjection();
+                    query.accept(respProj);
+
+                    WarPaginatorResponseProjection pagRespProj = new WarPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(respProj);
+
+                    return new GraphQLRequest(request, pagRespProj);
+                }, errorBehavior, WarsQueryResponse.class,
+                response -> {
+                    WarPaginator paginator = response.wars();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    WarPaginator paginator = result.wars();
+                    if (paginator != null) {
+                        List<War> txs = paginator.getData();
+                        for (War tx : txs) {
+                            if (recResults.test(tx)) allResults.add(tx);
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
+    public List<City> fetchCitiesWithInfo(Consumer<CitiesQueryRequest> filter, boolean cityInfo) {
+        return fetchCities(filter, new Consumer<CityResponseProjection>() {
+            @Override
+            public void accept(CityResponseProjection proj) {
+                proj.nation_id();
+                proj.id();
+                proj.infrastructure();
+
+                if (cityInfo) {
+                    proj.date();
+                    proj.land();
+                    proj.powered();
+
+                    proj.oil_power();
+                    proj.wind_power();
+                    proj.coal_power();
+                    proj.nuclear_power();
+                    proj.coal_mine();
+                    proj.lead_mine();
+                    proj.iron_mine();
+                    proj.bauxite_mine();
+                    proj.oil_well();
+                    proj.uranium_mine();
+                    proj.farm();
+                    proj.police_station();
+                    proj.hospital();
+                    proj.recycling_center();
+                    proj.subway();
+                    proj.supermarket();
+                    proj.bank();
+                    proj.shopping_mall();
+                    proj.stadium();
+                    proj.oil_refinery();
+                    proj.aluminum_refinery();
+                    proj.steel_mill();
+                    proj.munitions_factory();
+                    proj.barracks();
+                    proj.factory();
+                    proj.hangar();
+                    proj.drydock();
+                }
+            }
+        });
+    }
+
+    public List<City> fetchCities(Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query) {
+        return fetchCities(CITIES_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+    }
+
+    public List<City> fetchCities(int perPage, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<City> recResults) {
+        List<City> allResults = new LinkedList<>();
+
+        handlePagination(page -> {
+                    CitiesQueryRequest request = new CitiesQueryRequest();
+                    if (filter != null) filter.accept(request);
+                    request.setFirst(perPage);
+                    request.setPage(page);
+
+                    CityResponseProjection natRespProj = new CityResponseProjection();
+                    query.accept(natRespProj);
+
+                    CityPaginatorResponseProjection natPagRespProj = new CityPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(natRespProj);
+
+                    return new GraphQLRequest(request, natPagRespProj);
+                }, errorBehavior, CitiesQueryResponse.class,
+                response -> {
+                    CityPaginator paginator = response.cities();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    CityPaginator paginator = result.cities();
+                    if (paginator != null) {
+                        List<City> cities = paginator.getData();
+                        for (City city : cities) {
+                            if (recResults.test(city)) allResults.add(city);
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
+    public List<Bankrec> fetchBankRecsWithInfo(Consumer<BankrecsQueryRequest> filter) {
+        return fetchBankRecs(filter, new Consumer<BankrecResponseProjection>() {
+            @Override
+            public void accept(BankrecResponseProjection proj) {
+                proj.date();
+                proj.sender_id();
+                proj.sender_type();
+                proj.receiver_id();
+                proj.receiver_type();
+                proj.banker_id();
+                proj.note();
+                proj.money();
+                proj.coal();
+                proj.oil();
+                proj.uranium();
+                proj.iron();
+                proj.bauxite();
+                proj.lead();
+                proj.gasoline();
+                proj.munitions();
+                proj.steel();
+                proj.aluminum();
+                proj.food();
+            }
+        });
+    }
+
     public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
-        return fetchBankRecs(1000, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
     }
 
     public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
@@ -345,11 +611,53 @@ public class PoliticsAndWarV3 {
 //        return allResults;
 //    }
 
-    public List<Nation> fetchNations(Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query) {
-        return fetchNations(500, filter, query, f -> ErrorResponse.EXIT, f -> true);
+    public List<Nation> fetchNationsWithInfo(Consumer<NationsQueryRequest> filter, Predicate<Nation> nationResults) {
+        return fetchNations(NATIONS_PER_PAGE, filter, new Consumer<NationResponseProjection>() {
+            @Override
+            public void accept(NationResponseProjection projection) {
+                projection.id();
+
+                projection.alliance_id();
+
+                projection.nation_name(); // m
+                projection.leader_name(); // m
+
+                projection.last_active();
+                projection.score();
+                projection.num_cities(); // TODO remove
+                projection.domestic_policy();
+                projection.war_policy();
+                projection.soldiers();
+                projection.tanks();
+                projection.aircraft();
+                projection.ships();
+                projection.missiles();
+                projection.nukes();
+
+                projection.vacation_mode_turns(); // m
+
+                projection.color();
+                projection.date(); // m
+
+                projection.alliance_position();
+                projection.alliance_position_id();
+
+                projection.continent();
+
+                projection.project_bits();
+
+                projection.turns_since_last_project(); //
+                projection.turns_since_last_city(); //
+                projection.beige_turns();
+
+                projection.espionage_available();
+            }
+        }, f -> PoliticsAndWarV3.ErrorResponse.EXIT, nationResults);
     }
 
-
+    public List<Nation> fetchNations(Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query) {
+        return fetchNations(NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+    }
     public List<Nation> fetchNations(int perPage, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Nation> nationResults) {
         List<Nation> allResults = new LinkedList<>();
 
@@ -386,8 +694,43 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
+    public List<Alliance> fetchAlliances(Consumer<AlliancesQueryRequest> filter, boolean positions, boolean allianceInfo) {
+        return fetchAlliances(ALLIANCES_PER_PAGE, filter, new Consumer<AllianceResponseProjection>() {
+            @Override
+            public void accept(AllianceResponseProjection projection) {
+                projection.id();
+
+                if (positions) {
+                    AlliancePositionResponseProjection positionProj = new AlliancePositionResponseProjection();
+                    positionProj.id();
+                    positionProj.name();
+                    positionProj.date();
+                    positionProj.position_level();
+                    positionProj.leader();
+                    positionProj.heir();
+                    positionProj.officer();
+                    positionProj.member();
+                    positionProj.permissions();
+
+                    projection.alliance_positions(positionProj);
+                }
+
+                if (allianceInfo) {
+                    projection.name();
+                    projection.acronym();
+                    projection.flag();
+                    projection.forum_link();
+                    projection.discord_link();
+                    projection.wiki_link();
+                    projection.date();
+                    projection.color();
+                }
+            }
+        }, f -> ErrorResponse.EXIT, f -> true);
+    }
+
     public List<Alliance> fetchAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query) {
-        return fetchAlliances(100, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchAlliances(ALLIANCES_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
     }
 
     public List<Alliance> fetchAlliances(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
@@ -419,6 +762,57 @@ public class PoliticsAndWarV3 {
                         List<Alliance> alliances = paginator.getData();
                         for (Alliance alliance : alliances) {
                             if (addEachResult.test(alliance)) allResults.add(alliance);
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
+    public List<Treaty> fetchTreaties(Consumer<TreatiesQueryRequest> filter) {
+        return fetchTreaties(filter, r -> {
+            r.id();
+            r.date();
+            r.treaty_type();
+            r.turns_left();
+            r.alliance1_id();
+            r.alliance2_id();
+        });
+    }
+
+    public List<Treaty> fetchTreaties(Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query) {
+        return fetchTreaties(TREATIES_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+    }
+
+    public List<Treaty> fetchTreaties(int perPage, Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Treaty> addEachResult) {
+        List<Treaty> allResults = new LinkedList<>();
+
+        handlePagination(page -> {
+                    TreatiesQueryRequest request = new TreatiesQueryRequest();
+                    if (filter != null) filter.accept(request);
+                    request.setFirst(perPage);
+                    request.setPage(page);
+
+                    TreatyResponseProjection natRespProj = new TreatyResponseProjection();
+                    query.accept(natRespProj);
+
+                    TreatyPaginatorResponseProjection natPagRespProj = new TreatyPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(natRespProj);
+
+                    return new GraphQLRequest(request, natPagRespProj);
+                }, errorBehavior, TreatiesQueryResponse.class,
+                response -> {
+                    TreatyPaginator paginator = response.treaties();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    TreatyPaginator paginator = result.treaties();
+                    if (paginator != null) {
+                        List<Treaty> treaties = paginator.getData();
+                        for (Treaty treaty : treaties) {
+                            if (addEachResult.test(treaty)) allResults.add(treaty);
                         }
                     }
                 });
@@ -461,28 +855,6 @@ public class PoliticsAndWarV3 {
 
         System.out.println("Update games");
 
-        BaseballDB bbDb = Locutus.imp().getBaseballDB();
-        int max = bbDb.getMaxGameId();
-        int min = bbDb.getMinGameId();
-//        bbDb.updateGames(false, true,null, null);
-//        BaseballDB bbDb = Locutus.imp().getBaseballDB();//.updateGames(false);
-
-        List<BBGame> games = bbDb.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
-
-        Map<Integer, Integer> mostWageredGames = new HashMap<>();
-        Map<Integer, Integer> mostWageredWinnings = new HashMap<>();
-
-        for (BBGame game : games) {
-            mostWageredGames.merge(game.getHome_nation_id(), 1, Integer::sum);
-            mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
-            if (game.getHome_score() > game.getAway_score()) {
-                mostWageredWinnings.merge(game.getHome_nation_id(), game.getWager().intValue(), Integer::sum);
-            } else if (game.getAway_score() > game.getHome_score()) {
-                mostWageredWinnings.merge(game.getAway_nation_id(), game.getWager().intValue(), Integer::sum);
-            }
-        }
-
-        System.exit(1);
 
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
         {
@@ -492,31 +864,73 @@ public class PoliticsAndWarV3 {
 
         }
 
-        System.exit(1);
         {
             Set<Integer> alliances = new HashSet<>();
 //            for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
 //
 //            }
 //
-            main.fetchNations(new Consumer<NationsQueryRequest>() {
+            List<Nation> nations = main.fetchNations(new Consumer<NationsQueryRequest>() {
                 @Override
                 public void accept(NationsQueryRequest request) {
-                    request.setAlliance_id(Arrays.asList(3427,9829,8777,4397,1742,2510,5039,9618,9620,8535,8280,5049,7484,7580,9793,9465,5722));
-                    request.setAlliance_position(Arrays.asList(2, 3, 4, 5));
-                    request.setMin_cities(10);
-                    request.setVmode(false);
+//                    request.setAlliance_id(Arrays.asList(3427,9829,8777,4397,1742,2510,5039,9618,9620,8535,8280,5049,7484,7580,9793,9465,5722));
+//                    request.setAlliance_position(Arrays.asList(2, 3, 4, 5));
+//                    request.setMin_cities(10);
+//                    request.setVmode(false);
+
+                    request.setId(Collections.singletonList(189573));
                 }
             }, new Consumer<NationResponseProjection>() {
                 @Override
                 public void accept(NationResponseProjection projection) {
-                    projection.wars_won();
-                    projection.wars_lost();
+                    projection.id();
 
                     projection.gross_domestic_product();
                     CityResponseProjection cityProj = new CityResponseProjection();
+                    cityProj.id();
+                    cityProj.date();
+                    cityProj.infrastructure();
+                    cityProj.land();
+                    cityProj.powered();
+
+                    cityProj.oil_power();
+                    cityProj.wind_power();
+                    cityProj.coal_power();
+                    cityProj.nuclear_power();
+                    cityProj.coal_mine();
+                    cityProj.lead_mine();
+                    cityProj.iron_mine();
+                    cityProj.bauxite_mine();
+                    cityProj.oil_well();
+                    cityProj.uranium_mine();
+                    cityProj.farm();
+                    cityProj.police_station();
+                    cityProj.hospital();
+                    cityProj.recycling_center();
+                    cityProj.subway();
+                    cityProj.supermarket();
+                    cityProj.bank();
+                    cityProj.shopping_mall();
+                    cityProj.stadium();
+                    cityProj.oil_refinery();
+                    cityProj.aluminum_refinery();
+                    cityProj.steel_mill();
+                    cityProj.munitions_factory();
+                    cityProj.barracks();
+                    cityProj.factory();
+                    cityProj.hangar();
+                    cityProj.drydock();
+//                    cityProj.nuke_date();
+                    projection.cities(cityProj);
                 }
             });
+
+            for (Nation nation : nations) {
+                List<City> cities = nation.getCities();
+                for (City city : cities) {
+                    System.out.println("City " + city);
+                }
+            }
         }
 
         System.exit(1);
@@ -533,8 +947,8 @@ public class PoliticsAndWarV3 {
                 projection.date();
                 projection.sender_id();
                 projection.sender_type();
-                projection.recipient_id();
-                projection.recipient_type();
+                projection.receiver_id();
+                projection.receiver_type();
                 projection.banker_id();
                 projection.note();
                 projection.money();

@@ -6,15 +6,13 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.event.NationBlockadedEvent;
-import link.locutus.discord.event.NationChangePositionEvent;
+import link.locutus.discord.event.nation.NationChangePositionEvent;
 import link.locutus.discord.event.NationUnblockadedEvent;
 import link.locutus.discord.event.NewApplicantOnDiscordEvent;
-import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.AuditType;
 import link.locutus.discord.util.MarkupUtil;
@@ -45,18 +43,6 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.db.entities.AttackTypeBreakdown;
-import link.locutus.discord.db.entities.CityInfraLand;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.CounterType;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.NationFilterString;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.WarAttackParser;
-import link.locutus.discord.db.entities.WarStatus;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
@@ -287,14 +273,14 @@ public class GuildHandler {
 
             body.append("nation: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + "\n");
             if (nation.getPosition() > 1 && nation.getAlliance_id() == aaId) {
-                body.append("\n\n**ALREADY MEMBER OF " + nation.getAlliance() + "**\n\n");
+                body.append("\n\n**ALREADY MEMBER OF " + nation.getAllianceName() + "**\n\n");
                 mentionInterviewer = false;
             }
             if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
                 try {
                     nation.getPnwNation();
                     if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
-                        body.append("\n\n**Already member of AA: " + nation.getAlliance() + "**\n\n");
+                        body.append("\n\n**Already member of AA: " + nation.getAllianceName() + "**\n\n");
                         mentionInterviewer = false;
                         RateLimitUtil.queue(author.openPrivateChannel().complete().sendMessage("As you're already a member of another alliance, message or ping @" + interviewerRole.getName() + " to (proceed"));
                     } else {
@@ -431,7 +417,7 @@ public class GuildHandler {
             if (user != null) {
                 type += " | " + user.getAsMention();
             }
-            String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAlliance();
+            String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
             AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
         }
     }
@@ -448,7 +434,7 @@ public class GuildHandler {
         MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
         if (channel != null) {
             String type = "ACTIVE NATION SET TO APPLICANT";
-            String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAlliance();
+            String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
             AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
         }
     }
@@ -462,7 +448,7 @@ public class GuildHandler {
             } else {
                 type = "INACTIVE TAXABLE NATION SET TO APPLICANT";
             }
-            String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAlliance();
+            String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
             AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
         }
     }
@@ -585,7 +571,7 @@ public class GuildHandler {
             if (user != null) {
                 type += " | " + user.getAsMention();
             }
-            String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAlliance();
+            String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
             AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
         }
     }
@@ -717,7 +703,7 @@ public class GuildHandler {
         Member member = getGuild().getMember(user);
         if (member == null) throw new IllegalArgumentException("There was an error verifying the nation");
 
-        Alliance alliance = getDb().getAlliance();
+        DBAlliance alliance = getDb().getAlliance();
         Set<Grant.Requirement> baseRequirements = new HashSet<>();
 
         baseRequirements.add(new Grant.Requirement("This guild is not part of an alliance", false, f -> alliance != null));
@@ -2055,11 +2041,11 @@ public class GuildHandler {
         // war link | defensive wars
         // defender cities
         body.append(MarkupUtil.markdownUrl("War Link", war.toUrl()));
-        body.append("\nAlly: " + MarkupUtil.markdownUrl(attacker.getNation(), attacker.getNationUrl()) + " | " + MarkupUtil.markdownUrl(attacker.getAlliance(), attacker.getAllianceUrl()));
+        body.append("\nAlly: " + MarkupUtil.markdownUrl(attacker.getNation(), attacker.getNationUrl()) + " | " + MarkupUtil.markdownUrl(attacker.getAllianceName(), attacker.getAllianceUrl()));
         User user = attacker.getUser();
         if (user != null) body.append("\n").append(user.getAsMention());
         body.append("\n - Cities: " + attacker.getCities());
-        body.append("\nEnemy: " + MarkupUtil.markdownUrl(defender.getNation(), defender.getNationUrl()) + " | " + MarkupUtil.markdownUrl(defender.getAlliance(), defender.getAllianceUrl()));
+        body.append("\nEnemy: " + MarkupUtil.markdownUrl(defender.getNation(), defender.getNationUrl()) + " | " + MarkupUtil.markdownUrl(defender.getAllianceName(), defender.getAllianceUrl()));
         body.append("\n - Cities: " + defender.getCities());
 
         Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks());
@@ -2193,11 +2179,11 @@ public class GuildHandler {
     }
 
     public GuildDB getOffshoreDB() {
-        Alliance alliance = getDb().getAlliance();
+        DBAlliance alliance = getDb().getAlliance();
 
         Set<Integer> offshores = db.getCoalition(Coalition.OFFSHORE);
         for (Integer aaId : offshores) {
-            Alliance aa = new Alliance(aaId);
+            DBAlliance aa = new DBAlliance(aaId);
             if (!aa.exists()) continue;
 
             GuildDB otherDb = Locutus.imp().getGuildDBByAA(aaId);
