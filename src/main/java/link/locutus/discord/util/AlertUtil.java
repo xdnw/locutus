@@ -20,7 +20,6 @@ import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
-import java.awt.AWTException;
 import java.awt.Desktop;
 import java.awt.Image;
 import java.awt.SystemTray;
