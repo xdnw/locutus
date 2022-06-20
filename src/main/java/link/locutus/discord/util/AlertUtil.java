@@ -19,8 +19,6 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import net.dv8tion.jda.api.exceptions.MissingAccessException;
-import sun.awt.AWTPermissions;
 
 import java.awt.AWTException;
 import java.awt.Desktop;
