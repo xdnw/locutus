@@ -274,6 +274,10 @@ public class GuildHandler {
         db.setMeta(author.getIdLong(), NationMeta.DISCORD_APPLICANT, new byte[]{1});
 
         Role interviewerRole = Roles.INTERVIEWER.toRole(guild);
+        if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(guild);
+        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(guild);
+        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(guild);
+
         if (interviewerRole == null) return false;
         boolean mentionInterviewer = true;
 
@@ -297,7 +301,7 @@ public class GuildHandler {
                     if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
                         body.append("\n\n**Already member of AA: " + nation.getAlliance() + "**\n\n");
                         mentionInterviewer = false;
-                        RateLimitUtil.queue(author.openPrivateChannel().complete().sendMessage("As you're already a member of another alliance, message or ping @" + interviewerRole.getName() + " to (proceed"));
+                        RateLimitUtil.queue(author.openPrivateChannel().complete().sendMessage("As you're already a member of another alliance, message or ping @" + interviewerRole.getName() + " to proceed"));
                     } else {
                         RateLimitUtil.queue(author.openPrivateChannel().complete().sendMessage("Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are (able."));
                     }
