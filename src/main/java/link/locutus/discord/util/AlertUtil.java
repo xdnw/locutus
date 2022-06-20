@@ -20,6 +20,7 @@ import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.exceptions.MissingAccessException;
+import sun.awt.AWTPermissions;
 
 import java.awt.AWTException;
 import java.awt.Desktop;
@@ -172,11 +173,14 @@ public class AlertUtil {
     static
     {
         try {
-            Image image = Toolkit.getDefaultToolkit().createImage("icon.png");
-            SystemTray tray = SystemTray.getSystemTray();
+            if (SystemTray.isSupported()) {
+                SystemTray tray = SystemTray.getSystemTray();
 
-            trayIcon = new TrayIcon(image);
-            tray.add(trayIcon);
+                Image image = Toolkit.getDefaultToolkit().createImage("icon.png");
+
+                trayIcon = new TrayIcon(image);
+                tray.add(trayIcon);
+            }
         } catch (Throwable e) {
             e.printStackTrace();
         }
