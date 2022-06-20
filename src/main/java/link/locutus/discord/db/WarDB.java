@@ -676,8 +676,8 @@ public class WarDB extends DBMainV2 {
             if (previous == null) {
                 DBNation attacker = newWar.getNation(true);
                 DBNation defender = newWar.getNation(false);
-                if (attacker.getOff() == 0) attacker.setOff(1);
-                if (defender.getDef() == 0) defender.setDef(1);
+                if (attacker != null && attacker.getOff() == 0) attacker.setOff(1);
+                if (defender != null && defender.getDef() == 0) defender.setDef(1);
             }
 
             warUpdatePreviousNow.add(new AbstractMap.SimpleEntry<>(previous, newWar));
