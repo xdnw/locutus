@@ -3336,7 +3336,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        INTERVIEW_PENDING_ALERTS(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
+        INTERVIEW_PENDING_ALERTS(true, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
             @Override
             public String validate(GuildDB db, String value) {
                 return Key.validateChannel(db, value);
