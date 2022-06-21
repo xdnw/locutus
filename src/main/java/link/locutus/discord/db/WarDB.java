@@ -585,7 +585,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void addBounty(DBBounty bounty) {
-        update("INSERT OR REPLACE INTO `BOUNTIES_V3`(`id, `date`, `nation_id`, `posted_by`, `attack_type`, `amount`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `BOUNTIES_V3`(`id`, `date`, `nation_id`, `posted_by`, `attack_type`, `amount`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, bounty.getId());
             stmt.setLong(2, bounty.getDate());
             stmt.setLong(3, bounty.getNationId());
@@ -1426,8 +1426,10 @@ public class WarDB extends DBMainV2 {
                     DBNation defender = Locutus.imp().getNationDB().getNation(attack.defender_nation_id);
                     DBWar war = Locutus.imp().getWarDb().getWar(attack.getWar_id());
 
-                    war.status = attack.victor == attack.attacker_nation_id ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
-                    Locutus.imp().getWarDb().addWar(war);
+                    if (war != null) {
+                        war.status = attack.victor == attack.attacker_nation_id ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
+                        Locutus.imp().getWarDb().addWar(war);
+                    }
 
                     if (defender != null && attack.infra_destroyed_value == 0) {
                         double pct = attack.infraPercent_cached;
