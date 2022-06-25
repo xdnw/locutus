@@ -410,7 +410,7 @@ public class Settings extends Config {
             public String LEGACY_COMMAND_PREFIX = "!";
 
             @Comment("The prefix used for v2 commands (single character)")
-            public String COMMAND_PREFIX = "!";
+            public String COMMAND_PREFIX = "$";
         }
     }
 
