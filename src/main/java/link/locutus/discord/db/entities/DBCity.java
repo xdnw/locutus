@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.City;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -39,6 +40,16 @@ public class DBCity {
 
     public DBCity(DBCity toCopy) {
         this.set(toCopy);
+    }
+
+    public void set(SCityContainer container) {
+        this.id = id;
+        this.fetched = System.currentTimeMillis();
+        if (created == 0) {
+            created = this.fetched;
+        }
+        this.infra = Double.parseDouble(container.getInfrastructure());
+        this.land = Double.parseDouble(container.getLand());
     }
 
     public void set(DBCity toCopy) {

@@ -30,7 +30,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class DBAlliance implements NationList, NationOrAlliance {
@@ -269,7 +268,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 toUpdate.add(nation);
             }
         }
-        Locutus.imp().getNationDB().addNations(toUpdate);
+        Locutus.imp().getNationDB().saveNations(toUpdate);
         return true;
     }
 

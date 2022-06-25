@@ -1,5 +1,7 @@
 package link.locutus.discord.db;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
@@ -11,22 +13,19 @@ import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.apiv3.enums.GameTimers;
+import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
-import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
-import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.alliance.AllianceDeleteEvent;
+import link.locutus.discord.event.city.CityCreateEvent;
 import link.locutus.discord.event.city.CityDeleteEvent;
 import link.locutus.discord.event.city.CityInfraBuyEvent;
 import link.locutus.discord.event.city.CityInfraDamageEvent;
-import link.locutus.discord.event.city.CityInfraSellEvent;
-import link.locutus.discord.event.nation.NationChangePositionEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.position.PositionCreateEvent;
 import link.locutus.discord.event.position.PositionDeleteEvent;
@@ -49,9 +48,6 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import views.grant.cities;
-import views.grant.city;
-import views.grant.nation;
 
 import java.io.IOException;
 import java.lang.ref.SoftReference;
@@ -69,7 +65,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -82,7 +77,6 @@ public class NationDB extends DBMainV2 {
     private final Map<Integer, Map<Integer, DBAlliancePosition>> positionsByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, Treaty>> treatiesByAlliance = new Int2ObjectOpenHashMap<>();
     private final Queue<Integer> dirtyCities = new ConcurrentLinkedQueue<>();
-
     private final Queue<Integer> dirtyNations = new ConcurrentLinkedQueue<>();
 
     public NationDB() throws SQLException, ClassNotFoundException {
@@ -206,7 +200,7 @@ public class NationDB extends DBMainV2 {
                 nation.setDc_turn(turn);
             }
         }
-        addNations(nationsToSave);
+        saveNations(nationsToSave);
 
         executeStmt("DROP TABLE NATIONS");
     }
@@ -795,6 +789,75 @@ public class NationDB extends DBMainV2 {
         return result;
     }
 
+    public void updateCitiesV2(Consumer<Event> eventConsumer) {
+        Map<Integer, Integer> citiesToDeleteToNationId = new HashMap<>();
+        synchronized (citiesByNation) {
+            for (Map.Entry<Integer, Map<Integer, DBCity>> natEntry : citiesByNation.entrySet()) {
+                int natId = natEntry.getKey();
+                for (DBCity city : natEntry.getValue().values()) {
+                    citiesToDeleteToNationId.put(city.id, natId);
+                }
+            }
+        }
+
+        List<SCityContainer> cities;
+        try {
+            cities = Locutus.imp().getPnwApi().getAllCities().getAllCities();
+        } catch (IOException e) {
+            e.printStackTrace();
+            AlertUtil.error("Failed to fetch cities v2", e);
+            return;
+        }
+
+        if (cities.isEmpty()) {
+            // Nothing fetched??
+            return;
+        }
+
+        DBCity buffer = new DBCity();
+
+        for (SCityContainer city : cities) {
+            int nationId = Integer.parseInt(city.getNationId());
+            int cityId = Integer.parseInt(city.getCityId());
+
+            // City was fetched, do not delete it
+            citiesToDeleteToNationId.remove(cityId);
+
+            DBCity existing = getDBCity(nationId, cityId);
+            if (existing == null) {
+                existing = new DBCity();
+
+                if (eventConsumer != null) eventConsumer.accept(new CityCreateEvent(nationId, existing));
+
+                dirtyCities.add(cityId);
+            } else {
+                double maxInfra = Double.parseDouble(city.getMaxinfra());
+
+                buffer.set(existing);
+                existing.set(city);
+
+                if (existing.runChangeEvents(cityId, buffer, eventConsumer)) {
+                    dirtyCities.add(cityId);
+                }
+            }
+        }
+
+        if (!citiesToDeleteToNationId.isEmpty()) {
+            for (Map.Entry<Integer, Integer> entry : citiesToDeleteToNationId.entrySet()) {
+                int cityId = entry.getKey();
+                int nationId = entry.getValue();
+                synchronized (citiesByNation) {
+                    Map<Integer, DBCity> nationCities = citiesByNation.get(nationId);
+                    if (nationCities != null) {
+                        nationCities.remove(cityId);
+                    }
+                }
+            }
+
+            deleteCitiesInDB(citiesToDeleteToNationId.keySet());
+        }
+    }
+
     public void updateCitiesOfNations(Set<Integer> nationIds, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
 
@@ -1041,11 +1104,50 @@ public class NationDB extends DBMainV2 {
         }
         return existing;
     }
-
     public DBAlliance getAlliance(int id) {
         synchronized (alliancesById) {
             return alliancesById.get(id);
         }
+    }
+
+    public DBAlliance getOrCreateAlliance(int id) {
+        DBAlliance existing = getAlliance(id);
+        if (existing == null) {
+            existing = new DBAlliance(id,
+            "AA:" + id,
+            "",
+            "",
+            "",
+            "",
+            "",
+            System.currentTimeMillis(),
+            NationColor.GRAY);
+        }
+        return existing;
+    }
+
+    private static final Cache<String, DBAlliance> allianceByNameCache = CacheBuilder.newBuilder()
+            .weakKeys()
+            .weakValues()
+            .build();
+
+    public DBAlliance getAllianceByName(String name) {
+        {
+            DBAlliance alliance = allianceByNameCache.getIfPresent(name.toLowerCase(Locale.ROOT));
+            if (alliance != null && alliance.getName().equalsIgnoreCase(name)) {
+                return alliance;
+            }
+        }
+        DBAlliance result = null;
+        synchronized (alliancesById.values()) {
+            for (DBAlliance alliance : alliancesById.values()) {
+                if (alliance.getName().equalsIgnoreCase(name)) {
+                    allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance);
+                    return alliance;
+                }
+            }
+        }
+        return null;
     }
 
     private void loadTreaties() throws SQLException {
@@ -1205,10 +1307,11 @@ public class NationDB extends DBMainV2 {
         );
     }
 
-    public boolean updateNationsV2(boolean includeVM, Consumer<Event> eventConsumer) {
+    public void updateNationsV2(boolean includeVM, Consumer<Event> eventConsumer) {
         try {
             List<SNationContainer> nations = Locutus.imp().getPnwApi().getNationsByScore(includeVM, 999999, -1).getNationsContainer();
 
+            List<DBNation> toSave = new LinkedList<>();
             Set<Integer> expected = new LinkedHashSet<>(nations.size());
             synchronized (nationsById) {
                 for (Map.Entry<Integer, DBNation> entry : nationsById.entrySet()) {
@@ -1230,13 +1333,19 @@ public class NationDB extends DBMainV2 {
                     if (eventConsumer != null) {
                         eventConsumer.accept(new NationCreateEvent(null, existing));
                     }
+                    toSave.add(existing);
 
                     dirtyNations.add(nation.getNationid());
                 } else {
                     expected.remove(existing.getNation_id());
-                    existing.updateNationInfo(nation, eventConsumer);
+                    if (existing.updateNationInfo(nation, eventConsumer)) {
+                        dirtyNations.add(existing.getNation_id());
+                        toSave.add(existing);
+                    }
                 }
             }
+
+            if (!toSave.isEmpty()) saveNations(toSave);
 
             if (!expected.isEmpty()) {
                 dirtyNations.addAll(expected);
@@ -1380,7 +1489,7 @@ public class NationDB extends DBMainV2 {
 
         v3.fetchNationsWithInfo(filter, onEachNation);
 
-        addNations(dirtyNations.keySet());
+        saveNations(dirtyNations.keySet());
 
         Set<Integer> fetchCitiesOfNations = new HashSet<>();
 
@@ -1486,20 +1595,9 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private DBNation updateNation(DBNation base, SNationContainer nation, Consumer<Event> eventConsumer, AtomicBoolean markDirty) {
-        DBNation copyOriginal = base == null ? null : new DBNation(base);
-        if (base == null) {
-            markDirty.set(true);
-            base = new DBNation();
-        }
-        if (base.updateNationInfo(copyOriginal, nation, eventConsumer)) {
-            markDirty.set(true);
-        }
-        return base;
-    }
-    private void updateNation(DBNation base, NationMilitaryContainer nation, Consumer<Event> eventConsumer, AtomicBoolean markDirty) {
-        TODO;
-    }
+//    private void updateNation(DBNation base, NationMilitaryContainer nation, Consumer<Event> eventConsumer, AtomicBoolean markDirty) {
+//        TODO;
+//    }
 
     private DBNation updateNationInfo(DBNation base, Nation nation, Consumer<Event> eventConsumer, AtomicBoolean markDirty) {
         DBNation copyOriginal = base == null ? null : new DBNation(base);
@@ -1654,16 +1752,6 @@ public class NationDB extends DBMainV2 {
             }
         };
         {
-            String milup = "CREATE TABLE IF NOT EXISTS `CITY_INFRA_LAND` (`id` INT NOT NULL, `nation` INT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, PRIMARY KEY(id))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(milup);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
             String milup = "CREATE TABLE IF NOT EXISTS `NATION_MIL_HISTORY` (`id` INT NOT NULL, `date` INT NOT NULL, `unit` INT NOT NULL, `amount` INT NOT NULL, PRIMARY KEY(id,date))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(milup);
@@ -1785,13 +1873,14 @@ public class NationDB extends DBMainV2 {
     }
 
     public DBNation getNation(String nameOrLeader) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATIONS WHERE UPPER(`nation`) = UPPER(?) OR UPPER(`leader`) = UPPER(?)")) {
+        
+        try (PreparedStatement stmt = prepareQuery("select id FROM NATIONS2 WHERE UPPER(`nation`) = UPPER(?) OR UPPER(`leader`) = UPPER(?)")) {
             stmt.setString(1, nameOrLeader);
             stmt.setString(2, nameOrLeader);
             DBNation leader = null;
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    leader = create(rs);
+                    leader = createNation(rs);
                     if (leader.getNation().equalsIgnoreCase(nameOrLeader)) {
                         return leader;
                     }
@@ -1804,93 +1893,60 @@ public class NationDB extends DBMainV2 {
         return null;
     }
 
-    public DBNation getNationByName(String name) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATIONS WHERE UPPER(`nation`) = UPPER(?)")) {
-            stmt.setString(1, name);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return create(rs);
+    public DBNation getFirstNationMatching(Predicate<DBNation> findIf) {
+        synchronized (nationsById) {
+            for (DBNation value : nationsById.values()) {
+                if (findIf.test(value)) {
+                    return value;
                 }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
         return null;
+    }
+
+    public Set<DBNation> getNationsMatching(Predicate<DBNation> findIf) {
+        Set<DBNation> result = new LinkedHashSet<>();
+        synchronized (nationsById) {
+            for (DBNation value : nationsById.values()) {
+                if (findIf.test(value)) {
+                    result.add(value);
+                }
+            }
+        }
+        return result;
+    }
+
+    public DBNation getNationByName(String name) {
+        return getFirstNationMatching(f -> f.getNation().equalsIgnoreCase(name));
     }
 
     public DBNation getNationByLeader(String leader) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATIONS WHERE UPPER(`leader`) = UPPER(?)")) {
-            stmt.setString(1, leader);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return create(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return getFirstNationMatching(f -> f.getLeader().equalsIgnoreCase(leader));
     }
 
-//    public DBNation getNation(int nationId) {
-//        Map<Integer, DBNation> tmp = nationCache;
-//        if (!tmp.isEmpty()) {
-//            return tmp.get(nationId);
-//        }
-//        Map<Integer, DBNation> nations = getNations();
-//        DBNation result = nations.get(nationId);
-//        return result;
-//    }
-
-    public List<DBNation> getNations(Set<Integer> alliances) {
+    public Set<DBNation> getNations(Set<Integer> alliances) {
         if (alliances.isEmpty()) {
-            return new ArrayList<>(getNations().values());
+            return new LinkedHashSet<>();
         }
-        List<DBNation> nations = new LinkedList<>();
-        if (alliances.size() == 1) {
-            int aaId = alliances.iterator().next();
-            for (Map.Entry<Integer, DBNation> entry : getNations().entrySet()) {
-                DBNation nation = entry.getValue();
-                if (aaId == nation.getAlliance_id()) {
-                    nations.add(nation);
-                }
+        Set<DBNation> result;
+        if (alliances.contains(0)) {
+            if (alliances.size() == 1) {
+                int id = alliances.iterator().next();
+                return getNationsMatching(f -> f.getAlliance_id() == id);
             }
+            return getNationsMatching(f -> alliances.contains(f.getAlliance_id()));
         } else {
-            alliances = new IntOpenHashSet(alliances);
-            if (!alliances.contains(0)) {
-                for (Map.Entry<Integer, DBNation> entry : getNations().entrySet()) {
-                    DBNation nation = entry.getValue();
-                    if (nation.getAlliance_id() != 0 && alliances.contains(nation.getAlliance_id())) {
-                        nations.add(nation);
-                    }
-                }
-            } else {
-                for (Map.Entry<Integer, DBNation> entry : getNations().entrySet()) {
-                    DBNation nation = entry.getValue();
-                    if (alliances.contains(nation.getAlliance_id())) {
-                        nations.add(nation);
+            result = new LinkedHashSet<>();
+            for (int aaId : alliances) {
+                synchronized (nationsByAlliance) {
+                    Map<Integer, DBNation> nations = nationsByAlliance.get(aaId);
+                    if (nations != null) {
+                        result.addAll(nations.values());
                     }
                 }
             }
         }
-        return nations;
-    }
-
-    public List<DBNation> getNations(Set<Integer> alliances, String sort) {
-            ArrayList<DBNation> result = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATIONS WHERE `alliance_id` IN " + StringMan.getString(alliances)
-                    + (sort != null && !sort.isEmpty() ? " ORDER BY `" + sort + "` DESC" : "")
-            )) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    result.add(create(rs));
-                }
-            }
-            return result;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return result;
     }
 
     private DBNation createNationLegacy(ResultSet rs) throws SQLException {
@@ -2000,108 +2056,31 @@ public class NationDB extends DBMainV2 {
         );
     }
 
-    public Map<Integer, DBNation> getNationsSortedBy(String sort) {
-            Map<Integer, DBNation> nationCache = new LinkedHashMap<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATIONS"
-                    + (sort != null && !sort.isEmpty() ? " ORDER BY `" + sort + "` DESC" : "")
-            )) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBNation dbValue = create(rs);
-                    DBNation existing = nationCache.get(dbValue.getNation());
-                    if (existing != null) {
-                        existing.fillBlanks(dbValue);
-                    } else {
-                        nationCache.putIfAbsent(dbValue.getNation_id(), dbValue);
-                    }
-                }
-            }
-            return nationCache;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public Integer getAllianceId(String alliance) {
-        return getAlliances().inverse().get(alliance);
-    }
-
-    public String getAllianceName(int allianceId) {
-        return getAlliances().get(allianceId);
-    }
-
     public Set<DBAlliance> getAlliances(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, int topX) {
-        Map<Integer, List<DBNation>> nations = getNationsByAlliance(removeUntaxable, removeInactive, removeApplicants, true);
-        Set<DBAlliance> alliances = new LinkedHashSet<>();
-
-        int i = 0;
-        for (Map.Entry<Integer, List<DBNation>> entry : nations.entrySet()) {
-            if (++i > topX) break;
-            alliances.add(new DBAlliance(entry.getKey()));
-        }
-
-        return alliances;
-    }
-
-    public BiMap<Integer, String> getAlliances() {
-        if (getAlliancesCached != null) {
-            BiMap<Integer, String> tmp = getAlliancesCached.get();
-            if (tmp != null) {
-                return tmp;
-            }
-        }
-        BiMap<Integer, String> allianceMap = HashBiMap.create();
-        try (PreparedStatement stmt = prepareQuery("select DISTINCT `alliance_id`, `alliance` FROM NATIONS ORDER BY alliance_id DESC")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int allianceId = rs.getInt("alliance_id");
-                    String alliance = rs.getString("alliance");
-
-                    try {
-                        allianceMap.putIfAbsent(allianceId, alliance);
-                    } catch (IllegalArgumentException ignore) {}
+        Map<Integer, Double> score = new Int2ObjectOpenHashMap<>();
+        synchronized (nationsByAlliance) {
+            for (Map.Entry<Integer, Map<Integer, DBNation>> entry : nationsByAlliance.entrySet()) {
+                int aaId = entry.getKey();
+                Map<Integer, DBNation> nationMap = entry.getValue();
+                for (DBNation nation : nationMap.values()) {
+                    if (removeApplicants && nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
+                    boolean vm = nation.getVm_turns() > 0;
+                    if (removeUntaxable && (nation.isGray() || nation.isBeige() || vm)) continue;
+                    if (removeInactive && (vm || nation.active_m() > 7200)) continue;
+                    score.merge(aaId, nation.getScore(), Double::sum);
                 }
             }
-            getAlliancesCached = new SoftReference<>(allianceMap);
-            return allianceMap;
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
-        return null;
-    }
-
-    public Map<String, List<Map.Entry<Integer, String>>> getCoalitions(Map<String, Set<Integer>> coalitions) {
-        Map<Integer, String> alliances = getAlliances();
-        Map<String, List<Map.Entry<Integer, String>>> namedCopy = new HashMap<>();
-        for (Map.Entry<String, Set<Integer>> entry : coalitions.entrySet()) {
-            ArrayList<Map.Entry<Integer, String>> namedAlliances = new ArrayList<>();
-            Set<Integer> allianceIds = entry.getValue();
-            for (Integer allianceId : allianceIds) {
-                String alliance = alliances.getOrDefault(allianceId, allianceId + "");
-                namedAlliances.add(new AbstractMap.SimpleEntry<>(allianceId, alliance));
-            }
-            namedCopy.put(entry.getKey(), namedAlliances);
-
+        // Sorted
+        score = new SummedMapRankBuilder<>(score).sort().get();
+        Set<DBAlliance> result = new LinkedHashSet<>();
+        for (int aaId : score.keySet()) {
+            DBAlliance alliance = getAlliance(aaId);
+            if (alliance != null) result.add(alliance);
+            if (result.size() >= topX) break;
         }
-        return namedCopy;
+        return result;
     }
-
-    public Set<String> getColumns() {
-        try (PreparedStatement stmt = getConnection().prepareStatement("PRAGMA table_info(NATIONS);")) {
-            Set<String> columns = new HashSet<>();
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    columns.add(rs.getString("name"));
-                }
-            }
-            return columns;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     public Map<Integer, ByteBuffer> getAllMeta(NationMeta key) {
         Map<Integer, ByteBuffer> results = new HashMap<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META where AND key = ?")) {
@@ -2284,7 +2263,7 @@ public class NationDB extends DBMainV2 {
                     long turn = rs.getLong("turn");
                     double value = rs.getDouble("value");
 
-                    DBAlliance alliance = new DBAlliance(allianceId);
+                    DBAlliance alliance = getOrCreateAlliance(allianceId);
                     result.computeIfAbsent(alliance, f -> new HashMap<>()).computeIfAbsent(metric, f -> new HashMap<>()).put(turn, value);
                 }
             }
@@ -2317,127 +2296,12 @@ public class NationDB extends DBMainV2 {
                     long turn = rs.getLong("turn");
                     double value = rs.getDouble("value");
 
-                    DBAlliance alliance = new DBAlliance(allianceId);
+                    DBAlliance alliance = getOrCreateAlliance(allianceId);
                     result.computeIfAbsent(alliance, f -> new HashMap<>()).computeIfAbsent(metric, f -> new HashMap<>()).put(turn, value);
                 }
             }
         });
         return result;
-    }
-
-    public Map<Integer, Map<Integer, CityInfraLand>> updateCities() {
-        try {
-
-            Set<Integer> auditNation = new HashSet<>();
-
-            int numPurged = purgeCityInfraLand();
-            Map<Integer, CityInfraLand> previous = getCityInfraLand();
-
-            List<SCityContainer> cities = Locutus.imp().getPnwApi().getAllCities().getAllCities();
-            // delete cities that no longer exist
-            Set<Integer> toRemove = new LinkedHashSet<>(previous.keySet());
-
-            List<CityInfraLand> toUpdate = new ArrayList<>();
-
-            Map<Integer, Map<Integer, CityInfraLand>> currentByNation = new HashMap<>();
-            for (SCityContainer city : cities) {
-                if (city == null) continue;
-                CityInfraLand newCity = new CityInfraLand(city);
-                CityInfraLand existing = previous.get(newCity.cityId);
-
-                DBNation nation = getNation(newCity.nationId);
-
-                toRemove.remove(newCity.cityId);
-
-                boolean modified = false;
-                double cost = 0;
-                if (existing != null) {
-                    if (existing.infra + 1 < newCity.infra) {
-                        modified = true;
-                        cost += PnwUtil.calculateInfra(existing.infra, newCity.infra);
-
-                        if (newCity.infra % 50 != 0) {
-                            if (auditNation.add(newCity.nationId)) {
-                                if (nation != null) {
-                                    AlertUtil.auditAlert(nation, AuditType.UNEVEN_INFRA, new Function<GuildDB, String>() {
-                                        @Override
-                                        public String apply(GuildDB guildDB) {
-                                            int ideal = (int) (newCity.infra - newCity.infra % 50);
-                                            String msg = AuditType.UNEVEN_INFRA.message
-                                                    .replace("{city}", PnwUtil.getCityUrl(newCity.cityId));
-                                            return "You bought uneven infra in <" + PnwUtil.getCityUrl(newCity.cityId) + "> (" + MathMan.format(newCity.infra) + " infra) but only get a building slot every `50` infra.\n" +
-                                                    "You can enter e.g. `@" + ideal + "` to buy up to that amount";
-                                        }
-                                    });
-                                }
-                            }
-                        }
-
-                        if (nation != null && nation.getPosition() > 1) {
-                            GuildDB db = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
-                            if (db != null) {
-                                try {
-                                    db.getHandler().onInfraPurchase(nation, existing, newCity);
-                                } catch (Throwable e) {
-                                    handleError(e);
-                                }
-                            }
-                        }
-                    } else if (existing.infra - 1 > newCity.infra) {
-                        modified = true;
-                    }
-                    if (existing.land + 1 < newCity.land) {
-                        modified = true;
-                        cost += PnwUtil.calculateLand(existing.land, newCity.land);
-                    } else if (existing.land - 1 > newCity.land) {
-                        modified = true;
-                    }
-                } else {
-                    modified = true;
-                    if (newCity.infra > 10) {
-                        cost += PnwUtil.calculateInfra(10, newCity.infra);
-                    }
-                    if (newCity.land > 250) {
-                        cost += PnwUtil.calculateLand(250, newCity.land);
-                    }
-                }
-                if (modified) {
-                    toUpdate.add(newCity);
-
-                    if (nation != null && cost != 0) {
-                        nation.addExpense(Collections.singletonMap(ResourceType.MONEY, cost));
-                    }
-                }
-                currentByNation.computeIfAbsent(newCity.nationId, f -> new HashMap<>()).put(newCity.cityId, newCity);
-            }
-            addCityInfraLands(toUpdate);
-            deleteCityInfraLands(toRemove);
-
-            return currentByNation;
-        } catch (IOException e) {
-            AlertUtil.displayTray("Error", "UpdateCities");
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public int deleteCityInfraLands(Set<Integer> cityIds) {
-        return update("DELETE FROM CITY_INFRA_LAND WHERE id in " + StringMan.getString(cityIds), stmt -> {});
-    }
-
-    public void addCityInfraLands(Collection<CityInfraLand> cities) {
-        synchronized (this) {
-            String query = "INSERT OR REPLACE INTO `CITY_INFRA_LAND` (`id`, `nation`, `infra`, `land`) VALUES(?, ?, ?, ?)";
-            executeBatch(cities, query, new ThrowingBiConsumer<CityInfraLand, PreparedStatement>() {
-                @Override
-                public void acceptThrows(CityInfraLand city, PreparedStatement stmt) throws SQLException {
-                    stmt.setInt(1, city.cityId);
-                    stmt.setInt(2, city.nationId);
-                    stmt.setLong(3, (long) (city.infra * 100d));
-                    stmt.setLong(4, (long) (city.land * 100d));
-                }
-            });
-        }
     }
     public Map<Integer, Treaty> getTreaties(int allianceId, TreatyType... types) {
         Map<Integer, Treaty> treaties = getTreaties(allianceId);
@@ -2775,8 +2639,29 @@ public class NationDB extends DBMainV2 {
     }
 
     public Map<Integer, List<DBNation>> getNationsByAlliance(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean sorttByScore) {
-        Set<DBNation> nationSet = new HashSet<>(Locutus.imp().getNationDB().getNations().values());
-        return getNationsByAlliance(nationSet, removeUntaxable, removeInactive, removeApplicants, sorttByScore);
+        final Map<Integer, Double> score = new Int2ObjectOpenHashMap<>();
+        Map<Integer, List<DBNation>> nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
+        synchronized (nationsByAlliance) {
+            for (Map.Entry<Integer, Map<Integer, DBNation>> entry : nationsByAlliance.entrySet()) {
+                int aaId = entry.getKey();
+                Map<Integer, DBNation> nationMap = entry.getValue();
+                for (DBNation nation : nationMap.values()) {
+                    if (removeApplicants && nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
+                    boolean vm = nation.getVm_turns() > 0;
+                    if (removeUntaxable && (nation.isGray() || nation.isBeige() || vm)) continue;
+                    if (removeInactive && (vm || nation.active_m() > 7200)) continue;
+                    score.merge(aaId, nation.getScore(), Double::sum);
+                    nationsByAllianceFiltered.computeIfAbsent(aaId, f -> new LinkedList<>()).add(nation);
+                }
+            }
+        }
+        List<Map.Entry<Integer, List<DBNation>>> sorted = new ArrayList<>(nationsByAllianceFiltered.entrySet());
+        sorted.sort((o1, o2) -> Double.compare(score.get(o2.getKey()), score.get(o1.getKey())));
+        nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
+        for (Map.Entry<Integer, List<DBNation>> entry : sorted) {
+            nationsByAllianceFiltered.put(entry.getKey(), entry.getValue());
+        }
+        return nationsByAllianceFiltered;
     }
 
     public int getMilitaryBuy(DBNation nation, MilitaryUnit unit, long time) {
@@ -3081,26 +2966,6 @@ public class NationDB extends DBMainV2 {
         }
         return result;
     }
-
-    public Map<Integer, JavaCity> getCachedCities(int nationId) {
-        synchronized (citiesCache) {
-            Map<Integer, DBCity> cached = citiesCache.get(nationId);
-            if (cached != null) return toJavaCity(cached);
-
-            DBNation nation = getNation(nationId);
-            if (nation != null) {
-                return getCities(nation, false, true);
-            }
-
-            Map<Integer, DBCity> cities = getCitiesV3(nationId);
-            if (cities != null && !cities.isEmpty()) {
-                citiesCache.put(nationId, cities);
-                return toJavaCity(cities);
-            }
-            return Collections.emptyMap();
-        }
-    }
-
 //    private Map.Entry<Long, Map<Integer, JavaCity>> getDBCities(int nationId) {
 //        HashMap<Integer, JavaCity> cities = new HashMap<>();
 //        long updateFlag = 0;
@@ -3154,66 +3019,6 @@ public class NationDB extends DBMainV2 {
 //        }
 //    }
 
-    public Map<Integer, Map<Integer, DBCity>> getCitiesV3() {
-        try (PreparedStatement stmt = prepareQuery("select * FROM CITY_BUILDS")) {
-            Map<Integer, Map<Integer, DBCity>> result = new Int2ObjectOpenHashMap<>();
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int nationId = rs.getInt("nation");
-                    DBCity data = new DBCity();
-                    data.id = rs.getInt("id");
-                    data.created = rs.getLong("created");
-                    data.infra = rs.getInt("infra") / 100d;
-                    data.land = rs.getInt("land") / 100d;
-                    data.powered = rs.getBoolean("powered");
-                    data.buildings = rs.getBytes("improvements");
-                    data.fetched = rs.getLong("update_flag");
-
-                    result.computeIfAbsent(nationId, f -> new HashMap<>()).put(data.id, data);
-                }
-            }
-            return result;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
-    public Map<Integer, Map<Integer, DBCity>> getCitiesV3(Set<Integer> nationIds) {
-        Map<Integer, Map<Integer, DBCity>> result = new Int2ObjectOpenHashMap<>();
-
-        Set<Integer> toFetch = new HashSet<>();
-        for (Integer nationId : nationIds) {
-            synchronized (citiesCache) {
-                Map<Integer, DBCity> cached = citiesCache.get(nationId);
-                if (cached == null) toFetch.add(nationId);
-                else result.put(nationId, cached);
-            }
-        }
-
-        try (PreparedStatement stmt = prepareQuery("select * FROM CITY_BUILDS WHERE nation in " + StringMan.getString(toFetch))) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int nationId = rs.getInt("nation");
-                    DBCity data = new DBCity(rs);
-                    synchronized (citiesCache) {
-                        citiesCache.computeIfAbsent(nationId, f -> new Int2ObjectOpenHashMap<>()).put(data.id, data);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-
-        synchronized (citiesCache) {
-            for (Integer nationId : toFetch) {
-                result.put(nationId, citiesCache.get(nationId));
-            }
-        }
-        return result;
-    }
-
     public Map<Integer, DBCity> getCitiesV3(int nation_id) {
         synchronized (citiesByNation) {
             return citiesByNation.getOrDefault(nation_id, Collections.EMPTY_MAP);
@@ -3234,10 +3039,6 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
-    }
-
-    public void purgeCities() {
-        executeStmt("DELETE FROM CITY_BUILDS WHERE nation IN (SELECT CITY_BUILDS.nation FROM CITY_BUILDS LEFT JOIN NATIONS ON CITY_BUILDS.nation=NATIONS.id WHERE NATIONS.id IS NULL)");
     }
 
     public void saveAllCities() {
@@ -3270,231 +3071,53 @@ public class NationDB extends DBMainV2 {
         });
     }
 
-    public Map<Integer, JavaCity> getCities(DBNation nation, boolean updateIfOutdated, boolean force) {
-        return getCities(nation, updateIfOutdated, true, force);
-    }
-
-    public Map<Integer, JavaCity> getCities(DBNation nation, boolean updateIfOutdated, boolean updateIfIncorrectSize, boolean force) {
-        synchronized (citiesCache) {
-            int numCities = nation.getCities();
-            long now = System.currentTimeMillis();
-
-            Map<Integer, DBCity> cached = citiesCache.get(nation.getNation_id());
-            Map<Integer, JavaCity> cities;
-
-            long lastActive = now - TimeUnit.MINUTES.toMillis(nation.getActive_m() + 15);
-            boolean outdated = true;
-
-            if (cached == null || cached.isEmpty()) {
-                cached = getCitiesV3(nation.getNation_id());
-
-            }
-            if (!cached.isEmpty()) {
-                cities = toJavaCity(cached);
-                long lastCityUpdated = 0;
-                for (Map.Entry<Integer, DBCity> entry : cached.entrySet()) {
-                    lastCityUpdated = Math.max(lastCityUpdated, entry.getValue().fetched);
-                }
-                outdated = lastActive > lastCityUpdated;
-            } else {
-                cities = new HashMap<>();
-            }
-
-            double currentInfra = nation.getAvg_infra() * nation.getCities();
-            if (cities.isEmpty() || (((outdated && updateIfOutdated) || cities.size() != numCities)) || force) {
-                System.out.println("Fetch cities. outdated: " + outdated + " updateIfOutdated: " + updateIfOutdated + " size: " + cities.size() + "-" + numCities + " | force: " + force);
-                try {
-                    Map<Integer, JavaCity> previous = cities;
-                    cities = new GetCityBuilds(nation).adapt().get(nation);
-
-                    if (!cities.isEmpty()) {
-                        if (previous != null) {
-                            for (Map.Entry<Integer, JavaCity> cityEntry : previous.entrySet()) {
-                                if (!cities.containsKey(cityEntry.getKey())) {
-                                    NationUpdateProcessor.processCity(cityEntry.getValue(), null, cityEntry.getKey(), nation);
-                                }
-                            }
-                        }
-                        for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
-                            JavaCity previousCity = previous.get(cityEntry.getKey());
-                            JavaCity currentCity = cityEntry.getValue();
-                            if (!currentCity.equals(previousCity)) {
-                                NationUpdateProcessor.processCity(previousCity, currentCity, cityEntry.getKey(), nation);
-                            }
-                        }
-
-                    }
-
-                    if (cities.size() != numCities) {
-                        synchronized (this) {
-                            try (PreparedStatement stmt = getConnection().prepareStatement("DELETE FROM CITIES WHERE `nation` = ?")) {
-                                stmt.setInt(1, nation.getNation_id());
-                                stmt.executeUpdate();
-                            }
-                        }
-                    }
-                    Map<Integer, DBCity> v3Cities = toCityV3(cities);
-                    Map<Integer, Map<Integer, DBCity>> v3CitiesNationMap = Collections.singletonMap(nation.getNation_id(), v3Cities);
-                    addCities(v3CitiesNationMap);
-
-                    citiesCache.put(nation.getNation_id(), v3Cities);
-                } catch (IOException | ExecutionException | InterruptedException | SQLException | ParseException e) {
-                    e.printStackTrace();
-                    if (!cities.isEmpty()) return cities;
-                    throw new RuntimeException(e);
-                }
-            }
-            return cities;
+    public void saveNations(Collection<DBNation> nations) {
+        if (nations.isEmpty()) return;
+        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        ThrowingBiConsumer<DBNation, PreparedStatement> setNation = (nation, stmt1) -> {
+            stmt1.setInt(1, nation.getNation_id());
+            stmt1.setString(2, nation.getNation());
+            stmt1.setString(3, nation.getLeader());
+            stmt1.setInt(4, nation.getAlliance_id());
+            stmt1.setLong(5, nation.lastActiveMs());
+            stmt1.setLong(6, (long) (nation.getScore() * 100));
+            stmt1.setInt(7, nation.getCities());
+            stmt1.setInt(8, nation.getDomesticPolicy().ordinal());
+            stmt1.setInt(9, nation.getWarPolicy().ordinal());
+            stmt1.setInt(10, nation.getSoldiers());
+            stmt1.setInt(11, nation.getTanks());
+            stmt1.setInt(12, nation.getAircraft());
+            stmt1.setInt(13, nation.getShips());
+            stmt1.setInt(14, nation.getMissiles());
+            stmt1.setInt(15, nation.getNukes());
+            stmt1.setInt(16, nation.getSpies());
+            stmt1.setLong(17, nation.getEntered_vm());
+            stmt1.setLong(18, nation.getLeaving_vm());
+            stmt1.setInt(19, nation.getColor().ordinal());
+            stmt1.setLong(20, nation.getDate());
+            stmt1.setInt(21, nation.getPosition());
+            stmt1.setInt(22, nation.getAlliancePositionId());
+            stmt1.setInt(23, nation.getContinent().ordinal());
+            stmt1.setLong(24, nation.getProjectBitMask());
+            stmt1.setLong(25, nation.getCityTimerEpoch());
+            stmt1.setLong(26, nation.getProjectTimerEpoch());
+            stmt1.setLong(28, nation.getBeigeTimer());
+            stmt1.setLong(29, nation.getWarPolicyTimer());
+            stmt1.setLong(30, nation.getDomesticPolicyTimer());
+            stmt1.setLong(31, nation.getColorTimer());
+            stmt1.setLong(32, nation.getEspionageFullTurn());
+            stmt1.setInt(33, nation.getDc_turn());
+            stmt1.setInt(34, nation.getWars_won());
+            stmt1.setInt(35, nation.getWars_lost());
+            stmt1.setInt(36, nation.getTax_id());
+        };
+        if (nations.size() == 1) {
+            DBNation nation = nations.iterator().next();
+            update(query, stmt -> setNation.accept(nation, stmt));
+        } else {
+            executeBatch(nations, query, setNation);
         }
     }
-
-    private Map<Integer, DBCity> toCityV3(Map<Integer, JavaCity> cities) {
-        Map<Integer, DBCity> result = new HashMap<>();
-        for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-            JavaCity city = entry.getValue();
-            DBCity v3 = new DBCity(entry.getKey(), city);
-            result.put(entry.getKey(), v3);
-        }
-        return result;
-    }
-
-//    private void addCity(int nationId, int cityId, JavaCity city) {
-//        update("INSERT OR REPLACE INTO `CITIES`(`id`, `nation`, `created`, `land`, `improvements`, `update_flag`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setInt(1, cityId);
-//            stmt.setInt(2, nationId);
-//            long dayCreated = TimeUtil.getDay() - city.getAge();
-//            stmt.setLong(3, dayCreated);
-//            stmt.setInt(4, (int) (city.getLand() * 100));
-//            stmt.setBytes(5, city.toBytes());
-//            stmt.setLong(6, System.currentTimeMillis());
-//        });
-//    }
-
-    public synchronized void updateNations(Map<Integer, DBNation> nations) {
-        int count = 0;
-        if (nationCache.isEmpty()) {
-            getNations(nations);
-        }
-        for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
-            Integer id = entry.getKey();
-            DBNation updated = entry.getValue();
-
-            DBNation cached = nationCache.get(id);
-            if (cached != null) {
-                updated.fillBlanks(cached);
-                cached.set(updated);
-            } else {
-                nationCache.put(id, updated);
-            }
-            if (updated.hasUnsetMil()) {
-                count++;
-            }
-        }
-        addNations(nations.values());
-    }
-
-    public void addNations(Collection<DBNation> nations) {
-        executeBatch(nations, "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", new ThrowingBiConsumer<DBNation, PreparedStatement>() {
-            @Override
-            public void acceptThrows(DBNation nation, PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, nation.getNation_id());
-                stmt.setString(2, nation.getNation());
-                stmt.setString(3, nation.getLeader());
-                stmt.setInt(4, nation.getAlliance_id());
-                stmt.setLong(5, nation.lastActiveMs());
-                stmt.setLong(6, (long) (nation.getScore() * 100));
-                stmt.setInt(7, nation.getCities());
-                stmt.setInt(8, nation.getDomesticPolicy().ordinal());
-                stmt.setInt(9, nation.getWarPolicy().ordinal());
-                stmt.setInt(10, nation.getSoldiers());
-                stmt.setInt(11, nation.getTanks());
-                stmt.setInt(12, nation.getAircraft());
-                stmt.setInt(13, nation.getShips());
-                stmt.setInt(14, nation.getMissiles());
-                stmt.setInt(15, nation.getNukes());
-                stmt.setInt(16, nation.getSpies());
-                stmt.setLong(17, nation.getEntered_vm());
-                stmt.setLong(18, nation.getLeaving_vm());
-                stmt.setInt(19, nation.getColor().ordinal());
-                stmt.setLong(20, nation.getDate());
-                stmt.setInt(21, nation.getPosition());
-                stmt.setInt(22, nation.getAlliancePositionId());
-                stmt.setInt(23, nation.getContinent().ordinal());
-                stmt.setLong(24, nation.getProjectBitMask());
-                stmt.setLong(25, nation.getCityTimerEpoch());
-                stmt.setLong(26, nation.getProjectTimerEpoch());
-                stmt.setLong(28, nation.getBeigeTimer());
-                stmt.setLong(29, nation.getWarPolicyTimer());
-                stmt.setLong(30, nation.getDomesticPolicyTimer());
-                stmt.setLong(31, nation.getColorTimer());
-                stmt.setLong(32, nation.getEspionageFullTurn());
-                stmt.setInt(33, nation.getDc_turn());
-                stmt.setInt(34, nation.getWars_won());
-                stmt.setInt(35, nation.getWars_lost());
-                stmt.setInt(36, nation.getTax_id());
-
-            }
-        });
-    }
-
-//    public void addNation(int nation_id, String nation, String leader, int alliance_id, String alliance, long last_active, double score, Integer infra, int cities, Integer avg_infra, WarPolicy warPolicy, DomesticPolicy domPolicy, Integer soldiers, Integer tanks, Integer aircraft, Integer ships, Integer missiles, Integer nukes, int vm_turns, NationColor color, int off, int def, Integer spies, Long date, int alliancePosition, int position, Continent continent, long projects, Long cityTimer, Long projectTimer, Long beigeTimer, long espionageFullTurn) {
-//        synchronized (this) {
-//            update("INSERT OR REPLACE INTO `NATIONS`(`id`, `nation`, `leader`, `alliance_id`, `alliance`, `active_m`, `score`, `infra`, `cities`, `avg_infra`, `policy`, `soldiers`, `tanks`, `aircraft`, `ships`, `missiles`, `nukes`, `vm_turns`, `color`, `off`, `def`, `money`, `spies`, `date`, `rank`, `position`, `continent`, `projects`, `timer`, `beigeTimer`, `projectTimer`, `espionageFull`, `dompolicy`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//                stmt.setInt(1, nation_id);
-//                stmt.setString(2, nation);
-//                stmt.setString(3, leader);
-//                stmt.setInt(4, alliance_id);
-//                stmt.setString(5, alliance);
-//                stmt.setLong(6, last_active);
-//                stmt.setDouble(7, score);
-//                if (infra != null) stmt.setInt(8, infra);
-//                else stmt.setNull(8, Types.INTEGER);
-//                stmt.setInt(9, cities);
-//                if (avg_infra != null) stmt.setInt(10, avg_infra);
-//                else stmt.setNull(10, Types.INTEGER);
-//                stmt.setString(11, warPolicy.name().toLowerCase());
-//                if (soldiers != null) stmt.setInt(12, soldiers);
-//                else stmt.setNull(12, Types.INTEGER);
-//                if (tanks != null) stmt.setInt(13, tanks);
-//                else stmt.setNull(13, Types.INTEGER);
-//                if (aircraft != null) stmt.setInt(14, aircraft);
-//                else stmt.setNull(14, Types.INTEGER);
-//                if (ships != null) stmt.setInt(15, ships);
-//                else stmt.setNull(15, Types.INTEGER);
-//                if (missiles != null) stmt.setInt(16, missiles);
-//                else stmt.setNull(16, Types.INTEGER);
-//                if (nukes != null) stmt.setInt(17, nukes);
-//                else stmt.setNull(17, Types.INTEGER);
-//                stmt.setInt(18, vm_turns);
-//                stmt.setString(19, color.name().toLowerCase());
-//                stmt.setInt(20, off);
-//                stmt.setInt(21, def);
-////                if (money != null) stmt.setLong(22, money);
-//                stmt.setNull(22, Types.INTEGER);
-//                if (spies != null) stmt.setInt(23, spies);
-//                else stmt.setNull(23, Types.INTEGER);
-//                if (date != null) stmt.setLong(24, date);
-//                else stmt.setNull(24, Types.INTEGER);
-//
-//                stmt.setInt(25, alliancePosition);
-//                stmt.setInt(26, position);
-//                stmt.setInt(27, continent.ordinal());
-//                stmt.setLong(28, projects);
-//
-//                if (cityTimer != null) stmt.setLong(29, cityTimer);
-//                else stmt.setNull(29, Types.INTEGER);
-//
-//                if (beigeTimer != null) stmt.setLong(30, beigeTimer);
-//                else stmt.setNull(30, Types.INTEGER);
-//
-//                if (projectTimer != null) stmt.setLong(31, projectTimer);
-//                else stmt.setNull(31, Types.INTEGER);
-//
-//                stmt.setLong(32, espionageFullTurn);
-//                stmt.setString(33, domPolicy.name().toLowerCase());
-//            });
-//        }
-//    }
 
     private void deleteNations(Set<Integer> ids, Consumer<Event> eventConsumer) {
         Set<Integer> citiesToDelete = new HashSet<>();

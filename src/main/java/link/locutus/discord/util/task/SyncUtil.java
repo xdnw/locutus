@@ -156,7 +156,7 @@ public enum SyncUtil {
                                         toUpdate.add(nation);
                                     }
                                 }
-                                Locutus.imp().getNationDB().addNations(toUpdate);
+                                Locutus.imp().getNationDB().saveNations(toUpdate);
                             }
                         }
                         trackspiesIds.remove(aaId);

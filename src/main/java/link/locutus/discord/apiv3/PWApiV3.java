@@ -195,7 +195,7 @@ public class PWApiV3 {
         // newTransactions
         Locutus.imp().getBankDB().addTransactions(newTransactions);
         // toUpdate
-        Locutus.imp().getNationDB().addNations(toUpdate);
+        Locutus.imp().getNationDB().saveNations(toUpdate);
 
         for (Transaction2 newTransaction : newTransactions) {
             new TransactionEvent(newTransaction).post();
