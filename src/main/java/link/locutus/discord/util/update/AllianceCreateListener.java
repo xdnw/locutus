@@ -1,8 +1,11 @@
 package link.locutus.discord.util.update;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -19,10 +22,11 @@ import java.util.function.BiConsumer;
 public class AllianceCreateListener {
     @Subscribe
     public void onNewAlliance(AllianceCreateEvent event) {
-        int aaId = event.getAllianceId();
+        DBAlliance alliance = event.getCurrent();
+        int aaId = alliance.getAlliance_id();
 
-        List<DBNation> members = event.getMembers();
-        String title = "Created: " + event.getName();
+        List<DBNation> members = alliance.getNations();
+        String title = "Created: " + alliance.getName();
 
         StringBuilder body = new StringBuilder();
 
@@ -33,7 +37,7 @@ public class AllianceCreateListener {
             body.append("Leader: " + MarkupUtil.markdownUrl(member.getNation(), member.getNationUrl()) + "\n");
 
             if (lastAA != null) {
-                String previousAAName = event.getPreviousAlliances().getOrDefault(lastAA.getKey(), PnwUtil.getName(lastAA.getKey(), true));
+                String previousAAName = Locutus.imp().getNationDB().getAllianceName(lastAA.getKey());
                 body.append(" - " + member.getNation() + " previously " + lastAA.getValue() + " in " + previousAAName + "\n");
             }
 

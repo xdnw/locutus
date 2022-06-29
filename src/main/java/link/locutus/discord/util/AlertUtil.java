@@ -92,7 +92,7 @@ public class AlertUtil {
         } else {
             message = member.getAsMention() + "(see pins to opt out):\n" + message;
         }
-        RateLimitUtil.queue(channel.sendMessage(message));
+        RateLimitUtil.queueWhenFree(channel.sendMessage(message));
     }
 
     public static void alertNation(Class permission, GuildDB.Key channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
@@ -159,7 +159,7 @@ public class AlertUtil {
             if(channel !=null) {
                 MessageEmbed msg = new EmbedBuilder().setTitle(title).setDescription(body).build();
                 try {
-                    RateLimitUtil.queue(channel.sendMessageEmbeds(msg));
+                    RateLimitUtil.queueWhenFree(channel.sendMessageEmbeds(msg));
                 } catch (InsufficientPermissionException ignore) {
                     System.out.println("!! " + channel.getName() + " | " + channel.getGuild().getName() + " | " + ignore.getMessage());
                 }
@@ -210,7 +210,7 @@ public class AlertUtil {
                 PING_BUFFER.put(ping, true);
             }
         }
-        RateLimitUtil.queue(channel.sendMessage(StringMan.join(pings, " ")));
+        RateLimitUtil.queueWhenFree(channel.sendMessage(StringMan.join(pings, " ")));
     }
 
     public static void error(String title, String body) {

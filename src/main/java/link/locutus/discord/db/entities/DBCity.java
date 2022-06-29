@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
+import link.locutus.discord.util.PnwUtil;
 import views.grant.city;
 import views.grant.nation;
 
@@ -27,7 +28,6 @@ public class DBCity {
     public double infra;
     public boolean powered;
     public byte[] buildings = new byte[Buildings.size()];
-
     public volatile long fetched;
 
     public DBCity() {
@@ -40,6 +40,10 @@ public class DBCity {
 
     public DBCity(DBCity toCopy) {
         this.set(toCopy);
+    }
+
+    public String getUrl() {
+        return PnwUtil.getCityUrl(id);
     }
 
     public void set(SCityContainer container) {

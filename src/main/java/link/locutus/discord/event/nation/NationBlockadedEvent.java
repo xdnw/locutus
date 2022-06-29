@@ -1,8 +1,9 @@
-package link.locutus.discord.event;
+package link.locutus.discord.event.nation;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.event.guild.GuildScopeEvent;
 
 import java.util.Map;
 

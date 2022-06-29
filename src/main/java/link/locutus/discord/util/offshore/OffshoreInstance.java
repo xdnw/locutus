@@ -567,7 +567,7 @@ public class OffshoreInstance {
         synchronized (BANK_LOCK) {
             Map.Entry<TransferStatus, String> result = transfer(nation, transfer, note);
             if (result.getKey() == TransferStatus.MULTI && nation.getPosition() > 1) {
-                DBAlliance alliance = nation.getAlliance();
+                DBAlliance alliance = nation.getAlliance(false);
                 GuildDB db = alliance == null ? null : alliance.getGuildDB();
                 if (db != null) {
                     OffshoreInstance bank = db.getHandler().getBank();

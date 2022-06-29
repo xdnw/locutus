@@ -7,7 +7,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.event.TransactionEvent;
+import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.TimeUtil;

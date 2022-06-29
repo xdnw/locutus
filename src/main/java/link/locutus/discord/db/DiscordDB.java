@@ -23,17 +23,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -298,9 +288,29 @@ public class DiscordDB extends DBMainV2 {
         });
     }
 
+    public List<Map.Entry<Integer, Long>> getUuids(BigInteger uuid) {
+        ArrayList<Map.Entry<Integer, Long>> list = new ArrayList<>();
+        String query = "SELECT * FROM UUIDS WHERE uuid = ? ORDER BY date DESC";
+        query(query, new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws SQLException {
+                stmt.setBytes(1, uuid.toByteArray());
+            }
+        }, new ThrowingConsumer<ResultSet>() {
+            @Override
+            public void acceptThrows(ResultSet rs) throws SQLException {
+                int nationId = rs.getInt("nation_id");
+                byte[] bytes = rs.getBytes("uuid");
+                long date = rs.getLong("date");
+                list.add(new AbstractMap.SimpleEntry<>(nationId, date));
+            }
+        });
+        return list;
+    }
+
     public List<Map.Entry<Integer, Map.Entry<Long, BigInteger>>> getUuids() {
-            ArrayList<Map.Entry<Integer, Map.Entry<Long, BigInteger>>> list = new ArrayList<>();
-            try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS ORDER BY date DESC")) {
+        ArrayList<Map.Entry<Integer, Map.Entry<Long, BigInteger>>> list = new ArrayList<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS ORDER BY date DESC")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int nationId = rs.getInt("nation_id");
@@ -363,10 +373,20 @@ public class DiscordDB extends DBMainV2 {
         }
     }
 
-    public Map<BigInteger, List<Map.Entry<Long, Long>>> getUuids(int nationId) {
-            long end = Long.MAX_VALUE;
+    public BigInteger getLatestUuid(int nationId) {
+        Map<BigInteger, List<Map.Entry<Long, Long>>> uids = getUuids(nationId);
+        for (Map.Entry<BigInteger, List<Map.Entry<Long, Long>>> uidEntry : uids.entrySet()) {
+            for (Map.Entry<Long, Long> timeEntry : uidEntry.getValue()) {
+                if (timeEntry.getValue() == Long.MAX_VALUE) return uidEntry.getKey();
+            }
+        }
+        return null;
+    }
 
-            Map<BigInteger, List<Map.Entry<Long, Long>>> result = new LinkedHashMap<>();
+    public Map<BigInteger, List<Map.Entry<Long, Long>>> getUuids(int nationId) {
+        long end = Long.MAX_VALUE;
+
+        Map<BigInteger, List<Map.Entry<Long, Long>>> result = new LinkedHashMap<>();
 
         try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS WHERE nation_id = ? ORDER BY date DESC")) {
             stmt.setInt(1, nationId);

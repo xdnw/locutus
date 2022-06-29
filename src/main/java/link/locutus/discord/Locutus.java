@@ -13,10 +13,11 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.CityInfraLand;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
@@ -35,7 +36,6 @@ import link.locutus.discord.util.update.AllianceCreateListener;
 import link.locutus.discord.util.update.BankUpdateProcessor;
 import link.locutus.discord.util.update.LeavingBeigeAlert;
 import link.locutus.discord.util.update.NationUpdateProcessor;
-import link.locutus.discord.util.update.RaidUpdateProcessor;
 import link.locutus.discord.util.update.TreatyUpdateProcessor;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -119,7 +119,6 @@ public final class Locutus extends ListenerAdapter {
     private final ExecutorService executor;
 
     private final Map<Long, GuildDB> guildDatabases = new ConcurrentHashMap<>();
-    private RaidUpdateProcessor raidProcessor;
     private EventBus eventBus;
     private SlashCommandManager slashCommands;
 
@@ -217,7 +216,6 @@ public final class Locutus extends ListenerAdapter {
         eventBus.register(new TreatyUpdateProcessor());
         eventBus.register(new NationUpdateProcessor());
         eventBus.register(new BankUpdateProcessor());
-        eventBus.register(new RaidUpdateProcessor());
         eventBus.register(new WarUpdateProcessor());
         eventBus.register(new AllianceCreateListener());
     }
@@ -311,9 +309,6 @@ public final class Locutus extends ListenerAdapter {
             }
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
-                if (Settings.INSTANCE.TASKS.RAID_UPDATE_PROCESSOR_SECONDS > 0) {
-                    this.raidProcessor = new RaidUpdateProcessor();
-                }
             }
 
             for (long guildId : Settings.INSTANCE.MODERATION.BANNED_GUILDS) {
@@ -540,10 +535,6 @@ public final class Locutus extends ListenerAdapter {
 //        return databases;
 //    }
 
-    public RaidUpdateProcessor getRaidProcessor() {
-        return raidProcessor;
-    }
-
     public void initRepeatingTasks() {
 //        commandManager.getExecutor().scheduleWithFixedDelay(new CaughtRunnable() {
 //            @Override
@@ -560,16 +551,6 @@ public final class Locutus extends ListenerAdapter {
                     beigeAlerter.run();
                 }
             }, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS, TimeUnit.SECONDS);
-        }
-        if (Settings.INSTANCE.TASKS.RAID_UPDATE_PROCESSOR_SECONDS > 0) {
-            commandManager.getExecutor().scheduleWithFixedDelay(new CaughtRunnable() {
-                @Override
-                public void runUnsafe() {
-                    if (raidProcessor != null) {
-                        raidProcessor.run();
-                    }
-                }
-            }, Settings.INSTANCE.TASKS.RAID_UPDATE_PROCESSOR_SECONDS, Settings.INSTANCE.TASKS.RAID_UPDATE_PROCESSOR_SECONDS, TimeUnit.SECONDS);
         }
 
         if (Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_SECONDS > 0) {
@@ -590,6 +571,8 @@ public final class Locutus extends ListenerAdapter {
                 @Override
                 public void runUnsafe() {
                     try {
+
+
                         long currentTurn = TimeUtil.getTurn();
                         if (currentTurn != lastTurn.getAndSet(currentTurn)) {
                             ByteBuffer lastTurnBytes = getDiscordDB().getInfo(DiscordMeta.TURN, 0);
@@ -702,30 +685,30 @@ public final class Locutus extends ListenerAdapter {
                     TimeUtil.runDayTask(Treaty.class.getSimpleName(), new Function<Long, Boolean>() {
                         @Override
                         public Boolean apply(Long aLong) {
-                            getNationDB().updateTopTreaties(80);
+                            getNationDB().updateTreaties(Event::post);
                             return true;
                         }
                     });
                 }),
                 0,
                 2, TimeUnit.HOURS);
-
-        commandManager.getExecutor().scheduleWithFixedDelay(CaughtRunnable.wrap(() -> {
-                    TimeUtil.runDayTask(CityInfraLand.class.getSimpleName(), new Function<Long, Boolean>() {
-                        @Override
-                        public Boolean apply(Long aLong) {
-                            nationDB.updateCities();
-                            return true;
-                        }
-                    });
-                }),
-                0,
-            2, TimeUnit.HOURS);
     }
 
     private void runTurnTasks(long lastTurn, long currentTurn) {
         try {
-            if (Settings.INSTANCE.TASKS.TURN_TASKS.VM_NATION_UPDATER) {
+            new TurnChangeEvent(lastTurn, currentTurn).post();
+
+            for (DBNation nation : nationDB.getNations().values()) {
+                nation.processTurnChange(lastTurn, currentTurn, Event::post);
+            }
+
+
+            // TODO
+            // update spy ops?
+            // update UID
+
+            if (Settings.INSTANCE.TASKS.TURN_TASKS.VM_NATION_UPDATER)
+            {
                 getExecutor().submit(() -> {
                     SyncUtil.INSTANCE.syncIfFree(System.out::println, true);
                 });

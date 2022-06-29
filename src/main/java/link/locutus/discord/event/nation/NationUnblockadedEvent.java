@@ -1,8 +1,9 @@
-package link.locutus.discord.event;
+package link.locutus.discord.event.nation;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.event.guild.GuildScopeEvent;
 
 import java.util.Map;
 
@@ -10,7 +11,6 @@ public class NationUnblockadedEvent extends GuildScopeEvent {
     private final int blockader;
     private final int blockaded;
     private final Map<Integer, Integer> blockaders;
-
     public NationUnblockadedEvent(int blockaded, int blockader, Map<Integer, Integer> blockaders) {
         this.blockaded = blockaded;
         this.blockader = blockader;

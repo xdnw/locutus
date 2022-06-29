@@ -1,8 +1,10 @@
 package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.AlliancePosition;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.position.PositionChangeLevelEvent;
 import link.locutus.discord.event.position.PositionChangeNameEvent;
@@ -140,5 +142,9 @@ public class DBAlliancePosition {
 
     public void setPermission_bits(long permission_bits) {
         this.permission_bits = permission_bits;
+    }
+
+    public GuildDB getGuildDB() {
+        return Locutus.imp().getGuildDBByAA(alliance_id);
     }
 }

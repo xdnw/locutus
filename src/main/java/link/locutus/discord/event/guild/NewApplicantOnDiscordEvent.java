@@ -1,4 +1,4 @@
-package link.locutus.discord.event;
+package link.locutus.discord.event.guild;
 
 import link.locutus.discord.Locutus;
 import net.dv8tion.jda.api.entities.Guild;

@@ -157,10 +157,6 @@ public class Settings extends Config {
         @Comment("If any turn related tasks are run (default: true)")
         public boolean ENABLE_TURN_TASKS = true;
 
-        @Comment({"Runs the post update raid alerts (default: 1 second)",
-        "Deprecated, use the beigeAlert stuff instead, which sets reminders before turn change"})
-        public int RAID_UPDATE_PROCESSOR_SECONDS = 0;
-
         @Comment("Runs the pre update beige reminders (default: 61 seconds)")
         public int BEIGE_REMINDER_SECONDS = 61;
 
@@ -212,8 +208,6 @@ public class Settings extends Config {
         }
 
         public static class TURN_TASKS {
-            public boolean VM_NATION_UPDATER = true;
-
             public boolean GUILD_ALLIANCE_TASKS = true;
             public boolean GUILD_NATION_TASKS = true;
 

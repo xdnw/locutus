@@ -469,7 +469,7 @@ public class CommandManager {
             msg = msg.replaceAll("@everyone", "@ everyone");
             msg = msg.replaceAll("@here", "@ here");
             msg = msg.replaceAll("<@&", "<@ &");
-            RateLimitUtil.queue(other.channel.sendMessage(msg));
+            RateLimitUtil.queueWhenFree(other.channel.sendMessage(msg));
         }
     }
 

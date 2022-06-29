@@ -1029,7 +1029,7 @@ public class PnwUtil {
         return "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + cityId;
     }
 
-    public static String getNationUrl(int cityId) {
+    public static String getNationUrl(int nationId) {
         return "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + cityId;
     }
 

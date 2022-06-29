@@ -3,7 +3,7 @@ package link.locutus.discord.util;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.event.SpyReportEvent;
+import link.locutus.discord.event.game.SpyReportEvent;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;

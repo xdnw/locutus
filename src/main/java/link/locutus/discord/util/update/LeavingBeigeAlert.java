@@ -213,7 +213,7 @@ public class LeavingBeigeAlert {
                         }
 
                         DiscordUtil.createEmbedCommand(channel, title, msg);
-                        RateLimitUtil.queue(channel.sendMessage(footer));
+                        RateLimitUtil.queueWhenFree(channel.sendMessage(footer));
                     }
                 }
             });

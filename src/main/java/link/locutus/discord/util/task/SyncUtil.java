@@ -34,7 +34,6 @@ public enum SyncUtil {
     ;
 
     private final ReentrantLock lock = new ReentrantLock();
-
     public synchronized boolean syncIfFree(Consumer<String> updater, boolean force) {
         if (lock.tryLock()) {
             try {

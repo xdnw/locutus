@@ -1,6 +1,7 @@
-package link.locutus.discord.event;
+package link.locutus.discord.event.game;
 
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.Event;
 
 public class SpyReportEvent extends Event {
     private final DBNation reportBy;

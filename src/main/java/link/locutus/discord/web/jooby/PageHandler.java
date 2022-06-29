@@ -31,7 +31,6 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.update.RaidUpdateProcessor;
 import link.locutus.discord.web.commands.EconPages;
 import link.locutus.discord.web.commands.GrantPages;
 import link.locutus.discord.web.commands.IAPages;
@@ -85,7 +84,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class PageHandler implements Handler {
-    private Logger logger = Logger.getLogger(RaidUpdateProcessor.class.getSimpleName());
+    private Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
     private final WebRoot root;
 
     private final CommandGroup commands;

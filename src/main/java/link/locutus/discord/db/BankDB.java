@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.politicsandwar.graphql.model.BankrecsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.Coalition;
@@ -36,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class BankDB extends DBMain {
     public BankDB() throws SQLException, ClassNotFoundException {
@@ -45,6 +47,14 @@ public class BankDB extends DBMain {
     public void updateNewBankRecs() {
         PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
 
+        todo
+//        v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+//            @Override
+//            public void accept(BankrecsQueryRequest r) {
+//                r.setMin_id();
+//                r.setOr_type();
+//            }
+//        })
 
     }
 

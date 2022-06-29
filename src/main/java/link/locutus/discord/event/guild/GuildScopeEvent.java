@@ -1,6 +1,7 @@
-package link.locutus.discord.event;
+package link.locutus.discord.event.guild;
 
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.event.Event;
 
 public abstract class GuildScopeEvent extends Event {
     protected abstract void postToGuilds();

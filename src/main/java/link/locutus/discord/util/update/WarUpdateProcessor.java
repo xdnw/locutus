@@ -7,10 +7,9 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
-import link.locutus.discord.event.NationBlockadedEvent;
-import link.locutus.discord.event.NationUnblockadedEvent;
-import link.locutus.discord.event.WarCreateEvent;
-import link.locutus.discord.event.WarUpdateEvent;
+import link.locutus.discord.event.nation.NationBlockadedEvent;
+import link.locutus.discord.event.nation.NationUnblockadedEvent;
+import link.locutus.discord.event.war.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
@@ -34,7 +33,6 @@ import link.locutus.discord.db.entities.CounterType;
 import link.locutus.discord.db.entities.DBBounty;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.event.AttackEvent;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.AuditType;
 import link.locutus.discord.util.MathMan;
@@ -88,7 +86,7 @@ public class WarUpdateProcessor {
                         }
                     }
                     if (mentions.length() != 0) {
-                        RateLimitUtil.queue(channel.sendMessage(mentions));
+                        RateLimitUtil.queueWhenFree(channel.sendMessage(mentions));
                     }
                 } catch (Throwable ignore) {
                     ignore.printStackTrace();
@@ -115,9 +113,9 @@ public class WarUpdateProcessor {
             DBWar current = entry.getValue();
 
             if (previous == null) {
-                Locutus.post(new WarCreateEvent(current));
+                new WarCreateEvent(current).post();
             } else {
-                Locutus.post(new WarUpdateEvent(previous, current));
+                new WarStatusChangeEvent(previous, current).post();
             }
 
             try {
@@ -129,7 +127,7 @@ public class WarUpdateProcessor {
     }
 
     @Subscribe
-    public void onWarUpdate(WarUpdateEvent event) {
+    public void onWarStatus(WarStatusChangeEvent event) {
         DBWar current = event.getCurrent();
         if (event.getPrevious() != null && current != null) {
             WarStatus status1 = event.getPrevious().getStatus();
@@ -140,43 +138,12 @@ public class WarUpdateProcessor {
                 boolean isPeace2 = status2 == WarStatus.PEACE || status2 == WarStatus.ATTACKER_OFFERED_PEACE || status2 == WarStatus.DEFENDER_OFFERED_PEACE;
 
                 if (isPeace1 || isPeace2) {
-                    handleWarPeaceChange(current, current.getNation(true), status1, status2);
-                    handleWarPeaceChange(current, current.getNation(false), status1, status2);
+                    new WarPeaceStatusEvent(event.getPrevious(), event.getCurrent()).post();
                 }
             }
         }
     }
 
-    private void handleWarPeaceChange(DBWar war, DBNation nation, WarStatus from, WarStatus to) {
-        if (nation == null) return;
-        GuildDB db = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
-        if (db != null) {
-            db.getHandler().onWarPeaceChange(war, nation, from, to);
-        }
-    }
-
-
-    @Subscribe
-    public void onBlockade(NationBlockadedEvent event) {
-        DBNation nation = event.getBlockadedNation();
-        if (nation != null && nation.getPosition() > 1) {
-            GuildDB db = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
-            if (db != null) {
-                db.getHandler().onBlockade(event, nation);
-            }
-        }
-    }
-
-    @Subscribe
-    public void onUnblockade(NationUnblockadedEvent event) {
-        DBNation nation = event.getBlockadedNation();
-        if (nation != null && nation.getPosition() > 1) {
-            GuildDB db = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
-            if (db != null) {
-                db.getHandler().onUnblockade(event, nation);
-            }
-        }
-    }
 
     @Subscribe
     public void onAttack(AttackEvent event) {
@@ -823,12 +790,12 @@ public class WarUpdateProcessor {
             }
 
             // don't care about nones
-            if (defender.getAlliance_id() == 0) return;
+            if (defender == null || defender.getAlliance_id() == 0) return;
 
             WarCard card = new WarCard(current.warId);
             CounterStat stat = card.getCounterStat();
 
-            DBAlliance defAA = new DBAlliance(defender.getAlliance_id());
+            DBAlliance defAA = defender.getAlliance();
             ByteBuffer lastWarringBuf = defAA.getMeta(AllianceMeta.LAST_AT_WAR_TURN);
 
             if (lastWarringBuf == null || TimeUtil.getTurn() - lastWarringBuf.getLong() > 24) {

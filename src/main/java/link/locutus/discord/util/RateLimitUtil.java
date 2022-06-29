@@ -6,8 +6,12 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
 import link.locutus.discord.web.jooby.adapter.JoobyMessageAction;
 import link.locutus.discord.web.jooby.adapter.JoobyRestAction;
+import net.dv8tion.jda.api.entities.Channel;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import net.dv8tion.jda.api.exceptions.MissingAccessException;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 
@@ -18,9 +22,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class RateLimitUtil {
@@ -152,12 +158,46 @@ public class RateLimitUtil {
 
     }
 
-    public static void queue(MessageAction action) {
-        addRequest(action).queue();
+    private static final ConcurrentLinkedQueue<Runnable> queuedActions = new ConcurrentLinkedQueue<>();
+    private static boolean runningTask = false;
+
+    public static void queueWhenFree(RestAction<?> action) {
+        queueWhenFree(() -> queue(action));
     }
 
-    public static Message complete(MessageAction action) {
-        return (Message) addRequest(action).complete();
+    public static void queueWhenFree(Runnable action) {
+        if (getCurrentUsed() < getLimitPerMinute()) {
+            action.run();
+            return;
+        }
+        queuedActions.add(action);
+
+        if (!runningTask) {
+            synchronized (RateLimitUtil.class) {
+                if (!runningTask) {
+                    runningTask = true;
+                    Locutus.imp().getExecutor().submit(new CaughtRunnable() {
+                        @Override
+                        public void runUnsafe() throws InterruptedException {
+                            while (true) {
+                                if (queuedActions.isEmpty() || getCurrentUsed() >= getLimitPerMinute()) {
+                                    Thread.sleep(10000);
+                                    continue;
+                                }
+                                Runnable current = queuedActions.poll();
+                                if (current == null) continue;
+
+                                try {
+                                    current.run();
+                                } catch (Throwable e) {
+                                    AlertUtil.error("Error with queued action", e);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
     }
 
     public static <T> T complete(RestAction<T> action) {

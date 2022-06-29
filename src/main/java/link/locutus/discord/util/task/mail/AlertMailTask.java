@@ -162,7 +162,7 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                         if (targets != null) {
                             String response = new MailRespondTask(auth, mail.leader, mail.id, MarkupUtil.bbcodeToHTML(targets), null).call();
                             if (channel != null) {
-                                RateLimitUtil.queue(channel.sendMessage("Sending target messages to " + nation.getNation() + ": " + response));
+                                RateLimitUtil.queueWhenFree(channel.sendMessage("Sending target messages to " + nation.getNation() + ": " + response));
                             }
                         }
                     } catch (IOException e) {

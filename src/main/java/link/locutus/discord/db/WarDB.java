@@ -10,7 +10,7 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.event.AttackEvent;
+import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -636,8 +636,8 @@ public class WarDB extends DBMainV2 {
                 DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
                 DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
                 if ((attacker == null || defender == null) && war.date < System.currentTimeMillis() - TimeUnit.HOURS.toMillis(2)) {
-                    war.status = WarStatus.EXPIRED;
                     expiredWars.put(new DBWar(war), war);
+                    war.status = WarStatus.EXPIRED;
                     addWar(war);
                 }
             }
@@ -1459,9 +1459,8 @@ public class WarDB extends DBMainV2 {
                 @Override
                 public void run() {
                     for (DBAttack attack : dbAttacks) {
-                        Locutus.post(new AttackEvent(attack));
+                        new AttackEvent(attack).post();
                     }
-
                     NationUpdateProcessor.updateBlockades();
                 }
             });

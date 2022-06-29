@@ -160,6 +160,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return dirty;
     }
 
+    public static DBAlliance get(int aaId) {
+        return Locutus.imp().getNationDB().getAlliance(aaId);
+    }
+
+    public static DBAlliance getOrCreate(int aaId) {
+        return Locutus.imp().getNationDB().getOrCreateAlliance(aaId);
+    }
+
     public DBAlliance(int allianceId, String name, String acronym, String flag, String forum_link, String discord_link, String wiki_link, long dateCreated, NationColor color) {
         this.allianceId = allianceId;
         this.dateCreated = dateCreated;
@@ -446,7 +454,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public boolean exists() {
-        return Locutus.imp().getNationDB().getAllianceName(allianceId) != null;
+        return Locutus.imp().getNationDB().getAlliance(allianceId) != null;
     }
 
 //    public boolean addBalance(GuildDB db, Map<ResourceType, Double> transfer, String note) {

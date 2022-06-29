@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.event.TransactionEvent;
+import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.FileUtil;

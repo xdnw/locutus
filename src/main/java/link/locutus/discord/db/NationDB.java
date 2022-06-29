@@ -288,7 +288,7 @@ public class NationDB extends DBMainV2 {
                     if (nation.getAlliance_id() == 0) continue;
                     if (nation.getPositionEnum().id < requiredRank.id) continue;
                     if (nation.getVm_turns() > 0) continue;
-                    DBAlliance alliance = nation.getAlliance();
+                    DBAlliance alliance = nation.getAlliance(false);
                     if (alliance != null) {
                         if (alliance.getLastUpdated() > nation.lastActiveMs()) continue;
                         for (AlliancePermission perm : requiredPerms) {
@@ -1131,6 +1131,16 @@ public class NationDB extends DBMainV2 {
             .weakValues()
             .build();
 
+    public String getAllianceName(int aaId) {
+        DBAlliance existing = getAlliance(aaId);
+        if (existing != null) return existing.getName();
+        for (Map.Entry<String, DBAlliance> entry : allianceByNameCache.asMap().entrySet()) {
+            if (entry.getValue().getAlliance_id() == aaId) {
+                return entry.getKey();
+            }
+        }
+        return "AA:" + aaId;
+    }
     public DBAlliance getAllianceByName(String name) {
         {
             DBAlliance alliance = allianceByNameCache.getIfPresent(name.toLowerCase(Locale.ROOT));
@@ -1924,6 +1934,11 @@ public class NationDB extends DBMainV2 {
         return getFirstNationMatching(f -> f.getLeader().equalsIgnoreCase(leader));
     }
 
+    public Map<Integer, DBNation> getNations() {
+        synchronized (nationsById) {
+            return new Int2ObjectOpenHashMap<>(nationsById);
+        }
+    }
     public Set<DBNation> getNations(Set<Integer> alliances) {
         if (alliances.isEmpty()) {
             return new LinkedHashSet<>();
@@ -2406,12 +2421,12 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public void setSpyActivity(int nationId, long projects, int spies, long timestamp, long change) {
+    public void setSpyActivity(int nationId, long projects, int spies, long timestamp, WarPolicy policy) {
         update("INSERT OR REPLACE INTO `spy_activity` (`nation`, `timestamp`, `projects`, `change`, `spies`) VALUES(?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setLong(2, timestamp);
             stmt.setLong(3, projects);
-            stmt.setLong(4, change);
+            stmt.setInt(4, policy.ordinal());
             stmt.setInt(5, spies);
         });
     }
@@ -2456,16 +2471,7 @@ public class NationDB extends DBMainV2 {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-
-                    DBSpyUpdate entry = new DBSpyUpdate();
-                    // `nation`, `timestamp`, `projects`, `change`, `spies`
-
-                    entry.nation_id = rs.getInt("nation");
-                    entry.timestamp = rs.getLong("timestamp");
-                    entry.projects = rs.getLong("projects");
-                    entry.change = rs.getLong("change");
-                    entry.spies = rs.getInt("spies");
-
+                    DBSpyUpdate entry = new DBSpyUpdate(rs);
                     set.add(entry);
                 }
             }
@@ -2476,6 +2482,8 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+    private DBSpyUpdate
+
     public List<DBSpyUpdate> getSpyActivity(long timestamp, long range) {
         try (PreparedStatement stmt = prepareQuery("select * FROM spy_activity WHERE timestamp > ? AND timestamp < ? ORDER BY timestamp ASC")) {
             stmt.setLong(1, timestamp - range);
@@ -2485,16 +2493,7 @@ public class NationDB extends DBMainV2 {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-
-                    DBSpyUpdate entry = new DBSpyUpdate();
-                    // `nation`, `timestamp`, `projects`, `change`, `spies`
-
-                    entry.nation_id = rs.getInt("nation");
-                    entry.timestamp = rs.getLong("timestamp");
-                    entry.projects = rs.getLong("projects");
-                    entry.change = rs.getLong("change");
-                    entry.spies = rs.getInt("spies");
-
+                    DBSpyUpdate entry = new DBSpyUpdate(rs);
                     set.add(entry);
                 }
             }
@@ -3023,6 +3022,10 @@ public class NationDB extends DBMainV2 {
         synchronized (citiesByNation) {
             return citiesByNation.getOrDefault(nation_id, Collections.EMPTY_MAP);
         }
+    }
+
+    public Map<Integer, Map<Integer, DBCity>> getCitiesV3(Set<Integer> nationIds) {
+
     }
 
     public DBCity getCitiesV3ByCityId(int cityId) {

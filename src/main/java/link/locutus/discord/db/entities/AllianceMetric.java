@@ -11,6 +11,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import views.grant.cities;
 
 import java.util.AbstractMap;
 import java.util.Arrays;
@@ -92,32 +93,24 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             List<DBNation> nations = alliance.getNations(true, 0, true);
-            Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-            Map<Integer, Map<Integer, CityInfraLand>> cities = Locutus.imp().getNationDB().getCityInfraLand(nationIds);
-            double land = 0;
-            for (Map.Entry<Integer, Map<Integer, CityInfraLand>> entry : cities.entrySet()) {
-                for (CityInfraLand city : entry.getValue().values()) {
-                    land += city.land;
-                }
+            double totalLand = 0;
+            for (DBNation nation : nations) {
+                totalLand += nation.getTotalLand();
             }
-            return land;
+            return totalLand;
         }
     },
     LAND_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
             List<DBNation> nations = alliance.getNations(true, 0, true);
-            Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-            Map<Integer, Map<Integer, CityInfraLand>> cities = Locutus.imp().getNationDB().getCityInfraLand(nationIds);
-            double land = 0;
+            double totalLand = 0;
             int num = 0;
-            for (Map.Entry<Integer, Map<Integer, CityInfraLand>> entry : cities.entrySet()) {
-                for (CityInfraLand city : entry.getValue().values()) {
-                    land += city.land;
-                    num++;
-                }
+            for (DBNation nation : nations) {
+                totalLand += nation.getTotalLand();
+                num += nation.getCities();
             }
-            return land / num;
+            return totalLand / num;
         }
     },
     SCORE(false) {

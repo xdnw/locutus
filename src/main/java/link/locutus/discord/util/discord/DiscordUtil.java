@@ -381,7 +381,7 @@ public class DiscordUtil {
         }
         Message msg = createMsg.apply(embed);
 
-        if (reactionArguments != null) {
+        if (reactionArguments != null && msg != null) {
             List<MessageReaction> existing = msg.getReactions();
             if (!existing.isEmpty()) {
                 RateLimitUtil.complete(msg.clearReactions());

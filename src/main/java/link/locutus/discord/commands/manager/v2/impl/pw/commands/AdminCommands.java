@@ -62,6 +62,35 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AdminCommands {
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String deleteAllInaccessibleChannels(@Switch('f') boolean force) {
+        Map<GuildDB, List<GuildDB.Key>> toUnset = new LinkedHashMap<>();
+
+        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+            if (force) {
+                List<GuildDB.Key> keys = db.listInaccessibleChannelKeys();
+                if (!keys.isEmpty()) {
+                    toUnset.put(db, keys);
+                }
+            } else {
+                db.unsetInaccessibleChannels();
+            }
+        }
+
+        if (toUnset.isEmpty()) {
+            return "No keys to unset";
+        }
+        StringBuilder response = new StringBuilder();
+        for (Map.Entry<GuildDB, List<GuildDB.Key>> entry : toUnset.entrySet()) {
+            response.append(entry.getKey().getGuild().toString() + ":\n");
+            List<GuildDB.Key> keys = entry.getValue();
+            response.append(" - " + StringMan.join(keys, "\n - "));
+            response.append("\n");
+        }
+        String footer = "Rerun the command with `-f` to confirm";
+        return response + footer;
+    }
 
     @Command
     @RolePermission(Roles.ADMIN)
@@ -502,7 +531,7 @@ public class AdminCommands {
 
                 Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 if (aaId != null) {
-                    DBAlliance alliance = new DBAlliance(aaId);
+                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
                     nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                     nations.removeIf(f -> f.getActive_m() > 10000);
@@ -532,7 +561,7 @@ public class AdminCommands {
 
                 Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 if (aaId != null) {
-                    DBAlliance alliance = new DBAlliance(aaId);
+                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
                     nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                     nations.removeIf(f -> f.getActive_m() > 10000);
@@ -551,8 +580,8 @@ public class AdminCommands {
                     response.append("\nAA owner is inactive: " + id + " | " + owner.getIdLong() + " | " + nation.getNationUrl() + " | " + nation.getActive_m() + "m");
                     continue;
                 }
-                DBAlliance alliance = new DBAlliance(id.intValue());
-                if (!alliance.exists()) {
+                DBAlliance alliance = DBAlliance.get(id.intValue());
+                if (alliance == null || !alliance.exists()) {
                     response.append("\nAA does not exist: " + id);
                     continue;
                 }

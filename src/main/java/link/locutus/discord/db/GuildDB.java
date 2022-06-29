@@ -39,17 +39,9 @@ import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
-import net.dv8tion.jda.api.entities.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.IMentionable;
-import net.dv8tion.jda.api.entities.Invite;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import net.dv8tion.jda.api.managers.channel.ChannelManager;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -127,6 +119,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private EventBus eventBus = null;
 
     public void postEvent(Object event) {
+        if (this.eventBus == null) {
+            if (getAlliance() != null) {
+                synchronized (this) {
+                    if (this.eventBus == null) {
+                        this.eventBus = new EventBus();
+                    }
+                }
+            }
+        }
         if (this.eventBus != null) this.eventBus.post(event);
     }
 
@@ -541,13 +542,37 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         GuildMessageChannel output = getOrNull(Key.ADDBALANCE_ALERT_CHANNEL);
         if (output != null) {
             try {
-                RateLimitUtil.queue(output.sendMessage(tx.toString()));
+                RateLimitUtil.queueWhenFree(output.sendMessage(tx.toString()));
             } catch (Throwable ignore) {
                 ignore.printStackTrace();
             }
         }
     }
 
+    public List<Key> listInaccessibleChannelKeys() {
+        List<Key> inaccessible = new LinkedList<>();
+        for (Key key : Key.values()) {
+            String valueStr = getInfo(key, false);
+            if (valueStr == null) continue;
+            Object value = key.parse(this, valueStr);
+            if (value == null) {
+                inaccessible.add(key);
+                continue;
+            }
+            if (value instanceof GuildMessageChannel) {
+                GuildMessageChannel channel = (GuildMessageChannel) value;
+                if (!channel.canTalk()) {
+                    inaccessible.add(key);
+                }
+            }
+        }
+        return inaccessible;
+    }
+    public void unsetInaccessibleChannels() {
+        for (Key key : listInaccessibleChannels()) {
+            deleteInfo(key);
+        }
+    }
     public void deleteExpire_bugFix() {
         GuildDB delegate = getDelegateServer();
         if (delegate != null) {
@@ -1582,16 +1607,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public boolean isValidAlliance() {
         Integer aaId = getOrNull(Key.ALLIANCE_ID);
         if (aaId == null) return false;
-        return Locutus.imp().getNationDB().getAllianceName(aaId) != null;
+        return Locutus.imp().getNationDB().getAlliance(aaId) != null;
 //        List<DBNation> nations = new Alliance(aaId).getNations(true, 10000, true);
 //        return !nations.isEmpty();
     }
 
     public DBAlliance getAlliance() {
-        if (isValidAlliance()) {
-            return new DBAlliance((Integer) getOrNull(Key.ALLIANCE_ID));
-        }
-        return null;
+        Integer aaId = (Integer) getOrNull(Key.ALLIANCE_ID);
+        if (aaId == null) return null;
+        return Locutus.imp().getNationDB().getAlliance(aaId);
     }
 
     public boolean hasRequiredMMR(DBNation nation) {

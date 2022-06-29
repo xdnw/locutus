@@ -14,23 +14,16 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.NationRegisterEvent;
-import link.locutus.discord.event.TransactionEvent;
+import link.locutus.discord.event.nation.NationRegisterEvent;
+import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -43,7 +36,6 @@ import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.discord.web.jooby.handler.DummyMessageOutput;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -121,7 +113,6 @@ public class DBNation implements NationOrAlliance {
     private long beigeTimer;
     private long warPolicyTimer;
     private long domesticPolicyTimer;
-
     private long colorTimer;
     private long espionageFull;
     private int dc_turn = -1;
@@ -129,6 +120,30 @@ public class DBNation implements NationOrAlliance {
     private int wars_lost;
     private int tax_id;
     private transient  DBNationCache cache;
+
+    public void processTurnChange(long lastTurn, long turn, Consumer<Event> eventConsumer) {
+        if (leaving_vm == turn) {
+            if (eventConsumer != null) new NationLeaveVacationEvent(this, this).post();
+        }
+        if (beigeTimer == turn) {
+            if (eventConsumer != null) new NationLeaveBeigeEvent(this, this).post();
+        }
+        if (colorTimer == turn) {
+            if (eventConsumer != null) new NationColorTimerEndEvent(this, this).post();
+        }
+        if (warPolicyTimer == turn) {
+            if (eventConsumer != null) new NationWarPolicyTimerEndEvent(this, this).post();
+        }
+        if (domesticPolicyTimer == turn) {
+            if (eventConsumer != null) new NationDomesticPolicyTimerEndEvent(this, this).post();
+        }
+        if (cityTimer == turn) {
+            if (eventConsumer != null) new NationCityTimerEndEvent(this, this).post();
+        }
+        if (projectTimer == turn) {
+            if (eventConsumer != null) new NationProjectTimerEndEvent(this, this).post();
+        }
+    }
 
     public DBNation(int nation_id, String nation, String leader, int alliance_id, long last_active, double score,
                         int cities, DomesticPolicy domestic_policy, WarPolicy war_policy, int soldiers,
@@ -775,9 +790,6 @@ public class DBNation implements NationOrAlliance {
         return alliancePosition;
     }
 
-    public boolean updateNationWithInfo(DBNation copyOriginal, SNationContainer nation, Consumer<Event> eventConsumer) {
-
-    }
 //    public boolean updateNationWithInfo(DBNation copyOriginal, NationMilitaryContainer nation, Consumer<Event> eventConsumer) {
 //
 //    }
@@ -817,7 +829,7 @@ public class DBNation implements NationOrAlliance {
             if (warPolicy != this.war_policy) {
                 dirty = true;
                 if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
-                this.war_policy = warPolicy;
+                setWarPolicy(warPolicy);
                 if (eventConsumer != null) eventConsumer.accept(new NationChangeWarPolicyEvent(copyOriginal, this));
             }
         }
@@ -826,8 +838,11 @@ public class DBNation implements NationOrAlliance {
             if (color != this.color) {
                 dirty = true;
                 if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
-                this.color = color;
-                if (eventConsumer != null) eventConsumer.accept(new NationChangeColorEvent(copyOriginal, this));
+                setColor(color);
+                if (eventConsumer != null) {
+                    if (copyOriginal.color == NationColor.BEIGE) eventConsumer.accept(new NationLeaveBeigeEvent(copyOriginal, this));
+                    eventConsumer.accept(new NationChangeColorEvent(copyOriginal, this));
+                }
             }
         }
         if (nation.getAllianceid() != null && this.alliance_id != nation.getAllianceid()) {
@@ -901,7 +916,10 @@ public class DBNation implements NationOrAlliance {
 
         if (nation.getLast_active() != null && this.lastActiveMs() != (nation.getLast_active().toEpochMilli())) {
             this.setLastActive(nation.getLast_active().toEpochMilli());
-            if (eventConsumer != null) eventConsumer.accept(new NationChangeActiveEvent(copyOriginal, this));
+            // No reason they should become less active, but guard for anyway
+            if (this.lastActiveMs() < nation.getLast_active().toEpochMilli()) {
+                if (eventConsumer != null) eventConsumer.accept(new NationChangeActiveEvent(copyOriginal, this));
+            }
             dirty = true;
         }
         if (nation.getScore() != null && this.getScore() != (nation.getScore())) {
@@ -934,7 +952,7 @@ public class DBNation implements NationOrAlliance {
         if (nation.getProject_bits() != null) {
             this.setProjectsRaw(nation.getProject_bits());
             if (copyOriginal != null && nation.getProject_bits() != copyOriginal.getProjectBitMask()) {
-                if (copyOriginal != null && copyOriginal.getProjectBitMask() != -1) {
+                if (copyOriginal.getProjectBitMask() != -1) {
                     Set<Project> originalProjects = copyOriginal.getProjects();
                     Set<Project> currentProjects = this.getProjects();
                     for (Project project : currentProjects) {
@@ -1001,7 +1019,12 @@ public class DBNation implements NationOrAlliance {
             NationColor color = NationColor.valueOf(nation.getColor().toUpperCase(Locale.ROOT));
             if (color != this.getColor()) {
                 this.setColor(color);
-                if (eventConsumer != null) eventConsumer.accept(new NationChangeColorEvent(copyOriginal, this));
+                if (eventConsumer != null) {
+                    if (copyOriginal.color == NationColor.BEIGE) {
+                        eventConsumer.accept(new NationLeaveBeigeEvent(copyOriginal, this));
+                    }
+                    eventConsumer.accept(new NationChangeColorEvent(copyOriginal, this));
+                }
                 dirty = true;
             }
         }
@@ -1142,34 +1165,11 @@ public class DBNation implements NationOrAlliance {
     }
 
     public DBNation(SNationContainer wrapper) {
-        this.nation = wrapper.getNation();
-        this.nation_id = wrapper.getNationid();
+        updateNationInfo(wrapper, null);
 
-        this.leader = wrapper.getLeader();
-
-        this.alliance = wrapper.getAlliance();
-        this.alliance_id = wrapper.getAllianceid();
-
-        this.last_active = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(wrapper.getMinutessinceactive());
-
-        this.score = wrapper.getScore();
-        this.cities = wrapper.getCities();
-        this.war_policy = WarPolicy.parse(wrapper.getWarPolicy());
-        Integer vm = wrapper.getVacmode();
-        vm_turns = vm == null ? 0 : vm;
-        this.color = NationColor.valueOf(wrapper.getColor().toUpperCase());
-        this.off = wrapper.getOffensivewars();
-        this.def = wrapper.getDefensivewars();
-
-        this.infra = wrapper.getInfrastructure().intValue();
-        if (wrapper.getCities() == 0) {
-            System.out.println("!!! invalid nation " + this.getNation_id());
-        } else {
-            this.avg_infra = this.infra / wrapper.getCities();
+        if (this.isBeige() && beigeTimer == 0) {
+            this.beigeTimer = TimeUtil.getTurn() + 14 * 12;
         }
-
-        this.position = wrapper.getAllianceposition();
-        this.continent = Continent.valueOf(wrapper.getContinent().toUpperCase().replace(" ", "_"));
     }
 
     private Number cast(Number t) {
@@ -1773,13 +1773,19 @@ public class DBNation implements NationOrAlliance {
     @Command
     public String getAllianceName() {
         if (alliance_id == 0) return "AA:0";
-        DBAlliance allianceObj = getAlliance();
-        return allianceObj == null ? "AA:" + alliance_id : allianceObj.getName();
+        return Locutus.imp().getNationDB().getAllianceName(alliance_id);
     }
 
     public DBAlliance getAlliance() {
+        return getAlliance(true);
+    }
+    public DBAlliance getAlliance(boolean createIfNotExist) {
         if (alliance_id == 0) return null;
-        return Locutus.imp().getNationDB().getAlliance(alliance_id);
+        if (createIfNotExist) {
+            return Locutus.imp().getNationDB().getOrCreateAlliance(alliance_id);
+        } else {
+            return Locutus.imp().getNationDB().getAlliance(alliance_id);
+        }
     }
 
     @Command(desc = "Minutes since last active ingame")
@@ -3089,18 +3095,38 @@ public class DBNation implements NationOrAlliance {
         return turnsBeige;
     }
 
-    public boolean isReroll() {
+    public int isReroll() {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();
-            if (otherNation.getDate() == null || getDate() == null) continue;
+            if (otherNation.getDate() == 0) continue;
 
-            if (otherId > nation_id && Math.abs(otherNation.getDate()  - getDate()) > TimeUnit.DAYS.toMillis(1)) {
-                return true;
+            if (otherId > nation_id && Math.abs(otherNation.getDate()  - getDate()) > TimeUnit.DAYS.toMillis(14)) {
+                return nation_id;
             }
         }
-        return false;
+
+        try {
+            BigInteger uid = new GetUid(this).call();
+            for (Map.Entry<Integer, Long> entry : Locutus.imp().getDiscordDB().getUuids(uid)) {
+                int nationId = entry.getKey();
+                if (nationId == this.nation_id) continue;
+                BigInteger latest = Locutus.imp().getDiscordDB().getLatestUuid(nationId);
+                if (latest != null && latest.equals(uid)) {
+                    return nationId;
+                }
+                break;
+            }
+
+        } catch (Exception e) {
+            AlertUtil.error("Failed to fetch uid for " + nation_id, e);
+        }
+        // check multi
+
+
+
+        return 0;
     }
 
     public NationMeta.BeigeAlertMode getBeigeAlertMode(NationMeta.BeigeAlertMode def) {
@@ -4103,6 +4129,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public GuildDB getGuildDB() {
+        if (alliance_id == 0) return null;
         return Locutus.imp().getGuildDBByAA(alliance_id);
     }
 

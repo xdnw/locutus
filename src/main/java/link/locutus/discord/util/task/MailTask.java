@@ -53,7 +53,7 @@ public class MailTask implements Callable<String> {
                         String result = MailTask.this.call();
                         Guild server = Locutus.imp().getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER);
                         if (output != null) {
-                            RateLimitUtil.queue(output.sendMessage(result));
+                            RateLimitUtil.queueWhenFree(output.sendMessage(result));
                         }
                         return result;
                     }), 3, TimeUnit.MINUTES);
