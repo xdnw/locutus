@@ -66,6 +66,7 @@ dependencies {
 //    implementation name: 'pw4j-1.6.1'
 //    implementation 'io.github.adorable-skullmaster:pw4j:1.6.0'
 
+    implementation 'com.pusher:pusher-java-client:2.3.0-beta'
 
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
     implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25'

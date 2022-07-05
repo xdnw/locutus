@@ -2430,7 +2430,10 @@ public class BankCommands {
                 if (channel != null) {
                     try {
                         DiscordUtil.createEmbedCommand(channel, title, body);
-                        Role adminRole = Roles.ADMIN.toRole(channel.getGuild());
+                        Role adminRole = Roles.ECON.toRole(channel.getGuild());
+                        if (adminRole == null) {
+                            adminRole = Roles.ADMIN.toRole(channel.getGuild());
+                        }
                         Member owner = channel.getGuild().getOwner();
                         if (adminRole != null) {
                             RateLimitUtil.queue((channel.sendMessage(adminRole.getAsMention())));

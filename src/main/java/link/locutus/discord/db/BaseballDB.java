@@ -59,7 +59,7 @@ public class BaseballDB extends DBMainV2{
 
         PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
         List<BBGame> games = v3.fetchBaseballGames(req -> {
-            if (wagered) req.setMin_wager(1);
+            if (wagered) req.setMin_wager(1d);
             if (minId != null) req.setMin_id(minId);
             if (maxId != null) req.setMax_id(maxId);
         }, game -> {

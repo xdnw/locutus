@@ -164,8 +164,9 @@ type Query {
     team_id: [Int]
     orderBy: [QueryBaseballGamesOrderByOrderByClause!]
     open: Boolean
-    max_wager: Int
-    min_wager: Int
+    max_wager: Float
+    min_wager: Float
+    wager: [Float]
 
     # Limits number of fetched items. Maximum allowed value: 1000.
     first: Int = 50
@@ -416,7 +417,7 @@ type Nation {
   city_planning: Boolean @deprecated(reason: "Use urban_planning instead")
   urban_planning: Boolean
   adv_city_planning: Boolean
-    @deprecated(reason: "Use advanced_urban_planning instead")
+  @deprecated(reason: "Use advanced_urban_planning instead")
   advanced_urban_planning: Boolean
   space_program: Boolean
   spy_satellite: Boolean
@@ -424,17 +425,17 @@ type Nation {
   pirate_economy: Boolean
   recycling_initiative: Boolean
   telecom_satellite: Boolean
-    @deprecated(reason: "Use telecommunications_satellite instead")
+  @deprecated(reason: "Use telecommunications_satellite instead")
   telecommunications_satellite: Boolean
   green_tech: Boolean @deprecated(reason: "Use green_technologies instead")
   green_technologies: Boolean
   arable_land_agency: Boolean
   clinical_research_center: Boolean
   specialized_police_training: Boolean
-    @deprecated(reason: "Use specialized_police_training_program instead")
+  @deprecated(reason: "Use specialized_police_training_program instead")
   specialized_police_training_program: Boolean
   adv_engineering_corps: Boolean
-    @deprecated(reason: "Use advanced_engineering_corps instead")
+  @deprecated(reason: "Use advanced_engineering_corps instead")
   advanced_engineering_corps: Boolean
   government_support_agency: Boolean
   research_and_development_center: Boolean
@@ -460,6 +461,7 @@ type Nation {
   nuke_kills: Int
   spy_casualties: Int
   spy_kills: Int
+  spy_attacks: Int
   money_looted: Float
 }
 
@@ -582,6 +584,17 @@ type Alliance {
 
   # This field will return null unless you are an officer or higher in this alliance
   tax_brackets: [TaxBracket]
+
+  # All wars within the last 14 days
+  wars(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    active: Boolean
+    limit: Int
+    orderBy: [AllianceWarsOrderByOrderByClause!]
+  ): [War!]!
 
   # This field will return null unless you are in this alliance and have access to view its bank
   money: Float
@@ -781,98 +794,19 @@ type TaxBracket {
   bracket_name: String
 }
 
-enum WarPolicy {
-  ATTRITION
-  TURTLE
-  BLITZKRIEG
-  FORTRESS
-  MONEYBAGS
-  PIRATE
-  TACTICIAN
-  GUARDIAN
-  COVERT
-  ARCANE
+# Order by clause for Alliance.wars.orderBy.
+input AllianceWarsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceWarsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
 }
 
-enum DomesticPolicy {
-  MANIFEST_DESTINY
-  OPEN_MARKETS
-  TECHNOLOGICAL_ADVANCEMENT
-  IMPERIALISM
-  URBANIZATION
-  RAPID_EXPANSION
-}
-
-type City {
-  id: Int
-  nation_id: Int
-  nation: Nation
-  name: String
-  date: Date
-  infrastructure: Float
-  land: Float
-  powered: Boolean
-  oilpower: Int @deprecated(reason: "Use oil_power instead")
-  oil_power: Int
-  windpower: Int @deprecated(reason: "Use wind_power instead")
-  wind_power: Int
-  coalpower: Int @deprecated(reason: "Use coal_power instead")
-  coal_power: Int
-  nuclearpower: Int @deprecated(reason: "Use nuclear_power instead")
-  nuclear_power: Int
-  coalmine: Int @deprecated(reason: "Use coal_mine instead")
-  coal_mine: Int
-  oilwell: Int @deprecated(reason: "Use oil_well instead")
-  oil_well: Int
-  uramine: Int @deprecated(reason: "Use uranium_mine instead")
-  uranium_mine: Int
-  barracks: Int
-  farm: Int
-  policestation: Int @deprecated(reason: "Use police_station instead")
-  police_station: Int
-  hospital: Int
-  recyclingcenter: Int @deprecated(reason: "Use recycling_center instead")
-  recycling_center: Int
-  subway: Int
-  supermarket: Int
-  bank: Int
-  mall: Int @deprecated(reason: "Use shopping_mall instead")
-  shopping_mall: Int
-  stadium: Int
-  leadmine: Int @deprecated(reason: "Use lead_mine instead")
-  lead_mine: Int
-  ironmine: Int @deprecated(reason: "Use iron_mine instead")
-  iron_mine: Int
-  bauxitemine: Int @deprecated(reason: "Use bauxite_mine instead")
-  bauxite_mine: Int
-  gasrefinery: Int @deprecated(reason: "Use oil_refinery instead")
-  oil_refinery: Int
-  aluminumrefinery: Int @deprecated(reason: "Use aluminum_refinery instead")
-  aluminum_refinery: Int
-  steelmill: Int @deprecated(reason: "Use steel_mill instead")
-  steel_mill: Int
-  munitionsfactory: Int @deprecated(reason: "Use munitions_factory instead")
-  munitions_factory: Int
-  factory: Int
-  airforcebase: Int @deprecated(reason: "Use hangar instead.")
-  hangar: Int
-  drydock: Int
-  nukedate: Date @deprecated(reason: "Use nuke_date instead.")
-  nuke_date: Date
-}
-
-# A date string with format `Y-m-d`, e.g. `2011-05-23`.
-scalar Date
-
-type Treasure {
-  name: String
-  color: String
-  continent: String
-  bonus: Int
-  spawndate: Date @deprecated(reason: "Use spawn_date instead.")
-  spawn_date: Date
-  nation_id: Int
-  nation: Nation
+# Allowed column names for Alliance.wars.orderBy.
+enum AllianceWarsOrderByColumn {
+  ID
+  DATE
 }
 
 type War {
@@ -1038,6 +972,100 @@ enum AttackType {
   PEACE
   VICTORY
   ALLIANCELOOT
+}
+
+enum WarPolicy {
+  ATTRITION
+  TURTLE
+  BLITZKRIEG
+  FORTRESS
+  MONEYBAGS
+  PIRATE
+  TACTICIAN
+  GUARDIAN
+  COVERT
+  ARCANE
+}
+
+enum DomesticPolicy {
+  MANIFEST_DESTINY
+  OPEN_MARKETS
+  TECHNOLOGICAL_ADVANCEMENT
+  IMPERIALISM
+  URBANIZATION
+  RAPID_EXPANSION
+}
+
+type City {
+  id: Int
+  nation_id: Int
+  nation: Nation
+  name: String
+  date: Date
+  infrastructure: Float
+  land: Float
+  powered: Boolean
+  oilpower: Int @deprecated(reason: "Use oil_power instead")
+  oil_power: Int
+  windpower: Int @deprecated(reason: "Use wind_power instead")
+  wind_power: Int
+  coalpower: Int @deprecated(reason: "Use coal_power instead")
+  coal_power: Int
+  nuclearpower: Int @deprecated(reason: "Use nuclear_power instead")
+  nuclear_power: Int
+  coalmine: Int @deprecated(reason: "Use coal_mine instead")
+  coal_mine: Int
+  oilwell: Int @deprecated(reason: "Use oil_well instead")
+  oil_well: Int
+  uramine: Int @deprecated(reason: "Use uranium_mine instead")
+  uranium_mine: Int
+  barracks: Int
+  farm: Int
+  policestation: Int @deprecated(reason: "Use police_station instead")
+  police_station: Int
+  hospital: Int
+  recyclingcenter: Int @deprecated(reason: "Use recycling_center instead")
+  recycling_center: Int
+  subway: Int
+  supermarket: Int
+  bank: Int
+  mall: Int @deprecated(reason: "Use shopping_mall instead")
+  shopping_mall: Int
+  stadium: Int
+  leadmine: Int @deprecated(reason: "Use lead_mine instead")
+  lead_mine: Int
+  ironmine: Int @deprecated(reason: "Use iron_mine instead")
+  iron_mine: Int
+  bauxitemine: Int @deprecated(reason: "Use bauxite_mine instead")
+  bauxite_mine: Int
+  gasrefinery: Int @deprecated(reason: "Use oil_refinery instead")
+  oil_refinery: Int
+  aluminumrefinery: Int @deprecated(reason: "Use aluminum_refinery instead")
+  aluminum_refinery: Int
+  steelmill: Int @deprecated(reason: "Use steel_mill instead")
+  steel_mill: Int
+  munitionsfactory: Int @deprecated(reason: "Use munitions_factory instead")
+  munitions_factory: Int
+  factory: Int
+  airforcebase: Int @deprecated(reason: "Use hangar instead.")
+  hangar: Int
+  drydock: Int
+  nukedate: Date @deprecated(reason: "Use nuke_date instead.")
+  nuke_date: Date
+}
+
+# A date string with format `Y-m-d`, e.g. `2011-05-23`.
+scalar Date
+
+type Treasure {
+  name: String
+  color: String
+  continent: String
+  bonus: Int
+  spawndate: Date @deprecated(reason: "Use spawn_date instead.")
+  spawn_date: Date
+  nation_id: Int
+  nation: Nation
 }
 
 # Order by clause for Nation.wars.orderBy.
@@ -1748,6 +1776,14 @@ type Embargo {
   receiver_id: Int
   receiver: Nation
   reason: String
+  type: EmbargoType
+}
+
+enum EmbargoType {
+  NATION_TO_NATION
+  NATION_TO_ALLIANCE
+  ALLIANCE_TO_NATION
+  ALLIANCE_TO_ALLIANCE
 }
 
 type Mutation {
@@ -1783,64 +1819,6 @@ type Mutation {
     food: Float = 0.0
     note: String
   ): Bankrec!
-}
-
-type Subscription {
-  allianceCreate: Alliance
-  allianceDelete(id: [Int]): Alliance
-  allianceUpdate(id: [Int]): Alliance
-  alliancePositionCreate(id: [Int], alliance_id: [Int]): AlliancePosition
-  alliancePositionDelete(id: [Int], alliance_id: [Int]): AlliancePosition
-  alliancePositionUpdate(id: [Int], alliance_id: [Int]): AlliancePosition
-  bankrecCreate(sid: [Int], stype: [Int], rid: [Int], rtype: [Int]): Bankrec
-  bbgameCreate(team_id: [Int]): BBGame
-  bbgameDelete(id: [Int], team_id: [Int]): BBGame
-  bbgameUpdate(id: [Int], team_id: [Int]): BBGame
-  bbplayerCreate(team_id: [Int]): BBPlayer
-  bbplayerDelete(id: [Int], team_id: [Int]): BBPlayer
-  bbplayerUpdate(id: [Int], team_id: [Int]): BBPlayer
-  bbteamCreate(nation_id: [Int]): BBTeam
-  bbteamDelete(id: [Int], nation_id: [Int]): BBTeam
-  bbteamUpdate(id: [Int], nation_id: [Int]): BBTeam
-  bountyCreate(nation_id: [Int]): Bounty
-  bountyDelete(id: [Int], nation_id: [Int]): Bounty
-  bountyUpdate(id: [Int], nation_id: [Int]): Bounty
-  cityCreate(id: [Int], nation_id: [Int]): City
-  cityDelete(id: [Int], nation_id: [Int]): City
-  cityUpdate(id: [Int], nation_id: [Int]): City
-  embargoCreate(id: [Int], nation_id: [Int]): Embargo
-  embargoDelete(id: [Int], nation_id: [Int]): Embargo
-  nationCreate(id: [Int], alliance_id: [Int]): Nation
-  nationDelete(id: [Int], alliance_id: [Int]): Nation
-  nationUpdate(id: [Int], alliance_id: [Int]): Nation
-  taxBracketCreate(id: [Int], alliance_id: [Int]): TaxBracket
-  taxBracketDelete(id: [Int], alliance_id: [Int]): TaxBracket
-  taxBracketUpdate(id: [Int], alliance_id: [Int]): TaxBracket
-  tradeCreate(
-    nation_id: [Int]
-    offer_resource: [String]
-    buy_or_sell: String
-  ): Trade
-  tradeDelete(
-    id: [Int]
-    nation_id: [Int]
-    offer_resource: [String]
-    buy_or_sell: String
-  ): Trade
-  tradeUpdate(
-    id: [Int]
-    nation_id: [Int]
-    offer_resource: [String]
-    buy_or_sell: String
-  ): Trade
-  treasureTradeUpdate(id: [Int], nation_id: [Int]): TreasureTrade
-  treatyCreate(alliance_id: [Int]): Treaty
-  treatyUpdate(id: [Int], alliance_id: [Int]): Treaty
-  warCreate(nation_id: [Int], alliance_id: [Int]): War
-  warDelete(id: [Int], nation_id: [Int], alliance_id: [Int]): War
-  warUpdate(id: [Int], nation_id: [Int], alliance_id: [Int]): War
-  warAttackCreate(war_id: [Int]): WarAttack
-  warAttackDelete(war_id: [Int]): WarAttack
 }
 
 # A datetime and timezone string in ISO 8601 format `Y-m-dTH:i:sO`, e.g. `2020-04-20T13:53:12+02:00`.
