@@ -256,7 +256,7 @@ public class TaxRecordCategorizer2 {
             }
         }
 
-        this.allNations = DBAlliance.getOrCreate(getAaId()).getNations(true, 0, true);
+        this.allNations = new ArrayList<>(DBAlliance.getOrCreate(getAaId()).getNations(true, 0, true));
         this.allNations.removeIf(f -> !acceptsNation.test(f.getNation_id()));
         this.nationsByBracket = new Int2ObjectOpenHashMap<>();
         this.bracketsByNation = new Int2ObjectOpenHashMap<>();
@@ -323,7 +323,7 @@ public class TaxRecordCategorizer2 {
         }
 
         if (includeDeposits) {
-            LinkedList<Transaction2> depositTransfers = new ArrayList<>();
+            List<Transaction2> depositTransfers = new ArrayList<>();
             for (Integer senderAAId : getAlliances()) {
                 depositTransfers.addAll(Locutus.imp().getBankDB().getTransactionsByAllianceReceiver(senderAAId));
                 depositTransfers.removeIf(f -> !f.isSenderNation());

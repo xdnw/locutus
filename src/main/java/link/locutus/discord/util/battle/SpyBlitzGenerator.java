@@ -176,7 +176,7 @@ public class SpyBlitzGenerator {
                     }
                     if (operation == SpyCount.Operation.MISSILE) {
                         Integer missileCap = defender.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
-                        if (defender.getMissiles().equals(missileCap)) {
+                        if (defender.getMissiles() == missileCap) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();
                             if (minute > 30) {
@@ -358,7 +358,7 @@ public class SpyBlitzGenerator {
         list.removeIf(DBNation::hasUnsetMil);
         list.removeIf(f -> f.getActive_m() > 1440);
         list.removeIf(f -> f.getVm_turns() > 0);
-        list.removeIf(f -> f.getSpies() == null || f.getSpies() <= 0);
+        list.removeIf(f -> f.getSpies() <= 0);
         list.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         if (checkEspionageSlots && !isAttacker) {
             list.removeIf(DBNation::isEspionageFull);

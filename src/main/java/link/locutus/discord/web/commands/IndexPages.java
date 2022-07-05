@@ -34,15 +34,7 @@ import views.guild.memberindex;
 
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -156,7 +148,7 @@ public class IndexPages {
             if (val > 0) {
                 String url = alliance.getUrl();
                 StringBuilder body = new StringBuilder();
-                List<DBNation> nations = alliance.getNations(true, 0, true);
+                Set<DBNation> nations = alliance.getNations(true, 0, true);
                 DBNation total = alliance.getMembersTotal();
                 body.append("Nations: " + nations.size()).append("<br>");
                 body.append("Score: " + total.getScore()).append("<br>");
@@ -302,7 +294,7 @@ public class IndexPages {
         Guild guild = db != null ? db.getGuild() : null;
 
         String url = alliance.getUrl();
-        List<DBNation> nations = alliance.getNations();
+        Set<DBNation> nations = alliance.getNations();
 
         // 1 view wars
         // 2 view members

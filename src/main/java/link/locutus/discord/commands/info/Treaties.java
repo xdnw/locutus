@@ -7,6 +7,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -52,7 +53,8 @@ public class Treaties extends Command {
                 List<PendingTreaty> treaties = auth.getTreaties();
                 if (!flags.contains('f')) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
                 for (PendingTreaty treaty : treaties) {
-                    response.append("#" + treaty.getId() + ": " + PnwUtil.getName(treaty.getFromId(), true) + " | " + treaty.getType() + " -> " + PnwUtil.getName(treaty.getToId(), true) + " (" + treaty.remaining + "|" + treaty.status + ")").append("\n");
+                    long turnsLeft = treaty.getTurnEnds() - TimeUtil.getTurn();
+                    response.append("#" + treaty.getId() + ": " + PnwUtil.getName(treaty.getFromId(), true) + " | " + treaty.getType() + " -> " + PnwUtil.getName(treaty.getToId(), true) + " (" + turnsLeft + " turns |" + treaty.status + ")").append("\n");
                 }
                 return response.toString();
             }

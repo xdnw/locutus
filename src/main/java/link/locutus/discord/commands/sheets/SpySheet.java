@@ -95,7 +95,7 @@ public class SpySheet extends Command {
         attackers.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > 1880 || t.getPosition() <= 1);
         if (minSpies != -1) {
             Integer finalMinSpies1 = minSpies;
-            attackers.removeIf(t -> t.getSpies() != null && t.getSpies() < finalMinSpies1 - 3);
+            attackers.removeIf(t -> t.getSpies() < finalMinSpies1 - 3);
         }
         defenders.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > 2880);
 
@@ -115,7 +115,7 @@ public class SpySheet extends Command {
 
         if (flags.contains('f')) {
             for (DBNation defender : defenders) {
-                if (defender.getSpies() != null && defender.getSpies() <= 3 && flags.contains('c')) continue;
+                if (defender.getSpies() <= 3 && flags.contains('c')) continue;
                 defender.updateSpies(true);
             }
             for (DBNation attacker : attackers) attacker.updateSpies(true);
@@ -139,7 +139,7 @@ public class SpySheet extends Command {
         BiFunction<Double, Double, Double> defSpyGraph = PnwUtil.getXInRange(defenders, n -> Math.pow(n.updateSpies(false, false).doubleValue(), 2));
 
         Integer finalMinSpies = minSpies;
-        attackers.removeIf(n -> n.getSpies() == null || n.getSpies() <= finalMinSpies);
+        attackers.removeIf(n -> n.getSpies() <= finalMinSpies);
 
         // higher = higher value target
         Function<Double, Double> enemySpyRatio = new Function<Double, Double>() {
@@ -162,7 +162,6 @@ public class SpySheet extends Command {
             Integer mySpies = attacker.getSpies();
             if (mySpies == null || mySpies == 0) continue;
             for (DBNation defender : defenders) {
-                if (defender.getSpies() == null) continue;
                 if (attacker.isInSpyRange(defender) && defender.getSpies() * 0.66 <= attacker.getSpies()) {
                     double loginRatio = loginProb.get(defender);
 
@@ -222,7 +221,7 @@ public class SpySheet extends Command {
                         }
                         if (operation == SpyCount.Operation.MISSILE) {
                             Integer missileCap = defender.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
-                            if (defender.getMissiles().equals(missileCap)) {
+                            if (defender.getMissiles() == (missileCap)) {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                                 int minute = now.getHour() * 60 + now.getMinute();
                                 if (minute > 30) {

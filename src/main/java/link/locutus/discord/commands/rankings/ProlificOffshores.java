@@ -75,11 +75,10 @@ public class ProlificOffshores extends Command {
             entry.setValue(sum);
         }
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
 
         new SummedMapRankBuilder<>(aaCount)
         .sort()
-        .nameKeys(alliances::get)
+        .nameKeys(f -> PnwUtil.getName(f, true))
         .limit(10)
         .build(event, "Prolific Offshores (" + days + " days)");
 

@@ -200,16 +200,12 @@ public class ExportSim {
         nation2.setTanks(tankMax);
         nation2.setAircraft(airMax);
         nation2.setShips(shipMax);
-        nation2.setInfra(1000);
-        nation2.setAvg_infra(1000);
         nation2.setCities(1);
 
         nation1.setSoldiers(soldierMax);
         nation1.setTanks(tankMax);
         nation1.setAircraft(airMax);
         nation1.setShips(shipMax);
-        nation1.setInfra(1000);
-        nation1.setAvg_infra(1000);
         nation1.setCities(1);
 
         WarNation warNation1 = new WarNation(nation1, false);
@@ -290,16 +286,12 @@ public class ExportSim {
         nation2.setTanks(tankMax);
         nation2.setAircraft(airMax);
         nation2.setShips(shipMax);
-        nation2.setInfra(1000);
-        nation2.setAvg_infra(1000);
         nation2.setCities(1);
 
         nation1.setSoldiers(soldierMax);
         nation1.setTanks(tankMax);
         nation1.setAircraft(airMax);
         nation1.setShips(shipMax);
-        nation1.setInfra(1000);
-        nation1.setAvg_infra(1000);
         nation1.setCities(1);
 
         WarNation warNation1 = new WarNation(nation1, false);

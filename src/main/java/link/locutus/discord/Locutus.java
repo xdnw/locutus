@@ -614,17 +614,29 @@ public final class Locutus extends ListenerAdapter {
         }
 
         if (Settings.INSTANCE.TASKS.WAR_ATTACK_SECONDS > 0) {
-            commandManager.getExecutor().scheduleWithFixedDelay(
-                    new TaskLock(() -> {
-                        warDb.updateWars();
-                        warDb.updateAttacks();
+            commandManager.getExecutor().scheduleWithFixedDelay(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        List<Event> events = new ArrayList<>();
+                        warDb.updateWars(true);
+                        warDb.updateAttacks(true);
+
                         if (Settings.INSTANCE.TASKS.WAR_ATTACKS_ESCALATION_ALERTS) {
+                            long start = System.currentTimeMillis();
                             WarUpdateProcessor.checkActiveConflicts();
+                            long diff = System.currentTimeMillis() - start;
+                            if (diff > 100) {
+                                AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
+                            }
                         }
-                        return true;
-                    }),
-                    Settings.INSTANCE.TASKS.WAR_ATTACK_SECONDS,
-                    Settings.INSTANCE.TASKS.WAR_ATTACK_SECONDS, TimeUnit.SECONDS);
+                    } catch (Throwable e) {
+                        AlertUtil.error("Error fetching wars", e);
+                    }
+                }
+            },
+            Settings.INSTANCE.TASKS.WAR_ATTACK_SECONDS,
+            Settings.INSTANCE.TASKS.WAR_ATTACK_SECONDS, TimeUnit.SECONDS);
         }
 
         checkMailTasks();

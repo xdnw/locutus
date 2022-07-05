@@ -582,6 +582,21 @@ public class WarDB extends DBMainV2 {
         });
     }
 
+    public boolean updateWars(boolean events) throws IOException {
+        if (!events) return updateWars(null);
+
+        ArrayDeque<Event> eventQueue = new ArrayDeque<>();
+        boolean result = updateWars(eventQueue::add);
+        if (!eventQueue.isEmpty()) {
+            Locutus.imp().getExecutor().submit(() -> {
+                for (Event event : eventQueue) {
+                    event.post();
+                }
+            });
+        }
+        return result;
+    }
+
     public boolean updateWars(Consumer<Event> eventConsumer) throws IOException {
         List<SWarContainer> wars = Locutus.imp().getPnwApi().getWarsByAmount(5000).getWars();
         List<DBWar> dbWars = new ArrayList<>();

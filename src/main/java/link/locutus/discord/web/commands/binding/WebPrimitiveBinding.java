@@ -349,7 +349,7 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types=DBNation.class, examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
     public String nation(ParameterData param) {
-        LinkedList<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        Collection<DBNation> options = (Locutus.imp().getNationDB().getNations().values());
         options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         options.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
@@ -368,18 +368,18 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= NationOrAlliance.class)
     public String nationOrAlliance(ParameterData param) {
-        LinkedList<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
+        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
 
         List<Map.Entry<String, String>> options = new ArrayList<>(alliances.size() + nations.size());
         for (DBNation nation : nations) {
             options.add(new AbstractMap.SimpleEntry<>(nation.getName(), nation.getNation_id() + ""));
         }
-        for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(new AbstractMap.SimpleEntry<>(entry.getValue(), "aa:" + entry.getKey()));
+        for (DBAlliance alliance : alliances) {
+            options.add(new AbstractMap.SimpleEntry<>(alliance.getName(), "aa:" + alliance.getId()));
         }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getKey());
@@ -390,11 +390,11 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= NationOrAllianceOrGuild.class)
     public String nationOrAllianceOrGuild(@Me User user, ParameterData param) {
-        LinkedList<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
+        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
 
         List<Guild> guilds = user.getMutualGuilds();
 
@@ -402,9 +402,8 @@ public class WebPrimitiveBinding extends BindingHelper {
         for (Guild guild : guilds) {
             options.add(Locutus.imp().getGuildDB(guild));
         }
-        for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(DBAlliance.getOrCreate(entry.getKey()));
-        }
+        options.addAll(alliances);
+
         for (DBNation nation : nations) {
             options.add(nation);
         }
@@ -448,17 +447,8 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     public String alliance(ParameterData param, boolean multiple) {
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
-        List<DBAlliance> options = new ArrayList<>(alliances.size());
-        for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(DBAlliance.getOrCreate(entry.getKey()));
-        }
-        Collections.sort(options, new Comparator<DBAlliance>() {
-            @Override
-            public int compare(DBAlliance o1, DBAlliance o2) {
-                return Double.compare(o2.getScore(), o1.getScore());
-            }
-        });
+        List<DBAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAlliances());
+        Collections.sort(options, (o1, o2) -> Double.compare(o2.getScore(), o1.getScore()));
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getName());
             values.add("aa:" + obj.getId());

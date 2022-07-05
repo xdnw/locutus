@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ProjectSheet extends Command {
     public ProjectSheet() {
@@ -64,6 +66,11 @@ public class ProjectSheet extends Command {
             header.add(value.name());
         }
 
+        if (flags.contains('f')) {
+            List<Integer> ids = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toList());
+            Locutus.imp().getNationDB().updateNationsById(ids, Event::post);
+        }
+
         sheet.setHeader(header);
 
         for (DBNation nation : nations) {
@@ -75,9 +82,6 @@ public class ProjectSheet extends Command {
             header.set(4, nation.getScore());
 
             for (Project value : Projects.values) {
-                if (flags.contains('f')) {
-                    nation.updateProjects();
-                }
                 header.set(5 + value.ordinal(), nation.hasProject(value) + "");
             }
 

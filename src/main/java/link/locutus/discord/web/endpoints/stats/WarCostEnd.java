@@ -10,12 +10,7 @@ import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 public class WarCostEnd extends Endpoint {
@@ -33,11 +28,11 @@ public class WarCostEnd extends Endpoint {
         String args1 = path.get(1);
         int days = Integer.parseInt(path.get(2));
 
-        List<DBAttack> attacks = new ArrayList<>();
-        Function<DBAttack, Boolean> isPrimary = null;
-        Function<DBAttack, Boolean> isSecondary = null;
-        String nameA = "Unknown";
-        String nameB = "Unknown";
+        List<DBAttack> attacks;
+        Function<DBAttack, Boolean> isPrimary;
+        Function<DBAttack, Boolean> isSecondary;
+        String nameA;
+        String nameB;
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 

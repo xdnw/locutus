@@ -178,9 +178,10 @@ public class SimulatedWarNode {
             this.children = new ArrayList<>();
         }
         if (this.children instanceof SimulatedWarNode) {
-            LinkedList<SimulatedWarNode> list = new ArrayList<>();
+            List<SimulatedWarNode> list = new ArrayList<>();
             list.add(child);
             list.add((SimulatedWarNode) this.children);
+            this.children = list;
         } else {
             this.children = child;
         }

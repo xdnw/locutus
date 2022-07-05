@@ -33,7 +33,7 @@ public class TrackLeaderMilitary implements Runnable {
     public void run() {
         Set<DBNation> toCheck = new HashSet<>();
         for (DBAlliance alliance : alliances) {
-            List<DBNation> nations = alliance.getNations(true, 120, true);
+            Set<DBNation> nations = alliance.getNations(true, 120, true);
             nations.removeIf(f -> f.getPosition() < Rank.OFFICER.id);
             toCheck.addAll(nations);
         }

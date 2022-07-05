@@ -6,6 +6,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.offshore.Auth;
@@ -516,9 +517,9 @@ public class PnwUtil {
                 arg = split[1].replaceAll("/", "");
             }
         } else {
-            Integer allianceId = Locutus.imp().getNationDB().getAllianceId(arg);
-            if (allianceId != null) {
-                return allianceId;
+            DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(arg);
+            if (alliance != null) {
+                return alliance.getAlliance_id();
             }
         }
         if (MathMan.isInteger(arg)) {
@@ -1030,7 +1031,7 @@ public class PnwUtil {
     }
 
     public static String getNationUrl(int nationId) {
-        return "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + cityId;
+        return "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nationId;
     }
 
     public static String getAllianceUrl(int cityId) {

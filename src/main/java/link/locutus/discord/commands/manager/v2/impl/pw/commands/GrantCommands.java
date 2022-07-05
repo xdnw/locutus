@@ -119,7 +119,6 @@ public class GrantCommands {
             }
             DBNation receiver = grant.getNation();
 
-            receiver.updateProjects();
             receiver.updateTransactions();
             receiver.getCityMap(true);
 

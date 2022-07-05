@@ -12,11 +12,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class TopAABeigeLoot extends Command {
     public TopAABeigeLoot() {
@@ -51,7 +47,7 @@ public class TopAABeigeLoot extends Command {
         long cutOff = System.currentTimeMillis() - millis;
 
         Map<Integer, Double> allianceScores = new HashMap<>();
-        LinkedList<DBNation> allNations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> allNations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         allNations.removeIf(n -> n.getVm_turns() > 0 || n.getPosition() <= 1);
         for (DBNation nation : allNations) {
             allianceScores.put(nation.getAlliance_id(), nation.getScore() + allianceScores.getOrDefault(nation.getAlliance_id(), 0d));
@@ -76,10 +72,8 @@ public class TopAABeigeLoot extends Command {
         }
 
 
-        BiMap<Integer, String> aas = Locutus.imp().getNationDB().getAlliances();
-
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
-        sorted.nameKeys(i -> aas.getOrDefault(i, Integer.toString(i))).build(event, title);
+        sorted.nameKeys(i -> PnwUtil.getName(i, true)).build(event, title);
 
         for (Integer integer : sorted.get().keySet()) {
             System.out.println(PnwUtil.getBBUrl(integer, true));

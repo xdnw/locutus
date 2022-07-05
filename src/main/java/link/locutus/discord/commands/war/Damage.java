@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
@@ -17,15 +18,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Damage extends Command {
@@ -103,32 +96,27 @@ public class Damage extends Command {
             nations.removeIf(f -> f.getGroundStrength(true, false) > finalStr * 0.4);
         }
 
+
         Map<Integer, Double> maxInfraByNation = new HashMap<>();
         Map<Integer, Double> damageEstByNation = new HashMap<>();
         Map<Integer, Double> avgInfraByNation = new HashMap<>();
 
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
-        Map<Integer, CityInfraLand> cityInfraLand = Locutus.imp().getNationDB().getCityInfraLand();
         Map<Integer, List<Double>> cityInfraByNation = new HashMap<>();
 
         {
             for (DBNation nation : nations) {
-                avgInfraByNation.put(nation.getNation_id(), nation.getAvg_infra().doubleValue());
+                Collection<JavaCity> cities = nation.getCityMap(false, false, false).values();
+                List<Double> allInfra = cities.stream().map(f -> f.getInfra()).collect(Collectors.toList());
+                double max = Collections.max(allInfra);
+                double average = allInfra.stream().mapToDouble(f -> f).average().orElse(0);
+                avgInfraByNation.put(nation.getNation_id(), average);
+                maxInfraByNation.put(nation.getNation_id(), max);
+                cityInfraByNation.put(nation.getNation_id(), allInfra);
             }
         }
 
         {
-            for (Map.Entry<Integer, CityInfraLand> entry : cityInfraLand.entrySet()) {
-                CityInfraLand city = entry.getValue();
-                if (!nationIds.contains(city.nationId)) continue;
-
-                double previous = maxInfraByNation.getOrDefault(city.nationId, 0d);
-                if (city.infra > previous) {
-                    maxInfraByNation.put(city.nationId, city.infra);
-                }
-                cityInfraByNation.computeIfAbsent(city.nationId, f -> new ArrayList<>()).add(city.infra);
-            }
-
             for (Map.Entry<Integer, List<Double>> entry : cityInfraByNation.entrySet()) {
                 double cost = damageEstimate(me, entry.getKey(), entry.getValue());
                 if (cost <= 0) continue;

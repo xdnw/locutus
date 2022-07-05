@@ -58,7 +58,7 @@ public class Inactive extends Command {
                 return "Invalid aa or coaltion: `" + args.get(0) + "`";
             }
         }
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(allianceIds);
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations(allianceIds));
         nations.removeIf(nation -> nation.getActive_m() < minutes);
 
         boolean applicants = flags.contains('a');

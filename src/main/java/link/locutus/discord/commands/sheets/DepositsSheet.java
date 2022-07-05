@@ -25,13 +25,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static link.locutus.discord.util.PnwUtil.convertedTotal;
@@ -100,7 +94,7 @@ public class DepositsSheet extends Command {
 
         Set<Long> tracked = null;
 
-        List<DBNation> nations;
+        Set<DBNation> nations;
         if (args.isEmpty()) {
             Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             if (allianceId != null) {
@@ -109,7 +103,7 @@ public class DepositsSheet extends Command {
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
                 if (role == null) throw new IllegalArgumentException("No `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID` set, or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole MEMBER` set");
-                nations = new ArrayList<>();
+                nations = new HashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     nations.add(nation);
@@ -118,7 +112,7 @@ public class DepositsSheet extends Command {
 
             }
         } else if (args.size() >= 1) {
-            nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
+            nations = (DiscordUtil.parseNations(guild, args.get(0)));
             if (args.size() == 2) {
                 Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(1));
                 tracked = new LinkedHashSet<>();

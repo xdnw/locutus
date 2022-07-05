@@ -198,7 +198,6 @@ public class MMRSheet extends Command {
 
                 total.setNation_id(0);
                 total.setAlliance_id(aaId);
-                total.setAlliance(name);
 
                 List<Object> row = new ArrayList<>(header);
                 setRow("ALLIANCE", row, total, barracksTotal, factoriesTotal, hangarsTotal, drydocksTotal, soldierBuyTotal, tankBuyTotal, airBuyTotal, navyBuyTotal);

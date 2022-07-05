@@ -60,7 +60,7 @@ public class SphereGenerator {
             alliancesBySphere.put(sphereId, sphere);
 
             {
-                List<DBNation> nations = alliance.getNations(true, 7200, true);
+                Set<DBNation> nations = alliance.getNations(true, 7200, true);
                 SimpleNationList nationList = new SimpleNationList(nations);
                 sphereAllianceMembers.computeIfAbsent(sphereId, f -> new HashMap<>()).put(alliance.getAlliance_id(), nationList);
             }

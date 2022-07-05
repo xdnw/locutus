@@ -95,9 +95,6 @@ public class NationSheet extends Command implements Noformat {
         }
 
         for (DBNation nation : nations) {
-            if (flags.contains('t') && nation.getCityTimerAbsoluteTurn() != null && nation.getCityTimerAbsoluteTurn() < TimeUtil.getTurn()) {
-                nation.getPnwNation();
-            }
             for (int i = 1; i < args.size(); i++) {
                 String arg = args.get(i);
                 String formatted = DiscordUtil.format(guild, event.getGuildChannel(), author, nation, arg);

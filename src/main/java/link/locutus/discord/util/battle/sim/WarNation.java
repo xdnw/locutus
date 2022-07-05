@@ -47,8 +47,6 @@ public class WarNation {
         nation1.setTanks(tankMax);
         nation1.setAircraft(airMax);
         nation1.setShips(shipMax);
-        nation1.setInfra(1000);
-        nation1.setAvg_infra(1000);
         nation1.setCities(1);
 
         WarNation warNation1 = new WarNation(nation1, false);
@@ -71,7 +69,7 @@ public class WarNation {
         this.aircraft = nation.getAircraft();
         this.ships = nation.getShips();
         this.cities = nation.getCities();
-        this.avg_infra = nation.getAvg_infra();
+        this.avg_infra = (int) nation.getAvg_infra();
         this.money = 0;
     }
 

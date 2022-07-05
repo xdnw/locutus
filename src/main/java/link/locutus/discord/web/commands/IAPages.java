@@ -160,7 +160,7 @@ public class IAPages {
         Map<IACheckup.AuditType, Map<DBNation, String>> allianceAuditResults = new LinkedHashMap<>();
 
         DBAlliance alliance = db.getAlliance();
-        List<DBNation> allNations = alliance.getNations(true, 0, true);
+        List<DBNation> allNations = new ArrayList<>(alliance.getNations(true, 0, true));
         Collections.sort(allNations, Comparator.comparingInt(DBNation::getCities));
 
         List<DBNation> inactive = allNations.stream().filter(f -> f.getActive_m() > 4320).collect(Collectors.toList());
@@ -300,7 +300,7 @@ public class IAPages {
         }
 
         DBAlliance alliance = db.getAlliance();
-        List<DBNation> members = alliance.getNations(true, 2880, true);
+        Set<DBNation> members = alliance.getNations(true, 2880, true);
         members.removeIf(f -> !mentees.contains(f));
 
         for (DBNation member : members) {

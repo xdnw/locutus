@@ -7,6 +7,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -33,7 +34,7 @@ public class SyncBankTask implements Callable<Boolean>, Runnable {
 
         update.accept("Fetching transfers");
 
-        ArrayList<Future<List<Transfer>>> tasks = new ArrayList<>();
+        ArrayDeque<Future<List<Transfer>>> tasks = new ArrayDeque<>();
         int maxSize = 32;
 
         Boolean result = TimeUtil.runTurnTask(SyncBanks.class.getSimpleName(), new Function<Long, Boolean>() {

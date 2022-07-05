@@ -132,8 +132,6 @@ public class WarCostRanking extends Command {
         String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
         title = String.format(title, diffStr);
 
-        BiMap<Integer, String> allianceNames = Locutus.imp().getNationDB().getAlliances();
-
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
 
         boolean finalUnits = units;
@@ -232,7 +230,7 @@ public class WarCostRanking extends Command {
                     // Sort descending
             ranks = byAA.sort()
                     // Change key to alliance name
-                    .nameKeys(allianceId -> allianceNames.getOrDefault(allianceId, Integer.toString(allianceId)));
+                    .nameKeys(allianceId -> PnwUtil.getName(allianceId, true));
         } else {
             // Sort descending
             ranks = byNation

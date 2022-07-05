@@ -46,10 +46,8 @@ public class LargestBanks extends Command {
             total.put(alliance, convertedTotal);
         }
 
-        BiMap<Integer, String> aas = Locutus.imp().getNationDB().getAlliances();
-
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(total).sort();
-        sorted.nameKeys(i -> aas.getOrDefault(i, Integer.toString(i))).build(event, "AA bank");
+        sorted.nameKeys(i -> PnwUtil.getName(i, true)).build(event, "AA bank");
 
         for (Integer integer : sorted.get().keySet()) {
             System.out.println(PnwUtil.getBBUrl(integer, true));
