@@ -377,28 +377,23 @@ public class BlitzGenerator {
         for (DBNation attacker : colA) {
             double attActive = activityFactor(attacker, true);
             if (attActive <= attActiveThreshold) {
-                System.out.println("Inactive Att");
                 continue;
             }
 
             for (DBNation defender : colB) {
                 if (defender.getCities() > attacker.getCities() * maxCityRatio) {
-                    System.out.println("Insufficient cities");
                     continue;
                 }
                 if (defender.getAircraft() > attacker.getAircraft() * maxAirRatio) {
-                    System.out.println("Insufficient Air");
                     continue;
                 }
                 if (defender.getGroundStrength(true, defender.getAircraft() > attacker.getAircraft() * 0.66) > attacker.getGroundStrength(true, false) * maxGroundRatio) {
-                    System.out.println("Insufficient Ground");
                     continue;
                 }
 
                 double defActive = activityFactor(defender, false);
 
                 if (defActive <= defActiveThreshold) {
-                    System.out.println("Inactive def");
                     continue;
                 }
 
@@ -474,7 +469,7 @@ public class BlitzGenerator {
                     continue;
                 }
                 if (maxAttacks++ >= maxAttacksPerNation) break;
-                if (defender.getStrength() >= attacker.getStrength() * (maxGroundRatio + maxAirRatio)) continue;
+//                if (defender.getStrength() >= attacker.getStrength() * (maxGroundRatio + maxAirRatio)) continue;
 
                 attTargets.computeIfAbsent(attacker, f -> new ArrayList<>()).add(defender);
                 defTargets.computeIfAbsent(defender, f -> new ArrayList<>()).add(attacker);

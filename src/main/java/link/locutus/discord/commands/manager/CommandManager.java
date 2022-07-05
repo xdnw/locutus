@@ -324,15 +324,17 @@ public class CommandManager {
         MessageChannel channel = event.getChannel();
         if (msgGuild != null && channel instanceof TextChannel && !(channel instanceof JoobyChannel)) {
             GuildDB db = Locutus.imp().getGuildDB(msgGuild);
-            Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
-            Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
-            if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_BLACKLIST`)"));
-                return false;
-            }
-            if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_WHITELIST`)"));
-                return false;
+            if (db != null) {
+                Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
+                Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
+                if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_BLACKLIST`)"));
+                    return false;
+                }
+                if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_WHITELIST`)"));
+                    return false;
+                }
             }
         }
 
@@ -356,6 +358,7 @@ public class CommandManager {
                     arg0 = arg0.substring(1);
 
                     Command cmd = commandMap.get(arg0.toLowerCase());
+                    if (cmd == null) return;
 
                     if (!cmd.checkPermission(msgGuild, msgUser)) {
                         if (noPermMsg) {

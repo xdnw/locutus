@@ -3099,7 +3099,6 @@ public class DBNation implements NationOrAlliance {
     }
 
 
-
 //
 //    public DBNation update(Nation pnwNation) {
 //        alliance_id = Integer.parseInt(pnwNation.getAllianceid());
@@ -3284,6 +3283,9 @@ public class DBNation implements NationOrAlliance {
             }
             return 0;
         }
+    }
+    public Activity getActivity() {
+        return new Activity(getNation_id());
     }
 
     public Activity getActivity(long turns) {

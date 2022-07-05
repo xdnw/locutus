@@ -1513,7 +1513,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public WarCategory getWarChannel(boolean throwException) {
         Boolean enabled = getOrNull(Key.ENABLE_WAR_ROOMS, false);
-        if (enabled == Boolean.FALSE) {
+        if (enabled == Boolean.FALSE || enabled == null) {
             if (throwException) throw new IllegalArgumentException("War rooms are not enabled `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ENABLE_WAR_ROOMS true`");
             return null;
         }
@@ -3359,7 +3359,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        INTERVIEW_PENDING_ALERTS(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
+        INTERVIEW_PENDING_ALERTS(true, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
             @Override
             public String validate(GuildDB db, String value) {
                 return Key.validateChannel(db, value);

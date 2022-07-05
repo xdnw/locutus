@@ -118,58 +118,70 @@ public class Activity {
         return total;
     }
 
-    public Activity(int nationId, long inactiveTurns) {
-        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, TimeUtil.getTurn() - inactiveTurns);
+    private void load(Set<Long> activity) {
+        if (activity.isEmpty()) return;
 
-        if (!activity.isEmpty()) {
-            int[] byDayTotal = new int[7];
-            int[] byDayTurnTotal = new int[12];
-            int[] byWeekTurnTotal = new int[12 * 7];
+        int[] byDayTotal = new int[7];
+        int[] byDayTurnTotal = new int[12];
+        int[] byWeekTurnTotal = new int[12 * 7];
 
-            long currentTurn = TimeUtil.getTurn();
-            ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+        long currentTurn = TimeUtil.getTurn();
+        ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
 
-            long minTurn = activity.iterator().next();
-            DayOfWeek lastDay = null;
-            DayOfWeek lastDayTotal = null;
-            for (long turn = minTurn; turn <= currentTurn; turn++) {
-                boolean active = activity.contains(turn);
-                long turnDiff = currentTurn - turn;
-                ZonedDateTime other = now.minusHours(turnDiff * 2);
+        long minTurn = activity.iterator().next();
+        DayOfWeek lastDay = null;
+        DayOfWeek lastDayTotal = null;
+        for (long turn = minTurn; turn <= currentTurn; turn++) {
+            boolean active = activity.contains(turn);
+            long turnDiff = currentTurn - turn;
+            ZonedDateTime other = now.minusHours(turnDiff * 2);
 
-                DayOfWeek day = other.getDayOfWeek();
-                int dayTurn = other.getHour() / 2;
-                int weekTurn = dayTurn + day.ordinal() * 12;
+            DayOfWeek day = other.getDayOfWeek();
+            int dayTurn = other.getHour() / 2;
+            int weekTurn = dayTurn + day.ordinal() * 12;
 
-                if (day != lastDayTotal) {
-                    byDayTotal[day.ordinal()]++;
-                    lastDayTotal = day;
+            if (day != lastDayTotal) {
+                byDayTotal[day.ordinal()]++;
+                lastDayTotal = day;
+            }
+
+            byDayTurnTotal[dayTurn]++;
+            byWeekTurnTotal[weekTurn]++;
+
+            if (active) {
+                if (day != lastDay) {
+                    byDay[day.ordinal()]++;
+                    lastDay = day;
                 }
 
-                byDayTurnTotal[dayTurn]++;
-                byWeekTurnTotal[weekTurn]++;
-
-                if (active) {
-                    if (day != lastDay) {
-                        byDay[day.ordinal()]++;
-                        lastDay = day;
-                    }
-
-                    byDayTurn[dayTurn]++;
-                    byWeekTurn[weekTurn]++;
-                }
-            }
-
-            for (int i = 0; i < byDay.length; i++) {
-                if (byDay[i] != 0) byDay[i] /= byDayTotal[i];
-            }
-            for (int i = 0; i < byDayTurn.length; i++) {
-                if (byDayTurn[i] != 0) byDayTurn[i] /= byDayTurnTotal[i];
-            }
-            for (int i = 0; i < byWeekTurn.length; i++) {
-                if (byWeekTurn[i] != 0) byWeekTurn[i] /= byWeekTurnTotal[i];
+                byDayTurn[dayTurn]++;
+                byWeekTurn[weekTurn]++;
             }
         }
+
+        for (int i = 0; i < byDay.length; i++) {
+            if (byDay[i] != 0) byDay[i] /= byDayTotal[i];
+        }
+        for (int i = 0; i < byDayTurn.length; i++) {
+            if (byDayTurn[i] != 0) byDayTurn[i] /= byDayTurnTotal[i];
+        }
+        for (int i = 0; i < byWeekTurn.length; i++) {
+            if (byWeekTurn[i] != 0) byWeekTurn[i] /= byWeekTurnTotal[i];
+        }
+    }
+
+    public Activity(int nationId, long inactiveTurns) {
+        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, TimeUtil.getTurn() - inactiveTurns);
+        if (activity.isEmpty()) return;
+
+        load(activity);
+    }
+
+    public Activity(int nationId) {
+        Set<Long> activity = Locutus.imp().getNationDB().getActivity(nationId, 0);
+        if (activity.isEmpty()) return;
+
+        load(activity);
     }
 
     public double getAverageByDay() {

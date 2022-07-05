@@ -566,7 +566,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void addBounty(DBBounty bounty) {
-        update("INSERT OR REPLACE INTO `BOUNTIES_V3`(`id, `date`, `nation_id`, `posted_by`, `attack_type`, `amount`) VALUES(?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `BOUNTIES_V3`(`id`, `date`, `nation_id`, `posted_by`, `attack_type`, `amount`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, bounty.getId());
             stmt.setLong(2, bounty.getDate());
             stmt.setLong(3, bounty.getNationId());
@@ -663,7 +663,6 @@ public class WarDB extends DBMainV2 {
         for (int i = 0 ; i < prevWars.size(); i++) {
             DBWar previous = prevWars.get(i);
             DBWar newWar = newWars.get(i);
-
             if (newWar.isActive()) {
                 activeWars.addActiveWar(newWar);
             } else {
@@ -1429,9 +1428,10 @@ public class WarDB extends DBMainV2 {
                 if (attack.attack_type == AttackType.VICTORY && attack.infraPercent_cached > 0) {
                     DBNation defender = Locutus.imp().getNationDB().getNation(attack.defender_nation_id);
                     DBWar war = Locutus.imp().getWarDb().getWar(attack.getWar_id());
-
-                    war.status = attack.victor == attack.attacker_nation_id ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
-                    warsToSave.add(war);
+                    if (war != null) {
+                        war.status = attack.victor == attack.attacker_nation_id ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
+                        warsToSave.add(war);
+                    }
 
                     if (defender != null && attack.infra_destroyed_value == 0) {
                         double pct = attack.infraPercent_cached;
@@ -1903,7 +1903,7 @@ public class WarDB extends DBMainV2 {
                 Map.Entry<Long, double[]> lootPair = entry.getValue();
                 Map.Entry<Long, double[]> epochLootPair = Map.entry(TimeUtil.getTimeFromTurn(lootPair.getKey()), lootPair.getValue());
                 Map.Entry<Long, double[]> existing = nationLoot.put(entry.getKey(), epochLootPair);
-                if (existing.getKey() > epochLootPair.getKey()) nationLoot.put(entry.getKey(), existing);
+                if (existing != null && existing.getKey() > epochLootPair.getKey()) nationLoot.put(entry.getKey(), existing);
             }
         } else {
             nationLoot = new ConcurrentHashMap<>();

@@ -53,6 +53,7 @@ import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.exceptions.MissingAccessException;
 
 import java.io.IOException;
@@ -277,6 +278,10 @@ public class GuildHandler {
         db.setMeta(author.getIdLong(), NationMeta.DISCORD_APPLICANT, new byte[]{1});
 
         Role interviewerRole = Roles.INTERVIEWER.toRole(guild);
+        if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(guild);
+        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(guild);
+        if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(guild);
+
         if (interviewerRole == null) return false;
         boolean mentionInterviewer = true;
 
@@ -295,15 +300,13 @@ public class GuildHandler {
                 mentionInterviewer = false;
             }
             if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
-
                 Locutus.imp().getNationDB().updateNations(List.of(nation.getNation_id()), Event::post);
-
                 if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
                     body.append("\n\n**Already member of AA: " + nation.getAllianceName() + "**\n\n");
                     mentionInterviewer = false;
                     RateLimitUtil.queueWhenFree(author.openPrivateChannel().complete().sendMessage("As you're already a member of another alliance, message or ping @" + interviewerRole.getName() + " to (proceed"));
                 } else {
-                    RateLimitUtil.queueWhenFree(author.openPrivateChannel().complete().sendMessage("Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are (able."));
+                    RateLimitUtil.queueWhenFree(author.openPrivateChannel().complete().sendMessage("Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are able."));
                 }
             }
         }
@@ -1784,7 +1787,7 @@ public class GuildHandler {
                             }
                         }
                     }
-                } catch (MissingAccessException e) {
+                } catch (InsufficientPermissionException e) {
                     if (offensive) {
                         db.deleteInfo(GuildDB.Key.OFFENSIVE_WAR_CHANNEL);
                     } else {
@@ -2411,7 +2414,7 @@ public class GuildHandler {
 
         String title = blockaded.getNation() + " " + titleSuffix;
         StringBuilder body = new StringBuilder();
-        body.append("**Defender:** " + blockaded.getNationUrlMarkup(true)).append("\n");
+        body.append("**Defender:** " + blockaded.getNationUrlMarkup(true) + " | " + blockaded.getAllianceUrlMarkup(true)).append("\n");
         body.append(blockaded.toMarkdown(true, false, true, false, false)).append("\n");
         body.append(blockaded.toMarkdown(true, false, false, true, false)).append("\n");
         body.append("\n");

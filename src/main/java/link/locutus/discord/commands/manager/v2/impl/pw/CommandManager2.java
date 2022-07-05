@@ -21,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.StockBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -142,7 +143,7 @@ public class CommandManager2 {
     public void run(MessageReceivedEvent event, boolean async) {
         Message message = event.getMessage();
         String content = DiscordUtil.trimContent(message.getContentRaw());
-        if (content.isEmpty() || content.charAt(0) != '$') return;
+        if (content.isEmpty() || content.charAt(0) != Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.charAt(0)) return;
 
         Runnable task = new Runnable() {
             @Override
@@ -185,7 +186,7 @@ public class CommandManager2 {
                         String title = e.getMessage();
                         StringBuilder body = new StringBuilder();
                         if (e.getHelp() != null) {
-                            body.append("`$" + e.getHelp() + "`");
+                            body.append("`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + e.getHelp() + "`");
                         }
                         if (e.getDescription() != null && !e.getDescription().isEmpty()) {
                             body.append("\n" + e.getDescription());

@@ -171,7 +171,7 @@ public class DBAttack {
 
             String end = "% of the infrastructure in each of their cities.";
             String[] split = note.substring(0, note.length() - end.length()).split(" ");
-            infraPercent_cached = Integer.parseInt(split[split.length - 1]);
+            infraPercent_cached = Double.parseDouble(split[split.length - 1]);
         }
         if (loot != null) {
             optimizeLoot();

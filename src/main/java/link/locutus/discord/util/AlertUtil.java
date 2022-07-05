@@ -19,9 +19,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import net.dv8tion.jda.api.exceptions.MissingAccessException;
 
-import java.awt.AWTException;
 import java.awt.Desktop;
 import java.awt.Image;
 import java.awt.SystemTray;
@@ -57,7 +55,7 @@ public class AlertUtil {
                     continue;
                 }
                 channelConsumer.accept(channel, guildDB);
-            } catch (MissingAccessException e) {
+            } catch (InsufficientPermissionException e) {
                 guildDB.deleteInfo(key);
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -171,13 +169,16 @@ public class AlertUtil {
 
     static
     {
-        Image image = Toolkit.getDefaultToolkit().createImage("icon.png");
-        SystemTray tray = SystemTray.getSystemTray();
-
-        trayIcon = new TrayIcon(image);
         try {
-            tray.add(trayIcon);
-        } catch (AWTException e) {
+            if (SystemTray.isSupported()) {
+                SystemTray tray = SystemTray.getSystemTray();
+
+                Image image = Toolkit.getDefaultToolkit().createImage("icon.png");
+
+                trayIcon = new TrayIcon(image);
+                tray.add(trayIcon);
+            }
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -193,7 +194,9 @@ public class AlertUtil {
     }
 
     public static void displayTray(String title, String body) {
-        trayIcon.displayMessage(title, body, TrayIcon.MessageType.INFO);
+        if (trayIcon != null) {
+            trayIcon.displayMessage(title, body, TrayIcon.MessageType.INFO);
+        }
     }
 
     private static final Cache<String, Boolean> PING_BUFFER = CacheBuilder.newBuilder()

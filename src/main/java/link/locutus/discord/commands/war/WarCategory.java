@@ -174,7 +174,7 @@ public class WarCategory {
                     room.updateParticipants(from, to, from == null);
                 }
             }
-        } catch (MissingAccessException e) {
+        } catch (InsufficientPermissionException e) {
             db.setInfo(GuildDB.Key.ENABLE_WAR_ROOMS, "false");
         } catch (Throwable e) {
             e.printStackTrace();
@@ -208,7 +208,7 @@ public class WarCategory {
         return catPrefix;
     }
 
-    private static boolean isActive(Collection<DBWar> wars, DBNation nation) {
+    public static boolean isActive(Collection<DBWar> wars, DBNation nation) {
         if (!isActive(nation)) return false;
         for (DBWar war : wars) {
             int attackerId = war.attacker_id == nation.getNation_id() ? war.defender_id : war.attacker_id;
@@ -455,6 +455,11 @@ public class WarCategory {
 
     public void processChannelCreation(WarRoom room, TextChannel channel, boolean planning) {
         room.updatePin(false);
+        RateLimitUtil.queueWhenFree(channel.putPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID))
+                .setAllow(Permission.VIEW_CHANNEL)
+                .setAllow(Permission.MANAGE_CHANNEL)
+                .setAllow(Permission.MANAGE_PERMISSIONS)
+        );
         RateLimitUtil.queueWhenFree(channel.putPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
 
         room.addInitialParticipants(planning);
@@ -872,13 +877,20 @@ public class WarCategory {
                             useCat = category;
                         }
                     }
+
                     if (useCat == null) {
                         for (int i = 0; ; i++) {
                             String name = catPrefix + "-" + i;
                             List<Category> existingCat = guild.getCategoriesByName(name, true);
                             if (existingCat.isEmpty()) {
                                 useCat = RateLimitUtil.complete(guild.createCategory(name));
-                                RateLimitUtil.complete(useCat.putPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
+                                RateLimitUtil.queue(useCat.putPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID))
+                                        .setAllow(Permission.VIEW_CHANNEL)
+                                        .setAllow(Permission.MANAGE_CHANNEL)
+                                        .setAllow(Permission.MANAGE_PERMISSIONS)
+                                );
+
+                                RateLimitUtil.queue(useCat.putPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
                                         .deny(Permission.VIEW_CHANNEL));
 
                                 Role milcomRole = Roles.MILCOM.toRole(guild);
@@ -1036,6 +1048,15 @@ public class WarCategory {
                 return;
             }
 
+            Member botMember = guild.getMemberById(Settings.INSTANCE.APPLICATION_ID);
+            if (botMember != null && channel != null && channel.getPermissionOverride(botMember) == null) {
+                RateLimitUtil.queue(channel.putPermissionOverride(botMember)
+                        .grant(Permission.VIEW_CHANNEL)
+                        .grant(Permission.MANAGE_CHANNEL)
+                        .grant(Permission.MANAGE_PERMISSIONS)
+                );
+            }
+
             Set<DBNation> added = new HashSet<>();
             Set<Member> addedMembers = new HashSet<>();
 
@@ -1065,9 +1086,7 @@ public class WarCategory {
                         RateLimitUtil.queue(override.delete());
                     }
                 }
-
             }
-
         }
 
         public boolean isParticipant(DBNation nation, boolean forceUpdate) {
@@ -1086,6 +1105,16 @@ public class WarCategory {
         } else {
             allianceIds.addAll(db.getAllies(true));
         }
+        for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
+            Integer aaId = otherDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            if (aaId != null) {
+                Guild warServer = otherDB.getOrNull(GuildDB.Key.WAR_SERVER);
+                if (warServer != null && warServer.getIdLong() == this.db.getIdLong()) {
+                    allianceIds.add(aaId);
+                }
+            }
+        }
+
         allies.clear();
         allies.addAll(allianceIds);
 
@@ -1132,7 +1161,7 @@ public class WarCategory {
     }
 
     public void sync(boolean force) {
-        if (warRoomMap.isEmpty()) return;
+        if (warRoomMap.isEmpty() && !force) return;
 
         long start = System.currentTimeMillis();
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allianceIds, WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
@@ -1145,15 +1174,17 @@ public class WarCategory {
             wars = entry.getValue();
             int targetId = entry.getKey();
             DBNation targetNation = Locutus.imp().getNationDB().getNation(targetId);
+
             if (isActive(wars, targetNation)) {
 
                 long createStart = System.currentTimeMillis();
-                WarRoom room = get(targetNation, true, force);
+                WarRoom room = get(targetNation, true, force, force);
                 createDiff += (System.currentTimeMillis() - createStart);
 
                 long updateStart = System.currentTimeMillis();
                 room.addInitialParticipants(wars);
                 updateDiff += (System.currentTimeMillis() - updateStart);
+
             } else {
                 WarRoom room = targetNation == null ? warRoomMap.get(targetId) : get(targetNation, false, false);
                 if (room != null && room.channel != null) {
