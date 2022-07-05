@@ -62,6 +62,8 @@ public class WarRoom extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty()) return usage();
+        
         if ((flags.contains('p') || flags.contains('m')) && !Roles.MILCOM.has(event.getMember())) {
             return "You need the milcom role to use `-p` or `-m`";
         }
