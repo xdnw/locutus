@@ -126,7 +126,7 @@ public class Damage extends Command {
                 if (city.infra > previous) {
                     maxInfraByNation.put(city.nationId, city.infra);
                 }
-                cityInfraByNation.computeIfAbsent(city.nationId, f -> new LinkedList<>()).add(city.infra);
+                cityInfraByNation.computeIfAbsent(city.nationId, f -> new ArrayList<>()).add(city.infra);
             }
 
             for (Map.Entry<Integer, List<Double>> entry : cityInfraByNation.entrySet()) {

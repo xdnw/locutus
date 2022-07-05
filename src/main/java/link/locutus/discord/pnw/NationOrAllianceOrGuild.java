@@ -27,7 +27,7 @@ public interface NationOrAllianceOrGuild {
                 }
                 return nation;
             case 2:
-                return new DBAlliance((int) id);
+                return DBAlliance.getOrCreate((int) id);
             case 3:
                 return (NationOrAllianceOrGuild) Locutus.imp().getDiscordApi().getGuildById(id);
             default:
@@ -106,7 +106,7 @@ public interface NationOrAllianceOrGuild {
             GuildDB db = asGuild();
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             if (aaId != null) {
-                nations.addAll(new DBAlliance(aaId).getNations(true, 0, true));
+                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(true, 0, true));
             } else {
                 Guild guild = db.getGuild();
                 Role role = Roles.MEMBER.toRole(guild);
@@ -136,7 +136,7 @@ public interface NationOrAllianceOrGuild {
             GuildDB db = asGuild();
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             if (aaId != null) {
-                nations.addAll(new DBAlliance(aaId).getNations(false, 0, false));
+                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(false, 0, false));
             }
             Guild guild = db.getGuild();
             for (Member member : guild.getMembers()) {

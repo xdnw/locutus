@@ -72,12 +72,12 @@ public class MilitaryRanking extends Command {
         for (Map.Entry<Integer, List<DBNation>> entry : byAA.entrySet()) {
             if (topX-- <= 0) break;
             Integer aaId = entry.getKey();
-            DBAlliance alliance = aaCache.computeIfAbsent(aaId, f -> new DBAlliance(aaId));
+            DBAlliance alliance = aaCache.computeIfAbsent(aaId, f -> DBAlliance.getOrCreate(aaId));
             List<DBAlliance> sphere = alliance.getSphereRankedCached(aaCache);
             int sphereId = sphere.get(0).getAlliance_id();
 
             {
-                List<DBNation> nations = alliance.getNations(true, 2880, true);
+                Set<DBNation> nations = alliance.getNations(true, 2880, true);
                 SimpleNationList nationList = new SimpleNationList(nations);
                 sphereAllianceMembers.computeIfAbsent(sphereId, f -> new HashMap<>()).put(alliance.getAlliance_id(), nationList);
             }
@@ -148,7 +148,7 @@ public class MilitaryRanking extends Command {
 
                 ArrayList<Object> row = new ArrayList<>();
                 if (aaId != 0) {
-                    DBAlliance alliance = new DBAlliance(aaId);
+                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                     row.add(MarkupUtil.sheetUrl(alliance.getName(), alliance.getUrl()));
                 } else {
                     row.add("");

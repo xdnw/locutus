@@ -47,7 +47,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static link.locutus.discord.util.MathMan.max;
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
@@ -559,10 +558,10 @@ public class WarCategory {
     public int sort() {
         int moved = 0;
         Map<CityRanges, List<Category>> categoryRanges = new HashMap<>();
-        List<Category> noRange = new LinkedList<>();
+        List<Category> noRange = new ArrayList<>();
         for (Category category : getCategories()) {
             CityRanges range = getRangeFromCategory(category);
-            if (range != null) categoryRanges.computeIfAbsent(range, f -> new LinkedList<>()).add(category);
+            if (range != null) categoryRanges.computeIfAbsent(range, f -> new ArrayList<>()).add(category);
             else noRange.add(category);
         }
 
@@ -1097,7 +1096,7 @@ public class WarCategory {
             for (Integer id : allies) {
                 Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(id);
                 for (Map.Entry<Integer, Treaty> e : treaties.entrySet()) {
-                    switch (e.getValue().type) {
+                    switch (e.getValue().getType()) {
                         case MDP:
                         case MDOAP:
                         case PROTECTORATE:

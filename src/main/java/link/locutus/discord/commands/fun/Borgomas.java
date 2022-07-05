@@ -71,7 +71,7 @@ public class Borgomas extends Command {
                 message = "You open your present to find a 10kg hunk of coal...\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
                 resources = Collections.singletonMap(ResourceType.COAL, 0.01);
             } else {
-                List<DBNation> members = new DBAlliance(me.getAlliance_id()).getNations(true, 7200, true);
+                Set<DBNation> members = DBAlliance.getOrCreate(me.getAlliance_id()).getNations(true, 7200, true);
                 members.removeIf(f -> f.getActive_m() > 2880 && f.isGray());
                 members.add(me);
                 DBNation maxNation = null;

@@ -64,14 +64,13 @@ public class LeftAA extends Command {
             DBNation nation = DBNation.byId(nationId);
             removes = Locutus.imp().getNationDB().getRemovesByNation(nationId);
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-                DBAlliance aa = new DBAlliance(entry.getKey());
+                DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
                 DBNation tmp = nation;
                 if (tmp == null) {
                     tmp = new DBNation();
                     tmp.setNation_id(nationId);
                     tmp.setAlliance_id(aa.getAlliance_id());
                     tmp.setNation(nationId + "");
-                    tmp.setAlliance(aa.getName());
                 }
                 AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
                 Map.Entry<Long, Rank> value = entry.getValue();
@@ -104,7 +103,7 @@ public class LeftAA extends Command {
                     if (flags.contains('v') && nation.getVm_turns() != 0) continue;
                     if (flags.contains('m') && nation.getPosition() > 1) continue;
 
-                    AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, new DBAlliance(aaId));
+                    AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, DBAlliance.getOrCreate(aaId));
                     toPrint.add(new AbstractMap.SimpleEntry<>(key, entry.getValue()));
                 }
             }

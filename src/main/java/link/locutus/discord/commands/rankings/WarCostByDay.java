@@ -78,7 +78,7 @@ public class WarCostByDay extends Command {
 
         String arg0 = args.get(0);
 
-        List<DBAttack> attacks = new LinkedList<>();
+        List<DBAttack> attacks = new ArrayList<>();
         Function<DBAttack, Boolean> isPrimary = null;
         Function<DBAttack, Boolean> isSecondary = null;
         String nameA = "Unknown";

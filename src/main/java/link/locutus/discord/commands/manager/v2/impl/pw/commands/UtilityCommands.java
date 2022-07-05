@@ -185,21 +185,6 @@ public class UtilityCommands {
             boolean spySatellite = Projects.SPY_SATELLITE.has(update.projects);
             boolean intelligence = Projects.INTELLIGENCE_AGENCY.has(update.projects);
 
-            if (update.change < 0) {
-                Map.Entry<SpyCount.SpyOp, Integer> estimate = SpyCount.estimateSpiesUsed(update.change, update.spies);
-                if (estimate != null) {
-                    uncertainty = estimate.getValue();
-
-                    SpyCount.SpyOp op = estimate.getKey();
-                    spiesUsed = op.spies;
-                    safety = op.safety;
-
-                    diff = 0;
-
-                    foundOp = true;
-                }
-            }
-
             if (spiesUsed == -1) spiesUsed = attacker.getSpies();
 
             double odds = SpyCount.getOdds(spiesUsed, defenderSpies, safety, SpyCount.Operation.SPIES, defender);
@@ -263,7 +248,7 @@ public class UtilityCommands {
         Map<Integer, List<DBNation>> map = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true);
         outer:
         for (Map.Entry<Integer, List<DBNation>> entry : map.entrySet()) {
-            DBAlliance aa = new DBAlliance(entry.getKey());
+            DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
             int aaid = aa.getAlliance_id();
             List<DBNation> members = entry.getValue();
 
@@ -345,7 +330,7 @@ public class UtilityCommands {
                         Rank rank = timeRank.getValue();
                         if (rank.id >= Rank.OFFICER.id) {
                             List<DBNation> alliance = map.get(previousAA);
-                            if (new DBAlliance(previousAA).getScore() < 50000) continue;
+                            if (DBAlliance.getOrCreate(previousAA).getScore() < 50000) continue;
                             previousOfficer.add(PnwUtil.getName(previousAA, true));
 
                         }
@@ -389,7 +374,7 @@ public class UtilityCommands {
                 if (nation.getActive_m() > 7200) continue outer;
             }
 
-            Set<DBAlliance> treaties = new DBAlliance(aaId).getTreatiedAllies();
+            Set<DBAlliance> treaties = DBAlliance.getOrCreate(aaId).getTreatiedAllies();
             for (DBAlliance treaty : treaties) {
                 if (allies.contains(treaty.getAlliance_id())) continue outer;
             }
@@ -599,7 +584,7 @@ public class UtilityCommands {
         }).sumValues(f -> 1d);
         if (normalizePerMember && !rankByNation) {
             ranksUnsorted = ranksUnsorted.adapt((aaId, numWars) -> {
-                int num = new DBAlliance(aaId).getNations(true, ignore2dInactives ? 2440 : Integer.MAX_VALUE, true).size();
+                int num = DBAlliance.getOrCreate(aaId).getNations(true, ignore2dInactives ? 2440 : Integer.MAX_VALUE, true).size();
                 if (num == 0) return 0d;
                 return numWars.doubleValue() / (double) num;
             });
@@ -684,13 +669,13 @@ public class UtilityCommands {
                         @Switch('n') Integer nukes,
                         @Switch('p') Integer projects,
                         @Switch('i') Integer avg_infra,
+                        @Switch('I') Integer infraTotal,
                         @Switch('b') String builtMMR
                         ) {
         if (nation == null) {
             nation = new DBNation();
             nation.setMissiles(0);
             nation.setNukes(0);
-            nation.setInfra(0);
             nation.setSoldiers(0);
             nation.setTanks(0);
             nation.setAircraft(0);
@@ -698,6 +683,7 @@ public class UtilityCommands {
         } else {
             nation = new DBNation(nation);
         }
+
         if (cities != null) nation.setCities(cities);
         if (soldiers != null) nation.setSoldiers(soldiers);
         if (tanks != null) nation.setTanks(tanks);
@@ -713,14 +699,17 @@ public class UtilityCommands {
                 nation.setProject(Projects.values[i]);
             }
         }
+        double infra = -1;
         if (avg_infra != null) {
-            nation.setAvg_infra((int) avg_infra);
-            nation.setInfra((int) (avg_infra * nation.getCities()));
+            infra = avg_infra * nation.getCities();
+        }
+        if (infraTotal != null) {
+            infra = infraTotal;
         }
         if (builtMMR != null) {
             nation.setMMR((builtMMR.charAt(0) - '0'), (builtMMR.charAt(1) - '0'), (builtMMR.charAt(2) - '0'), (builtMMR.charAt(3) - '0'));
         }
-        double score = nation.estimateScore();
+        double score = nation.estimateScore(infra == -1 ? nation.getInfra() : infra);
 
         if (score == 0) throw new IllegalArgumentException("No arguments provided");
 
@@ -734,15 +723,16 @@ public class UtilityCommands {
 
     @Command(desc = "Check how many turns are left in the city/project timer", aliases = {"TurnTimer", "Timer", "CityTimer", "ProjectTimer"})
     public String TurnTimer(@Me GuildDB db, DBNation nation) throws IOException {
-        PoliticsAndWarV2 api = db.getApi();
-        nation.getPnwNation(api);
-
-        long cityTimer = nation.cityTimerTurns();
-        long projectTimer = nation.projectTimerTurns();
         StringBuilder response = new StringBuilder();
-        response.append("City: " + cityTimer + ", Project: " + projectTimer);
-        response.append("\n - # cities: " + nation.getCities());
-        response.append("\n - project slots: " + nation.getProjects().size() + "/" + nation.projectSlots());
+        response.append("City: " + nation.getCityTurns() + " turns (" + nation.getCities() + " cities)\n");
+        response.append("Project: " + nation.getProjectTurns() + "turns | " +
+                "(" + nation.getProjects().size() + "/" + nation.projectSlots() + " slots)\n");
+        response.append("Color: " + nation.getColorTurns() + "turns \n");
+        response.append("Domestic Policy: " + nation.getDomesticPolicyTurns() + "turns \n");
+        response.append("War Policy: " + nation.getWarPolicyTurns() + "turns \n");
+        response.append("Beige Turns: " + nation.getBeigeTurns() + "turns \n");
+        response.append("Vacation: " + nation.getVm_turns());
+
         return response.toString();
     }
 
@@ -983,7 +973,7 @@ public class UtilityCommands {
         for (Map.Entry<Integer, DBNation> entry : totals.entrySet()) {
             SAllianceContainer alliance = alliances.get(entry.getKey());
             if (alliance == null) continue;
-            DBAlliance dbAlliance = new DBAlliance(entry.getKey());
+            DBAlliance dbAlliance = DBAlliance.getOrCreate(entry.getKey());
 
             DBNation nation = entry.getValue();
             for (int i = 0; i < columns.size(); i++) {
@@ -1039,9 +1029,6 @@ public class UtilityCommands {
         sheet.setHeader(header);
 
         for (DBNation nation : nations) {
-            if (updateTimer && nation.getCityTimerEpoch() != null && nation.getCityTimerEpoch() < TimeUtil.getTurn()) {
-                nation.getPnwNation();
-            }
             if (updateSpies) {
                 nation.updateSpies();
             }
@@ -1106,7 +1093,7 @@ public class UtilityCommands {
 
     @Command(desc = "Get info about your own nation")
     public String me(@Me Message message, @Me Guild guild, @Me MessageChannel channel, @Me User author, @Me DBNation me) throws IOException {
-        return who(message, guild, channel, author, Collections.singleton(me), null, false, false, false, false, false, false, false, null);
+        return who(message, guild, channel, author, Collections.singleton(me), null, false, false, false, false, false, false, null);
     }
 
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
@@ -1126,7 +1113,6 @@ public class UtilityCommands {
                       @Switch('m') boolean listMentions,
                       @Switch('i') boolean listInfo,
                       @Switch('c') boolean listChannels,
-                      @Switch('u') boolean update,
                       @Switch('p') Integer page) throws IOException {
         int perpage = 15;
         StringBuilder response = new StringBuilder();
@@ -1141,8 +1127,6 @@ public class UtilityCommands {
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
-            arg0 = title;
-            if (update && isAdmin) nation.getPnwNation();
             boolean showMoney = false;
             Message msg = nation.toCard(channel, false, showMoney);
 
@@ -1519,19 +1503,18 @@ public class UtilityCommands {
                 boolean acp = i > 16 && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
                 cityCost += PnwUtil.nextCityCost(i, manifest, cp, acp);
             }
-            Map<Integer, CityInfraLand> infraLandMap = Locutus.imp().getNationDB().getCityInfraLand(nation.getNation_id());
             Map<Integer, JavaCity> cityMap = nation.getCityMap(update, false);
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
-                CityInfraLand infraLand = infraLandMap.get(cityEntry.getKey());
-                if (infraLand != null) {
+                JavaCity city = cityEntry.getValue();
+                {
                     double landFactor = 1;
                     double infraFactor = 0.95;
                     if (projects.contains(Projects.ARABLE_LAND_AGENCY)) landFactor *= 0.95;
                     if (projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING)) infraFactor *= 0.95;
-                    landCost += PnwUtil.calculateLand(250, infraLand.land) * landFactor;
-                    infraCost += PnwUtil.calculateInfra(10, infraLand.infra) * infraFactor;
+                    landCost += PnwUtil.calculateLand(250, city.getLand()) * landFactor;
+                    infraCost += PnwUtil.calculateInfra(10, city.getInfra()) * infraFactor;
                 }
-                JavaCity city = cityEntry.getValue();
+                city = cityEntry.getValue();
                 JavaCity empty = new JavaCity();
                 empty.setLand(city.getLand());
                 empty.setInfra(city.getInfra());

@@ -238,7 +238,7 @@ public class DiscordDB extends DBMainV2 {
         }
     }
 
-    private Map.Entry<String, String> getUserPass(long discordId) {
+    public Map.Entry<String, String> getUserPass(long discordId) {
         return getUserPass(discordId, "credentials2", EncryptionUtil.Algorithm.DEFAULT);
     }
 
@@ -397,7 +397,7 @@ public class DiscordDB extends DBMainV2 {
 
                     BigInteger uuid = new BigInteger(bytes);
 
-                    List<Map.Entry<Long, Long>> list = result.computeIfAbsent(uuid, k -> new LinkedList<>());
+                    List<Map.Entry<Long, Long>> list = result.computeIfAbsent(uuid, k -> new ArrayList<>());
                     list.add(new AbstractMap.SimpleEntry<>(start, end));
                     end = start;
                 }
@@ -590,11 +590,11 @@ public class DiscordDB extends DBMainV2 {
             if (name != null && user.getDiscordName() != null) {
                 if (user.getDiscordName().contains("#")) {
                     if (discordId == null && user.getDiscordName().startsWith(name + "#")) {
-                        if (secondary == null) secondary = new LinkedList<>();
+                        if (secondary == null) secondary = new ArrayList<>();
                         secondary.add(user);
                     }
                 } else if (name.equalsIgnoreCase(user.getDiscordName())) {
-                    if (secondary == null) secondary = new LinkedList<>();
+                    if (secondary == null) secondary = new ArrayList<>();
                     secondary.add(user);
                 }
             }

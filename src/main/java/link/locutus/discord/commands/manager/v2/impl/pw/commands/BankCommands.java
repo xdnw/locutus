@@ -157,7 +157,7 @@ public class BankCommands {
         Map<Integer, Integer> offensivesByNation = new HashMap<>();
         Map<Integer, Integer> defensivesByNation = new HashMap<>();
 
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(allyIds);
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNations(allyIds);
         nations.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= 1);
         List<DBWar> wars = Locutus.imp().getWarDb().getWarsByAlliance(allyIds, enemyIds);
         wars.removeIf(f -> f.date < cutoff);
@@ -167,7 +167,7 @@ public class BankCommands {
         List<DBAttack> allattacks = Locutus.imp().getWarDb().getAttacksByWarIds(warIds);
         Map<Integer, List<DBAttack>> attacksByWar = new HashMap<>();
         for (DBAttack attack : allattacks) {
-            attacksByWar.computeIfAbsent(attack.war_id, f -> new LinkedList<>()).add(attack);
+            attacksByWar.computeIfAbsent(attack.war_id, f -> new ArrayList<>()).add(attack);
         }
 
         if (removeWarsWithNoDefenderActions) {
@@ -951,7 +951,7 @@ public class BankCommands {
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE && aaId2 != null) {
                         if (!guildDb.getCoalition("enemies").isEmpty())
                             return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`) and `enemies` is set (see: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions`)";
-                        DBAlliance aaObj = new DBAlliance(aaId2);
+                        DBAlliance aaObj = DBAlliance.getOrCreate(aaId2);
                         ByteBuffer warringBuf = aaObj.getMeta(AllianceMeta.IS_WARRING);
                         if (warringBuf != null && warringBuf.get() == 1)
                             return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`)";
@@ -1019,7 +1019,7 @@ public class BankCommands {
 
     @Command(desc = "Sheet of projects each nation has")
     @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
-    public String ProjectSheet(@Me GuildDB db, Set<DBNation> nations, @Switch('s') SpreadSheet sheet, @Switch('f') boolean forceUpdate) throws GeneralSecurityException, IOException {
+    public String ProjectSheet(@Me GuildDB db, Set<DBNation> nations, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.PROJECT_SHEET);
         }
@@ -1046,9 +1046,6 @@ public class BankCommands {
             header.set(4, nation.getScore());
 
             for (Project value : Projects.values) {
-                if (forceUpdate) {
-                    nation.updateProjects();
-                }
                 header.set(5 + value.ordinal(), nation.hasProject(value) + "");
             }
 
@@ -2270,7 +2267,7 @@ public class BankCommands {
 
         if (forceUpdate) {
             try {
-                new DBAlliance(allianceId).updateCities();
+                DBAlliance.getOrCreate(allianceId).updateCities();
             } catch (ParseException e) {
                 e.printStackTrace();
             }
@@ -2384,8 +2381,6 @@ public class BankCommands {
         if (root.isDelegateServer()) return "Cannot enable offshoring for delegate server (run this command in the root server)";
 
         if (root.isOffshore()) {
-            if (nation.getAlliance_id() != alliance.getAlliance_id()) nation.getPnwNation();
-
             if (nation.getAlliance_id() != alliance.getAlliance_id()) {
                 throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
@@ -2471,7 +2466,7 @@ public class BankCommands {
             Integer aaId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
             NationOrAllianceOrGuild sender;
             if (aaId != null) {
-                sender = new DBAlliance(aaId);
+                sender = DBAlliance.getOrCreate(aaId);
             } else {
                 sender = root;
             }

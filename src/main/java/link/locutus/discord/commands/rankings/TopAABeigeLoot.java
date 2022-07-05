@@ -51,7 +51,7 @@ public class TopAABeigeLoot extends Command {
         long cutOff = System.currentTimeMillis() - millis;
 
         Map<Integer, Double> allianceScores = new HashMap<>();
-        LinkedList<DBNation> allNations = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        LinkedList<DBNation> allNations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         allNations.removeIf(n -> n.getVm_turns() > 0 || n.getPosition() <= 1);
         for (DBNation nation : allNations) {
             allianceScores.put(nation.getAlliance_id(), nation.getScore() + allianceScores.getOrDefault(nation.getAlliance_id(), 0d));

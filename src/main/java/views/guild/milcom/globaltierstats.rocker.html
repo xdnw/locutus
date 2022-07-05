@@ -6,7 +6,7 @@
 @import java.util.Set
 @import link.locutus.discord.commands.rankings.table.TimeNumericTable
 
-@args(SphereGenerator spheres, Set<Alliance> alliances, Set<NationMetricDouble> metrics, NationMetricDouble groupBy, boolean total, boolean removeVM, int removeActiveM, boolean removeApps)
+@args(SphereGenerator spheres, Set<DBAlliance> alliances, Set<NationAttributeDouble> metrics, NationAttributeDouble groupBy, boolean total, boolean removeVM, int removeActiveM, boolean removeApps)
 @views.main.template("Global Stats") -> {
 <h2 class="text-white">Search</h2>
 <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
@@ -30,7 +30,7 @@
                     </div>
                     <hr>
                     }
-                    @for (Alliance alliance : spheres.getAlliances(sphereId)) {
+                    @for (DBAlliance alliance : spheres.getAlliances(sphereId)) {
                         <div class="card searchable" style="display:inline-block;width:36rem;min-height:18rem;vertical-align: top;">
                             @views.data.barchartdatasrc.template(alliance.getName(),
                             TimeNumericTable.create(alliance.getName() + ": ", metrics, Collections.singleton(alliance), groupBy, total, removeVM, removeActiveM, removeApps

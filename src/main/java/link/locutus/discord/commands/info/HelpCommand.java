@@ -79,43 +79,43 @@ public class HelpCommand extends Command {
             String footer = "Bot created and managed by the Interwebs Sourcery division of the Borg Collective. If you would like this bot in your server use the chant `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "invite` and follow the summoning ritual instructions.";
             DiscordUtil.createEmbedCommandWithFooter(event.getChannel(), "Locutus Cats", response.toString().trim(), footer);
         } else {
-            try {
-                Integer page = DiscordUtil.parseArgInt(args, "page");
+            Integer page = DiscordUtil.parseArgInt(args, "page");
 
-                List<String> commandsDescShort = new ArrayList<>();
-                Set<CommandCategory> requiredCategories = new HashSet<>();
-                for (String arg : args) {
-                    CommandCategory category = CommandCategory.valueOf(arg.toUpperCase());
-                    requiredCategories.add(category);
-                }
-                if (requiredCategories.size() > 0) {
-                    LinkedHashSet<Command> commands = new LinkedHashSet<>(manager.getCommandMap().values());
-                    for (Command command : commands) {
-                        try {
-                            if (!command.checkPermission(event.isFromGuild() ? event.getGuild() : null, event.getAuthor()))
-                                continue;
-                            if (command.getCategories().containsAll(requiredCategories)) {
-                                String descShort = command.desc().split("\n")[0];
-                                String helpDesc = "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "? " + command.getAliases().get(0) + "` - " + descShort;
-                                commandsDescShort.add(helpDesc);
-                            }
-                        } catch (IllegalArgumentException e) {
+            List<String> commandsDescShort = new ArrayList<>();
+            Set<CommandCategory> requiredCategories = new HashSet<>();
 
+            for (String arg : args) {
+                CommandCategory category = CommandCategory.valueOf(arg.toUpperCase());
+                requiredCategories.add(category);
+            }
+            if (!requiredCategories.isEmpty()) {
+                LinkedHashSet<Command> commands = new LinkedHashSet<>(manager.getCommandMap().values());
+                for (Command command : commands) {
+                    try {
+                        if (!command.checkPermission(event.isFromGuild() ? event.getGuild() : null, event.getAuthor()))
+                            continue;
+                        if (command.getCategories().containsAll(requiredCategories)) {
+                            String descShort = command.desc().split("\n")[0];
+                            String helpDesc = "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "? " + command.getAliases().get(0) + "` - " + descShort;
+                            commandsDescShort.add(helpDesc);
                         }
-                    }
-                    if (!commandsDescShort.isEmpty()) {
-                        String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
-                        if (page == null) page = 0;
-                        int perPage = 15;
-                        int pages = (commandsDescShort.size() + perPage - 1) / perPage;
+                    } catch (IllegalArgumentException ignore) {
 
-                        String title = StringMan.join(requiredCategories, ",");
-                        title += " (" + (page + 1) + "/" + pages + ")";
-                        DiscordUtil.paginate(event.getGuildChannel(), title, cmd, page, perPage, commandsDescShort);
-                        return null;
                     }
                 }
-            } catch (IllegalArgumentException ignore) {}
+                if (!commandsDescShort.isEmpty()) {
+                    String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+                    if (page == null) page = 0;
+                    int perPage = 15;
+                    int pages = (commandsDescShort.size() + perPage - 1) / perPage;
+
+                    String title = StringMan.join(requiredCategories, ",");
+                    title += " (" + (page + 1) + "/" + pages + ")";
+                    DiscordUtil.paginate(event.getGuildChannel(), title, cmd, page, perPage, commandsDescShort);
+                    return null;
+                }
+            }
+
             String arg = args.get(0).toLowerCase();
             Command cmd = manager.getCommandMap().get(arg);
             if (cmd == null) {

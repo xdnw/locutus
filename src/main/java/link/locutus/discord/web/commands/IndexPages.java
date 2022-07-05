@@ -297,7 +297,7 @@ public class IndexPages {
     @Command()
     @RolePermission(Roles.MEMBER)
     public Object allianceIndex(@Me User user, int allianceId) {
-        DBAlliance alliance = new DBAlliance(allianceId);
+        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
         GuildDB db = alliance.getGuildDB();
         Guild guild = db != null ? db.getGuild() : null;
 

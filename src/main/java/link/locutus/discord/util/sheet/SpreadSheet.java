@@ -290,7 +290,7 @@ public class SpreadSheet {
                 if (allianceId == null) result.put(nameStr, false);
                 else {
                     result.put(nameStr, true);
-                    DBAlliance alliance = new DBAlliance(allianceId);
+                    DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
                     Map<ResourceType, Double> existing = fundsToSendAAs.computeIfAbsent(alliance, f -> new EnumMap<>(ResourceType.class));
                     fundsToSendAAs.put(alliance, PnwUtil.add(existing, transfer));
                 }

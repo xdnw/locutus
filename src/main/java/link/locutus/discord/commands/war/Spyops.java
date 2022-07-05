@@ -204,7 +204,7 @@ public class Spyops extends Command {
 
         for (DBNation nation : nations) {
             Integer spies = nation.updateSpies(false, flags.contains('f'));
-            if (spies == null || nation.getSpies() == null) {
+            if (spies == null) {
                 continue;
             }
             if (spies == -1) {
@@ -304,7 +304,7 @@ public class Spyops extends Command {
             targets.add(new AbstractMap.SimpleEntry<>(nation, task));
         }
 
-        targets.removeIf(f -> f.getKey().isEspionageFull(false, false, false));
+        targets.removeIf(f -> f.getKey().isEspionageFull());
 
         if (flags.contains('s')) {
             Auth auth = Locutus.imp().getRootAuth();
@@ -316,7 +316,7 @@ public class Spyops extends Command {
                         for (Map.Entry<DBNation, Runnable> target : targets) {
                             DBNation defender = target.getKey();
                             try {
-                                if (defender.isEspionageFull(false, true, false)) continue;
+                                if (defender.isEspionageFull()) continue;
                             } catch (Throwable e) {
                                 e.printStackTrace();
                             }

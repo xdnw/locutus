@@ -9,7 +9,8 @@ public class Treaty {
     private final int id;
     private final long date;
     private final TreatyType type;
-    private final int from, to;
+    private final int from;
+    private final int to;
     private final long turn_ends;
 
     public Treaty(com.politicsandwar.graphql.model.Treaty v3) {
@@ -38,14 +39,6 @@ public class Treaty {
         return id;
     }
 
-    public int getFromId() {
-        return from;
-    }
-
-    public int getToId() {
-        return to;
-    }
-
     public long getDate() {
         return date;
     }
@@ -55,7 +48,7 @@ public class Treaty {
     }
 
     public int getMinFromToId() {
-        return Math.min(from, to);
+        return Math.min(getFromId(), getToId());
     }
 
     @Override
@@ -70,5 +63,33 @@ public class Treaty {
     @Override
     public int hashCode() {
         return id;
+    }
+
+    public int getFromId() {
+        return from;
+    }
+
+    public int getToId() {
+        return to;
+    }
+
+    public DBAlliance getFrom() {
+        return DBAlliance.getOrCreate(getFromId());
+    }
+
+    public DBAlliance getTo() {
+        return DBAlliance.getOrCreate(getToId());
+    }
+
+    @Override
+    public String toString() {
+        return "Treaty{" +
+                "id=" + id +
+                ", date=" + date +
+                ", type=" + type +
+                ", from=" + from +
+                ", to=" + to +
+                ", turn_ends=" + turn_ends +
+                '}';
     }
 }

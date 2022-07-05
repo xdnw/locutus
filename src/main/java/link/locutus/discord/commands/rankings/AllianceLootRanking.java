@@ -94,13 +94,12 @@ public class AllianceLootRanking extends Command {
         String title = "Loot (" + days + " days):";
         StringBuilder response = new StringBuilder();
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
         for (int i = 0; i < Math.min(25, sorted.size()); i++) {
             Map.Entry<Integer, Map<ResourceType, Double>> entry = sorted.get(i);
             int allianceId = entry.getKey();
             Double value = entry.getValue().getOrDefault(ResourceType.MONEY, 0d);
 
-            String name = alliances.getOrDefault(allianceId, Integer.toString(allianceId));
+            String name = PnwUtil.getName(allianceId, true);
             name = name.substring(0, Math.min(32, name.length()));
 
             response.append('\n').append(String.format("%4s", i + 1) + ". ").append(String.format("%32s", name)).append(": $").append(format(value));

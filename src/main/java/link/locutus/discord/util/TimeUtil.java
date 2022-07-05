@@ -141,20 +141,26 @@ public class TimeUtil {
         String[] split = string.indexOf(' ') != -1 ? string.split(" ") : new String[] {string};
         long time = 0;
         for (String value : split) {
-            int nums = Integer.parseInt(value.replaceAll("[^\\d]", ""));
+            double nums = Double.parseDouble(value.replaceAll("[^\\d.]", ""));
             String letters = value.replaceAll("[^a-z]", "");
             switch (letters) {
+                case "month(s)":
+                    time += TimeUnit.DAYS.toSeconds(30) * nums;
+                    break;
                 case "week":
                 case "weeks":
                 case "wks":
+                case "week(s)":
                 case "w":
                     time += 604800 * nums;
                     break;
+                case "day(s)":
                 case "days":
                 case "day":
                 case "d":
                     time += 86400 * nums;
                     break;
+                case "hour(s)":
                 case "hour":
                 case "hr":
                 case "hrs":
@@ -162,6 +168,7 @@ public class TimeUtil {
                 case "h":
                     time += 3600 * nums;
                     break;
+                case "minute(s)":
                 case "minutes":
                 case "minute":
                 case "mins":
@@ -169,6 +176,7 @@ public class TimeUtil {
                 case "m":
                     time += 60 * nums;
                     break;
+                case "second(s)":
                 case "seconds":
                 case "second":
                 case "secs":

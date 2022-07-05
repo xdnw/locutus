@@ -10,12 +10,10 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.CityBuildingChangeEvent;
 import link.locutus.discord.event.city.CityCreateEvent;
 import link.locutus.discord.event.city.CityInfraBuyEvent;
-import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.guild.NewApplicantOnDiscordEvent;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.war.WarPeaceStatusEvent;
-import link.locutus.discord.event.war.WarStatusChangeEvent;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.user.Roles;
@@ -37,7 +35,6 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.task.MailTask;
 import link.locutus.discord.util.task.balance.GetTaxesTask;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.util.update.NationUpdateProcessor;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
@@ -57,7 +54,6 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.MissingAccessException;
-import views.grant.city;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -798,7 +794,7 @@ public class GuildHandler {
                 // TODO must not have received grant for this city yet
                 // city grant past c10 in past 10 days
 
-                baseRequirements.add(new Grant.Requirement("Nation still has a city timer", overrideUnsafe, f -> f.getCities() < 10 || f.cityTimerTurns() <= 0));
+                baseRequirements.add(new Grant.Requirement("Nation still has a city timer", overrideUnsafe, f -> f.getCities() < 10 || f.getCityTurns() <= 0));
 
                 int currentCities = nation.getCities();
                 baseRequirements.add(new Grant.Requirement("Nation has built a city, please run the grant command again", false, f -> f.getCities() == currentCities));
@@ -860,7 +856,7 @@ public class GuildHandler {
             case PROJECT: {
 
                 baseRequirements.add(new Grant.Requirement("Domestic policy must be set to TECHNOLOGICAL_ADVANCEMENT for project grants: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT));
-                baseRequirements.add(new Grant.Requirement("Nation still has a city timer", overrideUnsafe, f -> f.projectTimerTurns() <= 0));
+                baseRequirements.add(new Grant.Requirement("Nation still has a city timer", overrideUnsafe, f -> f.getProjectTurns() <= 0));
                 baseRequirements.add(new Grant.Requirement("Nation has no free project slot", overrideUnsafe, f -> f.projectSlots() > f.getNumProjects()));
                 // project grant in past 10 days
 
@@ -2497,13 +2493,16 @@ public class GuildHandler {
         TextChannel channel = db.getOrNull(GuildDB.Key.WAR_PEACE_ALERTS);
         if (channel == null) return;
 
-        String title = "War " + from + " -> " + to;
+        DBWar previous = event.getPrevious();
+        DBWar current = event.getCurrent();
+
+        String title = "War " + previous.getStatus() + " -> " + current.getStatus();
         StringBuilder body = new StringBuilder();
-        body.append("War: " + MarkupUtil.markdownUrl("Click Here", war.toUrl())).append("\n");
-        body.append("ATT: " + PnwUtil.getMarkdownUrl(war.attacker_id, false) +
-                " | " + PnwUtil.getMarkdownUrl(war.attacker_aa, true)).append("\n");
-        body.append("DEF: " + PnwUtil.getMarkdownUrl(war.attacker_id, false) +
-                " | " + PnwUtil.getMarkdownUrl(war.attacker_aa, true)).append("\n");
+        body.append("War: " + MarkupUtil.markdownUrl("Click Here", current.toUrl())).append("\n");
+        body.append("ATT: " + PnwUtil.getMarkdownUrl(current.attacker_id, false) +
+                " | " + PnwUtil.getMarkdownUrl(current.attacker_aa, true)).append("\n");
+        body.append("DEF: " + PnwUtil.getMarkdownUrl(current.attacker_id, false) +
+                " | " + PnwUtil.getMarkdownUrl(current.attacker_aa, true)).append("\n");
 
         DiscordUtil.createEmbedCommand(channel, title, body.toString());
     }

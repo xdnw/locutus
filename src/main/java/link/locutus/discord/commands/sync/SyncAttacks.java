@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import net.dv8tion.jda.api.entities.Guild;
@@ -35,18 +36,12 @@ public class SyncAttacks extends Command {
     public synchronized String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         WarUpdateProcessor.checkActiveConflicts();
         if (args.size() == 0) {
-            Locutus.imp().getWarDb().updateAttacks();
-            for (DBNation value : Locutus.imp().getNationDB().getNations().values()) {
-                if (value.isBeige()) {
-                    value.getBeigeTurns(true);
-                }
-            }
+            Locutus.imp().getWarDb().updateAttacks(true);
         } else if (args.size() == 1) {
-            Locutus.imp().getWarDb().updateAttacks(Integer.parseInt(args.get(0)), false);
+            Locutus.imp().getWarDb().updateAttacks(Integer.parseInt(args.get(0)), false, Event::post);
         } else {
             return usage();
         }
-
         return "Done!";
     }
 }

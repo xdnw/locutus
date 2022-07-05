@@ -75,7 +75,7 @@ public class NationUpdateProcessor {
     public static void updateBlockades() {
         long now = System.currentTimeMillis();
 
-        Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getActiveWars();
+        Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
 
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(now - TimeUnit.DAYS.toMillis(5));
 
@@ -444,7 +444,7 @@ public class NationUpdateProcessor {
                         if (attacker.getCities() < current.getCities() * 0.66 && (current.getActive_m() < 3000)) continue;
                         if (attacker.getCities() < current.getCities() * 0.70 && (current.getActive_m() < 2440)) continue;
                         if (attacker.getCities() < current.getCities() * 0.75 && (current.getSoldiers() > attacker.getSoldiers() * 0.33 || current.getAircraft() > attacker.getAircraft() * 0.66)) continue;
-                        if (attacker.getOff() == 0 && attacker.getDef() == 0) {
+                        if (attacker.getNumWars() == 0) {
                             if (attStr > defStr) {
                                 if (attacker.getCities() > current.getCities()) {
                                     priority1.add(entry);

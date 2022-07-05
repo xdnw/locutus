@@ -3,6 +3,7 @@ package link.locutus.discord.apiv1.domains.subdomains;
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -234,8 +235,8 @@ public class DBAttack {
         matcher.find();
         double percent = Math.max(0.01, Double.parseDouble(matcher.group(1))) / 100d;
 
-        BiMap<String, Integer> alliances = Locutus.imp().getNationDB().getAlliances().inverse();
-        allianceIdOutput.set(alliances.getOrDefault(bank, 0));;
+        DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(bank);
+        allianceIdOutput.set(alliance != null ? alliance.getId() : 0);
         return percent;
     }
 

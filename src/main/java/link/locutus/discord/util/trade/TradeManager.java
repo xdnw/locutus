@@ -579,7 +579,7 @@ public class TradeManager {
         message.append("\n3. Sell to the alliance by depositing with the note `#cash`");
         Set<String> tradePartnerNames = new LinkedHashSet<>();
         for (Integer aaId : tradePartners) {
-            DBAlliance aa = new DBAlliance(aaId);
+            DBAlliance aa = DBAlliance.getOrCreate(aaId);
             if (aa.exists()) tradePartnerNames.add(aa.getName());
         }
         message.append("\n4. Trade with nations in any of our trade partners: `" + StringMan.getString(tradePartnerNames) + "`");

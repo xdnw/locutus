@@ -7,6 +7,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationBlockadedEvent;
 import link.locutus.discord.event.nation.NationUnblockadedEvent;
 import link.locutus.discord.event.war.*;
@@ -50,6 +51,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class WarUpdateProcessor {
@@ -100,7 +102,7 @@ public class WarUpdateProcessor {
         // TODO idk
     }
 
-    public static void processWars(List<Map.Entry<DBWar, DBWar>> wars) {
+    public static void processWars(List<Map.Entry<DBWar, DBWar>> wars, Consumer<Event> eventConsumer) {
         if (wars.isEmpty()) return;
 //
         handleAlerts(wars);
@@ -112,10 +114,12 @@ public class WarUpdateProcessor {
             DBWar previous = entry.getKey();
             DBWar current = entry.getValue();
 
-            if (previous == null) {
-                new WarCreateEvent(current).post();
-            } else {
-                new WarStatusChangeEvent(previous, current).post();
+            if (eventConsumer != null) {
+                if (previous == null) {
+                    eventConsumer.accept(new WarCreateEvent(current));
+                } else {
+                    eventConsumer.accept(new WarStatusChangeEvent(previous, current));
+                }
             }
 
             try {
@@ -873,7 +877,7 @@ public class WarUpdateProcessor {
 
         Map<DBAlliance, Double> warRatio = new HashMap<>();
         for (DBAlliance alliance : top) {
-            List<DBNation> nations = alliance.getNations(true, 1440, true);
+            Set<DBNation> nations = alliance.getNations(true, 1440, true);
             nations.removeIf(DBNation::isGray);
             DBNation total = new SimpleNationList(nations).getTotal();
             int numBeige = 0;

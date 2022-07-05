@@ -7,14 +7,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.InterviewMessage;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -571,9 +564,7 @@ public class DiscordUtil {
         DiscordDB disDb = Locutus.imp().getDiscordDB();
         PNWUser pnwUser = disDb.getUserFromDiscordId(userId);
         if (pnwUser != null) {
-            int id = pnwUser.getNationId();
-            NationDB natDb = Locutus.imp().getNationDB();
-            return natDb.getNation(id);
+            return DBNation.byId(pnwUser.getNationId());
         }
         return null;
     }
@@ -870,7 +861,7 @@ public class DiscordUtil {
                     nations.removeIf(f -> not.contains(f));
                     continue;
                 } else if (name.toLowerCase().startsWith("aa:")) {
-                    List<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(parseAlliances(guild, name.split(":", 2)[1]));
+                    Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(parseAlliances(guild, name.split(":", 2)[1]));
                     if (noApplicants) {
                         allianceMembers.removeIf(n -> n.getPosition() <= 1);
                     }
@@ -915,7 +906,7 @@ public class DiscordUtil {
                             throw new IllegalArgumentException("Invalid nation/aa: " + name);
                         }
                     } else {
-                        List<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
+                        Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
                         if (noApplicants) {
                             allianceMembers.removeIf(n -> n.getPosition() <= 1);
                         }
@@ -952,14 +943,14 @@ public class DiscordUtil {
                                 if (aaId != null) {
                                     allies.add(aaId);
                                     Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(aaId);
-                                    treaties.entrySet().removeIf(e -> e.getValue().type != TreatyType.PROTECTORATE);
+                                    treaties.entrySet().removeIf(e -> e.getValue().getType() != TreatyType.PROTECTORATE);
 
-                                    List<DBNation> aaNations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
+                                    Set<DBNation> aaNations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
                                     double totalScore = aaNations.stream().mapToDouble(DBNation::getScore).sum();
 
                                     for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                                         int protId = entry.getKey();
-                                        List<DBNation> protNations = Locutus.imp().getNationDB().getNations(Collections.singleton(protId));
+                                        Set<DBNation> protNations = Locutus.imp().getNationDB().getNations(Collections.singleton(protId));
                                         double protScore = aaNations.stream().mapToDouble(DBNation::getScore).sum();
                                         if (protScore < totalScore) {
                                             allies.add(protId);
@@ -1037,8 +1028,8 @@ public class DiscordUtil {
                                 for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                                     if (newAlliances.contains(entry.getKey())) continue;
                                     Treaty treaty = entry.getValue();
-                                    if (treatyTypes.contains(treaty.type)) {
-                                        if (depth == 0 || treaty.type != TreatyType.PROTECTORATE || newAlliances.contains(treaty.from)) {
+                                    if (treatyTypes.contains(treaty.getType())) {
+                                        if (depth == 0 || treaty.getType() != TreatyType.PROTECTORATE || newAlliances.contains(treaty.getFromId())) {
                                             newAlliances.add(entry.getKey());
                                         }
                                     }
@@ -1046,7 +1037,7 @@ public class DiscordUtil {
                             }
                             newAlliances.removeAll(alliances);
                             if (!newAlliances.isEmpty()) {
-                                List<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(newAlliances);
+                                Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(newAlliances);
                                 if (noApplicants) {
                                     allianceMembers.removeIf(n -> n.getPosition() <= 1);
                                 }
@@ -1125,7 +1116,7 @@ public class DiscordUtil {
                         continue;
                     }
                     case "#turntimer": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (n.cityTimerTurns() - TimeUtil.getTurn())));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (n.getCityTurns() - TimeUtil.getTurn())));
                         continue;
                     }
                     case "#barracks":
@@ -1435,7 +1426,7 @@ public class DiscordUtil {
         return 0;
     }
 
-    public static List<DBNation> getNationsByAA(int alliance_id) {
-        return Locutus.imp().getNationDB().getNations(Collections.singleton(alliance_id));
+    public static Set<DBNation> getNationsByAA(int alliance_id) {
+        return DBAlliance.getOrCreate(alliance_id).getNations();
     }
 }

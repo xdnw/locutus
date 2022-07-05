@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv3;
 
+import kotlin.collections.ArrayDeque;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.AlertUtil;
@@ -220,7 +221,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bounty> fetchBounties(int perPage, Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bounty> recResults) {
-        List<Bounty> allResults = new LinkedList<>();
+        List<Bounty> allResults = new ArrayList<>();
 
         handlePagination(page -> {
                     BountiesQueryRequest request = new BountiesQueryRequest();
@@ -260,7 +261,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<BBGame> fetchBaseballGames(int perPage, Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<BBGame> recResults) {
-        List<BBGame> allResults = new LinkedList<>();
+        List<BBGame> allResults = new ArrayList<>();
 
         handlePagination(page -> {
                     Baseball_gamesQueryRequest request = new Baseball_gamesQueryRequest();
@@ -344,7 +345,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<WarAttack> fetchAttacks(int perPage, Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<WarAttack> recResults) {
-        List<WarAttack> allResults = new LinkedList<>();
+        List<WarAttack> allResults = new ArrayList<>();
 
         handlePagination(page -> {
                     WarattacksQueryRequest request = new WarattacksQueryRequest();
@@ -380,7 +381,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<War> fetchWars(int perPage, Consumer<WarsQueryRequest> filter, Consumer<WarResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<War> recResults) {
-        List<War> allResults = new LinkedList<>();
+        List<War> allResults = new ArrayList<>();
 
         handlePagination(page -> {
                     WarsQueryRequest request = new WarsQueryRequest();
@@ -465,7 +466,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<City> fetchCities(int perPage, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<City> recResults) {
-        List<City> allResults = new LinkedList<>();
+        List<City> allResults = new ArrayList<>();
 
         handlePagination(page -> {
                     CitiesQueryRequest request = new CitiesQueryRequest();
@@ -532,7 +533,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
-        List<Bankrec> allResults = new LinkedList<>();
+        List<Bankrec> allResults = new ArrayList<>();
 
         handlePagination(page -> {
                     BankrecsQueryRequest request = new BankrecsQueryRequest();
@@ -568,7 +569,7 @@ public class PoliticsAndWarV3 {
     }
 //
 //    public List<Bankrec> fetchBankRecs2(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
-//        List<Bankrec> allResults = new LinkedList<>();
+//        List<Bankrec> allResults = new ArrayList<>();
 //
 //        handlePagination(page -> {
 //                    AlliancesQueryRequest request = new AlliancesQueryRequest();
@@ -659,7 +660,7 @@ public class PoliticsAndWarV3 {
         return fetchNations(NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
     }
     public List<Nation> fetchNations(int perPage, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Nation> nationResults) {
-        List<Nation> allResults = new LinkedList<>();
+        List<Nation> allResults = new ArrayList<>();
 
         handlePagination(page -> {
             NationsQueryRequest request = new NationsQueryRequest();
@@ -734,7 +735,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Alliance> fetchAlliances(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
-        List<Alliance> allResults = new LinkedList<>();
+        List<Alliance> allResults = new ArrayList<>();
 
         handlePagination(page -> {
                     AlliancesQueryRequest request = new AlliancesQueryRequest();
@@ -785,7 +786,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Treaty> fetchTreaties(int perPage, Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Treaty> addEachResult) {
-        List<Treaty> allResults = new LinkedList<>();
+        List<Treaty> allResults = new ArrayList<>();
 
         handlePagination(page -> {
                     TreatiesQueryRequest request = new TreatiesQueryRequest();
@@ -841,6 +842,9 @@ public class PoliticsAndWarV3 {
     }
 
     public static void main(String[] args) throws ParseException, LoginException, InterruptedException, SQLException, ClassNotFoundException, IOException {
+        System.out.println("Hello World");
+        System.exit(1);
+
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();

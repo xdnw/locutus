@@ -26,7 +26,6 @@ import link.locutus.discord.util.discord.GuildShardManager;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.util.task.SyncUtil;
 import link.locutus.discord.util.task.TaskLock;
 import link.locutus.discord.util.task.TrackLeaderMilitary;
 import link.locutus.discord.util.task.ia.MapFullTask;
@@ -592,17 +591,6 @@ public final class Locutus extends ListenerAdapter {
             }, 1, 1, TimeUnit.MINUTES);
         }
 
-        if (Settings.INSTANCE.TASKS.ACTIVE_NATION_UPDATER_SECONDS > 0) {
-            commandManager.getExecutor().scheduleWithFixedDelay(
-                    new TaskLock(() -> {
-                        boolean result = SyncUtil.INSTANCE.syncIfFree(System.out::println, false);
-//                    if (result) updateRoles();
-                        return result;
-                    }),
-                    Settings.INSTANCE.TASKS.ACTIVE_NATION_UPDATER_SECONDS,
-                    Settings.INSTANCE.TASKS.ACTIVE_NATION_UPDATER_SECONDS, TimeUnit.SECONDS);
-        }
-
         if (Settings.INSTANCE.TASKS.TRADE_TASKS.COMPLETED_TRADES_SECONDS > 0) {
             AtomicBoolean updateTradeTask = new AtomicBoolean(false);
 
@@ -707,49 +695,11 @@ public final class Locutus extends ListenerAdapter {
             // update spy ops?
             // update UID
 
-            if (Settings.INSTANCE.TASKS.TURN_TASKS.VM_NATION_UPDATER)
-            {
-                getExecutor().submit(() -> {
-                    SyncUtil.INSTANCE.syncIfFree(System.out::println, true);
-                });
-            }
-
-            if (Settings.INSTANCE.TASKS.TURN_TASKS.GUILD_NATION_TASKS) {
-                NationUpdateProcessor.runGuildNationTasks(lastTurn, currentTurn);
-            }
-
             if (Settings.INSTANCE.TASKS.TURN_TASKS.MAP_FULL_ALERT) {
                 // See also  the war update processor has some commented out code for MAPS (near the audit stuff)
                 new MapFullTask().run();
             }
 
-            if (Settings.INSTANCE.TASKS.TURN_TASKS.GUILD_ALLIANCE_TASKS) {
-                for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-                    if (db.isDelegateServer()) continue;
-                    GuildHandler handler = db.getHandler();
-                    if (handler != null) {
-                        try {
-                            handler.runTurnTasks();
-                        } catch (Throwable e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
-
-            try {
-                if (currentTurn % 12 == 0) {
-                    getPnwApi().getV3_legacy().updateAllNations();
-                } else {
-                    getPnwApi().getV3_legacy().updateNations(Settings.INSTANCE.TASKS.TURN_TASKS.SPY_SLOTS,
-                            Settings.INSTANCE.TASKS.TURN_TASKS.BANK_RECORDS,
-                            Settings.INSTANCE.TASKS.TURN_TASKS.CITIES,
-                            Settings.INSTANCE.TASKS.TURN_TASKS.PROJECT,
-                            Settings.INSTANCE.TASKS.TURN_TASKS.POLICY);
-                }
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
             if (Settings.INSTANCE.TASKS.TURN_TASKS.ALLIANCE_METRICS) {
                 AllianceMetric.update(80);
             }

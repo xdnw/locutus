@@ -115,7 +115,7 @@ public class TransferSheet extends SpreadSheet {
                 Integer allianceId = PnwUtil.parseAllianceId(nameStr);
                 if (allianceId == null) invalidNationOrAlliance.add(nameStr);
                 else {
-                    transfers.put(new DBAlliance(allianceId), transfer);
+                    transfers.put(DBAlliance.getOrCreate(allianceId), transfer);
                 }
             } else {
                 DBNation nation = DiscordUtil.parseNation(nameStr);

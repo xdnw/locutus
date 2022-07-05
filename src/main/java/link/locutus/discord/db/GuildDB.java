@@ -41,7 +41,6 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import net.dv8tion.jda.api.managers.channel.ChannelManager;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -60,7 +59,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -550,7 +548,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public List<Key> listInaccessibleChannelKeys() {
-        List<Key> inaccessible = new LinkedList<>();
+        List<Key> inaccessible = new ArrayList<>();
         for (Key key : Key.values()) {
             String valueStr = getInfo(key, false);
             if (valueStr == null) continue;
@@ -569,7 +567,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return inaccessible;
     }
     public void unsetInaccessibleChannels() {
-        for (Key key : listInaccessibleChannels()) {
+        for (Key key : listInaccessibleChannelKeys()) {
             deleteInfo(key);
         }
     }
@@ -965,7 +963,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 InterviewMessage msg = new InterviewMessage(rs);
-                result.computeIfAbsent(msg.channelId, f -> new LinkedList<>()).add(msg);
+                result.computeIfAbsent(msg.channelId, f -> new ArrayList<>()).add(msg);
             }
         });
         return result;
@@ -1085,7 +1083,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         if (announcement == null) continue;
                         Announcement.PlayerAnnouncement plrAnn = new Announcement.PlayerAnnouncement(this, announcement, rs);
                         if (!allowArchived && !plrAnn.active) continue;
-                        result.computeIfAbsent(announcement, f -> new LinkedList<>()).add(plrAnn);
+                        result.computeIfAbsent(announcement, f -> new ArrayList<>()).add(plrAnn);
                     }
                 });
         return result;
@@ -1161,7 +1159,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public List<Transaction2> getTaxBracketTransfers(int tax_id, TaxRate taxBase, boolean useOffset) {
-        List<Transaction2> transactions = new LinkedList<>();
+        List<Transaction2> transactions = new ArrayList<>();
         List<BankDB.TaxDeposit> records = Locutus.imp().getBankDB().getTaxesByBracket(tax_id);
 
         for (BankDB.TaxDeposit deposit : records) {
@@ -1687,6 +1685,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public boolean enabledSpySheet() {
         Object spysheet = getOrNull(Key.SPYOP_SHEET);
         return (getOrNull(Key.API_KEY) != null && getOrNull(Key.ALLIANCE_ID) != null) || spysheet != null;
+    }
+
+    public Set<String> findCoalitions(int aaId) {
+        Set<String> coalitions = new LinkedHashSet<>();
+        for (Map.Entry<String, Set<Integer>> entry : getCoalitions().entrySet()) {
+            if (entry.getValue().contains(aaId)) {
+                coalitions.add(entry.getKey());
+            }
+        }
+        return coalitions;
     }
 
 //    public synchronized void addBalance(GuildDB guildDb, Map<ResourceType, Double> transfer) {
@@ -2819,7 +2827,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (db.isWhitelisted()) return true;
                 Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
                 if (aaId == null) return false;
-                return new DBAlliance(aaId).getRank() <= 25;
+                DBAlliance aa = DBAlliance.get(aaId);
+                return aa == null || aa.getRank() <= 25;
             }
 
             @Override
@@ -2834,7 +2843,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (db.isWhitelisted()) return true;
                 Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
                 if (aaId == null) return false;
-                return new DBAlliance(aaId).getRank() <= 25;
+                return DBAlliance.getOrCreate(aaId).getRank() <= 25;
             }
 
             @Override
@@ -2869,7 +2878,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (db.isWhitelisted()) return true;
                 Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
                 if (aaId == null) return false;
-                return new DBAlliance(aaId).getRank() <= 25;
+                return DBAlliance.getOrCreate(aaId).getRank() <= 25;
             }
         },
 
@@ -4169,7 +4178,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 int allianceId = entry.getKey();
                 Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                 for (Map.Entry<Integer, Treaty> aaTreatyEntry : treaties.entrySet()) {
-                    switch (aaTreatyEntry.getValue().type) {
+                    switch (aaTreatyEntry.getValue().getType()) {
                         case MDP:
                         case MDOAP:
                         case PROTECTORATE:
@@ -4252,7 +4261,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public Auth getAuth(int requiredRank) {
         int aaId = getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
+        DBAlliance alliance = DBAlliance.getOrCreate(aaId);
+        Set<DBNation> nations = alliance.getNations();
         Auth withOfficer = null;
         Auth authWithVM = null;
         for (DBNation gov : nations) {
@@ -4563,7 +4573,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (fetchTreaties) {
                 Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                 for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
-                    switch (entry.getValue().type) {
+                    switch (entry.getValue().getType()) {
                         case MDP:
                         case MDOAP:
                         case ODP:
@@ -4786,49 +4796,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         }
         return new ArrayList<>(roleAliases.entrySet());
-    }
-
-    public Collection<DBNation> getNationsByArguments(String arguments) {
-        Collection<DBNation> nations = new LinkedHashSet<>();
-        if (arguments.equalsIgnoreCase("*")) {
-            nations.addAll(Locutus.imp().getNationDB().getNationsSortedBy("id").values());
-        } else {
-            Set<Integer> aaIds = new HashSet<>();
-            for (String aaName : arguments.split(",")) {
-                if (aaName.contains("tax_id=")) {
-                    try {
-                        nations.addAll(new GetNationsFromTaxBracket(aaName).call());
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                } else {
-                    Integer aaId = null;
-
-                    if (aaName.startsWith("~")) {
-                        aaName = aaName.substring(1);
-                    } else if (!aaName.contains("/nation/id=")) {
-                        aaId = PnwUtil.parseAllianceId(aaName);
-                    }
-
-                    if (aaId == null) {
-                        Set<Integer> coa = getCoalition(aaName);
-                        if (coa.isEmpty()) {
-                            DBNation nation = DiscordUtil.parseNation(aaName);
-                            if (nation == null) {
-                                throw new IllegalArgumentException("Unknown nation: " + aaName);
-                            }
-                            nations.add(nation);
-                        } else {
-                            aaIds.addAll(coa);
-                        }
-                    } else {
-                        aaIds.add(aaId);
-                    }
-                }
-            }
-            nations.addAll(Locutus.imp().getNationDB().getNations(aaIds, "id"));
-        }
-        return nations;
     }
 
     public Long getRoleAlias(Roles role) {

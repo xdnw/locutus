@@ -93,21 +93,6 @@ public class FindSpyOp extends Command {
             boolean spySatellite = Projects.SPY_SATELLITE.has(update.projects);
             boolean intelligence = Projects.INTELLIGENCE_AGENCY.has(update.projects);
 
-            if (update.change < 0) {
-                Map.Entry<SpyCount.SpyOp, Integer> estimate = SpyCount.estimateSpiesUsed(update.change, update.spies);
-                if (estimate != null) {
-                    uncertainty = estimate.getValue();
-
-                    SpyCount.SpyOp op = estimate.getKey();
-                    spiesUsed = op.spies;
-                    safety = op.safety;
-
-                    diff = 0;
-
-                    foundOp = true;
-                }
-            }
-
             if (spiesUsed == -1) spiesUsed = attacker.getSpies();
 
             double odds = SpyCount.getOdds(spiesUsed, defenderSpies, safety, SpyCount.Operation.SPIES, defender);

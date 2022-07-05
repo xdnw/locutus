@@ -25,7 +25,7 @@ public class SimpleValueStore<T> implements ValueStore<T> {
     public <V extends T> Parser<V> get(Key<V> key) {
         if (!key.getAnnotationTypes().isEmpty()) {
             Set<Class<?>> types = new LinkedHashSet<>(key.getAnnotationTypes());
-//            List<Annotation> set = new LinkedList<>(Arrays.asList(key.getAnnotations()));
+//            List<Annotation> set = new ArrayList<>(Arrays.asList(key.getAnnotations()));
 
             types.removeIf(f -> !allowedAnnotations.contains(f));
             if (types.size() != key.getAnnotationTypes().size()) {

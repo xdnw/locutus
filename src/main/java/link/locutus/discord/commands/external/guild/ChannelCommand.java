@@ -61,8 +61,8 @@ public class ChannelCommand extends Command {
         DBNation nation = DiscordUtil.getNation(event);
 
         String channelName = DiscordUtil.format(guild, event.getChannel(), author, nation, args.get(0));
-        List<Category> categories = new LinkedList<>();
-        List<TextChannel> channels = new LinkedList<>();
+        List<Category> categories = new ArrayList<>();
+        List<TextChannel> channels = new ArrayList<>();
         Category freeCategory = null;
         for (String arg : args.get(1).split(",")) {
             Category category = DiscordUtil.getCategory(guild, arg);

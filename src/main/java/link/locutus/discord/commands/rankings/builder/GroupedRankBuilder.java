@@ -55,7 +55,7 @@ public class GroupedRankBuilder<T, G> {
     public void put(T key, G value) {
         List<G> existing = mapped.get(key);
         if (existing == null) {
-            existing = new LinkedList<>(Collections.singletonList(value));
+            existing = new ArrayList<>(Collections.singletonList(value));
             mapped.put(key, existing);
         } else {
             existing.add(value);

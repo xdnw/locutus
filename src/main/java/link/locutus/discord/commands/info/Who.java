@@ -81,7 +81,6 @@ public class Who extends Command {
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
-            if (flags.contains('u') && isAdmin) nation.getPnwNation();
             boolean showMoney = false;
             Message msg = nation.toCard(event.getChannel(), false, showMoney);
 

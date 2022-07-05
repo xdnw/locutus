@@ -15,10 +15,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class BaseballDB extends DBMainV2{
@@ -165,7 +162,7 @@ public class BaseballDB extends DBMainV2{
     }
 
     public List<BBGame> getBaseballGames(Consumer<SelectBuilder> query) {
-        List<BBGame> result = new LinkedList<>();
+        List<BBGame> result = new ArrayList<>();
         SelectBuilder builder = getDb().selectBuilder("games")
                 .select("*");
         if (query != null) query.accept(builder);

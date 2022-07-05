@@ -78,7 +78,7 @@ public class PWCompleter extends BindingHelper {
         if (input.isEmpty()) return null;
 
         List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
-        options.addAll(Locutus.imp().getNationDB().getAlliances().keySet().stream().map((Integer t) -> new DBAlliance(allianceId, dateCreated, name, acronym, color, flag, forum_link, discord_link, wiki_link)).collect(Collectors.toList()));
+        options.addAll(Locutus.imp().getNationDB().getAlliances());
 
         options = StringMan.getClosest(input, options, new Function<NationOrAlliance, String>() {
             @Override

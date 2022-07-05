@@ -44,7 +44,7 @@ public interface NationList {
         Map<T, List<DBNation>> mapList = new HashMap<>();
         for (DBNation nation : getNations()) {
             T group = groupBy.apply(nation);
-            mapList.computeIfAbsent(group, f -> new LinkedList<>()).add(nation);
+            mapList.computeIfAbsent(group, f -> new ArrayList<>()).add(nation);
         }
         Map<T, NationList> result = new HashMap<>();
         for (Map.Entry<T, List<DBNation>> entry : mapList.entrySet()) {
@@ -139,7 +139,7 @@ public interface NationList {
         }
         boolean hasUpdated = false;
         for (Integer allianceId : alliances) {
-            if (new DBAlliance(allianceId).updateSpies(false)) {
+            if (DBAlliance.getOrCreate(allianceId).updateSpies(false)) {
                 toUpdate.removeIf(f -> f.getPosition() > Rank.APPLICANT.id && f.getAlliance_id() == allianceId);
                 hasUpdated = true;
             }

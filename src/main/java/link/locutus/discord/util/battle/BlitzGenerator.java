@@ -2,10 +2,7 @@ package link.locutus.discord.util.battle;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -182,8 +179,8 @@ public class BlitzGenerator {
                 Object aaCell = row.get(allianceI);
                 if (aaCell != null) {
                     String allianceStr = aaCell.toString();
-                    Integer allianceId = Locutus.imp().getNationDB().getAllianceId(allianceStr);
-                    if (allianceId != null && nation.getAlliance_id() != allianceId) {
+                    DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(allianceStr);
+                    if (alliance != null && nation.getAlliance_id() != alliance.getAlliance_id()) {
                         String response = ("Nation: `" + nationStr + "` is no longer in alliance: `" + allianceStr + "`\n");
                         invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
                     }
@@ -306,8 +303,8 @@ public class BlitzGenerator {
     }
 
     public void addAlliances(Set<Integer> allianceIds, boolean attacker) {
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(allianceIds);
-        addNations(new HashSet<>(nations), attacker);
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNations(allianceIds);
+        addNations(nations, attacker);
     }
 
     public Set<DBNation> getNations(boolean attacker) {

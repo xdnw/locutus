@@ -2,6 +2,7 @@ package link.locutus.discord.commands.stock;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.DBMain;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.util.MathMan;
@@ -53,12 +54,12 @@ public class StockDB extends DBMain {
         }
         Map<Integer, Exchange> exchanges = getExchangesById();
         // add exchange for each alliance
-        for (Map.Entry<Integer, String> entry : Locutus.imp().getNationDB().getAlliances().entrySet()) {
-            int id = entry.getKey();
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            int id = alliance.getAlliance_id();
             Exchange exchange = exchanges.get(id);
             if (exchange == null) {
                 exchange = new Exchange(ExchangeCategory.ALLIANCE, id + "", "", 0, ROOT_GUILD);
-                exchange.name = entry.getValue();
+                exchange.name = alliance.getName();
                 exchange.requiredRank = Rank.OFFICER;
                 addExchangeWithId(exchange);
             }

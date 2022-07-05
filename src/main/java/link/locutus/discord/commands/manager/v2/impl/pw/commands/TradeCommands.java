@@ -798,7 +798,7 @@ public class TradeCommands {
             long turn = TimeUtil.getTurn(offer.getEpochms());
             long day = turn / 12;
             minDay = Math.min(minDay, day);
-            offersByDay.computeIfAbsent(day, f -> new LinkedList<>()).add(offer);
+            offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
         }
         offersByDay.remove(minDay);
         minDay++;
@@ -960,7 +960,7 @@ public class TradeCommands {
             long turn = TimeUtil.getTurn(offer.getEpochms());
             long day = turn / 12;
             minDay = Math.min(minDay, day);
-            offersByDay.computeIfAbsent(day, f -> new LinkedList<>()).add(offer);
+            offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
         }
         offersByDay.remove(minDay);
         return offersByDay;

@@ -121,7 +121,7 @@ public class WarCostByAASheet extends Command {
             };
             warCost.addCost(attacks, isPrimary, f -> !isPrimary.apply(f));
 
-            DBAlliance alliance = new DBAlliance(entry.getKey());
+            DBAlliance alliance = DBAlliance.getOrCreate(entry.getKey());
 
 
             ArrayList<Object> row = new ArrayList<>();

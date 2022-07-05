@@ -175,10 +175,10 @@ public class SimulatedWarNode {
 
     public void addChild(SimulatedWarNode child) {
         if (this.children == null) {
-            this.children = new LinkedList<>();
+            this.children = new ArrayList<>();
         }
         if (this.children instanceof SimulatedWarNode) {
-            LinkedList<SimulatedWarNode> list = new LinkedList<>();
+            LinkedList<SimulatedWarNode> list = new ArrayList<>();
             list.add(child);
             list.add((SimulatedWarNode) this.children);
         } else {

@@ -155,7 +155,7 @@ public class SpySheet extends Command {
             defenders.removeIf(DBNation::isEspionageFull);
         }
 
-        List<Spyop> ops = new LinkedList<>();
+        List<Spyop> ops = new ArrayList<>();
 
         for (DBNation attacker : attackers) {
             Activity activity = null;
@@ -283,11 +283,11 @@ public class SpySheet extends Command {
         };
 
         for (Spyop op : ops) {
-            List<Spyop> attOps = opsByNations.computeIfAbsent(op.attacker, f -> new LinkedList<>());
+            List<Spyop> attOps = opsByNations.computeIfAbsent(op.attacker, f -> new ArrayList<>());
             if (attOps.size() >= getNumOps.apply(op.attacker)) {
                 continue;
             }
-            List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new LinkedList<>());
+            List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new ArrayList<>());
             if (defOps.size() == 3) {
                 continue;
             }

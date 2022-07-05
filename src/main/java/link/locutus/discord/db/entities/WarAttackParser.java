@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import kotlin.collections.ArrayDeque;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
@@ -11,14 +12,7 @@ import net.dv8tion.jda.api.entities.Guild;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -43,7 +37,7 @@ public class WarAttackParser {
     }
 
     public WarAttackParser(Guild guild, List<String> args, Set<Character> flags) {
-        List<DBAttack> attacks = new LinkedList<>();
+        List<DBAttack> attacks = new ArrayList<>();
         Function<DBAttack, Boolean> isPrimary = null;
         Function<DBAttack, Boolean> isSecondary = null;
         String nameA = "Unknown";

@@ -349,7 +349,7 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types=DBNation.class, examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
     public String nation(ParameterData param) {
-        LinkedList<DBNation> options = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        LinkedList<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         options.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
@@ -368,7 +368,7 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= NationOrAlliance.class)
     public String nationOrAlliance(ParameterData param) {
-        LinkedList<DBNation> nations = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        LinkedList<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
 
@@ -390,7 +390,7 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= NationOrAllianceOrGuild.class)
     public String nationOrAllianceOrGuild(@Me User user, ParameterData param) {
-        LinkedList<DBNation> nations = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        LinkedList<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
 
@@ -403,7 +403,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             options.add(Locutus.imp().getGuildDB(guild));
         }
         for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(new DBAlliance(entry.getKey()));
+            options.add(DBAlliance.getOrCreate(entry.getKey()));
         }
         for (DBNation nation : nations) {
             options.add(nation);
@@ -451,7 +451,7 @@ public class WebPrimitiveBinding extends BindingHelper {
         BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
         List<DBAlliance> options = new ArrayList<>(alliances.size());
         for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(new DBAlliance(entry.getKey()));
+            options.add(DBAlliance.getOrCreate(entry.getKey()));
         }
         Collections.sort(options, new Comparator<DBAlliance>() {
             @Override
@@ -490,7 +490,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             filterStr = DiscordUtil.format(guild, channel, user, me, filterStr);
             options = DiscordUtil.parseNations(guild, filterStr);
         } else {
-            options = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+            options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
             options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
             options.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
         }

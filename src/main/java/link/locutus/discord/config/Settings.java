@@ -165,9 +165,6 @@ public class Settings extends Config {
         @Comment("What range of top alliances to check the MMR of (default: 80)")
         public int OFFICER_MMR_ALERT_TOP_X = 80;
 
-        @Comment("Fetches general nation information (default: 60)")
-        public int ACTIVE_NATION_UPDATER_SECONDS = 60;
-
         @Comment("Fetches wars and then attacks (default 3 minutes)")
         public int WAR_ATTACK_SECONDS = 60 * 3;
 
@@ -208,9 +205,6 @@ public class Settings extends Config {
         }
 
         public static class TURN_TASKS {
-            public boolean GUILD_ALLIANCE_TASKS = true;
-            public boolean GUILD_NATION_TASKS = true;
-
             public boolean ALLIANCE_METRICS = true;
 
             @Comment("TODO: Not finished")

@@ -53,16 +53,16 @@ public class ModifyTreaty extends Command {
 
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
-        treaties.removeIf(treaty -> treaty.from != treatyOrAAId && treaty.to != treatyOrAAId && treaty.treatyId != treatyOrAAId);
+        treaties.removeIf(treaty -> treaty.getFromId() != treatyOrAAId && treaty.getToId() != treatyOrAAId && treaty.getId() != treatyOrAAId);
         if (treaties.isEmpty()) return "There are no active treaties";
 
         boolean admin = Roles.ADMIN.has(author, db.getGuild()) || (me.getAlliance_id() == db.getAlliance_id() && me.getPosition() >= Rank.HEIR.id);
 
         for (PendingTreaty treaty : treaties) {
-            if (!admin && treaty.type.getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
+            if (!admin && treaty.getType().getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
                 return "You need to be an admin to cancel a defensive treaty";
             }
-            return auth.modifyTreaty(treaty.treatyId, false);
+            return auth.modifyTreaty(treaty.getId(), false);
         }
         return "No treaty found";
     }

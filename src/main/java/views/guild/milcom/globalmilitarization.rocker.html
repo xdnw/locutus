@@ -9,7 +9,7 @@
 @import link.locutus.discord.db.entities.DBAlliance
 @import java.util.Collections
 
-@args(SphereGenerator spheres, Set<Alliance> alliances, Map<Alliance, Map<AllianceMetric, Map<Long, Double>>> metricMap, Set<AllianceMetric> metrics, long startTurn, long endTurn)
+@args(SphereGenerator spheres, Set<DBAlliance> alliances, Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricMap, Set<AllianceMetric> metrics, long startTurn, long endTurn)
 @views.main.template("Global Stats") -> {
 <h2 class="text-white">Search</h2>
 <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
@@ -38,7 +38,7 @@
                     </div>
                     <hr>
                     }
-                    @for (Alliance alliance : spheres.getAlliances(sphereId)) {
+                    @for (DBAlliance alliance : spheres.getAlliances(sphereId)) {
                     @if (metricMap.containsKey(alliance)) {
                     <div class="card searchable" style="display:inline-block;width:36rem;min-height:18rem;vertical-align: top;">
                         @views.data.timechartdatasrc.template(alliance.getName(),

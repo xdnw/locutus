@@ -80,7 +80,7 @@ public class AllianceAttackTypeRanking extends Command {
         SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>();
 
         for (Map.Entry<Integer, Integer> entry : attackOfType.entrySet()) {
-            DBAlliance aa = new DBAlliance(entry.getKey());
+            DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
 
             if (!alliances.contains(aa.getAlliance_id()) || !topAlliances.contains(aa)) continue;
 

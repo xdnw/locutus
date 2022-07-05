@@ -52,15 +52,11 @@ public class Reroll extends Command {
         if (me == null) {
             return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sync ?)";
         }
-        if (me.getDate() == null) {
-            me.getPnwNation();
-        }
 
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();
-            if (otherNation.getDate() == null) continue;
 
             if (otherId > id && otherNation.getAgeDays() > me.getAgeDays() && Math.abs(otherNation.getDate()  - me.getDate()) > TimeUnit.DAYS.toMillis(3)) {
                 return me.getNation() + "/" + me.getNation_id() + " is a reroll.";

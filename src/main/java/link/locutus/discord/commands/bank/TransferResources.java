@@ -41,10 +41,7 @@ public class TransferResources extends Command {
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
         if (me.isGray()) {
-            me.getPnwNation();
-            if (me.isGray()) {
-                return "Please set your color off gray: <https://politicsandwar.com/nation/edit/>";
-            }
+            return "Please set your color off gray: <https://politicsandwar.com/nation/edit/>";
         }
         String mention = event.getAuthor().getAsMention();
         args = new ArrayList<>(args);

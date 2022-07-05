@@ -39,11 +39,16 @@ public class TurnTimer extends Command {
         DBNation nation = DiscordUtil.parseNation(args.get(0));
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
 
-        Nation pnwNation = Locutus.imp().getGuildDB(event).getApi().getNation(nation.getNation_id());
-        nation.update(pnwNation);
+        StringBuilder response = new StringBuilder();
+        response.append("City: " + nation.getCityTurns() + " turns (" + nation.getCities() + " cities)\n");
+        response.append("Project: " + nation.getProjectTurns() + "turns | " +
+                "(" + nation.getProjects().size() + "/" + nation.projectSlots() + " slots)\n");
+        response.append("Color: " + nation.getColorTurns() + "turns \n");
+        response.append("Domestic Policy: " + nation.getDomesticPolicyTurns() + "turns \n");
+        response.append("War Policy: " + nation.getWarPolicyTurns() + "turns \n");
+        response.append("Beige Turns: " + nation.getBeigeTurns() + "turns \n");
+        response.append("Vacation: " + nation.getVm_turns());
 
-        long cityTimer = nation.cityTimerTurns();
-        long projectTimer = nation.projectTimerTurns();
-        return "City: " + cityTimer + ", Project: " + projectTimer;
+        return response.toString();
     }
 }

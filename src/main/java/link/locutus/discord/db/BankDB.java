@@ -1,9 +1,14 @@
 package link.locutus.discord.db;
 
+import com.politicsandwar.graphql.model.BBGame;
 import com.politicsandwar.graphql.model.BankrecsQueryRequest;
+import com.ptsmods.mysqlw.query.QueryOrder;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.Transfer;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -22,6 +27,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,23 +45,50 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-public class BankDB extends DBMain {
+public class BankDB extends DBMainV2 {
+    private final int latestBankRecId;
+
     public BankDB() throws SQLException, ClassNotFoundException {
         super("bank");
+        this.latestBankRecId = 0;
     }
 
     public void updateNewBankRecs() {
+
         PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
 
-        todo
 //        v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
 //            @Override
 //            public void accept(BankrecsQueryRequest r) {
 //                r.setMin_id();
 //                r.setOr_type();
 //            }
-//        })
+//        });
+//
+//        selectTransactions(s -> {
+//            s.order("tx_id", QueryOrder.OrderDirection.DESC);
+//            s.limit(1);
+//        });
 
+
+
+    }
+
+
+    public List<Transaction2> selectTransactions(Consumer<SelectBuilder> query) {
+        List<Transaction2> list = new ArrayList<>();
+        SelectBuilder builder = getDb().selectBuilder("TRANSACTIONS_2")
+                .select("*");
+        if (query != null) query.accept(builder);
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                list.add(new Transaction2(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -444,7 +477,7 @@ public class BankDB extends DBMain {
                     int nationId = (int) (transfer.sender_type == 1 ? transfer.sender_id : transfer.receiver_id);
                     List<Transaction2> list = result.get(nationId);
                     if (list == null) {
-                        result.put(nationId, list = new LinkedList<>());
+                        result.put(nationId, list = new ArrayList<>());
                     }
                     list.add(transfer);
                 }
@@ -964,7 +997,7 @@ public class BankDB extends DBMain {
         Map<Long, List<Transfer>> byAA = new HashMap<>();
         for (Transfer transfer : transfersLegacy) {
             long pair = transfer.getSender() ^ ((long) transfer.getReceiver() << 17L) ^ ((long) transfer.getBanker() << 34L);
-            byAA.computeIfAbsent(pair, f -> new LinkedList<>()).add(transfer);
+            byAA.computeIfAbsent(pair, f -> new ArrayList<>()).add(transfer);
         }
 
         List<Transaction2> transaction2s = new ArrayList<>();
@@ -983,7 +1016,7 @@ public class BankDB extends DBMain {
             Transaction2 transaction = null;
             Transfer last = null;
 
-            List<Integer> toRemove = new LinkedList<>();
+            List<Integer> toRemove = new ArrayList<>();
             for (int i = 0; i < transferList.size(); i++) {
                 for (int j = i + 1; j < transferList.size(); j++) {
                     Transfer tx1 = transferList.get(i);
@@ -1184,7 +1217,7 @@ public class BankDB extends DBMain {
 //    public void addBankTransactions(Collection<Transfer> transfers) {
 //        try {
 //            synchronized (this) {
-//                LinkedList<Transfer> copy = new LinkedList<>(transfers);
+//                LinkedList<Transfer> copy = new ArrayList<>(transfers);
 //                copy.removeIf(transfer -> {
 //                    long bankTurn = TimeUtil.getTurn(transfer.getDate());
 //                    return (bankTurn > TimeUtil.getTurn() + 1) || transfer.getSender() == 0 || transfer.getReceiver() == 0;

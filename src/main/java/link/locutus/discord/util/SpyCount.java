@@ -119,7 +119,7 @@ public class SpyCount {
     }
 
     public static int guessSpyCount(DBNation nation) throws IOException {
-        Integer current = nation.getSpies();
+        int current = nation.getSpies();
 
         int id = nation.getNation_id();
         int index = binarySearchOpType(id, 0, BY_SUCCESS.size() - 1, DEF_OP);
@@ -129,7 +129,7 @@ public class SpyCount {
         int safety = opSafety.getValue();
 
         int def = DEF_SPIES;
-        if (nation.getSpies() != null) def = nation.getSpies();
+        if (nation.getSpies() != -1) def = nation.getSpies();
 
         int inversionPoint = binarySearchSpies(id, opType, safety, 0, 59, def);
 
@@ -152,10 +152,8 @@ public class SpyCount {
         else {
             result = enemySpiesMin > 2 ? (int) Math.ceil(enemySpiesMin) : (int) enemySpiesMin;
         }
-        if (current == null || !current.equals(result)) {
-            nation.setSpies(result);
-            Locutus.imp().getNationDB().setSpies(nation.getNation_id(), result);
-            Locutus.imp().getNationDB().addNation(nation);
+        if (current != result) {
+            nation.setSpies(result, true);
         }
         nation.setMeta(NationMeta.UPDATE_SPIES, TimeUtil.getTurn());
         return result;

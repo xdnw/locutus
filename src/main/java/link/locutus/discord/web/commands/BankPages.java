@@ -22,12 +22,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static link.locutus.discord.util.PnwUtil.convertedTotal;
@@ -65,7 +60,7 @@ public class BankPages {
             header.add(type.name());
         }
 
-        List<DBNation> nations;
+        Collection<DBNation> nations;
 
         Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
         if (allianceId != null) {

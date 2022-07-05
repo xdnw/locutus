@@ -200,7 +200,7 @@ public class WarCommands {
 
         for (DBNation target : targets) {
 
-            long turns = target.isBeige() ? target.getBeigeTurns(true) : target.getVm_turns();
+            long turns = target.isBeige() ? target.getBeigeTurns() : target.getVm_turns();
             long turnEnd = TimeUtil.getTurn() + turns;
             long diff = TimeUtil.getTimeFromTurn(turnEnd) - System.currentTimeMillis();
             String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
@@ -352,7 +352,7 @@ public class WarCommands {
             if (dnrTopX == null) dnrTopX = 0;
         }
 
-        List<DBNation> enemies = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
 
         Set<Integer> allies = db.getAllies(true);
 
@@ -379,7 +379,7 @@ public class WarCommands {
         enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
 
         if (false) {
-            List<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
+            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
             myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / 1.75, f.getScore() / 0.75) <= 0);
@@ -677,7 +677,7 @@ public class WarCommands {
                               @Switch('c') @Default("1.2") Double maxRelativeCounterStrength) {
         double minScore = me.getScore() * 0.75;
         double maxScore = me.getScore() * 1.75;
-        List<DBNation> nations = new LinkedList<>(targets);
+        List<DBNation> nations = new ArrayList<>(targets);
         nations.removeIf(f -> f.getVm_turns() != 0);
         nations.removeIf(f -> f.getDef() >= 3);
         nations.removeIf(f -> f.getScore() < minScore || f.getScore() > maxScore);
@@ -700,8 +700,8 @@ public class WarCommands {
         Map<Integer, List<DBNation>> countersByAlliance = new HashMap<>();
 
         for (Integer aaId : aaIds) {
-            List<DBNation> canCounter = new LinkedList<>();
-            DBAlliance alliance = new DBAlliance(aaId);
+            List<DBNation> canCounter = new ArrayList<>();
+            DBAlliance alliance = DBAlliance.getOrCreate(aaId);
             Set<DBAlliance> alliances = new HashSet<>(Arrays.asList(alliance));
             if (includeAllies) {
                 alliances.addAll(alliance.getTreatiedAllies());
@@ -736,7 +736,7 @@ public class WarCommands {
             if (nation.getAlliance_id() != 0) {
                 List<DBNation> counters = countersByAlliance.get(nation.getAlliance_id());
                 if (counters != null) {
-                    counters = new LinkedList<>(counters);
+                    counters = new ArrayList<>(counters);
                     counters.remove(nation);
                     int i = 0;
 
@@ -870,7 +870,7 @@ public class WarCommands {
         }
         if (topX == null) topX = 25;
 
-        List<DBNation> enemies = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
 
         Set<Integer> allies = db.getAllies(true);
 
@@ -895,7 +895,7 @@ public class WarCommands {
         enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
 
         if (false) {
-            List<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
+            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
             myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / 1.75, f.getScore() / 0.75) <= 0);
@@ -1010,7 +1010,7 @@ public class WarCommands {
 
             long currentTurn = TimeUtil.getTurn();
 
-            List<Map.Entry<DBNation, Double>> nationNetValues = new LinkedList<>();
+            List<Map.Entry<DBNation, Double>> nationNetValues = new ArrayList<>();
 
             for (DBNation nation : targetsStorted) {
                 if (nation.isBeige()) continue;
@@ -1163,27 +1163,21 @@ public class WarCommands {
         Map<Integer, Double> avgInfraByNation = new HashMap<>();
 
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
-        Map<Integer, CityInfraLand> cityInfraLand = Locutus.imp().getNationDB().getCityInfraLand();
         Map<Integer, List<Double>> cityInfraByNation = new HashMap<>();
 
         {
             for (DBNation nation : nations) {
-                avgInfraByNation.put(nation.getNation_id(), nation.getAvg_infra().doubleValue());
+                Collection<JavaCity> cities = nation.getCityMap(false, false, false).values();
+                List<Double> allInfra = cities.stream().map(f -> f.getInfra()).collect(Collectors.toList());
+                double max = Collections.max(allInfra);
+                double average = allInfra.stream().mapToDouble(f -> f).average().orElse(0);
+                avgInfraByNation.put(nation.getNation_id(), average);
+                maxInfraByNation.put(nation.getNation_id(), max);
+                cityInfraByNation.put(nation.getNation_id(), allInfra);
             }
         }
 
         {
-            for (Map.Entry<Integer, CityInfraLand> entry : cityInfraLand.entrySet()) {
-                CityInfraLand city = entry.getValue();
-                if (!nationIds.contains(city.nationId)) continue;
-
-                double previous = maxInfraByNation.getOrDefault(city.nationId, 0d);
-                if (city.infra > previous) {
-                    maxInfraByNation.put(city.nationId, city.infra);
-                }
-                cityInfraByNation.computeIfAbsent(city.nationId, f -> new LinkedList<>()).add(city.infra);
-            }
-
             for (Map.Entry<Integer, List<Double>> entry : cityInfraByNation.entrySet()) {
                 double cost = damageEstimate(me, entry.getKey(), entry.getValue());
                 if (cost <= 0) continue;
@@ -1291,7 +1285,7 @@ public class WarCommands {
         if (counterWith == null) {
             counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(Collections.singleton(db.getAlliance_id())));
         }
-        counterWith.removeIf(n -> n.getSpies() == null || n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
+        counterWith.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
@@ -1397,21 +1391,18 @@ public class WarCommands {
             "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String Spyops(@Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch('s') boolean checkSlots, @Switch('d') boolean directMesssage, @Switch('k') boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
+    public String Spyops(@Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch('d') boolean directMesssage, @Switch('k') boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
         CompletableFuture<Message> msg = channel.sendMessage("Please wait... ").submit();
         targets.removeIf(f -> f.getActive_m() > 2880);
         targets.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         try {
             String title = "Recommended ops";
-            String body = runSpyOps(me, db, targets, operations, requiredSuccess, checkSlots);
+            String body = runSpyOps(me, db, targets, operations, requiredSuccess);
 
             DiscordUtil.createEmbedCommand(channel, title, body.toString());
 
             if (true) {
-                StringBuilder response = new StringBuilder("Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <enemy>` first to ensure the results are up to date");
-                if (!checkSlots) {
-                    response.append(". Add `-s` to remove enemies who are already spy slotted");
-                }
+                String response = ("Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <enemy>` first to ensure the results are up to date");
                 RateLimitUtil.queue(channel.sendMessage(response.toString()));
             }
             return null;
@@ -1421,8 +1412,8 @@ public class WarCommands {
         }
     }
 
-    public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<SpyCount.Operation> operations, int requiredSuccess, boolean checkSlots) throws IOException {
-        double minSuccess = 50;
+    public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<SpyCount.Operation> operations, int requiredSuccess) throws IOException {
+        double minSuccess = requiredSuccess > 0 ? requiredSuccess : 50;
 
         if (me == null) {
             return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
@@ -1466,7 +1457,7 @@ public class WarCommands {
 
         for (DBNation nation : enemies) {
             Integer spies = nation.updateSpies(false, false);
-            if (spies == null || nation.getSpies() == null) {
+            if (spies == null) {
                 continue;
             }
             if (spies == -1) {
@@ -1562,27 +1553,10 @@ public class WarCommands {
             targets.add(new AbstractMap.SimpleEntry<>(nation, task));
         }
 
-        targets.removeIf(f -> f.getKey().isEspionageFull(false, false, false));
+        targets.removeIf(f -> f.getKey().isEspionageFull());
 
-        if (checkSlots) {
-            Auth auth = Locutus.imp().getRootAuth();
-            PnwUtil.withLogin(new Callable<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    int i = 0;
-                    for (Map.Entry<DBNation, Runnable> target : targets) {
-                        DBNation defender = target.getKey();
-                        if (defender.isEspionageFull(false, true, false)) continue;
-                        target.getValue().run();
-                        if (i++ >= 5) break;
-                    }
-                    return null;
-                }
-            }, auth);
-        } else {
-            for (int i = 0; i < Math.min(5, targets.size()); i++) {
-                targets.get(i).getValue().run();
-            }
+        for (int i = 0; i < Math.min(5, targets.size()); i++) {
+            targets.get(i).getValue().run();
         }
         return body.toString();
     }
@@ -1607,7 +1581,7 @@ public class WarCommands {
         if (dnrTopX == null) dnrTopX = db.getOrNull(GuildDB.Key.DO_NOT_RAID_TOP_X);
         if (dnrTopX == null) dnrTopX = 0;
 
-        List<DBNation> enemies = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
 
 
         Set<Integer> allies = db.getAllies();
@@ -1681,7 +1655,7 @@ public class WarCommands {
                 while (iter.hasNext()) {
                     DBNation enemy = iter.next();
                     if (!attacker.isInSpyRange(enemy)) continue;
-                    List<Spyop> currentOps = targets.computeIfAbsent(enemy, f -> new LinkedList<>());
+                    List<Spyop> currentOps = targets.computeIfAbsent(enemy, f -> new ArrayList<>());
                     if (currentOps.size() > 1) continue;
                     if (currentOps.size() == 1 && currentOps.get(0).attacker == attacker) continue;
                     Spyop op = new Spyop(attacker, enemy, 1, SpyCount.Operation.INTEL, 0, 3);
@@ -2101,7 +2075,6 @@ public class WarCommands {
 
             total.setNation_id(0);
             total.setAlliance_id(aaId);
-            total.setAlliance(name);
 
             List<Object> row = new ArrayList<>(header);
             setRowMMRSheet("ALLIANCE", row, total, null, barracksTotal, factoriesTotal, hangarsTotal, drydocksTotal, soldierBuyTotal, tankBuyTotal, airBuyTotal, navyBuyTotal);
@@ -3232,12 +3205,7 @@ public class WarCommands {
     public String spies(@Me DBNation me, DBNation nation, @Default("60") int spiesUsed, @Default() SpyCount.Safety requiredSafety) throws IOException {
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
-        int result = SpyCount.guessSpyCount(nation);
-        if (nation.getSpies() == null || nation.getSpies() != result) {
-            Locutus.imp().getNationDB().setSpies(nation.getNation_id(), result);
-            nation.setSpies(result);
-            Locutus.imp().getNationDB().addNation(nation);
-        }
+        int result = nation.updateSpies(true, true);
 
         StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies.");
         response.append("\nRecommended:");
@@ -3298,12 +3266,12 @@ public class WarCommands {
                 if (allies.isEmpty()) {
                     aaId = me.getAlliance_id();
                     if (aaId == 0) return "No alliance or allies are set.\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID <alliance>`\nOR\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> allies`";
-                    counterWith = new HashSet<>(new DBAlliance(aaId).getNations(true, 10000, true));
+                    counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));
                 }
             } else {
-                counterWith = new HashSet<>(new DBAlliance(aaId).getNations(true, 10000, true));
+                counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
             }
         }
         counterWith.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= Rank.APPLICANT.id || (f.getCities() < 10 && f.getActive_m() > 4880));
@@ -3523,11 +3491,11 @@ public class WarCommands {
             outer:
             for (DBAlliance alliance : alliances) {
                 if (top30.contains(alliance)) continue;
-                List<DBNation> nations = alliance.getNations(true, 5000, true);
+                Set<DBNation> nations = alliance.getNations(true, 5000, true);
                 if (nations.size() <= 2) continue;
                 for (Map.Entry<Integer, Treaty> entry : alliance.getDefenseTreaties().entrySet()) {
                     if (dnr.contains(entry.getKey())) continue outer;
-                    if (top30.contains(new DBAlliance(entry.getKey()))) continue outer;
+                    if (top30.contains(DBAlliance.getOrCreate(entry.getKey()))) continue outer;
                 }
                 int slots = 0;
                 for (DBNation nation : nations) {
@@ -3540,7 +3508,7 @@ public class WarCommands {
                 int largestAlly = myRank;
                 boolean hasProtection = false;
                 for (Map.Entry<Integer, Treaty> entry : alliance.getDefenseTreaties().entrySet()) {
-                    DBAlliance other = new DBAlliance(entry.getKey());
+                    DBAlliance other = DBAlliance.getOrCreate(entry.getKey());
                     int min = alliances.indexOf(other);
                     if (min != -1 && min < largestAlly) {
                         largestAlly = min;

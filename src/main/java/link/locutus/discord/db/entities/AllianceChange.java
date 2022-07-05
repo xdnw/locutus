@@ -12,8 +12,8 @@ public class AllianceChange {
         if (toAA == null) toAA = 0;
         if (fromRank == null) fromRank = Rank.REMOVE;
         if (toRank == null) fromRank = Rank.REMOVE;
-        this.fromAA = new DBAlliance(fromAA);
-        this.toAA = new DBAlliance(toAA);
+        this.fromAA = DBAlliance.getOrCreate(fromAA);
+        this.toAA = DBAlliance.getOrCreate(toAA);
         this.fromRank = fromRank;
         this.toRank = toRank;
         this.date = date;

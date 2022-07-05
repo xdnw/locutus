@@ -22,7 +22,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     private Map<String, AllianceInstanceAttribute> customMetrics = new HashMap<>();
 
     public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
-        super(DBAlliance.class, new DBAlliance(0), store, validators, permisser);
+        super(DBAlliance.class, DBAlliance.getOrCreate(0), store, validators, permisser);
     }
 
 //    public <T> AllianceInstanceMetric addMetric(String name, String desc, Class<T> type, Function<Alliance, T> func) {

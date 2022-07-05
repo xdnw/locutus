@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class AAMembers extends Command {
@@ -35,7 +36,7 @@ public class AAMembers extends Command {
         if (args.isEmpty()) {
             return usage(event);
         }
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(Settings.INSTANCE.getAlliance(event)));
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(Settings.INSTANCE.getAlliance(event)));
 
         int page = Integer.parseInt(args.get(0));
         int perPage = 5;

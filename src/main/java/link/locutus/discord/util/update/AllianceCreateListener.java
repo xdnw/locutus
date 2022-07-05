@@ -9,6 +9,7 @@ import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -17,6 +18,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 public class AllianceCreateListener {
@@ -25,7 +27,7 @@ public class AllianceCreateListener {
         DBAlliance alliance = event.getCurrent();
         int aaId = alliance.getAlliance_id();
 
-        List<DBNation> members = alliance.getNations();
+        Set<DBNation> members = alliance.getNations();
         String title = "Created: " + alliance.getName();
 
         StringBuilder body = new StringBuilder();
@@ -39,6 +41,14 @@ public class AllianceCreateListener {
             if (lastAA != null) {
                 String previousAAName = Locutus.imp().getNationDB().getAllianceName(lastAA.getKey());
                 body.append(" - " + member.getNation() + " previously " + lastAA.getValue() + " in " + previousAAName + "\n");
+
+                GuildDB db = Locutus.imp().getRootCoalitionServer();
+                if (db != null) {
+                    Set<String> coalitions = db.findCoalitions(lastAA.getKey());
+                    if (!coalitions.isEmpty()) {
+                        body.append(" - in coalitions: `" + StringMan.join(coalitions, ",") + "`\n");
+                    }
+                }
             }
 
             Map<Integer, Integer> wars = new HashMap<>();

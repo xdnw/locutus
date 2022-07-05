@@ -33,7 +33,7 @@ public class WarCostEnd extends Endpoint {
         String args1 = path.get(1);
         int days = Integer.parseInt(path.get(2));
 
-        List<DBAttack> attacks = new LinkedList<>();
+        List<DBAttack> attacks = new ArrayList<>();
         Function<DBAttack, Boolean> isPrimary = null;
         Function<DBAttack, Boolean> isSecondary = null;
         String nameA = "Unknown";

@@ -3,7 +3,6 @@ package link.locutus.discord.apiv2;
 import link.locutus.discord.apiv1.IPoliticsAndWar;
 import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv1.entities.BankRecord;
-import link.locutus.discord.apiv3.PWApiV3;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -73,7 +72,6 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private final JsonParser parser;
     private final ApiKeyPool pool;
     private final QueryExecutor legacyV1;
-    private final PWApiV3 v3_legacy;
     private final PoliticsAndWarV3 v3;
 
     public PoliticsAndWarV2(String key, boolean test, boolean cache) {
@@ -86,13 +84,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         this.gson = new Gson();
         this.parser = new JsonParser();
         this.legacyV1 = new QueryExecutor(cache, test, 50, 60000);
-        this.v3_legacy = new PWApiV3(pool);
         this.v3 = new PoliticsAndWarV3(pool);
-    }
-
-    @Deprecated
-    public PWApiV3 getV3_legacy() {
-        return v3_legacy;
     }
 
     public PoliticsAndWarV3 getV3() {
@@ -282,7 +274,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     @Override
     public AllianceMembers getAllianceMembers(int allianceId) throws IOException {
         AllianceMembers result = runWithKey(key -> (AllianceMembers) execute(new AllianceMembersQuery(allianceId, key).build()));
-        new DBAlliance(allianceId).updateSpies(result);
+        DBAlliance.getOrCreate(allianceId).updateSpies(result);
         return result;
     }
 

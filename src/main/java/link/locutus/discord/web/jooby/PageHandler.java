@@ -287,7 +287,7 @@ public class PageHandler implements Handler {
                     msgBuilder.setContent("");
                 }
 
-                List<MessageEmbed> embeds = new LinkedList<>();
+                List<MessageEmbed> embeds = new ArrayList<>();
 
                 DataObject embedJson = json.optObject("embed").orElse(null);
                 if (embedJson != null) {

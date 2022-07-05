@@ -213,7 +213,7 @@ public class ArgParser {
             for (int i = 0; i < line.length(); i++) {
                 char current = line.charAt(i);
                 if (current == '{') {
-                    if (indicies == null) indicies = new LinkedList<>();
+                    if (indicies == null) indicies = new ArrayList<>();
                     indicies.add(i);
                     q++;
                 } else if (current == '}' && indicies != null) {

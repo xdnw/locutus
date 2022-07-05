@@ -143,7 +143,7 @@ public class WarCostSheet extends Command {
             {
                 List<DBWar> wars = entry.getValue();
                 Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-                List<DBAttack> attacks = new LinkedList<>();
+                List<DBAttack> attacks = new ArrayList<>();
                 for (DBAttack attack : allAttacks) if (warIds.contains(attack.war_id)) attacks.add(attack);
                 Map<Integer, List<DBAttack>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.war_id).get();
 

@@ -182,8 +182,8 @@ public class StatCommands {
         Map<Integer, List<DBNation>> coalition1ByCity = new HashMap<>();
         Map<Integer, List<DBNation>> coalition2ByCity = new HashMap<>();
 
-        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new LinkedList<>()).add(n);
-        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new LinkedList<>()).add(n);
+        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
 
         int min = Math.min(Collections.min(coalition1ByCity.keySet()), Collections.min(coalition2ByCity.keySet()));
         int max = Math.max(Collections.max(coalition1ByCity.keySet()), Collections.max(coalition2ByCity.keySet()));
@@ -643,8 +643,8 @@ public class StatCommands {
         Map<Integer, List<DBNation>> coalition1ByCity = new HashMap<>();
         Map<Integer, List<DBNation>> coalition2ByCity = new HashMap<>();
 
-        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new LinkedList<>()).add(n);
-        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new LinkedList<>()).add(n);
+        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
 
         int min = Math.min(Collections.min(coalition1ByCity.keySet()), Collections.min(coalition2ByCity.keySet()));
         int max = Math.max(Collections.max(coalition1ByCity.keySet()), Collections.max(coalition2ByCity.keySet()));
@@ -839,7 +839,7 @@ public class StatCommands {
         for (Map.Entry<Integer, Set<DBNation>> entry : natByAA.entrySet()) {
             Integer aaId = entry.getKey();
 
-            DBAlliance alliance = new DBAlliance(aaId);
+            DBAlliance alliance = DBAlliance.getOrCreate(aaId);
             SAllianceContainer sAlliance = alliances.get(aaId);
 
             SimpleNationList list = new SimpleNationList(entry.getValue());
@@ -850,6 +850,8 @@ public class StatCommands {
                 String arg = columns.get(i);
                 if (arg.equalsIgnoreCase("{nations}")) {
                     arg = list.getNations().size() + "";
+                } else if (arg.equalsIgnoreCase("{alliance}")) {
+                        arg = alliance.getName() + "";
                 } else {
                     DBNation nation = useTotal ? total : average;
                     if (arg.startsWith("avg:")) {
@@ -858,12 +860,6 @@ public class StatCommands {
                     } else if (arg.startsWith("total:")) {
                         arg = arg.substring(6);
                         nation = total;
-                    }
-                    if (arg.contains("{") && arg.contains("}")) {
-                        arg = DiscordUtil.format(guild, channel, author, nation, arg);
-                        if (!arg.contains("{")) {
-                            // TODO replace nation format
-                        }
                     }
                     if (arg.contains("{") && arg.contains("}")) {
                         if (sAlliance != null)
@@ -885,6 +881,12 @@ public class StatCommands {
                                     arg = arg.replace(placeholder, method.invoke(alliance) + "");
                                 }
                             }
+                        }
+                    }
+                    if (arg.contains("{") && arg.contains("}")) {
+                        arg = DiscordUtil.format(guild, channel, author, nation, arg);
+                        if (!arg.contains("{")) {
+                            // TODO replace nation format
                         }
                     }
                 }
@@ -1170,7 +1172,7 @@ public class StatCommands {
             };
             warCost.addCost(attacks, isPrimary, f -> !isPrimary.apply(f));
 
-            DBAlliance alliance = new DBAlliance(entry.getKey());
+            DBAlliance alliance = DBAlliance.getOrCreate(entry.getKey());
 
 
             ArrayList<Object> row = new ArrayList<>();
@@ -1306,7 +1308,7 @@ public class StatCommands {
             {
                 List<DBWar> wars = entry.getValue();
                 Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-                List<DBAttack> attacks = new LinkedList<>();
+                List<DBAttack> attacks = new ArrayList<>();
                 for (DBAttack attack : allAttacks) if (warIds.contains(attack.war_id)) attacks.add(attack);
                 Map<Integer, List<DBAttack>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.war_id).get();
 

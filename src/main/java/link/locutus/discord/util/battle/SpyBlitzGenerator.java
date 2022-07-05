@@ -86,7 +86,7 @@ public class SpyBlitzGenerator {
             list.updateSpies(true);
         }
 
-        List<Spyop> ops = new LinkedList<>();
+        List<Spyop> ops = new ArrayList<>();
 
         Set<SpyCount.Operation> allowedOpTypes = new HashSet<>(allowedTypes);
 
@@ -231,11 +231,11 @@ public class SpyBlitzGenerator {
         };
 
         for (Spyop op : ops) {
-            List<Spyop> attOps = opsByNations.computeIfAbsent(op.attacker, f -> new LinkedList<>());
+            List<Spyop> attOps = opsByNations.computeIfAbsent(op.attacker, f -> new ArrayList<>());
             if (attOps.size() >= getNumOps.apply(op.attacker)) {
                 continue;
             }
-            List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new LinkedList<>());
+            List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new ArrayList<>());
             if (defOps.size() >= maxDef) {
                 continue;
             }

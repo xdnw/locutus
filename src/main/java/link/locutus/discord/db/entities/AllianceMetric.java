@@ -92,7 +92,7 @@ public enum AllianceMetric {
     LAND(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations(true, 0, true);
+            Set<DBNation> nations = alliance.getNations(true, 0, true);
             double totalLand = 0;
             for (DBNation nation : nations) {
                 totalLand += nation.getTotalLand();
@@ -103,7 +103,7 @@ public enum AllianceMetric {
     LAND_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations(true, 0, true);
+            Set<DBNation> nations = alliance.getNations(true, 0, true);
             double totalLand = 0;
             int num = 0;
             for (DBNation nation : nations) {
@@ -134,7 +134,7 @@ public enum AllianceMetric {
     CITY_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations(true, 0, true);
+            Set<DBNation> nations = alliance.getNations(true, 0, true);
             return new SimpleNationList(nations).getTotal().getCities() / (double) nations.size();
         }
     },
@@ -165,21 +165,21 @@ public enum AllianceMetric {
     VM_PCT(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations();
+            Set<DBNation> nations = alliance.getNations();
             return nations.stream().filter(f -> f.getVm_turns() != 0 && f.getPosition() > Rank.APPLICANT.id).count() / (double) nations.size();
         }
     },
     INACTIVE_PCT(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations();
+            Set<DBNation> nations = alliance.getNations();
             return nations.stream().filter(f -> f.getActive_m() > 1440 * 7 && f.getPosition() > Rank.APPLICANT.id).count() / (double) nations.size();
         }
     },
     WARCOST_DAILY(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations();
+            Set<DBNation> nations = alliance.getNations();
             nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
             Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
@@ -193,7 +193,7 @@ public enum AllianceMetric {
     REVENUE(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations();
+            Set<DBNation> nations = alliance.getNations();
             nations.removeIf(f -> f.isGray() || f.isBeige() || f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
             Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
@@ -227,7 +227,7 @@ public enum AllianceMetric {
     OFFENSIVE_WARS_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations();
+            Set<DBNation> nations = alliance.getNations();
             nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
             return new SimpleNationList(nations).getTotal().getOff() / (double) nations.size();
         }
@@ -241,7 +241,7 @@ public enum AllianceMetric {
     DEFENSIVE_WARS_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            List<DBNation> nations = alliance.getNations();
+            Set<DBNation> nations = alliance.getNations();
             nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
             return new SimpleNationList(nations).getTotal().getDef() / (double) nations.size();
         }

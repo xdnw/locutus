@@ -38,8 +38,8 @@ public abstract class TimeNumericTable<T> {
 
             Set<DBNation> nations = coalition.stream().flatMap(f -> f.getNations(removeVM, removeInactiveM, removeApps).stream()).collect(Collectors.toSet());
      */
-    public static  List<DBNation> toNations(DBAlliance alliance, boolean removeVM, int removeInactiveM, boolean removeApps) {
-        List<DBNation> nations = alliance.getNations(removeVM, removeInactiveM, removeApps);
+    public static Set<DBNation> toNations(DBAlliance alliance, boolean removeVM, int removeInactiveM, boolean removeApps) {
+        Set<DBNation> nations = alliance.getNations(removeVM, removeInactiveM, removeApps);
         nations.removeIf(f -> f.hasUnsetMil());
         return nations;
     }
@@ -88,7 +88,7 @@ public abstract class TimeNumericTable<T> {
             Map<Integer, List<T>> byTierListCoalition = new HashMap<>();
             for (T nation : coalition) {
                 Integer group = groupByInt.apply(nation);
-                byTierListCoalition.computeIfAbsent(group, f -> new LinkedList<>()).add(nation);
+                byTierListCoalition.computeIfAbsent(group, f -> new ArrayList<>()).add(nation);
             }
             byTierList.add(byTierListCoalition);
         }
@@ -142,7 +142,7 @@ public abstract class TimeNumericTable<T> {
         Map<Integer, List<T>> byTier = new HashMap<>();
         for (T t : coalition) {
             int tier = groupByInt.apply(t);
-            byTier.computeIfAbsent(tier, f -> new LinkedList<>()).add(t);
+            byTier.computeIfAbsent(tier, f -> new ArrayList<>()).add(t);
         }
         int min = coalition.isEmpty() ? 0 : coalition.stream().map(groupByInt).min(Integer::compare).get();
         int max = coalition.isEmpty() ? 0 : coalition.stream().map(groupByInt).max(Integer::compare).get();

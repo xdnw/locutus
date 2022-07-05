@@ -73,7 +73,7 @@ public class IntelOpSheet extends Command {
 
         if (attackers.isEmpty()) return usage(event);
 
-        List<DBNation> enemies = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
 
 
         Set<Integer> allies = db.getAllies();
@@ -147,7 +147,7 @@ public class IntelOpSheet extends Command {
                 while (iter.hasNext()) {
                     DBNation enemy = iter.next();
                     if (!attacker.isInSpyRange(enemy)) continue;
-                    List<Spyop> currentOps = targets.computeIfAbsent(enemy, f -> new LinkedList<>());
+                    List<Spyop> currentOps = targets.computeIfAbsent(enemy, f -> new ArrayList<>());
                     if (currentOps.size() > 1) continue;
                     if (currentOps.size() == 1 && currentOps.get(0).attacker == attacker) continue;
                     Spyop op = new Spyop(attacker, enemy, 1, SpyCount.Operation.INTEL, 0, 3);

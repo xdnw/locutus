@@ -33,7 +33,6 @@ public class DBCity {
     public DBCity() {
 
     }
-
     public DBCity(City cityV3) {
         set(cityV3);
     }
@@ -44,6 +43,12 @@ public class DBCity {
 
     public String getUrl() {
         return PnwUtil.getCityUrl(id);
+    }
+
+    public int getNumBuildings() {
+        int total = 0;
+        for (byte amt : buildings) total += amt;
+        return total;
     }
 
     public void set(SCityContainer container) {
@@ -110,7 +115,7 @@ public class DBCity {
     public boolean runChangeEvents(int nationId, DBCity previous, Consumer<Event> eventConsumer) {
         if (previous == null) {
             if (eventConsumer != null) {
-                Locutus.imp().getNationDB().setNationActive(nationId, fetched);
+                Locutus.imp().getNationDB().setNationActive(nationId, fetched, eventConsumer);
                 eventConsumer.accept(new CityCreateEvent(nationId, this));
             }
             return true;

@@ -88,7 +88,7 @@ public class WarRanking extends Command {
         }).sumValues(f -> 1d);
         if (flags.contains('n') && byAA) {
             ranksUnsorted = ranksUnsorted.adapt((aaId, numWars) -> {
-                int num = new DBAlliance(aaId).getNations(true, flags.contains('i') ? 2440 : Integer.MAX_VALUE, true).size();
+                int num = DBAlliance.getOrCreate(aaId).getNations(true, flags.contains('i') ? 2440 : Integer.MAX_VALUE, true).size();
                 if (num == 0) return 0d;
                 return numWars.doubleValue() / (double) num;
             });

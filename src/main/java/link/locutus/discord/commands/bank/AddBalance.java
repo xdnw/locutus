@@ -127,7 +127,7 @@ public class AddBalance extends Command {
                         return "Invalid nation/alliance: `" + arg + "`";
                     }
                     Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
-                    fundsToSendAAs.put(new DBAlliance(alliance), transfer);
+                    fundsToSendAAs.put(DBAlliance.getOrCreate(alliance), transfer);
                 }
             } else {
                 Map<ResourceType, Double> transfer = new HashMap<>();

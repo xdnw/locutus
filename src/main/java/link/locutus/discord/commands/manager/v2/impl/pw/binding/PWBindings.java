@@ -173,7 +173,7 @@ public class PWBindings extends BindingHelper {
     public DBAlliance alliance(String input) {
         Integer aaId = PnwUtil.parseAllianceId(input);
         if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + input);
-        return new DBAlliance(aaId);
+        return DBAlliance.getOrCreate(aaId);
     }
 
     @Binding(value = "Spy operation")
@@ -247,7 +247,7 @@ public class PWBindings extends BindingHelper {
                         if (arg.charAt(0) == '~') arg = arg.substring(1);
                         Set<Integer> coalition = db.getCoalition(arg);
                         if (!coalition.isEmpty()) {
-                            result.addAll(coalition.stream().map((Integer t) -> new DBAlliance(allianceId, dateCreated, name, acronym, color, flag, forum_link, discord_link, wiki_link)).collect(Collectors.toSet()));
+                            result.addAll(coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet()));
                             continue;
                         }
                     }
@@ -303,7 +303,7 @@ public class PWBindings extends BindingHelper {
                 if (arg.charAt(0) == '~') arg = arg.substring(1);
                 Set<Integer> coalition = db.getCoalition(arg);
                 if (!coalition.isEmpty()) {
-                    result.addAll(coalition.stream().map(f -> new DBAlliance(f)).collect(Collectors.toSet()));
+                    result.addAll(coalition.stream().map(f -> DBAlliance.getOrCreate(f)).collect(Collectors.toSet()));
                     continue;
                 }
             }
@@ -320,7 +320,7 @@ public class PWBindings extends BindingHelper {
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
         Set<DBAlliance> alliances = new HashSet<>();
         for (Integer aaId : aaIds) {
-            alliances.add(new DBAlliance(aaId));
+            alliances.add(DBAlliance.getOrCreate(aaId));
         }
         return alliances;
     }
@@ -426,7 +426,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     @Me
     public DBAlliance alliance(@Me DBNation nation) {
-        return new DBAlliance(nation.getAlliance_id());
+        return DBAlliance.getOrCreate(nation.getAlliance_id());
     }
 
     @Binding

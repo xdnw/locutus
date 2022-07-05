@@ -93,7 +93,7 @@ public class IAPages {
             IACategory.SortedCategory category = iaCat.getSortedCategory(channel);
             categoryMap.put(channel, category);
 
-            channelsByCategory.computeIfAbsent(category, f -> new LinkedList<>()).add(channel);
+            channelsByCategory.computeIfAbsent(category, f -> new ArrayList<>()).add(channel);
         }
 
         List<IACategory.SortedCategory> categories = new ArrayList<>(Arrays.asList(IACategory.SortedCategory.values()));

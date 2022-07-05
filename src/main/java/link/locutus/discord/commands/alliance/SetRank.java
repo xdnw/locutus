@@ -74,9 +74,6 @@ public class SetRank extends Command {
 
         if (Rank.MEMBER.equals(rank) && db.isWhitelisted()) {
             if (!flags.contains('f')) {
-                if (nation.getScore() < 256) {
-                    nation.getPnwNation();
-                }
                 List<String> checks = new ArrayList<>();
                 if (nation.isGray()) {
                     checks.add("Nation is gray (use `-f` to override this)");

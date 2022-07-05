@@ -56,7 +56,7 @@ public class BankWithTask implements Callable<String> {
 
                 double[] resources = ResourceType.getBuffer();
                 if (table == null || table.text().contains("You do not have permission")) {
-                    resources = PnwUtil.resourcesToArray(new DBAlliance(auth.getAllianceId()).getStockpile());
+                    resources = PnwUtil.resourcesToArray(DBAlliance.getOrCreate(auth.getAllianceId()).getStockpile());
                 } else {
                     resources[ResourceType.MONEY.ordinal()] = MathMan.parseDouble(table.select("td:contains(Money)").first().nextElementSibling().text());
                     resources[ResourceType.FOOD.ordinal()] = MathMan.parseDouble(table.select("td:contains(Food)").first().nextElementSibling().text());

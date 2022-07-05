@@ -3,6 +3,7 @@ package link.locutus.discord.util.update;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -15,35 +16,42 @@ import java.util.function.BiConsumer;
 public class TreatyUpdateProcessor {
 
     @Subscribe
-    public void update(TreatyUpdateEvent event) {
+    public void onTreatyCreate(TreatyCreateEvent event) {
+        String title = "Signed";
+    }
+    @Subscribe
+    public void onTreatyCancel(TreatyCancelEvent event) {
+        String title = "Cancelled";
+    }
+    @Subscribe
+    public void onTreatyDowngrade(TreatyDowngradeEvent event) {
+        String title = "Downgraded";
+    }
+    @Subscribe
+    public void onTreatyExtend(TreatyExtendEvent event) {
+        String title = "Extended";
+    }
+    @Subscribe
+    public void onTreatyUpgraded(TreatyUpgradeEvent event) {
+        String title = "Upgraded";
+    }
+    @Subscribe
+    public void onTreatyExpire(TreatyExpireEvent event) {
+        String title = "Expired";
+    }
+
+    private void update(String title, TreatyChangeEvent event) {
         Treaty previous = event.getPrevious();
 
         Treaty current = event.getCurrent();
-        String title;
-        if (previous != null && current != null) {
-            if (current.type.ordinal() == previous.type.ordinal()) {
-                title = "Treaty Renewed | " + current.type;
-                return;
-            }
-            else if (current.type.getStrength() < previous.type.getStrength()) {
-                title = "Treaty downgraded | " + previous.type + "->" + current.type;
-            } else {
-                title = "Treaty upgraded | " + previous.type + "->" + current.type;
-            }
-        } else if (previous == null) {
-            title = "Treaty signed | " + current.type;
-        } else {
-            title = "Treaty ended | " + previous.type;
-            current = previous;
-        }
 
         Treaty existing = previous == null ? current : previous;
-        DBAlliance fromAA = new DBAlliance(existing.from);
-        DBAlliance toAA = new DBAlliance(existing.to);
+        DBAlliance fromAA = DBAlliance.getOrCreate(existing.getFromId());
+        DBAlliance toAA = DBAlliance.getOrCreate(existing.getToId());
 
         StringBuilder body = new StringBuilder();
-        body.append("From: " + PnwUtil.getMarkdownUrl(current.from, true)).append("\n");
-        body.append("To: " + PnwUtil.getMarkdownUrl(current.to, true)).append("\n");
+        body.append("From: " + PnwUtil.getMarkdownUrl(current.getFromId(), true)).append("\n");
+        body.append("To: " + PnwUtil.getMarkdownUrl(current.getToId(), true)).append("\n");
 
         AlertUtil.forEachChannel(f -> true, GuildDB.Key.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
@@ -56,7 +64,7 @@ public class TreatyUpdateProcessor {
                     Set<Integer> tracked = guildDB.getAllies(true);
                     if (!tracked.isEmpty()) {
                         tracked.addAll(guildDB.getCoalition("enemies"));
-                        if (!tracked.contains(existing.from) && !tracked.contains(existing.to)) {
+                        if (!tracked.contains(existing.getFromId()) && !tracked.contains(existing.getToId())) {
                             if (fromAA.getRank() > 50 && toAA.getRank() > 50) {
                                 return;
                             }

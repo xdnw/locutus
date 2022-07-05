@@ -81,7 +81,7 @@ public class AllianceSheet extends Command implements Noformat {
         for (Map.Entry<Integer, DBNation> entry : totals.entrySet()) {
             SAllianceContainer alliance = alliances.get(entry.getKey());
             if (alliance == null) continue;
-            DBAlliance dbAlliance = new DBAlliance(entry.getKey());
+            DBAlliance dbAlliance = DBAlliance.getOrCreate(entry.getKey());
 
             DBNation nation = entry.getValue();
             for (int i = 1; i < args.size(); i++) {

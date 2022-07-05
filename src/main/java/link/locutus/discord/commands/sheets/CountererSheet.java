@@ -19,13 +19,13 @@ public class CountererSheet extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        List<DBNation> nations;
+        Set<DBNation> nations;
         if (args.isEmpty()) {
             int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
             nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
             nations.removeIf(n -> n.getPosition() <= 1);
         } else if (args.size() == 1) {
-            nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
+            nations = (DiscordUtil.parseNations(guild, args.get(0)));
         } else {
             return usage(event);
         }

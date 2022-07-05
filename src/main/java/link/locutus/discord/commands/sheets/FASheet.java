@@ -77,7 +77,7 @@ public class FASheet extends Command {
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         for (Map.Entry<Integer, String> entry : notes.entrySet()) {
             Integer aaId = entry.getKey();
-            DBAlliance aa = new DBAlliance(aaId);
+            DBAlliance aa = DBAlliance.getOrCreate(aaId);
 
             String note = notes.getOrDefault(aaId, "");
             String last = lastContacted.getOrDefault(aaId, "");

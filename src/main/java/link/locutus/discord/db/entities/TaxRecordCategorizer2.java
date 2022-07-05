@@ -256,7 +256,7 @@ public class TaxRecordCategorizer2 {
             }
         }
 
-        this.allNations = new DBAlliance(getAaId()).getNations(true, 0, true);
+        this.allNations = DBAlliance.getOrCreate(getAaId()).getNations(true, 0, true);
         this.allNations.removeIf(f -> !acceptsNation.test(f.getNation_id()));
         this.nationsByBracket = new Int2ObjectOpenHashMap<>();
         this.bracketsByNation = new Int2ObjectOpenHashMap<>();
@@ -311,7 +311,7 @@ public class TaxRecordCategorizer2 {
         }
 
         // transactions from alliance bank & any registered offshores
-        this.expenseTransfers = new LinkedList<>();
+        this.expenseTransfers = new ArrayList<>();
         for (Integer senderAAId : getAlliances()) {
             getExpenseTransfers().addAll(Locutus.imp().getBankDB().getTransactionsByAllianceSender(senderAAId));
         }
@@ -323,7 +323,7 @@ public class TaxRecordCategorizer2 {
         }
 
         if (includeDeposits) {
-            LinkedList<Transaction2> depositTransfers = new LinkedList<>();
+            LinkedList<Transaction2> depositTransfers = new ArrayList<>();
             for (Integer senderAAId : getAlliances()) {
                 depositTransfers.addAll(Locutus.imp().getBankDB().getTransactionsByAllianceReceiver(senderAAId));
                 depositTransfers.removeIf(f -> !f.isSenderNation());
@@ -370,7 +370,7 @@ public class TaxRecordCategorizer2 {
                 }
                 continue;
             }
-            getTransactionsByBracket().computeIfAbsent(taxId, f -> new LinkedList<>()).add(transfer);
+            getTransactionsByBracket().computeIfAbsent(taxId, f -> new ArrayList<>()).add(transfer);
 
             TransactionType type;
             if (transfer.isSenderNation()) {
@@ -380,9 +380,9 @@ public class TaxRecordCategorizer2 {
             } else {
                 type = TransactionType.WITHDRAWAL;
             }
-            transactionsByBracketByType.computeIfAbsent(taxId, f -> new LinkedList<>()).add(new AbstractMap.SimpleEntry<>(transfer, type));
-            getTransactionsByNation().computeIfAbsent(nationId, f -> new LinkedList<>()).add(transfer);
-            getTransactionsByNationByBracket().computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new LinkedList<>()).add(transfer);
+            transactionsByBracketByType.computeIfAbsent(taxId, f -> new ArrayList<>()).add(new AbstractMap.SimpleEntry<>(transfer, type));
+            getTransactionsByNation().computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
+            getTransactionsByNationByBracket().computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
         }
 
         this.incomeByNationByBracket = new Int2ObjectOpenHashMap<>();

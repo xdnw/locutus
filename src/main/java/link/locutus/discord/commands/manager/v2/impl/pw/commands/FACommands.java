@@ -15,10 +15,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -82,10 +79,10 @@ public class FACommands {
         Auth auth = db.getAuth();
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);
-        treaties.removeIf(treaty -> treaty.from != alliance.getAlliance_id() && treaty.to != alliance.getAlliance_id());
+        treaties.removeIf(treaty -> treaty.getFromId() != alliance.getAlliance_id() && treaty.getToId() != alliance.getAlliance_id());
         if (treaties.isEmpty()) return "There are no pending treaties";
         for (PendingTreaty treaty : treaties) {
-            return auth.modifyTreaty(treaty.treatyId, true);
+            return auth.modifyTreaty(treaty.getId(), true);
         }
         return "No treaty found for: `" + alliance.getName() +
                 "`. Options:\n - " + StringMan.join(treaties, "\n - ");
@@ -99,16 +96,16 @@ public class FACommands {
         Auth auth = db.getAuth();
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
-        treaties.removeIf(treaty -> treaty.from != alliance.getAlliance_id() && treaty.to != alliance.getAlliance_id());
+        treaties.removeIf(treaty -> treaty.getFromId() != alliance.getAlliance_id() && treaty.getToId() != alliance.getAlliance_id());
         if (treaties.isEmpty()) return "There are no active treaties";
 
         boolean admin = Roles.ADMIN.has(user, db.getGuild()) || (me.getAlliance_id() == db.getAlliance_id() && me.getPosition() >= Rank.HEIR.id);
 
         for (PendingTreaty treaty : treaties) {
-            if (!admin && treaty.type.getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
+            if (!admin && treaty.getType().getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
                 return "You need to be an admin to cancel a defensive treaty";
             }
-            return auth.modifyTreaty(treaty.treatyId, false);
+            return auth.modifyTreaty(treaty.getId(), false);
         }
         return "No treaty found for: `" + alliance.getName() +
                 "`. Options:\n - " + StringMan.join(treaties, "\n - ");
@@ -177,9 +174,9 @@ public class FACommands {
         StringBuilder response = new StringBuilder();
         for (NationOrAllianceOrGuild aaOrGuild : alliances) {
             if (aaOrGuild.isNation()) {
-                Integer aaId = Locutus.imp().getNationDB().getAllianceId(aaOrGuild.getName());
-                if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
-                aaOrGuild = new DBAlliance(aaId);
+                DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(aaOrGuild.getName());
+                if (alliance == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
+                aaOrGuild = alliance;
             }
             db.addCoalition(aaOrGuild.getIdLong(), coalitionStr);
             response.append("Added " + aaOrGuild.getName() + " to " + coalitionStr).append("\n");
@@ -220,9 +217,9 @@ public class FACommands {
         StringBuilder response = new StringBuilder();
         for (NationOrAllianceOrGuild aaOrGuild : alliances) {
             if (aaOrGuild.isNation()) {
-                Integer aaId = Locutus.imp().getNationDB().getAllianceId(aaOrGuild.getName());
-                if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
-                aaOrGuild = new DBAlliance(aaId);
+                DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(aaOrGuild.getName());
+                if (alliance == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
+                aaOrGuild = alliance;
             }
             db.removeCoalition(aaOrGuild.getIdLong(), coalitionStr);
             response.append("Removed " + aaOrGuild.getName() + " from " + coalitionStr).append("\n");
@@ -239,7 +236,8 @@ public class FACommands {
                 List<PendingTreaty> treaties = auth.getTreaties();
                 if (!listExpired) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
                 for (PendingTreaty treaty : treaties) {
-                    response.append("#" + treaty.treatyId + ": " + PnwUtil.getName(treaty.from, true) + " | " + treaty.type + " -> " + PnwUtil.getName(treaty.to, true) + " (" + treaty.remaining + "|" + treaty.status + ")").append("\n");
+                    long turnsLeft = treaty.getTurnEnds() - TimeUtil.getTurn();
+                    response.append("#" + treaty.getId() + ": " + PnwUtil.getName(treaty.getFromId(), true) + " | " + treaty.getType() + " -> " + PnwUtil.getName(treaty.getToId(), true) + " (" + turnsLeft + " turns |" + treaty.status + ")").append("\n");
                 }
                 return response.toString();
             }
@@ -251,9 +249,9 @@ public class FACommands {
             for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                 Treaty treaty = entry.getValue();
                 if (allTreaties.contains(treaty)) continue;
-                String from = PnwUtil.getMarkdownUrl(treaty.from, true);
-                String to = PnwUtil.getMarkdownUrl(treaty.to, true);
-                TreatyType type = treaty.type;
+                String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
+                String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
+                TreatyType type = treaty.getType();
 
                 response.append(from + " | " + type + " -> " + to).append("\n");
             }

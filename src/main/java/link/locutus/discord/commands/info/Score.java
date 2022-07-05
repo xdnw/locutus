@@ -40,14 +40,15 @@ public class Score extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() == 0) return usage(event);
-        int cities = 0;
-        double avg_infra = 0;
+        double infra = -1;
+        double avg_infra = -1;
+
         String mmrStr = null;
 
         DBNation nation = new DBNation();
         nation.setMissiles(0);
         nation.setNukes(0);
-        nation.setInfra(0);
+
         nation.setSoldiers(0);
         nation.setTanks(0);
         nation.setAircraft(0);
@@ -121,11 +122,9 @@ public class Score extends Command {
                     for (int i = 0; i < amt.intValue(); i++) {
                         nation.setProject(Projects.values[i]);
                     }
-//                    score += 20 * amt;
                     break;
                 case "infra":
-                    nation.setInfra(amt.intValue());
-//                    score += amt / 40d;
+                    infra = amt.intValue();
                     break;
                 case "avg_infra":
                     avg_infra = amt;
@@ -137,16 +136,18 @@ public class Score extends Command {
                     return "Unknown value: `" + split[0] + "`.\n" + usage();
             }
         }
-        if (avg_infra != 0) {
-            nation.setAvg_infra((int) avg_infra);
-            nation.setInfra((int) (avg_infra * nation.getCities()));
+        if (avg_infra >= 0) {
+            infra = avg_infra * nation.getCities();
+        }
+        if (infra == -1) {
+            infra = nation.getInfra();
         }
 
         if (mmrStr != null) {
             nation.setMMR((mmrStr.charAt(0) - '0'), (mmrStr.charAt(1) - '0'), (mmrStr.charAt(2) - '0'), (mmrStr.charAt(3) - '0'));
         }
 
-        double score = nation.estimateScore();
+        double score = nation.estimateScore(infra);
 
         if (score == 0) return usage(event);
 

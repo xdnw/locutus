@@ -560,7 +560,7 @@ public class IACommands {
 
         if (db.isValidAlliance()) {
             DBAlliance alliance = db.getAlliance();
-            List<DBNation> members = alliance.getNations(true, 2880, true);
+            Set<DBNation> members = alliance.getNations(true, 2880, true);
             members.removeIf(f -> !mentees.contains(f));
 
             List<DBNation> membersUnverified = new ArrayList<>();
@@ -944,9 +944,6 @@ public class IACommands {
 
         if (Rank.MEMBER.equals(rank) && db.isWhitelisted()) {
             if (!force) {
-                if (nation.getScore() < 256) {
-                    nation.getPnwNation();
-                }
                 List<String> checks = new ArrayList<>();
                 if (nation.isGray()) {
                     checks.add("Nation is gray (use `-f` to override this)");
@@ -1498,7 +1495,7 @@ public class IACommands {
                 Category category = channel.getParentCategory();
                 String name = category.getName().toLowerCase();
                 if (name.endsWith("-archive") || name.endsWith("-inactive")) continue;
-                channelsByCategory.computeIfAbsent(category, f -> new LinkedList<>()).add(iaChan);
+                channelsByCategory.computeIfAbsent(category, f -> new ArrayList<>()).add(iaChan);
             }
 
             List<Category> categories = new ArrayList<>(channelsByCategory.keySet());

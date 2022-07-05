@@ -85,7 +85,7 @@ public class NationSheet extends Command implements Noformat {
                 }
             }
             for (Integer allianceId : alliances) {
-                if (new DBAlliance(allianceId).updateSpies(false)) {
+                if (DBAlliance.getOrCreate(allianceId).updateSpies(false)) {
                     toUpdate.removeIf(f -> f.getPosition() > Rank.APPLICANT.id && f.getAlliance_id() == allianceId);
                 }
             }
@@ -95,7 +95,7 @@ public class NationSheet extends Command implements Noformat {
         }
 
         for (DBNation nation : nations) {
-            if (flags.contains('t') && nation.getCityTimerEpoch() != null && nation.getCityTimerEpoch() < TimeUtil.getTurn()) {
+            if (flags.contains('t') && nation.getCityTimerAbsoluteTurn() != null && nation.getCityTimerAbsoluteTurn() < TimeUtil.getTurn()) {
                 nation.getPnwNation();
             }
             for (int i = 1; i < args.size(); i++) {

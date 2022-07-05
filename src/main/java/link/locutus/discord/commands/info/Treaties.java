@@ -52,7 +52,7 @@ public class Treaties extends Command {
                 List<PendingTreaty> treaties = auth.getTreaties();
                 if (!flags.contains('f')) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
                 for (PendingTreaty treaty : treaties) {
-                    response.append("#" + treaty.treatyId + ": " + PnwUtil.getName(treaty.from, true) + " | " + treaty.type + " -> " + PnwUtil.getName(treaty.to, true) + " (" + treaty.remaining + "|" + treaty.status + ")").append("\n");
+                    response.append("#" + treaty.getId() + ": " + PnwUtil.getName(treaty.getFromId(), true) + " | " + treaty.getType() + " -> " + PnwUtil.getName(treaty.getToId(), true) + " (" + treaty.remaining + "|" + treaty.status + ")").append("\n");
                 }
                 return response.toString();
             }
@@ -65,9 +65,9 @@ public class Treaties extends Command {
             for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                 Treaty treaty = entry.getValue();
                 if (allTreaties.contains(treaty)) continue;
-                String from = PnwUtil.getMarkdownUrl(treaty.from, true);
-                String to = PnwUtil.getMarkdownUrl(treaty.to, true);
-                TreatyType type = treaty.type;
+                String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
+                String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
+                TreatyType type = treaty.getType();
 
                 response.append(from + " | " + type + " -> " + to).append("\n");
             }

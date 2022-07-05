@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
@@ -13,10 +14,9 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.domains.City;
-import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -37,14 +37,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class ROI extends Command {
     public ROI() {
@@ -158,23 +156,15 @@ public class ROI extends Command {
         if (allianceStr == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID <alliance-id>`";
         int allianceId = Integer.parseInt(allianceStr);
 
-        PoliticsAndWarV2 api = guildDb.getApi();
-        List<AllianceMembersContainer> members = api.getAllianceMembers(allianceId).getNations();
-        if (members.isEmpty()) {
-            return "No alliance members found";
-        }
-        Map<Integer, AllianceMembersContainer> memberMap = members.stream().collect(
-                Collectors.toMap(AllianceMembersContainer::getNationId, m -> m));
-
-
-        List<ROIResult> roiMap = new LinkedList<>();
+        List<ROIResult> roiMap = new ArrayList<>();
         boolean useSheet = false;
 
         if (args.get(0).toLowerCase().equals("*")) {
             if (!Roles.ECON.has(event.getAuthor(), guildDb.getGuild())) {
                 return "You do not have the role: " + Roles.ECON;
             }
-            List<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+            DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
+            Set<DBNation> nations = alliance.getNations();
             try {
                 for (DBNation nation : nations) {
                     if (nation.getPosition() <= 1) continue;
@@ -182,7 +172,7 @@ public class ROI extends Command {
                     RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(),
                             "Calculating ROI for: " + nation.getNation()));
 
-                    roi(nation, memberMap.get(nation.getNation_id()), days, roiMap);
+                    roi(nation, days, roiMap);
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -196,7 +186,7 @@ public class ROI extends Command {
             DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
             roi(nation, Integer.MAX_VALUE, Integer.MAX_VALUE, from, days, roiMap, 500);
         } else {
-            Collection<DBNation> nations = guildDb.getNationsByArguments(args.get(0));
+            Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
             nations.removeIf(n -> n.getActive_m() > 10000 || n.getVm_turns() > 0);
             if (nations.size() > 1 && !Roles.ADMIN.hasOnRoot(event.getAuthor())) {
                 nations.removeIf(n -> n.getAlliance_id() != allianceId);
@@ -216,7 +206,7 @@ public class ROI extends Command {
                     RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(),
                             "Calculating ROI for: " + nation.getNation()));
 
-                    roi(nation, memberMap.get(nation.getNation_id()), days, roiMap);
+                    roi(nation, days, roiMap);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -251,7 +241,8 @@ public class ROI extends Command {
             List<String> header = new ArrayList<>(Arrays.asList(
                     "Nation",
                     "Deposit",
-                    "TurnsLeft",
+                    "CityTurns",
+                    "ProjectTurns",
                     "Cities",
                     "AvgInfra",
                     "Position",
@@ -273,15 +264,14 @@ public class ROI extends Command {
             sheet.setHeader(header);
             for (ROIResult result : roiMap) {
                 DBNation nation = result.nation;
-                AllianceMembersContainer member = memberMap.get(nation.getNation_id());
-                Integer turns = member == null ? 0 : member.getCityprojecttimerturns();
                 Map<ResourceType, Double> deposits = PnwUtil.resourcesToMap(nation.getNetDeposits(guildDb));
                 double depositsConverted = PnwUtil.convertedTotal(deposits);
 
                 header.clear();
                 header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
                 header.add(String.format("%.2f", depositsConverted));
-                header.add("" + turns);
+                header.add("" + nation.getCityTurns());
+                header.add("" + nation.getProjectTurns());
                 header.add("" + nation.getCities());
                 header.add("" + nation.getAvg_infra());
                 header.add("" + nation.getPosition());
@@ -361,11 +351,11 @@ public class ROI extends Command {
         }
     }
 
-    public static void roi(DBNation nation, AllianceMembersContainer member, int days, List<ROIResult> roiMap) throws InterruptedException, ExecutionException, IOException {
+    public static void roi(DBNation nation, int days, List<ROIResult> roiMap) throws InterruptedException, ExecutionException, IOException {
         Map<Integer, JavaCity> cities = nation.getCityMap(false);
         JavaCity existingCity = new JavaCity(cities.values().iterator().next());
 
-        roi(nation, nation.cityTimerTurns(), nation.projectTimerTurns(), existingCity, days, roiMap, 500);
+        roi(nation, nation.getCityTurns(), nation.getProjectTurns(), existingCity, days, roiMap, 500);
     }
 
     public static void roi(DBNation nation, long cityTurns, long projectTurns2, JavaCity existingCity, int days, List<ROIResult> roiMap, int timeout) throws IOException {

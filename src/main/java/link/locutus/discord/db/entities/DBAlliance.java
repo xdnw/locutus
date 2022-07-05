@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class DBAlliance implements NationList, NationOrAlliance {
     private final int allianceId;
@@ -193,15 +194,15 @@ public class DBAlliance implements NationList, NationOrAlliance {
             if (entry.getKey() == 0) continue;
             if (topX-- <= 0) break;
             int allianceId = entry.getKey();
-            results.add(new DBAlliance(allianceId));
+            results.add(DBAlliance.getOrCreate(allianceId));
             if (checkTreaty) {
                 Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                 for (Map.Entry<Integer, Treaty> aaTreatyEntry : treaties.entrySet()) {
-                    switch (aaTreatyEntry.getValue().type) {
+                    switch (aaTreatyEntry.getValue().getType()) {
                         case MDP:
                         case MDOAP:
                         case PROTECTORATE:
-                            results.add(new DBAlliance(aaTreatyEntry.getKey()));
+                            results.add(DBAlliance.getOrCreate(aaTreatyEntry.getKey()));
                     }
                 }
             }
@@ -234,33 +235,28 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return getName();
     }
 
-    public List<DBNation> getNations(boolean removeVM, int removeInactiveM, boolean removeApps) {
-        List<DBNation> nations = getNations();
+    public Set<DBNation> getNations(boolean removeVM, int removeInactiveM, boolean removeApps) {
+        Set<DBNation> nations = getNations();
         if (removeVM) nations.removeIf(f -> f.getVm_turns() != 0);
         if (removeInactiveM > 0) nations.removeIf(f -> f.getActive_m() > removeInactiveM);
         if (removeApps) nations.removeIf(f -> f.getPosition() <= 1);
         return nations;
     }
 
-    private List<DBNation> getNationsCache = null;
+    private Set<DBNation> getNationsCache = null;
 
-    public List<DBNation> getNations() {
-        if (getNationsCache == null) {
-            getNationsCache = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
-        }
-        return new LinkedList<>(getNationsCache);
+    public Set<DBNation> getNations() {
+        return Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
     }
 
     public DBNation getMembersTotal() {
         DBNation result = new DBNation(getName(), getNations(true, 0, true), false);
-        result.setAlliance(result.getNation());
         result.setAlliance_id(allianceId);
         return result;
     }
 
     public DBNation getMembersAverage() {
         DBNation result = new DBNation(getName(), getNations(true, 0, true), true);
-        result.setAlliance(result.getNation());
         result.setAlliance_id(allianceId);
         return result;
     }
@@ -271,7 +267,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             Integer spies = Integer.parseInt(member.getSpies());
             DBNation nation = Locutus.imp().getNationDB().getNation(member.getNationId());
             if (nation != null && !spies.equals(nation.getSpies())) {
-                nation.setSpies(spies);
+                nation.setSpies(spies, true);
                 Locutus.imp().getNationDB().setSpies(nation.getNation_id(), spies);
                 toUpdate.add(nation);
             }
@@ -303,7 +299,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     public DBNation getTotal() {
         DBNation result = new DBNation(getName(), getNations(), false);
-        result.setAlliance(result.getNation());
         result.setAlliance_id(allianceId);
         return result;
     }
@@ -312,23 +307,20 @@ public class DBAlliance implements NationList, NationOrAlliance {
         Set<DBAlliance> allies = new HashSet<>();
         for (Map.Entry<Integer, Treaty> treatyEntry : getDefenseTreaties().entrySet()) {
             Treaty treaty = treatyEntry.getValue();
-            int other = treaty.from == allianceId ? treaty.to : treaty.from;
-            allies.add(new DBAlliance(other));
+            int other = treaty.getFromId() == allianceId ? treaty.getToId() : treaty.getFromId();
+            allies.add(DBAlliance.getOrCreate(other));
         }
         return allies;
     }
 
     public Map<Integer, Treaty> getDefenseTreaties() {
         HashMap<Integer, Treaty> defTreaties = new HashMap<>(getTreaties());
-        defTreaties.entrySet().removeIf(f -> f.getValue().type == TreatyType.NAP || f.getValue().type == TreatyType.PIAT);
+        defTreaties.entrySet().removeIf(f -> f.getValue().getType() == TreatyType.NAP || f.getValue().getType() == TreatyType.PIAT);
         return defTreaties;
     }
 
     public Map<Integer, Treaty> getTreaties() {
-        if (this.treaties == null) {
-            this.treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
-        }
-        return this.treaties;
+        return Locutus.imp().getNationDB().getTreaties(allianceId);
     }
 
     public Set<DBAlliance> getSphere() {
@@ -391,11 +383,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         double protectorScore = 0;
         for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
             int otherId = entry.getKey();
-            DBAlliance otherAA = aaCache.computeIfAbsent(otherId, f -> new DBAlliance(otherId));
+            DBAlliance otherAA = aaCache.computeIfAbsent(otherId, f -> DBAlliance.getOrCreate(otherId));
             if (currentWeb.containsKey(otherAA)) continue;
             if (otherAA.getAlliance_id() == 4150 || currentAA.allianceId == 4150) continue;
 //            if (otherAA.getAlliance_id() == 770 || currentAA.allianceId == 770) continue;
-            switch (entry.getValue().type) {
+            switch (entry.getValue().getType()) {
                 case NAP:
                     if (otherAA.getAlliance_id() != 3339 && currentAA.getAlliance_id() != 3339) continue;
                 case MDP:
@@ -423,7 +415,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     public DBNation getAverage() {
         DBNation result = new DBNation(getName(), getNations(), true);
-        result.setAlliance(result.getNation());
         result.setAlliance_id(allianceId);
         return result;
     }
@@ -552,6 +543,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public void updateCities() throws IOException, ParseException {
-        Locutus.imp().getPnwApi().getV3_legacy().updateNations(allianceId);
+        Set<Integer> nationIds = getNations(false, 0, true).stream().map(f -> f.getId()).collect(Collectors.toSet());
+        Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, Event::post);
     }
 }

@@ -65,7 +65,7 @@ public class EconPages {
         for (BankDB.TaxDeposit tax : categorized.getTaxes()) {
             long turn = tax.getTurn();
             long turnRel = turn - turnStart;
-            taxRecordsByBracket.computeIfAbsent(tax.tax_id, f -> new LinkedList<>()).add(tax);
+            taxRecordsByBracket.computeIfAbsent(tax.tax_id, f -> new ArrayList<>()).add(tax);
         }
 
         Map<Integer, List<Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType>>> txsByType = categorized.getTransactionsByBracketByType();

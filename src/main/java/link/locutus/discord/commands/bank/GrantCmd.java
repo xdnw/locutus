@@ -18,8 +18,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.util.task.balance.GetCityBuilds;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
-import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -227,8 +225,6 @@ public class GrantCmd extends Command {
         boolean noInfra = flags.contains('i');
         boolean noLand = flags.contains('l');
 
-        PoliticsAndWarV2 api = guildDb.getApi();
-        Nation pnwNation = me.getPnwNation(api);
         me = new DBNation(me);
 
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(me.getNation_id());
@@ -244,21 +240,20 @@ public class GrantCmd extends Command {
         Map<ResourceType, Double> resources = new HashMap<>();
 
         if (arg.equalsIgnoreCase("city")) {
-            me.getPnwNation();
-            if (me.cityTimerTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a city timer");
+            if (me.getCityTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a city timer");
             grant = new Grant(me, Grant.Type.CITY);
             grant.setAmount(amt);
             grant.addCity(me.getCities());
-            grant.setInstructions(grantCity(pnwNation, me, (int) amt, resources, force));
+            grant.setInstructions(grantCity(me, (int) amt, resources, force));
         } else if (arg.equalsIgnoreCase("infra")) {
             grant = new Grant(me, Grant.Type.INFRA);
             grant.setAmount(amt);
-            grant.setInstructions(grantInfra(pnwNation, me, (int) amt, resources, force, single));
+            grant.setInstructions(grantInfra(me, (int) amt, resources, force, single));
             grant.setAllCities();
         } else if (arg.equalsIgnoreCase("land")) {
             grant = new Grant(me, Grant.Type.LAND);
             grant.setAmount(amt);
-            grant.setInstructions(grantLand(pnwNation, me, (int) amt, resources, force));
+            grant.setInstructions(grantLand(me, (int) amt, resources, force));
             grant.setAllCities();
         } else if (arg.startsWith("{")) {
             if (arg.contains("infra_needed")) {
@@ -320,7 +315,7 @@ public class GrantCmd extends Command {
             Project project = Projects.get(arg);
             if (project == null) {
                 if (arg.equalsIgnoreCase("project")) {
-                    if (pnwNation.getTurns_since_last_project() > 120 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a project timer");
+                    if (me.getProjectTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a project timer");
                     throw new IllegalArgumentException("Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1");
                 }
                 if (arg.equalsIgnoreCase("unit")) {
@@ -364,13 +359,13 @@ public class GrantCmd extends Command {
                     throw new IllegalArgumentException("Error: " + me.getNationUrl() + " has full project slots");
                 }
                 resources = project.cost();
-                if (!force && PnwUtil.convertedTotal(resources) > 2000000 && !pnwNation.getDomesticPolicy().equalsIgnoreCase("Technological Advancement")) {
+                if (!force && PnwUtil.convertedTotal(resources) > 2000000 && me.getDomesticPolicy() != DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
                     throw new IllegalArgumentException("Please set your Domestic Policy to `Technological Advancement` in <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/> to save 5%.");
                 }
                 if (me.hasProject(project)) {
                     throw new IllegalArgumentException("You already have: " + project.name());
                 }
-                if (pnwNation.getDomesticPolicy().equalsIgnoreCase("Technological Advancement")) {
+                if (me.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
                     resources = PnwUtil.multiply(resources, 0.95);
                 }
                 grant = new Grant(me, Grant.Type.PROJECT);
@@ -403,7 +398,7 @@ public class GrantCmd extends Command {
         return grant;
     }
 
-    public String grantLand(Nation pnwNation, DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws InterruptedException, ExecutionException, IOException {
+    public String grantLand(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws InterruptedException, ExecutionException, IOException {
         if (numBuy > 2000 && !force) {
             throw new IllegalArgumentException("Land grants >2000 are not approved as they are unprofitable.");
         }
@@ -457,7 +452,7 @@ public class GrantCmd extends Command {
         return response.toString();
     }
 
-    public String grantInfra(Nation pnwNation, DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force, boolean fetchROI) throws InterruptedException, ExecutionException, IOException {
+    public String grantInfra(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force, boolean fetchROI) throws InterruptedException, ExecutionException, IOException {
         if (me.getCities() < 9 && numBuy > 1700 && !force) {
             throw new IllegalArgumentException("Please grant up to C10 before buying infra.");
         }
@@ -477,7 +472,7 @@ public class GrantCmd extends Command {
 
         if (totalCost <= 0) return "You already have " + numBuy + " in your cities";
 
-        boolean urbanization = pnwNation.getDomesticPolicy().equalsIgnoreCase("Urbanization");
+        boolean urbanization = me.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
         boolean cce = me.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
         boolean aec = me.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
 
@@ -529,7 +524,7 @@ public class GrantCmd extends Command {
         return response.toString();
     }
 
-    public String grantCity(Nation pnwNation, DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws IOException {
+    public String grantCity(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws IOException {
         int currentCity = me.getCities();
         if (numBuy >= 10) numBuy = numBuy - currentCity;
 
@@ -539,7 +534,7 @@ public class GrantCmd extends Command {
 
         boolean cp = me.hasProject(Projects.URBAN_PLANNING);
         boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
-        boolean manifest = pnwNation.getDomesticPolicy().equalsIgnoreCase("Manifest Destiny");
+        boolean manifest = me.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
 
         double cost = 0;
         for (int i = currentCity; i < currentCity + numBuy; i++) {

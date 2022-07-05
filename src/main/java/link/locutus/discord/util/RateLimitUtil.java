@@ -15,13 +15,7 @@ import net.dv8tion.jda.api.exceptions.MissingAccessException;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 
-import java.util.AbstractMap;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -122,9 +116,8 @@ public class RateLimitUtil {
         UUID id = UUID.randomUUID();
         long channelId = channel.getIdLong();
         synchronized (messageQueueLastSent) {
-            messageQueue.computeIfAbsent(channelId, f -> new LinkedList<>()).add(new AbstractMap.SimpleEntry<>(id, message));
+            messageQueue.computeIfAbsent(channelId, f -> new ArrayList<>()).add(new AbstractMap.SimpleEntry<>(id, message));
         }
-
         Locutus.imp().getCommandManager().getExecutor().schedule(new CaughtRunnable() {
             @Override
             public void runUnsafe() {

@@ -83,14 +83,8 @@ public class SpyCommand extends Command {
 
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
-        int result = SpyCount.guessSpyCount(nation);
-        if (nation.getSpies() == null || nation.getSpies() != result) {
-            Locutus.imp().getNationDB().setSpies(nation.getNation_id(), result);
-            nation.setSpies(result);
-            Locutus.imp().getNationDB().addNation(nation);
-        }
-
+        DBNation nation = DBNation.byId(nationId);
+        int result = nation.updateSpies(true, true);
 
         StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies.");
         response.append("\nRecommended:");

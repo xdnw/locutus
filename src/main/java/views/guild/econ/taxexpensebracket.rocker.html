@@ -82,7 +82,7 @@ Map<Integer, TaxBracket> bracketsByNation, List<DBNation> nationsByBracket,
                     } else if (nation.isBeige()) {
                     <td colspan="100" class="bg-warning text-center text-bold">nation is beige (untaxable)</td>
                     } else {
-                    <td>@(nation.cityTimerTurns())/@(nation.projectTimerTurns())</td>
+                    <td>@(nation.getCityTurns())/@(nation.getProjectTurns())</td>
                     <td>@(nation.getNumProjects())/@(nation.projectSlots())</td>
                     <td>@(nation.getMMR())</td>
                     <td>@(nation.getMMRBuildingStr())</td>

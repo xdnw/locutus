@@ -98,7 +98,7 @@ public class Counter extends Command {
         double scoreMax = score / 0.75;
 
         boolean filterApps = false;
-        List<DBNation> pool;
+        Set<DBNation> pool;
 
         if (args.size() == 2) {
             if (args.get(1).equalsIgnoreCase("*")) {
@@ -108,7 +108,7 @@ public class Counter extends Command {
                 pool = Locutus.imp().getNationDB().getNations(allies);
             } else {
                 try {
-                    pool = new ArrayList<>(DiscordUtil.parseNations(event.getGuild(), args.get(1)));
+                    pool = DiscordUtil.parseNations(event.getGuild(), args.get(1));
                 } catch (Throwable e) {
                     e.printStackTrace();
                     throw e;

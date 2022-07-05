@@ -62,7 +62,6 @@ public enum InterviewQuestion implements Question {
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             if (aaId == null || aaId.equals(me.getAlliance_id())) return true;
 
-            Nation pnwNation = me.getPnwNation();
             if (aaId.equals(me.getAlliance_id())) return true;
             if (me.getAlliance_id() == 0) return false;
             throw new IllegalArgumentException("please leave your alliance first then " + getContent());
@@ -204,7 +203,6 @@ public enum InterviewQuestion implements Question {
                             }
                         }
                     } else {
-                        Nation pnwNation = me.getPnwNation();
                         if (me.getAlliance_id() != aaId || me.getPosition() <= 1) return false;
                     }
                 }
@@ -228,7 +226,6 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             if (me.getCities() <= 1) {
-                Nation pnwNation = me.getPnwNation();
                 if (me.getCities() <= 1) return false;
             }
             return true;
@@ -244,7 +241,6 @@ public enum InterviewQuestion implements Question {
             NationColor color = me.getColor();
             Alliance alliance = Locutus.imp().getPnwApi().getAlliance(me.getAlliance_id());
             if (!color.name().equalsIgnoreCase(alliance.getColor()) && color != NationColor.BEIGE) {
-                Nation pnwNation = me.getPnwNation();
                 if (!color.name().equalsIgnoreCase(alliance.getColor()) && color != NationColor.BEIGE) {
                     return false;
                 }
@@ -272,7 +268,6 @@ public enum InterviewQuestion implements Question {
 
             if (me.getCities() >= 10) return true;
             if (me.getWarPolicy() != WarPolicy.PIRATE) {
-                Nation pnwNation = me.getPnwNation();
                 if (me.getWarPolicy() != WarPolicy.PIRATE) {
                     return false;
                 }
@@ -311,7 +306,6 @@ public enum InterviewQuestion implements Question {
             if (me.getCities() > 10) return true;
             int perDay = me.getCities() * 5 * Buildings.BARRACKS.perDay();
             if (me.getSoldiers() < perDay * 0.3) {
-                me.getPnwNation();
                 if (me.getSoldiers() < perDay * 0.3) {
                     throw new IllegalArgumentException("**You still only have " + me.getSoldiers() + " soldiers**\n\n" + getContent());
                 }
@@ -328,7 +322,6 @@ public enum InterviewQuestion implements Question {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             if (me.getOff() == 5 || me.getCities() >= 10) return true;
 
-            Nation pnwNation = me.getPnwNation();
             return (me.getOff() >= 5);
         }
     },

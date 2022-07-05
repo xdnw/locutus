@@ -17,8 +17,10 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
@@ -632,9 +634,15 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncInfraLand(@Me MessageChannel channel) throws IOException, ParseException {
-        Map<Integer, Map<Integer, CityInfraLand>> result = Locutus.imp().getNationDB().updateCities();
-        return "Updated city infra land for " + result.size() + " nations";
+    public String syncInfraLand() throws IOException, ParseException {
+        List<Event> events = new ArrayList<>();
+        Locutus.imp().getNationDB().updateCitiesV2(events::add);
+        if (events.size() > 0) {
+            Locutus.imp().getExecutor().submit(() -> {
+                for (Event event : events) event.post();;
+            });
+        }
+        return "Updated city infra land. " + events.size() + " changes detected";
     }
 
     @Command()
@@ -646,26 +654,30 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncCities(@Me MessageChannel channel) throws IOException, ParseException {
-        Locutus.imp().getPnwApi().getV3_legacy().updateNations(false, false, true, false, false);
-        return "Done!";
+    public String syncCities(NationDB db) throws IOException, ParseException {
+        List<Event> events = new ArrayList<>();
+        db.updateAllCities(events::add);
+        if (events.size() > 0) {
+            Locutus.imp().getExecutor().submit(() -> {
+                for (Event event : events) event.post();;
+            });
+        }
+        return "Updated all cities. " + events.size() + " changes detected";
     }
 
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncSpySlots(@Me MessageChannel channel) throws IOException, ParseException {
-        Locutus.imp().getPnwApi().getV3_legacy().updateNations(true, false, false, false, false);
-        return "Done!";
+    public String syncNations(NationDB db) throws IOException, ParseException {
+        List<Event> events = new ArrayList<>();
+        Set<Integer> nations = db.updateAllNations(events::add);
+        if (events.size() > 0) {
+            Locutus.imp().getExecutor().submit(() -> {
+                for (Event event : events) event.post();;
+            });
+        }
+        return "Updated " + nations.size() + " nations. " + events.size() + " changes detected";
     }
-
-    @Command()
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncProjects(@Me MessageChannel channel) throws IOException, ParseException {
-        Locutus.imp().getPnwApi().getV3_legacy().updateNations(false, false, false, true, false);
-        return "Done!";
-    }
-
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)

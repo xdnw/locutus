@@ -79,8 +79,7 @@ public class Inflows extends Command {
             return nation == null ? Integer.toString(i) : nation.getNation();
         };
 
-        BiMap<Integer, String> allianceNames = Locutus.imp().getNationDB().getAlliances();
-        Function<Integer, String> aaNameFunc = i -> allianceNames.getOrDefault(i, Integer.toString(i));
+        Function<Integer, String> aaNameFunc = i -> Locutus.imp().getNationDB().getAllianceName(i);
 
         if (nationId == null || arg0.contains("/allaince/") || arg0.charAt(0) == '~') {
             if (arg0.charAt(0) == '~') {

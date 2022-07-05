@@ -313,6 +313,12 @@ public class CommandManager {
             return false;
         }
 
+        // prioritize updating nations using commands
+        DBNation nation = DiscordUtil.getNation(event.getAuthor());
+        if (nation != null) {
+            Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
+        }
+
         Guild msgGuild = event.isFromGuild() ? event.getGuild() : null;
         // Channel blacklisting / whitelisting
         MessageChannel channel = event.getChannel();

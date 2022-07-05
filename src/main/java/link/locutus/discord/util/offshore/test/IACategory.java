@@ -86,7 +86,7 @@ public class IACategory {
             this.output = null;
         }
         this.guild = db.getGuild();
-        this.alliance = new DBAlliance((Integer) db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
+        this.alliance = DBAlliance.getOrCreate((Integer) db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
         fetchChannels();
     }
 
@@ -453,7 +453,7 @@ public class IACategory {
             }
         }
 
-        List<DBNation> nations = alliance.getNations(true, 2880, true);
+        Set<DBNation> nations = alliance.getNations(true, 2880, true);
         for (DBNation nation : nations) {
             if (channelMap.containsKey(nation)) continue;
         }
@@ -725,7 +725,7 @@ public class IACategory {
                     return true;
                 }
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null && nation.getOff() < 5) {
-                    List<DBNation> enemies = Locutus.imp().getNationDB().getNations(Collections.singleton(0));
+                    Set<DBNation> enemies = Locutus.imp().getNationDB().getNations(Collections.singleton(0));
                     enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * 1.75 || f.getScore() < nation.getScore() * 0.75 || f.getActive_m() < 10000);
                     int raids = Math.min(4, enemies.size());
                     if (nation.getOff() < raids) return true;

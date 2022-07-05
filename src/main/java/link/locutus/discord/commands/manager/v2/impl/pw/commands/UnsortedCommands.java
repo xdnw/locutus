@@ -284,7 +284,7 @@ public class UnsortedCommands {
     @Command
     @IsAlliance
     public String listAllianceMembers(@Me MessageChannel channel, @Me GuildDB db, int page) {
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(db.getAlliance_id()));
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(db.getAlliance_id()));
 
         int perPage = 5;
 

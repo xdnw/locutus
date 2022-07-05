@@ -181,7 +181,7 @@ public class WarCommand extends Command {
 
                     long currentTurn = TimeUtil.getTurn();
 
-                    List<Map.Entry<DBNation, Double>> nationNetValues = new LinkedList<>();
+                    List<Map.Entry<DBNation, Double>> nationNetValues = new ArrayList<>();
 
                     GuildDB rootDB = Locutus.imp().getGuildDB(Locutus.imp().getServer());
 

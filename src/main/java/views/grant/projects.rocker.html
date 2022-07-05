@@ -24,8 +24,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             <div class="alert p-1 my-1 alert-info border border-info alert-dismissible fade show" role="alert">
-                <b>City timer: </b>@(nation.cityTimerTurns()) turns (@(TimeUtil.turnsToTime(nation.cityTimerTurns())))<br>
-                <b>Project timer: </b>@(nation.projectTimerTurns()) turns (@(TimeUtil.turnsToTime(nation.projectTimerTurns())))<br>
+                <b>City timer: </b>@(nation.getCityTurns()) turns (@(TimeUtil.turnsToTime(nation.getCityTurns())))<br>
+                <b>Project timer: </b>@(nation.getProjectTurns()) turns (@(TimeUtil.turnsToTime(nation.getProjectTurns())))<br>
                 <b>Project Slots: </b>@(nation.getNumProjects())/@(nation.projectSlots())<br>
                 <b>Infrastructure: </b>@(nation.getInfra()) (@(5000 - ((nation.getInfra() % 5000))) more infra until next slot)<br>
                 <p>

@@ -266,10 +266,11 @@ public class DBWar {
         this.warId = c.getWarID();
         this.attacker_id = c.getAttackerID();
         this.defender_id = c.getDefenderID();
-        Integer attacker_aa = Locutus.imp().getNationDB().getAllianceId(c.getAttackerAA());
-        this.attacker_aa = attacker_aa == null ? 0 : attacker_aa;
-        Integer defender_aa = Locutus.imp().getNationDB().getAllianceId(c.getDefenderAA());
-        this.defender_aa = defender_aa == null ? 0 : defender_aa;
+
+        DBAlliance attacker_aa = Locutus.imp().getNationDB().getAllianceByName(c.getAttackerAA());
+        this.attacker_aa = attacker_aa == null ? 0 : attacker_aa.getAlliance_id();
+        DBAlliance defender_aa = Locutus.imp().getNationDB().getAllianceByName(c.getDefenderAA());
+        this.defender_aa = defender_aa == null ? 0 : defender_aa.getAlliance_id();
         this.warType = WarType.parse(c.getWarType());
         this.status = WarStatus.parse(c.getStatus());
         this.date = TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate());
@@ -295,10 +296,10 @@ public class DBWar {
     public void update(WarContainer c) {
         this.attacker_id = Integer.parseInt(c.getAggressorId());
         this.defender_id = Integer.parseInt(c.getDefenderId());
-        Integer attacker_aa = Locutus.imp().getNationDB().getAllianceId(c.getAggressorAllianceName());
-        this.attacker_aa = attacker_aa == null ? 0 : attacker_aa;
-        Integer defender_aa = Locutus.imp().getNationDB().getAllianceId(c.getDefenderAllianceName());
-        this.defender_aa = defender_aa == null ? 0 : defender_aa;
+        DBAlliance attacker_aa = Locutus.imp().getNationDB().getAllianceByName(c.getAggressorAllianceName());
+        this.attacker_aa = attacker_aa == null ? 0 : attacker_aa.getAlliance_id();
+        DBAlliance defender_aa = Locutus.imp().getNationDB().getAllianceByName(c.getDefenderAllianceName());
+        this.defender_aa = defender_aa == null ? 0 : defender_aa.getAlliance_id();
         this.warType = WarType.parse(c.getWarType());
         this.date = TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate());
     }

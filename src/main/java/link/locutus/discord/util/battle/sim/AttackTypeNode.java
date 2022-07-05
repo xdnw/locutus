@@ -79,7 +79,7 @@ public class AttackTypeNode {
     }
 
     public List<AttackTypeNode> getPathNodes() {
-        List<AttackTypeNode> output = new LinkedList<>();
+        List<AttackTypeNode> output = new ArrayList<>();
         AttackTypeNode root = this;
         do {
             output.add(root);

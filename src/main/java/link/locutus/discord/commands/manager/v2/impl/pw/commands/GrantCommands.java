@@ -99,7 +99,7 @@ public class GrantCommands {
         response.append("color=" + nation.getColor() + "\n");
         response.append("mmr[unit]=" + nation.getMMR() + "\n");
         response.append("mmr[build]=" + nation.getMMRBuildingStr() + "\n");
-        response.append("timer[city]=" + nation.cityTimerTurns() + " timer[project]=" + nation.projectTimerTurns() + "\n");
+        response.append("timer[city]=" + nation.getCityTurns() + " timer[project]=" + nation.getProjectTurns() + "\n");
         response.append("slots[project]=" + nation.getNumProjects() + "/" + nation.projectSlots() + "\n");
         response.append("activity[turn]=" + MathMan.format(nation.avg_daily_login_turns() * 100) + "%\n");
         response.append("activity[day]=" + MathMan.format(nation.avg_daily_login() * 100) + "%\n");

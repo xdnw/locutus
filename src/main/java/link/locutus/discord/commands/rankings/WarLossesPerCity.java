@@ -44,7 +44,7 @@ public class WarLossesPerCity extends Command {
         if (args.size() != 2) {
             return usage(event);
         }
-        Collection<DBNation> nations = Locutus.imp().getGuildDB(event).getNationsByArguments(args.get(0));
+        Collection<DBNation> nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         if (nations == null || nations.isEmpty()) {
             return "Invalid alliance or coalition: `" + args.get(0) + "`";
         }

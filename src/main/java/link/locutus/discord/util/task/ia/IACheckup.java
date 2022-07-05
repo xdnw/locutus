@@ -14,7 +14,6 @@ import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.domains.Alliance;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
-import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -162,20 +161,6 @@ public class IACheckup {
         int days = 120;
 
         long start = System.currentTimeMillis();
-        HashMap<DBNation, Nation> pnwNationCache = new HashMap<>();
-        Supplier<Nation> nationSupplier = () -> {
-            if (fast) {
-                new Exception().printStackTrace();
-            }
-            return pnwNationCache.computeIfAbsent(nation, f -> {
-                try {
-                    return nation.getPnwNation(api);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            });
-        };
         Map<Integer, JavaCity> cities = nation.getCityMap(false);
         if (cities.isEmpty()) {
             return new HashMap<>();
@@ -219,7 +204,7 @@ public class IACheckup {
         Map<AuditType, Map.Entry<Object, String>> results = new LinkedHashMap<>();
         for (AuditType type : audits) {
             long start2 = System.currentTimeMillis();
-            audit(type, nation, nationSupplier, transactions, cities, member, results, individual, fast);
+            audit(type, nation, transactions, cities, member, results, individual, fast);
             long diff = System.currentTimeMillis() - start2;
             if (diff > 10) {
                 System.out.println("remove:||Checkup Diff " + type + " | " + diff + " ms");
@@ -247,15 +232,15 @@ public class IACheckup {
         return results;
     }
 
-    private void audit(AuditType type, DBNation nation, Supplier<Nation> pnwNationSupplier, List<Transaction2> transactions, Map<Integer, JavaCity> cities, AllianceMembersContainer member, Map<AuditType, Map.Entry<Object, String>> results, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+    private void audit(AuditType type, DBNation nation, List<Transaction2> transactions, Map<Integer, JavaCity> cities, AllianceMembersContainer member, Map<AuditType, Map.Entry<Object, String>> results, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
         if (type.required != null) {
             if (!results.containsKey(type.required)) {
-                audit(type.required, nation, pnwNationSupplier, transactions, cities, member, results, individual, fast);
+                audit(type.required, nation, transactions, cities, member, results, individual, fast);
             }
             Map.Entry<Object, String> requiredResult = results.get(type.required);
             if (requiredResult != null) return;
         }
-        Map.Entry<Object, String> value = checkup(type, nation, pnwNationSupplier, cities, transactions, member, individual, fast);
+        Map.Entry<Object, String> value = checkup(type, nation, cities, transactions, member, individual, fast);
         results.put(type, value);
     }
 
@@ -339,7 +324,7 @@ public class IACheckup {
 
     private Map<Integer, Alliance> alliances = new HashMap<>();
 
-    private Map.Entry<Object, String> checkup(AuditType type, DBNation nation, Supplier<Nation> getPnwNation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, AllianceMembersContainer member, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+    private Map.Entry<Object, String> checkup(AuditType type, DBNation nation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, AllianceMembersContainer member, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
         Alliance alliance = fast ? null : alliances.computeIfAbsent(nation.getAlliance_id(), new Function<Integer, Alliance>() {
             @Override
             public Alliance apply(Integer id) {
@@ -371,19 +356,19 @@ public class IACheckup {
                 return null;
             }
             case INACTIVE:
-                return testIfCacheFails(() -> checkInactive(nation), getPnwNation, updateNation);
+                return testIfCacheFails(() -> checkInactive(nation), updateNation);
             case FINISH_OBJECTIVES:
-                return testIfCacheFails(() -> checkObjectives(nation), getPnwNation, updateNation);
+                return testIfCacheFails(() -> checkObjectives(nation), updateNation);
             case FIX_COLOR:
-                return testIfCacheFails(() -> checkTradeColor(nation, alliance), getPnwNation, updateNation);
+                return testIfCacheFails(() -> checkTradeColor(nation), updateNation);
             case FIX_WAR_POLICY:
-                return testIfCacheFails(() -> checkWarPolicy(nation), getPnwNation, updateNation);
+                return testIfCacheFails(() -> checkWarPolicy(nation), updateNation);
             case CHANGE_CONTINENT:
-                return testIfCacheFails(() -> checkContinent(nation), getPnwNation, updateNation);
+                return testIfCacheFails(() -> checkContinent(nation), updateNation);
             case RAID:
-                return testIfCacheFails(() -> checkOffensiveSlots(nation, db), getPnwNation, updateNation);
+                return testIfCacheFails(() -> checkOffensiveSlots(nation, db), updateNation);
             case UNUSED_MAP:
-                return testIfCacheFails(() -> checkMAP(nation), getPnwNation, updateNation);
+                return testIfCacheFails(() -> checkMAP(nation), updateNation);
             case BUY_SPIES:
                 return checkSpies(nation);
             case BUY_HANGARS:
@@ -483,9 +468,9 @@ public class IACheckup {
             case EXCESS_POLICE:
                 return checkExcessService(nation, cities, Buildings.POLICE_STATION, db);
             case OBTAIN_RESOURCES:
-                return resources == null || resources.isEmpty() ? null : testIfCacheFails(() -> checkSendResources(nation, resources, cities), getPnwNation, updateNation);
+                return resources == null || resources.isEmpty() ? null : testIfCacheFails(() -> checkSendResources(nation, resources, cities), updateNation);
             case SAFEKEEP:
-                return resources == null || resources.isEmpty() ? null : testIfCacheFails(() -> checkSafekeep(nation, resources, cities), getPnwNation, updateNation);
+                return resources == null || resources.isEmpty() ? null : testIfCacheFails(() -> checkSafekeep(nation, resources, cities), updateNation);
             case OBTAIN_WARCHEST:
                 return resources == null || resources.isEmpty() ? null : checkWarchest(nation, resources, db);
             case BEIGE_LOOT:
@@ -753,8 +738,8 @@ public class IACheckup {
     private Map.Entry<Object, String> checkNavy(DBNation nation, Map<Integer, JavaCity> cities) {
         if (nation.getCities() < 10) return null;
         if (nation.isBeige()) return null;
-        if (nation.getOff() == 0 && nation.getDef() == 0) return null;
         if (nation.getShips() > 0) return null;
+        if (nation.getNumWars() == 0) return null;
         for (DBWar war : nation.getActiveWars()) {
             DBNation other = war.getNation(!war.isAttacker(nation));
             if (other == null || other.getShips() > 1 || other.getAircraft() > nation.getAircraft()) return null;
@@ -869,7 +854,7 @@ public class IACheckup {
         int freeProjects = nation.projectSlots() - nation.getNumProjects();
         if (freeProjects <= 0) return null;
 
-        if (nation.getProjectTimerEpoch() != null && nation.projectTimerTurns() <= 0) {
+        if (nation.getProjectAbsoluteTurn() != null && nation.getProjectTurns() <= 0) {
             if (nation.isBlockaded()) return null;
             return new AbstractMap.SimpleEntry<>("1", "Your project timer is up. Use the #resource-request channel to request funds for a project");
         }
@@ -961,7 +946,7 @@ public class IACheckup {
                 return null;
             }
         }
-        if (nation.getCityTimerEpoch() != null && nation.cityTimerTurns() <= 0 && nation.getCities() < 20) {
+        if (nation.getCityTurns() <= 0 && nation.getCities() < 20) {
             if (nation.isBlockaded()) return null;
 
             double cost = PnwUtil.nextCityCost(nation.getCities(), true, nation.hasProject(Projects.URBAN_PLANNING), nation.hasProject(Projects.ADVANCED_URBAN_PLANNING));
@@ -971,13 +956,8 @@ public class IACheckup {
         return null;
     }
 
-    private Map.Entry<Object, String> testIfCacheFails(Supplier<Map.Entry<Object, String>> supplier, Supplier<Nation> updater, boolean test) {
-        Map.Entry<Object, String> result = supplier.get();
-        if (test && result != null && result.getValue() != null) {
-            updater.get();
-            result = supplier.get();
-        }
-        return result;
+    private Map.Entry<Object, String> testIfCacheFails(Supplier<Map.Entry<Object, String>> supplier, boolean test) {
+        return supplier.get();
     }
 
     private Map.Entry<Object, String> checkSendResources(DBNation nation, Map<ResourceType, Double> resources, Map<Integer, JavaCity> cities) {
@@ -1168,7 +1148,7 @@ public class IACheckup {
         }
         int max = numCities * 0;
         String message = "";
-        if (nation.getTanks() != null && nation.getTanks() > max) {
+        if (nation.getTanks() > max) {
             message = "You have " + nation.getTanks() + " tanks.";
         } else {
             Set<Integer> hasFactories = new HashSet<>();
@@ -1191,49 +1171,21 @@ public class IACheckup {
         int cities = nation.getCities();
         int max = cities * 5;
         String message = null;
-        if (nation.getShips() != null && nation.getShips() > max) {
+        if (nation.getShips() > max) {
             message = "You have " + nation.getShips() + " ships. Ships are costly to build, maintain, easy to destroy with planes, and raise your score/soldiers ratio. For maximum profit you should only need 1 drydock and 1 boat for raiding purposes.";
         }
         return new AbstractMap.SimpleEntry<>(nation.getShips(), message);
     }
 
-    private Map.Entry<Object, String> checkTradeColor(DBNation nation, Alliance alliance) {
-        String message = null;
-        NationColor allianceColor = null;
+    private Map.Entry<Object, String> checkTradeColor(DBNation nation) {
+        NationColor allianceColor = nation.getAlliance().getColor();
         Set<NationColor> allowedColors = new HashSet<>(Arrays.asList(NationColor.BEIGE));
-        if (alliance != null) {
-            allianceColor = NationColor.valueOf(alliance.getColor().toUpperCase());
-        }
-        else {
-            List<DBNation> members = new DBAlliance(nation).getNations(true, 1440, true);
-            Map<NationColor, Integer> mostCommon = new HashMap<>();
-            for (DBNation member : members) {
-                if (member.isBeige() || member.isGray()) continue;
-                NationColor color = member.getColor();
-                mostCommon.put(color, mostCommon.getOrDefault(color, 0) + (nation.getPosition() - 1));
-            }
-            int max = 0;
-            for (Map.Entry<NationColor, Integer> entry : mostCommon.entrySet()) {
-                if (entry.getValue() > max) {
-                    allianceColor = entry.getKey();
-                    max = entry.getValue();
-                }
-            }
-            if (allianceColor == null) {
-                allowedColors.addAll(mostCommon.keySet());
-                allianceColor = null;
-            }
-        }
-
+        allowedColors.add(allianceColor);
         NationColor color = nation.getColor();
 
-        if (allianceColor != null) {
-            allowedColors.add(allianceColor);
-        }
-        String allianceColorStr = allianceColor != null ? allianceColor.name().toLowerCase() : "the alliance color";
-
+        String message = null;
         if (!allowedColors.contains(color)) {
-            message = "You can go to <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>" + " and change your trade bloc from " + color + " to " + allianceColorStr + " (for trade block revenue)";
+            message = "You can go to <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>" + " and change your trade bloc from " + color + " to " + allianceColor.name() + " (for trade block revenue)";
             if (!nation.isGray() && !nation.isBeige()) {
                 message += "\nnote: You do not receive trade bloc income by being on a different color to the alliance";
             }

@@ -33,7 +33,7 @@ public class SyncBankTask implements Callable<Boolean>, Runnable {
 
         update.accept("Fetching transfers");
 
-        ArrayDeque<Future<List<Transfer>>> tasks = new ArrayDeque<>();
+        ArrayList<Future<List<Transfer>>> tasks = new ArrayList<>();
         int maxSize = 32;
 
         Boolean result = TimeUtil.runTurnTask(SyncBanks.class.getSimpleName(), new Function<Long, Boolean>() {
