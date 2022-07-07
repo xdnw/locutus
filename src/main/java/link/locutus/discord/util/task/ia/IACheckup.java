@@ -98,6 +98,7 @@ public class IACheckup {
     private final GuildDB db;
 
     public IACheckup(GuildDB db, int allianceId, boolean useCache) throws IOException {
+        if (db == null) throw new IllegalStateException("No database found for: " + allianceId);
         this.db = db;
         api = Locutus.imp().getPnwApi();
         memberMap = new HashMap<>();
