@@ -4,21 +4,21 @@ import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.db.entities.Treaty;
 
 public enum PnwPusherModel {
-    alliance(Alliance.class),
-    alliance_position(AlliancePosition.class),
-    bankrec(Bankrec.class),
-    bbgame(BBGame.class),
-    bbteam(BBTeam.class),
-    bounty(Bounty.class),
-    city(City.class),
-    nation(Nation.class),
-    tax_bracket(TaxBracket.class),
-    trade(Trade.class),
-    treaty(Treaty.class),
-    warattack(WarAttack.class),
-    war(War.class),
-    treasure_trade(TreasureTrade.class),
-    embargo(Embargo.class);
+    ALLIANCE(Alliance.class),
+    ALLIANCE_POSITION(AlliancePosition.class),
+    BANKREC(Bankrec.class),
+    BBGAME(BBGame.class),
+    BBTEAM(BBTeam.class),
+    BOUNTY(Bounty.class),
+    CITY(City.class),
+    NATION(Nation.class),
+    TAX_BRACKET(TaxBracket.class),
+    TRADE(Trade.class),
+    TREATY(Treaty.class),
+    WARATTACK(WarAttack.class),
+    WAR(War.class),
+    TREASURE_TRADE(TreasureTrade.class),
+    EMBARGO(Embargo.class);
 
     private final Class<?> clazz;
 

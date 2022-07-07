@@ -256,8 +256,8 @@ public class Transaction2 {
         return true;
     }
 
-    public String createInsert(String table, boolean id) {
-        StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR REPLACE " : "") + "INTO `" + table + "` (" + (id ? "tx_id, " : "") + "tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation_id, note");
+    public String createInsert(String table, boolean id, boolean ignore) {
+        StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR " + (ignore ? "IGNORE" : "REPLACE") + " " : "") + "INTO `" + table + "` (" + (id ? "tx_id, " : "") + "tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation_id, note");
         int fieldCount = id ? 8 : 7;
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;

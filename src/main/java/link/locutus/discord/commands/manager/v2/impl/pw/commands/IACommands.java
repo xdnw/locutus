@@ -222,7 +222,7 @@ public class IACommands {
     }, any = true)
     public String addRole(@Me GuildDB db, @Me Member author, Member member, Role addRole) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
-        if (assignable == null) return "No roles set";
+        if (assignable == null) return "`!KeyStore ASSIGNABLE_ROLES` is not set`";
         boolean canAssign = Roles.ADMIN.has(author);
         if (!canAssign) {
             for (Role role : author.getRoles()) {
@@ -256,7 +256,7 @@ public class IACommands {
     }, any = true)
     public String removeRole(@Me GuildDB db, @Me Member author, Member member, Role addRole) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
-        if (assignable == null) return "No roles set";
+        if (assignable == null) return "`!KeyStore ASSIGNABLE_ROLES` is not set`";
         boolean canAssign = Roles.ADMIN.has(author);
         if (!canAssign) {
             for (Role role : author.getRoles()) {

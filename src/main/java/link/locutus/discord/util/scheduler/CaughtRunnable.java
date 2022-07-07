@@ -4,7 +4,7 @@ import link.locutus.discord.util.AlertUtil;
 
 import java.util.concurrent.Callable;
 
-public abstract class CaughtRunnable implements Runnable {
+public abstract class CaughtRunnable implements Runnable, CaughtTask {
     @Override
     public final void run() {
         try {
@@ -15,6 +15,7 @@ public abstract class CaughtRunnable implements Runnable {
         }
     }
 
+    @Override
     public abstract void runUnsafe() throws Exception;
 
     public static Runnable wrap(Runnable runnable) {
@@ -27,7 +28,15 @@ public abstract class CaughtRunnable implements Runnable {
         };
     }
 
-    public static Runnable wrap(Callable callable) {
+    public static Runnable wrap(CaughtTask task) {
+        return new CaughtRunnable() {
+            @Override
+            public void runUnsafe() throws Exception {
+                task.runUnsafe();
+            }
+        };
+    }
+    public static Runnable wrap(Callable<?> callable) {
         return new CaughtRunnable() {
             @Override
             public void runUnsafe() throws Exception {
@@ -35,4 +44,6 @@ public abstract class CaughtRunnable implements Runnable {
             }
         };
     }
+
+
 }

@@ -1,62 +1,39 @@
 package link.locutus.discord.apiv3;
 
-import com.fasterxml.jackson.core.JacksonException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import com.pusher.client.Pusher;
-import com.pusher.client.PusherOptions;
-import com.pusher.client.channel.Channel;
-import com.pusher.client.channel.PusherEvent;
-import com.pusher.client.channel.SubscriptionEventListener;
-import com.pusher.client.connection.ConnectionEventListener;
-import com.pusher.client.connection.ConnectionState;
-import com.pusher.client.connection.ConnectionStateChange;
-import com.pusher.client.util.HttpUserAuthenticator;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
+import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
 import link.locutus.discord.apiv3.subscription.PnwPusherFilter;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
-import link.locutus.discord.apiv3.subscription.PnwPusherModel;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.BankDB;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.enums.NationColor;
 import graphql.GraphQLException;
-import org.apache.commons.logging.Log;
 import org.springframework.http.*;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpMessageConverterExtractor;
 import org.springframework.web.client.RestTemplate;
 
 import javax.security.auth.login.LoginException;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Type;
 import java.net.URI;
 import java.sql.SQLException;
-import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
     public static int NATIONS_PER_PAGE = 500;
@@ -168,8 +145,8 @@ public class PoliticsAndWarV3 {
                 }
                 pool.removeKey(key);
             } catch (HttpClientErrorException e) {
-                AlertUtil.error(e.getMessage(), e);
                 e.printStackTrace();
+                AlertUtil.error(e.getMessage(), e);
                 throw e;
             }
         }
@@ -210,6 +187,7 @@ public class PoliticsAndWarV3 {
                     break pageLoop;
                 }
                 if (result.hasErrors()) {
+                    System.out.println("Has error");
                     int maxBehavior = 0;
                     List<GraphQLError> errors = result.getErrors();
                     for (GraphQLError error : errors) {
@@ -247,7 +225,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bounty> fetchBounties(Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query) {
-        return fetchBounties(1000, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchBounties(1000, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<Bounty> fetchBounties(int perPage, Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bounty> recResults) {
@@ -287,7 +265,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<BBGame> fetchBaseballGames(Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query) {
-        return fetchBaseballGames(BOUNTIES_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchBaseballGames(BOUNTIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<BBGame> fetchBaseballGames(int perPage, Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<BBGame> recResults) {
@@ -367,11 +345,11 @@ public class PoliticsAndWarV3 {
 
                 p.city_id();
             }
-        }, f -> ErrorResponse.EXIT, f -> true);
+        }, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query) {
-        return fetchAttacks(ATTACKS_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchAttacks(ATTACKS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<WarAttack> fetchAttacks(int perPage, Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<WarAttack> recResults) {
@@ -410,7 +388,7 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
-    public List<War> fetchWars(Consumer<WarsQueryRequest> filter) {
+    public List<War> fetchWarsWithInfo(Consumer<WarsQueryRequest> filter) {
         return fetchWars(WARS_PER_PAGE, filter, new Consumer<WarResponseProjection>() {
             @Override
             public void accept(WarResponseProjection p) {
@@ -425,11 +403,11 @@ public class PoliticsAndWarV3 {
                 p.winner_id();
                 p.date();
             }
-        }, f -> ErrorResponse.EXIT, f -> true);
+        }, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<War> fetchWars(Consumer<WarsQueryRequest> filter, Consumer<WarResponseProjection> query) {
-        return fetchWars(WARS_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchWars(WARS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<War> fetchWars(int perPage, Consumer<WarsQueryRequest> filter, Consumer<WarResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<War> recResults) {
@@ -514,7 +492,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<City> fetchCities(Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query) {
-        return fetchCities(CITIES_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchCities(CITIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<City> fetchCities(int perPage, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<City> recResults) {
@@ -557,6 +535,7 @@ public class PoliticsAndWarV3 {
         return fetchBankRecs(filter, new Consumer<BankrecResponseProjection>() {
             @Override
             public void accept(BankrecResponseProjection proj) {
+                proj.id();
                 proj.date();
                 proj.sender_id();
                 proj.sender_type();
@@ -581,7 +560,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
-        return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
@@ -705,11 +684,11 @@ public class PoliticsAndWarV3 {
 
                 projection.espionage_available();
             }
-        }, f -> PoliticsAndWarV3.ErrorResponse.EXIT, nationResults);
+        }, f -> PoliticsAndWarV3.ErrorResponse.THROW, nationResults);
     }
 
     public List<Nation> fetchNations(Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query) {
-        return fetchNations(NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchNations(NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
     public List<Nation> fetchNations(int perPage, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Nation> nationResults) {
         List<Nation> allResults = new ArrayList<>();
@@ -779,11 +758,11 @@ public class PoliticsAndWarV3 {
                     projection.color();
                 }
             }
-        }, f -> ErrorResponse.EXIT, f -> true);
+        }, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<Alliance> fetchAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query) {
-        return fetchAlliances(ALLIANCES_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchAlliances(ALLIANCES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<Alliance> fetchAlliances(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
@@ -834,7 +813,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Treaty> fetchTreaties(Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query) {
-        return fetchTreaties(TREATIES_PER_PAGE, filter, query, f -> ErrorResponse.EXIT, f -> true);
+        return fetchTreaties(TREATIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<Treaty> fetchTreaties(int perPage, Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Treaty> addEachResult) {
@@ -894,24 +873,16 @@ public class PoliticsAndWarV3 {
 
         String data1 = "{\"id\":17362,\"alliance_id\":877,\"alliance_position\":2,\"alliance_position_id\":660,\"nation_name\":\"The Holy Britannian Empire\",\"leader_name\":\"Lelouch Vi Britannia\",\"continent\":\"na\",\"war_policy\":\"Fortress\",\"domestic_policy\":\"Urbanization\",\"color\":\"black\",\"num_cities\":23,\"score\":4590.5,\"update_tz\":null,\"population\":7369519,\"flag\":\"https://politicsandwar.com/img/imgur-old/917568acf2b88122f2e687d5bcfe41c8db855e95744.png\",\"vacation_mode_turns\":0,\"beige_turns\":0,\"espionage_available\":true,\"date\":\"2015-04-29 20:13:11\",\"soldiers\":321000,\"tanks\":28750,\"aircraft\":1725,\"ships\":0,\"missiles\":4,\"nukes\":3,\"spies\":null,\"discord\":\"\",\"turns_since_last_city\":104,\"turns_since_last_project\":186,\"money\":null,\"coal\":null,\"oil\":null,\"uranium\":null,\"iron\":null,\"bauxite\":null,\"lead\":null,\"gasoline\":null,\"munitions\":null,\"steel\":null,\"aluminum\":null,\"food\":null,\"projects\":12,\"iron_works\":1,\"bauxite_works\":0,\"arms_stockpile\":0,\"emergency_gasoline_reserve\":0,\"mass_irrigation\":1,\"international_trade_center\":1,\"missile_launch_pad\":1,\"nuclear_research_facility\":1,\"iron_dome\":1,\"vital_defense_system\":0,\"central_intelligence_agency\":1,\"center_for_civil_engineering\":0,\"propaganda_bureau\":1,\"uranium_enrichment_program\":0,\"urban_planning\":1,\"advanced_urban_planning\":0,\"space_program\":1,\"spy_satellite\":0,\"moon_landing\":0,\"pirate_economy\":0,\"recycling_initiative\":0,\"telecommunications_satellite\":0,\"green_technologies\":0,\"arable_land_agency\":1,\"clinical_research_center\":0,\"specialized_police_training_program\":0,\"advanced_engineering_corps\":0,\"government_support_agency\":0,\"research_and_development_center\":1,\"resource_production_center\":0,\"wars_won\":41,\"wars_lost\":87,\"tax_id\":78,\"alliance_seniority\":562,\"gross_national_income\":10060706,\"gross_domestic_product\":6620064174,\"soldier_casualties\":11277621,\"soldier_kills\":15269908,\"tank_casualties\":388822,\"tank_kills\":492431,\"aircraft_casualties\":60580,\"aircraft_kills\":60964,\"ship_casualties\":3312,\"ship_kills\":4839,\"missile_casualties\":51,\"missile_kills\":27,\"nuke_casualties\":94,\"nuke_kills\":47,\"spy_casualties\":null,\"spy_kills\":null,\"money_looted\":265661830.7,\"project_bits\":276911601}";
 
-        Gson gson = new Gson();
+        PnwPusherHandler handler = new PnwPusherHandler(key)
+        .connect()
+        .subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE)
+        .setBulk(true)
+        .build(nations -> {
+            for (Nation nation : nations) {
+                System.out.println("Nation " + nation);
+            }
+        });
 
-
-PnwPusherHandler handler = new PnwPusherHandler(key)
-.connect()
-.subscribeBuilder(Nation.class, PnwPusherEvent.update)
-.setBulk(true)
-.addFilter(PnwPusherFilter.id, 189573)
-.build((Consumer<List<Nation>>) nations -> {
-    for (Nation nation : nations) {
-        System.out.println("Update: " + nation);
-    }
-})
-        ;
-
-        System.out.println("Handler 1");
-        handler.connect();
-        System.out.println("Handler 2");
 
         Thread.sleep(100000);
 
@@ -932,7 +903,116 @@ PnwPusherHandler handler = new PnwPusherHandler(key)
         ApiKeyPool pool = new ApiKeyPool(Settings.INSTANCE.API_KEY_PRIMARY);
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
 
-        testPusher();
+        {
+            System.out.println("Starting");
+            long start = System.currentTimeMillis();
+
+            List<String> colors = new ArrayList<>();
+            for (NationColor color : NationColor.values) {
+                if (color == NationColor.GRAY || color == NationColor.BEIGE) continue;
+                colors.add(color.name().toLowerCase(Locale.ROOT));
+            }
+            List<Nation> nations = main.fetchNations(new Consumer<NationsQueryRequest>() {
+                @Override
+                public void accept(NationsQueryRequest r) {
+                    r.setColor(colors);
+                    r.setVmode(false);
+                }
+            }, new Consumer<NationResponseProjection>() {
+                @Override
+                public void accept(NationResponseProjection r) {
+                    r.id();
+                    r.last_active();
+                    r.alliance_id();
+                    r.score();
+                }
+            });
+            List<Integer> idsToFetch = new ArrayList<>();
+            long now = System.currentTimeMillis();
+            for (Nation nation : nations) {
+                long activeMs = nation.getLast_active().toEpochMilli();
+                if (now - activeMs < TimeUnit.MINUTES.toMillis(15)) {
+                    idsToFetch.add(nation.getId());
+                }
+            }
+            nations = main.fetchNationsWithInfo(new Consumer<NationsQueryRequest>() {
+                @Override
+                public void accept(NationsQueryRequest r) {
+                    r.setId(idsToFetch);
+                }
+            }, f -> true);
+
+            long diff = System.currentTimeMillis() - start;
+            System.out.println("Fetched " + nations.size() + " | " + diff);
+            System.exit(0);
+        }
+
+        {
+            System.out.println("Starting");
+            long start = System.currentTimeMillis();
+            List<SNationContainer> nations = api.getNationsByScore(false, 999999, -1).getNationsContainer();
+            long diff = System.currentTimeMillis() - start;
+            System.out.println("Fetched " + nations.size() + " | " + diff);
+            System.exit(0);
+        }
+
+        {
+
+            int nationId = Settings.INSTANCE.NATION_ID;
+            List<Integer> ids = new ArrayList<>();
+            for (int i = 0; i < 500; i++) ids.add(i);
+
+            List<Nation> nations = main.fetchNations(new Consumer<NationsQueryRequest>() {
+                @Override
+                public void accept(NationsQueryRequest nationsQueryRequest) {
+                    nationsQueryRequest.setId(ids);
+                }
+            }, new Consumer<NationResponseProjection>() {
+                @Override
+                public void accept(NationResponseProjection r) {
+                    r.id();
+                    r.spy_attacks();
+                    r.spy_casualties();
+                    r.spy_kills();
+                    r.espionage_available();
+                }
+            });
+            for (Nation nation : nations) {
+                System.out.println("Nation " + nation);
+            }
+            System.out.println("Nations " + nations.size());
+
+
+//            List<Bankrec> recs = main.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+//                @Override
+//                public void accept(BankrecsQueryRequest r) {
+//                    r.setRtype(List.of(2));
+//                    r.setStype(List.of(2));
+//                    r.setOr_id(List.of(allianceId));
+//                }
+//            });
+
+        }
+        {
+//            int nationId = Settings.INSTANCE.NATION_ID;
+//            List<Bankrec> recs = main.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+//                @Override
+//                public void accept(BankrecsQueryRequest r) {
+//                    r.setOr_id(List.of(nationId));
+//                    r.setOr_type(List.of(1)); //1 == nation
+//                }
+//            });
+//
+//            BankDB db = new BankDB();
+//            List<Transaction2> txs = recs.stream().map(Transaction2::fromApiV3).collect(Collectors.toList());
+//            int[] result = db.addTransactions(txs);
+//            for (int i = 0; i < result.length; i++) {
+//                System.out.println(i + " -> " + result[i] + " | " + txs.get(i).note);
+//            }
+
+        }
+
+//        testPusher();
 
 //        {
 //            long start = System.currentTimeMillis();
@@ -1175,7 +1255,7 @@ PnwPusherHandler handler = new PnwPusherHandler(key)
 //            }
 //        }, e -> {
 //            System.out.println("Error " + e.getErrorType() + " | " + e.getMessage());
-//            return ErrorResponse.EXIT;
+//            return ErrorResponse.THROW;
 //        }, nation -> false);
 //
 //        NationsQueryRequest request = new NationsQueryRequest();

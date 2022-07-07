@@ -16,7 +16,7 @@ public class SyncWars extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        Locutus.imp().getWarDb().updateWars(Event::post);
+        Locutus.imp().getWarDb().updateAllWars(Event::post);
         return "Done!";
     }
 }

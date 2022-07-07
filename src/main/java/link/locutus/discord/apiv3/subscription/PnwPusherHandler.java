@@ -67,14 +67,12 @@ public class PnwPusherHandler {
 
     public <T> PnwPusherBuilder<T> subscribeBuilder(Class<T> clazz, PnwPusherEvent event) {
         PnwPusherModel model = PnwPusherModel.valueOf(clazz);
-        return new PnwPusherBuilder(clazz, model, event, key);
+        return new PnwPusherBuilder<T>(clazz, model, event, key);
     }
 
 
 
     private void bind(String channelName, PnwPusherModel model, PnwPusherEvent event, boolean bulk, SubscriptionEventListener listener) {
-        System.out.println("Bind to `" + channelName + "`");
-
         PusherChannelType type = PusherChannelType.DEFAULT;
         String typeStr = channelName.split("-")[0];
         try {
@@ -113,8 +111,6 @@ public class PnwPusherHandler {
                 @Override
                 public void onError(String message, String code, Exception e) {
                     System.out.println("There was a problem connecting!");
-                    pusher.disconnect();
-                    System.exit(1);
                 }
             }, ConnectionState.ALL);
         } else {
@@ -156,12 +152,12 @@ public class PnwPusherHandler {
             return this;
         }
 
-        public PnwPusherBuilder addFilter(PnwPusherFilter filter, Object... values) {
+        public PnwPusherBuilder<T> addFilter(PnwPusherFilter filter, Object... values) {
             filters.put(filter, Arrays.asList(values));
             return this;
         }
 
-        public String getEndpoint() {
+        private String getEndpoint() {
             String url = CHANNEL_ENDPOINT
                     .replace("{model}", model.name().toLowerCase(Locale.ROOT))
                     .replace("{event}", event.name().toLowerCase(Locale.ROOT))
@@ -181,6 +177,7 @@ public class PnwPusherHandler {
             handler.bind(channelName, model, event, bulk, event -> {
                 String data = event.getData();
                 if (data.isEmpty()) return;
+                System.out.println("Received on " + channelName + ": " + data);
                 try {
                     if (data.charAt(0) == '[') {
                         CollectionType listTypeRef = objectMapper.getTypeFactory().constructCollectionType(List.class, type);
@@ -197,7 +194,7 @@ public class PnwPusherHandler {
             return handler;
         }
 
-        public String getChannel() {
+        private String getChannel() {
             try {
                 String channelInfo = FileUtil.readStringFromURL(getEndpoint());
                 JsonElement json = parser.parse(channelInfo);

@@ -109,6 +109,9 @@ public class OffshoreInstance {
 
             if (latest > System.currentTimeMillis() + 1000L) {
                 if (true) throw new IllegalArgumentException("Transaction date is > now: " + latest + " | " + allianceId);
+
+
+
                 List<Transaction2> transfers = new GetDepositTask(auth, allianceId, 0).call();
                 for (Transaction2 transaction : transfers) {
                     if (transaction.tx_datetime > now) throw new IllegalArgumentException("Transaction date is > now: " + transaction.tx_datetime);
@@ -116,7 +119,7 @@ public class OffshoreInstance {
 //                transfers.removeIf(transfer -> !transfer.isSenderAA() || !transfer.isReceiverAA());
                 if (!transfers.isEmpty()) {
                     Locutus.imp().getBankDB().removeAllianceTransactions(allianceId);
-                    Locutus.imp().getBankDB().addAllianceTransactions(transfers);
+                    Locutus.imp().getBankDB().addAllianceTransactionsLegacy2(transfers);
                 }
             } else {
                 long fetchTo = latest - 60000;
@@ -127,7 +130,7 @@ public class OffshoreInstance {
                 if (!transfers.isEmpty()) {
                     Locutus.imp().getBankDB().removeAllianceTransactions(allianceId, auth.getAllianceId(), fetchTo);
 //                    Locutus.imp().getBankDB().removeAllianceTransactions(allianceId, fetchTo);
-                    Locutus.imp().getBankDB().addAllianceTransactions(transfers);
+                    Locutus.imp().getBankDB().addAllianceTransactionsLegacy2(transfers);
                 }
             }
         } catch (IOException e) {

@@ -43,7 +43,7 @@ public class SyncCommand extends Command {
         if (args.size() != 1) return usage();
         DBNation nation = DiscordUtil.parseNation(args.get(0));
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
-        Locutus.imp().getNationDB().updateNationsById(Collections.singletonList(nation.getNation_id()), Event::post);
+        Locutus.imp().getNationDB().updateNations(Collections.singletonList(nation.getNation_id()), Event::post);
         return "Updated " + nation.getNation();
     }
 }

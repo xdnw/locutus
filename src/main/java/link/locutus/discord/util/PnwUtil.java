@@ -395,7 +395,7 @@ public class PnwUtil {
                                     note = note.replaceAll(entry.getKey() + "[^ ]+", "#cash=" + MathMan.format(cashValue));
                                     note += " #" + hash;
                                     record.note = note;
-                                    Locutus.imp().getBankDB().addTransaction(record);
+                                    Locutus.imp().getBankDB().addTransaction(record, false);
                                 }
                             }
                         }

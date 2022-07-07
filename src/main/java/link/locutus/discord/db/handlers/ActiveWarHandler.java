@@ -4,6 +4,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.db.entities.DBWar;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class ActiveWarHandler {
     private Map<Integer, DBWar[]> activeWars = new Int2ObjectOpenHashMap<>();
@@ -21,6 +23,10 @@ public class ActiveWarHandler {
                 }
             }
         }
+    }
+
+    public boolean isEmpty() {
+        return activeWars.isEmpty();
     }
     public void makeWarInactive(DBWar war) {
         makeWarInactive(war.attacker_id, war.warId);
@@ -51,6 +57,10 @@ public class ActiveWarHandler {
     public void addActiveWar(DBWar war) {
         addActiveWar(war.attacker_id, war);
         addActiveWar(war.defender_id, war);
+    }
+
+    public Map<Integer, DBWar> getActiveWarsById() {
+        return getActiveWars().stream().collect(Collectors.toMap(DBWar::getWarId, Function.identity()));
     }
 
     public Set<DBWar> getActiveWars() {

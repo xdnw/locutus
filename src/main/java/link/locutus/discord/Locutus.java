@@ -14,7 +14,6 @@ import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.DiscordMeta;
-import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.TurnChangeEvent;
@@ -26,17 +25,11 @@ import link.locutus.discord.util.discord.GuildShardManager;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.util.task.TaskLock;
-import link.locutus.discord.util.task.TrackLeaderMilitary;
+import link.locutus.discord.util.scheduler.CaughtTask;
 import link.locutus.discord.util.task.ia.MapFullTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.trade.TradeManager;
-import link.locutus.discord.util.update.AllianceCreateListener;
-import link.locutus.discord.util.update.BankUpdateProcessor;
-import link.locutus.discord.util.update.LeavingBeigeAlert;
-import link.locutus.discord.util.update.NationUpdateProcessor;
-import link.locutus.discord.util.update.TreatyUpdateProcessor;
-import link.locutus.discord.util.update.WarUpdateProcessor;
+import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
 import com.google.common.eventbus.EventBus;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
@@ -68,13 +61,11 @@ import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
@@ -539,137 +530,145 @@ public final class Locutus extends ListenerAdapter {
 //        return databases;
 //    }
 
+    public ScheduledFuture<?> addTaskSeconds(CaughtTask task, long interval) {
+        return addTask(CaughtRunnable.wrap(task), interval, TimeUnit.SECONDS);
+    }
+    public ScheduledFuture<?> addTask(Runnable task, long interval, TimeUnit unit) {
+        if (interval <= 0) return null;
+        if (!(task instanceof CaughtRunnable)) {
+            Runnable parent = task;
+            task = new CaughtRunnable() {
+                @Override
+                public void runUnsafe() {
+                    parent.run();
+                }
+            };
+        }
+        return commandManager.getExecutor().scheduleWithFixedDelay(task, interval, interval, unit);
+    }
+
+    public void runEventsAsync(Collection<Event> events) {
+        if (events.isEmpty()) return;
+        getExecutor().submit(new CaughtRunnable() {
+            @Override
+            public void runUnsafe() {
+                for (Event event : events) event.post();
+            }
+        });
+    }
+
     public void initRepeatingTasks() {
-//        commandManager.getExecutor().scheduleWithFixedDelay(new CaughtRunnable() {
-//            @Override
-//            public void runUnsafe() {
-//                forumDb.update();
-//            }
-//        }, 13, 4, TimeUnit.MINUTES);
-
-        if (Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS > 0) {
-            LeavingBeigeAlert beigeAlerter = new LeavingBeigeAlert();
-            commandManager.getExecutor().scheduleWithFixedDelay(new CaughtRunnable() {
-                @Override
-                public void runUnsafe() {
-                    beigeAlerter.run();
-                }
-            }, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS, TimeUnit.SECONDS);
-        }
-
-        if (Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_SECONDS > 0) {
-            commandManager.getExecutor().scheduleWithFixedDelay(new CaughtRunnable() {
-                @Override
-                public void runUnsafe() {
-                    new TrackLeaderMilitary(Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_TOP_X).run();
-                }
-            }, Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_SECONDS, Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_SECONDS, TimeUnit.SECONDS);
-        }
-
         // Turn change
         if (Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS) {
             AtomicLong lastTurn = new AtomicLong();
-            commandManager.getExecutor().scheduleWithFixedDelay(new CaughtRunnable() {
+            addTaskSeconds(new CaughtTask() {
                 long lastTurnTmp;
-
                 @Override
-                public void runUnsafe() {
-                    try {
+                public void runUnsafe() throws Exception {
+                    long currentTurn = TimeUtil.getTurn();
+                    if (currentTurn != lastTurn.getAndSet(currentTurn)) {
+                        ByteBuffer lastTurnBytes = getDiscordDB().getInfo(DiscordMeta.TURN, 0);
+                        long lastTurn = lastTurnBytes == null ? 0 : lastTurnBytes.getLong();
 
+                        lastTurn = Math.max(lastTurnTmp, lastTurn);
+                        lastTurnTmp = currentTurn;
 
-                        long currentTurn = TimeUtil.getTurn();
-                        if (currentTurn != lastTurn.getAndSet(currentTurn)) {
-                            ByteBuffer lastTurnBytes = getDiscordDB().getInfo(DiscordMeta.TURN, 0);
-                            long lastTurn = lastTurnBytes == null ? 0 : lastTurnBytes.getLong();
-
-                            lastTurn = Math.max(lastTurnTmp, lastTurn);
-                            lastTurnTmp = currentTurn;
-
-                            if (currentTurn != lastTurn) {
-                                runTurnTasks(lastTurn, currentTurn);
-                            }
+                        if (currentTurn != lastTurn) {
+                            runTurnTasks(lastTurn, currentTurn);
                         }
-                    } catch (Throwable e) {
-                        e.printStackTrace();
                     }
                 }
-            }, 1, 1, TimeUnit.MINUTES);
+            }, 5);
+        }
+
+        addTaskSeconds(() -> {
+            List<Event> events = new ArrayList<>();
+            nationDB.updateMostActiveNations(490, events::add);
+            runEventsAsync(events);
+        }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
+
+        addTaskSeconds(() -> {
+            List<Event> events = new ArrayList<>();
+            nationDB.updateColoredNations(events::add);
+            runEventsAsync(events);
+        }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
+
+        addTaskSeconds(() -> {
+            List<Event> events = new ArrayList<>();
+            nationDB.updateNationsV2(false, events::add);
+            runEventsAsync(events);
+        }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+
+        addTaskSeconds(() -> {
+            List<Event> events = new ArrayList<>();
+            nationDB.updateDirtyCities(events::add);
+            runEventsAsync(events);
+        }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS);
+
+        if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
+            SpyUpdater spyUpdate = new SpyUpdater();
+            addTaskSeconds(() -> {
+
+                spyUpdate.run();
+
+            }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS);
+        }
+
+        if (Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS > 0) {
+            LeavingBeigeAlert beigeAlerter = new LeavingBeigeAlert();
+
+            addTaskSeconds(beigeAlerter::run, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS);
+        }
+
+        addTaskSeconds(() -> {
+            synchronized (warDb) {
+                ArrayDeque<Event> events = new ArrayDeque<>();
+                warDb.updateActiveWars(events::add);
+                warDb.updateAttacks(events::add);
+                runEventsAsync(events);
+            }
+        }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
+
+        addTaskSeconds(() -> {
+            synchronized (warDb) {
+                ArrayDeque<Event> events = new ArrayDeque<>();
+                warDb.updateAllWars(events::add);
+                warDb.updateAttacks(events::add);
+                runEventsAsync(events);
+
+                if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
+                    long start = System.currentTimeMillis();
+                    WarUpdateProcessor.checkActiveConflicts();
+                    long diff = System.currentTimeMillis() - start;
+                    if (diff > 100) {
+                        AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
+                    }
+                }
+            }
+        }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
+
+        checkMailTasks();
+
+        addTaskSeconds(() -> Locutus.imp().getWarDb().updateBountiesV3(), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS);
+
+        addTaskSeconds(() -> getNationDB().updateTreaties(Event::post), Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS);
+
+        if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
+            addTaskSeconds(() -> {
+                BaseballDB db = Locutus.imp().getBaseballDB();
+                Integer minId = db.getMinGameId();
+                if (minId != null) minId++;
+                db.updateGames(true, false, minId, null);
+            }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
         }
 
         if (Settings.INSTANCE.TASKS.TRADE_TASKS.COMPLETED_TRADES_SECONDS > 0) {
             AtomicBoolean updateTradeTask = new AtomicBoolean(false);
-
-            commandManager.getExecutor().scheduleWithFixedDelay(
-                    new TaskLock(() -> {
-                        if (updateTradeTask.getAndSet(false)) {
-                            tradeManager.updateTradeList(false);
-                        }
-                        return true;
-                    }),
-                    4,
-                    1, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleAtFixedRate(new CaughtRunnable() {
-                                                                 @Override
-                                                                 public void runUnsafe() {
-                                                                     updateTradeTask.set(true);
-                                                                 }
-                                                             },
-                    Settings.INSTANCE.TASKS.TRADE_TASKS.COMPLETED_TRADES_SECONDS,
-                    Settings.INSTANCE.TASKS.TRADE_TASKS.COMPLETED_TRADES_SECONDS, TimeUnit.SECONDS);
+            addTaskSeconds(() -> tradeManager.updateTradeList(false),
+                    Settings.INSTANCE.TASKS.TRADE_TASKS.COMPLETED_TRADES_SECONDS);
         }
 
-        if (Settings.INSTANCE.TASKS.WAR_ATTACK_SECONDS > 0) {
-            commandManager.getExecutor().scheduleWithFixedDelay(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        List<Event> events = new ArrayList<>();
-                        warDb.updateWars(true);
-                        warDb.updateAttacks(true);
-
-                        if (Settings.INSTANCE.TASKS.WAR_ATTACKS_ESCALATION_ALERTS) {
-                            long start = System.currentTimeMillis();
-                            WarUpdateProcessor.checkActiveConflicts();
-                            long diff = System.currentTimeMillis() - start;
-                            if (diff > 100) {
-                                AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
-                            }
-                        }
-                    } catch (Throwable e) {
-                        AlertUtil.error("Error fetching wars", e);
-                    }
-                }
-            },
-            Settings.INSTANCE.TASKS.WAR_ATTACK_SECONDS,
-            Settings.INSTANCE.TASKS.WAR_ATTACK_SECONDS, TimeUnit.SECONDS);
-        }
-
-        checkMailTasks();
-
-        if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
-            commandManager.getExecutor().scheduleAtFixedRate(CaughtRunnable.wrap(() -> {
-                try {
-                    Locutus.imp().getWarDb().updateBountiesV3();
-                } catch (Throwable e) {
-                    AlertUtil.error("Could not fetch bounties", e);
-                }
-            }), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, TimeUnit.SECONDS);
-        }
-
-        if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
-            commandManager.getExecutor().scheduleAtFixedRate(CaughtRunnable.wrap(() -> {
-                try {
-                    BaseballDB db = Locutus.imp().getBaseballDB();
-                    Integer minId = db.getMinGameId();
-                    if (minId != null) minId++;
-                    db.updateGames(true, false, minId, null);
-                } catch (Throwable e) {
-                    AlertUtil.error("Could not fetch baseball games", e);
-                }
-            }), Settings.INSTANCE.TASKS.BASEBALL_SECONDS, Settings.INSTANCE.TASKS.BASEBALL_SECONDS, TimeUnit.SECONDS);
-        }
-
-//            CheckAllTradesTask checkCreditTrades = new CheckAllTradesTask(CREDITS);
+        // TODO update to v3
         commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(FOOD),73,60, TimeUnit.SECONDS);
         commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(COAL),73,60, TimeUnit.SECONDS);
         commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(OIL),73,60, TimeUnit.SECONDS);
@@ -682,21 +681,11 @@ public final class Locutus extends ListenerAdapter {
         commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(STEEL),73,60, TimeUnit.SECONDS);
         commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(ALUMINUM),73,60, TimeUnit.SECONDS);
 
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(CREDITS),
-                8,
-                8, TimeUnit.MINUTES);
+        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(CREDITS), 15, 15, TimeUnit.MINUTES);
 
-        commandManager.getExecutor().scheduleWithFixedDelay(CaughtRunnable.wrap(() -> {
-                    TimeUtil.runDayTask(Treaty.class.getSimpleName(), new Function<Long, Boolean>() {
-                        @Override
-                        public Boolean apply(Long aLong) {
-                            getNationDB().updateTreaties(Event::post);
-                            return true;
-                        }
-                    });
-                }),
-                0,
-                2, TimeUnit.HOURS);
+        if (forumDb != null && Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS > 0) {
+            addTaskSeconds(forumDb::update, Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS);
+        }
     }
 
     private void runTurnTasks(long lastTurn, long currentTurn) {
@@ -707,14 +696,22 @@ public final class Locutus extends ListenerAdapter {
                 nation.processTurnChange(lastTurn, currentTurn, Event::post);
             }
 
-
-            // TODO
-            // update spy ops?
-            // update UID
-
             if (Settings.INSTANCE.TASKS.TURN_TASKS.MAP_FULL_ALERT) {
                 // See also  the war update processor has some commented out code for MAPS (near the audit stuff)
                 new MapFullTask().run();
+            }
+
+            {
+                // Update all nations
+
+                List<Event> events = new ArrayList<>();
+                Consumer<Event> eventConsumer = events::add;
+
+                nationDB.updateNationsV2(true, eventConsumer);
+                nationDB.updateMostActiveNations(490, eventConsumer);
+                nationDB.updateAlliances(null, eventConsumer);
+                nationDB.updateTreaties(eventConsumer);
+                nationDB.saveAllCities(); // TODO save all cities
             }
 
             if (Settings.INSTANCE.TASKS.TURN_TASKS.ALLIANCE_METRICS) {

@@ -145,7 +145,10 @@ public class Settings extends Config {
         }
     }
 
-    @Comment("How often in seconds a task is run (set to 0 to disable)")
+    @Comment({
+            "How often in seconds a task is run (set to 0 to disable)",
+            "Note: Politics and war is rate limited. You may experience issues if you run tasks too frequently"
+    })
     public static class TASKS {
         @Create
         public TURN_TASKS TURN_TASKS;
@@ -157,33 +160,52 @@ public class Settings extends Config {
         @Comment("If any turn related tasks are run (default: true)")
         public boolean ENABLE_TURN_TASKS = true;
 
+        @Comment("Fetches most active wars and then attacks (default: 1 minute)")
+        public int ACTIVE_WAR_SECONDS = 60;
+
+        @Comment("Fetches all wars (default 5 minutes)")
+        public int ALL_WAR_SECONDS = 60 * 5;
+
+        @Comment({"If escalation alerts are run every time all wars are updated",
+                "Requires ALL_WAR_SECONDS to be enabled"})
+        public boolean ESCALATION_ALERTS = true;
+
+        @Comment("Fetches most active nations (default 1 minute)")
+        public int ACTIVE_NATION_SECONDS = 60;
+
+        @Comment("Fetches colored nations (default 5 minutes)")
+        public int COLORED_NATIONS_SECONDS = 60 * 5;
+
+        @Comment("Fetches colored nations (default 15 minutes)")
+        public int ALL_NON_VM_NATIONS_SECONDS = 60 * 15;
+
+        @Comment("Fetches outdated cities (default 5 minute)")
+        public int OUTDATED_CITIES_SECONDS = 60 * 5;
+
         @Comment("Runs the pre update beige reminders (default: 61 seconds)")
         public int BEIGE_REMINDER_SECONDS = 61;
 
-        @Comment("Alerts for MMR changes (default 127 minutes)")
-        public int OFFICER_MMR_ALERT_SECONDS = 127 * 60;
         @Comment("What range of top alliances to check the MMR of (default: 80)")
         public int OFFICER_MMR_ALERT_TOP_X = 80;
-
-        @Comment("Fetches wars and then attacks (default 3 minutes)")
-        public int WAR_ATTACK_SECONDS = 60 * 3;
 
         @Comment("Fetches baseball games (default 2 hours)")
         public int BASEBALL_SECONDS = 60 * 60 * 2;
 
-        @Comment("Fetches the bounties (default 1 hour)")
-        public int BOUNTY_UPDATE_SECONDS = 60 * 60;
-        public boolean WAR_ATTACKS_ESCALATION_ALERTS = true;
+        @Comment("Fetches the bounties (default 7 minutes)")
+        public int BOUNTY_UPDATE_SECONDS = 60 * 7;
 
-        @Comment({"Fetches spies in the background via the api (default: false)",
+        @Comment("Fetches the treaties (default 6 minutes)")
+        public int TREATY_UPDATE_SECONDS = 60 * 6;
+
+        @Comment({"Fetches forum comments",
+                "(default: DISABLED, as you can just check the forums with your browser)",
+                "Requires FORUM_FEED_SERVER to be enabled"})
+        public int FORUM_UPDATE_INTERVAL_SECONDS = 0;
+
+        @Comment({"Fetches spies in the background via webscrape (default: disabled)",
                 "If disabled, spies will be fetched when needed",
                 "*Requires setting the `trackspies` coalition in the root server"})
-        public boolean FETCH_SPIES_BACKGROUND_API = false;
-
-        @Comment({"Fetches spies in the background via webscrape (default: false)",
-                "If disabled, spies will be fetched when needed",
-                "*Requires setting the `trackspies` coalition in the root server"})
-        public boolean FETCH_SPIES_BACKGROUND_SCRAPE = false;
+        public int FETCH_SPIES_INTERVAL_SECONDS = 0;
 
         @Comment({"If network UIDs are fetched (for multi checking) (default: false)"})
         public boolean FETCH_UUID = false;
@@ -206,21 +228,17 @@ public class Settings extends Config {
 
         public static class TURN_TASKS {
             public boolean ALLIANCE_METRICS = true;
-
             @Comment("TODO: Not finished")
             public boolean MAP_FULL_ALERT = true;
-            @Comment("Update spy slots on turn change")
-            public boolean SPY_SLOTS = true;
-            @Comment("Update nation policy on turn change")
-            public boolean POLICY = true;
-            @Comment("Update nation projects on turn change")
-            public boolean PROJECT = true;
+
             @Comment({"If bank records should be fetched each turn (default: false)",
                     " - If disabled, records will be fetched on demand"})
             public boolean BANK_RECORDS = false;
-            @Comment({"Update nation cities on turn change (default: true)",
-            " - If disabled, records will be fetched on demand"})
-            public boolean CITIES = true;
+
+            @Comment({"Fetches spies in the background via the api (default: false)",
+                    "If disabled, spies will be fetched when needed",
+                    "*Requires setting the `trackspies` coalition in the root server"})
+            public boolean FETCH_SPIES_BACKGROUND_API = false;
         }
     }
 
@@ -366,7 +384,7 @@ public class Settings extends Config {
         public List<Long> REGISTER_ANYONE = Arrays.asList();
         @Comment({
                 "User ids of people who can `!register` other nations who are applicants in their alliance",
-                "Less abusable version of the above, since applicants aren't typically important that impersonation would be too damagingaaaaaaaaaaa"
+                "Less abusable version of the above, since applicants aren't typically important that impersonation would be too damaging"
         })
         public List<Long> REGISTER_APPLICANTS = Arrays.asList();
 

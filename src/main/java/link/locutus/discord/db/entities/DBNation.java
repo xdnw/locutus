@@ -107,7 +107,7 @@ public class DBNation implements NationOrAlliance {
     private Rank rank;
     private int alliancePosition;
     private Continent continent;
-    private long projects = -1;
+    private long projects;
     private long cityTimer;
     private long projectTimer;
     private long beigeTimer;
@@ -204,6 +204,7 @@ public class DBNation implements NationOrAlliance {
         color = NationColor.BEIGE;
         cities = 1;
         date = System.currentTimeMillis();
+        spies = -1;
     }
 
     public DBNation(DBNation other) {
@@ -450,7 +451,7 @@ public class DBNation implements NationOrAlliance {
 
         if (getActive_m() < 12000) {
             diffMin /= 8;
-            DBWar lastWar = Locutus.imp().getWarDb().getLastWar(0, nation_id);
+            DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(0, nation_id);
             if (lastWar != null) {
                 long warDiff = currentDate - TimeUnit.DAYS.toMillis(240);
                 if (lastWar.date > warDiff) {
@@ -1158,6 +1159,7 @@ public class DBNation implements NationOrAlliance {
         if (this.isBeige() && beigeTimer == 0) {
             this.beigeTimer = TimeUtil.getTurn() + 14 * 12;
         }
+        this.spies = -1;
     }
 
     private Number cast(Number t) {
@@ -1200,7 +1202,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Integer updateSpies(boolean force) {
-        ByteBuffer lastTurn = getMeta(NationMeta.UPDATE_SPIES);
+        ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
         long currentTurn = TimeUtil.getTurn();
 
         if (lastTurn == null ||  lastTurn.getLong() != currentTurn || force) {
@@ -1359,7 +1361,7 @@ public class DBNation implements NationOrAlliance {
         int existing = Locutus.imp().getBankDB().getTransactionsByNationCount(nation_id);
 
         if (existing != records.size()) {
-            Locutus.imp().getBankDB().addTransactions(records2);
+            Locutus.imp().getBankDB().addTransactions(records2, false);
             for (int i = existing; i < records2.size(); i++) {
                 Transaction2 tx = records2.get(i);
                 new TransactionEvent(tx).post();
@@ -1372,7 +1374,7 @@ public class DBNation implements NationOrAlliance {
                     toFix.add(record2);
                 }
             }
-            Locutus.imp().getBankDB().addTransactions(toFix);
+            Locutus.imp().getBankDB().addTransactions(toFix, false);
         }
         return records2;
     }
@@ -3090,66 +3092,13 @@ public class DBNation implements NationOrAlliance {
 
     public boolean lostInactiveWar() {
         if (getActive_m() < 2880) return false;
-        DBWar lastWar = Locutus.imp().getWarDb().getLastWar(nation_id, nation_id);
+        DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, nation_id);
         if (lastWar != null && lastWar.defender_id == nation_id && lastWar.status == WarStatus.ATTACKER_VICTORY) {
             long lastActiveCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(Math.max(active_m() + 1220, 7200));
             if (lastWar.date > lastActiveCutoff) return true;
         }
         return false;
     }
-
-
-//
-//    public DBNation update(Nation pnwNation) {
-//        alliance_id = Integer.parseInt(pnwNation.getAllianceid());
-//        alliance = pnwNation.getAlliance();
-//        nation = pnwNation.getName();
-//        leader = pnwNation.getLeadername();
-//        last_active = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(pnwNation.getMinutessinceactive());
-//        score = MathMan.parseDouble(pnwNation.getScore());
-//        infra = (int) pnwNation.getTotalinfrastructure();
-//        cities = pnwNation.getCities();
-//        avg_infra = (int) (pnwNation.getTotalinfrastructure() / cities);
-//        war_policy = WarPolicy.parse(pnwNation.getWarPolicy());
-//        domestic_policy = DomesticPolicy.parse(pnwNation.getDomesticPolicy());
-//        soldiers = MathMan.parseInt(pnwNation.getSoldiers());
-//        tanks = MathMan.parseInt(pnwNation.getTanks());
-//        aircraft = MathMan.parseInt(pnwNation.getAircraft());
-//        ships = MathMan.parseInt(pnwNation.getShips());
-//        missiles = MathMan.parseInt(pnwNation.getMissiles());
-//        nukes = MathMan.parseInt(pnwNation.getNukes());
-//        vm_turns = MathMan.parseInt(pnwNation.getVmode());
-//        color = NationColor.valueOf(pnwNation.getColor().toUpperCase());
-//        off = pnwNation.getOffensivewars();
-//        def = pnwNation.getDefensivewars();
-//        position = MathMan.parseInt(pnwNation.getAllianceposition());
-////        rank = MathMan.parseInt(pnwNation.getNationrank());
-////        if (this.date == null || this.date == 0) {
-////            // long dateIndex = (days * 65536) + dayIndex;
-////            //
-////            //                boolean wasNull = (nation.getDate() == null);
-////            //                nation.setDate(dateIndex);
-////
-////        }
-//        this.date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(pnwNation.getDaysold());
-//
-//        this.cityTimer = TimeUtil.getTurn() + 120 - pnwNation.getTurns_since_last_city();
-//        this.projectTimer = TimeUtil.getTurn() + 120 - pnwNation.getTurns_since_last_project();
-//        if (pnwNation.getBeigeTurnsLeft() > 0) {
-//            this.beigeTimer = TimeUtil.getTurn() + pnwNation.getBeigeTurnsLeft();
-//        } else {
-//            this.beigeTimer = 0L;
-//        }
-////
-////        for (Project project : Projects.values) {
-////            if (project.get(pnwNation) != 0) {
-////                projects |= (1 << (project.ordinal() + 1));
-////            }
-////        }
-//
-//        Locutus.imp().getNationDB().addNation(this);
-//        return this;
-//    }
 
     @Command
     public long getCityTurns() {
@@ -3942,10 +3891,23 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
-    public int daysSinceLastOffensive() {
+    public double daysSinceLastOffensive() {
+        if (getOff() > 0) return 0;
+        DBWar last = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id);
+        if (last != null) {
+            long diff = System.currentTimeMillis() - last.date;
+            return ((double) diff) / TimeUnit.DAYS.toMillis(1);
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    @Command
+    public double daysSinceLastWar() {
+        if (getNumWars() > 0) return 0;
         DBWar last = Locutus.imp().getWarDb().getLastWar(nation_id);
         if (last != null) {
-            return (int) TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - last.date);
+            long diff = System.currentTimeMillis() - last.date;
+            return ((double) diff) / TimeUnit.DAYS.toMillis(1);
         }
         return Integer.MAX_VALUE;
     }

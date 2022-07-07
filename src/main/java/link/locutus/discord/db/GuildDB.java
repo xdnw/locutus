@@ -524,7 +524,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             return;
         }
         if (transactions.isEmpty()) return;
-        String query = transactions.get(0).createInsert("INTERNAL_TRANSACTIONS2", false);
+        String query = transactions.get(0).createInsert("INTERNAL_TRANSACTIONS2", false, false);
         executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::setNoID);
     }
 
@@ -534,7 +534,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             delegate.addTransaction(tx);
             return;
         }
-        String sql = tx.createInsert("INTERNAL_TRANSACTIONS2", false);
+        String sql = tx.createInsert("INTERNAL_TRANSACTIONS2", false, false);
         update(sql, (ThrowingConsumer<PreparedStatement>) tx::setNoID);
 
         GuildMessageChannel output = getOrNull(Key.ADDBALANCE_ALERT_CHANNEL);

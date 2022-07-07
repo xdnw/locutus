@@ -1,6 +1,9 @@
 package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.*;
+import com.ptsmods.mysqlw.query.QueryCondition;
+import com.ptsmods.mysqlw.query.QueryOrder;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import link.locutus.discord.Locutus;
@@ -583,10 +586,10 @@ public class WarDB extends DBMainV2 {
     }
 
     public boolean updateWars(boolean events) throws IOException {
-        if (!events) return updateWars(null);
+        if (!events || activeWars.isEmpty()) return updateAllWars(null);
 
         ArrayDeque<Event> eventQueue = new ArrayDeque<>();
-        boolean result = updateWars(eventQueue::add);
+        boolean result = updateAllWars(eventQueue::add);
         if (!eventQueue.isEmpty()) {
             Locutus.imp().getExecutor().submit(() -> {
                 for (Event event : eventQueue) {
@@ -597,7 +600,7 @@ public class WarDB extends DBMainV2 {
         return result;
     }
 
-    public boolean updateWars(Consumer<Event> eventConsumer) throws IOException {
+    public boolean updateAllWars(Consumer<Event> eventConsumer) throws IOException {
         List<SWarContainer> wars = Locutus.imp().getPnwApi().getWarsByAmount(5000).getWars();
         List<DBWar> dbWars = new ArrayList<>();
         int minId = Integer.MAX_VALUE;
@@ -607,6 +610,39 @@ public class WarDB extends DBMainV2 {
             dbWars.add(war);
             minId = Math.min(minId, war.warId - 1);
         }
+
+        if (dbWars.isEmpty()) {
+            AlertUtil.error("Unable to fetch wars", new Exception());
+            return false;
+        }
+
+//        TODO;
+        // get min war id from the updated ones
+        // any active war above that id is considered expired
+        // add those expired wars to the array (set expired variable)
+
+        boolean result = updateWars(dbWars, eventConsumer);
+        return result;
+
+    }
+
+    public boolean updateActiveWars(Consumer<Event> eventConsumer) {
+        // Get the 900 most active wars (sorted by nation last active)
+        // Add 100 new war ids above latest
+        // test with v3 api that I can fetch 1000 ids
+
+//        Map<Integer, DBWar> activeWarsById = activeWars.getActiveWarsById();
+//        PoliticsAndWarV3 api = Locutus.imp().getPnwApi().getV3();
+//        api.fetchWarsWithInfo(new Consumer<WarsQueryRequest>() {
+//            @Override
+//            public void accept(WarsQueryRequest r) {
+//                r.setActive(true);
+//            }
+//        });
+        return false;
+    }
+
+    public boolean updateWars(List<DBWar> dbWars, Consumer<Event> eventConsumer) {
         List<DBWar> prevWars = new ArrayList<>();
         List<DBWar> newWars = new ArrayList<>();
         Set<Integer> newWarIds = new LinkedHashSet<>();
@@ -998,7 +1034,7 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public DBWar getLastWar(int attacker, int defender) {
+    public DBWar getLastOffensiveWar(int attacker, int defender) {
         try (PreparedStatement stmt= prepareQuery("select * FROM `wars` WHERE attacker_id = ? OR defender_id = ? ORDER BY DATE DESC LIMIT 1")) {
             stmt.setInt(1, attacker);
             stmt.setInt(2, defender);
@@ -1013,19 +1049,40 @@ public class WarDB extends DBMainV2 {
         return null;
     }
 
-    public DBWar getLastWar(int attacker) {
-        try (PreparedStatement stmt= prepareQuery("select * FROM `wars` WHERE attacker_id = ? ORDER BY DATE DESC LIMIT 1")) {
-            stmt.setInt(1, attacker);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return create(rs);
-                }
+    public DBWar getLastOffensiveWar(int nationId) {
+        List<DBWar> wars = selectWars(s -> s
+                .where(QueryCondition.equals("attacker_id", nationId))
+                .order("date", QueryOrder.OrderDirection.DESC)
+                .limit(1));
+        return wars.isEmpty() ? null : wars.get(0);
+    }
+
+    public DBWar getLastWar(int nationId) {
+        List<DBWar> wars = selectWars(s -> s
+                .where(QueryCondition.equals("attacker_id", nationId).or(QueryCondition.equals("defender_id", nationId)))
+                .order("date", QueryOrder.OrderDirection.DESC)
+                .limit(1));
+        return wars.isEmpty() ? null : wars.get(0);
+    }
+
+
+
+    public List<DBWar> selectWars(Consumer<SelectBuilder> query) {
+        List<DBWar> list = new ArrayList<>();
+        SelectBuilder builder = getDb().selectBuilder("wars")
+                .select("*");
+        if (query != null) query.accept(builder);
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                list.add(create(rs));
             }
+            return list;
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return null;
     }
+
 
     public int getWarsWon(int nationId) {
         String query = "select count(case status when " + WarStatus.ATTACKER_VICTORY.ordinal() + " then 1 else null end) FROM `wars` WHERE (attacker_id = ? OR defender_id = ?)";
@@ -1326,19 +1383,10 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public boolean updateAttacks(boolean events) {
-        if (!events) return updateAttacks(null, false, null);
+    public boolean updateAttacks(Consumer<Event> eventConsumer) {
+        if (eventConsumer == null) return updateAttacks(null, false, null);
 
-        ArrayDeque<Event> eventQueue = new ArrayDeque<>();
-        boolean result = updateAttacks(null, true, eventQueue::add);
-        if (!eventQueue.isEmpty()) {
-            Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : eventQueue) {
-                    event.post();
-                }
-            });
-        }
-        return result;
+        return updateAttacks(null, true, eventConsumer);
     }
 
     private Integer getLatestAttackId() {

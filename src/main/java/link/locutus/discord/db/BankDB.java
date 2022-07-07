@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.BBGame;
+import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.BankrecsQueryRequest;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
@@ -46,33 +47,39 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class BankDB extends DBMainV2 {
-    private final int latestBankRecId;
 
     public BankDB() throws SQLException, ClassNotFoundException {
         super("bank");
-        this.latestBankRecId = 0;
     }
 
-    public void updateNewBankRecs() {
-
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
-
-//        v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+//    public void updateBankRecs(int nationId) {
+//        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+//        List<Bankrec> recs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
 //            @Override
 //            public void accept(BankrecsQueryRequest r) {
-//                r.setMin_id();
-//                r.setOr_type();
+//                r.setOr_id(List.of(nationId));
+//                r.setOr_type(List.of(1)); //1 == nation
 //            }
 //        });
 //
-//        selectTransactions(s -> {
-//            s.order("tx_id", QueryOrder.OrderDirection.DESC);
-//            s.limit(1);
-//        });
-
-
-
-    }
+//
+////        v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+////            @Override
+////            public void accept(BankrecsQueryRequest r) {
+////                r.setMin_id();
+////                r.setOr_type();
+////            }
+////        });
+////
+////        selectTransactions(s -> {
+////            s.order("tx_id", QueryOrder.OrderDirection.DESC);
+////            s.limit(1);
+////        });
+//
+////        addTransaction()
+////
+////        updated = addTransactions(transactions);
+//    }
 
 
     public List<Transaction2> selectTransactions(Consumer<SelectBuilder> query) {
@@ -630,16 +637,16 @@ public class BankDB extends DBMainV2 {
         }
     }
 
-    public int[] addTransactions(List<Transaction2> transactions) {
+    public int[] addTransactions(List<Transaction2> transactions, boolean ignoreInto) {
         if (transactions.isEmpty()) return new int[0];
         invalidateTXCache();
-        String query = transactions.get(0).createInsert("TRANSACTIONS_2", true);
+        String query = transactions.get(0).createInsert("TRANSACTIONS_2", true, ignoreInto);
         return executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::set);
     }
 
-    public int addTransaction(Transaction2 tx) {
+    public int addTransaction(Transaction2 tx, boolean ignoreInto) {
         invalidateTXCache();
-        String sql = tx.createInsert("TRANSACTIONS_2", true);
+        String sql = tx.createInsert("TRANSACTIONS_2", true, ignoreInto);
         return update(sql, (ThrowingConsumer<PreparedStatement>) tx::set);
     }
 
@@ -976,14 +983,14 @@ public class BankDB extends DBMainV2 {
         }
     }
 
-    public void addAllianceTransactions(List<Transaction2> transactions) {
+    public void addAllianceTransactionsLegacy2(List<Transaction2> transactions) {
         if (transactions.isEmpty()) return;
         long now = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(60);
         for (Transaction2 transaction : transactions) {
             if (transaction.tx_datetime > now) throw new IllegalArgumentException("Transaction date is > now: " + transaction.tx_datetime);
         }
 
-        String query = transactions.get(0).createInsert("TRANSACTIONS_ALLIANCE_2", false);
+        String query = transactions.get(0).createInsert("TRANSACTIONS_ALLIANCE_2", false, false);
         executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::setNoID);
     }
 
@@ -1099,7 +1106,7 @@ public class BankDB extends DBMainV2 {
             }
         });
 
-        addAllianceTransactions(transaction2s);
+        addAllianceTransactionsLegacy2(transaction2s);
     }
 
     public void removeAllianceTransactions(int allianceId, long timestamp) {
