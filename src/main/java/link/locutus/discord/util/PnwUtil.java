@@ -140,19 +140,24 @@ public class PnwUtil {
         return "sphere:" + getName(sphereId, true);
     }
 
+    public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
+        return sumNationTransactions(guildDB, tracked, transactionsEntries, false, false, f -> true);
+    }
+
     /**
      * Sum the nation transactions (assumes all transactions are valid and should be added)
      * @param tracked
      * @param transactionsEntries
      * @return
      */
-    public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
+    public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
         Map<DepositType, double[]> result = new HashMap<>();
 
         boolean allowExpiryDefault = (guildDB.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) == Boolean.TRUE) || guildDB.getIdLong() == 790253684537688086L;
         long allowExpiryCutoff = 1635910300000L;
         Predicate<Transaction2> allowExpiry = transaction2 ->
                 allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;
+        if (!forceIncludeExpired) allowExpiry = f -> false;
 
         if (tracked == null) {
             tracked = new HashSet<>();
@@ -166,13 +171,14 @@ public class PnwUtil {
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();
             Transaction2 record = entry.getValue();
+            if (!filter.test(record)) continue;
 
             boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
 
             boolean allowConversion = record.tx_id != -1 && isOffshoreSender;
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
-            PnwUtil.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true);
+            PnwUtil.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored);
         }
         return result;
     }
@@ -262,7 +268,7 @@ public class PnwUtil {
         return true;
     }
 
-    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits) {
+    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored) {
         /*
         allowConversion sender is nation and alliance has conversion enabled
          */
@@ -290,6 +296,12 @@ public class PnwUtil {
                 case "#account":
                     return;
                 case "#ignore":
+                    if (includeIgnored) {
+                        if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                            return;
+                        }
+                        continue;
+                    }
                     return;
                 case "#deposit":
                 case "#deposits":

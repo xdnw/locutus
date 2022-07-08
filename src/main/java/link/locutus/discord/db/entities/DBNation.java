@@ -81,6 +81,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class DBNation implements NationOrAlliance {
@@ -1633,9 +1634,12 @@ public class DBNation implements NationOrAlliance {
      * @return
      */
     public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff) {
+        return getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff, false, false, f -> true);
+    }
+    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
         long start = System.currentTimeMillis();
         List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, cutOff);
-        Map<DepositType, double[]> sum = PnwUtil.sumNationTransactions(db, tracked, transactions);
+        Map<DepositType, double[]> sum = PnwUtil.sumNationTransactions(db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
         return sum;
     }
 

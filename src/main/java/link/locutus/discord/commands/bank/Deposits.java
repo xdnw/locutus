@@ -50,11 +50,13 @@ public class Deposits extends Command {
     @Override
     public String desc() {
         return "Calculate a nations deposits/loans/taxes\n" +
-                "Add `-b` to not subtract base taxes\n" +
+                "Add `-b` to include base taxes\n" +
                 "Add `-o` to not include any manual offset\n" +
                 "Add e.g. `\"date>05/01/2019 11:21 pm\"` to filter by date\n" +
                 "Add `-l` to only include the largest positive value of each rss in the total\n" +
-                "Add `-t` to show taxes separately\n\n" +
+                "Add `-i` to include nation transfers with #ignore\n" +
+                "Add `-e` to include expired nation transfers\n" +
+                "Add `-t` to show taxes separately (See flag: `-b` and `!synctaxes`)\n\n" +
                 "Note: Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "synctaxes` to update tax records\n" +
                 "Add `-d` to show results in dm"
                 ;
@@ -81,6 +83,9 @@ public class Deposits extends Command {
         if (banker == null) {
             return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
         }
+        String requiredNote = DiscordUtil.parseArg(args, "note");
+        boolean includeIgnored = flags.contains('i');
+        boolean includeExpired = flags.contains('e');
 
         banker.setMeta(NationMeta.INTERVIEW_DEPOSITS, (byte) 1);
 
@@ -180,7 +185,15 @@ public class Deposits extends Command {
                 if (split.size() == 1) requiredUser = nation;
                 if (nation.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild)) return "You do not have permission to check other nation's deposits";
 
-                Map<DepositType, double[]> nationDepo = nation.getDeposits(guildDb, tracked, !flags.contains('b'), !flags.contains('o'), 0L, cutOff);
+                Map<DepositType, double[]> nationDepo = nation.getDeposits(guildDb,
+                        tracked,
+                        !flags.contains('b'),
+                        !flags.contains('o'),
+                        0L,
+                        cutOff,
+                        includeIgnored,
+                        includeExpired,
+                        f -> requiredNote == null || (f.note == null || f.note.toLowerCase().contains(requiredNote.toLowerCase())));
                 accountDeposits.put(nation.getNation(), nationDepo);
             }
         }
