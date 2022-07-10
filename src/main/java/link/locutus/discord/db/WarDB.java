@@ -1640,7 +1640,7 @@ public class WarDB extends DBMainV2 {
             NationUpdateProcessor.updateBlockades();
             long diff = System.currentTimeMillis() - start;
 
-            if (diff > 100) {
+            if (diff > 200) {
                 AlertUtil.error("Took too long to update blockades (" + diff + "ms)", new Exception());
             }
 

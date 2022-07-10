@@ -12,6 +12,8 @@ import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
+import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.entities.DBCity;
@@ -1075,6 +1077,28 @@ public class NationDB extends DBMainV2 {
         if (!dirtyCities.isEmpty()) {
             saveCities(dirtyCities);
         }
+    }
+
+    public void subscribeCities(PnwPusherHandler pusher) {
+        pusher.connect()
+                .subscribeBuilder(City.class, PnwPusherEvent.UPDATE)
+                .build(cities -> {
+                    DBCity buffer = new DBCity();
+                    AtomicBoolean dirtyFlag = new AtomicBoolean();
+                    ArrayDeque<Event> events = new ArrayDeque<>();
+                    List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
+
+                    for (City city : cities) {
+                        dirtyFlag.set(false);
+                        DBCity dbCity = processCityUpdate(city, buffer, events::add, dirtyFlag);
+                        if (dirtyFlag.get()) {
+                            dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
+                        }
+                    }
+
+                    saveCities(dirtyCities);
+                    Locutus.imp().runEventsAsync(events);
+                });
     }
 
     private void deleteCitiesInDB(Set<Integer> ids) {

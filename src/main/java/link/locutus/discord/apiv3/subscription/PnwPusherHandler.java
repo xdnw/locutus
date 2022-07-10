@@ -50,6 +50,7 @@ public class PnwPusherHandler {
         this.key = key;
 
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        DateFormat df2 = new SimpleDateFormat("yyyy-MM-dd");
         this.objectMapper = Jackson2ObjectMapperBuilder.json().featuresToEnable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS).dateFormat(df).build();
         SimpleModule module = new SimpleModule();
         module.addDeserializer(Instant.class, new JsonDeserializer<Instant>() {
@@ -57,6 +58,16 @@ public class PnwPusherHandler {
             public Instant deserialize(com.fasterxml.jackson.core.JsonParser p, DeserializationContext ctxt) throws IOException, JacksonException {
                 try {
                     return df.parse(p.getText()).toInstant();
+                } catch (ParseException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        module.addDeserializer(Date.class, new JsonDeserializer<Date>() {
+            @Override
+            public Date deserialize(com.fasterxml.jackson.core.JsonParser p, DeserializationContext ctxt) throws IOException, JacksonException {
+                try {
+                    return df2.parse(p.getText());
                 } catch (ParseException e) {
                     throw new RuntimeException(e);
                 }
@@ -145,8 +156,14 @@ public class PnwPusherHandler {
             this.key = apiKey;
             this.parser = new JsonParser();
             this.type = type;
+            this.bulk = true;
         }
 
+        /**
+         * If events are bulk events or single (defaults to bulk)
+         * @param bulk
+         * @return
+         */
         public PnwPusherBuilder<T> setBulk(boolean bulk) {
             this.bulk = bulk;
             return this;

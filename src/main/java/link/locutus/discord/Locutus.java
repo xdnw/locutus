@@ -1,6 +1,9 @@
 package link.locutus.discord;
 
+import com.politicsandwar.graphql.model.City;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
+import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.Noformat;
@@ -86,6 +89,7 @@ public final class Locutus extends ListenerAdapter {
     private final CommandManager commandManager;
     private final Logger logger;
     private final StockDB stockDB;
+    private PnwPusherHandler pusher;
     private ForumDB forumDb;
 
     private final String primaryKey;
@@ -135,6 +139,10 @@ public final class Locutus extends ListenerAdapter {
         }
         if (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.matches("[._~]")) {
             throw new IllegalStateException("LEGACY_COMMAND_PREFIX cannot be `.` or `_` or `~` in " + Settings.INSTANCE.getDefaultFile());
+        }
+
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
+            this.pusher = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY);
         }
 
         this.logger = Logger.getLogger("LOCUTUS");
@@ -302,6 +310,9 @@ public final class Locutus extends ListenerAdapter {
             }
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
+            }
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
+                initSubscriptions();
             }
 
             for (long guildId : Settings.INSTANCE.MODERATION.BANNED_GUILDS) {
@@ -557,6 +568,18 @@ public final class Locutus extends ListenerAdapter {
         });
     }
 
+    public PnwPusherHandler getPusher() {
+        return pusher;
+    }
+
+    public void initSubscriptions() {
+        if (pusher == null) return;
+
+        if (Settings.INSTANCE.TASKS.SUBSCRIPTIONS.CITIES) {
+            nationDB.subscribeCities(pusher);
+        }
+    }
+
     public void initRepeatingTasks() {
         if ((Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0) && nationDB.getNations().isEmpty()) {
             logger.info("No nations found. Updating all nations");
@@ -629,6 +652,8 @@ public final class Locutus extends ListenerAdapter {
             synchronized (warDb) {
                 ArrayDeque<Event> events = new ArrayDeque<>();
                 warDb.updateActiveWars(events::add);
+                runEventsAsync(events);
+                events = new ArrayDeque<>();
                 warDb.updateAttacks(events::add);
                 runEventsAsync(events);
             }
@@ -638,6 +663,9 @@ public final class Locutus extends ListenerAdapter {
             synchronized (warDb) {
                 ArrayDeque<Event> events = new ArrayDeque<>();
                 warDb.updateAllWars(events::add);
+                runEventsAsync(events);
+
+                events = new ArrayDeque<>();
                 warDb.updateAttacks(events::add);
                 runEventsAsync(events);
 

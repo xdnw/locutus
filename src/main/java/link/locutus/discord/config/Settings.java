@@ -110,6 +110,10 @@ public class Settings extends Config {
                 " - See the task section to disable/adjust individual tasks"})
         public boolean REPEATING_TASKS = true;
 
+        @Comment({"Should any repeating tasks be enabled",
+                " - See the task section to disable/adjust individual tasks"})
+        public boolean SUBSCRIPTIONS = true;
+
         @Comment("If P&W events should be enabled")
         public boolean EVENTS = true;
 
@@ -119,6 +123,7 @@ public class Settings extends Config {
         public void disableTasks() {
             CREATE_DATABASES_ON_STARTUP = false;
             REPEATING_TASKS = false;
+            SUBSCRIPTIONS = false;
         }
 
         public void disableListeners() {
@@ -150,11 +155,6 @@ public class Settings extends Config {
             "Note: Politics and war is rate limited. You may experience issues if you run tasks too frequently"
     })
     public static class TASKS {
-        @Create
-        public TURN_TASKS TURN_TASKS;
-        @Create
-        public ConfigBlock<MAIL> MAIL;
-
         @Comment("If any turn related tasks are run (default: true)")
         public boolean ENABLE_TURN_TASKS = true;
 
@@ -215,6 +215,15 @@ public class Settings extends Config {
         @Comment({"If network UIDs are fetched automatically (for multi checking) (disabled by default, since it is slow and uses web scraping)"})
         public boolean AUTO_FETCH_UID = false;
 
+        @Create
+        public TURN_TASKS TURN_TASKS;
+
+        @Create
+        public SUBSCRIPTIONS SUBSCRIPTIONS;
+
+        @Create
+        public ConfigBlock<MAIL> MAIL;
+
         @Comment({"Fetch ingame mail of an authenticated nation and post it to a channel",
                 "Set the values to 0 to disable",
                 "Copy the default block for multiple users",
@@ -224,6 +233,10 @@ public class Settings extends Config {
             public int NATION_ID = 189573;
             public int FETCH_INTERVAL_SECONDS = 62;
             public long CHANNEL_ID = 674505503400919040L;
+        }
+
+        public static class SUBSCRIPTIONS {
+            public boolean CITIES = true;
         }
 
         public static class TURN_TASKS {
