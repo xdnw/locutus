@@ -712,7 +712,7 @@ public class WarDB extends DBMainV2 {
                 }
             }
             if (notDeleted > 0) {
-                AlertUtil.error("Unable to fetch " + activeWarsToFetch.size() + "/" + numActive + " active wars:", new RuntimeException("Assuming these wars correspond to deleted nations"));
+                AlertUtil.error("Unable to fetch " + notDeleted + "/" + numActive + " active wars:", new RuntimeException("Assuming these wars correspond to deleted nations:\n" + StringMan.getString(activeWarsToFetch)));
             }
         }
 
@@ -1495,7 +1495,7 @@ public class WarDB extends DBMainV2 {
         PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
         // Dont run events if attacks are > 1 day old
         if (latest == null || latest.epoch < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
-
+            System.out.println("No recent attack data in DB. Updating attacks without event handling");
             v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
                 @Override
                 public boolean test(WarAttack v3Attack) {
@@ -1641,7 +1641,7 @@ public class WarDB extends DBMainV2 {
             long diff = System.currentTimeMillis() - start;
 
             if (diff > 100) {
-                AlertUtil.error("Took too long to update blockades", new Exception());
+                AlertUtil.error("Took too long to update blockades (" + diff + "ms)", new Exception());
             }
 
             for (DBAttack attack : dbAttacks) {

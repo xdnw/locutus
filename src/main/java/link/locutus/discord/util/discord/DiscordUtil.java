@@ -235,7 +235,7 @@ public class DiscordUtil {
         boolean hasPrev = page > 0;
         boolean hasNext = page < maxPage;
 
-        String identifier = command.charAt(0) == '!' ? "page:" : "-p ";
+        String identifier = command.charAt(0) == Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.charAt(0) ? "page:" : "-p ";
 
         String cmdCleared = command.replaceAll(identifier + "[0-9]+", "");
         if (inline) cmdCleared = "~" + cmdCleared;
