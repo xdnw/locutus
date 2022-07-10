@@ -234,7 +234,7 @@ public class NationDB extends DBMainV2 {
                         if (alliance.getLastUpdated() > nation.lastActiveMs()) continue;
                         for (AlliancePermission perm : requiredPerms) {
                             DBAlliancePosition position = nation.getAlliancePosition();
-                            if (!position.hasPermission(perm)) continue middle;
+                            if (position == null || !position.hasPermission(perm)) continue middle;
                         }
                     }
                     if (allianceIds.add(nation.getAlliance_id())) {
