@@ -80,4 +80,15 @@ public class ActiveWarHandler {
             return wars == null ? Collections.emptyList() : Arrays.asList(wars);
         }
     }
+
+    public DBWar getWar(int warId) {
+        synchronized (activeWars) {
+            for (DBWar[] nationWars : activeWars.values()) {
+                for (DBWar war : nationWars) {
+                    if (war.warId == warId) return war;
+                }
+            }
+        }
+        return null;
+    }
 }

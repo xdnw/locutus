@@ -688,11 +688,32 @@ public class WarDB extends DBMainV2 {
 
         List<DBWar> dbWars = wars.stream().map(DBWar::new).collect(Collectors.toList());
         updateWars(dbWars, eventConsumer);
+        int numActive = activeWarsToFetch.size();
         for (DBWar war : dbWars) {
             activeWarsToFetch.remove(war.getWarId());
         }
         if (activeWarsToFetch.size() > 0) {
-            AlertUtil.error("Unable to fetch " + activeWarsToFetch.size() + " active wars", new Exception());
+            int notDeleted = 0;
+            for (int warId : activeWarsToFetch) {
+                DBWar war = activeWars.getWar(warId);
+                if (war == null) {
+                    // no issue
+                    continue;
+                }
+                if (war.getNation(true) != null && war.getNation(false) != null) {
+                    notDeleted++;
+                }
+                DBWar copy = new DBWar(war);
+                war.status = WarStatus.EXPIRED;
+                activeWars.makeWarInactive(war);
+                saveWars(Collections.singleton(war));
+                if (eventConsumer != null) {
+                    eventConsumer.accept(new WarStatusChangeEvent(copy, war));
+                }
+            }
+            if (notDeleted > 0) {
+                AlertUtil.error("Unable to fetch " + activeWarsToFetch.size() + "/" + numActive + " active wars:", new RuntimeException("Assuming these wars correspond to deleted nations"));
+            }
         }
 
         return true;
