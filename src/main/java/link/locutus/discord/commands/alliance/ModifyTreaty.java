@@ -53,7 +53,8 @@ public class ModifyTreaty extends Command {
         if (auth == null) return "No authentication enabled for this guild";
 
         List<PendingTreaty> treaties = auth.getTreaties();
-        treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
+        if (!value) treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
+        if (value) treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);
         treaties.removeIf(treaty -> treaty.getFromId() != treatyOrAAId && treaty.getToId() != treatyOrAAId && treaty.getId() != treatyOrAAId);
         if (treaties.isEmpty()) return "There are no active treaties";
 
@@ -63,7 +64,7 @@ public class ModifyTreaty extends Command {
             if (!admin && treaty.getType().getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
                 return "You need to be an admin to cancel a defensive treaty";
             }
-            return auth.modifyTreaty(treaty.getId(), false);
+            return auth.modifyTreaty(treaty.getId(), value);
         }
         return "No treaty found";
     }

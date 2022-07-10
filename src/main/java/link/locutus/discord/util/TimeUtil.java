@@ -145,6 +145,7 @@ public class TimeUtil {
             String letters = value.replaceAll("[^a-z]", "");
             switch (letters) {
                 case "month(s)":
+                case "months":
                     time += TimeUnit.DAYS.toSeconds(30) * nums;
                     break;
                 case "week":
