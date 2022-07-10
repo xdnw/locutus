@@ -2,22 +2,18 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.db.GuildHandler;
-import link.locutus.discord.commands.war.WarCategory;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.nation.NationBlockadedEvent;
-import link.locutus.discord.event.city.CityCreateEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.nation.NationUnblockadedEvent;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.AuditType;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -27,16 +23,11 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.trade.Offer;
-import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -53,20 +44,17 @@ import org.jsoup.nodes.Document;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class NationUpdateProcessor {
@@ -259,10 +247,18 @@ public class NationUpdateProcessor {
             activeMinute = (activeMinute / 60_000) * 60_000;
             Locutus.imp().getNationDB().setSpyActivity(nation.getNation_id(), nation.getProjectBitMask(), nation.getSpies(), activeMinute, nation.getWarPolicy());
 
-
             {
                 long activeTurn = TimeUtil.getTurn(nation.lastActiveMs());
                 Locutus.imp().getNationDB().setActivity(nation.getNation_id(), activeTurn);
+            }
+
+            if (previous.active_m() > 240 && Settings.INSTANCE.TASKS.AUTO_FETCH_UID) {
+                Locutus.imp().getExecutor().submit(new CaughtRunnable() {
+                    @Override
+                    public void runUnsafe() throws Exception {
+                        nation.fetchUid();
+                    }
+                });
             }
         }
     }
@@ -271,11 +267,11 @@ public class NationUpdateProcessor {
     public void onNationCreate(NationCreateEvent event) {
         DBNation current = event.getCurrent();
 
-        {
-            int rerollId = current.isReroll();
+        // Reroll alerts (run on another thread since fetching UID takes time)
+        Locutus.imp().getExecutor().submit(() -> {
+            int rerollId = current.isReroll(true);
             if (rerollId > 0) {
                 ZonedDateTime yesterday = ZonedDateTime.now(ZoneOffset.UTC).minusDays(1);
-                String dateStr = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(yesterday);
 
 
                 String title = "Detected reroll: " + current.getNation();
@@ -291,7 +287,7 @@ public class NationUpdateProcessor {
                     }
                 });
             }
-        }
+        });
     }
 
     @Subscribe
@@ -488,8 +484,9 @@ public class NationUpdateProcessor {
     private boolean raidAlert(DBNation defender) {
         if (defender.getDef() > 2) return false;
         if (defender.getActive_m() > 260 * 60 * 24) return false;
+        if (defender.isBeige()) return false;
         double loot = defender.lootTotal();
-        if (loot < 10000000 || defender.isBeige()) {
+        if (loot < 10000000) {
             return false;
         }
         String msg = defender.toMarkdown(true, true, true, true, false);
@@ -583,8 +580,16 @@ public class NationUpdateProcessor {
         checkOfficerChange(previous, current);
 
         checkExodus(previous, current);
+        Rank rank = previous.getPositionEnum();
+        if (rank == Rank.MEMBER) {
+            DBAlliancePosition position = previous.getAlliancePosition();
+            if (position != null) {
+                if (position.hasAnyOfficerPermissions()) rank = Rank.OFFICER;
+                if (position.hasPermission(AlliancePermission.PROMOTE_SELF_TO_LEADER)) rank = Rank.HEIR;
+            }
+        }
 
-        Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), System.currentTimeMillis(), Rank.byId(previous.getPosition()));
+        Locutus.imp().getNationDB().addRemove(current.getNation_id(), previous.getAlliance_id(), System.currentTimeMillis(), rank);
     }
 
     @Subscribe

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
@@ -66,9 +67,9 @@ public class MailCommand extends Command implements Noformat {
                     if (!hasPerms) return "You do not have permission to reply to this message";
                 } else {
                     try {
-                        auth = me.getAuth(Roles.INTERNAL_AFFAIRS);
+                        auth = me.getAuth();
                     } catch (IllegalArgumentException e) {
-                        auth = db.getAuth();
+                        auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
                         if (auth == null) throw e;
                     }
                 }

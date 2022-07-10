@@ -10,7 +10,7 @@ public class Event {
         Locutus.post(this);
         long diff = System.currentTimeMillis() - start;
         if (diff > 100) {
-            AlertUtil.error("Event took too long (" + diff + "ms)", new Exception());
+            AlertUtil.error(this.getClass().getSimpleName() + " took too long (" + diff + "ms)", new Exception());
         }
     }
 

@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
+import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -127,6 +128,23 @@ public enum ResourceType {
 
     public static double[] getBuffer() {
         return new double[ResourceType.values.length];
+    }
+
+    public static double[] fromApiV3(Bankrec rec, double[] buffer) {
+        double[] resources = buffer == null ? getBuffer() : buffer;
+        resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
+        resources[ResourceType.COAL.ordinal()] = rec.getCoal();
+        resources[ResourceType.OIL.ordinal()] = rec.getOil();
+        resources[ResourceType.URANIUM.ordinal()] = rec.getUranium();
+        resources[ResourceType.IRON.ordinal()] = rec.getIron();
+        resources[ResourceType.BAUXITE.ordinal()] = rec.getBauxite();
+        resources[ResourceType.LEAD.ordinal()] = rec.getLead();
+        resources[ResourceType.GASOLINE.ordinal()] = rec.getGasoline();
+        resources[ResourceType.MUNITIONS.ordinal()] = rec.getMunitions();
+        resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
+        resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
+        resources[ResourceType.FOOD.ordinal()] = rec.getFood();
+        return resources;
     }
 
     private final double baseProduction;

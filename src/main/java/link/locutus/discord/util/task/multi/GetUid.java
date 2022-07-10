@@ -12,6 +12,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.concurrent.Callable;
 
@@ -24,7 +25,7 @@ public class GetUid implements Callable<BigInteger> {
         this.nation = nation;
     }
     @Override
-    public BigInteger call() throws Exception {
+    public BigInteger call() throws IOException {
         String url = nation.getNationUrl();
         String html = FileUtil.readStringFromURL(url);
 

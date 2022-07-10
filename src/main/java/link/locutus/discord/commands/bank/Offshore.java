@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
@@ -68,7 +69,7 @@ public class Offshore extends Command {
         else note = "#tx_id=" + UUID.randomUUID();
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
         if (auth == null) return "No authentication enabled for this guild";
         OffshoreInstance offshore = db.getOffshore();
         int from = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);

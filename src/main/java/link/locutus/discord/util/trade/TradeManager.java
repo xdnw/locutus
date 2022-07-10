@@ -77,6 +77,14 @@ public class TradeManager {
 
         long cutOff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         List<Offer> trades = getTradeDb().getOffers(cutOff);
+        if (trades.isEmpty() && Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
+            try {
+                updateTradeList(true, false);
+                trades = getTradeDb().getOffers(cutOff);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = getAverage(trades);
         lowAvg = PnwUtil.resourcesToArray(averages.getKey());
@@ -499,7 +507,7 @@ public class TradeManager {
         return stockPile.getOrDefault(ResourceType.MONEY, 0d);
     }
 
-    public synchronized boolean updateTradeList(boolean force) throws IOException {
+    public synchronized boolean updateTradeList(boolean force, boolean alerts) throws IOException {
         List<TradeContainer> trades = new ArrayList<>();
         if (force) {
             for (ResourceType type : ResourceType.values) {
@@ -518,7 +526,7 @@ public class TradeManager {
         for (TradeContainer trade : trades) {
             Offer offer = new Offer(trade);
 
-            if (offer.getTradeId() > latestId) {
+            if (offer.getTradeId() > latestId && alerts) {
                 handleTradeAlerts(offer, alertedNations);
             }
             offers.add(offer);

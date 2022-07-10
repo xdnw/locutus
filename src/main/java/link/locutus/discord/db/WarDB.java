@@ -46,6 +46,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -604,42 +605,97 @@ public class WarDB extends DBMainV2 {
         List<SWarContainer> wars = Locutus.imp().getPnwApi().getWarsByAmount(5000).getWars();
         List<DBWar> dbWars = new ArrayList<>();
         int minId = Integer.MAX_VALUE;
+        int maxId = 0;
         for (SWarContainer container : wars) {
             if (container == null) continue;
             DBWar war = new DBWar(container);
             dbWars.add(war);
-            minId = Math.min(minId, war.warId - 1);
+            minId = Math.min(minId, war.warId);
+            maxId = Math.max(maxId, war.warId);
         }
 
         if (dbWars.isEmpty()) {
             AlertUtil.error("Unable to fetch wars", new Exception());
             return false;
         }
+        Set<Integer> fetchedWarIds = dbWars.stream().map(DBWar::getWarId).collect(Collectors.toSet());
+        Map<Integer, DBWar> activeWarsById = activeWars.getActiveWarsById();
 
-//        TODO;
-        // get min war id from the updated ones
-        // any active war above that id is considered expired
-        // add those expired wars to the array (set expired variable)
+        // Find deleted wars
+        for (int id = minId; id <= maxId; id++) {
+            if (fetchedWarIds.contains(id)) continue;
+            DBWar war = activeWarsById.get(id);
+            if (war == null) continue;
+
+            DBWar newWar = new DBWar(war);
+            newWar.status = WarStatus.EXPIRED;
+            dbWars.add(newWar);
+        }
 
         boolean result = updateWars(dbWars, eventConsumer);
         return result;
 
     }
 
-    public boolean updateActiveWars(Consumer<Event> eventConsumer) {
-        // Get the 900 most active wars (sorted by nation last active)
-        // Add 100 new war ids above latest
-        // test with v3 api that I can fetch 1000 ids
+    public boolean updateActiveWars(Consumer<Event> eventConsumer) throws IOException {
+        if (activeWars.isEmpty()) {
+            return updateAllWars(eventConsumer);
+        }
+        int newWarsToFetch = 100;
+        int numToUpdate = Math.min(999, PoliticsAndWarV3.WARS_PER_PAGE);
 
-//        Map<Integer, DBWar> activeWarsById = activeWars.getActiveWarsById();
-//        PoliticsAndWarV3 api = Locutus.imp().getPnwApi().getV3();
-//        api.fetchWarsWithInfo(new Consumer<WarsQueryRequest>() {
-//            @Override
-//            public void accept(WarsQueryRequest r) {
-//                r.setActive(true);
-//            }
-//        });
-        return false;
+        List<DBWar> mostActiveWars = new ArrayList<>(activeWars.getActiveWars());
+        if (mostActiveWars.isEmpty()) return false;
+
+        int latestWarId = 0;
+
+        Function<DBWar, Long> getLastActive = war -> {
+            DBNation nat1 = war.getNation(true);
+            DBNation nat2 = war.getNation(false);
+            return Math.max(nat1 == null ? 0 : nat1.lastActiveMs(), nat2 == null ? 0 : nat2.lastActiveMs());
+        };
+        mostActiveWars.sort((o1, o2) -> Long.compare(getLastActive.apply(o2), getLastActive.apply(o1)));
+
+        List<Integer> warIdsToUpdate = new ArrayList<>(999);
+        for (DBWar war : mostActiveWars) latestWarId = Math.max(latestWarId, war.warId);
+
+
+        for (int i = latestWarId + 1; i <= latestWarId + newWarsToFetch; i++) {
+            warIdsToUpdate.add(i);
+        }
+
+        Set<Integer> activeWarsToFetch = new HashSet<>();
+
+        for (int i = 0; i < mostActiveWars.size(); i++) {
+            int warId = mostActiveWars.get(i).getWarId();
+            warIdsToUpdate.add(warId);
+            activeWarsToFetch.add(warId);
+            if (warIdsToUpdate.size() >= numToUpdate) break;
+        }
+
+        Collections.sort(warIdsToUpdate);
+
+        PoliticsAndWarV3 api = Locutus.imp().getPnwApi().getV3();
+        List<War> wars = api.fetchWarsWithInfo(r -> {
+            r.setId(warIdsToUpdate);
+            r.setActive(false); // needs to be set otherwise inactive wars wont be fetched
+        });
+
+        if (wars.isEmpty()) {
+            AlertUtil.error("Failed to fetch wars", new Exception());
+            return false;
+        }
+
+        List<DBWar> dbWars = wars.stream().map(DBWar::new).collect(Collectors.toList());
+        updateWars(dbWars, eventConsumer);
+        for (DBWar war : dbWars) {
+            activeWarsToFetch.remove(war.getWarId());
+        }
+        if (activeWarsToFetch.size() > 0) {
+            AlertUtil.error("Unable to fetch " + activeWarsToFetch.size() + " active wars", new Exception());
+        }
+
+        return true;
     }
 
     public boolean updateWars(List<DBWar> dbWars, Consumer<Event> eventConsumer) {
@@ -1083,6 +1139,22 @@ public class WarDB extends DBMainV2 {
         }
     }
 
+    public List<DBAttack> selectAttacks(Consumer<SelectBuilder> query) {
+        List<DBAttack> list = new ArrayList<>();
+        SelectBuilder builder = getDb().selectBuilder("attacks2")
+                .select("*");
+        if (query != null) query.accept(builder);
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                list.add(createAttack(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
 
     public int getWarsWon(int nationId) {
         String query = "select count(case status when " + WarStatus.ATTACKER_VICTORY.ordinal() + " then 1 else null end) FROM `wars` WHERE (attacker_id = ? OR defender_id = ?)";
@@ -1389,26 +1461,37 @@ public class WarDB extends DBMainV2 {
         return updateAttacks(null, true, eventConsumer);
     }
 
-    private Integer getLatestAttackId() {
-        try (PreparedStatement stmt= prepareQuery("select war_attack_id FROM attacks2 ORDER BY war_attack_id DESC LIMIT 1")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return rs.getInt("war_attack_id");
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return null;
+    private DBAttack getLatestAttack() {
+        List<DBAttack> attacks = selectAttacks(s -> s.order("war_attack_id", QueryOrder.OrderDirection.DESC).limit(1));
+        return attacks.isEmpty() ? null : attacks.get(0);
     }
 
     public synchronized boolean updateAttacks(Integer maxId, boolean runAlerts, Consumer<Event> eventConsumer) {
-        if (maxId == null) maxId = getLatestAttackId();
+        DBAttack latest = getLatestAttack();
+        if (maxId == null) maxId = latest == null ? null : latest.war_attack_id;
         if (maxId == null || maxId == 0) runAlerts = false;
 
+        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        // Dont run events if attacks are > 1 day old
+        if (latest == null || latest.epoch < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
 
-        List<DBAttack> newAttacks = Locutus.imp().getPnwApi().getV3()
-                .fetchAttacksSince(maxId).stream().map(DBAttack::new)
+            v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
+                @Override
+                public boolean test(WarAttack v3Attack) {
+                    DBAttack attack = new DBAttack(v3Attack);
+
+                    updateLootEstimate(attack, allianceBankEstimateCache, nationLootEstimateCache);
+                    // TODO fetch infra
+
+                    saveAttacks(Collections.singleton(attack));
+                    return false;
+                }
+            });
+            return true;
+        }
+
+        List<DBAttack> newAttacks = v3
+                .fetchAttacksSince(maxId, f -> true).stream().map(DBAttack::new)
                 .collect(Collectors.toList());
 
         Map<DBAttack, Double> attackInfraPctMembers = new HashMap<>();
@@ -1475,7 +1558,7 @@ public class WarDB extends DBMainV2 {
             {
                 if (attack.attack_type == AttackType.VICTORY && attack.infraPercent_cached > 0) {
                     DBNation defender = Locutus.imp().getNationDB().getNation(attack.defender_nation_id);
-                    DBWar war = Locutus.imp().getWarDb().getWar(attack.getWar_id());
+                    DBWar war = getWar(attack.getWar_id());
                     if (war != null) {
                         war.status = attack.victor == attack.attacker_nation_id ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
                         warsToSave.add(war);

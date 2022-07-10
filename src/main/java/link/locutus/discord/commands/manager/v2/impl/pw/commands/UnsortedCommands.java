@@ -248,7 +248,7 @@ public class UnsortedCommands {
                 OffshoreInstance offshore = db.getOffshore();
                 if (offshore == null) return "You have no offshore";
                 if (!Roles.MEMBER.has(author, Locutus.imp().getServer()) && existingAuth != null && existingAuth.isValid() && existingAuth.getNation().getPosition() >= Rank.OFFICER.id && existingAuth.getNationId() != me.getNation_id())
-                    return "An officer is already connected";
+                    return "An officer is already connected: `" + PnwUtil.getName(existingAuth.getNationId(), false);
             }
 
             Auth auth = new Auth(me.getNation_id(), username, password);

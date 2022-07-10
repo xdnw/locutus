@@ -44,7 +44,7 @@ public class ApiKeyPool {
     }
 
     public synchronized void removeKey(String key) {
-        if (apiKeyPool.size() == 1) throw new IllegalArgumentException("Cannot remove last remaining key");
+        if (apiKeyPool.size() == 1) throw new IllegalArgumentException("Invalid API key");
         this.apiKeyPool.removeIf(f -> f.equalsIgnoreCase(key));
     }
 

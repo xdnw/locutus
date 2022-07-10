@@ -53,7 +53,7 @@ public class MoneyTrades extends Command {
         long cuttOff = System.currentTimeMillis() - timeDiff;
 
         if (flags.contains('f')) {
-            Locutus.imp().getTradeManager().updateTradeList(false);
+            Locutus.imp().getTradeManager().updateTradeList(false, true);
         }
 
         Map<Integer, Map<ResourceType, Long>> netInflows = new HashMap<>();

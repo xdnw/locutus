@@ -49,7 +49,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding
     @IsAuthenticated
     public boolean isAuthenticated(@Me GuildDB db, IsAuthenticated perm) {
-        Auth auth = perm.value().length > 0 ? db.getAuth(perm.value()[0].id) : db.getAuth();
+        Auth auth = perm.value().length > 0 ? db.getAuth(perm.value()) : db.getAuth();
         if (auth == null || !auth.isValid()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID`");
         return true;
     }

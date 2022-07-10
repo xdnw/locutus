@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.politicsandwar.graphql.model.Nation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.entities.BankRecord;
@@ -64,7 +65,6 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -793,20 +793,20 @@ public class DBNation implements NationOrAlliance {
             dirty = true;
         }
 
-        if (nation.getNation() != null && !this.nation.equals(nation.getNation())) {
+        if (nation.getNation() != null && (this.getNation() == null || !this.nation.equals(nation.getNation()))) {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
             this.nation = nation.getNation();
             if (eventConsumer != null) eventConsumer.accept(new NationChangeNameEvent(copyOriginal, this));
         }
-        if (nation.getLeader() != null && !this.leader.equals(nation.getLeader())) {
+        if (nation.getLeader() != null && (this.getLeader() == null || !this.leader.equals(nation.getLeader()))) {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
             this.leader = nation.getLeader();
             if (eventConsumer != null) eventConsumer.accept(new NationChangeLeaderEvent(copyOriginal, this));
         }
         if (nation.getContinent() != null) {
-            Continent continent = Continent.valueOf(nation.getContinent().toUpperCase(Locale.ROOT));
+            Continent continent = Continent.valueOf(nation.getContinent().toUpperCase(Locale.ROOT).replace(" ", "_"));
             if (continent != this.continent) {
                 dirty = true;
                 if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
@@ -841,7 +841,7 @@ public class DBNation implements NationOrAlliance {
             this.alliance_id = nation.getAllianceid();
             if (eventConsumer != null) eventConsumer.accept(new NationChangeAllianceEvent(copyOriginal, this));
         }
-        if (nation.getAllianceposition() != null && this.rank.id != nation.getAllianceposition()) {
+        if (nation.getAllianceposition() != null && (this.rank == null || this.rank.id != nation.getAllianceposition())) {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
             this.rank = Rank.byId(nation.getAllianceposition());
@@ -887,12 +887,12 @@ public class DBNation implements NationOrAlliance {
             this.setNation_id(nation.getId());
             dirty = true;
         }
-        if (nation.getNation_name() != null && !this.getNation().equals(nation.getNation_name())) {
+        if (nation.getNation_name() != null && (this.getNation() == null || !this.getNation().equals(nation.getNation_name()))) {
             this.setNation(nation.getNation_name());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeNameEvent(copyOriginal, this));
             dirty = true;
         }
-        if (nation.getLeader_name() != null && !this.getLeader().equals(nation.getLeader_name())) {
+        if (nation.getLeader_name() != null && (this.getLeader() == null || !this.getLeader().equals(nation.getLeader_name()))) {
             this.setLeader(nation.getLeader_name());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeLeaderEvent(copyOriginal, this));
             dirty = true;
@@ -1033,7 +1033,7 @@ public class DBNation implements NationOrAlliance {
             dirty = true;
         }
         if (nation.getContinent() != null) {
-            Continent continent = Continent.valueOf(nation.getContinent().toUpperCase(Locale.ROOT));
+            Continent continent = Continent.parseV3(nation.getContinent().toUpperCase(Locale.ROOT));
             if (continent != this.getContinent()) {
                 this.setContinent(continent);
                 if (eventConsumer != null) eventConsumer.accept(new NationChangeContinentEvent(copyOriginal, this));
@@ -1094,7 +1094,7 @@ public class DBNation implements NationOrAlliance {
 //                dirty = true;
 //            }
 //        }
-        if (copyOriginal != null && copyOriginal.getSpies() != nation.getSpies()) {
+        if (copyOriginal != null && copyOriginal.getSpies() != getSpies()) {
             if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES));
             dirty = true;
         }
@@ -1106,6 +1106,7 @@ public class DBNation implements NationOrAlliance {
         return dirty;
     }
     public DBAlliancePosition getAlliancePosition() {
+        if (alliance_id == 0 || rank.id <= Rank.APPLICANT.id || alliancePosition == 0) return null;
         DBAlliancePosition pos = Locutus.imp().getNationDB().getPosition(alliancePosition, alliance_id, false);
         if (pos == null) {
             long permission_bits = 0;
@@ -1245,36 +1246,6 @@ public class DBNation implements NationOrAlliance {
     public ByteBuffer getMeta(NationMeta key) {
         byte[] result = Locutus.imp().getNationDB().getMeta(nation_id, key);
         return result == null ? null : ByteBuffer.wrap(result);
-    }
-
-    public String setRank(Auth auth, Rank rank) {
-        String url = String.format("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=%s#permissions", auth.getAllianceId());
-
-        Map<String, String> post = new HashMap<>();
-        post.put("nationperm", getLeader());
-        post.put("level", String.valueOf(rank.id));
-        post.put("permsubmit", "Go");
-
-        return PnwUtil.withLogin(() -> {
-            StringBuilder response = new StringBuilder();
-
-            String result = auth.readStringFromURL(url, post);
-            Document dom = Jsoup.parse(result);
-            int alerts = 0;
-            for (Element element : dom.getElementsByClass("alert")) {
-                String text = element.text();
-                if (text.startsWith("Player Advertisement by ")) {
-                    continue;
-                }
-                alerts++;
-                response.append('\n').append(element.text());
-            }
-            if (alerts == 0) {
-                response.append('\n').append("Set player rank ingame. Remember to also set the rank on discord.");
-            }
-
-            return response.toString().trim();
-        }, auth);
     }
 
     public void deleteMeta(NationMeta key) {
@@ -2436,13 +2407,9 @@ public class DBNation implements NationOrAlliance {
     }
 
     public String fetchUsername() throws IOException {
-        String url = getNationUrl();
-        String html = FileUtil.readStringFromURL(url);
-        Document dom = Jsoup.parse(html);
-        Elements elem = dom.select("td:contains(Discord Username)");
-        if (elem.isEmpty()) return null;
-        String username = elem.first().nextElementSibling().text();
-        return username;
+        List<Nation> discord = Locutus.imp().getPnwApi().getV3().fetchNations(f -> f.setId(List.of(nation_id)), r -> r.discord());
+        if (discord.isEmpty()) return null;
+        return discord.get(0).getDiscord();
     }
 
     @Command
@@ -3012,7 +2979,12 @@ public class DBNation implements NationOrAlliance {
         }
     }
 
+    @Command
     public int isReroll() {
+        return isReroll(false);
+    }
+
+    public int isReroll(boolean fetchUid) {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int otherId = entry.getKey();
@@ -3024,26 +2996,28 @@ public class DBNation implements NationOrAlliance {
             }
         }
 
-        try {
-            BigInteger uid = new GetUid(this).call();
-            for (Map.Entry<Integer, Long> entry : Locutus.imp().getDiscordDB().getUuids(uid)) {
-                int nationId = entry.getKey();
-                if (nationId == this.nation_id) continue;
-                BigInteger latest = Locutus.imp().getDiscordDB().getLatestUuid(nationId);
-                if (latest != null && latest.equals(uid)) {
-                    return nationId;
+        if (Settings.INSTANCE.TASKS.AUTO_FETCH_UID && fetchUid) {
+            try {
+                BigInteger uid = fetchUid();
+                for (Map.Entry<Integer, Long> entry : Locutus.imp().getDiscordDB().getUuids(uid)) {
+                    int nationId = entry.getKey();
+                    if (nationId == this.nation_id) continue;
+                    BigInteger latest = Locutus.imp().getDiscordDB().getLatestUuid(nationId);
+                    if (latest != null && latest.equals(uid)) {
+                        return nationId;
+                    }
+                    break;
                 }
-                break;
+            } catch (Exception e) {
+                AlertUtil.error("Failed to fetch uid for " + nation_id, e);
             }
-
-        } catch (Exception e) {
-            AlertUtil.error("Failed to fetch uid for " + nation_id, e);
         }
-        // check multi
-
-
 
         return 0;
+    }
+
+    public BigInteger fetchUid() throws IOException {
+        return new GetUid(this).call();
     }
 
     public NationMeta.BeigeAlertMode getBeigeAlertMode(NationMeta.BeigeAlertMode def) {

@@ -123,6 +123,7 @@ public final class Locutus extends ListenerAdapter {
 
     private Locutus() throws SQLException, ClassNotFoundException, LoginException, InterruptedException, NoSuchMethodException {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
+        INSTANCE = this;
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.length() != 1) throw new IllegalStateException("COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.length() != 1) throw new IllegalStateException("LEGACY_COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
@@ -136,20 +137,18 @@ public final class Locutus extends ListenerAdapter {
             throw new IllegalStateException("LEGACY_COMMAND_PREFIX cannot be `.` or `_` or `~` in " + Settings.INSTANCE.getDefaultFile());
         }
 
-        INSTANCE = this;
-
         this.logger = Logger.getLogger("LOCUTUS");
         this.eventBus = new EventBus();
 
         this.executor = Executors.newCachedThreadPool();
+
+        this.tradeManager = new TradeManager();
 
         this.discordDB = new DiscordDB();
         this.warDb = new WarDB();
         this.nationDB = new NationDB();
         this.stockDB = new StockDB();
         this.bankDb = new BankDB();
-
-        this.tradeManager = new TradeManager();
 
         this.commandManager = new CommandManager(this);
         this.commandManager.registerCommands(discordDB);
@@ -208,9 +207,10 @@ public final class Locutus extends ListenerAdapter {
     public void registerEvents() {
         eventBus.register(new TreatyUpdateProcessor());
         eventBus.register(new NationUpdateProcessor());
+        eventBus.register(new CityUpdateProcessor());
         eventBus.register(new BankUpdateProcessor());
         eventBus.register(new WarUpdateProcessor());
-        eventBus.register(new AllianceCreateListener());
+        eventBus.register(new AllianceListener());
     }
 
     public EventBus getEventBus() {
@@ -558,6 +558,11 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public void initRepeatingTasks() {
+        if ((Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0) && nationDB.getNations().isEmpty()) {
+            logger.info("No nations found. Updating all nations");
+            nationDB.updateAllNations(null);
+        }
+
         // Turn change
         if (Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS) {
             AtomicLong lastTurn = new AtomicLong();
@@ -662,26 +667,28 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
         }
 
-        if (Settings.INSTANCE.TASKS.TRADE_TASKS.COMPLETED_TRADES_SECONDS > 0) {
+        if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
             AtomicBoolean updateTradeTask = new AtomicBoolean(false);
-            addTaskSeconds(() -> tradeManager.updateTradeList(false),
-                    Settings.INSTANCE.TASKS.TRADE_TASKS.COMPLETED_TRADES_SECONDS);
+            addTaskSeconds(() -> tradeManager.updateTradeList(false, true),
+                    Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
         }
 
         // TODO update to v3
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(FOOD),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(COAL),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(OIL),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(URANIUM),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(LEAD),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(IRON),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(BAUXITE),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(GASOLINE),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(MUNITIONS),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(STEEL),73,60, TimeUnit.SECONDS);
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(ALUMINUM),73,60, TimeUnit.SECONDS);
-
-        commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(CREDITS), 15, 15, TimeUnit.MINUTES);
+        int activeTradeSeconds = Settings.INSTANCE.TASKS.TRADE_PRICE_SECONDS;
+        if (activeTradeSeconds > 0) {
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(FOOD), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(COAL), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(OIL), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(URANIUM), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(LEAD), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(IRON), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(BAUXITE), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(GASOLINE), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(MUNITIONS), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(STEEL), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(ALUMINUM), 73, activeTradeSeconds, TimeUnit.SECONDS);
+            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(CREDITS), 15 * activeTradeSeconds, 15 * activeTradeSeconds, TimeUnit.SECONDS);
+        }
 
         if (forumDb != null && Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS > 0) {
             addTaskSeconds(forumDb::update, Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS);
@@ -704,14 +711,28 @@ public final class Locutus extends ListenerAdapter {
             {
                 // Update all nations
 
-                List<Event> events = new ArrayList<>();
-                Consumer<Event> eventConsumer = events::add;
+                {
+                    List<Event> events = new ArrayList<>();
+                    nationDB.updateNationsV2(true, events::add);
+                    runEventsAsync(events);
+                }
+                {
+                    List<Event> events = new ArrayList<>();
+                    nationDB.updateMostActiveNations(490, events::add);
+                    runEventsAsync(events);
+                }
+                {
+                    List<Event> events = new ArrayList<>();
+                    nationDB.updateAlliances(null, events::add);
+                    runEventsAsync(events);
+                }
 
-                nationDB.updateNationsV2(true, eventConsumer);
-                nationDB.updateMostActiveNations(490, eventConsumer);
-                nationDB.updateAlliances(null, eventConsumer);
-                nationDB.updateTreaties(eventConsumer);
+                nationDB.deleteExpiredTreaties(Event::post);
+                nationDB.updateTreaties(Event::post);
+
                 nationDB.saveAllCities(); // TODO save all cities
+
+
             }
 
             if (Settings.INSTANCE.TASKS.TURN_TASKS.ALLIANCE_METRICS) {
@@ -733,12 +754,12 @@ public final class Locutus extends ListenerAdapter {
             if (nationId <= 0 || channelId <= 0 || interval <= 0) continue;
             DBNation nation = DBNation.byId(nationId);
             if (nation == null) {
-                AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): Invalid nation");
+                AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): Unknown nation");
                 continue;
             }
             GuildMessageChannel channel = getDiscordApi().getGuildChannelById(channelId);
             if (channel == null) {
-                AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): Invalid channel: " + channelId);
+                AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): Unknown channel: " + channelId);
             }
             try {
                 Auth auth = nation.getAuth(null);

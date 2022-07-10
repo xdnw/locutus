@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -262,7 +263,7 @@ public class AdminCommands {
     public String editAlliance(@Me GuildDB db, @Me User author, @Default String attribute, @Default @TextArea String value) throws Exception {
 
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
-        Auth auth = db.getAuth(rank.id);
+        Auth auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
         if (auth == null) return "No authorization set";
         int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
@@ -686,7 +687,7 @@ public class AdminCommands {
             db = alliance.getGuildDB();
             if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);
         }
-        Auth auth = db.getAuth(Rank.OFFICER.id);
+        Auth auth = db.getAuth(AlliancePermission.VIEW_BANK);
         if (auth == null) return "No authentication found for this guild";
 
         channel.sendMessage("Syncing bank for " + db.getGuild());

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
@@ -54,14 +55,7 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -533,6 +527,16 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
+    public DBAlliancePosition position(@Me GuildDB db, String name) {
+        return DBAlliancePosition.parse(name, db.getAlliance_id(), true);
+    }
+
+    @Binding
+    public AlliancePermission alliancePermission(String name) {
+        return emum(AlliancePermission.class, name);
+    }
+
+    @Binding
     public GuildDB.Key key(String input) {
         return emum(GuildDB.Key.class, input);
     }
@@ -637,7 +641,7 @@ public class PWBindings extends BindingHelper {
             int moneyRate = Integer.parseInt(split[0]);
             int rssRate = Integer.parseInt(split[1]);
 
-            Auth auth = db.getAuth();
+            Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
             Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
@@ -652,7 +656,7 @@ public class PWBindings extends BindingHelper {
         }
         String[] split = input.split("=");
         int taxId = Integer.parseInt(split[split.length - 1]);
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
         Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;

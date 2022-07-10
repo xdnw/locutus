@@ -46,7 +46,7 @@ public class Login extends Command {
             GuildDB db = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
             if (db == null) return "Your alliance " + me.getAlliance_id() + " is not registered with Locutus";
             if (args.size() < 2) return usage(event);
-            Auth existingAuth = db.getAuth();;
+            Auth existingAuth = db.getAuth();
 
             if (!Roles.MEMBER.has(author, Locutus.imp().getServer())) {
                 OffshoreInstance offshore = db.getOffshore();

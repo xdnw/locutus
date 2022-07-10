@@ -6,6 +6,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
+import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -16,12 +17,21 @@ import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-public class AllianceCreateListener {
+public class AllianceListener {
+    @Subscribe
+    public void onTurnChange(TurnChangeEvent event) {
+
+        { // Update offshores
+            for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+                alliance.findParentOfThisOffshore();
+            }
+        }
+
+    }
     @Subscribe
     public void onNewAlliance(AllianceCreateEvent event) {
         DBAlliance alliance = event.getCurrent();
@@ -62,9 +72,13 @@ public class AllianceCreateListener {
             for (Map.Entry<Integer, Integer> entry : wars.entrySet()) {
                 body.append(" - " + entry.getValue() + " wars vs " + PnwUtil.getMarkdownUrl(entry.getKey(), true) + "\n");
             }
-
-
         }
+
+        DBAlliance parent = alliance.findParentOfThisOffshore();
+        if (parent != null) {
+            body.append("*Potential offshore for**: " + parent.getMarkdownUrl()).append("\n");
+        }
+
         body.append(PnwUtil.getUrl(aaId, true));
 
         AlertUtil.forEachChannel(f -> true, GuildDB.Key.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {

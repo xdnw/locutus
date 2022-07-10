@@ -3,6 +3,7 @@ package link.locutus.discord.db;
 import com.politicsandwar.graphql.model.BBGame;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.BankrecsQueryRequest;
+import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -276,6 +277,11 @@ public class BankDB extends DBMainV2 {
             int rss = rs.getInt("resoucerate");
             int id = rs.getInt("id");
             long date = rs.getLong("date");
+            // round date for legacy reasons
+            if (date > 1656153134000L && date < 1657449182000L) {
+                date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date));
+            }
+
             long[] cents = ArrayUtil.toLongArray(rs.getBytes("resources"));
             double[] deposit = new double[cents.length];
             for (int i = 0; i < cents.length; i++) deposit[i] = cents[i] / 100d;
@@ -714,6 +720,42 @@ public class BankDB extends DBMainV2 {
         return list;
     }
 
+    public List<TaxDeposit> getTaxDeposits(Consumer<SelectBuilder> query) {
+        List<TaxDeposit> list = new ArrayList<>();
+        SelectBuilder builder = getDb().selectBuilder("TAX_DEPOSITS_DATE")
+                .select("*");
+        if (query != null) query.accept(builder);
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                list.add(TaxDeposit.of(rs));
+            }
+            return list;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public TaxDeposit getTaxDeposits(int allianceId) {
+        List<TaxDeposit> result = getTaxDeposits(s -> {
+            s.where(QueryCondition.equals("alliance", allianceId));
+            s.order("date", QueryOrder.OrderDirection.ASC);
+        });
+        return result.size() == 1 ? result.get(0) : null;
+    }
+
+    public TaxDeposit getLatestTaxDeposit(int allianceId) {
+        List<TaxDeposit> result = getTaxDeposits(new Consumer<SelectBuilder>() {
+            @Override
+            public void accept(SelectBuilder s) {
+                s.where(QueryCondition.equals("alliance", allianceId));
+                s.order("date", QueryOrder.OrderDirection.DESC);
+                s.limit(1);
+            }
+        });
+        return result.size() == 1 ? result.get(0) : null;
+    }
+
     public List<TaxDeposit> getTaxesByTurn(int alliance) {
         List<TaxDeposit> list = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM TAX_DEPOSITS_DATE WHERE alliance = ? order by DATE ASC")) {
@@ -781,7 +823,10 @@ public class BankDB extends DBMainV2 {
                     @Override
                     public void acceptThrows(TaxDeposit record, PreparedStatement stmt) throws SQLException {
                         stmt.setInt(1, record.allianceId);
-                        stmt.setLong(2, record.date);
+
+                        long dateRounded = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(record.date));
+
+                        stmt.setLong(2, dateRounded);
                         stmt.setInt(3, record.index);
                         stmt.setInt(4, record.nationId);
                         stmt.setInt(5, (int) record.moneyRate);

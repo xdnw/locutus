@@ -5,6 +5,8 @@ import org.apache.commons.lang3.text.WordUtils;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Locale;
+
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
 public enum Continent {
@@ -28,6 +30,20 @@ public enum Continent {
         this.north = north;
         this.resources = resources;
         this.name = WordUtils.capitalize(name().replace("_", " "));
+    }
+
+    public static Continent parseV3(String toUpperCase) {
+        switch (toUpperCase.toUpperCase(Locale.ROOT)) {
+            case "NA": return NORTH_AMERICA;
+            case "SA": return SOUTH_AMERICA;
+            case "EU": return EUROPE;
+            case "AF": return AFRICA;
+            case "AS": return ASIA;
+            case "AU": return AUSTRALIA;
+            case "AN": return ANTARCTICA;
+            default:
+                throw new IllegalArgumentException("No continent found for: " + toUpperCase);
+        }
     }
 
     public double foodModifier(ZonedDateTime time) {

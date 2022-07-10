@@ -31,19 +31,7 @@ import org.jsoup.nodes.Element;
 
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -994,6 +982,15 @@ public class PnwUtil {
         return MarkupUtil.markdownUrl(PnwUtil.getName(nationId, isAA), PnwUtil.getUrl(nationId, isAA));
     }
 
+    public static int parseTaxId(String url) {
+        String regex = "tax_id=([0-9]+)";
+        Matcher matcher = Pattern.compile(regex).matcher(url.toLowerCase(Locale.ROOT));
+        if (matcher.find()) {
+            int id = Integer.parseInt(matcher.group(1));
+            return id;
+        }
+        throw new IllegalArgumentException("Not a valid tax url: `" + url + "`");
+    }
     public static String getName(long nationOrAllianceId, boolean isAA) {
         if (isAA) {
             String name = Locutus.imp().getNationDB().getAllianceName((int) nationOrAllianceId);

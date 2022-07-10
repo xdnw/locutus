@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -42,6 +43,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
+import views.grant.nation;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -838,9 +840,9 @@ public class IACommands {
         }
 
         int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
         if (auth == null) {
-            return "No authentication enabled for this guild";
+            return "No authentication with TAX_BRACKETS enabled for this guild";
         }
 
         if (internalRate != null) {
@@ -903,74 +905,108 @@ public class IACommands {
         return response.toString();
     }
 
-    private PassiveExpiringMap<Long, Integer> demotions = new PassiveExpiringMap<Long, Integer>(60, TimeUnit.MINUTES);;
+    private static final PassiveExpiringMap<Long, Integer> demotions = new PassiveExpiringMap<Long, Integer>(60, TimeUnit.MINUTES);;
 
     @Command(desc = "Set the rank of a player in the alliance.", aliases = {"rank", "setrank", "rankup"})
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     @IsAlliance
-    public String setRank(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, DBNation nation, Rank rank, @Switch('f') boolean force, @Switch('d') boolean doNotUpdateDiscord) throws IOException {
-        if (rank != Rank.MEMBER && rank != Rank.APPLICANT && rank != Rank.INVITE && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, db.getGuild())) return "No permission to set this rank";
-        int myPos = (me == null || me.getAlliance_id() != nation.getAlliance_id() ? Rank.MEMBER.id : me.getPosition());
+    public static String setRank(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, DBNation nation, DBAlliancePosition position, @Switch('f') boolean force, @Switch('d') boolean doNotUpdateDiscord) throws IOException {
+        int allianceId = position.getAlliance_id();
+        if (allianceId <= 0) allianceId = db.getAlliance_id();
+
+        if (nation.getAlliance_id() != allianceId && position != DBAlliancePosition.APPLICANT && position != DBAlliancePosition.REMOVE) {
+            return "That nation is not in the alliance: " + PnwUtil.getName(allianceId, true);
+        }
+        // Cannot promote above your own permissions
+        DBAlliancePosition myPosition = me.getAlliancePosition();
+        DBAlliancePosition nationPosition = nation.getAlliancePosition();
+        if (me.getAlliance_id() != allianceId || myPosition == null) {
+            // cannot promote above officer unless admin
+            if (!Roles.ADMIN.has(author, db.getGuild())) {
+                if (position.hasAnyOfficerPermissions()) {
+                    return "You do not have permission to grant permissions you currently do not posses in the alliance";
+                }
+            }
+        } else {
+            if (position.getPosition_level() > myPosition.getPosition_level()) {
+                return "You do not have permission to promote above your level. (" + position.getPosition_level() + " is above " + myPosition.getPosition_level() + ")";
+            }
+            for (AlliancePermission perm : position.getPermissions()) {
+                if (!myPosition.hasPermission(perm) && (nationPosition == null || !nationPosition.hasAllPermission(perm))) {
+                    return "You can not grant permissions you do not posses (lacking " + perm + ")";
+                }
+            }
+            if (nationPosition != null) {
+                for (AlliancePermission perm : nationPosition.getPermissions()) {
+                    if (!myPosition.hasPermission(perm) && !position.hasPermission(perm)) {
+                        return "You can not remove permissions you do not posses (lacking " + perm + ")";
+                    }
+                }
+            }
+        }
+        if (nationPosition != null && nationPosition.hasAnyAdminPermission()) {
+            return "You cannot adjust the position of admins (do that ingame)";
+        }
+
+        if (position == DBAlliancePosition.REMOVE) {
+            if (!Roles.ADMIN.has(author, db.getGuild())) {
+                if (nation.active_m() < 2880) {
+                    return "You do not have the permission (`ADMIN`) to remove active members (set them to applicant first)";
+                }
+                if (nation.active_m() < 10000) {
+                    int currentDemotions = demotions.getOrDefault(author.getIdLong(), 0);
+                    if (currentDemotions > 2) {
+                        return "Please get an admin to demote multiple nations, or do so ingame. " + Roles.ADMIN.toRole(db.getGuild());
+                    }
+                    demotions.put(author.getIdLong(), currentDemotions + 1);
+                }
+            }
+        }
+        // Cannot promote to leader, or any leader perms -> done
+        if (position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) {
+            return "You cannot promote to leadership positions (do this ingame)";
+        }
+        if (nation.getAlliance_id() != position.getAlliance_id()) {
+            return "That nation is not in the alliance AA:" + position.getAlliance_id();
+        }
+
+        List<AlliancePermission> requiredPermissions = new ArrayList<>();
+        if (position.hasAnyOfficerPermissions() || nationPosition != null) requiredPermissions.add(AlliancePermission.CHANGE_PERMISSIONS);
+        if (position == null) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
+        Auth auth = db.getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
+        if (auth == null) return "No auth for this guild found for: " + StringMan.getString(requiredPermissions);
 
         User discordUser = nation.getUser();
 
-        if ((rank == Rank.LEADER || rank == Rank.HEIR) && (nation.getPosition() < Rank.OFFICER.id || discordUser == null || !Roles.ADMIN.hasOnRoot(author) || !Roles.ADMIN.has(author, db.getGuild()))) {
-            return "You need ingame officer and discord admin to promote to heir+";
-        }
-
-        if (!Roles.ADMIN.has(author, db.getGuild()) && rank.id >= Rank.OFFICER.id) {
-            return "You need discord admin to promote above member ingame";
-        }
-
-        if (!Roles.ADMIN.hasOnRoot(author) && myPos < rank.id) {
-            return "You are lower rank ingame than: " + rank;
-        }
-
-        Auth auth = db.getAuth();
-        if (auth == null) return "This guild is not authenticated";
-
-        if (!Roles.ADMIN.has(author, db.getGuild()) && nation.getActive_m() < 2880 && (auth.getAllianceId() == nation.getAlliance_id()) && (rank == Rank.REMOVE || rank == rank.BAN)) {
-            return "You need discord admin to remove or ban active members (set them to applicant first)";
-        }
-
-        boolean admin = Roles.ADMIN.has(author, db.getGuild()) || myPos >= Rank.HEIR.id;
-        if (!admin && nation.getActive_m() < 4880 && rank.id < Rank.MEMBER.id && nation.getPosition() > 1 && nation.getAlliance_id() == auth.getAllianceId()) {
-            int currentDemotions = demotions.getOrDefault(author.getIdLong(), 0);
-            if (currentDemotions > 2) {
-                return "Please get an admin to demote multiple active nations, or do so ingame. " + Roles.ADMIN.toRole(db.getGuild());
-            }
-            demotions.put(author.getIdLong(), currentDemotions + 1);
-        }
-
-        if (Rank.MEMBER.equals(rank) && db.isWhitelisted()) {
+        if (nationPosition == null && db.isWhitelisted()) {
             if (!force) {
                 List<String> checks = new ArrayList<>();
                 if (nation.isGray()) {
                     checks.add("Nation is gray (use `-f` to override this)");
                 }
                 if (nation.getCities() < 3) {
-                    checks.add( "Nation has not bought up to 3 cities (use `-f` to override this)");
+                    checks.add("Nation has not bought up to 3 cities (use `-f` to override this)");
                 }
                 if (nation.getCities() < 10 && nation.getOff() < 5 && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) {
-                    checks.add( "Nation has not declared up to 5 raids ( use `-f` to override this)");
+                    checks.add("Nation has not declared up to 5 raids ( use `-f` to override this)");
                 }
                 if (nation.getCities() > 3 && nation.getCities() < 10 && nation.getSoldierPct() < 0.25) {
-                    checks.add( "Nation has not bought soldiers (use `-f` to override this)");
+                    checks.add("Nation has not bought soldiers (use `-f` to override this)");
                 }
 
                 if (nation.getCities() >= 10 && nation.getAircraftPct() < 0.18) {
-                    checks.add( "Nation has not bought aircraft (use `-f` to override this)");
+                    checks.add("Nation has not bought aircraft (use `-f` to override this)");
                 }
                 if (nation.getCities() == 10 && nation.getSoldierPct() < 0.25 && nation.getTankPct() < 0.25) {
-                    checks.add( "Nation has not bought tanks or soldiers (use `-f` to override this)");
+                    checks.add("Nation has not bought tanks or soldiers (use `-f` to override this)");
                 }
                 if (nation.getCities() <= 5 && !nation.getMMRBuildingStr().startsWith("5")) {
-                    checks.add( "Nation does not have 5 barracks (use `-f` to override this)");
+                    checks.add("Nation does not have 5 barracks (use `-f` to override this)");
                 }
                 if (nation.getCities() >= 10) {
                     String mmr = nation.getMMRBuildingStr();
                     if (!mmr.matches("5.5.") && !mmr.matches(".[2-5]5.")) {
-                        checks.add( "Nation is on insufficient MMR (use `-f` to override this)");
+                        checks.add("Nation is on insufficient MMR (use `-f` to override this)");
                     }
                 }
 
@@ -989,25 +1025,15 @@ public class IACommands {
             }
         }
 
-        if (discordUser != null) {
-            if (discordUser.getIdLong() != author.getIdLong()) {
-                if (!Roles.ADMIN.hasOnRoot(discordUser) && (nation.getPosition() > myPos || nation.getPosition() > Rank.OFFICER.id)) {
-                    return "No couping please.";
-                }
-            }
-        } else if (!force) {
-            return "No user registered to that nation. Did they use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "register` ? Add `-f` to override";
-        }
-
         StringBuilder response = new StringBuilder();
         if (discordUser != null && !doNotUpdateDiscord) {
             Member member = db.getGuild().getMember(discordUser);
             Role role = Roles.MEMBER.toRole(db.getGuild());
             if (member != null && role != null) {
                 try {
-                    if (rank.id > 1) {
+                    if (nationPosition == null) {
                         RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role));
-                    } else {
+                    } else if (position == DBAlliancePosition.APPLICANT || position == DBAlliancePosition.REMOVE) {
                         RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
                     }
                 } catch (HierarchyException e) {
@@ -1016,10 +1042,10 @@ public class IACommands {
             }
         }
 
-        int previousRank = nation.getPosition();
-        String result = nation.setRank(auth, rank);
-        if (result.contains("Set player rank ingame.") && previousRank <= Rank.APPLICANT.id && rank.id >= Rank.MEMBER.id) {
-            db.getHandler().onSetRank(author, channel, nation, rank);
+        String result = auth.setRank(nation, position);
+
+        if (result.contains("Set player rank ingame.") && nationPosition == null) {
+            db.getHandler().onSetRank(author, channel, nation, position);
         }
         response.append(result);
         response.append("\nSee also `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "listAssignableRoles` / `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addRole @user <role>`");

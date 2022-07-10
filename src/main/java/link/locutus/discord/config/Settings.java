@@ -153,8 +153,6 @@ public class Settings extends Config {
         @Create
         public TURN_TASKS TURN_TASKS;
         @Create
-        public TRADE_TASKS TRADE_TASKS;
-        @Create
         public ConfigBlock<MAIL> MAIL;
 
         @Comment("If any turn related tasks are run (default: true)")
@@ -185,7 +183,8 @@ public class Settings extends Config {
         @Comment("Runs the pre update beige reminders (default: 61 seconds)")
         public int BEIGE_REMINDER_SECONDS = 61;
 
-        @Comment("What range of top alliances to check the MMR of (default: 80)")
+        @Comment({"What range of top alliances to check the MMR of (default: 80)",
+        "set to 0 to disable"})
         public int OFFICER_MMR_ALERT_TOP_X = 80;
 
         @Comment("Fetches baseball games (default 2 hours)")
@@ -197,6 +196,12 @@ public class Settings extends Config {
         @Comment("Fetches the treaties (default 6 minutes)")
         public int TREATY_UPDATE_SECONDS = 60 * 6;
 
+        @Comment("Fetches active trade offers (default: disabled)")
+        public int TRADE_PRICE_SECONDS = 0;
+
+        @Comment("Fetches trades (default: 15 minutes)")
+        public int COMPLETED_TRADES_SECONDS = 15 * 60;
+
         @Comment({"Fetches forum comments",
                 "(default: DISABLED, as you can just check the forums with your browser)",
                 "Requires FORUM_FEED_SERVER to be enabled"})
@@ -207,8 +212,8 @@ public class Settings extends Config {
                 "*Requires setting the `trackspies` coalition in the root server"})
         public int FETCH_SPIES_INTERVAL_SECONDS = 0;
 
-        @Comment({"If network UIDs are fetched (for multi checking) (default: false)"})
-        public boolean FETCH_UUID = false;
+        @Comment({"If network UIDs are fetched automatically (for multi checking) (disabled by default, since it is slow and uses web scraping)"})
+        public boolean AUTO_FETCH_UID = false;
 
         @Comment({"Fetch ingame mail of an authenticated nation and post it to a channel",
                 "Set the values to 0 to disable",
@@ -219,11 +224,6 @@ public class Settings extends Config {
             public int NATION_ID = 189573;
             public int FETCH_INTERVAL_SECONDS = 62;
             public long CHANNEL_ID = 674505503400919040L;
-        }
-
-        public static class TRADE_TASKS {
-            @Comment("Fetches trades (default: 15 minutes)")
-            public int COMPLETED_TRADES_SECONDS = 15 * 60;
         }
 
         public static class TURN_TASKS {

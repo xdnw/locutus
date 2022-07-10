@@ -1,17 +1,17 @@
 package link.locutus.discord.apiv3;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
-import link.locutus.discord.apiv3.subscription.PnwPusherFilter;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
-import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
@@ -19,6 +19,7 @@ import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
 import org.springframework.http.*;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -27,13 +28,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
     public static int NATIONS_PER_PAGE = 500;
@@ -50,6 +49,8 @@ public class PoliticsAndWarV3 {
     private final String endpoint;
     private final RestTemplate restTemplate;
     private final ApiKeyPool pool;
+
+    private final ObjectMapper jacksonObjectMapper = Jackson2ObjectMapperBuilder.json().build();
 
     public PoliticsAndWarV3(String url, ApiKeyPool pool) {
         this.endpoint = url;
@@ -118,7 +119,8 @@ public class PoliticsAndWarV3 {
             }
         }
 
-        ResponseEntity<T> exchange = null;
+        ResponseEntity<String> exchange = null;
+        T result = null;
 
         int badKey = 0;
         int backOff = 0;
@@ -126,10 +128,33 @@ public class PoliticsAndWarV3 {
             String key = pool.getNextApiKey();
             String url = getUrl(key);
             try {
+                System.out.println(graphQLRequest.toHttpJsonBody());
+
+                restTemplate.acceptHeaderRequestCallback(String.class);
+//
+                HttpEntity<String> entity = httpEntity(graphQLRequest, key);
+
                 exchange = restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
-                        httpEntity(graphQLRequest),
-                        resultBody);
+                        entity,
+                        String.class);
+
+                String body = exchange.getBody();
+                JsonNode json = (ObjectNode) jacksonObjectMapper.readTree(body);
+
+                if (json.has("errors")) {
+                    JsonNode errors = (JsonNode) json.get("errors");
+                    List<String> errorMessages = new ArrayList<>();
+                    for (JsonNode error : errors) {
+                        if (error.has("message")) {
+                            errorMessages.add(error.get("message").toString());
+                        }
+                    }
+                    String message = errorMessages.isEmpty() ? errors.toString() : StringMan.join(errorMessages, "\n");
+                    throw new IllegalArgumentException(message.replace(key, "XXX"));
+                }
+
+                result = jacksonObjectMapper.readValue(body, resultBody);
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {
                 try {
@@ -141,12 +166,21 @@ public class PoliticsAndWarV3 {
             } catch (HttpClientErrorException.Unauthorized e) {
                 if (badKey++ > 4) {
                     e.printStackTrace();
+                    AlertUtil.error(e.getMessage(), e);
+                    rethrow(e, key, false);
                     throw e;
                 }
                 pool.removeKey(key);
             } catch (HttpClientErrorException e) {
                 e.printStackTrace();
                 AlertUtil.error(e.getMessage(), e);
+                rethrow(e, key, false);
+                throw e;
+            } catch (JsonProcessingException e) {
+                AlertUtil.error(e.getMessage(), e);
+                rethrow(e, key, true);
+            } catch (Throwable e) {
+                rethrow(e, key, false);
                 throw e;
             }
         }
@@ -168,8 +202,14 @@ public class PoliticsAndWarV3 {
                 rateLimitGlobal.intervalMs = Integer.parseInt(header.get("X-RateLimit-Interval").get(0)) * 1000;
             }
         }
-        T result = exchange.getBody();
         return result;
+    }
+
+    private <T extends Throwable> void rethrow(T e, String key, boolean throwRuntime) {
+        if (e.getMessage() != null && e.getMessage().contains(key)) {
+            throw new RuntimeException(e.getMessage().replace(key, "XXX"));
+        }
+        if (throwRuntime) throw new RuntimeException(e.getMessage());
     }
 
     public <T extends GraphQLResult<?>> void handlePagination(Function<Integer, GraphQLRequest> requestFactory, Function<GraphQLError, ErrorResponse> errorBehavior, Class<T> resultBody, Predicate<T> hasMorePages, Consumer<T> onEachResult) {
@@ -304,48 +344,49 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
-    public List<WarAttack> fetchAttacksSince(Integer maxId) {
-        return fetchAttacks(r -> {
+    public List<WarAttack> fetchAttacksSince(Integer maxId, Predicate<WarAttack> attackPredicate) {
+        return fetchAttacks(ATTACKS_PER_PAGE, r -> {
             if (maxId != null) r.setMin_id(maxId + 1);
             QueryWarattacksOrderByOrderByClause order = QueryWarattacksOrderByOrderByClause.builder()
                     .setColumn(QueryWarattacksOrderByColumn.ID)
                     .setOrder(SortOrder.ASC)
                     .build();
             r.setOrderBy(List.of(order));
-        });
+        }, warAttackInfo(), f -> ErrorResponse.EXIT, attackPredicate);
     }
 
-    public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter) {
-        return fetchAttacks(ATTACKS_PER_PAGE, filter, new Consumer<WarAttackResponseProjection>() {
-            @Override
-            public void accept(WarAttackResponseProjection p) {
-                p.id();
-                p.date();
-                p.war_id();
-                p.att_id();
-                p.def_id();
-                p.type();
-                p.victor();
-                p.success();
-                p.attcas1();
-                p.attcas2();
-                p.defcas1();
-                p.defcas2();
-                p.aircraft_killed_by_tanks();
-                p.infra_destroyed();
-                p.improvements_lost();
-                p.money_stolen();
-                p.loot_info();
-                p.city_infra_before();
-                p.infra_destroyed_value();
-                p.att_gas_used();
-                p.att_mun_used();
-                p.def_gas_used();
-                p.def_mun_used();
+    public Consumer<WarAttackResponseProjection> warAttackInfo() {
+        return p -> {
+            p.id();
+            p.date();
+            p.war_id();
+            p.att_id();
+            p.def_id();
+            p.type();
+            p.victor();
+            p.success();
+            p.attcas1();
+            p.attcas2();
+            p.defcas1();
+            p.defcas2();
+            p.aircraft_killed_by_tanks();
+            p.infra_destroyed();
+            p.improvements_lost();
+            p.money_stolen();
+            p.loot_info();
+            p.city_infra_before();
+            p.infra_destroyed_value();
+            p.att_gas_used();
+            p.att_mun_used();
+            p.def_gas_used();
+            p.def_mun_used();
 
-                p.city_id();
-            }
-        }, f -> ErrorResponse.THROW, f -> true);
+            p.city_id();
+        };
+    }
+
+    public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter, ErrorResponse errorResponse) {
+        return fetchAttacks(ATTACKS_PER_PAGE, filter, warAttackInfo(), f -> errorResponse, f -> true);
     }
 
     public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query) {
@@ -430,6 +471,7 @@ public class PoliticsAndWarV3 {
                     return new GraphQLRequest(request, pagRespProj);
                 }, errorBehavior, WarsQueryResponse.class,
                 response -> {
+                    System.out.println("Fetch page");
                     WarPaginator paginator = response.wars();
                     PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
                     return pageInfo != null && pageInfo.getHasMorePages();
@@ -598,6 +640,44 @@ public class PoliticsAndWarV3 {
 
         return allResults;
     }
+
+    public List<Bankrec> fetchTaxRecsWithInfo(int allianceId, Long afterDate) {
+        List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+            @Override
+            public void accept(AllianceResponseProjection projection) {
+                AllianceTaxrecsParametrizedInput filter = new AllianceTaxrecsParametrizedInput();
+                if (afterDate != null) filter.after(new Date(afterDate));
+
+                BankrecResponseProjection taxProj = new BankrecResponseProjection();
+                taxProj.id();
+                taxProj.tax_id();
+                taxProj.date();
+                taxProj.sender_id();
+                taxProj.sender_type();
+                taxProj.receiver_id();
+                taxProj.receiver_type();
+                taxProj.banker_id();
+                taxProj.note();
+                taxProj.money();
+                taxProj.coal();
+                taxProj.oil();
+                taxProj.uranium();
+                taxProj.iron();
+                taxProj.bauxite();
+                taxProj.lead();
+                taxProj.gasoline();
+                taxProj.munitions();
+                taxProj.steel();
+                taxProj.aluminum();
+                taxProj.food();
+
+                projection.taxrecs(filter, taxProj);
+            }
+        });
+        if (alliances != null && alliances.size() == 1) return alliances.get(0).getTaxrecs();
+        return null;
+    }
+
 //
 //    public List<Bankrec> fetchBankRecs2(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
 //        List<Bankrec> allResults = new ArrayList<>();
@@ -889,8 +969,45 @@ public class PoliticsAndWarV3 {
         handler.disconnect();
 
         System.exit(1);
+    }
 
+    private void mutationTest() {
+        BankDepositMutationRequest mutation = new BankDepositMutationRequest();
+        mutation.setNote("test 123");
+        mutation.setMoney(0.01);
 
+        BankrecResponseProjection projection = new BankrecResponseProjection();
+        projection.id();
+        projection.date();
+
+        Bankrec result = request(mutation, projection, Bankrec.class);
+
+        System.out.println("Result " + result);
+    }
+
+    public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId) {
+        Map<Integer, TaxBracket> taxBracketMap = new HashMap<>();
+        List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+            @Override
+            public void accept(AllianceResponseProjection proj) {
+                proj.id();
+                TaxBracketResponseProjection taxProj = new TaxBracketResponseProjection();
+                taxProj.bracket_name();
+                taxProj.id();
+                taxProj.alliance_id();
+                taxProj.resource_tax_rate();
+                taxProj.tax_rate();
+                proj.tax_brackets(taxProj);
+            }
+        });
+        for (Alliance alliance : alliances) {
+            if (alliance.getTax_brackets() != null) {
+                for (TaxBracket bracket : alliance.getTax_brackets()) {
+                    taxBracketMap.put(bracket.getId(), bracket);
+                }
+            }
+        }
+        return taxBracketMap;
     }
 
     public static void main(String[] args) throws ParseException, LoginException, InterruptedException, SQLException, ClassNotFoundException, IOException {
@@ -902,6 +1019,43 @@ public class PoliticsAndWarV3 {
         PoliticsAndWarV2 api = new PoliticsAndWarBuilder().addApiKey(Settings.INSTANCE.API_KEY_PRIMARY).setEnableCache(false).build();
         ApiKeyPool pool = new ApiKeyPool(Settings.INSTANCE.API_KEY_PRIMARY);
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
+
+//        {
+//            String query = "mutation{bankWithdraw(receiver_type:1,receiver: 189573,money: 0.01){id, date}}";
+//            String queryFull = "{\"query\":\"" + query + "\"}";
+//            Map<String, String> header = new HashMap<>();
+//            header.put("X-Bot-Key", Settings.INSTANCE.API_KEY_PRIMARY);
+//            byte[] queryBytes = queryFull.getBytes(StandardCharsets.UTF_8);
+//
+//
+//            String url = main.getUrl(Settings.INSTANCE.API_KEY_PRIMARY);
+//            String result = FileUtil.readStringFromURL(url, queryBytes, true, null,
+//                    c -> {
+//                            c.setRequestProperty("Content-Type", "application/json");
+//                            c.setRequestProperty("X-Bot-Key", Settings.INSTANCE.API_KEY_PRIMARY);
+//                    }
+//            );
+//
+//            System.out.println("Result " + result);
+//
+//            System.exit(0);
+//        }
+
+        {
+            BankDepositMutationRequest mutation = new BankDepositMutationRequest();
+            mutation.setNote("test 123");
+            mutation.setMoney(0.01);
+
+            BankrecResponseProjection projection = new BankrecResponseProjection();
+            projection.id();
+            projection.date();
+
+            Bankrec result = main.request(mutation, projection, Bankrec.class);
+
+            System.out.println("Result " + result);
+
+            System.exit(0);
+        }
 
         {
             System.out.println("Starting");
@@ -1306,18 +1460,21 @@ public class PoliticsAndWarV3 {
 //        System.out.println("Done!");
     }
 
-    private static HttpEntity<String> httpEntity(GraphQLRequest request) {
-        return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders());
+    private static HttpEntity<String> httpEntity(GraphQLRequest request, String key) {
+        return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders(key));
     }
 
-    private static HttpEntity<String> httpEntity(GraphQLRequests request) {
-        return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders());
+    private static HttpEntity<String> httpEntity(GraphQLRequests request, String key) {
+        return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders(key));
     }
 
-    private static HttpHeaders getHttpHeaders() {
+    private static HttpHeaders getHttpHeaders(String key) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
+        if (key != null) {
+            headers.set("X-Bot-Key", key);
+        }
         return headers;
     }
 }

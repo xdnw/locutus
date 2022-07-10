@@ -36,7 +36,7 @@ public class SyncAttacks extends Command {
     public synchronized String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         WarUpdateProcessor.checkActiveConflicts();
         if (args.size() == 0) {
-            Locutus.imp().getWarDb().updateAttacks(true);
+            Locutus.imp().getWarDb().updateAttacks(Event::post);
         } else if (args.size() == 1) {
             Locutus.imp().getWarDb().updateAttacks(Integer.parseInt(args.get(0)), false, Event::post);
         } else {

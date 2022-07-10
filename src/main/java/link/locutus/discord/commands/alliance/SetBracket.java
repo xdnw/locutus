@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -66,7 +67,7 @@ public class SetBracket extends Command {
 
         int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
         if (aaId != nation.getAlliance_id()) return nation.getNation() + " is not in " + aaId;
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
         if (auth == null) return "No authentication enabled for this guild";
 
         Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();

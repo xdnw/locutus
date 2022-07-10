@@ -33,7 +33,7 @@ import static link.locutus.discord.db.GuildDB.Key.WITHDRAW_ALERT_CHANNEL;
 
 public class BankUpdateProcessor {
     @Subscribe
-    public static void process(TransactionEvent event) {
+    public void process(TransactionEvent event) {
         Transaction2 transfer = event.getTransaction();
 
         if (transfer.note != null && transfer.note.contains("of the alliance bank inventory.")) return;

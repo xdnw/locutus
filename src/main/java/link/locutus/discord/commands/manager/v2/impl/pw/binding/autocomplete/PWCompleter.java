@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -43,6 +44,29 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={Coalition.class})
     public List<String> Coalition(String input) {
         return StringMan.completeEnum(input, Coalition.class);
+    }
+
+    @Autocomplete
+    @Binding(types={AlliancePermission.class})
+    public List<String> AlliancePermission(String input) {
+        return StringMan.completeEnum(input, AlliancePermission.class);
+    }
+
+    @Autocomplete
+    @Binding(types={DBAlliancePosition.class})
+    public List<Map.Entry<String, String>> DBAlliancePosition(@Me GuildDB db, String input) {
+        DBAlliance alliance = DBAlliance.get(db.getAlliance_id());
+        List<DBAlliancePosition> options = new ArrayList<>(alliance.getPositions());
+        options.add(DBAlliancePosition.REMOVE);
+        options.add(DBAlliancePosition.APPLICANT);
+
+        options = StringMan.getClosest(input, options, DBAlliancePosition::getName, OptionData.MAX_CHOICES, true);
+        return options.stream().map(new Function<DBAlliancePosition, Map.Entry<String, String>>() {
+            @Override
+            public Map.Entry<String, String> apply(DBAlliancePosition f) {
+                return Map.entry(f.getName(), f.getInputName());
+            }
+        }).collect(Collectors.toList());
     }
 
 
@@ -90,8 +114,7 @@ public class PWCompleter extends BindingHelper {
         return options.stream().map(new Function<NationOrAlliance, Map.Entry<String, String>>() {
             @Override
             public Map.Entry<String, String> apply(NationOrAlliance f) {
-
-                return null;
+                return Map.entry(f.getName(), f.getTypePrefix() + ":" + f.getId());
             }
         }).collect(Collectors.toList());
     }

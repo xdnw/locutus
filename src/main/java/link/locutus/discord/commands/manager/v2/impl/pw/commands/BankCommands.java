@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.bank.Disperse;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
@@ -105,7 +106,7 @@ public class BankCommands {
         if (!Roles.ECON_LOW_GOV.has(member) && (!Roles.MEMBER.has(member) || db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) != Boolean.TRUE)) {
             throw new IllegalArgumentException("You need ECON to offshore or to enable `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore MEMBER_CAN_OFFSHORE`");
         }
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
         if (auth == null) return "No authentication enabled for this guild";
         OffshoreInstance offshore = db.getOffshore();
         int from = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
@@ -1621,7 +1622,7 @@ public class BankCommands {
                 "assigned_internal_rate"
         ));
 
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
         Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
 
         LinkedHashSet<DBNation> nations = new LinkedHashSet<>(DiscordUtil.getNationsByAA(db.getAlliance_id()));
@@ -2333,7 +2334,7 @@ public class BankCommands {
 
         sheet.setHeader(header);
 
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
         if (auth == null) return "No authentication enabled for this guild";
         Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
 

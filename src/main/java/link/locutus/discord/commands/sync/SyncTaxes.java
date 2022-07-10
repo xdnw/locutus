@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.sync;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -69,22 +70,26 @@ public class SyncTaxes extends Command {
                     }
                     return updateTaxesLegacy(db, null);
                 }
-                case "auto": {
-                    Auth auth = db.getAuth();
-                    if (auth == null) return "No authentication found";
+                case "legacy": {
                     Long latestDate = null;
-                    if (args.size() >= 2) latestDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1)) * 1000L;
+                    if (args.size() >= 2)
+                        latestDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1)) * 1000L;
                     if (args.size() > 2) return usage();
 
-                    CompletableFuture<Message> msgFuture = event.getChannel().sendMessage("Syncing taxes for " + auth.getAllianceId() + ". Please wait...").submit();
+                    CompletableFuture<Message> msgFuture = event.getChannel().sendMessage("Syncing taxes for " + db.getAlliance_id() + ". Please wait...").submit();
 
-                    List<BankDB.TaxDeposit> taxes = db.getHandler().updateTaxes(latestDate);
+                    List<BankDB.TaxDeposit> taxes = db.getHandler().updateTaxesLegacy(latestDate);
 
                     Message msg = msgFuture.get();
                     RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
 
                     return "Updated " + taxes.size() + " records.\n"
                             + "<" + updateTurnGraph(db) + ">";
+                }
+                case "auto": {
+                    List<BankDB.TaxDeposit> taxes = db.getHandler().updateTaxes();
+                    return "Updated " + taxes.size() + " records.";
+
                 }
             }
         }

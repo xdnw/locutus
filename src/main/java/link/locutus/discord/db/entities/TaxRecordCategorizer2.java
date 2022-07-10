@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
@@ -237,8 +238,6 @@ public class TaxRecordCategorizer2 {
             expenseRequirements.add(tx -> tx.note != null && tx.note.contains("#expire"));
         }
 
-        Auth auth = db.getAuth();
-
         this.alliances = new HashSet<>();
         getAlliances().add(getAaId());
         getAlliances().addAll(db.getCoalition(Coalition.OFFSHORE));
@@ -247,7 +246,7 @@ public class TaxRecordCategorizer2 {
         this.taxes.removeIf(f -> !acceptsNation.test(f.nationId));
         getTaxes().removeIf(f -> f.date < start || f.date > end);
 
-        this.brackets = auth.getTaxBrackets(true);
+        this.brackets = db.getAlliance().getTaxBrackets(true);
         for (int i = getTaxes().size() - 1; i >= 0; i--) {
             BankDB.TaxDeposit tax = getTaxes().get(i);
             if (tax.tax_id > 0 && !getBrackets().containsKey(tax.tax_id)) {
@@ -267,10 +266,10 @@ public class TaxRecordCategorizer2 {
             long pair = MathMan.pairInt(bracket.moneyRate, bracket.rssRate);
             bracketsByTaxRatePair.computeIfAbsent(pair, f -> new ArrayList<>()).add(bracket);
 
-            List<DBNation> nations = bracket.getNations();
+            Set<DBNation> nations = bracket.getNations();
             nations.removeIf(f -> f.getPosition() <= 1);
             if (!nations.isEmpty()) {
-                getNationsByBracket().put(bracket.taxId, nations);
+                getNationsByBracket().put(bracket.taxId, new ArrayList<>(nations));
                 for (DBNation nation : nations) {
                     if (acceptsNation.test(nation.getNation_id())) {
                         getBracketsByNation().put(nation.getNation_id(), bracket);

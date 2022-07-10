@@ -1,8 +1,11 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
@@ -13,6 +16,7 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.task.GetMemberResources;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -21,15 +25,13 @@ import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.TreatyType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -48,6 +50,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     public DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
         this.allianceId = alliance.getId();
+        this.acronym = "";
+        this.flag = "";
+        this.forum_link = "";
+        this.discord_link = "";
+        this.wiki_link = "";
         set(alliance, null);
     }
 
@@ -210,6 +217,39 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return results;
     }
 
+    public Set<Integer> listUsedTaxIds() {
+        Set<Integer> taxIds = getNations().stream().map(DBNation::getTax_id).collect(Collectors.toSet());
+        taxIds.remove(0);
+        return taxIds;
+    }
+
+    private Map<Integer, TaxBracket> BRACKETS_CACHED;
+    private long BRACKETS_TURN_UPDATED;
+
+    public synchronized Map<Integer, TaxBracket> getTaxBrackets(boolean useCache) {
+        if (useCache && BRACKETS_TURN_UPDATED == TimeUtil.getTurn()) {
+            boolean isOutdated = false;
+            for (int id : listUsedTaxIds()) {
+                if (!BRACKETS_CACHED.containsKey(id)) {
+                    isOutdated = true;
+                    break;
+                }
+            }
+            if (!isOutdated) return BRACKETS_CACHED;
+        }
+        GuildDB db = getGuildDB();
+        if (db == null) throw new IllegalArgumentException("No db found for " + db);
+        PoliticsAndWarV3 api = db.getApi(allianceId, AlliancePermission.TAX_BRACKETS);
+        Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId);
+        BRACKETS_CACHED = new ConcurrentHashMap<>();
+        BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
+        for (Map.Entry<Integer, com.politicsandwar.graphql.model.TaxBracket> entry : bracketsV3.entrySet()) {
+            TaxBracket bracket = new TaxBracket(entry.getValue());
+            BRACKETS_CACHED.put(bracket.taxId, bracket);
+        }
+        return Collections.unmodifiableMap(BRACKETS_CACHED);
+    }
+
     public String getMarkdownUrl() {
         return PnwUtil.getMarkdownUrl(allianceId, true);
     }
@@ -227,7 +267,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     @Command
     public String getName() {
-        return PnwUtil.getName(allianceId, true);
+        return name;
     }
 
     @Override
@@ -486,6 +526,10 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return Locutus.imp().getWarDb().getActiveWars(Collections.singleton(allianceId), WarStatus.ACTIVE);
     }
 
+    public void deleteMeta(AllianceMeta key) {
+        Locutus.imp().getNationDB().deleteMeta(-allianceId, key.ordinal());
+    }
+
     public void setMeta(AllianceMeta key, byte... value) {
         Locutus.imp().getNationDB().setMeta(-allianceId, key.ordinal(), value);
     }
@@ -545,5 +589,167 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public void updateCities() throws IOException, ParseException {
         Set<Integer> nationIds = getNations(false, 0, true).stream().map(f -> f.getId()).collect(Collectors.toSet());
         Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, Event::post);
+    }
+
+    public DBAlliance getCachedParentOfThisOffshore() {
+        if (!isRightSizeForOffshore(getNations())) {
+            deleteMeta(AllianceMeta.OFFSHORE_PARENT);
+            return null;
+        }
+        ByteBuffer parentIdBuffer = getMeta(AllianceMeta.OFFSHORE_PARENT);
+        if (parentIdBuffer != null) {
+            DBAlliance parent = DBAlliance.get(parentIdBuffer.getInt());
+            if (parent != null && parent.getNations().size() > 3) {
+                return parent;
+            }
+        }
+        return null;
+    }
+
+    private boolean isRightSizeForOffshore(Set<DBNation> members) {
+        if (members.size() > 3) {
+            return false;
+        }
+        if (members.size() == 0) {
+            return false;
+        }
+        int maxCities = 0;
+        int maxAge = 0;
+        int activeMembers = 0;
+        int numVM = 0;
+
+        for (DBNation member : members) {
+            if (member.getVm_turns() > 0) numVM++;
+            if (member.getVm_turns() == 0 && member.getActive_m() > 10000) {
+                return false;
+            }
+            if (member.getVm_turns() == 0) {
+                activeMembers++;
+                maxCities = Math.max(maxCities, member.getCities());
+                maxAge = Math.max(maxAge, member.getAgeDays());
+            }
+        }
+        if (numVM >= 3) {
+            return false;
+        }
+        if (activeMembers == 0) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * If this alliance is an offshore
+     * @return parent alliance if this is an offshore
+     */
+    public DBAlliance findParentOfThisOffshore() {
+        Set<DBNation> members = getNations();
+        if (!isRightSizeForOffshore(members)) {
+            deleteMeta(AllianceMeta.OFFSHORE_PARENT);
+            return null;
+        }
+
+
+        for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
+
+            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war.warId);
+            attacks.removeIf(f -> f.attack_type != AttackType.A_LOOT);
+            if (attacks.size() != 1) continue;
+
+            DBAttack attack = attacks.get(0);
+            int attAA = war.isAttacker(attack.attacker_nation_id) ? war.attacker_aa : war.defender_aa;
+            if (attAA == getAlliance_id()) continue;
+            boolean lowMil = false;
+            for (DBNation member : members) {
+                if (member.getVm_turns() != 0) continue;
+                if (member.getActive_m() > 7200) {
+                    return null;
+                }
+                if (member.isGray()) {
+                    deleteMeta(AllianceMeta.OFFSHORE_PARENT);
+                    return null;
+                }
+                if (member.getCities() > 1 && member.getAircraftPct() < 0.8) {
+                    lowMil = true;
+                }
+            }
+            if (lowMil) {
+                for (DBNation member : members) {
+                    if (member.daysSinceLastOffensive() < 30) lowMil = false;
+                }
+                if (lowMil) {
+                    deleteMeta(AllianceMeta.OFFSHORE_PARENT);
+                    return null;
+                }
+            }
+        }
+
+        double thisScore = this.getScore();
+
+        DBAlliance maxAlly = null;
+        for (Map.Entry<Integer, Treaty> treaty : getDefenseTreaties().entrySet()) {
+            DBAlliance other = DBAlliance.get(treaty.getKey());
+            if (other == null) continue;
+            if (maxAlly == null || other.getScore() > maxAlly.getScore()) maxAlly = other;
+        }
+        if (maxAlly != null && maxAlly.getNations().size() > 3) {
+            setMeta(AllianceMeta.OFFSHORE_PARENT, maxAlly.getAlliance_id());
+            return maxAlly;
+        }
+
+        for (DBNation member : members) {
+            Map.Entry<Integer, Rank> lastAAInfo = member.getPreviousAlliance();
+            if (lastAAInfo == null) continue;
+            int aaId = lastAAInfo.getKey();
+
+            if (lastAAInfo.getValue().id >= Rank.OFFICER.id) {
+                DBAlliance lastAA = DBAlliance.get(aaId);
+                if (lastAA != null && lastAA.getNations().size() > 3) {
+                    if (lastAA == maxAlly) continue;
+                    double lastAAScore = lastAA.getScore();
+                    if (lastAAScore > thisScore * 2 && (maxAlly == null || lastAAScore > maxAlly.getScore())) {
+                        maxAlly = lastAA;
+                        continue;
+                    }
+                }
+                if (lastAA == null) {
+                    lastAA = DBAlliance.getOrCreate(aaId);
+                } else if (lastAA.getNations().size() >= 3) {
+                    continue;
+                }
+                ByteBuffer offshore = lastAA.getMeta(AllianceMeta.OFFSHORE_PARENT);
+                if (offshore != null) {
+                    DBAlliance parent = DBAlliance.get(offshore.getInt());
+                    if (parent == maxAlly) continue;
+                    if (parent != null && parent.getNations().size() > 3 && (maxAlly == null || parent.getScore() > maxAlly.getScore())) {
+                        maxAlly = parent;
+                    }
+                }
+            }
+        }
+        if (maxAlly != null) {
+            setMeta(AllianceMeta.OFFSHORE_PARENT, maxAlly.getAlliance_id());
+            return maxAlly;
+        }
+
+        ByteBuffer parentIdBuffer = getMeta(AllianceMeta.OFFSHORE_PARENT);
+        if (parentIdBuffer != null) {
+            DBAlliance parent = DBAlliance.get(parentIdBuffer.getInt());
+            if (parent != null && parent.getNations().size() > 3) {
+                return parent;
+            }
+        }
+
+        deleteMeta(AllianceMeta.OFFSHORE_PARENT);
+        return null;
+    }
+
+    public Set<DBAlliancePosition> getPositions() {
+        Set<DBAlliancePosition> positions = new HashSet<>();
+        for (DBNation nation : getNations()) {
+            DBAlliancePosition position = Locutus.imp().getNationDB().getPosition(nation.getAlliancePositionId(), allianceId, false);
+            if (position != null) positions.add(position);
+        }
+        return positions;
     }
 }

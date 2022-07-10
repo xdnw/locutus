@@ -47,6 +47,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildChannel;
@@ -344,6 +345,29 @@ public class UtilityCommands {
             response.append(" - Cities: " + maxCities).append("\n");
         }
         return response.toString();
+    }
+
+    @Command(desc = "Mark an alliance as the offshore of another")
+    public String markAsOffshore(@Me User author, @Me DBNation me, DBAlliance offshore, DBAlliance parent) {
+        if (!Roles.ADMIN.hasOnRoot(author)) {
+            DBAlliance expectedParent = offshore.findParentOfThisOffshore();
+            if (expectedParent != parent) {
+                if (me.getAlliance_id() != offshore.getAlliance_id()) {
+                    return "You are not in " + offshore.getName();
+                }
+                if (me.getPositionEnum().id < Rank.OFFICER.id) return "You are not leader in " + offshore.getName();
+
+                GuildDB db = parent.getGuildDB();
+                if (db != null) {
+                    Guild guild = db.getGuild();
+                    Member member = guild.getMember(author);
+                    if (member == null) return "You are not member in " + guild;
+                    if (member.hasPermission(Permission.ADMINISTRATOR)) return "You are not admin in: " + guild;
+                }
+            }
+        }
+        offshore.setMeta(AllianceMeta.OFFSHORE_PARENT, parent.getAlliance_id());
+        return "Set " + offshore.getName() + " as an offshore for " + parent.getName();
     }
 
     @Command

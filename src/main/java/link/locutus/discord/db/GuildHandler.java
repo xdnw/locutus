@@ -1,7 +1,10 @@
 package link.locutus.discord.db;
 
+import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
@@ -10,6 +13,7 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.CityBuildingChangeEvent;
 import link.locutus.discord.event.city.CityCreateEvent;
 import link.locutus.discord.event.city.CityInfraBuyEvent;
+import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.guild.NewApplicantOnDiscordEvent;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -54,7 +58,6 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import net.dv8tion.jda.api.exceptions.MissingAccessException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -120,7 +123,7 @@ public class GuildHandler {
     public synchronized OffshoreInstance getBank() {
         if (!bankInit && db.getOrNull(GuildDB.Key.API_KEY) != null) {
             bankInit = true;
-            Auth auth = db.getAuth();
+            Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
             if (auth != null) {
                 bank = new OffshoreInstance(auth, db, db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
             }
@@ -181,7 +184,7 @@ public class GuildHandler {
         int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
         nations.removeIf(f -> f.getAlliance_id() != aaId || f.isGray() || f.getVm_turns() > 0 || f.getPosition() <= 1 || f.isBeige());
 
-        Auth auth = getDb().getAuth();
+        Auth auth = getDb().getAuth(AlliancePermission.TAX_BRACKETS);
         Map<Integer, TaxBracket> brackets = auth.getTaxBrackets(false);
         Map<DBNation, TaxBracket> bracketsByNation = new HashMap<>();
 
@@ -189,7 +192,7 @@ public class GuildHandler {
 
         for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
             TaxBracket bracket = entry.getValue();
-            List<DBNation> bracketNations = bracket.getNations();
+            Set<DBNation> bracketNations = bracket.getNations();
             for (DBNation nation : bracketNations) {
                 bracketsByNation.put(nation, bracket);
             }
@@ -1870,15 +1873,76 @@ public class GuildHandler {
         return allowed;
     }
 
-    public List<BankDB.TaxDeposit> updateTaxes(Long latestDate) {
-        Auth auth = getDb().getAuth();
-        if (auth == null) throw new IllegalArgumentException("Not auth found");
+    @Subscribe
+    public void onTurnChange(TurnChangeEvent event) {
+        if (db.getAlliance() == null || db.getOrNull(GuildDB.Key.API_KEY) == null) return;
+        Locutus.imp().getExecutor().submit(new CaughtRunnable() {
+            @Override
+            public void runUnsafe() {
+                updateTaxes();
+            }
+        });
+    }
 
-        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(auth.getAllianceId());
+    public List<BankDB.TaxDeposit> updateTaxes() {
+        DBAlliance alliance = db.getAlliance();
+        if (alliance == null) throw new IllegalArgumentException("No valid alliance set `!KeyStore ALLIANCE_ID`");
+
+        long oldestApiFetchDate = alliance.getDateCreated() - TimeUnit.HOURS.toMillis(2);
+        BankDB bankDb = Locutus.imp().getBankDB();
+        BankDB.TaxDeposit latestTaxRecord = bankDb.getLatestTaxDeposit(alliance.getAlliance_id());
+
+        long afterDate = oldestApiFetchDate;
+        if (latestTaxRecord != null) afterDate = latestTaxRecord.date;
+        
+        PoliticsAndWarV3 api = db.getApi(alliance.getAlliance_id(), AlliancePermission.TAX_BRACKETS);
+        List<Bankrec> bankRecs = api.fetchTaxRecsWithInfo(alliance.getAlliance_id(), afterDate);
+
+        if (bankRecs.isEmpty()) return new ArrayList<>();
+
+        Map<Integer, com.politicsandwar.graphql.model.TaxBracket> taxRates = api.fetchTaxBrackets(alliance.getAlliance_id());
+
+        List<BankDB.TaxDeposit> taxes = new ArrayList<>();
+        Map<Integer, TaxRate> internalTaxRateCache = new HashMap<>();
+        for (Bankrec bankrec : bankRecs) {
+            int nationId = bankrec.getSender_id();
+            TaxRate internal = internalTaxRateCache.get(nationId);
+            if (internal == null) {
+                internal = db.getHandler().getInternalTaxrate(nationId);
+                internalTaxRateCache.put(nationId, internal);
+            }
+
+            double[] deposit = ResourceType.fromApiV3(bankrec, null);
+            if (ResourceType.isEmpty(deposit)) continue;
+
+            int moneyTax = 0;
+            int resourceTax = 0;
+            com.politicsandwar.graphql.model.TaxBracket taxRate = taxRates.get(bankrec.getTax_id());
+            if (taxRate != null) {
+                moneyTax = taxRate.getTax_rate();
+                resourceTax = taxRate.getResource_tax_rate();
+            }
+
+            BankDB.TaxDeposit taxRecord = new BankDB.TaxDeposit(bankrec.getReceiver_id(), bankrec.getDate().toEpochMilli(), bankrec.getId(), bankrec.getTax_id(), nationId, moneyTax, resourceTax, internal.money, internal.resources, deposit);
+            taxes.add(taxRecord);
+
+        }
+        Locutus.imp().getBankDB().addTaxDeposits(taxes);
+        return taxes;
+    }
+
+    public List<BankDB.TaxDeposit> updateTaxesLegacy(Long latestDate) {
+        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(aaId);
         int latestId = 1;
         if (latestDate == null) {
             latestDate = 0L;
         }
+
+        Auth auth = getDb().getAuth(AlliancePermission.TAX_BRACKETS);
+        if (auth == null) throw new IllegalArgumentException("Not auth found");
+
+
         long now = System.currentTimeMillis();
         if (!existing.isEmpty()) {
 
@@ -2487,7 +2551,7 @@ public class GuildHandler {
         }
     }
 
-    public void onSetRank(User author, MessageChannel channel, DBNation nation, Rank rank) {
+    public void onSetRank(User author, MessageChannel channel, DBNation nation, DBAlliancePosition rank) {
 
     }
 
@@ -2504,8 +2568,8 @@ public class GuildHandler {
         body.append("War: " + MarkupUtil.markdownUrl("Click Here", current.toUrl())).append("\n");
         body.append("ATT: " + PnwUtil.getMarkdownUrl(current.attacker_id, false) +
                 " | " + PnwUtil.getMarkdownUrl(current.attacker_aa, true)).append("\n");
-        body.append("DEF: " + PnwUtil.getMarkdownUrl(current.attacker_id, false) +
-                " | " + PnwUtil.getMarkdownUrl(current.attacker_aa, true)).append("\n");
+        body.append("DEF: " + PnwUtil.getMarkdownUrl(current.defender_id, false) +
+                " | " + PnwUtil.getMarkdownUrl(current.defender_aa, true)).append("\n");
 
         DiscordUtil.createEmbedCommand(channel, title, body.toString());
     }

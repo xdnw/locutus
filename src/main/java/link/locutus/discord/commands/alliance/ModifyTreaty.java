@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
@@ -48,7 +49,7 @@ public class ModifyTreaty extends Command {
 
         int treatyOrAAId = PnwUtil.parseAllianceId(args.get(0));
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
         if (auth == null) return "No authentication enabled for this guild";
 
         List<PendingTreaty> treaties = auth.getTreaties();

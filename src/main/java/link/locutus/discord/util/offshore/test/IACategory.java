@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore.test;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
@@ -740,7 +741,7 @@ public class IACategory {
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null) return true;
-                if (db.getAuth() != null && db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
+                if (db.getAuth(AlliancePermission.WITHDRAW_BANK) != null && db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                     List<Transaction2> transactions = nation.getTransactions(-1);
                     for (Transaction2 transaction : transactions) {
                         if(transaction.receiver_id == nation.getNation_id() && transaction.note.contains("#deposit")) {

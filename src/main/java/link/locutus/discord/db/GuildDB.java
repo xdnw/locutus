@@ -2,6 +2,8 @@ package link.locutus.discord.db;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -31,7 +33,6 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.task.roles.AutoRoleTask;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import link.locutus.discord.util.task.tax.GetNationsFromTaxBracket;
 import com.google.common.eventbus.EventBus;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
@@ -153,6 +154,35 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private PoliticsAndWarV2 api;
     private PoliticsAndWarV2 apiUncached;
     private String[] apiKeys = null;
+
+    public PoliticsAndWarV3 getApi(int requiredAllianceId, AlliancePermission... permissions) {
+        String[] apiKeys = getOrThrow(GuildDB.Key.API_KEY);
+        boolean keyOfNationNotInAlliance = false;
+        boolean keyOfNationWithoutPerm = false;
+        for (String key : apiKeys) {
+            Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+            if (nationId == null) throw new IllegalArgumentException("Invalid key set via `!KeyStore API_KEY`");
+            DBNation nation = DBNation.byId(nationId);
+            if (nation == null) throw new IllegalArgumentException("Key of deleted nation set via `!KeyStore API_KEY`");
+            DBAlliancePosition position = nation.getAlliancePosition();
+            if (position == null || position.getAlliance_id() != requiredAllianceId) {
+                keyOfNationNotInAlliance = true;
+                continue;
+            }
+            if (!position.hasAllPermission(permissions)) {
+                keyOfNationWithoutPerm = true;
+                continue;
+            }
+            return new PoliticsAndWarV3(key);
+        }
+        if (keyOfNationWithoutPerm) {
+            throw new IllegalArgumentException("`!KeyStore API_KEY` set to nation without the required perm: " + StringMan.getString(permissions));
+        }
+        if (keyOfNationNotInAlliance) {
+            throw new IllegalArgumentException("`!KeyStore API_KEY` set to nation not in alliance: " + PnwUtil.getName(requiredAllianceId, true));
+        }
+        throw new IllegalArgumentException("`!KeyStore API_KEY` not found for : " + PnwUtil.getName(requiredAllianceId, true));
+    }
 
     public PoliticsAndWarV2 getApi() {
         return getApi(true);
@@ -1644,7 +1674,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         Set<Long> offshoring = getCoalitionRaw(Coalition.OFFSHORING);
         if (offshoring.isEmpty()) return false;
-        if (getAuth() == null) return false;
+        if (getAuth(AlliancePermission.WITHDRAW_BANK) == null) return false; // TODO api based transfer
 
         Set<Long> myIds = new HashSet<>();
         myIds.add(getGuild().getIdLong());
@@ -3069,13 +3099,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        REQUIRED_TAX_BRACKET(false, ALLIANCE_ID, CommandCategory.ECON) {
+        REQUIRED_TAX_BRACKET(false, API_KEY, CommandCategory.ECON) {
             @Override
             public String validate(GuildDB db, String value) {
                 Map<NationFilterString, Integer> parsed = (Map<NationFilterString, Integer>) parse(db, value);
-                Auth auth = db.getAuth();
 
-                Map<Integer, TaxBracket> brackets = auth.getTaxBrackets(false);
+                DBAlliance alliance = db.getAlliance();
+                if (alliance == null) throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
+
+                PoliticsAndWarV3 v3 = db.getApi().getV3();
+                Map<Integer, com.politicsandwar.graphql.model.TaxBracket> brackets = v3.fetchTaxBrackets(alliance.getAlliance_id());
+                if (brackets.isEmpty()) throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
+
                 for (Map.Entry<NationFilterString, Integer> entry : parsed.entrySet()) {
                     if (!brackets.containsKey(entry.getValue())) {
                         throw new IllegalArgumentException("No tax bracket founds for id: " + entry.getValue());
@@ -3842,7 +3877,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             @Override
             public String help() {
-                return "A #channel for members to request funds";
+                return "A #channel to alert when a member's timer expires";
             }
         },
 
@@ -4256,32 +4291,28 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public Auth getAuth() {
-        return getAuth(3);
+        return getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
     }
 
-    public Auth getAuth(int requiredRank) {
+    public Auth getAuth(AlliancePermission... permissions) {
         int aaId = getOrThrow(GuildDB.Key.ALLIANCE_ID);
         DBAlliance alliance = DBAlliance.getOrCreate(aaId);
         Set<DBNation> nations = alliance.getNations();
-        Auth withOfficer = null;
-        Auth authWithVM = null;
         for (DBNation gov : nations) {
-            if (gov.getPosition() >= requiredRank) {
-                try {
-                    Auth auth = gov.getAuth(null);
-                    if (auth != null && auth.getAllianceId() == aaId && auth.isValid()) {
-                        if (gov.getVm_turns() == 0) {
-                            if (gov.getPosition() >= Rank.HEIR.id) return auth;
-                            withOfficer = auth;
-                        }
-                        else authWithVM = auth;
-                    }
-                } catch (IllegalArgumentException ignore) {
+            if (gov.getVm_turns() > 0) continue;
+            DBAlliancePosition position = gov.getAlliancePosition();
+            if (position == null || (permissions != null && !position.hasAllPermission(permissions))) {
+                continue;
+            }
+            try {
+                Auth auth = gov.getAuth(null);
+                if (auth != null && auth.getAllianceId() == aaId && auth.isValid()) {
+                    return auth;
                 }
+            } catch (IllegalArgumentException ignore) {
             }
         }
-        if (withOfficer != null) return withOfficer;
-        return authWithVM;
+        return null;
     }
 
     public Map<String, String> getInfoMap() {

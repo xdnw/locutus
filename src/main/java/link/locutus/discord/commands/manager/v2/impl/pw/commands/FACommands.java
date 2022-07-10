@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
@@ -69,14 +70,14 @@ public class FACommands {
             return "Admin is required to send a treaty with a message";
         }
         if (message == null) message = "";
-        return db.getAuth().sendTreaty(alliance.getAlliance_id(), type, message, days);
+        return db.getAuth(AlliancePermission.MANAGE_TREATIES).sendTreaty(alliance.getAlliance_id(), type, message, days);
     }
 
     @Command
     @IsAuthenticated
     @RolePermission(Roles.FOREIGN_AFFAIRS)
     public String approveTreaty(@Me User user, @Me GuildDB db, DBAlliance alliance) {
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);
         treaties.removeIf(treaty -> treaty.getFromId() != alliance.getAlliance_id() && treaty.getToId() != alliance.getAlliance_id());
@@ -93,7 +94,7 @@ public class FACommands {
     @RolePermission(Roles.FOREIGN_AFFAIRS)
     public String cancelTreaty(@Me User user, @Me DBNation me, @Me GuildDB db, DBAlliance alliance) {
 
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
         treaties.removeIf(treaty -> treaty.getFromId() != alliance.getAlliance_id() && treaty.getToId() != alliance.getAlliance_id());
@@ -231,7 +232,7 @@ public class FACommands {
     public String treaties(@Me MessageChannel channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch('f') boolean listExpired) {
         StringBuilder response = new StringBuilder();
         if (alliances.size() == 1 && alliances.iterator().next().equals(db.getOrNull(GuildDB.Key.ALLIANCE_ID))) {
-            Auth auth = db.getAuth(Rank.OFFICER.id);
+            Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
             if (auth != null) {
                 List<PendingTreaty> treaties = auth.getTreaties();
                 if (!listExpired) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);

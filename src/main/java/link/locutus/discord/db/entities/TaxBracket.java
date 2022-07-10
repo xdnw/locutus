@@ -1,12 +1,10 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.task.tax.GetNationsFromTaxBracket;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TaxBracket {
     public int taxId;
@@ -37,16 +35,18 @@ public class TaxBracket {
         this.rssRate = rssRate;
     }
 
-    private List<DBNation> nationsCached = null;
-
-    public List<DBNation> getNations() throws Exception {
-        return getNations(false);
+    public TaxBracket(com.politicsandwar.graphql.model.TaxBracket bracket) {
+        this.taxId = bracket.getId();
+        this.allianceId = bracket.getAlliance_id();
+        this.nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getTax_id() == taxId).size();
+        this.name = bracket.getBracket_name();
+        this.moneyRate = bracket.getTax_rate();
+        this.rssRate = bracket.getResource_tax_rate();
     }
 
-    public List<DBNation> getNations(boolean update) throws Exception {
-        if (nations == 0) return new ArrayList<>();
-        if (nationsCached != null && !update) return nationsCached;
-        return nationsCached = new GetNationsFromTaxBracket(taxId).call();
+    public Set<DBNation> getNations() throws Exception {
+        if (nations == 0) return new HashSet<>();
+        return Locutus.imp().getNationDB().getNationsMatching(f -> f.getTax_id() == taxId);
     }
 
     public String getUrl() {

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
@@ -48,7 +49,7 @@ public class Treaties extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
         if (aaId != null && alliances.size() == 1 && alliances.iterator().next().equals(aaId)) {
-            Auth auth = db.getAuth();
+            Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
             if (auth != null) {
                 List<PendingTreaty> treaties = auth.getTreaties();
                 if (!flags.contains('f')) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);

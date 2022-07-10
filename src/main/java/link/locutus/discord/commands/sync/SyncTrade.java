@@ -21,7 +21,7 @@ public class SyncTrade extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        Locutus.imp().getTradeManager().updateTradeList(true);
+        Locutus.imp().getTradeManager().updateTradeList(true, true);
         return "Done!";
     }
 }

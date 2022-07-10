@@ -1,6 +1,8 @@
 package link.locutus.discord.web.commands.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -25,14 +27,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -75,17 +71,7 @@ import java.awt.Color;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -849,6 +835,22 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
+    @Binding(types=AlliancePermission.class)
+    public String AlliancePermission(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(AlliancePermission.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
+    }
+
+    @HtmlInput
+    @Binding(types=DBAlliancePosition.class)
+    public String position(@Me GuildDB db, ParameterData param) {
+        DBAlliance alliance = DBAlliance.get(db.getAlliance_id());
+        Set<DBAlliancePosition> positions = new HashSet<>(alliance.getPositions());
+        positions.add(DBAlliancePosition.REMOVE);
+        positions.add(DBAlliancePosition.APPLICANT);
+        return multipleSelect(param, positions, rank -> new AbstractMap.SimpleEntry<>(rank.getName(), rank.getInputName()));
+    }
+
+    @HtmlInput
     @Binding(types= Permission.class)
     public String permission(ParameterData param) {
         return multipleSelect(param, Arrays.asList(Permission.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
@@ -988,8 +990,7 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= TaxBracket.class)
     public String bracket(@Me GuildDB db, ParameterData param) {
-        Auth auth = db.getAuth();
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
+        Map<Integer, TaxBracket> brackets = db.getAlliance().getTaxBrackets(true);
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.name + ": " + obj.moneyRate + "/" + obj.rssRate);

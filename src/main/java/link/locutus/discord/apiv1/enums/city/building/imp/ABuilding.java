@@ -15,11 +15,11 @@ public class ABuilding<task> implements Building {
     private final int cap;
     private final Map<ResourceType, Double> upkeep;
     private final double[] costArr;
-    private final double costConverted = -1;
+    private double costConverted;
 
     private final double[] upkeepArr;
     private final String name;
-    private final double upkeepConverted;
+    private double upkeepConverted;
     private int ordinal;
 
     public ABuilding(Building parent) {
@@ -37,12 +37,18 @@ public class ABuilding<task> implements Building {
         for (Map.Entry<ResourceType, Double> entry : cost.entrySet()) {
             costArr[entry.getKey().ordinal()] += entry.getValue();
         }
+        this.costConverted = PnwUtil.convertedTotal(costArr);
 
         upkeepArr = new double[ResourceType.values.length];
         for (Map.Entry<ResourceType, Double> entry : upkeep.entrySet()) {
             upkeepArr[entry.getKey().ordinal()] += entry.getValue();
         }
 
+        this.upkeepConverted = PnwUtil.convertedTotal(upkeepArr);
+    }
+
+    private void updateUpkeepConverted() {
+        this.costConverted = PnwUtil.convertedTotal(costArr);
         this.upkeepConverted = PnwUtil.convertedTotal(upkeepArr);
     }
 
@@ -95,7 +101,7 @@ public class ABuilding<task> implements Building {
 
     @Override
     public double profitConverted(double rads, Predicate<Project> hasProject, JavaCity city, int amt) {
-        return -upkeepConverted;
+        return -(upkeepConverted * amt);
     }
 
     @Override

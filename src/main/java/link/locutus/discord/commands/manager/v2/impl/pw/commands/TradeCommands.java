@@ -549,7 +549,7 @@ public class TradeCommands {
     @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation.")
     public String moneyTrades(TradeManager manager, DBNation nation, @Timestamp long time, @Switch('f') boolean forceUpdate, @Switch('a') boolean addBalance) throws IOException {
         if (forceUpdate) {
-            manager.updateTradeList(false);
+            manager.updateTradeList(false, true);
         }
 
         Map<Integer, Map<ResourceType, Long>> netInflows = new HashMap<>();

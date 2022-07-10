@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.politicsandwar.graphql.model.War;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
@@ -39,6 +40,33 @@ public class DBWar {
         this.warType = warType;
         this.status = status;
         this.date = date;
+    }
+
+    public DBWar(War war) {
+        this.warId = war.getId();
+        this.attacker_id = war.getAtt_id();
+        this.defender_id = war.getDef_id();
+        this.attacker_aa = war.getAtt_alliance_id();
+        this.defender_aa = war.getDef_alliance_id();
+        this.warType = WarType.fromV3(war.getWar_type());
+        if (war.getWinner_id() != null && war.getWinner_id() > 0) {
+            if (war.getWinner_id() == attacker_id) {
+                this.status = WarStatus.ATTACKER_VICTORY;
+            } else {
+                status = WarStatus.DEFENDER_VICTORY;
+            }
+        } else if (war.getAtt_peace() && war.getDef_peace()) {
+            status = WarStatus.PEACE;
+        } else if (TimeUtil.getTurn() - TimeUtil.getTurn(war.getDate().toEpochMilli()) >= 60) {
+            status = WarStatus.EXPIRED;
+        } else if (war.getAtt_peace()) {
+            status = WarStatus.ATTACKER_OFFERED_PEACE;
+        } else if (war.getDef_peace()) {
+            status = WarStatus.DEFENDER_OFFERED_PEACE;
+        } else {
+            status = WarStatus.ACTIVE;
+        }
+        this.date = war.getDate().toEpochMilli();
     }
 
     public String getWarInfoEmbed(boolean isAttacker, boolean loot) {
@@ -341,15 +369,7 @@ public class DBWar {
 
     @Override
     public int hashCode() {
-        int result = warId;
-        result = 31 * result + attacker_id;
-        result = 31 * result + defender_id;
-        result = 31 * result + attacker_aa;
-        result = 31 * result + defender_aa;
-        result = 31 * result + (warType != null ? warType.hashCode() : 0);
-        result = 31 * result + (status != null ? status.hashCode() : 0);
-        result = 31 * result + (int) (date ^ (date >>> 32));
-        return result;
+        return warId;
     }
 
     public Boolean isAttacker(DBNation nation) {

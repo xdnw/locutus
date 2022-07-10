@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.util.UrlEncoded;
 
 import java.io.BufferedReader;
@@ -179,6 +180,10 @@ public final class FileUtil {
 
 
             return new String(bytes, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            try (InputStream is = http.getErrorStream()) {
+                throw new IOException(e.getMessage() + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
+            }
         }
     }
 }

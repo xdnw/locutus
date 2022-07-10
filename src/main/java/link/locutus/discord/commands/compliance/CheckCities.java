@@ -62,8 +62,6 @@ public class CheckCities extends Command {
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Auth auth = db.getAuth();
-        if (auth == null && db.isWhitelisted()) auth = Locutus.imp().getRootAuth();
 
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
@@ -145,7 +143,7 @@ public class CheckCities extends Command {
                         event.getChannel().sendMessage("^ " + user.getAsMention()).complete();
                     }
                 } else if (flags.contains('m')) {
-                    if (auth == null) return "No authentication found";
+                    String[] apiKeys = db.getOrThrow(GuildDB.Key.API_KEY);
                     String title = nation.getAllianceName() + " automatic checkup";
 
                     String input = output.toString().replace("_", " ").replace(" * ", " STARPLACEHOLDER ");
@@ -155,7 +153,7 @@ public class CheckCities extends Command {
                     markdown += ("\n\nPlease get in contact with us via discord for assistance");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 
-                    JsonObject response = nation.sendMail(auth, title, markdown);
+                    JsonObject response = nation.sendMail(apiKeys, title, markdown);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
                     RateLimitUtil.queue(event.getChannel().sendMessage(userStr + ": " + response));
                 }

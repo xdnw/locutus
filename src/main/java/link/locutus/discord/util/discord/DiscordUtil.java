@@ -17,7 +17,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.parser.ArgParser;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.tax.GetNationsFromTaxBracket;
 import com.google.common.base.Charsets;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -780,13 +779,8 @@ public class DiscordUtil {
 
                     continue;
                 } else if (name.contains("tax_id=")) {
-                    try {
-                        nations.addAll(new GetNationsFromTaxBracket(name).call());
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        if (ignoreErrors) continue;
-                        throw new IllegalArgumentException(e.getMessage());
-                    }
+                    int taxId = PnwUtil.parseTaxId(name);
+                    nations.addAll(Locutus.imp().getNationDB().getNationsMatching(f -> f.getTax_id() == taxId));
                     continue;
                 } else if (name.startsWith("https://docs.google.com/spreadsheets/d/") || name.startsWith("sheet:")) {
                     String key;

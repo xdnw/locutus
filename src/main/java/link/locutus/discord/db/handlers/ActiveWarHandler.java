@@ -50,6 +50,7 @@ public class ActiveWarHandler {
             DBWar[] wars = activeWars.get(nationId);
             if (wars == null) wars = new DBWar[0];
             Set<DBWar> newWars = new HashSet<>(Arrays.asList(wars));
+            newWars.removeIf(f -> f.getWarId() == war.getWarId());
             newWars.add(war);
             activeWars.put(nationId, newWars.toArray(new DBWar[0]));
         }

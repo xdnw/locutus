@@ -11,9 +11,30 @@ import link.locutus.discord.event.position.PositionChangeNameEvent;
 import link.locutus.discord.event.position.PositionChangePermissionEvent;
 import link.locutus.discord.event.position.PositionChangeRankEvent;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
+import static link.locutus.discord.apiv3.enums.AlliancePermission.*;
+
 public class DBAlliancePosition {
+    public static final DBAlliancePosition APPLICANT = new DBAlliancePosition(1,
+            0,
+            "applicant",
+            0,
+            0,
+            Rank.APPLICANT,
+            0
+    );
+    public static final DBAlliancePosition REMOVE = new DBAlliancePosition(0,
+            0,
+            "remove",
+            0,
+            0,
+            Rank.APPLICANT,
+            0
+    );
+
     private final int id;
     private final int alliance_id;
     private String name;
@@ -22,11 +43,17 @@ public class DBAlliancePosition {
     private Rank rank;
     private long permission_bits;
 
-    public DBAlliancePosition(AlliancePosition v3Position) {
+    public DBAlliancePosition(int alliance_id, AlliancePosition v3Position) {
         this.id = v3Position.getId();
-        this.alliance_id = v3Position.getAlliance_id();
+        this.alliance_id = alliance_id;
 
         set(v3Position, null);
+    }
+
+    public static DBAlliancePosition parse(String input, int aaId, boolean allowApplicantAndRemove) {
+        DBAlliance alliance = DBAlliance.get(aaId);
+        if (alliance == null) throw new IllegalStateException("No alliance found with id: " + aaId);
+        return null;
     }
 
     public boolean set(AlliancePosition v3Position, Consumer<Event> eventConsumer) {
@@ -96,6 +123,45 @@ public class DBAlliancePosition {
         return permission.has(permission_bits);
     }
 
+    public boolean hasAnyAdminPermission() {
+        return hasAnyPermission(
+                CHANGE_PERMISSIONS,
+                PROMOTE_SELF_TO_LEADER
+        );
+    }
+
+    public boolean hasAnyOfficerPermissions() {
+        return hasAnyPermission(
+                CHANGE_PERMISSIONS,
+                SEE_SPIES,
+                SEE_RESET_TIMERS,
+                TAX_BRACKETS,
+                POST_ANNOUNCEMENTS,
+                MANAGE_ANNOUNCEMENTS,
+                ACCEPT_APPLICANTS,
+                REMOVE_MEMBERS,
+                EDIT_ALLIANCE_INFO,
+                MANAGE_TREATIES,
+                MANAGE_MARKET_SHARE,
+                MANAGE_EMBARGOES,
+                PROMOTE_SELF_TO_LEADER
+        );
+    }
+
+    public boolean hasAnyPermission(AlliancePermission... permissions) {
+        for (AlliancePermission perm : permissions) {
+            if (hasPermission(perm)) return true;
+        }
+        return false;
+    }
+
+    public boolean hasAllPermission(AlliancePermission... permissions) {
+        for (AlliancePermission perm : permissions) {
+            if (!hasPermission(perm)) return false;
+        }
+        return true;
+    }
+
     public int getId() {
         return id;
     }
@@ -146,5 +212,19 @@ public class DBAlliancePosition {
 
     public GuildDB getGuildDB() {
         return Locutus.imp().getGuildDBByAA(alliance_id);
+    }
+
+    public Set<AlliancePermission> getPermissions() {
+        Set<AlliancePermission> result = new LinkedHashSet<>();
+        for (AlliancePermission perm : AlliancePermission.values()) {
+            if (hasPermission(perm)) result.add(perm);
+        }
+        return result;
+    }
+
+    public String getInputName() {
+        if (this == APPLICANT) return "applicant";
+        if (this == REMOVE) return "remove";
+        return this.id + "";
     }
 }

@@ -77,18 +77,7 @@ public class Transaction2 {
                 rec.getNote(),
                 ResourceType.getBuffer()
         );
-        tx.resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
-        tx.resources[ResourceType.COAL.ordinal()] = rec.getCoal();
-        tx.resources[ResourceType.OIL.ordinal()] = rec.getOil();
-        tx.resources[ResourceType.URANIUM.ordinal()] = rec.getUranium();
-        tx.resources[ResourceType.IRON.ordinal()] = rec.getIron();
-        tx.resources[ResourceType.BAUXITE.ordinal()] = rec.getBauxite();
-        tx.resources[ResourceType.LEAD.ordinal()] = rec.getLead();
-        tx.resources[ResourceType.GASOLINE.ordinal()] = rec.getGasoline();
-        tx.resources[ResourceType.MUNITIONS.ordinal()] = rec.getMunitions();
-        tx.resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
-        tx.resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
-        tx.resources[ResourceType.FOOD.ordinal()] = rec.getFood();
+        tx.resources = ResourceType.fromApiV3(rec, tx.resources);
         return tx;
     }
 

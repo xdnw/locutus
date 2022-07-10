@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.City;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.db.entities.DBNation;
@@ -212,5 +213,21 @@ public class DBCity {
             javaCity.getMetrics(hasProject).powered = false;
         }
         return javaCity;
+    }
+
+    public String getMMR() {
+        return get(Buildings.BARRACKS) + "" + get(Buildings.FACTORY) + "" + get(Buildings.HANGAR) + "" + get(Buildings.DRYDOCK);
+    }
+
+    public int[] getMMRArray() {
+        return new int[]{get(Buildings.BARRACKS), get(Buildings.FACTORY), get(Buildings.HANGAR), get(Buildings.DRYDOCK)};
+    }
+
+    public int get(int ordinal) {
+        return buildings[ordinal];
+    }
+
+    public int get(Building building) {
+        return get(building.ordinal());
     }
 }
