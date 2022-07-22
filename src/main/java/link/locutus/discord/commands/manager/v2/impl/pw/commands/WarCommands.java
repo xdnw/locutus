@@ -1413,7 +1413,7 @@ public class WarCommands {
         targets.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         try {
             String title = "Recommended ops";
-            String body = runSpyOps(me, db, targets, operations, requiredSuccess, checkSlots);
+            String body = runSpyOps(me, db, targets, operations, requiredSuccess, checkSlots, prioritizeKills);
 
             DiscordUtil.createEmbedCommand(channel, title, body.toString());
 
@@ -1431,8 +1431,8 @@ public class WarCommands {
         }
     }
 
-    public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<SpyCount.Operation> operations, int requiredSuccess, boolean checkSlots) throws IOException {
-        double minSuccess = 50;
+    public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<SpyCount.Operation> operations, int requiredSuccess, boolean checkSlots, boolean prioritizeKills) throws IOException {
+        double minSuccess = requiredSuccess;
 
         if (me == null) {
             return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
@@ -1502,7 +1502,7 @@ public class WarCommands {
             }
             SpyCount.Operation[] opTypes = opTypesList.toArray(new SpyCount.Operation[0]);
 
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, nation, opTypes);
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(prioritizeKills, mySpies, nation, opTypes);
             if (best != null) {
                 double netDamageCost = best.getValue().getValue();
                 if (nation.hasProject(Projects.INTELLIGENCE_AGENCY)) {
@@ -1987,7 +1987,6 @@ public class WarCommands {
     @Command(desc = "Generate a sheet of alliance/nation/city MMR\n" +
             "Add `-f` to force an update\n" +
             "Add `-c` to list it by cities")
-    @WhitelistPermission
     public String MMRSheet(@Me GuildDB db, Set<DBNation> nations, @Switch('s') SpreadSheet sheet,
                            @Switch('f') boolean forceUpdate, @Switch('c') boolean showCities) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.MMR_SHEET);

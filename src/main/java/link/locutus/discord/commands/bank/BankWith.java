@@ -73,6 +73,7 @@ public class BankWith extends Command {
         boolean isAdmin = Roles.ECON.hasOnRoot(author);
 
         OffshoreInstance offshore = guildDb.getOffshore();
+        if (offshore == null) return "No offshore is set";
 
         List<String> otherNotes = new ArrayList<>();
         String primaryNote = "";
@@ -225,7 +226,7 @@ public class BankWith extends Command {
             otherNotes.add("#cash=" + MathMan.format(PnwUtil.convertedTotal(transfer)));
         }
 
-        String receiverStr = receiver.getName();
+        String receiverStr = receiver.isAlliance() ? receiver.getName() :  receiver.asNation().getNation();
         String note = primaryNote;
 
         Integer aaId3 = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);

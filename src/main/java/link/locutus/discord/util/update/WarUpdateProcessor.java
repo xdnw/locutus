@@ -913,7 +913,6 @@ public class WarUpdateProcessor {
         for (Alliance alliance : top) {
             List<DBNation> nations = alliance.getNations(true, 1440, true);
             nations.removeIf(DBNation::isGray);
-            DBNation total = new SimpleNationList(nations).getTotal();
             int numBeige = 0;
             int numDefending = 0;
             int numDefendingUnprovoked = 0;

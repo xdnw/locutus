@@ -836,7 +836,7 @@ public class BankCommands {
             otherNotes.add("#cash=" + MathMan.format(PnwUtil.convertedTotal(transfer)));
         }
 
-        String receiverStr = receiver.getName();
+        String receiverStr = receiver.isAlliance() ? receiver.getName() : receiver.asNation().getNation();
         String note = primaryNote;
         DBNation banker = me;
 
