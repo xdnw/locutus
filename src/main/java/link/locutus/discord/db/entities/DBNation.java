@@ -418,14 +418,11 @@ public class DBNation implements NationOrAlliance {
         long currentDate = System.currentTimeMillis();
         long cutoff = currentDate - TimeUnit.DAYS.toMillis(14);
 
-        Map.Entry<Long, double[]> loot = Locutus.imp().getNationDB().getLoot(getNation_id());
-        if (loot != null && loot.getKey() > cutoff) return null;
-        Map.Entry<Long, double[]> lootHistory = Locutus.imp().getWarDb().getNationLoot(getNation_id(), true).get(getNation_id());
-        if (lootHistory != null && lootHistory.getKey() > cutoff) return null;
+        LootEntry loot = Locutus.imp().getNationDB().getLoot(getNation_id());
+        if (loot != null && loot.getDate() > cutoff) return null;
 
         long lastLootDate = 0;
-        if (loot != null) lastLootDate = Math.max(lastLootDate, loot.getKey());
-        if (lootHistory != null) lastLootDate = Math.max(lastLootDate, lootHistory.getKey());
+        if (loot != null) lastLootDate = Math.max(lastLootDate, loot.getDate());
         if (currentDate - active_m() * 60L * 1000L < lastLootDate) return null;
 
         long checkBankCutoff = currentDate - TimeUnit.DAYS.toMillis(60);
@@ -441,7 +438,7 @@ public class DBNation implements NationOrAlliance {
                 lastLootDate = Math.max(lastLootDate, recent);
             }
         }
-        double cityCost = PnwUtil.nextCityCost(cities, true, hasProject(Projects.URBAN_PLANNING), hasProject(Projects.ADVANCED_URBAN_PLANNING));
+        double cityCost = PnwUtil.nextCityCost(cities, true, hasProject(Projects.URBAN_PLANNING), hasProject(Projects.ADVANCED_URBAN_PLANNING), hasProject(Projects.METROPOLITAN_PLANNING));
         double maxStockpile = cityCost * 2;
         double daysToMax = maxStockpile / (getInfra() * 300);
         if (lastLootDate == 0) {
@@ -466,7 +463,7 @@ public class DBNation implements NationOrAlliance {
 
         double value = getAvg_infra() * (diffMin + getActive_m()) * getCities();
 
-        if (loot == null && lootHistory == null && cities < 12) {
+        if (loot == null && cities < 12) {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(nation_id, nation_id, lastLootDate);
             if (!wars.isEmpty()) {
                 WarParser cost = WarParser.of(wars, f -> f.attacker_id == nation_id);
@@ -480,7 +477,7 @@ public class DBNation implements NationOrAlliance {
         double tankPct = (double) getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap() * getCities());
         value = value + value * (2 - soldierPct - tankPct);
 
-        return new AbstractMap.SimpleEntry<>(value, loot != null || lootHistory != null);
+        return new AbstractMap.SimpleEntry<>(value, loot != null);
     }
 
     @Command
@@ -2230,13 +2227,8 @@ public class DBNation implements NationOrAlliance {
         return nation_id;
     }
 
-    public Map.Entry<Long, double[]> getBeigeLoot() {
-//        Map.Entry<Long, double[]> spyLoot = Locutus.imp().getNationDB().getLoot(nation_id);
-        Map.Entry<Long, double[]> loot = Locutus.imp().getWarDb().getNationLoot(nation_id, true).get(nation_id);
-//        if (spyLoot != null && (loot == null || loot.getKey() < spyLoot.getKey())) {
-//            loot = spyLoot;
-//        }
-        return loot;
+    public LootEntry getBeigeLoot() {
+        return Locutus.imp().getNationDB().getLoot(getNation_id());
     }
 
     public String toMarkdown() {
@@ -2415,27 +2407,26 @@ public class DBNation implements NationOrAlliance {
     @Command
     @WhitelistPermission
     public double getBeigeLootTotal() {
-        Map.Entry<Long, double[]> loot = getBeigeLoot();
-        return loot == null ? 0 : PnwUtil.convertedTotal(loot.getValue());
+        LootEntry loot = getBeigeLoot();
+        return loot == null ? 0 : PnwUtil.convertedTotal(loot.getTotal_rss());
     }
 
     public double lootTotal() {
         double[] knownResources = new double[ResourceType.values.length];
         double[] buffer = new double[knownResources.length];
-        Map.Entry<Long, double[]> loot = getBeigeLoot();
+        LootEntry loot = getBeigeLoot();
         double convertedTotal = estimateRssLootValue(knownResources, loot, buffer, true) * 0.14;
 
         if (getPosition() > 1) {
-            long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14);
-            Map<ResourceType, Double> aaLoot = Locutus.imp().getWarDb().getAllianceBankEstimate(cutoff, false, getAlliance_id(), getScore());
+            Map<ResourceType, Double> aaLoot = Locutus.imp().getWarDb().getAllianceBankEstimate(getAlliance_id(), getScore());
             convertedTotal += PnwUtil.convertedTotal(aaLoot);
         }
         return convertedTotal;
     }
 
-    public double estimateRssLootValue(double[] knownResources, Map.Entry<Long,double[]> lootHistory, double[] buffer, boolean fetchStats) {
+    public double estimateRssLootValue(double[] knownResources, LootEntry lootHistory, double[] buffer, boolean fetchStats) {
         if (lootHistory != null) {
-            double[] loot = lootHistory.getValue();
+            double[] loot = lootHistory.getTotal_rss();
             for (int i = 0; i < loot.length; i++) {
                 knownResources[i] = loot[i];
             }

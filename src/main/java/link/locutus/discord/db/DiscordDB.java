@@ -39,7 +39,7 @@ public class DiscordDB extends DBMainV2 {
     public void createTables() {
             executeStmt("CREATE TABLE IF NOT EXISTS `USERS` (`nation_id` INT NOT NULL, `discord_id` INT, `discord_name` VARCHAR, PRIMARY KEY(discord_id))");
             executeStmt("CREATE TABLE IF NOT EXISTS `UUIDS` (`nation_id` INT NOT NULL, `uuid` BLOB NOT NULL, `date` INT NOT NULL, PRIMARY KEY(nation_id, uuid, date))");
-            executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
+//            executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
 
             executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS2` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
 
@@ -199,17 +199,17 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void logout(long discordId) {
-        update("DELETE FROM `CREDENTIALS` where `discordid` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("DELETE FROM `CREDENTIALS2` where `discordid` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, discordId);
         });
     }
 
     private void migrateCredentials() {
-        Set<Integer> ids = new HashSet<>();
+        Set<Long> ids = new HashSet<>();
         for (SelectResults.SelectResultRow row : getDb().selectBuilder("credentials").select("discordId").execute()) {
-            ids.add(row.get("discordid", Integer.class));
+            ids.add(row.get("discordid", Long.class));
         }
-        for (int discordId : ids) {
+        for (long discordId : ids) {
             Map.Entry<String, String> userPass = getUserPass(discordId, "credentials", EncryptionUtil.Algorithm.LEGACY);
             addUserPass(discordId, userPass.getKey(), userPass.getValue());
         }

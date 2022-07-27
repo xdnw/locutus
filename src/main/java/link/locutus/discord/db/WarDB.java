@@ -6,11 +6,13 @@ import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
@@ -56,7 +58,7 @@ public class WarDB extends DBMainV2 {
     private ActiveWarHandler activeWars = new ActiveWarHandler();
 
     private final ArrayList<DBAttack> allAttacks = new ArrayList<>();
-    public WarDB() throws SQLException, ClassNotFoundException {
+    public WarDB() throws SQLException {
         super(Settings.INSTANCE.DATABASE, "war");
 
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
@@ -77,6 +79,14 @@ public class WarDB extends DBMainV2 {
                     .putColumn("attack_type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("amount", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb());
+
+            String subCatQuery = TablePreset.create("ATTACK_SUBCATEGORY_CACHE")
+                    .putColumn("attack_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("subcategory_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("war_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .buildQuery(getDb().getType());
+            subCatQuery = subCatQuery.replace(");", ", PRIMARY KEY(attack_id, subcategory_id));");
+            getDb().executeUpdate(subCatQuery);
         }
 
         {
@@ -166,6 +176,23 @@ public class WarDB extends DBMainV2 {
 
     public List<DBWar> getActiveWars(int nationId) {
         return activeWars.getActiveWars(nationId);
+    }
+
+    public void addSubCategory(List<WarAttackSubcategoryEntry> entries) {
+        if (entries.isEmpty()) return;
+        String query = "INSERT OR IGNORE INTO `ATTACK_SUBCATEGORY_CACHE`(`attack_id`, `subcategory_id`, `war_id`) VALUES(?, ?, ?)";
+
+        ThrowingBiConsumer<WarAttackSubcategoryEntry, PreparedStatement> setStmt = (entry, stmt) -> {
+            stmt.setInt(1, entry.attack_id);
+            stmt.setLong(2, entry.subcategory.ordinal());
+            stmt.setInt(3, entry.war_id);
+        };
+        if (entries.size() == 1) {
+            WarAttackSubcategoryEntry value = entries.iterator().next();
+            update(query, stmt -> setStmt.accept(value, stmt));
+        } else {
+            executeBatch(entries, query, setStmt);
+        }
     }
 
     public void deleteBlockaded(int blockaded) {
@@ -797,6 +824,16 @@ public class WarDB extends DBMainV2 {
     }
 
     public void saveWars(Collection<DBWar> values) {
+        Map<Integer, DBNation> nationSnapshots = new HashMap<>();
+        for (DBWar war : values) {
+            DBNation attacker = war.getNation(true);
+            DBNation defender = war.getNation(false);
+            if (attacker != null) nationSnapshots.put(war.getWarId(), attacker);
+            if (defender != null) nationSnapshots.put(war.getWarId(), defender);
+            Locutus.imp().getNationDB().saveNationWarSnapshots(nationSnapshots);
+        }
+
+
         String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
 
         ThrowingBiConsumer<DBWar, PreparedStatement> setStmt = (war, stmt) -> {
@@ -1427,7 +1464,29 @@ public class WarDB extends DBMainV2 {
     }
 
     public void saveAttacks(Collection<DBAttack> values) {
+        for (DBAttack attack : values) {
+            if (attack.attack_type != AttackType.VICTORY && attack.attack_type != AttackType.A_LOOT) continue;
 
+            Map<ResourceType, Double> loot = attack.getLoot();
+            if (loot == null || loot.isEmpty()) continue;
+            Double pct = attack.getLootPercent();
+            if (pct == 0) pct = 0.1;
+            double factor = 1/pct;
+
+            double[] lootCopy = attack.loot.clone();
+            for (int i = 0; i < lootCopy.length; i++) {
+                lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+            }
+
+            if (attack.attack_type == AttackType.VICTORY) {
+                Locutus.imp().getNationDB().saveLoot(attack.defender_nation_id, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
+            } else if (attack.attack_type == AttackType.A_LOOT) {
+                Integer allianceId = attack.getLooted();
+                if (allianceId != null) {
+                    Locutus.imp().getNationDB().saveAllianceLoot(allianceId, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
+                }
+            }
+        }
         synchronized (allAttacks) {
             getAttacks();
             allAttacks.addAll(values);
@@ -1500,10 +1559,6 @@ public class WarDB extends DBMainV2 {
                 @Override
                 public boolean test(WarAttack v3Attack) {
                     DBAttack attack = new DBAttack(v3Attack);
-
-                    updateLootEstimate(attack, allianceBankEstimateCache, nationLootEstimateCache);
-                    // TODO fetch infra
-
                     saveAttacks(Collections.singleton(attack));
                     return false;
                 }
@@ -1597,7 +1652,6 @@ public class WarDB extends DBMainV2 {
 
             saveWars(warsToSave);
 
-            updateLootEstimate(attack, allianceBankEstimateCache, nationLootEstimateCache);
             dbAttacks.add(attack);
         }
 
@@ -1853,19 +1907,6 @@ public class WarDB extends DBMainV2 {
 //        return attack;
 //    }
 
-    private Map<Integer, double[]> allianceBankEstimateCache = null;
-    private final Object aaEstCache = new Object();
-
-    public Map<Integer, double[]> getAllianceBankEstimate() {
-        if (allianceBankEstimateCache != null) {
-            return allianceBankEstimateCache;
-        }
-        synchronized (aaEstCache) {
-            if (allianceBankEstimateCache != null) return allianceBankEstimateCache;
-            return allianceBankEstimateCache = getAllianceBankEstimate(0, true);
-        }
-    }
-
     public Map<ResourceType, Double> getLootEstimate(DBAttack attack) {
         Map<ResourceType, Double> loot = new HashMap<>(attack.getLoot());
         Double pct = attack.getLootPercent();
@@ -1928,31 +1969,19 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public Map<ResourceType, Double> getAllianceBankEstimate(long cutOff, boolean full, int allianceId, double score) {
-        if (allianceId == 0) return Collections.emptyMap();
+    public Map<ResourceType, Double> getAllianceBankEstimate(int allianceId, double nationScore) {
+        DBAlliance alliance = DBAlliance.get(allianceId);
+        if (allianceId == 0 || alliance == null) return Collections.emptyMap();
+        LootEntry lootInfo = Locutus.imp().getNationDB().getAllianceLoot(allianceId);
+        if (lootInfo == null) return Collections.emptyMap();
 
-        double[] allianceLoot = null;
 
-        Map<Integer, double[]> tmp = allianceBankEstimateCache;
-        if (tmp != null) {
-            allianceLoot = tmp.get(allianceId);
-        }
+        double[] allianceLoot = lootInfo.getTotal_rss();
 
-        if (allianceLoot == null) {
-            allianceLoot = Locutus.imp().getWarDb().getAllianceBankEstimate(cutOff, false).get(allianceId);
-        }
-        if (allianceLoot == null) {
-            return Collections.emptyMap();
-        }
-        Set<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
-        nations.removeIf(n -> n.getPosition() <= 1);
-        double aaScore = 0;
-        for (DBNation nation : nations) {
-            aaScore += nation.getScore();
-        }
+        double aaScore = alliance.getScore();
         if (aaScore == 0) return Collections.emptyMap();
 
-        double ratio = (score / aaScore) / (5);
+        double ratio = (nationScore / aaScore) / (5);
         double percent = Math.min(ratio, 0.33);
         Map<ResourceType, Double> yourLoot = PnwUtil.resourcesToMap(allianceLoot);
         yourLoot = PnwUtil.multiply(yourLoot, percent);
@@ -2015,61 +2044,12 @@ public class WarDB extends DBMainV2 {
         return null;
     }
 
-
-    private Map<Integer, Map.Entry<Long, double[]>> nationLootEstimateCache = null;
-    private final Object natEstCache = new Object();
-
-    protected void cacheSpyLoot(int nation, long epoch, double[] loot) {
-        Map<Integer, Map.Entry<Long, double[]>> tmp = nationLootEstimateCache;
-        if (tmp != null) {
-            Map.Entry<Long, double[]> existing = tmp.get(nation);
-            if (existing == null || existing.getKey() < epoch) {
-                existing = tmp.put(nation, new AbstractMap.SimpleEntry<>(epoch, loot));
-                if (existing != null && existing.getKey() > epoch) {
-                    tmp.put(nation, existing);
-                }
-            }
-        }
-    }
-
-    public Map<Integer, Map.Entry<Long, double[]>> getNationLoot() {
-        if (nationLootEstimateCache != null) {
-            return nationLootEstimateCache;
-        }
-        synchronized (natEstCache) {
-            if (nationLootEstimateCache != null) return nationLootEstimateCache;
-            return nationLootEstimateCache = getNationLoot(null, true);
-        }
-    }
-
-    public Map<Integer, Map.Entry<Long, double[]>> getNationLoot(Integer nationId, boolean includeSpyOps) {
-        Map<Integer, Map.Entry<Long, double[]>> tmp = nationLootEstimateCache;
-        if (tmp != null) return tmp;
-        Map<Integer, Map.Entry<Long, double[]>> nationLoot;
-
-        if (includeSpyOps) {
-            Map<Integer, Map.Entry<Long, double[]>> spyLoot = Locutus.imp().getNationDB().getLoot();
-            nationLoot = new ConcurrentHashMap<>(spyLoot.size());
-
-            for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : spyLoot.entrySet()) {
-                Map.Entry<Long, double[]> lootPair = entry.getValue();
-                Map.Entry<Long, double[]> epochLootPair = Map.entry(TimeUtil.getTimeFromTurn(lootPair.getKey()), lootPair.getValue());
-                Map.Entry<Long, double[]> existing = nationLoot.put(entry.getKey(), epochLootPair);
-                if (existing != null && existing.getKey() > epochLootPair.getKey()) nationLoot.put(entry.getKey(), existing);
-            }
-        } else {
-            nationLoot = new ConcurrentHashMap<>();
-        }
+    public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy() {
+        Map<Integer, Map.Entry<Long, double[]>> nationLoot = new ConcurrentHashMap<>();
 
         // `attacker_nation_id`, `defender_nation_id`
         String nationReq = "";
-        if (nationId != null) nationReq = " AND victor != ? AND (attacker_nation_id = ? OR defender_nation_id = ?)";
         try (PreparedStatement stmt= prepareQuery("select * FROM (SELECT * FROM `attacks2` WHERE `attack_type` = 1" + nationReq + " ORDER BY date DESC) AS tmp_table GROUP BY case when victor = attacker_nation_id then defender_nation_id else attacker_nation_id end")) {
-            if (nationId != null) {
-                stmt.setInt(1, nationId);
-                stmt.setInt(2, nationId);
-                stmt.setInt(3, nationId);
-            }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     DBAttack attack = createAttack(rs);

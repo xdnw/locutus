@@ -534,11 +534,12 @@ public class GrantCmd extends Command {
 
         boolean cp = me.hasProject(Projects.URBAN_PLANNING);
         boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
+        boolean mp = me.hasProject(Projects.METROPOLITAN_PLANNING);
         boolean manifest = me.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
 
         double cost = 0;
         for (int i = currentCity; i < currentCity + numBuy; i++) {
-            cost += PnwUtil.nextCityCost(i, manifest, cp, acp);
+            cost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp);
         }
 
         StringBuilder result = new StringBuilder();

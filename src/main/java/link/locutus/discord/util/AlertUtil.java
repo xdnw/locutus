@@ -1,6 +1,7 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -61,6 +62,10 @@ public class AlertUtil {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static void auditAlert(DBNation nation, AttackTypeSubCategory type, String msg) {
+        auditAlert(nation, null, f -> msg);
     }
 
     public static void auditAlert(DBNation nation, AuditType type, String msg) {

@@ -119,4 +119,14 @@ public enum AttackType {
         }
         return map;
     }
+
+    public boolean isVictory() {
+        switch (this) {
+            case VICTORY:
+            case A_LOOT:
+                return true;
+            default:
+                return false;
+        }
+    }
 }

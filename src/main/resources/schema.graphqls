@@ -9,6 +9,7 @@ type Query {
     leader_name: [String]
     alliance_id: [Int]
     alliance_position: [Int]
+    alliance_position_id: [Int]
     color: [String]
     created_after: DateTime
     min_score: Float
@@ -18,6 +19,7 @@ type Query {
     max_cities: Int
     vmode: Boolean
     discord: [String]
+    discord_id: [String]
     tax_id: [Int]
     orderBy: [QueryNationsOrderByOrderByClause!]
 
@@ -270,6 +272,7 @@ type Nation {
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
   spies: Int
   discord: String
+  discord_id: String
   treasures: [Treasure!]!
 
   # All offensive wars within the last 14 days
@@ -440,6 +443,9 @@ type Nation {
   government_support_agency: Boolean
   research_and_development_center: Boolean
   resource_production_center: Boolean
+  metropolitan_planning: Boolean
+  military_salvage: Boolean
+  fallout_shelter: Boolean
   wars_won: Int
   wars_lost: Int
   tax_id: Int

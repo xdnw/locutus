@@ -1,18 +1,25 @@
 package link.locutus.discord.apiv3;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.JsonObject;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.NationDB;
+import link.locutus.discord.db.WarDB;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
@@ -955,14 +962,14 @@ public class PoliticsAndWarV3 {
 
         PnwPusherHandler handler = new PnwPusherHandler(key)
         .connect()
-        .subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE)
+        .subscribeBuilder(City.class, PnwPusherEvent.UPDATE)
         .setBulk(true)
-        .build(nations -> {
-            for (Nation nation : nations) {
-                System.out.println("Nation " + nation);
+        .build(cities -> {
+            System.out.println("City update");
+            for (City city : cities) {
+                System.out.println("City " + city);
             }
         });
-
 
         Thread.sleep(100000);
 
@@ -1016,9 +1023,37 @@ public class PoliticsAndWarV3 {
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
         Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = false;
 
-        PoliticsAndWarV2 api = new PoliticsAndWarBuilder().addApiKey(Settings.INSTANCE.API_KEY_PRIMARY).setEnableCache(false).build();
         ApiKeyPool pool = new ApiKeyPool(Settings.INSTANCE.API_KEY_PRIMARY);
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
+
+        {
+            System.out.println("Result ");
+
+//            WarDB warDB = new WarDB();
+//            Collection<DBAttack> attacks = warDB.getAttacks();
+//            System.out.println("Num attcaks " + attacks.size());
+
+//            int bytes = 0;
+//            int numCities = 0;
+//            Set<Integer> builds = new HashSet<>();
+//            // test city memory
+//            NationDB db = new NationDB();
+//            for (Map<Integer, DBCity> cityEntry : db.getCities().values()) {
+//                for (DBCity city : cityEntry.values()) {
+//                    bytes += city.buildings.length;
+//                    builds.add(Arrays.hashCode(city.buildings));
+//                    numCities++;
+//                }
+//            }
+//            System.out.println(builds.size() + "  unique builds in " + numCities + " cities " + bytes);
+
+            System.exit(0);
+        }
+
+        {
+            testPusher();
+            System.exit(0);
+        }
 
 //        {
 //            String query = "mutation{bankWithdraw(receiver_type:1,receiver: 189573,money: 0.01){id, date}}";
@@ -1096,15 +1131,6 @@ public class PoliticsAndWarV3 {
                 }
             }, f -> true);
 
-            long diff = System.currentTimeMillis() - start;
-            System.out.println("Fetched " + nations.size() + " | " + diff);
-            System.exit(0);
-        }
-
-        {
-            System.out.println("Starting");
-            long start = System.currentTimeMillis();
-            List<SNationContainer> nations = api.getNationsByScore(false, 999999, -1).getNationsContainer();
             long diff = System.currentTimeMillis() - start;
             System.out.println("Fetched " + nations.size() + " | " + diff);
             System.exit(0);

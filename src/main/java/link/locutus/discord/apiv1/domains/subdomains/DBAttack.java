@@ -23,22 +23,6 @@ import java.util.regex.Pattern;
 import static link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS;
 
 public class DBAttack {
-    // TODO simplified version of attack for in memory usage
-    // Map<war id, map<attack id, attack_simplified>>
-    // 64 + 1 + 8 + 64 + 64 + 64 + 32 + 32 + 8 + 16 + varint = 353 bytes + varint
-    // 341gb
-    // date - long - possibly can drop if using id, and checking date against id
-    // isAttacker - boolean
-    // attack type - byte
-    // att_losses - long
-    // def_losses - long
-    // infra_destroyed_value - long
-    // att_used - int
-    // def_used - int
-    // improvements_destroyed - byte
-    // loot_percent - char (0-100%)
-    // varint array <resource, amount> => money looted
-
     public int war_attack_id;
     public long epoch;
     public int war_id;

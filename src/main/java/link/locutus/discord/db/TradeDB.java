@@ -59,7 +59,7 @@ public class TradeDB extends DBMainV2 {
                 .putColumn("ppu", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .buildQuery(getDb().getType());
-        query.replace(");", ", PRIMARY KEY(user, resource, isBuy, above, type));");
+        query = query.replace(");", ", PRIMARY KEY(user, resource, isBuy, above, type));");
         getDb().executeUpdate(query);
 
         {

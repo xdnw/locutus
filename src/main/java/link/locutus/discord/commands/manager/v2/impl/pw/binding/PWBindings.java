@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
@@ -521,6 +522,11 @@ public class PWBindings extends BindingHelper {
     @Me
     public Auth auth(@Me DBNation nation) {
         return nation.getAuth(null);
+    }
+
+    @Binding
+    public NationLootType lootType(String input) {
+        return emum(NationLootType.class, input);
     }
 
     @Binding

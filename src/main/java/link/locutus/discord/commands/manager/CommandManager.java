@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.external.account.Login;
 import link.locutus.discord.commands.external.account.Logout;
 import link.locutus.discord.commands.external.guild.CardCommand;
@@ -600,8 +601,8 @@ public class CommandManager {
 
                     DBNation nation = entry.getKey();
                     if (nation != null) {
-                        long turn = TimeUtil.getTurn();
-                        Locutus.imp().getNationDB().setLoot(nation.getNation_id(), turn, entry.getValue());
+                        long now = System.currentTimeMillis();
+                        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), now, entry.getValue(), NationLootType.ESPIONAGE);
                         GuildDB db = Locutus.imp().getGuildDB(event.getGuild());
                         if (db != null && db.isWhitelisted()) {
                             RateLimitUtil.queue(event.getMessage().addReaction("\u2705"));

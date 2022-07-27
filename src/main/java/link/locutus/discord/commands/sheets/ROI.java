@@ -453,11 +453,13 @@ public class ROI extends Command {
             boolean manifest = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
             boolean cityPlanning = Projects.URBAN_PLANNING.get(nation) > 0;
             boolean advCityPlanning = Projects.ADVANCED_URBAN_PLANNING.get(nation) > 0;
+            boolean metroPlanning = Projects.METROPOLITAN_PLANNING.get(nation) > 0;
 
-            boolean getCityPlanning = numCities >= 11 && !cityPlanning;
-            boolean getAdvCityPlanning = numCities >= 16 && !advCityPlanning;
+            boolean getCityPlanning = numCities >= Projects.URBAN_PLANNING.requiredCities() && !cityPlanning;
+            boolean getAdvCityPlanning = numCities >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !advCityPlanning;
+            boolean getMetroPlanning = numCities >= Projects.METROPOLITAN_PLANNING.requiredCities() && !advCityPlanning;
 
-            double cityCost = PnwUtil.nextCityCost(numCities, manifest || true, cityPlanning || getCityPlanning, advCityPlanning || getAdvCityPlanning);
+            double cityCost = PnwUtil.nextCityCost(numCities, manifest || true, cityPlanning || getCityPlanning, advCityPlanning || getAdvCityPlanning, metroPlanning || getMetroPlanning);
             double[] buildCost = existingCity.calculateCost(new JavaCity());
             double[] totalCost = buildCost.clone();
 

@@ -169,13 +169,18 @@ public class Grant {
         return null;
     }
 
-    public static boolean hasGrantedCity(Collection<Transaction2> transactions, int city) {
+    public static boolean hasGrantedCity(DBNation nation, Collection<Transaction2> transactions, int city) {
         Set<Long> costs = new HashSet<>();
         for (boolean md : new boolean[]{true, false}) {
             for (boolean cp : new boolean[]{true, false}) {
+                if (cp && !nation.hasProject(Projects.URBAN_PLANNING)) continue;
                 for (boolean aup : new boolean[]{true, false}) {
-                    double cost = PnwUtil.nextCityCost(city - 1, md, cp, aup);
-                    costs.add(Math.round(cost));
+                    if (aup && !nation.hasProject(Projects.ADVANCED_URBAN_PLANNING)) continue;
+                    for (boolean mp : new boolean[]{true, false}) {
+                        if (mp && !nation.hasProject(Projects.METROPOLITAN_PLANNING)) continue;
+                        double cost = PnwUtil.nextCityCost(city - 1, md, cp, aup, mp);
+                        costs.add(Math.round(cost));
+                    }
                 }
             }
         }

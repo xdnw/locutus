@@ -43,6 +43,9 @@ public class Settings extends Config {
     @Comment("Your P&W password (optional)")
     public String PASSWORD = "";
 
+    @Comment("Your P&W access key (option)")
+    public String ACCESS_KEY = "";
+
     @Comment("Your api key (generated if username/password is set)")
     public String API_KEY_PRIMARY = "";
 

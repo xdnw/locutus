@@ -134,6 +134,7 @@ public class DBAlliancePosition {
         return hasAnyPermission(
                 CHANGE_PERMISSIONS,
                 SEE_SPIES,
+                WITHDRAW_BANK,
                 SEE_RESET_TIMERS,
                 TAX_BRACKETS,
                 POST_ANNOUNCEMENTS,

@@ -853,7 +853,7 @@ public class GuildHandler {
                     @Override
                     public Boolean apply(DBNation nation) {
                         List<Transaction2> transactions = nation.getTransactions(-1);
-                        return !Grant.hasGrantedCity(transactions, currentCities + 1);
+                        return !Grant.hasGrantedCity(nation, transactions, currentCities + 1);
                     }
                 }));
                 grants.add(grant);

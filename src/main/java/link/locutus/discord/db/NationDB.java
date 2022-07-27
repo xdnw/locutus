@@ -12,10 +12,10 @@ import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.commands.rankings.builder.*;
-import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.*;
@@ -1090,14 +1090,19 @@ public class NationDB extends DBMainV2 {
 
                     for (City city : cities) {
                         dirtyFlag.set(false);
+
+                        DBCity existing = getDBCity(city.getNation_id(), city.getId());
                         DBCity dbCity = processCityUpdate(city, buffer, events::add, dirtyFlag);
                         if (dirtyFlag.get()) {
                             dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
                         }
+                        if (existing == null) {
+                            markCityDirty(city.getNation_id(), city.getId(), dbCity.fetched);
+                        }
                     }
 
-                    saveCities(dirtyCities);
                     Locutus.imp().runEventsAsync(events);
+                    saveCities(dirtyCities);
                 });
     }
 
@@ -1260,7 +1265,9 @@ public class NationDB extends DBMainV2 {
                     continue;
                 }
                 if (currentTurn >= treaty.getTurnEnds()) {
-                    new TreatyExpireEvent(treaty).post();
+                    if (Locutus.imp() != null) {
+                        new TreatyExpireEvent(treaty).post();
+                    }
                     treatiesToDelete.add(treaty.getId());
                     continue;
                 }
@@ -1749,7 +1756,7 @@ public class NationDB extends DBMainV2 {
 
     public void createTables() {
         {
-            TablePreset.create("NATIONS2")
+            TablePreset nationTable = TablePreset.create("NATIONS2")
                     .putColumn("nation_id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("nation", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
                     .putColumn("leader", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
@@ -1784,8 +1791,16 @@ public class NationDB extends DBMainV2 {
                     .putColumn("dc_turn", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("wars_won", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("wars_lost", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("tax_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .create(getDb());
+                    .putColumn("tax_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)));
+            nationTable.create(getDb());
+
+
+            String warSnapShot = nationTable.setName("NATIONS_WAR_SNAPSHOT")
+                    .putColumn("war_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .buildQuery(getDb().getType());
+            warSnapShot = warSnapShot.replace(");", ", PRIMARY KEY(war_id, nation_id));");
+            getDb().executeUpdate(warSnapShot);
 
             TablePreset.create("POSITIONS")
                     .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
@@ -1817,6 +1832,30 @@ public class NationDB extends DBMainV2 {
                     .putColumn("to_id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("turn_ends", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb());
+
+            String nationLoot = TablePreset.create("NATION_LOOT3")
+                    .putColumn("id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("total_rss", ColumnType.BINARY.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("type", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .buildQuery(getDb().getType());
+            nationLoot = nationLoot.replace(");", ", PRIMARY KEY(id, type));");
+            getDb().executeUpdate(nationLoot);
+
+            String aaLoot = TablePreset.create("ALLIANCE_LOOT2")
+                    .putColumn("id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("total_rss", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("type", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .buildQuery(getDb().getType());
+            aaLoot = aaLoot.replace(");", ", PRIMARY KEY(id, date));");
+            getDb().executeUpdate(aaLoot);
+
+            try {
+                importLegacyNationLoot();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
         };
 
         {
@@ -1828,17 +1867,6 @@ public class NationDB extends DBMainV2 {
             String query = "CREATE TABLE IF NOT EXISTS `AUDITS` (`nation` INT NOT NULL, `guild` INT NOT NULL, `audit`VARCHAR NOT NULL, `date`  INT NOT NULL)";
             executeStmt(query);
         }
-
-        {
-            String nations = "CREATE TABLE IF NOT EXISTS `NATION_LOOT` (`id` INT NOT NULL PRIMARY KEY, `loot` BLOB NOT NULL, `turn` INT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(nations);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
 
         {
             String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` INT NOT NULL, `key` INT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
@@ -2471,47 +2499,88 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public void setLoot(int nationId, long turn, double[] loot) {
-        Locutus.imp().getWarDb().cacheSpyLoot(nationId, TimeUtil.getTimeFromTurn(turn), loot);
-        update("INSERT OR REPLACE INTO `NATION_LOOT` (`id`, `loot`, `turn`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, nationId);
-            stmt.setBytes(2, ArrayUtil.toByteArray(loot));
-            stmt.setLong(3, turn);
-        });
-    }
+    private int[] saveNationLoot(List<LootEntry> entries) {
+        if (entries.isEmpty()) return new int[0];
+        /*
+         .putColumn("id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("total_rss", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("type", Col
+         */
 
-    public Map<Integer, Map.Entry<Long, double[]>> getLoot() {
-        Map<Integer, Map.Entry<Long, double[]>> result = new LinkedHashMap<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT WHERE id IN (SELECT nation_id FROM NATIONS2)")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    byte[] lootBytes = rs.getBytes("loot");
-                    double[] loot = ArrayUtil.toDoubleArray(lootBytes);
-                    long turn = rs.getLong("turn");
-                    int id = rs.getInt("id");
-
-                    AbstractMap.SimpleEntry<Long, double[]> entry = new AbstractMap.SimpleEntry<>(turn, loot);
-                    result.put(id, entry);
-                }
+        String query = "INSERT OR REPLACE INTO `NATION_LOOT3` (`id`, `total_rss`, `date`, `type`) VALUES(?,?,?,?)";
+        ThrowingBiConsumer<LootEntry, PreparedStatement> setLoot = new ThrowingBiConsumer<LootEntry, PreparedStatement>() {
+            @Override
+            public void acceptThrows(LootEntry entry, PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, entry.isAlliance() ? -entry.getId() : entry.getId());
+                stmt.setBytes(2, ArrayUtil.toByteArray(entry.getTotal_rss()));
+                stmt.setLong(3, entry.getDate());
+                stmt.setInt(4, entry.getType().ordinal());
             }
-            return result;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+        };
+        if (entries.size() == 1) {
+            LootEntry entry = entries.iterator().next();
+            return new int[]{update(query, stmt -> setLoot.accept(entry, stmt))};
+        } else {
+            return executeBatch(entries, query, setLoot);
         }
     }
 
-    public Map.Entry<Long, double[]> getLoot(int nationId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT WHERE id = ? ORDER BY turn DESC LIMIT 1")) {
-            stmt.setInt(1, nationId);
+    private void importLegacyNationLoot() throws SQLException {
+        if (tableExists("NATION_LOOT")) {
+            List<LootEntry> lootInfoList = new ArrayList<>();
 
+            try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT WHERE id IN (SELECT nation_id FROM NATIONS2)")) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        byte[] lootBytes = rs.getBytes("loot");
+                        double[] loot = ArrayUtil.toDoubleArray(lootBytes);
+                        long turn = rs.getLong("turn");
+                        int id = rs.getInt("id");
+
+                        lootInfoList.add(new LootEntry(
+                                id,
+                                loot,
+                                TimeUtil.getTimeFromTurn(turn),
+                                NationLootType.ESPIONAGE
+                        ));
+                    }
+                }
+            }
+
+            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
+            for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
+                int nationId = entry.getKey();
+                long date = entry.getValue().getKey();
+                double[] loot = entry.getValue().getValue();
+                NationLootType type = NationLootType.WAR_LOSS;
+                lootInfoList.add(new LootEntry(nationId, loot, date, type));
+            }
+
+            saveNationLoot(lootInfoList);
+
+            getDb().drop("NATION_LOOT");
+        }
+    }
+
+    public void saveAllianceLoot(int allianceId, long date, double[] loot, NationLootType type) {
+        saveLoot(-allianceId, date, loot, type);
+    }
+    public void saveLoot(int nationId, long date, double[] loot, NationLootType type) {
+        LootEntry entry = new LootEntry(nationId, loot, date, type);
+        saveNationLoot(List.of(entry));
+    }
+
+    public LootEntry getAllianceLoot(int allianceId) {
+        return getLoot(-allianceId);
+    }
+
+    public LootEntry getLoot(int nationId) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id = ? ORDER BY `date` DESC LIMIT 1")) {
+            stmt.setInt(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    byte[] lootBytes = rs.getBytes("loot");
-                    double[] loot = ArrayUtil.toDoubleArray(lootBytes);
-                    long turn = rs.getLong("turn");
-
-                    return new AbstractMap.SimpleEntry<>(TimeUtil.getTimeFromTurn(turn), loot);
+                    return new LootEntry(rs);
                 }
             }
             return null;
@@ -3122,6 +3191,10 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+    public Map<Integer, Map<Integer, DBCity>> getCities() {
+        return Collections.synchronizedMap(citiesByNation);
+    }
+
     public Map<Integer, Map<Integer, DBCity>> getCitiesV3(Set<Integer> nationIds) {
         Map<Integer, Map<Integer, DBCity>> result = new LinkedHashMap<>();
         for (int id : nationIds) {
@@ -3181,10 +3254,26 @@ public class NationDB extends DBMainV2 {
         saveNations(Collections.singleton(nations));
     }
 
-    public int[] saveNations(Collection<DBNation> nations) {
+    public int[] saveNationWarSnapshots(Map<Integer, DBNation> nations) {
         if (nations.isEmpty()) return new int[0];
-        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-        ThrowingBiConsumer<DBNation, PreparedStatement> setNation = (nation, stmt1) -> {
+
+        String query = "INSERT OR IGNORE INTO `NATIONS_WAR_SNAPSHOT`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id, war_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+        ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
+        ThrowingBiConsumer<Map.Entry<Integer, DBNation>, PreparedStatement> setNationWarId = (entry, stmt) -> {
+            setNation.accept(entry.getValue(), stmt);
+            stmt.setInt(36, entry.getKey()); // War id
+        };
+        if (nations.size() == 1) {
+            Map.Entry<Integer, DBNation> entry = nations.entrySet().iterator().next();
+            return new int[]{update(query, stmt -> setNationWarId.accept(entry, stmt))};
+        } else {
+            return executeBatch(nations.entrySet(), query, setNationWarId);
+        }
+    }
+
+    private ThrowingBiConsumer<DBNation, PreparedStatement> setNation() {
+        return (nation, stmt1) -> {
             stmt1.setInt(1, nation.getNation_id());
             stmt1.setString(2, nation.getNation());
             stmt1.setString(3, nation.getLeader());
@@ -3221,6 +3310,12 @@ public class NationDB extends DBMainV2 {
             stmt1.setInt(34, nation.getWars_lost());
             stmt1.setInt(35, nation.getTax_id());
         };
+    }
+
+    public int[] saveNations(Collection<DBNation> nations) {
+        if (nations.isEmpty()) return new int[0];
+        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();
             return new int[]{update(query, stmt -> setNation.accept(nation, stmt))};

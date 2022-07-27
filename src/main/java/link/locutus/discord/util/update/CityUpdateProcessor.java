@@ -2,6 +2,7 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
@@ -66,6 +67,7 @@ public class CityUpdateProcessor {
     }
 
     private synchronized void runOfficerMMRTask() {
+        System.out.println("Run officer MMR tasks");
         long cutoff = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(60);
         if (changes.isEmpty()) return;
 
@@ -174,7 +176,7 @@ public class CityUpdateProcessor {
         DBAlliancePosition position = nation.getAlliancePosition();
         if (position == null) return;
 
-        boolean officer = position.hasAnyOfficerPermissions();
+        boolean officer = position.hasAnyOfficerPermissions() || position.getRank().id >= Rank.OFFICER.id;
         if (!officer) return;
         int reqRank = Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_TOP_X;
         if (alliance.getRank() > reqRank) {

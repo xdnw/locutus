@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
@@ -88,15 +89,11 @@ public class Loot extends Command {
             percent = me.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
             if (enemy.getWarPolicy() == WarPolicy.MONEYBAGS) percent *= 0.6;
 
-            Map<Integer, Map.Entry<Long,double[]>> nationLootMap = Locutus.imp().getWarDb().getNationLoot(id, true);
-            Map.Entry<Long, double[]> nationLoot = nationLootMap.get(id);
-            Map.Entry<Long, double[]> spyLoot = Locutus.imp().getNationDB().getLoot(id);
-
-            boolean isSpyLoot = spyLoot != null && (nationLoot == null || spyLoot.getKey() >= nationLoot.getKey());
+            LootEntry lootInfo = enemy.getBeigeLoot();
 
             double[] knownResources = new double[ResourceType.values.length];
             double[] buffer = new double[knownResources.length];
-            double convertedTotal = enemy.estimateRssLootValue(knownResources, nationLoot, buffer, true);
+            double convertedTotal = enemy.estimateRssLootValue(knownResources, lootInfo, buffer, true);
             if (convertedTotal != 0) {
                 loot = new LinkedHashMap<>();
                 for (int i = 0; i < knownResources.length; i++) {
@@ -106,12 +103,12 @@ public class Loot extends Command {
                 loot = null;
             }
 
-            if (nationLoot != null) {
-                double originalValue = PnwUtil.convertedTotal(nationLoot.getValue());
+            if (lootInfo != null) {
+                double originalValue = lootInfo.convertedTotal();
                 double originalLootable = originalValue * percent;
-                String type = isSpyLoot ? "spy op" : "war loss";
+                String type = lootInfo.getType().name();
                 extraInfo.append("Based on " + type);
-                extraInfo.append("(" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - nationLoot.getKey()) + " ago)");
+                extraInfo.append("(" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lootInfo.getDate()) + " ago)");
                 extraInfo.append(", worth: $" + MathMan.format(originalValue) + "($" + MathMan.format(originalLootable) + " lootable)");
                 if (enemy.getActive_m() > 1440) extraInfo.append(" - inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, enemy.getActive_m()));
             } else {

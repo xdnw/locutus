@@ -4,7 +4,9 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface Project {
     Map<ResourceType, Double> cost();
@@ -29,6 +31,18 @@ public interface Project {
     boolean hasLegacy(long bitMask);
 
     String getImageName();
+
+    public Set<Project> requiredProjects();
+
+    public int requiredCities();
+
+    default boolean canBuild(DBNation nation) {
+        if (nation.getCities() < requiredCities()) return false;
+        for (Project project : requiredProjects()) {
+            if (!nation.hasProject(project)) return false;
+        }
+        return true;
+    }
 
     default String getImageUrl() {
         String name = getImageName();

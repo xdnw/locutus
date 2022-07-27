@@ -3,6 +3,7 @@ package link.locutus.discord.web.commands.binding;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -832,6 +833,12 @@ public class WebPrimitiveBinding extends BindingHelper {
     @Binding(types=Rank.class)
     public String rank(ParameterData param) {
         return multipleSelect(param, Arrays.asList(Rank.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= NationLootType.class)
+    public String lootType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(NationLootType.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
     }
 
     @HtmlInput

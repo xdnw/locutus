@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -634,13 +635,13 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing cities (from current to max)", aliases = {"citycost", "citycosts"})
-    public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity, @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning) {
+    public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity, @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning) {
         if (maxCity > 1000) throw new IllegalArgumentException("Max cities 1000");
 
         double total = 0;
 
         for (int i = Math.max(1, currentCity); i < maxCity; i++) {
-            total += PnwUtil.nextCityCost(i, manifestDestiny, urbanPlanning && i >= 11, advancedUrbanPlanning && i >= 16);
+            total += PnwUtil.nextCityCost(i, manifestDestiny, urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(), advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(), metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities());
         }
 
         return "$" + MathMan.format(total);
@@ -827,15 +828,11 @@ public class UtilityCommands {
             percent = me.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
             if (nationOrAlliance.asNation().getWarPolicy() == WarPolicy.MONEYBAGS) percent *= 0.6;
 
-            Map<Integer, Map.Entry<Long,double[]>> nationLootMap = Locutus.imp().getWarDb().getNationLoot(nationOrAlliance.getId(), true);
-            Map.Entry<Long, double[]> nationLoot = nationLootMap.get(nationOrAlliance.getId());
-            Map.Entry<Long, double[]> spyLoot = nationOrAlliance.isNation() ? Locutus.imp().getNationDB().getLoot(nationOrAlliance.getId()) : null;
-
-            boolean isSpyLoot = spyLoot != null && (nationLoot == null || spyLoot.getKey() >= nationLoot.getKey());
+            LootEntry lootInfo = Locutus.imp().getNationDB().getLoot(nationOrAlliance.getId());
 
             double[] knownResources = new double[ResourceType.values.length];
             double[] buffer = new double[knownResources.length];
-            double convertedTotal = nationOrAlliance.asNation().estimateRssLootValue(knownResources, nationLoot, buffer, true);
+            double convertedTotal = nationOrAlliance.asNation().estimateRssLootValue(knownResources, lootInfo, buffer, true);
             if (convertedTotal != 0) {
                 loot = new LinkedHashMap<>();
                 for (int i = 0; i < knownResources.length; i++) {
@@ -845,12 +842,12 @@ public class UtilityCommands {
                 loot = null;
             }
 
-            if (nationLoot != null) {
-                double originalValue = PnwUtil.convertedTotal(nationLoot.getValue());
+            if (lootInfo != null) {
+                double originalValue = lootInfo.convertedTotal();
                 double originalLootable = originalValue * percent;
-                String type = isSpyLoot ? "spy op" : "war loss";
+                String type = lootInfo.getType().name();
                 extraInfo.append("Based on " + type);
-                extraInfo.append("(" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - nationLoot.getKey()) + " ago)");
+                extraInfo.append("(" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lootInfo.getDate()) + " ago)");
                 extraInfo.append(", worth: $" + MathMan.format(originalValue) + "($" + MathMan.format(originalLootable) + " lootable)");
                 if (nationOrAlliance.asNation().getActive_m() > 1440) extraInfo.append(" - inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nationOrAlliance.asNation().getActive_m()));
             } else {
@@ -1419,9 +1416,9 @@ public class UtilityCommands {
 
     @Command(aliases = {"setloot"})
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String setLoot(@Me MessageChannel channel, @Me DBNation me, DBNation nation, Map<ResourceType, Double> resources, @Default("1") double fraction) {
+    public String setLoot(@Me MessageChannel channel, @Me DBNation me, DBNation nation, Map<ResourceType, Double> resources, @Default("OTHER") NationLootType type, @Default("1") double fraction) {
         resources = PnwUtil.multiply(resources, 1d / fraction);
-        Locutus.imp().getNationDB().setLoot(nation.getNation_id(), TimeUtil.getTurn(), PnwUtil.resourcesToArray(resources));
+        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), TimeUtil.getTurn(), PnwUtil.resourcesToArray(resources), type);
         return "Set " + nation.getNation() + " to " + PnwUtil.resourcesToString(resources) + " worth: ~$" + PnwUtil.convertedTotal(resources);
     }
 
@@ -1523,9 +1520,10 @@ public class UtilityCommands {
             int cities = nation.getCities();
             for (int i = 1; i <= cities; i++) {
                 boolean manifest = true;
-                boolean cp = i > 11 && projects.contains(Projects.URBAN_PLANNING);
-                boolean acp = i > 16 && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
-                cityCost += PnwUtil.nextCityCost(i, manifest, cp, acp);
+                boolean cp = i > Projects.URBAN_PLANNING.requiredCities() && projects.contains(Projects.URBAN_PLANNING);
+                boolean acp = i > Projects.ADVANCED_URBAN_PLANNING.requiredCities() && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
+                boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
+                cityCost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp);
             }
             Map<Integer, JavaCity> cityMap = nation.getCityMap(update, false);
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {

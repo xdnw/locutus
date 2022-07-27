@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
@@ -19,13 +20,13 @@ public class CityCost extends Command {
     }
     @Override
     public String help() {
-        return super.help() + " <current-city> <max-city> [manifest-destiny=false] [city-planning=false] [advanced-city-planning=false]";
+        return super.help() + " <current-city> <max-city> [manifest-destiny=false] [city-planning=false] [advanced-city-planning=false] [metropolitan-planning=false]";
     }
 
     @Override
     public String desc() {
         return "Calculate the costs of purchasing cities (from current to max) e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "CityCost 5 10 true false false";
+                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "CityCost 5 10 true false false false";
     }
 
     @Override
@@ -44,15 +45,17 @@ public class CityCost extends Command {
         boolean manifest = false;
         boolean cp = false;
         boolean acp = false;
+        boolean mp = false;
 
         if (args.size() >= 3) manifest = Boolean.parseBoolean(args.get(2));
         if (args.size() >= 4) cp = Boolean.parseBoolean(args.get(3));
         if (args.size() >= 5) acp = Boolean.parseBoolean(args.get(4));
+        if (args.size() >= 6) mp = Boolean.parseBoolean(args.get(5));
 
         double total = 0;
 
         for (int i = Math.max(1, current); i < max; i++) {
-            total += PnwUtil.nextCityCost(i, manifest, cp && i >= 11, acp && i >= 16);
+            total += PnwUtil.nextCityCost(i, manifest, cp && i >= Projects.URBAN_PLANNING.requiredCities(), acp && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(), mp && i >= Projects.METROPOLITAN_PLANNING.requiredCities());
         }
 
         return "$" + MathMan.format(total);

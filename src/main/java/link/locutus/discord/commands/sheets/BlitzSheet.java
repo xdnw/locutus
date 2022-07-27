@@ -150,8 +150,6 @@ public class BlitzSheet extends Command {
                 "planes",
                 "ships",
                 "spies",
-                "money",
-                "resources",
                 "score",
                 "beige",
                 "inactive",
@@ -163,8 +161,6 @@ public class BlitzSheet extends Command {
         ));
 
         rowData.add(SheetUtil.toRowData(header));
-
-        Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLoot();
 
         for (Map.Entry<DBNation, List<DBNation>> entry : targets.entrySet()) {
             DBNation defender = entry.getKey();
@@ -187,12 +183,6 @@ public class BlitzSheet extends Command {
             row.add(defender.getShips() + "");
             row.add(defender.getSpies() + "");
 
-            double[] knownResources = new double[ResourceType.values.length];
-            double[] buffer = new double[knownResources.length];
-            Map.Entry<Long, double[]> loot = nationLoot == null ? null : nationLoot.get(defender.getNation_id());
-            double convertedTotal = defender.estimateRssLootValue(knownResources, loot, buffer, false);
-            row.add(PnwUtil.convertedTotal(knownResources) + "");
-            row.add(PnwUtil.resourcesToString(knownResources));
             row.add(defender.getScore() + "");
             row.add(defender.getBeigeTurns() + "");
             row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));

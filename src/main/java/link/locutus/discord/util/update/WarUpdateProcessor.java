@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
@@ -18,6 +19,7 @@ import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
@@ -34,12 +36,6 @@ import link.locutus.discord.db.entities.CounterType;
 import link.locutus.discord.db.entities.DBBounty;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.AuditType;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
@@ -53,6 +49,8 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import static link.locutus.discord.apiv1.enums.AttackType.*;
 
 public class WarUpdateProcessor {
     @Subscribe
@@ -217,10 +215,12 @@ public class WarUpdateProcessor {
 
         if (attacker.getPosition() > 1) {
             GuildDB db = attacker.getGuildDB();
-            if (db != null) {
-                Map.Entry<AuditType, String> violation = checkViolation(root, db);
-                if (violation != null) {
-                    AuditType type = violation.getKey();
+            Map.Entry<AttackTypeSubCategory, String> violation = checkViolation(root, db);
+            if (violation != null) {
+//                Locutus.imp().getWarDb().addSubCategory();
+
+                if (db != null) {
+                    AttackTypeSubCategory type = violation.getKey();
                     String msg = "<" + root.toUrl() + ">" + violation.getValue();
                     AlertUtil.auditAlert(attacker, type, msg);
                 }
@@ -344,29 +344,7 @@ public class WarUpdateProcessor {
         }
     }
 
-    public enum AttackTypeSubCategory {
-        GROUND_NO_MUNITIONS_NO_TANKS,
-        GROUND_NO_TANKS_MUNITIONS_USED_NECESSARY,
-        GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY,
-        GROUND_TANKS_MUNITIONS_USED_NECESSARY,
-        GROUND_TANKS_MUNITIONS_USED_UNNECESSARY,
-        AIRSTRIKE_NOT_DOGFIGHT_UNSUCCESSFUL,
-        AIRSTRIKE_INFRA,
-        AIRSTRIKE_MONEY,
-        AIRSTRIKE_NO_KILLS_MAX,
-        AIRSTRIKE_3_PLANE,
-        AIRSTRIKE_UNIT,
-        NAVY_NO_KILLS_MAX_SHIP,
-        NAVY_1_SHIP,
-        NAVY_KILL_UNITS,
-        MISSILE,
-        NUKE,
-        FORTIFY,
-
-        IMPROVEMENTS_DESTROYED
-    }
-
-    public static AttackTypeSubCategory incrementCategory(DBAttack root, Map<WarUpdateProcessor.AttackTypeSubCategory, Integer> sum) {
+    public static AttackTypeSubCategory incrementCategory(DBAttack root, Map<AttackTypeSubCategory, Integer> sum) {
         if (root.improvements_destroyed != 0) {
             sum.put(AttackTypeSubCategory.IMPROVEMENTS_DESTROYED, sum.getOrDefault(AttackTypeSubCategory.IMPROVEMENTS_DESTROYED, 0) + root.improvements_destroyed);
         }
@@ -434,7 +412,15 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
                 }
                 if (root.defcas2 == 0) {
-                    return AttackTypeSubCategory.AIRSTRIKE_NO_KILLS_MAX;
+                    if (root.attack_type == AIRSTRIKE2) {
+                        return AttackTypeSubCategory.AIRSTRIKE_SOLDIERS_NONE;
+                    }
+                    else if (root.attack_type == AIRSTRIKE3) {
+                        return AttackTypeSubCategory.AIRSTRIKE_TANKS_NONE;
+                    }
+                    else if (root.attack_type == AIRSTRIKE5) {
+                        return AttackTypeSubCategory.AIRSTRIKE_SHIP_NONE;
+                    }
                 }
                 if (root.success != 3) {
                     return AttackTypeSubCategory.AIRSTRIKE_NOT_DOGFIGHT_UNSUCCESSFUL;
@@ -446,7 +432,7 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
                 }
                 if (root.defcas1 == 0) {
-                    return AttackTypeSubCategory.AIRSTRIKE_NO_KILLS_MAX;
+                    return AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE;
                 }
                 return AttackTypeSubCategory.AIRSTRIKE_UNIT;
             case NAVAL:
@@ -455,7 +441,7 @@ public class WarUpdateProcessor {
                     if (attShips == 1) {
                         return AttackTypeSubCategory.NAVY_1_SHIP;
                     }
-                    return AttackTypeSubCategory.NAVY_NO_KILLS_MAX_SHIP;
+                    return AttackTypeSubCategory.NAVAL_MAX_VS_NONE;
                 }
                 return AttackTypeSubCategory.NAVY_KILL_UNITS;
             case PEACE:
@@ -468,8 +454,8 @@ public class WarUpdateProcessor {
         return null;
     }
 
-    public static Map.Entry<AuditType, String> checkViolation(DBAttack root, GuildDB db) {
-        Set<Integer> enemies = db.getCoalition("enemies");
+    public static Map.Entry<AttackTypeSubCategory, String> checkViolation(DBAttack root, GuildDB db) {
+        Set<Integer> enemies = db != null ? db.getCoalition("enemies") : new HashSet<>();
 
         DBNation attacker = Locutus.imp().getNationDB().getNation(root.attacker_nation_id);
         DBNation defender = Locutus.imp().getNationDB().getNation(root.defender_nation_id);
@@ -511,24 +497,24 @@ public class WarUpdateProcessor {
                     double cost = root.getLossesConverted(true);
                     if (defender.getActive_m() < 10000) {
                         String message = "You performed a ground attack using tanks against an enemy with a high amount of soldiers (but no tanks), no loot, and no aircraft. An airstrike may be cheaper at getting the initial soldiers down and avoiding tank losses";
-                        return Map.entry(AuditType.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR, message);
+                        return Map.entry(AttackTypeSubCategory.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR, message);
                     } else {
-                        return AuditType.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR_INACTIVE.toPair();
+                        return AttackTypeSubCategory.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR_INACTIVE.toPair();
                     }
                 }
                 if (defender.getActive_m() > 10000) {
                     if (attSoldiers > 0 && groundStrength > enemyStrength * 2.5 && (defSoldiers == 0 || groundStrength * 0.4 > enemyStrength * 1.75)) {
-                        return AuditType.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY_INACTIVE.toPair();
+                        return AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY_INACTIVE.toPair();
                     }
                     if (attTanks > 0 && groundStrength > enemyStrength * 2.5 && root.money_looted == 0) {
-                        String message = AuditType.GROUND_TANKS_USED_UNNECESSARY_INACTIVE.message;
+                        String message = AttackTypeSubCategory.GROUND_TANKS_USED_UNNECESSARY_INACTIVE.message;
                         if (attacker.getAvg_infra() <= 1700) {
                             message += "Note: For raiding inactives with no ground loot, you should not use tanks, as it just wastes gasoline & munitions";
                         }
-                        return Map.entry(AuditType.GROUND_TANKS_USED_UNNECESSARY_INACTIVE, message);
+                        return Map.entry(AttackTypeSubCategory.GROUND_TANKS_USED_UNNECESSARY_INACTIVE, message);
                     }
                 } else if (attTanks > 0 && defender.getAircraft() == 0 && attSoldiers > enemyStrength * 2.5 && root.defcas3 == 0) {
-                    String message = AuditType.GROUND_TANKS_USED_UNNECESSARY.message;
+                    String message = AttackTypeSubCategory.GROUND_TANKS_USED_UNNECESSARY.message;
                     if (attSoldiers * 0.4 > enemyStrength * 0.75) message += " (unarmed)";
 
                     double usageCostPerTank = (PnwUtil.convertedTotal(ResourceType.MUNITIONS, 1) + PnwUtil.convertedTotal(ResourceType.GASOLINE, 1)) / 100d;
@@ -551,10 +537,10 @@ public class WarUpdateProcessor {
                         message += "\nNote: Infra gets destroyed anyway when the enemy is beiged";
                     }
 
-                    return Map.entry(AuditType.GROUND_TANKS_USED_UNNECESSARY, message);
+                    return Map.entry(AttackTypeSubCategory.GROUND_TANKS_USED_UNNECESSARY, message);
                 } else if (enemyStrength == 0) {
                     if (attSoldiers > 0) {
-                        return AuditType.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY.toPair();
+                        return AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY.toPair();
                     }
                 }
                 break;
@@ -562,18 +548,24 @@ public class WarUpdateProcessor {
             case VICTORY:
                 break;
             case FORTIFY:
+                List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.war_id);
+                attacks.removeIf(f -> f.war_attack_id >= root.war_attack_id || f.attacker_nation_id != root.attacker_nation_id);
+                if (attacks.size() > 0 && attacks.get(attacks.size() - 1).attack_type == AttackType.FORTIFY) {
+                    return AttackTypeSubCategory.DOUBLE_FORTIFY.toPair();
+                }
+                // already fortified
                 break;
             case A_LOOT:
                 break;
             case AIRSTRIKE2:
-                if (root.attack_type == AttackType.AIRSTRIKE2 && root.defcas2 == 0) {
+                if (root.attack_type == AIRSTRIKE2 && root.defcas2 == 0) {
                     String message = "You performed an airstrike against enemy soldiers when the enemy has none";
-                    return Map.entry(AuditType.AIRSTRIKE_SOLDIERS_NONE, message);
+                    return Map.entry(AttackTypeSubCategory.AIRSTRIKE_SOLDIERS_NONE, message);
                 }
                 if (defender.getTanks() > 0 && defender.getSoldiers() < root.defcas2 && attacker.getSoldiers() * 0.4 > defender.getSoldiers() && root.defcas1 == 0 && attacker.getGroundStrength(true, false) > defender.getGroundStrength(true, true)) {
                     int attAir = (int) (root.att_gas_used * 4);
                     if (attAir > 3) {
-                        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.war_id);
+                        attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.war_id);
                         attacks.remove(root);
                         DBWar war = Locutus.imp().getWarDb().getWar(root.war_id);
                         if (war != null) {
@@ -594,7 +586,7 @@ public class WarUpdateProcessor {
                                 }
 
                                 if (enemyIsWeaker) {
-                                    return AuditType.AIRSTRIKE_SOLDIERS_SHOULD_USE_GROUND.toPair();
+                                    return AttackTypeSubCategory.AIRSTRIKE_SOLDIERS_SHOULD_USE_GROUND.toPair();
                                 }
                             }
                         }
@@ -602,14 +594,14 @@ public class WarUpdateProcessor {
                 }
                 // if you have more soldiers than the enemy does
             case AIRSTRIKE3:
-                if (root.attack_type == AttackType.AIRSTRIKE3 && root.defcas2 == 0 && defender.getTanks() == 0) {
-                    return AuditType.AIRSTRIKE_TANKS_NONE.toPair();
+                if (root.attack_type == AIRSTRIKE3 && root.defcas2 == 0 && defender.getTanks() == 0) {
+                    return AttackTypeSubCategory.AIRSTRIKE_TANKS_NONE.toPair();
                 }
             case AIRSTRIKE1:
             case AIRSTRIKE4:
             case AIRSTRIKE5:
-                if (root.attack_type == AttackType.AIRSTRIKE5 && root.defcas2 == 0 && defender.getShips() == 0) {
-                    return AuditType.AIRSTRIKE_SHIP_NONE.toPair();
+                if (root.attack_type == AIRSTRIKE5 && root.defcas2 == 0 && defender.getShips() == 0) {
+                    return AttackTypeSubCategory.AIRSTRIKE_SHIP_NONE.toPair();
                 }
             case AIRSTRIKE6: {
                 int attAir = (int) (root.att_gas_used * 4);
@@ -619,25 +611,25 @@ public class WarUpdateProcessor {
                     double defGStr = defender.getGroundStrength(true, false) + 500 * defender.getCities();
                     double attGStr = attacker.getSoldiers();
                     if (attGStr > defGStr * 1.75) {
-                        return AuditType.AIRSTRIKE_INACTIVE_NO_GROUND.toPair();
+                        return AttackTypeSubCategory.AIRSTRIKE_INACTIVE_NO_GROUND.toPair();
                     }
 
                     if (defender.getShips() == 0) {
                         if (attacker.getShips() > 0 || attAir > 3) {
-                            return AuditType.AIRTRIKE_INACTIVE_NO_SHIP.toPair();
+                            return AttackTypeSubCategory.AIRTRIKE_INACTIVE_NO_SHIP.toPair();
                         }
                     }
                 }
 
                 if (((defender.getAircraft() > attacker.getAircraft() * 0.6 && root.defcas1 < root.attcas1) || root.success < 3) && root.attack_type != AttackType.AIRSTRIKE6) {
-                    return AuditType.AIRSTRIKE_FAILED_NOT_DOGFIGHT.toPair();
+                    return AttackTypeSubCategory.AIRSTRIKE_FAILED_NOT_DOGFIGHT.toPair();
                 }
 
                 if (root.attcas1 < root.defcas1 / 4 && root.attack_type == AttackType.AIRSTRIKE6 && attAir > 3) {
                     if (defender.getAircraft() == 0 && root.defcas1 == 0) {
-                        String message = AuditType.AIRSTRIKE_AIRCRAFT_NONE.message;
+                        String message = AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE.message;
                         if (defender.getActive_m() > 10000) {
-                            return AuditType.AIRSTRIKE_AIRCRAFT_NONE_INACTIVE.toPair();
+                            return AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE_INACTIVE.toPair();
                         } else {
                             if (defender.getShips() > 0 || defender.getTanks() > 0 || defender.getSoldiers() > 0) {
                                 message += "The enemy has other units that would be more useful to target.";
@@ -647,7 +639,7 @@ public class WarUpdateProcessor {
                                 message += "You can get an immense triumph with just 3 aircraft";
                             }
                         }
-                        return Map.entry(AuditType.AIRSTRIKE_AIRCRAFT_NONE, message);
+                        return Map.entry(AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE, message);
                     } else {
                         if (defender.getShips() > 0 || defender.getSoldiers() > 0 || defender.getTanks() > 0) {
                             if (defender.getActive_m() > 10000) {
@@ -655,10 +647,10 @@ public class WarUpdateProcessor {
 //                                String message = "You performed a dogfight using " + attAir + " against an inactive enemy with only " + defender.getAircraft() + " aircraft, but could have targeted other units";
 //                                return message;
                             } else if (defender.getAircraft() <= 10) {
-                                String message = AuditType.AIRSTRIKE_AIRCRAFT_LOW.message
+                                String message = AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_LOW.message
                                         .replace("{amt_att}", attAir + "")
                                         .replace("{amt_def}", defender.getAircraft() + "");
-                                return Map.entry(AuditType.AIRSTRIKE_AIRCRAFT_LOW, message);
+                                return Map.entry(AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_LOW, message);
                             }
                         }
                     }
@@ -667,7 +659,7 @@ public class WarUpdateProcessor {
 
                 if (root.attack_type == AttackType.AIRSTRIKE1 && attAir > 3) {
 
-                    String message = AuditType.AIRSTRIKE_INFRA.message.replace("{amount}", attAir + "");
+                    String message = AttackTypeSubCategory.AIRSTRIKE_INFRA.message.replace("{amount}", attAir + "");
 
                     double usageCost = root.getLossesConverted(true, false, false, true, false);
                     if (usageCost > root.infra_destroyed_value) {
@@ -676,17 +668,17 @@ public class WarUpdateProcessor {
                         message += "\nNote: Infra gets destroyed anyway when the enemy is defeated";
                     }
 
-                    return Map.entry(AuditType.AIRSTRIKE_INFRA, message);
+                    return Map.entry(AttackTypeSubCategory.AIRSTRIKE_INFRA, message);
                 }
 
                 if (root.attack_type == AttackType.AIRSTRIKE4 && attAir > 3) {
-                    String message = AuditType.AIRSTRIKE_CASH.message.replace("{amount}", attAir + "") + "\n";
+                    String message = AttackTypeSubCategory.AIRSTRIKE_MONEY.message.replace("{amount}", attAir + "") + "\n";
                     if (defender.getActive_m() > 2880) {
                         message += " They are inactive, so you are destroying your own loot";
                     } else {
                         message += " Focus on killing units, and then defeating them efficiently.";
                     }
-                    return Map.entry(AuditType.AIRSTRIKE_CASH, message);
+                    return Map.entry(AttackTypeSubCategory.AIRSTRIKE_MONEY, message);
                 }
                 break;
             }
@@ -695,7 +687,7 @@ public class WarUpdateProcessor {
                 if (defender.getShips() == 0 && defShips == 0 && root.defcas1 == 0) {
                     int attShips = (int) (root.att_gas_used / 2);
                     if (attShips > 1 && defender.getAvg_infra() < 1850 && root.city_infra_before <= 1850) {
-                        String message = AuditType.NAVAL_MAX_VS_NONE.message;
+                        String message = AttackTypeSubCategory.NAVAL_MAX_VS_NONE.message;
 
                         double usageCost = root.getLossesConverted(true, false, false, true, false);
                         if (usageCost > root.infra_destroyed_value) {
@@ -704,12 +696,12 @@ public class WarUpdateProcessor {
                             message += "\nNote: Infra gets destroyed anyway when the enemy is beiged";
                         }
 
-                        return Map.entry(AuditType.NAVAL_MAX_VS_NONE, message);
+                        return Map.entry(AttackTypeSubCategory.NAVAL_MAX_VS_NONE, message);
                     }
                 }
                 if (defender.getBlockadedBy().contains(attacker.getNation_id()) && !defender.isBlockader()) {
                     if (defender.getActive_m() < 1440 && root.defcas1 == 0 && (defender.getAircraft() > 0 && defender.getAircraft() < attacker.getAircraft() * 0.8) || (defender.getAircraft() < attacker.getAircraft() && defender.getGroundStrength(true, false) > 0 && defender.getGroundStrength(true, false) < attacker.getGroundStrength(true, true))) {
-                        return AuditType.NAVAL_ALREADY_BLOCKADED.toPair();
+                        return AttackTypeSubCategory.NAVAL_ALREADY_BLOCKADED.toPair();
                     }
                 }
                 break;
@@ -857,13 +849,13 @@ public class WarUpdateProcessor {
         if (current.warType == WarType.RAID) return;
         if (defender.getAvg_infra() > 1700 && defender.getActive_m() < 10000) return;
 
-        AlertUtil.auditAlert(attacker, AuditType.WAR_TYPE, f -> {
+        AlertUtil.auditAlert(attacker, AuditType.WAR_TYPE_NOT_RAID, f -> {
             Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(defender.getNation_id());
             for (DBBounty bounty : bounties) {
                 if (bounty.getType() == current.warType) return null;
             }
 
-            String message = AuditType.WAR_TYPE.message.replace("{war}",  current.toUrl())
+            String message = AuditType.WAR_TYPE_NOT_RAID.message.replace("{war}",  current.toUrl())
                     .replace("{type}", current.warType + "");
             if (defender.getActive_m() > 10000) message += " as the enemy is inactive";
             else if (defender.getAvg_infra() <= 1000) message += " as the enemy already has reduced infra";

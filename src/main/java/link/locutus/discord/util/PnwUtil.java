@@ -625,12 +625,13 @@ public class PnwUtil {
             total += nextCityCost(city,
                 nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
                 nation.hasProject(Projects.URBAN_PLANNING),
-                nation.hasProject(Projects.ADVANCED_URBAN_PLANNING));
+                    nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+                    nation.hasProject(Projects.METROPOLITAN_PLANNING));
         }
         return total;
     }
 
-    public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning) {
+    public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning) {
         double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
         if (cityPlanning) {
             cost -= 50000000;
@@ -638,10 +639,13 @@ public class PnwUtil {
         if (advCityPlanning) {
             cost -= 100000000;
         }
+        if (metPlanning) {
+            cost -= 150_000_000;
+        }
         if (manifestDestiny) {
             cost *= 0.95;
         }
-        return cost;
+        return Math.max(0, cost);
     }
 
     public static Map<ResourceType, Double> adapt(AllianceBankContainer bank) {
