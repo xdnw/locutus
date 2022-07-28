@@ -76,7 +76,9 @@ public class NationDB extends DBMainV2 {
 
     public NationDB() throws SQLException, ClassNotFoundException {
         super("nations");
+    }
 
+    public void load() throws SQLException {
         { // Legacy
             if (tableExists("NATIONS")) {
                 LOGGER.info("Updating legacy nations");
@@ -96,6 +98,8 @@ public class NationDB extends DBMainV2 {
         LOGGER.info("Loaded " + cities + " cities");
         int treaties = loadTreaties();
         LOGGER.info("Loaded " + treaties + " treaties");
+
+        importLegacyNationLoot();
     }
 
     public void deleteExpiredTreaties(Consumer<Event> eventConsumer) {
@@ -1752,8 +1756,6 @@ public class NationDB extends DBMainV2 {
         );
     }
 
-
-
     public void createTables() {
         {
             TablePreset nationTable = TablePreset.create("NATIONS2")
@@ -1850,12 +1852,6 @@ public class NationDB extends DBMainV2 {
                     .buildQuery(getDb().getType());
             aaLoot = aaLoot.replace(");", ", PRIMARY KEY(id, date));");
             getDb().executeUpdate(aaLoot);
-
-            try {
-                importLegacyNationLoot();
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
         };
 
         {
@@ -2548,7 +2544,7 @@ public class NationDB extends DBMainV2 {
                 }
             }
 
-            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
+            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy(this);
             for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
                 int nationId = entry.getKey();
                 long date = entry.getValue().getKey();

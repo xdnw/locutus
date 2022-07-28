@@ -60,7 +60,8 @@ public class WarDB extends DBMainV2 {
     private final ArrayList<DBAttack> allAttacks = new ArrayList<>();
     public WarDB() throws SQLException {
         super(Settings.INSTANCE.DATABASE, "war");
-
+    }
+    public void load() {
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
 
         for (DBWar war : wars) {
@@ -2044,7 +2045,7 @@ public class WarDB extends DBMainV2 {
         return null;
     }
 
-    public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy() {
+    public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy(NationDB db) {
         Map<Integer, Map.Entry<Long, double[]>> nationLoot = new ConcurrentHashMap<>();
 
         // `attacker_nation_id`, `defender_nation_id`
@@ -2058,7 +2059,6 @@ public class WarDB extends DBMainV2 {
                     int looted = attack.getLooted();
                     int looter = attack.getLooter();
 
-                    NationDB db = Locutus.imp().getNationDB();
                     DBNation victor = db.getNation(looter);
                     DBNation loser = db.getNation(looted);
 

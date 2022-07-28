@@ -1,14 +1,13 @@
 package link.locutus.discord.commands.trade.sub;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.Offer;
-import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.trade.TradeDB;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -27,8 +26,8 @@ import java.util.concurrent.Callable;
 
 public class CheckTradesTask implements Callable<Boolean> {
     private final ResourceType resource;
-    private final TradeDB db;
-    private final TradeManager manager;
+    private final link.locutus.discord.db.TradeDB db;
+    private final TradeDB manager;
     private final TradeAlertConsumer consumer;
 
     public CheckTradesTask(ResourceType resource, TradeAlertConsumer consumer) {
@@ -87,13 +86,13 @@ public class CheckTradesTask implements Callable<Boolean> {
 
             if (alert.getCurrentHigh() < alert.getCurrentLow()) {
                 if (high.getAmount() != 1 && low.getAmount() != 1) {
-                    consumer.accept(null, TradeDB.TradeAlertType.MIXUP, alert, false);
+                    consumer.accept(null, link.locutus.discord.db.TradeDB.TradeAlertType.MIXUP, alert, false);
                 }
             } else {
-                Set<Long> pingsAboveHigh = db.getSubscriptions(resource, true, true, alert.getCurrentHigh() - 1, TradeDB.TradeAlertType.ABSOLUTE);
-                Set<Long> pingsBelowHigh = db.getSubscriptions(resource, true, false, alert.getCurrentHigh() + 1, TradeDB.TradeAlertType.ABSOLUTE);
-                Set<Long> pingsAboveLow = db.getSubscriptions(resource, false, true, alert.getCurrentLow() - 1, TradeDB.TradeAlertType.ABSOLUTE);
-                Set<Long> pingsBelowLow = db.getSubscriptions(resource, false, false, alert.getCurrentLow() + 1, TradeDB.TradeAlertType.ABSOLUTE);
+                Set<Long> pingsAboveHigh = db.getSubscriptions(resource, true, true, alert.getCurrentHigh() - 1, link.locutus.discord.db.TradeDB.TradeAlertType.ABSOLUTE);
+                Set<Long> pingsBelowHigh = db.getSubscriptions(resource, true, false, alert.getCurrentHigh() + 1, link.locutus.discord.db.TradeDB.TradeAlertType.ABSOLUTE);
+                Set<Long> pingsAboveLow = db.getSubscriptions(resource, false, true, alert.getCurrentLow() - 1, link.locutus.discord.db.TradeDB.TradeAlertType.ABSOLUTE);
+                Set<Long> pingsBelowLow = db.getSubscriptions(resource, false, false, alert.getCurrentLow() + 1, link.locutus.discord.db.TradeDB.TradeAlertType.ABSOLUTE);
 
                 Set<Long> allPings = new HashSet<>();
                 allPings.addAll(pingsAboveHigh);
@@ -102,7 +101,7 @@ public class CheckTradesTask implements Callable<Boolean> {
                 allPings.addAll(pingsBelowLow);
 
                 if (!allPings.isEmpty()) {
-                    consumer.accept(allPings, TradeDB.TradeAlertType.ABSOLUTE, alert, false);
+                    consumer.accept(allPings, link.locutus.discord.db.TradeDB.TradeAlertType.ABSOLUTE, alert, false);
                 }
                 if (alert.getCurrentHigh() < alert.getPreviousHigh() &&
                         alert.getPreviousHighNation() != null &&
@@ -111,7 +110,7 @@ public class CheckTradesTask implements Callable<Boolean> {
                     DBNation prevNation = alert.getPreviousHighNation();
                     PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromNationId(prevNation.getNation_id());
                     if (pnwUser != null && pnwUser.getDiscordId() != null) {
-                        consumer.accept(Collections.singleton(pnwUser.getDiscordId()), TradeDB.TradeAlertType.UNDERCUT, alert, true);
+                        consumer.accept(Collections.singleton(pnwUser.getDiscordId()), link.locutus.discord.db.TradeDB.TradeAlertType.UNDERCUT, alert, true);
                     }
                 }
             }
@@ -122,9 +121,9 @@ public class CheckTradesTask implements Callable<Boolean> {
 //                consumer.accept(null, TradeDB.TradeAlertType.DISPARITY, alert, false);
             }
         } else if (low == null) {
-            consumer.accept(null, TradeDB.TradeAlertType.NO_HIGH, alert, false);
+            consumer.accept(null, link.locutus.discord.db.TradeDB.TradeAlertType.NO_HIGH, alert, false);
         } else if (high == null) {
-            consumer.accept(null, TradeDB.TradeAlertType.NO_LOW, alert, false);
+            consumer.accept(null, link.locutus.discord.db.TradeDB.TradeAlertType.NO_LOW, alert, false);
         }
         return true;
     }

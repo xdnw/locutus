@@ -1027,6 +1027,8 @@ public class PoliticsAndWarV3 {
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
 
         {
+            Locutus.create();
+            Locutus.imp().getDiscordDB();
             System.out.println("Result ");
 
 //            WarDB warDB = new WarDB();

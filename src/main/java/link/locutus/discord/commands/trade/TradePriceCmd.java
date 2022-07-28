@@ -11,7 +11,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.Offer;
-import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.trade.TradeDB;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -41,7 +41,7 @@ public class TradePriceCmd extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        TradeManager trader = Locutus.imp().getTradeManager();
+        TradeDB trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "\uD83D\uDD04";
 
         Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));

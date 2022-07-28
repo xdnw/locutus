@@ -3,14 +3,13 @@ package link.locutus.discord.apiv1.enums;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.trade.TradeDB;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import views.grant.nation;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -184,7 +183,7 @@ public enum MilitaryUnit {
     public double getConvertedCost() {
         if (costConverted == 0) {
             double total = this.cost;
-            TradeManager tradeDb = Locutus.imp().getTradeManager();
+            TradeDB tradeDb = Locutus.imp().getTradeManager();
             for (ResourceType type : resources) {
                 total += tradeDb.getLowAvg(type) * getRssAmt(type);
             }

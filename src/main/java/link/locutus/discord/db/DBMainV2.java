@@ -66,9 +66,10 @@ public class DBMainV2 implements Closeable {
 
     public boolean tableExists(String tableName) throws SQLException {
         DatabaseMetaData meta = getConnection().getMetaData();
-        ResultSet resultSet = meta.getTables(null, null, tableName, new String[] {"TABLE"});
+        try (ResultSet resultSet = meta.getTables(null, null, tableName, new String[] {"TABLE"})) {
 
-        return resultSet.next();
+            return resultSet.next();
+        }
     }
 
     protected void createTables() {

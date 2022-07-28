@@ -1,8 +1,6 @@
 package link.locutus.discord;
 
-import com.politicsandwar.graphql.model.City;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
-import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandManager;
@@ -31,7 +29,7 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import link.locutus.discord.util.task.ia.MapFullTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
-import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.trade.TradeDB;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
 import com.google.common.eventbus.EventBus;
@@ -68,7 +66,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
@@ -106,7 +103,7 @@ public final class Locutus extends ListenerAdapter {
     private final PoliticsAndWarV2 rootPnwApi;
     private final PoliticsAndWarV2 bankApi;
 
-    private final TradeManager tradeManager;
+    private final TradeDB tradeManager;
     private final WarDB warDb;
     private BaseballDB baseBallDB;
     private final BankDB bankDb;
@@ -150,13 +147,12 @@ public final class Locutus extends ListenerAdapter {
 
         this.executor = Executors.newCachedThreadPool();
 
-        this.tradeManager = new TradeManager();
-
         this.discordDB = new DiscordDB();
-        this.warDb = new WarDB();
         this.nationDB = new NationDB();
+        this.warDb = new WarDB();
         this.stockDB = new StockDB();
         this.bankDb = new BankDB();
+        this.tradeManager = new TradeDB();
 
         this.commandManager = new CommandManager(this);
         this.commandManager.registerCommands(discordDB);
@@ -206,6 +202,10 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {
             this.registerEvents();
         }
+
+        this.nationDB.load();
+        this.warDb.load();
+        this.tradeManager.load();
     }
 
     public static void post(Object event) {
@@ -490,7 +490,8 @@ public final class Locutus extends ListenerAdapter {
         return this.baseBallDB;
     }
 
-    public TradeManager getTradeManager() {
+    public TradeDB getTradeManager() {
+        this.tradeManager.load();
         return tradeManager;
     }
 
@@ -697,7 +698,7 @@ public final class Locutus extends ListenerAdapter {
 
         if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
             AtomicBoolean updateTradeTask = new AtomicBoolean(false);
-            addTaskSeconds(() -> tradeManager.updateTradeList(false, true),
+            addTaskSeconds(() -> getTradeManager().updateTradeList(false, true),
                     Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
         }
 

@@ -40,7 +40,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
-import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.trade.TradeDB;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -502,12 +502,12 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public TradeManager tradeManager() {
+    public TradeDB tradeManager() {
         return Locutus.imp().getTradeManager();
     }
 
     @Binding
-    public TradeDB tradeDB() {
+    public link.locutus.discord.db.TradeDB tradeDB() {
         return Locutus.imp().getTradeManager().getTradeDb();
     }
 

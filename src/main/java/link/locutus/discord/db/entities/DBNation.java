@@ -32,7 +32,7 @@ import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.util.task.MailTask;
 import link.locutus.discord.util.task.balance.GetCityBuilds;
 import link.locutus.discord.util.task.multi.GetUid;
-import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.trade.TradeDB;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.discord.web.jooby.handler.DummyMessageOutput;
 import com.google.gson.JsonObject;
@@ -757,7 +757,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command
     public double getRads() {
-        TradeManager manager = Locutus.imp().getTradeManager();
+        TradeDB manager = Locutus.imp().getTradeManager();
         double radIndex = manager.getGlobalRadiation() + manager.getGlobalRadiation(getContinent());
         return (1 + (radIndex / (-1000)));
     }

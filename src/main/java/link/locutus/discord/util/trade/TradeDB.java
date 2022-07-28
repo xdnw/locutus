@@ -1,9 +1,9 @@
 package link.locutus.discord.util.trade;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.user.Roles;
@@ -55,26 +55,29 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class TradeManager {
+public class TradeDB {
     private final Map<ResourceType, Integer> high;
     private final Map<ResourceType, Integer> low;
     private final Map<ResourceType, Integer> highNation;
     private final Map<ResourceType, Integer> lowNation;
 
-    private final double[] highAvg;
-    private final double[] lowAvg;
+    private double[] highAvg;
+    private double[] lowAvg;
 
     private final Map<ResourceType, Double> stockPile;
-    private final TradeDB tradeDb;
+    private final link.locutus.discord.db.TradeDB tradeDb;
 
-    public TradeManager() throws SQLException, ClassNotFoundException {
+    public TradeDB() throws SQLException, ClassNotFoundException {
         this.stockPile = new ConcurrentHashMap<>();
-        this.tradeDb = new TradeDB();
+        this.tradeDb = new link.locutus.discord.db.TradeDB();
         this.high = tradeDb.getTradePrice(true);
         this.low = tradeDb.getTradePrice(false);
         this.lowNation = new HashMap<>();
         this.highNation = new HashMap<>();
+    }
 
+    public synchronized void load() {
+        if (lowAvg != null) return;
         long cutOff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         List<Offer> trades = getTradeDb().getOffers(cutOff);
         if (trades.isEmpty() && Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
@@ -419,7 +422,7 @@ public class TradeManager {
         return result;
     }
 
-    public TradeDB getTradeDb() {
+    public link.locutus.discord.db.TradeDB getTradeDb() {
         return tradeDb;
     }
 
@@ -512,7 +515,10 @@ public class TradeManager {
         if (force) {
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.MONEY) continue;
-                trades.addAll(Locutus.imp().getPnwApi().getTradehistory(10000, type).getTrades());
+                PoliticsAndWarV2 api = Locutus.imp().getPnwApi();
+                System.out.println("API " + api);
+                List<TradeContainer> apiTrades = api.getTradehistory(10000, type).getTrades();
+                trades.addAll(apiTrades);
             }
         } else {
             trades = Locutus.imp().getPnwApi().getTradehistoryByAmount(10000).getTrades();
@@ -690,7 +696,7 @@ public class TradeManager {
         } else {
             long currentTurn = TimeUtil.getTurn();
             if (currentTurn != tradeBonusTurn) {
-                Map<NationColor, Integer> tradeBonusTmp = TimeUtil.runTurnTask(TradeManager.class.getSimpleName() + ".bonus", aLong -> {
+                Map<NationColor, Integer> tradeBonusTmp = TimeUtil.runTurnTask(TradeDB.class.getSimpleName() + ".bonus", aLong -> {
                     try {
                         return task.call();
                     } catch (Exception e) {

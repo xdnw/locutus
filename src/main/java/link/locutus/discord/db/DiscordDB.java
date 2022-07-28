@@ -32,7 +32,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class DiscordDB extends DBMainV2 {
     public DiscordDB() throws SQLException, ClassNotFoundException {
         super("locutus");
-        migrateCredentials();
+        if (tableExists("credentials")) migrateCredentials();
     }
 
     @Override
@@ -205,14 +205,18 @@ public class DiscordDB extends DBMainV2 {
     }
 
     private void migrateCredentials() {
+        System.out.println("Migrate");
         Set<Long> ids = new HashSet<>();
-        for (SelectResults.SelectResultRow row : getDb().selectBuilder("credentials").select("discordId").execute()) {
-            ids.add(row.get("discordid", Long.class));
-        }
+        String query = getDb().selectBuilder("credentials").select("discordId").buildQuery();
+        query(query, stmt -> {},
+                (ThrowingConsumer<ResultSet>) r -> ids.add(r.getLong(1)));
         for (long discordId : ids) {
+            System.out.println(" - mig " + discordId);
             Map.Entry<String, String> userPass = getUserPass(discordId, "credentials", EncryptionUtil.Algorithm.LEGACY);
             addUserPass(discordId, userPass.getKey(), userPass.getValue());
         }
+
+        System.out.println("Drop");
 
         executeStmt("DROP TABLE CREDENTIALS");
     }

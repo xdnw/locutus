@@ -15,7 +15,6 @@ import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.Transfer;
 import link.locutus.discord.db.entities.DBNation;
@@ -30,7 +29,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.Offer;
-import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.trade.TradeDB;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Message;
@@ -48,7 +47,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,7 +57,7 @@ import java.util.stream.Collectors;
 
 public class TradeCommands {
     @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"})
-    public String GlobalTradeAverage(@Me Message message, @Me MessageChannel channel, TradeManager manager, @Timestamp long time) {
+    public String GlobalTradeAverage(@Me Message message, @Me MessageChannel channel, TradeDB manager, @Timestamp long time) {
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = Locutus.imp().getTradeManager().getAverage(time);
 
         Map<ResourceType, Double> lowMap = averages.getKey();
@@ -96,8 +94,8 @@ public class TradeCommands {
     }
 
     @Command(aliases = {"GlobalTradeVolume", "gtv", "tradevolume"})
-    public String GlobalTradeVolume(@Me Message message, @Me MessageChannel channel, TradeManager manager) {
-        TradeManager trader = Locutus.imp().getTradeManager();
+    public String GlobalTradeVolume(@Me Message message, @Me MessageChannel channel, TradeDB manager) {
+        TradeDB trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "\uD83D\uDD04";
 
         DiscordUtil.createEmbedCommand(channel, b -> {
@@ -191,8 +189,8 @@ public class TradeCommands {
     }
 
     @Command(desc = "Get the buy/sell margin for each resource")
-    public String tradeMargin(@Me Message message, @Me MessageChannel channel, TradeManager manager, @Switch('p') boolean usePercent) {
-        TradeManager trader = Locutus.imp().getTradeManager();
+    public String tradeMargin(@Me Message message, @Me MessageChannel channel, TradeDB manager, @Switch('p') boolean usePercent) {
+        TradeDB trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "\uD83D\uDD04";
 
         Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
@@ -226,7 +224,7 @@ public class TradeCommands {
     }
 
     @Command
-    public String tradePrice(@Me Message message, @Me MessageChannel channel, TradeManager manager) {
+    public String tradePrice(@Me Message message, @Me MessageChannel channel, TradeDB manager) {
         String refreshEmoji = "\uD83D\uDD04";
 
         Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
@@ -361,7 +359,7 @@ public class TradeCommands {
         Map<ResourceType, Double> lowMap = averages.getKey();
         Map<ResourceType, Double> highMap = averages.getValue();
 
-        TradeDB tradeDB = Locutus.imp().getTradeManager().getTradeDb();
+        link.locutus.discord.db.TradeDB tradeDB = Locutus.imp().getTradeManager().getTradeDb();
         for (Offer offer : tradeDB.getOffers(time)) {
             // Ignore outliers
             int ppu = offer.getPpu();
@@ -547,7 +545,7 @@ public class TradeCommands {
 
 
     @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation.")
-    public String moneyTrades(TradeManager manager, DBNation nation, @Timestamp long time, @Switch('f') boolean forceUpdate, @Switch('a') boolean addBalance) throws IOException {
+    public String moneyTrades(TradeDB manager, DBNation nation, @Timestamp long time, @Switch('f') boolean forceUpdate, @Switch('a') boolean addBalance) throws IOException {
         if (forceUpdate) {
             manager.updateTradeList(false, true);
         }
@@ -654,7 +652,7 @@ public class TradeCommands {
     @Command(desc = "Generate a graph comparing two resource stockpiles by day")
     @RolePermission(value = Roles.MEMBER)
     @WhitelistPermission
-    public String compareStockpileValueByDay(@Me MessageChannel channel, TradeManager manager, TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int days) throws IOException, GeneralSecurityException {
+    public String compareStockpileValueByDay(@Me MessageChannel channel, TradeDB manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int days) throws IOException, GeneralSecurityException {
         Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
@@ -729,7 +727,7 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade price (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradepricebyday(@Me MessageChannel channel, TradeManager manager, TradeDB tradeDB, List<ResourceType> resources, int days) throws IOException, GeneralSecurityException {
+    public String tradepricebyday(@Me MessageChannel channel, TradeDB manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int days) throws IOException, GeneralSecurityException {
         if (days <= 1) return "Invalid number of days";
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
@@ -785,7 +783,7 @@ public class TradeCommands {
     @Command(desc = "Generate a graph of average trade margin (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
     @WhitelistPermission
-    public String trademarginbyday(@Me MessageChannel channel, TradeManager manager, @Range(min=1, max=300) int days, @Default("true") boolean percent) throws IOException, GeneralSecurityException {
+    public String trademarginbyday(@Me MessageChannel channel, TradeDB manager, @Range(min=1, max=300) int days, @Default("true") boolean percent) throws IOException, GeneralSecurityException {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(days + 1);
 
@@ -877,7 +875,7 @@ public class TradeCommands {
     @Command(desc = "Generate a graph of average trade volume (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
     @WhitelistPermission
-    public String tradevolumebyday(@Me MessageChannel channel, TradeManager manager, TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
+    public String tradevolumebyday(@Me MessageChannel channel, TradeDB manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
         String title = "volume by day";
         rssTradeByDay(title, channel, days, offers -> manager.volumeByResource(offers));
         return null;
@@ -886,15 +884,15 @@ public class TradeCommands {
     @Command(desc = "Generate a graph of average trade total (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
     @WhitelistPermission
-    public String tradetotalbyday(@Me MessageChannel channel, TradeManager manager, TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
+    public String tradetotalbyday(@Me MessageChannel channel, TradeDB manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
         String title = "total by day";
         rssTradeByDay(title, channel, days, offers -> manager.totalByResource(offers));
         return null;
     }
 
     public void rssTradeByDay(String title, MessageChannel channel, int days, Function<Collection<Offer>, long[]> rssFunction) throws IOException {
-        TradeManager manager = Locutus.imp().getTradeManager();
-        TradeDB tradeDb = manager.getTradeDb();
+        TradeDB manager = Locutus.imp().getTradeManager();
+        link.locutus.discord.db.TradeDB tradeDb = manager.getTradeDb();
 
         Map<Long, List<Offer>> tradesByDay = getOffersByDay(days);
         long minDay = Collections.min(tradesByDay.keySet());
@@ -969,7 +967,7 @@ public class TradeCommands {
     @Command(desc = "List nations who have bought/sold the most of a resource over a period")
     @RolePermission(value = Roles.MEMBER)
     @WhitelistPermission
-    public String findTrader(@Me MessageChannel channel, TradeManager manager, TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch('a') boolean groupByAlliance) {
+    public String findTrader(@Me MessageChannel channel, TradeDB manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch('a') boolean groupByAlliance) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<Offer> offers = db.getOffers(cutoff);
         int findsign = isBuy ? 1 : -1;

@@ -31,7 +31,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.trade.TradeDB;
 import de.erichseifert.gral.data.DataTable;
 import de.erichseifert.gral.graphics.Insets2D;
 import de.erichseifert.gral.graphics.Location;
@@ -71,7 +71,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -84,7 +83,7 @@ import java.util.stream.Collectors;
 
 public class StatCommands {
     @Command(desc = "List resources in each continent")
-    public String continent(TradeManager manager) {
+    public String continent(TradeDB manager) {
         StringBuilder response = new StringBuilder();
         for (Continent continent : Continent.values) {
             List<ResourceType> types = Arrays.asList(ResourceType.values).stream().filter(f -> {
@@ -98,7 +97,7 @@ public class StatCommands {
     }
 
     @Command(desc = "List the radiation in each continent")
-    public String radiation(TradeManager manager) {
+    public String radiation(TradeDB manager) {
         double global = 0;
         Map<Continent, Double> radsByCont = new LinkedHashMap<>();
         for (Continent continent : Continent.values) {
