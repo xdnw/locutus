@@ -1,6 +1,8 @@
 package link.locutus.discord.db;
 
+import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -155,33 +157,54 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private PoliticsAndWarV2 apiUncached;
     private String[] apiKeys = null;
 
-    public PoliticsAndWarV3 getApi(int requiredAllianceId, AlliancePermission... permissions) {
-        String[] apiKeys = getOrThrow(GuildDB.Key.API_KEY);
-        boolean keyOfNationNotInAlliance = false;
-        boolean keyOfNationWithoutPerm = false;
-        for (String key : apiKeys) {
-            Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
-            if (nationId == null) throw new IllegalArgumentException("Invalid key set via `!KeyStore API_KEY`");
-            DBNation nation = DBNation.byId(nationId);
-            if (nation == null) throw new IllegalArgumentException("Key of deleted nation set via `!KeyStore API_KEY`");
-            DBAlliancePosition position = nation.getAlliancePosition();
-            if (position == null || position.getAlliance_id() != requiredAllianceId) {
-                keyOfNationNotInAlliance = true;
+    public ApiKeyPool<Map.Entry<String, String>> getApiPool(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
+        String[] apiKeys = getOrNull(GuildDB.Key.API_KEY);
+
+        if (apiKeys != null) {
+            for (String key : apiKeys) {
+                try {
+                    ApiKeyDetails stats = new PoliticsAndWarV3(key, null).getApiKeyStats();
+                    Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
+//                    deleteInfo(Key.API_KEY);
+                } catch (Throwable e) {
+                    throw e;
+                }
+            }
+        }
+
+        Map<String, String> poolMap = new HashMap<>();
+
+        DBAlliance alliance = DBAlliance.get(allianceId);
+        Set<DBNation> nations = alliance.getNations();
+        for (DBNation gov : nations) {
+            if (gov.getVm_turns() > 0) continue;
+            DBAlliancePosition position = gov.getAlliancePosition();
+            if (position == null || (permissions != null && !position.hasAllPermission(permissions))) {
                 continue;
             }
-            if (!position.hasAllPermission(permissions)) {
-                keyOfNationWithoutPerm = true;
-                continue;
-            }
-            return new PoliticsAndWarV3(key);
+            try {
+                String key = gov.getApyKey(false);
+                String bot = gov.getBotKey(false);
+
+                if (requireBotToken && bot == null) continue;
+
+                poolMap.put(key, bot);
+            } catch (IllegalArgumentException ignore) {}
         }
-        if (keyOfNationWithoutPerm) {
-            throw new IllegalArgumentException("`!KeyStore API_KEY` set to nation without the required perm: " + StringMan.getString(permissions));
+        if (!poolMap.isEmpty()) {
+            ApiKeyPool<Map.Entry<String, String>> pool = new ApiKeyPool<>(Objects::equals, poolMap.entrySet());
+            return pool;
         }
-        if (keyOfNationNotInAlliance) {
-            throw new IllegalArgumentException("`!KeyStore API_KEY` set to nation not in alliance: " + PnwUtil.getName(requiredAllianceId, true));
+        return null;
+    }
+    public PoliticsAndWarV3 getApi(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
+        ApiKeyPool<Map.Entry<String, String>> pool = getApiPool(allianceId, requireBotToken, permissions);
+        if (pool == null) {
+            StringBuilder message = new StringBuilder("`No api key set. Please use `$setApiKey`");
+            if (permissions.length > 0) message.append("\n - Required nation permissions: " + StringMan.getString(permissions));
+            throw new IllegalArgumentException(message + "");
         }
-        throw new IllegalArgumentException("`!KeyStore API_KEY` not found for : " + PnwUtil.getName(requiredAllianceId, true));
+        return new PoliticsAndWarV3(pool);
     }
 
     public PoliticsAndWarV2 getApi() {
@@ -1674,11 +1697,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         Set<Long> offshoring = getCoalitionRaw(Coalition.OFFSHORING);
         if (offshoring.isEmpty()) return false;
-        if (getAuth(AlliancePermission.WITHDRAW_BANK) == null) return false; // TODO api based transfer
+
+        Integer aaId = getOrNull(Key.ALLIANCE_ID);
+        if (aaId == null) return false;
+        if (getAuth(aaId, AlliancePermission.WITHDRAW_BANK) == null) return false; // TODO api based transfer
 
         Set<Long> myIds = new HashSet<>();
         myIds.add(getGuild().getIdLong());
-        Integer aaId = getOrNull(Key.ALLIANCE_ID);
         if (aaId != null) myIds.add(aaId.longValue());
 
         for (Long id : offshoring) {
@@ -3107,8 +3132,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 DBAlliance alliance = db.getAlliance();
                 if (alliance == null) throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
 
-                PoliticsAndWarV3 v3 = db.getApi().getV3();
-                Map<Integer, com.politicsandwar.graphql.model.TaxBracket> brackets = v3.fetchTaxBrackets(alliance.getAlliance_id());
+                Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
                 if (brackets.isEmpty()) throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
 
                 for (Map.Entry<NationFilterString, Integer> entry : parsed.entrySet()) {
@@ -4295,8 +4319,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public Auth getAuth(AlliancePermission... permissions) {
-        int aaId = getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        DBAlliance alliance = DBAlliance.getOrCreate(aaId);
+        return getAuth((int) getOrThrow(Key.ALLIANCE_ID), permissions);
+    }
+
+    public Auth getAuth(int allianceId, AlliancePermission... permissions) {
+        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
         Set<DBNation> nations = alliance.getNations();
         for (DBNation gov : nations) {
             if (gov.getVm_turns() > 0) continue;
@@ -4306,7 +4333,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             try {
                 Auth auth = gov.getAuth(null);
-                if (auth != null && auth.getAllianceId() == aaId && auth.isValid()) {
+                if (auth != null && auth.getAllianceId() == allianceId && auth.isValid()) {
                     return auth;
                 }
             } catch (IllegalArgumentException ignore) {

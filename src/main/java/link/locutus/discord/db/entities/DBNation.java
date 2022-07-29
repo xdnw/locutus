@@ -1315,7 +1315,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public List<Transaction2> updateTransactions() {
-        PoliticsAndWarV2 apiV2 = Locutus.imp().getBankApi();
+        PoliticsAndWarV2 apiV2 = Locutus.imp().getPnwApi();
         List<BankRecord> records = apiV2.getBankRecords(nation_id);
         List<Transaction2> records2 = new ArrayList<>();
         for (BankRecord record : records) {
@@ -1571,6 +1571,14 @@ public class DBNation implements NationOrAlliance {
         Integer alliance = getAlliance_id();
         Map<ResourceType, Double> totals = new GetMemberResources(alliance).call().get(getNation_id());
         return totals;
+    }
+
+    public String getApyKey(boolean dummy) {
+        return Locutus.imp().getDiscordDB().getApiKey(nation_id);
+    }
+
+    public String getBotKey(boolean dummy) {
+        return Locutus.imp().getDiscordDB().getBotKey(nation_id);
     }
 
     public String commend(boolean isCommend) throws IOException {
@@ -2399,7 +2407,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public String fetchUsername() throws IOException {
-        List<Nation> discord = Locutus.imp().getPnwApi().getV3().fetchNations(f -> f.setId(List.of(nation_id)), r -> r.discord());
+        List<Nation> discord = Locutus.imp().getV3().fetchNations(f -> f.setId(List.of(nation_id)), r -> r.discord());
         if (discord.isEmpty()) return null;
         return discord.get(0).getDiscord();
     }

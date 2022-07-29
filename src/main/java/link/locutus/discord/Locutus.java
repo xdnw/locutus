@@ -1,6 +1,8 @@
 package link.locutus.discord;
 
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandManager;
@@ -101,7 +103,8 @@ public final class Locutus extends ListenerAdapter {
 
     private final PoliticsAndWarV2 pnwApi;
     private final PoliticsAndWarV2 rootPnwApi;
-    private final PoliticsAndWarV2 bankApi;
+
+    private final PoliticsAndWarV3 v3;
 
     private final TradeDB tradeManager;
     private final WarDB warDb;
@@ -196,8 +199,10 @@ public final class Locutus extends ListenerAdapter {
         }
 
         this.pnwApi = new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
-        this.bankApi = this.pnwApi;
         this.rootPnwApi = new PoliticsAndWarBuilder().addApiKeys(primaryKey).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
+
+        ApiKeyPool<Map.Entry<String, String>> v3Pool = new ApiKeyPool<>(new AbstractMap.SimpleEntry<>(primaryKey, Settings.INSTANCE.ACCESS_KEY));
+        this.v3 = new PoliticsAndWarV3(v3Pool);
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {
             this.registerEvents();
@@ -365,10 +370,6 @@ public final class Locutus extends ListenerAdapter {
             }
             return guildDb.getApi();
         }
-    }
-
-    public PoliticsAndWarV2 getBankApi() {
-        return bankApi;
     }
 
     public String getPrimaryKey() {
@@ -816,8 +817,8 @@ public final class Locutus extends ListenerAdapter {
         return manager.getApiByGuildId(guildId);
     }
 
-    public String getDiscordToken() {
-        return discordToken;
+    public PoliticsAndWarV3 getV3() {
+        return v3;
     }
 
     public PoliticsAndWarV2 getPnwApi() {

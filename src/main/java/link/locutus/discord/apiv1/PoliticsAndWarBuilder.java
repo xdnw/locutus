@@ -40,7 +40,7 @@ public class PoliticsAndWarBuilder {
   }
 
   public PoliticsAndWarV2 build() {
-    ApiKeyPool pool = new ApiKeyPool(apiKeysList);
+    ApiKeyPool<String> pool = new ApiKeyPool<String>(null, apiKeysList);
     return new PoliticsAndWarV2(pool, testServerMode, enableCache);
   }
 }

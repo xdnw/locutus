@@ -560,7 +560,7 @@ public class WarDB extends DBMainV2 {
 
         boolean callEvents = !removedBounties.isEmpty();
 
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         Collection<Bounty> bounties = v3.fetchBounties(null, f -> f.all$(0));
 
         if (bounties.isEmpty()) return;
@@ -703,7 +703,7 @@ public class WarDB extends DBMainV2 {
 
         Collections.sort(warIdsToUpdate);
 
-        PoliticsAndWarV3 api = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 api = Locutus.imp().getV3();
         List<War> wars = api.fetchWarsWithInfo(r -> {
             r.setId(warIdsToUpdate);
             r.setActive(false); // needs to be set otherwise inactive wars wont be fetched
@@ -1552,7 +1552,7 @@ public class WarDB extends DBMainV2 {
         if (maxId == null) maxId = latest == null ? null : latest.war_attack_id;
         if (maxId == null || maxId == 0) runAlerts = false;
 
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         // Dont run events if attacks are > 1 day old
         if (latest == null || latest.epoch < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
             System.out.println("No recent attack data in DB. Updating attacks without event handling");

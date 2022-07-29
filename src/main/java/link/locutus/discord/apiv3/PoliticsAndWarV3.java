@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.JsonObject;
+import io.opencensus.trace.Tracestate;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
@@ -25,9 +26,11 @@ import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.*;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RequestCallback;
 import org.springframework.web.client.RestTemplate;
 
 import javax.security.auth.login.LoginException;
@@ -55,22 +58,17 @@ public class PoliticsAndWarV3 {
 
     private final String endpoint;
     private final RestTemplate restTemplate;
-    private final ApiKeyPool pool;
-
     private final ObjectMapper jacksonObjectMapper = Jackson2ObjectMapperBuilder.json().build();
+    private final ApiKeyPool<Map.Entry<String, String>> pool;
 
-    public PoliticsAndWarV3(String url, ApiKeyPool pool) {
+    public PoliticsAndWarV3(String url, ApiKeyPool<Map.Entry<String, String>> pool) {
         this.endpoint = url;
         this.restTemplate = new RestTemplate();
         this.pool = pool;
     }
 
-    public PoliticsAndWarV3(ApiKeyPool pool) {
+    public PoliticsAndWarV3(ApiKeyPool<Map.Entry<String, String>> pool) {
         this("https://api" + (Settings.INSTANCE.TEST ? "-test" : "") + ".politicsandwar.com/graphql", pool);
-    }
-
-    public PoliticsAndWarV3(String key) {
-        this(new ApiKeyPool(key));
     }
 
     public String getUrl(String key) {
@@ -132,14 +130,12 @@ public class PoliticsAndWarV3 {
         int badKey = 0;
         int backOff = 0;
         while (true) {
-            String key = pool.getNextApiKey();
-            String url = getUrl(key);
+            Map.Entry<String, String> pair = pool.getNextApiKey();
+            String url = getUrl(pair.getKey());
             try {
-                System.out.println(graphQLRequest.toHttpJsonBody());
-
                 restTemplate.acceptHeaderRequestCallback(String.class);
 //
-                HttpEntity<String> entity = httpEntity(graphQLRequest, key);
+                HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getValue());
 
                 exchange = restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
@@ -158,7 +154,7 @@ public class PoliticsAndWarV3 {
                         }
                     }
                     String message = errorMessages.isEmpty() ? errors.toString() : StringMan.join(errorMessages, "\n");
-                    throw new IllegalArgumentException(message.replace(key, "XXX"));
+                    throw new IllegalArgumentException(message.replace(pair.getKey(), "XXX"));
                 }
 
                 result = jacksonObjectMapper.readValue(body, resultBody);
@@ -171,23 +167,40 @@ public class PoliticsAndWarV3 {
                 }
                 backOff++;
             } catch (HttpClientErrorException.Unauthorized e) {
-                if (badKey++ > 4) {
+                System.out.println("Unauthorized ");
+
+                Locutus.imp().getDiscordDB().deleteApiKey(pair.getKey());
+
+                if (badKey++ >= 4 || pool.size() <= 1) {
                     e.printStackTrace();
                     AlertUtil.error(e.getMessage(), e);
-                    rethrow(e, key, false);
+                    rethrow(e, pair,false);
                     throw e;
                 }
-                pool.removeKey(key);
+                pool.removeKey(pair);
+                continue;
             } catch (HttpClientErrorException e) {
                 e.printStackTrace();
                 AlertUtil.error(e.getMessage(), e);
-                rethrow(e, key, false);
+                rethrow(e, pair,false);
                 throw e;
             } catch (JsonProcessingException e) {
                 AlertUtil.error(e.getMessage(), e);
-                rethrow(e, key, true);
+                rethrow(e, pair,true);
             } catch (Throwable e) {
-                rethrow(e, key, false);
+                boolean remove = false;
+                if (e.getMessage().contains("The bot key you provided is not valid.")) {
+                    Locutus.imp().getDiscordDB().deleteBotKey(pair.getValue());
+                    remove = true;
+                }
+                if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
+                    remove = true;
+                }
+                if (badKey++ < 4 && pool.size() > 1) {
+                    if (remove) pool.removeKey(pair);
+                    continue;
+                }
+                rethrow(e, pair,false);
                 throw e;
             }
         }
@@ -209,12 +222,19 @@ public class PoliticsAndWarV3 {
                 rateLimitGlobal.intervalMs = Integer.parseInt(header.get("X-RateLimit-Interval").get(0)) * 1000;
             }
         }
+
+        System.out.println("Headers " + StringMan.getString(header));
+
         return result;
     }
 
-    private <T extends Throwable> void rethrow(T e, String key, boolean throwRuntime) {
-        if (e.getMessage() != null && e.getMessage().contains(key)) {
-            throw new RuntimeException(e.getMessage().replace(key, "XXX"));
+    private <T extends Throwable> void rethrow(T e, Map.Entry<String, String> pair, boolean throwRuntime) {
+        if (e.getMessage() != null &&
+                (StringUtils.containsIgnoreCase(e.getMessage(), pair.getKey()) ||
+                (pair.getValue() != null && StringUtils.containsIgnoreCase(e.getMessage(), pair.getValue())))) {
+            String msg = StringUtils.replaceIgnoreCase(e.getMessage(), pair.getKey(), "XXX");
+            if (pair.getValue() != null) msg = StringUtils.replaceIgnoreCase(msg, pair.getValue(), "XXX");
+            throw new RuntimeException(msg);
         }
         if (throwRuntime) throw new RuntimeException(e.getMessage());
     }
@@ -978,18 +998,16 @@ public class PoliticsAndWarV3 {
         System.exit(1);
     }
 
-    private void mutationTest() {
+    public void testBotKey() {
         BankDepositMutationRequest mutation = new BankDepositMutationRequest();
         mutation.setNote("test 123");
-        mutation.setMoney(0.01);
+//        mutation.setMoney(0.01);
 
         BankrecResponseProjection projection = new BankrecResponseProjection();
         projection.id();
         projection.date();
 
         Bankrec result = request(mutation, projection, Bankrec.class);
-
-        System.out.println("Result " + result);
     }
 
     public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId) {
@@ -1023,14 +1041,19 @@ public class PoliticsAndWarV3 {
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
         Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = false;
 
-        ApiKeyPool pool = new ApiKeyPool(Settings.INSTANCE.API_KEY_PRIMARY);
+        Map.Entry<String, String> entry = new AbstractMap.SimpleEntry<>(Settings.INSTANCE.API_KEY_PRIMARY, Settings.INSTANCE.ACCESS_KEY);
+        ApiKeyPool<Map.Entry<String, String>> pool = new ApiKeyPool<>(entry);
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
 
         {
-            Locutus.create();
-            Locutus.imp().getDiscordDB();
+            main.fetchNationsWithInfo(f -> f.setId(List.of(Settings.INSTANCE.NATION_ID)), new Predicate<Nation>() {
+                @Override
+                public boolean test(Nation nation) {
+                    System.out.println("Nation " + nation);
+                    return false;
+                }
+            });
             System.out.println("Result ");
-
 //            WarDB warDB = new WarDB();
 //            Collection<DBAttack> attacks = warDB.getAttacks();
 //            System.out.println("Num attcaks " + attacks.size());
@@ -1488,20 +1511,21 @@ public class PoliticsAndWarV3 {
 //        System.out.println("Done!");
     }
 
-    private static HttpEntity<String> httpEntity(GraphQLRequest request, String key) {
-        return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders(key));
+    private static HttpEntity<String> httpEntity(GraphQLRequest request, String api, String bot) {
+        return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders(api, bot));
     }
 
-    private static HttpEntity<String> httpEntity(GraphQLRequests request, String key) {
-        return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders(key));
+    private static HttpEntity<String> httpEntity(GraphQLRequests request, String api, String bot) {
+        return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders(api, bot));
     }
 
-    private static HttpHeaders getHttpHeaders(String key) {
+    private static HttpHeaders getHttpHeaders(String api, String bot) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        if (key != null) {
-            headers.set("X-Bot-Key", key);
+        if (bot != null && !bot.isEmpty()) {
+            headers.set("X-Bot-Key", bot);
+            headers.set("X-Api-Key", api);
         }
         return headers;
     }

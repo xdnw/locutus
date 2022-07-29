@@ -1895,7 +1895,7 @@ public class GuildHandler {
         long afterDate = oldestApiFetchDate;
         if (latestTaxRecord != null) afterDate = latestTaxRecord.date;
         
-        PoliticsAndWarV3 api = db.getApi(alliance.getAlliance_id(), AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = db.getApi(alliance.getAlliance_id(), false, AlliancePermission.TAX_BRACKETS);
         List<Bankrec> bankRecs = api.fetchTaxRecsWithInfo(alliance.getAlliance_id(), afterDate);
 
         if (bankRecs.isEmpty()) return new ArrayList<>();

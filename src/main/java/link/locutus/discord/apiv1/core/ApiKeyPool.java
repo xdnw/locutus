@@ -10,46 +10,58 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 
-public class ApiKeyPool {
-    private List<String> apiKeyPool;
-    private Map<String, AtomicInteger> usageStats;
+public class ApiKeyPool<T> {
+    private final BiPredicate<T, T> compare;
+    private List<T> apiKeyPool;
+    private Map<T, AtomicInteger> usageStats;
     private int nextIndex;
 
-    public ApiKeyPool(Collection<String> keys) {
-        this(keys.toArray(new String[0]));
-    }
-
-    public ApiKeyPool(String... apiKeyPool) {
-        this.apiKeyPool = new ArrayList<>(Arrays.asList(apiKeyPool));
+    public ApiKeyPool(BiPredicate<T, T> compare, Collection<T> keys) {
+        if (compare == null) compare = Object::equals;
+        this.compare = compare;
+        this.apiKeyPool = new ArrayList<>(keys);
         this.usageStats = new HashMap<>();
         this.nextIndex = 0;
-        if (apiKeyPool.length == 0) {
+        if (apiKeyPool.size() == 0) {
             throw new PoliticsAndWarAPIException("No API Key provided. Make sure apiKeyPool array is not empty");
         }
     }
 
-    public List<String> getKeys() {
+    public ApiKeyPool(T... apiKeyPool) {
+        this(null, apiKeyPool);
+    }
+
+    public ApiKeyPool(BiPredicate<T, T> compare, T... apiKeyPool) {
+        this(compare, Arrays.asList(apiKeyPool));
+    }
+
+    public List<T> getKeys() {
         return apiKeyPool;
     }
 
-    public synchronized String getNextApiKey() {
+    public synchronized T getNextApiKey() {
         if (this.nextIndex >= this.apiKeyPool.size()) {
             this.nextIndex = 0;
         }
         if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`)");
-        String key = this.apiKeyPool.get(this.nextIndex++);
+        T key = this.apiKeyPool.get(this.nextIndex++);
         usageStats.computeIfAbsent(key, f -> new AtomicInteger()).incrementAndGet();
         return key;
     }
 
-    public synchronized void removeKey(String key) {
+    public synchronized void removeKey(T key) {
         if (apiKeyPool.size() == 1) throw new IllegalArgumentException("Invalid API key");
-        this.apiKeyPool.removeIf(f -> f.equalsIgnoreCase(key));
+        this.apiKeyPool.removeIf(f -> compare.test(f, key));
     }
 
-
-    public Map<String, AtomicInteger> getStats() {
+    public Map<T, AtomicInteger> getStats() {
         return usageStats;
+    }
+
+    public int size() {
+        return apiKeyPool.size();
     }
 }

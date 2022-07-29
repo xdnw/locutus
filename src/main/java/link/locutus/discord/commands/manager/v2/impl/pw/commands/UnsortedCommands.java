@@ -1,7 +1,10 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.commands.alliance.LeftAA;
 import link.locutus.discord.commands.bank.AddBalance;
 import link.locutus.discord.commands.bank.Warchest;
@@ -29,6 +32,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.trade.FindProducer;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -60,14 +64,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -232,9 +229,40 @@ public class UnsortedCommands {
         DiscordUtil.sendMessage(channel, result.toString());
     }
 
+    @Command(desc="Set your api and bot key\n" +
+            "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
+    public String setApiKey(@Me Message message, String apiKey, @Default String verifiedBotKey) {
+        PoliticsAndWarV3 api = new PoliticsAndWarV3(new ApiKeyPool<>(new AbstractMap.SimpleEntry<>(apiKey, verifiedBotKey)));
+        ApiKeyDetails stats = api.getApiKeyStats();
+
+        int nationId = stats.getNation().getId();
+        Locutus.imp().getDiscordDB().addApiKey(nationId, apiKey);
+
+        if (verifiedBotKey != null && !verifiedBotKey.isEmpty()) {
+            try {
+                api.testBotKey();
+            } catch (IllegalArgumentException e) {
+                if (e.getMessage().contains("The bot key you provided is not valid.")) {
+                    return e.getMessage() + "\n - Please fill out <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to receive a working bot key";
+                }
+                if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
+                    return e.getMessage() + "\n - Please go to <https://politicsandwar.com/account/> and at the bottem enable `Whitelisted Access`";
+                }
+                if (!e.getMessage().contains("You can't deposit no resources.")) {
+                    return "Error: " + e.getMessage();
+                }
+            }
+            Locutus.imp().getDiscordDB().addBotKey(nationId, verifiedBotKey);
+        }
+
+        message.delete().queue();
+
+        return "Set api key for " + PnwUtil.getName(nationId, false);
+    }
+
     @Command(desc="Login to allow locutus to run scripts through your account (Avoid using if possible)")
     @RankPermission(Rank.OFFICER)
-    public String login(@Me Message message, @Me User author, @Me DBNation me, @Me Guild guild, String username, String password) {
+    public String login(DiscordDB discordDB,  @Me Message message, @Me User author, @Me DBNation me, @Me Guild guild, String username, String password) {
         try {
             if (me == null || me.getPosition() < Rank.OFFICER.id) return "You are not an officer of an alliance";
             if (guild != null) {
@@ -254,7 +282,8 @@ public class UnsortedCommands {
             Auth auth = new Auth(me.getNation_id(), username, password);
             String key = auth.getApiKey();
 
-            Locutus.imp().getDiscordDB().addUserPass(author.getIdLong(), username, password);
+            discordDB.addApiKey(me.getNation_id(), key);
+            discordDB.addUserPass(author.getIdLong(), username, password);
             if (existingAuth != null) existingAuth.setValid(false);
             Auth myAuth = me.getAuth(null);
             if (myAuth != null) myAuth.setValid(false);

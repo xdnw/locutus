@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import com.ptsmods.mysqlw.query.SelectResults;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
@@ -47,6 +48,7 @@ public class DiscordDB extends DBMainV2 {
 
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_META` (`key` INT NOT NULL, `id` INT NOT NULL, `value` BLOB NOT NULL, PRIMARY KEY(`key`, `id`))");
         executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` INT NOT NULL)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `BOT_KEYS`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` INT NOT NULL)");
 
         setupApiKeys();
     }
@@ -98,6 +100,49 @@ public class DiscordDB extends DBMainV2 {
         return null;
     }
 
+    public void addBotKey(int nationId, String key) {
+        long keyId = new BigInteger(key, 16).longValue();
+        update("INSERT OR REPLACE INTO `BOT_KEYS`(`nation_id`, `api_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
+            stmt.setLong(2, keyId);
+
+        });
+    }
+
+    public void deleteBotKey(String key) {
+        long keyId = new BigInteger(key, 16).longValue();
+        update("DELETE FROM `BOT_KEYS` WHERE lower(`api_key`) = ? ", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, keyId);
+
+        });
+    }
+
+    public void deleteApiKey(String key) {
+        long keyId = new BigInteger(key, 16).longValue();
+        update("DELETE FROM `API_KEYS` WHERE lower(`api_key`) = ? ", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, keyId);
+
+        });
+    }
+
+    public String getBotKey(int nationId) {
+        if (nationId == Settings.INSTANCE.NATION_ID && !Settings.INSTANCE.ACCESS_KEY.isEmpty()) {
+            return Settings.INSTANCE.ACCESS_KEY;
+        }
+        try (PreparedStatement stmt = prepareQuery("select * FROM BOT_KEYS WHERE nation_id = ?")) {
+            stmt.setInt(1, nationId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    long keyId = rs.getLong("api_key");
+                    return Long.toHexString(keyId);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public Integer getNationFromApiKey(String key) {
         if (Settings.INSTANCE.API_KEY_PRIMARY.equalsIgnoreCase(key) && Settings.INSTANCE.NATION_ID > 0) {
             return Settings.INSTANCE.NATION_ID;
@@ -113,7 +158,7 @@ public class DiscordDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        ApiKeyDetails keyStats = new PoliticsAndWarV3(key).getApiKeyStats();
+        ApiKeyDetails keyStats = new PoliticsAndWarV3(key, null).getApiKeyStats();
         if (keyStats != null && keyStats.getNation() != null && keyStats.getNation().getId() != null) {
             int natId = keyStats.getNation().getId();
             addApiKey(natId, keyStats.getKey());

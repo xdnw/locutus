@@ -70,25 +70,18 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private final String baseUrl;
     private final Gson gson;
     private final JsonParser parser;
-    private final ApiKeyPool pool;
+    private final ApiKeyPool<String> pool;
     private final QueryExecutor legacyV1;
-    private final PoliticsAndWarV3 v3;
-
     public PoliticsAndWarV2(String key, boolean test, boolean cache) {
-        this(new ApiKeyPool(Collections.singleton(key)), test, cache);
+        this(new ApiKeyPool<String>(null, Collections.singleton(key)), test, cache);
     }
 
-    public PoliticsAndWarV2(ApiKeyPool pool, boolean test, boolean cache) {
+    public PoliticsAndWarV2(ApiKeyPool<String> pool, boolean test, boolean cache) {
         this.pool = pool;
         this.baseUrl = "https://" + (test ? "test." : "") + "politicsandwar.com/api/v2/";
         this.gson = new Gson();
         this.parser = new JsonParser();
         this.legacyV1 = new QueryExecutor(cache, test, 50, 60000);
-        this.v3 = new PoliticsAndWarV3(pool);
-    }
-
-    public PoliticsAndWarV3 getV3() {
-        return v3;
     }
 
     public Gson getGson() {

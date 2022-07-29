@@ -303,7 +303,7 @@ public class NationDB extends DBMainV2 {
     public void updateAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<Event> eventConsumer) {
         Set<Integer> toDelete = filter == null ? getAlliances().stream().map(DBAlliance::getId).collect(Collectors.toSet()) : new HashSet<>();
 
-        List<Alliance> alliances = Locutus.imp().getPnwApi().getV3().fetchAlliances(filter, true, true);
+        List<Alliance> alliances = Locutus.imp().getV3().fetchAlliances(filter, true, true);
         if (alliances.isEmpty()) return;
         Set<Integer> updated = processUpdatedAlliances(alliances, eventConsumer);
         toDelete.removeAll(updated);
@@ -312,7 +312,7 @@ public class NationDB extends DBMainV2 {
     }
 
     private Set<Integer> updateAlliancesById(List<Integer> ids, Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         Set<Integer> fetched = new LinkedHashSet<>();
         if (ids.isEmpty()) return fetched;
@@ -549,7 +549,7 @@ public class NationDB extends DBMainV2 {
     }
 
     public void updateTreaties(Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<com.politicsandwar.graphql.model.Treaty> treatiesV3 = v3.fetchTreaties(r -> {});
 
         // Don't call events if first time
@@ -658,7 +658,7 @@ public class NationDB extends DBMainV2 {
             }
         }
 
-        List<Nation> nations = Locutus.imp().getPnwApi().getV3().fetchNations(r -> {
+        List<Nation> nations = Locutus.imp().getV3().fetchNations(r -> {
             r.setColor(colors);
             r.setVmode(false);
         }, r -> {
@@ -903,7 +903,7 @@ public class NationDB extends DBMainV2 {
     }
 
     public void updateAllCities(Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<City> cities = v3.fetchCitiesWithInfo(null, true);
         Map<Integer, Map<Integer, City>> nationIdCityIdCityMap = new Int2ObjectOpenHashMap<>();
         for (City city : cities) {
@@ -914,7 +914,7 @@ public class NationDB extends DBMainV2 {
     }
 
     public void updateCitiesOfNations(Set<Integer> nationIds, Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         List<Integer> idList = new ArrayList<>(nationIds);
         int estimatedCitiesToFetch = 0;
@@ -947,7 +947,7 @@ public class NationDB extends DBMainV2 {
 
     public boolean updateDirtyCities(Consumer<Event> eventConsumer) {
         List<Integer> cityIds = new ArrayList<>();
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         while (!dirtyCities.isEmpty()) {
             try {
@@ -1012,7 +1012,7 @@ public class NationDB extends DBMainV2 {
     }
 
     public void updateNewCities(Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<Integer> newIds = getNewCityIds(500, new HashSet<>());
         Collections.sort(newIds);
         List<City> cities = v3.fetchCitiesWithInfo(r -> r.setId(newIds), true);
@@ -1593,7 +1593,7 @@ public class NationDB extends DBMainV2 {
         Set<Integer> nationsFetched = new HashSet<>();
         Map<DBNation, DBNation> dirtyNations = new LinkedHashMap<>(); // Map<current, previous>
 
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         Predicate<Nation> onEachNation = nation -> {
             if (nation.getId() != null) {

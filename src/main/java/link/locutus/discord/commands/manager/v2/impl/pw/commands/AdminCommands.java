@@ -265,7 +265,6 @@ public class AdminCommands {
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
         Auth auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
         if (auth == null) return "No authorization set";
-        int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         StringBuilder response = new StringBuilder();
 
@@ -378,8 +377,8 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String rootApiUsageStats(boolean bank) {
-        PoliticsAndWarV2 api = bank ? Locutus.imp().getRootPnwApi() : Locutus.imp().getBankApi();
+    public String rootApiUsageStats() {
+        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApi();
         return apiUsageStats(api);
     }
 
@@ -392,13 +391,33 @@ public class AdminCommands {
 
     @Command(desc = "Check if current api keys are valid")
     @RolePermission(value = Roles.ADMIN, root = true)
+    public String importGuildKeys() {
+        StringBuilder response = new StringBuilder();
+        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+            String[] keys = db.getOrNull(GuildDB.Key.API_KEY);
+            for (String key : keys) {
+                try {
+                    ApiKeyDetails stats = new PoliticsAndWarV3(key, null).getApiKeyStats();
+                    Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
+
+                    response.append(key + ": success" + "\n");
+                } catch (Throwable e) {
+                    response.append(key + ": " + e.getMessage() + "\n");
+                }
+            }
+        }
+        return "Done!";
+    }
+
+    @Command(desc = "Check if current api keys are valid")
+    @RolePermission(value = Roles.ADMIN, root = true)
     public String validateAPIKeys() {
         Set<String> keys = Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet();
         Map<String, String> failed = new LinkedHashMap<>();
         Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
         for (String key : keys) {
             try {
-                ApiKeyDetails stats = new PoliticsAndWarV3(key).getApiKeyStats();
+                ApiKeyDetails stats = new PoliticsAndWarV3(key, null).getApiKeyStats();
                 if (stats != null && stats.getNation() != null && stats.getNation().getId() != null) {
                     success.put(key, stats);
                 } else {
@@ -687,10 +706,7 @@ public class AdminCommands {
             db = alliance.getGuildDB();
             if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);
         }
-        Auth auth = db.getAuth(AlliancePermission.VIEW_BANK);
-        if (auth == null) return "No authentication found for this guild";
-
-        channel.sendMessage("Syncing bank for " + db.getGuild());
+        channel.sendMessage("Syncing bank for " + db.getGuild()).queue();
         OffshoreInstance bank = db.getHandler().getBank();
         bank.sync(timestamp, false);
         return "Done!";

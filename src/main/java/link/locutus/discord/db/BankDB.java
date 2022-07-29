@@ -54,7 +54,7 @@ public class BankDB extends DBMainV2 {
     }
 
 //    public void updateBankRecs(int nationId) {
-//        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+//        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 //        List<Bankrec> recs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
 //            @Override
 //            public void accept(BankrecsQueryRequest r) {

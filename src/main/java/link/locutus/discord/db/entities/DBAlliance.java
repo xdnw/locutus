@@ -239,7 +239,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
         GuildDB db = getGuildDB();
         if (db == null) throw new IllegalArgumentException("No db found for " + db);
-        PoliticsAndWarV3 api = db.getApi(allianceId, AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = db.getApi(allianceId, false, AlliancePermission.TAX_BRACKETS);
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
         BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
