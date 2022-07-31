@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -2464,7 +2465,7 @@ public class WarCommands {
                               @Switch('l') boolean sendFromLocalAccount,
                               @Switch('f') boolean force,
                               @Switch('d') boolean dm) throws IOException, GeneralSecurityException {
-        if (!header.isEmpty() && !Roles.MAIL.has(author, guild)) {
+        if (!Roles.MAIL.has(author, guild)) {
             return "You need the MAIL role on discord (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole`) to add the custom message: `" + header + "`";
         }
         Map<DBNation, Set<DBNation>> warDefAttMap = new HashMap<>();
@@ -2489,11 +2490,8 @@ public class WarCommands {
             }
         }
 
-        String[] keys = { Locutus.imp().getRootAuth().getApiKey() };
-//        Auth auth = Locutus.imp().getRootAuth();
-        if (sendFromLocalAccount || (!Roles.MILCOM.hasOnRoot(author) && !Roles.INTERNAL_AFFAIRS.hasOnRoot(author))) {
-            keys = db.getOrThrow(GuildDB.Key.API_KEY);
-        }
+        ApiKeyPool<Map.Entry<String, String>> keys = db.getMailKey();
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
         Map<DBNation, Set<DBNation>> spyAttDefMap = BlitzGenerator.reverse(spyDefAttMap);
@@ -2623,11 +2621,6 @@ public class WarCommands {
             mailTargets.put(attacker, new AbstractMap.SimpleEntry<>(subject, body));
         }
 
-        String key = keys[0];
-        Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-        if (nationId == null) return "Invalid `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
-        DBNation sender = DBNation.byId(nationId);
-
         if (!force) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
             String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(message.getContentRaw()) + " -f";
@@ -2639,11 +2632,6 @@ public class WarCommands {
 
             StringBuilder body = new StringBuilder();
             body.append("subject: " + subject + "\n");
-            body.append("Send from: " + sender.getNationUrlMarkup(true) + "\n");
-
-            if (sender.getNation_id() == Settings.INSTANCE.NATION_ID) {
-                body.append("\nAdd `-l` to send from your alliance instead of Borg");
-            }
 
             DiscordUtil.createEmbedCommand(channel, embedTitle, body.toString(), "\u2705", pending);
             return author.getAsMention();
@@ -2655,7 +2643,7 @@ public class WarCommands {
             subject = entry.getValue().getKey();
             String body = entry.getValue().getValue();
 
-            attacker.sendMail(key, subject, body);
+            attacker.sendMail(keys, subject, body);
 
             if (dm) {
                 String markup = MarkupUtil.htmlToMarkdown(body);

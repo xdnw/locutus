@@ -29,6 +29,10 @@ public class ApiKeyPool<T> {
         return new SimpleBuilder();
     }
 
+    public static ApiKeyPool<Map.Entry<String, String>> create(String... keys) {
+        return builder().addKeys(keys).build();
+    }
+
     public static class SimpleBuilder {
         Map<String, String> pool = new HashMap<>();
 

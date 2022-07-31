@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.Nation;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -1580,7 +1581,7 @@ public class DBNation implements NationOrAlliance {
         return totals;
     }
 
-    public String getApyKey(boolean dummy) {
+    public String getApiKey(boolean dummy) {
         return Locutus.imp().getDiscordDB().getApiKey(nation_id);
     }
 
@@ -2866,25 +2867,8 @@ public class DBNation implements NationOrAlliance {
         return maxInfra;
     }
 
-    public JsonObject sendMail(String[] keys, String subject, String message) throws IOException {
-        JsonObject json = null;
-        for (String key : keys) {
-            json = sendMail(key, subject, message);
-            String jsonStr = json.toString();
-            String successStr = "success\":";
-            int successIndex = jsonStr.indexOf(successStr);
-            if (successIndex != -1) {
-                char tf = jsonStr.charAt(successIndex + successStr.length());
-                if (tf == 't') {
-                    return json;
-                }
-            }
-        }
-        return json;
-    }
-
-    public JsonObject sendMail(String key, String subject, String message) throws IOException {
-        if (key.equalsIgnoreCase(Locutus.imp().getPrimaryKey())) {
+    public JsonObject sendMail(ApiKeyPool<Map.Entry<String, String>> pool, String subject, String message) throws IOException {
+        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Locutus.imp().getPrimaryKey())) {
             Auth auth = Locutus.imp().getRootAuth();
             if (auth != null) {
                 String result = new MailTask(auth, this, subject, message, null).call();
@@ -2894,13 +2878,31 @@ public class DBNation implements NationOrAlliance {
             }
         }
 
-        Map<String, String> post = new HashMap<>();
-        post.put("to", getNation_id() + "");
-        post.put("subject", subject);
-        post.put("message", message);
-        String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + key;
-        String result = FileUtil.readStringFromURL(url, post, null);
-        return JsonParser.parseString(result).getAsJsonObject();
+        while (true) {
+            Map.Entry<String, String> pair = pool.getNextApiKey();
+            Map<String, String> post = new HashMap<>();
+            post.put("to", getNation_id() + "");
+            post.put("subject", subject);
+            post.put("message", message);
+            String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
+            String result = FileUtil.readStringFromURL(url, post, null);
+            if (result.contains("Invalid API key")) {
+                Locutus.imp().getDiscordDB().deleteApiKey(pair.getKey());
+                if (pair.getValue() != null) {
+                    Locutus.imp().getDiscordDB().deleteBotKey(pair.getValue());
+                }
+            } else {
+                String successStr = "success\":";
+                int successIndex = result.indexOf(successStr);
+                if (successIndex != -1) {
+                    char tf = result.charAt(successIndex + successStr.length());
+                    if (tf == 't') {
+                        return JsonParser.parseString(result).getAsJsonObject();
+                    }
+                }
+            }
+            pool.removeKey(pair);
+        }
     }
 
     public int estimateBeigeTime() {
@@ -3236,7 +3238,7 @@ public class DBNation implements NationOrAlliance {
 
     public JsonObject sendMail(Auth auth, String subject, String body) throws IOException {
         String key = auth.getApiKey();
-        return sendMail(key, subject, body);
+        return sendMail(ApiKeyPool.create(key), subject, body);
     }
 
     public Map.Entry<Integer, Integer> getCommends() throws IOException {

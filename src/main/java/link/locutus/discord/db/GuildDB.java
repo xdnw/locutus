@@ -54,7 +54,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -183,7 +182,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 continue;
             }
             try {
-                String key = gov.getApyKey(false);
+                String key = gov.getApiKey(false);
+                if (key == null) continue;
                 String bot = gov.getBotKey(false);
 
                 if (requireBotToken && bot == null) continue;
@@ -205,6 +205,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             throw new IllegalArgumentException(message + "");
         }
         return new PoliticsAndWarV3(pool);
+    }
+
+    public ApiKeyPool<Map.Entry<String, String>> getMailKey() {
+        int aaId = getAlliance_id();
+        Set<Integer> allowedNations = Settings.INSTANCE.TASKS.MAIL.getInstances().stream().map(f -> f.NATION_ID).collect(Collectors.toSet());
+        for (int nationId : allowedNations) {
+            DBNation nation = DBNation.byId(nationId);
+            if (nation == null || nation.getAlliance_id() != aaId) continue;
+            String key = nation.getApiKey(false);
+            if (key != null) return ApiKeyPool.builder().addKey(key).build();
+        }
+        ApiKeyPool<Map.Entry<String, String>> pool = getApiPool(getAlliance_id(), false, AlliancePermission.POST_ANNOUNCEMENTS);
+        if (pool == null || pool.size() == 0) return null;
+        return pool;
     }
 
     public PoliticsAndWarV2 getApi() {
@@ -1603,7 +1617,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     } else if (warChannel == null) {
                         if (throwException)  {
                             if (warChannelInit) {
-                                // Try setting `!KeyStore ENABLE_WAR_ROOMS true` and attempting this command again.
                                 String message = "Locutus previous failed to create war channels: ";
                                 if (warCatError != null) {
                                     message += warCatError.getMessage() + "\n```" + StringMan.stacktraceToString(warCatError) + "```";

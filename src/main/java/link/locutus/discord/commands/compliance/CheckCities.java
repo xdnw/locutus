@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.compliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
@@ -104,6 +106,10 @@ public class CheckCities extends Command {
         boolean individual = flags.contains('f') || nations.size() == 1;
         IACheckup checkup = new IACheckup(allianceId);
 
+        boolean mail = flags.contains('m');
+        ApiKeyPool<Map.Entry<String, String>> keys = mail ? db.getMailKey() : null;
+        if (mail && keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
+
         for (DBNation nation : nations) {
             int failed = 0;
             boolean appendNation = false;
@@ -142,8 +148,7 @@ public class CheckCities extends Command {
                     if (user != null && user.getDiscordId() != null) {
                         event.getChannel().sendMessage("^ " + user.getAsMention()).complete();
                     }
-                } else if (flags.contains('m')) {
-                    String[] apiKeys = db.getOrThrow(GuildDB.Key.API_KEY);
+                } else if (mail) {
                     String title = nation.getAllianceName() + " automatic checkup";
 
                     String input = output.toString().replace("_", " ").replace(" * ", " STARPLACEHOLDER ");
@@ -153,7 +158,7 @@ public class CheckCities extends Command {
                     markdown += ("\n\nPlease get in contact with us via discord for assistance");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 
-                    JsonObject response = nation.sendMail(apiKeys, title, markdown);
+                    JsonObject response = nation.sendMail(keys, title, markdown);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
                     RateLimitUtil.queue(event.getChannel().sendMessage(userStr + ": " + response));
                 }

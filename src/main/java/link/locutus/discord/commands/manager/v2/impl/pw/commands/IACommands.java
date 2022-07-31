@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -758,22 +759,23 @@ public class IACommands {
     }
 
     @Command
-    @RolePermission(Roles.MAIL)
-    @IsAlliance
-    @HasApi
-    public String mail(@Me Message msgObj, @Me GuildDB db, @Me MessageChannel channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch('f') boolean confirm, @Switch('l') boolean notLocal) throws IOException {
+    public String mail(@Me DBNation me, @Me Message msgObj, @Me GuildDB db, @Me MessageChannel channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch('f') boolean confirm, @Switch('l') boolean notLocal) throws IOException {
         message = MarkupUtil.transformURLIntoLinks(message);
 
-        if (notLocal && !Roles.ADMIN.hasOnRoot(author)) return "You do not have permission to send from this account";
-        String[] keys;
-        if (notLocal) {
-            keys = new String[]{ Locutus.imp().getRootAuth().getApiKey() };
-        } else {
-            keys = db.getOrThrow(GuildDB.Key.API_KEY);
+        String myKey = me.getApiKey(false);
+
+        ApiKeyPool<Map.Entry<String, String>> key = null;
+        if (notLocal || myKey == null) {
+            if (!Roles.MAIL.has(author, db.getGuild())) {
+                return "You do not have the role `MAIL` (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasRole` OR use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey` to add your own key";
+            }
+            key = db.getMailKey();
+        } else if (myKey != null) {
+            key = ApiKeyPool.builder().addKey(myKey).build();
         }
-        Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-        if (nationId == null) return "Invalid `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
-        DBNation sender = DBNation.byId(nationId);
+        if (key == null){
+            return "No api key found. Please use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`";
+        }
 
         if (!confirm) {
             String title = "Send " + nations.size() + " messages";
@@ -794,10 +796,6 @@ public class IACommands {
             body.append("subject: " + subject + "\n");
             body.append("body: ```" + message + "```");
 
-            if (sender.getNation_id() == Settings.INSTANCE.NATION_ID) {
-                body.append("\nAdd `-l` to send from your alliance instead of Borg");
-            }
-
             DiscordUtil.createEmbedCommand(channel, embedTitle, body.toString(), "\u2705", pending);
             return null;
         }
@@ -810,9 +808,7 @@ public class IACommands {
         StringBuilder response = new StringBuilder();
         for (DBNation nation : nations) {
             RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Sending to " + nation.getNation()));
-
-
-            response.append(nation.sendMail(keys[0], subject, message)).append("\n");
+            response.append(nation.sendMail(key, subject, message)).append("\n");
         }
 
         RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
@@ -1228,8 +1224,8 @@ public class IACommands {
             return null;
         }
 
-        String[] keys = db.getOrThrow(GuildDB.Key.API_KEY);
-        if (keys.length == 0) throw new IllegalArgumentException("No API_KEY set");
+        ApiKeyPool<Map.Entry<String, String>> keys = db.getMailKey();
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
 
         int errors = 0;
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : messageMap.entrySet()) {

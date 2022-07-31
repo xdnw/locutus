@@ -1066,17 +1066,9 @@ public class PoliticsAndWarV3 {
         final int cityId = 375361;
         DBNation nation = DBNation.byId(id);
         {
-//            double gni = 0;
-//            while (true) {
-//                Thread.sleep(1000);
-//                double newGni = main.fetchNations(f -> f.setId(List.of(id)), NationResponseProjection::gross_national_income).get(0).getGross_national_income();
-//                if (newGni != gni) {
-//                    System.out.println("GNI changed: " + MathMan.format(gni) + " -> " + MathMan.format(newGni));
-//                    gni = newGni;
-//                }
-//                if (false) break;
-//
-//            }
+            JsonObject result = nation.sendMail(ApiKeyPool.create(Settings.INSTANCE.API_KEY_PRIMARY + "a"), "title", "body");
+            System.out.println(result);
+            System.exit(0);
         }
 
         {

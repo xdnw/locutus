@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
@@ -89,11 +90,10 @@ public class MailTargets extends Command {
             }
         }
 
-        String[] keys = { Locutus.imp().getRootAuth().getApiKey() };
-//        Auth auth = Locutus.imp().getRootAuth();
-        if (flags.contains('l') || (!Roles.MILCOM.hasOnRoot(event.getAuthor()) && !Roles.INTERNAL_AFFAIRS.hasOnRoot(event.getAuthor()))) {
-            keys = Locutus.imp().getGuildDB(event).getOrThrow(GuildDB.Key.API_KEY);
-        }
+
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        ApiKeyPool<Map.Entry<String, String>> keys = db.getMailKey();
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
 
         String header = "";
         if (args.size() >= 4) {
@@ -233,11 +233,6 @@ public class MailTargets extends Command {
             mailTargets.put(attacker, new AbstractMap.SimpleEntry<>(subject, body));
         }
 
-        String key = keys[0];
-        Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-        if (nationId == null) return "Invalid `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
-        DBNation sender = DBNation.byId(nationId);
-
         if (!flags.contains('f')) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
             String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
@@ -249,11 +244,6 @@ public class MailTargets extends Command {
 
             StringBuilder body = new StringBuilder();
             body.append("subject: " + subject + "\n");
-            body.append("Send from: " + sender.getNationUrlMarkup(true) + "\n");
-
-            if (sender.getNation_id() == Settings.INSTANCE.NATION_ID) {
-                body.append("\nAdd `-l` to send from your alliance instead of Borg");
-            }
 
             DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "\u2705", pending);
             return event.getAuthor().getAsMention();

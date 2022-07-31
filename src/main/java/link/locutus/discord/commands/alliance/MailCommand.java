@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -22,6 +23,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class MailCommand extends Command implements Noformat {
@@ -92,15 +94,21 @@ public class MailCommand extends Command implements Noformat {
             message = MarkupUtil.transformURLIntoLinks(message);
             String subject = args.get(1);
 
-            String[] keys = { Locutus.imp().getRootAuth().getApiKey() };
-            if (flags.contains('l') || (!Roles.ADMIN.hasOnRoot(event.getAuthor()) && !Roles.INTERNAL_AFFAIRS.hasOnRoot(event.getAuthor()))) {
-                keys = Locutus.imp().getGuildDB(event).getOrThrow(GuildDB.Key.API_KEY);
+            String myKey = me.getApiKey(false);
+
+            ApiKeyPool<Map.Entry<String, String>> key = null;
+            if (flags.contains('l') || myKey == null) {
+                if (!Roles.MAIL.has(author, db.getGuild())) {
+                    return "You do not have the role `MAIL` (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasRole` OR use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey` to add your own key";
+                }
+                key = db.getMailKey();
+            } else if (myKey != null) {
+                key = ApiKeyPool.builder().addKey(myKey).build();
+            }
+            if (key == null){
+                return "No api key found. Please use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`";
             }
 
-
-            Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-            if (nationId == null) return "Invalid Key `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
-            DBNation sender = DBNation.byId(nationId);
 
             if (!flags.contains('f')) {
                 String title = "Send " + nations.size() + " messages";
@@ -121,10 +129,6 @@ public class MailCommand extends Command implements Noformat {
                 body.append("subject: " + subject + "\n");
                 body.append("body: ```" + message + "```");
 
-                if (sender.getNation_id() == Settings.INSTANCE.NATION_ID) {
-                    body.append("\nAdd `-l` to send from your alliance instead of Borg");
-                }
-
                 DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "\u2705", pending);
                 return null;
             }
@@ -139,7 +143,7 @@ public class MailCommand extends Command implements Noformat {
                 RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Sending to " + nation.getNation()));
 
 
-                response.append(nation.sendMail(keys[0], subject, message)).append("\n");
+                response.append(nation.sendMail(key, subject, message)).append("\n");
 //                response.append(new MailTask(auth, nation, subject, message).call()).append('\n');
             }
 

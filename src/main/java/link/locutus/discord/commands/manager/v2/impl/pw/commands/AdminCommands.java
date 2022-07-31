@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -118,7 +119,8 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     @HasApi
     public String announce(@Me GuildDB db, @Me Guild guild, @Me Message message, @Me MessageChannel currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch('v') @Default("0") Integer requiredVariation, @Switch('r') @Default("0") Integer requiredDepth, @Switch('s') Long seed, @Switch('m') boolean sendMail, @Switch('d') boolean sendDM, @Switch('f') boolean force) throws IOException {
-        String[] keys = db.getOrThrow(GuildDB.Key.API_KEY);
+        ApiKeyPool<Map.Entry<String, String>> keys = db.getMailKey();
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
         List<String> errors = new ArrayList<>();

@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -619,7 +620,7 @@ public class GuildHandler {
             subject = DiscordUtil.format(guild, output, null, to, subject);
         }
 
-        return to.sendMail(keys, subject, message);
+        return to.sendMail(ApiKeyPool.create(keys), subject, message);
     }
 
     public Double getWithdrawLimit(int banker) {
@@ -2205,7 +2206,7 @@ public class GuildHandler {
                 String[] keys = db.getOrNull(GuildDB.Key.API_KEY);
                 if (keys != null) {
                     try {
-                        nation.sendMail(keys, "Beige Cycle Violation", explanation);
+                        nation.sendMail(ApiKeyPool.create(keys), "Beige Cycle Violation", explanation);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
