@@ -9,7 +9,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.task.GetMemberResources;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -70,7 +69,7 @@ public class Bank extends Command {
             if (alliance != db.getAlliance_id()) {
                 api = Locutus.imp().getApi(alliance);
             }
-            totals = new GetMemberResources(alliance).call().get(nation.getNation_id());
+            totals = nation.getStockpile();
             if (totals == null) return "They are not a member of " + alliance;
         } else {
             nation = null;

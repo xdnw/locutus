@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
@@ -53,19 +54,24 @@ public class GetResourceNeeded implements Callable<Map<DBNation, Map<ResourceTyp
 
     @Override
     public Map<DBNation, Map<ResourceType, Double>> call() throws InterruptedException, ExecutionException, IOException {
+        DBAlliance alliance = DBAlliance.get(allianceId);
+        if (alliance == null) {
+            errors.accept("No alliance found for: " + alliance);
+            return new HashMap<>();
+        }
         // Get existing resources
-        Map<Integer, Map<ResourceType, Double>> existing;
+        Map<DBNation, Map<ResourceType, Double>> existing;
         if (this.useExisting) {
-            existing = new GetMemberResources(allianceId).call();
+            existing = alliance.getMemberStockpile();
         } else {
             existing = new HashMap<>();
             for (DBNation nation : nations) {
-                existing.put(nation.getNation_id(), new HashMap<>());
+                existing.put(nation, new HashMap<>());
             }
         }
         Map<DBNation, Map<ResourceType, Double>> result = new HashMap<>();
         for (DBNation nation : nations) {
-            Map<ResourceType, Double> stockpile = existing.get(nation.getNation_id());
+            Map<ResourceType, Double> stockpile = existing.get(nation);
             if (stockpile == null) {
                 errors.accept("Unable to access stockpile for: " + nation.getNation());
                 continue;

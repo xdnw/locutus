@@ -1,6 +1,8 @@
 package link.locutus.discord.db.entities;
 
+import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
@@ -17,7 +19,6 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.task.GetMemberResources;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -559,13 +560,60 @@ public class DBAlliance implements NationList, NationOrAlliance {
         setMeta(key, value.getBytes(StandardCharsets.ISO_8859_1));
     }
 
+    public ApiKeyPool getApiKeys(boolean requireBotToken, AlliancePermission... permissions) {
+        GuildDB db = getGuildDB();
+        if (db != null) {
+            String[] apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
+
+            if (apiKeys != null) {
+                for (String key : apiKeys) {
+                    try {
+                        ApiKeyDetails stats = new PoliticsAndWarV3(key, null).getApiKeyStats();
+                        Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
+//                    deleteInfo(Key.API_KEY);
+                    } catch (Throwable e) {
+                        throw e;
+                    }
+                }
+            }
+        }
+
+        ApiKeyPool.SimpleBuilder builder = new ApiKeyPool.SimpleBuilder();
+
+        Set<DBNation> nations = getNations();
+        for (DBNation gov : nations) {
+            if (gov.getVm_turns() > 0) continue;
+            DBAlliancePosition position = gov.getAlliancePosition();
+            if (position == null || (permissions != null && !position.hasAllPermission(permissions))) {
+                continue;
+            }
+            try {
+                ApiKeyPool.ApiKey key = gov.getApiKey(false);
+                if (key == null) continue;
+                if (requireBotToken && key.getBotKey() == null) continue;
+                builder.addKey(key);
+            } catch (IllegalArgumentException ignore) {}
+        }
+        if (!builder.isEmpty()) {
+            return builder.build();
+        }
+        return null;
+    }
+
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
-        Map<Integer, Map<ResourceType, Double>> stockpile = new GetMemberResources(allianceId).call();
+        ApiKeyPool pool = getApiKeys(false, AlliancePermission.SEE_SPIES);
+        if (pool == null) {
+            throw new IllegalArgumentException("No api key found. Please use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
+        }
+        List<Integer> ids = getNations().stream()
+                .filter(f -> f.getVm_turns() == 0 && f.getAlliancePosition() != null)
+                .map(f -> f.getNation_id()).collect(Collectors.toList());
+        Map<Integer, double[]> stockPile = new PoliticsAndWarV3(pool).getStockPile(f -> f.setId(ids));
         Map<DBNation, Map<ResourceType, Double>> result = new HashMap<>();
-        for (Map.Entry<Integer, Map<ResourceType, Double>> entry : stockpile.entrySet()) {
+        for (Map.Entry<Integer, double[]> entry : stockPile.entrySet()) {
             DBNation nation = DBNation.byId(entry.getKey());
             if (nation == null) continue;
-            result.put(nation, entry.getValue());
+            result.put(nation, PnwUtil.resourcesToMap(entry.getValue()));
         }
         return result;
     }

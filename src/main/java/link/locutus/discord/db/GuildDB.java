@@ -157,41 +157,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private String[] apiKeys = null;
 
     public ApiKeyPool getApiPool(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
-        String[] apiKeys = getOrNull(GuildDB.Key.API_KEY);
-
-        if (apiKeys != null) {
-            for (String key : apiKeys) {
-                try {
-                    ApiKeyDetails stats = new PoliticsAndWarV3(key, null).getApiKeyStats();
-                    Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
-//                    deleteInfo(Key.API_KEY);
-                } catch (Throwable e) {
-                    throw e;
-                }
-            }
-        }
-
-        ApiKeyPool.SimpleBuilder builder = new ApiKeyPool.SimpleBuilder();
-
-        DBAlliance alliance = DBAlliance.get(allianceId);
-        Set<DBNation> nations = alliance.getNations();
-        for (DBNation gov : nations) {
-            if (gov.getVm_turns() > 0) continue;
-            DBAlliancePosition position = gov.getAlliancePosition();
-            if (position == null || (permissions != null && !position.hasAllPermission(permissions))) {
-                continue;
-            }
-            try {
-                ApiKeyPool.ApiKey key = gov.getApiKey(false);
-                if (key == null) continue;
-                if (requireBotToken && key.getBotKey() == null) continue;
-                builder.addKey(key);
-            } catch (IllegalArgumentException ignore) {}
-        }
-        if (!builder.isEmpty()) {
-            return builder.build();
-        }
-        return null;
+        return DBAlliance.getOrCreate(allianceId).getApiKeys(requireBotToken, permissions);
     }
     public PoliticsAndWarV3 getApi(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
         ApiKeyPool pool = getApiPool(allianceId, requireBotToken, permissions);

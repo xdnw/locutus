@@ -12,6 +12,7 @@ import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
@@ -1010,6 +1011,43 @@ public class PoliticsAndWarV3 {
         handler.disconnect();
 
         System.exit(1);
+    }
+
+    public Map<Integer, double[]> getStockPile(Consumer<NationsQueryRequest> query) {
+        Map<Integer, double[]> result = new HashMap<>();
+        for (Nation rec : fetchNations(query::accept, new Consumer<NationResponseProjection>() {
+            @Override
+            public void accept(NationResponseProjection projection) {
+                projection.money();
+                projection.coal();
+                projection.oil();
+                projection.uranium();
+                projection.iron();
+                projection.bauxite();
+                projection.lead();
+                projection.gasoline();
+                projection.munitions();
+                projection.steel();
+                projection.aluminum();
+                projection.food();
+            }
+        })) {
+            double[] resources = ResourceType.getBuffer();
+            resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
+            resources[ResourceType.COAL.ordinal()] = rec.getCoal();
+            resources[ResourceType.OIL.ordinal()] = rec.getOil();
+            resources[ResourceType.URANIUM.ordinal()] = rec.getUranium();
+            resources[ResourceType.IRON.ordinal()] = rec.getIron();
+            resources[ResourceType.BAUXITE.ordinal()] = rec.getBauxite();
+            resources[ResourceType.LEAD.ordinal()] = rec.getLead();
+            resources[ResourceType.GASOLINE.ordinal()] = rec.getGasoline();
+            resources[ResourceType.MUNITIONS.ordinal()] = rec.getMunitions();
+            resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
+            resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
+            resources[ResourceType.FOOD.ordinal()] = rec.getFood();
+            result.put(rec.getId(), resources);
+        }
+        return result;
     }
 
     public void testBotKey() {

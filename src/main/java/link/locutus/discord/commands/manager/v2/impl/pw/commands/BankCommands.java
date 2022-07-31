@@ -42,7 +42,6 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.DepositRawTask;
-import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.util.task.balance.BankWithTask;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -76,7 +75,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -2244,10 +2242,11 @@ public class BankCommands {
     @Command(desc = "List all nations in the alliance and their current stockpile\n" +
             "Add `-n` to normalize it per city")
     @RolePermission(Roles.ECON)
+    @IsAlliance
     public String stockpileSheet(@Me GuildDB db, @Switch('n') boolean normalize, @Switch('e') boolean onlyShowExcess, @Switch('f') boolean forceUpdate, @Me MessageChannel channel) throws IOException, GeneralSecurityException {
-        int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+        DBAlliance alliance = db.getAlliance();
 
-        Map<Integer, Map<ResourceType, Double>> stockpile = new GetMemberResources(allianceId).call();
+        Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 
         List<String> header = new ArrayList<>();
         header.add("nation");
@@ -2268,17 +2267,16 @@ public class BankCommands {
 
         if (forceUpdate) {
             try {
-                DBAlliance.getOrCreate(allianceId).updateCities();
+                alliance.updateCities();
             } catch (ParseException e) {
                 e.printStackTrace();
             }
         }
 
-        for (Map.Entry<Integer, Map<ResourceType, Double>> entry : stockpile.entrySet()) {
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : stockpile.entrySet()) {
             List<Object> row = new ArrayList<>();
 
-            Integer nationId = entry.getKey();
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+            DBNation nation = entry.getKey();
             if (nation == null) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
             row.add(nation.getCities());

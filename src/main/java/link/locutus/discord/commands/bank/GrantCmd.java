@@ -16,7 +16,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.util.task.balance.GetCityBuilds;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -290,7 +289,7 @@ public class GrantCmd extends Command {
         } else if (arg.equalsIgnoreCase("build")) {
             throw new IllegalArgumentException("Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <json> 1");
         } else if (arg.equalsIgnoreCase("warchest")) {
-            Map<ResourceType, Double> stockpile = new GetMemberResources(me.getAlliance_id()).call().get(me.getNation_id());
+            Map<ResourceType, Double> stockpile = me.getStockpile();
             if (stockpile == null) throw new IllegalArgumentException("Unable to fetch stockpile (are you sure they are a member?)");
             if (stockpile.get(ResourceType.CREDITS) == -1) throw new IllegalArgumentException("Please enable alliance access in: <https://politicsandwar.com/account/>");
             Map<ResourceType, Double> cityWc = guildDb.getPerCityWarchest(me);

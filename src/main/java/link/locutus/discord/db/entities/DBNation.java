@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.entities.BankRecord;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
@@ -29,7 +30,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.util.task.MailTask;
 import link.locutus.discord.util.task.balance.GetCityBuilds;
 import link.locutus.discord.util.task.multi.GetUid;
@@ -1587,10 +1587,23 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Map<ResourceType, Double> getStockpile() throws IOException {
-        if (getPositionEnum().id <= Rank.APPLICANT.id) return new HashMap<>();
-        Integer alliance = getAlliance_id();
-        Map<ResourceType, Double> totals = new GetMemberResources(alliance).call().get(getNation_id());
-        return totals;
+        ApiKeyPool pool;
+        ApiKeyPool.ApiKey myKey = getApiKey(false);
+
+        DBAlliance alliance = getAlliance();
+        if (myKey != null) {
+            pool  = ApiKeyPool.create(myKey);
+        } else if (getAlliancePosition() == null || alliance == null) {
+            throw new IllegalArgumentException("Nation " + nation + " is not member in an alliance");
+        } else {
+            pool = alliance.getApiKeys(false, AlliancePermission.SEE_SPIES);
+            if (pool == null) {
+                throw new IllegalArgumentException("No api key found. Please use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
+            }
+        }
+
+        double[] stockpile = new PoliticsAndWarV3(pool).getStockPile(f -> f.setId(List.of(nation_id))).get(nation_id);
+        return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
     }
 
     public ApiKeyPool.ApiKey getApiKey(boolean dummy) {

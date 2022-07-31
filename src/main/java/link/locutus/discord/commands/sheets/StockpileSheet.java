@@ -3,14 +3,15 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -41,9 +42,10 @@ public class StockpileSheet extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+        DBAlliance alliance = db.getAlliance();
+        if (alliance == null) return "Pleas set `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID`";
 
-        Map<Integer, Map<ResourceType, Double>> stockpile = new GetMemberResources(allianceId).call();
+        Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 
         List<String> header = new ArrayList<>();
         header.add("nation");
@@ -61,11 +63,10 @@ public class StockpileSheet extends Command {
 
         double[] aaTotal = ResourceType.getBuffer();
 
-        for (Map.Entry<Integer, Map<ResourceType, Double>> entry : stockpile.entrySet()) {
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : stockpile.entrySet()) {
             List<Object> row = new ArrayList<>();
 
-            Integer nationId = entry.getKey();
-            DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+            DBNation nation = entry.getKey();
             if (nation == null) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
             row.add(nation.getCities());

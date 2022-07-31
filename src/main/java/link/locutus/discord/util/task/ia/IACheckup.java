@@ -10,11 +10,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.task.GetMemberResources;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.domains.Alliance;
-import link.locutus.discord.apiv1.domains.AllianceMembers;
-import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.NationColor;
@@ -93,20 +89,18 @@ public class IACheckup {
         DiscordUtil.paginate(channel, message, title, command, page, 1, pages, "", true);
     }
 
-    private PoliticsAndWarV2 api;
-    private Map<Integer, AllianceMembersContainer> memberMap;
+    private Map<DBNation, Map<ResourceType, Double>> memberStockpile;
     private final GuildDB db;
+
+    private final DBAlliance alliance;
 
     public IACheckup(GuildDB db, int allianceId, boolean useCache) throws IOException {
         if (db == null) throw new IllegalStateException("No database found for: " + allianceId);
         this.db = db;
-        api = Locutus.imp().getPnwApi();
-        memberMap = new HashMap<>();
+        this.alliance = db.getAlliance();
+        memberStockpile = new HashMap<>();
         if (!useCache) {
-            this.api = db.getApi();
-            AllianceMembers members = api.getAllianceMembers(allianceId);
-            this.memberMap = members.getNations().stream().collect(
-                    Collectors.toMap(AllianceMembersContainer::getNationId, m -> m));
+            memberStockpile = alliance.getMemberStockpile();
         }
     }
 
@@ -115,11 +109,7 @@ public class IACheckup {
     }
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Consumer<DBNation> onEach, boolean fast) throws InterruptedException, ExecutionException, IOException {
-        List<DBNation> nations = new ArrayList<>();
-        for (Map.Entry<Integer, AllianceMembersContainer> entry : memberMap.entrySet()) {
-            DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
-            nations.add(nation);
-        }
+        List<DBNation> nations = new ArrayList<>(alliance.getNations(true, 0, true));
         return checkup(nations, onEach, fast);
     }
 
@@ -174,7 +164,7 @@ public class IACheckup {
             transactions = Locutus.imp().getBankDB().getTransactionsByNation(nation.getNation_id());
         }
 
-        AllianceMembersContainer member = memberMap.get(nation.getNation_id());
+        Map<ResourceType, Double> stockpile = memberStockpile.get(nation);
 //        Map<ROI.Investment, ROI.ROIResult> roiMap = new HashMap<>();
 //        if (nation.getActive_m() < 2440) {
 //            if (fast) {
@@ -205,7 +195,7 @@ public class IACheckup {
         Map<AuditType, Map.Entry<Object, String>> results = new LinkedHashMap<>();
         for (AuditType type : audits) {
             long start2 = System.currentTimeMillis();
-            audit(type, nation, transactions, cities, member, results, individual, fast);
+            audit(type, nation, transactions, cities, stockpile, results, individual, fast);
             long diff = System.currentTimeMillis() - start2;
             if (diff > 10) {
                 System.out.println("remove:||Checkup Diff " + type + " | " + diff + " ms");
@@ -233,15 +223,15 @@ public class IACheckup {
         return results;
     }
 
-    private void audit(AuditType type, DBNation nation, List<Transaction2> transactions, Map<Integer, JavaCity> cities, AllianceMembersContainer member, Map<AuditType, Map.Entry<Object, String>> results, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+    private void audit(AuditType type, DBNation nation, List<Transaction2> transactions, Map<Integer, JavaCity> cities, Map<ResourceType, Double> stockpile, Map<AuditType, Map.Entry<Object, String>> results, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
         if (type.required != null) {
             if (!results.containsKey(type.required)) {
-                audit(type.required, nation, transactions, cities, member, results, individual, fast);
+                audit(type.required, nation, transactions, cities, stockpile, results, individual, fast);
             }
             Map.Entry<Object, String> requiredResult = results.get(type.required);
             if (requiredResult != null) return;
         }
-        Map.Entry<Object, String> value = checkup(type, nation, cities, transactions, member, individual, fast);
+        Map.Entry<Object, String> value = checkup(type, nation, cities, transactions, stockpile, individual, fast);
         results.put(type, value);
     }
 
@@ -325,7 +315,7 @@ public class IACheckup {
 
     private Map<Integer, Alliance> alliances = new HashMap<>();
 
-    private Map.Entry<Object, String> checkup(AuditType type, DBNation nation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, AllianceMembersContainer member, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+    private Map.Entry<Object, String> checkup(AuditType type, DBNation nation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, Map<ResourceType, Double> stockpile, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
         Alliance alliance = fast ? null : alliances.computeIfAbsent(nation.getAlliance_id(), new Function<Integer, Alliance>() {
             @Override
             public Alliance apply(Integer id) {
@@ -337,7 +327,6 @@ public class IACheckup {
             }
         });
         Map<NationFilterString, MMRMatcher> requiredMmrMap = db.getOrNull(GuildDB.Key.REQUIRED_MMR);
-        Map<ResourceType, Double> resources = memberMap.isEmpty() || member == null || fast ? Collections.emptyMap() : GetMemberResources.adapt(member);
 
         boolean updateNation = individual && !fast;
 
@@ -469,11 +458,11 @@ public class IACheckup {
             case EXCESS_POLICE:
                 return checkExcessService(nation, cities, Buildings.POLICE_STATION, db);
             case OBTAIN_RESOURCES:
-                return resources == null || resources.isEmpty() ? null : testIfCacheFails(() -> checkSendResources(nation, resources, cities), updateNation);
+                return stockpile == null || stockpile.isEmpty() ? null : testIfCacheFails(() -> checkSendResources(nation, stockpile, cities), updateNation);
             case SAFEKEEP:
-                return resources == null || resources.isEmpty() ? null : testIfCacheFails(() -> checkSafekeep(nation, resources, cities), updateNation);
+                return stockpile == null || stockpile.isEmpty() ? null : testIfCacheFails(() -> checkSafekeep(nation, stockpile, cities), updateNation);
             case OBTAIN_WARCHEST:
-                return resources == null || resources.isEmpty() ? null : checkWarchest(nation, resources, db);
+                return stockpile == null || stockpile.isEmpty() ? null : checkWarchest(nation, stockpile, db);
             case BEIGE_LOOT:
                 if (nation.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) == null) {
                     String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid * 15 -beige" : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "raidNone *,#isbeige";

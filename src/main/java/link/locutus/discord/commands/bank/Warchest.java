@@ -5,13 +5,13 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -92,11 +92,10 @@ public class Warchest extends Command {
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
 
-        Map<Integer, Map<ResourceType, Double>> memberResources = new GetMemberResources(allianceId).call();
-        for (Map.Entry<Integer, Map<ResourceType, Double>> entry : memberResources.entrySet()) {
-            int nationId = entry.getKey();
-            if (!nationIds.contains(nationId)) continue;
-            DBNation nation = DBNation.byId(nationId);
+        Map<DBNation, Map<ResourceType, Double>> memberResources2 = DBAlliance.getOrCreate(allianceId).getMemberStockpile();
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : memberResources2.entrySet()) {
+            DBNation nation = entry.getKey();
+            if (!nationIds.contains(nation.getNation_id())) continue;
             if (PnwUtil.convertedTotal(entry.getValue()) < 0) continue;
 
             Map<ResourceType, Double> stockpile = entry.getValue();
