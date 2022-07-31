@@ -357,6 +357,10 @@ public final class Locutus extends ListenerAdapter {
         return locutusStats;
     }
 
+    public GuildDB getRootDb() {
+        return getGuildDB(getServer());
+    }
+
     public OffshoreInstance getRootBank() {
         return getGuildDB(getServer()).getHandler().getBank();
     }

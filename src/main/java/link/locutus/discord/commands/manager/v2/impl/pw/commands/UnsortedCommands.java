@@ -415,7 +415,9 @@ public class UnsortedCommands {
         return "Cleared all nicknames (that I have permission to clear)!";
     }
 
-    @Command(desc = "Modify a nation, alliance or guild's deposits")
+    @Command(desc = "Add or subtract from a nation, alliance or guild deposits\n" +
+            "note: Mutated alliance deposits are only valid if your server is a bank/offshore\n" +
+            "Use `#expire=30d` to have the amount expire after X days")
     @RolePermission(Roles.ECON)
     public String addBalance(@Me Message message, @Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation nation,
                              NationOrAllianceOrGuild nationOrAllianceOrGuild, Map<ResourceType, Double> amount, String note, @Switch('f') boolean force) throws Exception {
@@ -443,7 +445,7 @@ public class UnsortedCommands {
     }
 
     @Command
-    public String nationRevenue(@Me GuildDB db, @Me Guild guild, @Me MessageChannel channel, @Me User user, @Me DBNation me,
+    public String revenue(@Me GuildDB db, @Me Guild guild, @Me MessageChannel channel, @Me User user, @Me DBNation me,
                                 NationList nations, @Switch('i') boolean includeInactive, @Switch('b') boolean excludeNationBonus) throws Exception {
         if (!db.isWhitelisted() && nations.getNations().size() > 8000) return "This server is not permitted to check " + nations.getNations() + " nations (max: 8000). Consider using filters e.g. `#vm_turns=0,#position>1`";
         List<String> cmd = new ArrayList<>();

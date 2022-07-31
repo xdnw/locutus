@@ -12,6 +12,7 @@ import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.balance.GetTaxesTask;
@@ -19,6 +20,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarType;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -807,6 +809,11 @@ public class Auth {
                     // add balance to expectedNation
                     currentDB.addTransfer(tx_datetime, senderNation, currentDB, Auth.this.getNationId(), note, toDeposit);
                     response.append("\n - Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
+
+                    MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    if (logChannel != null) {
+                        RateLimitUtil.queue(logChannel.sendMessage(response));
+                    }
 
                     return true;
                 }

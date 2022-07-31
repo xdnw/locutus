@@ -4,18 +4,22 @@ import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.WarAttacks;
+import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BaseballDB;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.NationColor;
 import graphql.GraphQLException;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Member;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -34,6 +38,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
     private final String endpoint;
@@ -78,6 +83,12 @@ public class PoliticsAndWarV3 {
                         httpEntity(graphQLRequest),
                         resultBody);
                 break;
+            } catch (HttpClientErrorException.TooManyRequests e) {
+                try {
+                    Thread.sleep(60000);
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
             } catch (HttpClientErrorException.Unauthorized e) {
                 if (j++ > 4) {
                     e.printStackTrace();
@@ -86,6 +97,9 @@ public class PoliticsAndWarV3 {
                 pool.removeKey(key);
             }
         }
+        HttpHeaders header = exchange.getHeaders();
+        System.out.println("Headers " + header);
+
         T result = exchange.getBody();
         return result;
     }

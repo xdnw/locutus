@@ -295,6 +295,9 @@ public class DBNation implements NationOrAlliance {
 //        }
 
         output.append("Registration successful. Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "?` for a list of commands.\n");
+        if (guild != null && guild.getIdLong() == 216800987002699787L) {
+            output.append("note: for 60 days of VIP, please use `/validate` instead\n");
+        }
         if (guild != null) {
             Role role = Roles.REGISTERED.toRole(guild);
             if (role != null) {
@@ -778,6 +781,7 @@ public class DBNation implements NationOrAlliance {
         this.position = position;
     }
 
+    @Command
     public int getAlliancePosition() {
         return alliancePosition;
     }
@@ -786,6 +790,7 @@ public class DBNation implements NationOrAlliance {
         this.alliancePosition = position;
     }
 
+    @Command
     public Continent getContinent() {
         return continent;
     }
@@ -844,6 +849,7 @@ public class DBNation implements NationOrAlliance {
         return soldiers * (munitions ? 1.75 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
     }
 
+    @Command
     public double getGroundStrength(boolean munitions, boolean enemyAc, double includeRebuy) {
         int soldiers = this.soldiers;
         int tanks = this.tanks;
@@ -2107,6 +2113,7 @@ public class DBNation implements NationOrAlliance {
         return loot == null ? 0 : PnwUtil.convertedTotal(loot.getValue());
     }
 
+    @Command
     public double lootTotal() {
         double[] knownResources = new double[ResourceType.values.length];
         double[] buffer = new double[knownResources.length];
@@ -2964,6 +2971,7 @@ public class DBNation implements NationOrAlliance {
         return projects;
     }
 
+    @Command
     public double estimateScore(boolean project) {
         double base = 10;
         base += (cities - 1) * 75;
@@ -3623,6 +3631,12 @@ public class DBNation implements NationOrAlliance {
         return total;
     }
 
+    @Command
+    public int getFreeOffensiveSlots() {
+        return getMaxOff() - getOff();
+    }
+
+    @Command
     public int getMaxOff() {
         return hasProject(Projects.PIRATE_ECONOMY) ? 6 : 5;
     }

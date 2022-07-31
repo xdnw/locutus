@@ -2715,7 +2715,7 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command(desc="Check that all nations are in range of their blitz targets and that they have no more than the provided number of offensive wars")
+    @Command(desc="Check that all nations are in range of their blitz targets, are still in the alliance and have no more than the provided number of offensive wars")
     public String ValidateBlitzSheet(SpreadSheet sheet, @Default("3") int maxWars, @Default("*") Set<DBNation> nationsFilter, @Switch('h') Integer headerRow) {
         Function<DBNation, Boolean> isValidTarget = f -> nationsFilter.contains(f);
 
