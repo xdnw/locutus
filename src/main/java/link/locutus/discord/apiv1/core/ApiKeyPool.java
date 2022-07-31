@@ -1,24 +1,88 @@
 package link.locutus.discord.apiv1.core;
 
+import com.politicsandwar.graphql.model.Alliance;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.PoliticsAndWarAPIException;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 
-public class ApiKeyPool<T> {
-    private final BiPredicate<T, T> compare;
-    private List<T> apiKeyPool;
-    private Map<T, AtomicInteger> usageStats;
+public class ApiKeyPool {
+    private List<ApiKey> apiKeyPool;
     private int nextIndex;
 
-    public ApiKeyPool(BiPredicate<T, T> compare, Collection<T> keys) {
-        if (compare == null) compare = Object::equals;
-        this.compare = compare;
+    public static class ApiKey {
+        private final int nationId;
+        private final String key;
+        private String botKey;
+        private boolean valid;
+
+        private int usage;
+        public ApiKey(int nationId, String key, String botKey) {
+            this.nationId = nationId;
+            this.key = key;
+            this.botKey = botKey;
+        }
+
+        public boolean isValid() {
+            return valid;
+        }
+
+        public void setValid(boolean valid) {
+            this.valid = valid;
+        }
+
+        public void deleteApiKey() {
+            setValid(false);
+            Locutus.imp().getDiscordDB().deleteApiKey(key);
+            if (this.botKey != null && !botKey.isEmpty()) {
+                Locutus.imp().getDiscordDB().deleteBotKey(key);
+            }
+        }
+
+        public void deleteBotKey() {
+            if (botKey != null) {
+                Locutus.imp().getDiscordDB().deleteBotKey(botKey);
+            }
+            botKey = null;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof ApiKey)) return false;
+            return ((ApiKey) obj).key.equalsIgnoreCase(key);
+        }
+
+        public ApiKey use() {
+            usage++;
+            return this;
+        }
+
+        public int getUsage() {
+            return usage;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public String getBotKey() {
+            return botKey;
+        }
+
+        public int getNationId() {
+            return nationId;
+        }
+    }
+
+    public ApiKeyPool(Collection<ApiKey> keys) {
         this.apiKeyPool = new ArrayList<>(keys);
-        this.usageStats = new HashMap<>();
         this.nextIndex = 0;
         if (apiKeyPool.size() == 0) {
             throw new PoliticsAndWarAPIException("No API Key provided. Make sure apiKeyPool array is not empty");
@@ -29,62 +93,86 @@ public class ApiKeyPool<T> {
         return new SimpleBuilder();
     }
 
-    public static ApiKeyPool<Map.Entry<String, String>> create(String... keys) {
-        return builder().addKeys(keys).build();
+    public static ApiKeyPool create(int nationId, String key) {
+        return builder().addKey(nationId, key).build();
+    }
+
+    public static ApiKeyPool create(ApiKey key) {
+        return builder().addKey(key).build();
     }
 
     public static class SimpleBuilder {
-        Map<String, String> pool = new HashMap<>();
+        private final Map<String, ApiKey> keys = new LinkedHashMap<>();
 
-        public SimpleBuilder addKey(String key) {
-            this.pool.putIfAbsent(key.toLowerCase(Locale.ROOT), null);
-            return this;
+        public SimpleBuilder addKey(int nationId, String key) {
+            return addKey(nationId, key, null);
         }
 
-        public SimpleBuilder addKeys(String... keys) {
-            for (String key : keys) addKey(key);
+        public boolean isEmpty() {
+            return keys.isEmpty();
+        }
+
+        @Deprecated
+        public SimpleBuilder addKeyUnsafe(String key) {
+            return addKeyUnsafe(key, null);
+        }
+
+        @Deprecated
+        public SimpleBuilder addKeyUnsafe(String key, String botKey) {
+            int nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+            return addKey(nationId, key, botKey);
+        }
+
+        @Deprecated
+        public SimpleBuilder addKeysUnsafe(String... keys) {
+            for (String key : keys) addKeyUnsafe(key);
             return this;
         }
 
         public SimpleBuilder addKeys(List<String> keys) {
-            for (String key : keys) addKey(key);
+            for (String key : keys) addKeyUnsafe(key);
             return this;
         }
 
-        public SimpleBuilder addKey(String key, String botKey) {
-            this.pool.put(key.toLowerCase(Locale.ROOT), botKey.toLowerCase(Locale.ROOT));
+        public SimpleBuilder addKey(int nationId, String apiKey, String botKey) {
+            ApiKey key = new ApiKey(nationId, apiKey, botKey);
+            apiKey = apiKey.toLowerCase(Locale.ROOT);
+            ApiKey existing = this.keys.get(apiKey);
+            if (existing != null && existing.botKey != null) return this;
+
+            this.keys.put(apiKey, key);
             return this;
         }
 
-        public ApiKeyPool<Map.Entry<String, String>> build() {
-            if (pool.isEmpty()) throw new IllegalArgumentException("No api keys were provided");
-            return new ApiKeyPool<>((a, b) -> a.getKey().equalsIgnoreCase(b.getKey()), new ArrayList<>(pool.entrySet()));
+        public ApiKeyPool build() {
+            if (keys.isEmpty()) throw new IllegalArgumentException("No api keys were provided");
+            return new ApiKeyPool(keys.values());
+        }
+
+        public SimpleBuilder addKey(ApiKey key) {
+            return addKey(key.nationId, key.key, key.botKey);
         }
     }
 
-    public List<T> getKeys() {
+    public List<ApiKey> getKeys() {
         return apiKeyPool;
     }
 
-    public synchronized T getNextApiKey() {
+    public synchronized ApiKey getNextApiKey() {
         if (this.nextIndex >= this.apiKeyPool.size()) {
             this.nextIndex = 0;
         }
         if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`)");
-        T key = this.apiKeyPool.get(this.nextIndex++);
-        usageStats.computeIfAbsent(key, f -> new AtomicInteger()).incrementAndGet();
+        ApiKey key = this.apiKeyPool.get(this.nextIndex++);
+        key.use();
         return key;
     }
 
-    public synchronized void removeKey(T key) {
+    public synchronized void removeKey(ApiKey key) {
+        key.setValid(false);
         if (apiKeyPool.size() == 1) throw new IllegalArgumentException("Invalid API key");
-        this.apiKeyPool.removeIf(f -> compare.test(f, key));
+        this.apiKeyPool.removeIf(f -> f.equals(key));
     }
-
-    public Map<T, AtomicInteger> getStats() {
-        return usageStats;
-    }
-
     public int size() {
         return apiKeyPool.size();
     }

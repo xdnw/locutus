@@ -1991,7 +1991,9 @@ public class NationDB extends DBMainV2 {
         {
             executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` INT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` INT NOT NULL, nuke_date INT NOT NULL)");
             executeStmt("CREATE INDEX IF NOT EXISTS index_city_builds_nation ON CITIES (nation);");
-            executeStmt("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date INT NOT NULL DEFAULT 0");
+            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date INT NOT NULL DEFAULT 0")){
+                stmt.executeUpdate();
+            } catch (SQLException ignore) {}
         }
 
         String kicks = "CREATE TABLE IF NOT EXISTS `KICKS` (`nation` INT NOT NULL, `alliance` INT NOT NULL, `date` INT NOT NULL, `type` INT NOT NULL)";

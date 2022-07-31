@@ -63,9 +63,9 @@ public class PoliticsAndWarV3 {
     private final String endpoint;
     private final RestTemplate restTemplate;
     private final ObjectMapper jacksonObjectMapper;
-    private final ApiKeyPool<Map.Entry<String, String>> pool;
+    private final ApiKeyPool pool;
 
-    public PoliticsAndWarV3(String url, ApiKeyPool<Map.Entry<String, String>> pool) {
+    public PoliticsAndWarV3(String url, ApiKeyPool pool) {
         this.endpoint = url;
         this.restTemplate = new RestTemplate();
         this.pool = pool;
@@ -73,7 +73,7 @@ public class PoliticsAndWarV3 {
         this.jacksonObjectMapper = Jackson2ObjectMapperBuilder.json().simpleDateFormat("yyyy-MM-dd").build();
     }
 
-    public PoliticsAndWarV3(ApiKeyPool<Map.Entry<String, String>> pool) {
+    public PoliticsAndWarV3(ApiKeyPool pool) {
         this("https://api" + (Settings.INSTANCE.TEST ? "-test" : "") + ".politicsandwar.com/graphql", pool);
     }
 
@@ -138,12 +138,12 @@ public class PoliticsAndWarV3 {
         int badKey = 0;
         int backOff = 0;
         while (true) {
-            Map.Entry<String, String> pair = pool.getNextApiKey();
+            ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             String url = getUrl(pair.getKey());
             try {
                 restTemplate.acceptHeaderRequestCallback(String.class);
 //
-                HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getValue());
+                HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
 
                 exchange = restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
@@ -179,7 +179,7 @@ public class PoliticsAndWarV3 {
             } catch (HttpClientErrorException.Unauthorized e) {
                 System.out.println("Unauthorized ");
 
-                Locutus.imp().getDiscordDB().deleteApiKey(pair.getKey());
+                pair.deleteApiKey();
 
                 if (badKey++ >= 4 || pool.size() <= 1) {
                     e.printStackTrace();
@@ -200,7 +200,7 @@ public class PoliticsAndWarV3 {
             } catch (Throwable e) {
                 boolean remove = false;
                 if (e.getMessage().contains("The bot key you provided is not valid.")) {
-                    Locutus.imp().getDiscordDB().deleteBotKey(pair.getValue());
+                    pair.deleteBotKey();
                     remove = true;
                 }
                 if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
@@ -236,12 +236,12 @@ public class PoliticsAndWarV3 {
         return result;
     }
 
-    private <T extends Throwable> void rethrow(T e, Map.Entry<String, String> pair, boolean throwRuntime) {
+    private <T extends Throwable> void rethrow(T e, ApiKeyPool.ApiKey pair, boolean throwRuntime) {
         if (e.getMessage() != null &&
                 (StringUtils.containsIgnoreCase(e.getMessage(), pair.getKey()) ||
-                (pair.getValue() != null && StringUtils.containsIgnoreCase(e.getMessage(), pair.getValue())))) {
+                (pair.getBotKey() != null && StringUtils.containsIgnoreCase(e.getMessage(), pair.getBotKey())))) {
             String msg = StringUtils.replaceIgnoreCase(e.getMessage(), pair.getKey(), "XXX");
-            if (pair.getValue() != null) msg = StringUtils.replaceIgnoreCase(msg, pair.getValue(), "XXX");
+            if (pair.getBotKey() != null) msg = StringUtils.replaceIgnoreCase(msg, pair.getBotKey(), "XXX");
             throw new RuntimeException(msg);
         }
         if (throwRuntime) throw new RuntimeException(e.getMessage());
@@ -1060,13 +1060,13 @@ public class PoliticsAndWarV3 {
 
         Locutus.create().start();
 
-        ApiKeyPool<Map.Entry<String, String>> pool =  ApiKeyPool.builder().addKey(Settings.INSTANCE.API_KEY_PRIMARY, Settings.INSTANCE.ACCESS_KEY).build();
+        ApiKeyPool pool =  ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY, Settings.INSTANCE.ACCESS_KEY).build();
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
         final int id = 189573;
         final int cityId = 375361;
         DBNation nation = DBNation.byId(id);
         {
-            JsonObject result = nation.sendMail(ApiKeyPool.create(Settings.INSTANCE.API_KEY_PRIMARY + "a"), "title", "body");
+            JsonObject result = nation.sendMail(ApiKeyPool.create(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY), "title", "body");
             System.out.println(result);
             System.exit(0);
         }

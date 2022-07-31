@@ -156,7 +156,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private PoliticsAndWarV2 apiUncached;
     private String[] apiKeys = null;
 
-    public ApiKeyPool<Map.Entry<String, String>> getApiPool(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
+    public ApiKeyPool getApiPool(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
         String[] apiKeys = getOrNull(GuildDB.Key.API_KEY);
 
         if (apiKeys != null) {
@@ -171,7 +171,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         }
 
-        Map<String, String> poolMap = new HashMap<>();
+        ApiKeyPool.SimpleBuilder builder = new ApiKeyPool.SimpleBuilder();
 
         DBAlliance alliance = DBAlliance.get(allianceId);
         Set<DBNation> nations = alliance.getNations();
@@ -182,23 +182,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 continue;
             }
             try {
-                String key = gov.getApiKey(false);
+                ApiKeyPool.ApiKey key = gov.getApiKey(false);
                 if (key == null) continue;
-                String bot = gov.getBotKey(false);
-
-                if (requireBotToken && bot == null) continue;
-
-                poolMap.put(key, bot);
+                if (requireBotToken && key.getBotKey() == null) continue;
+                builder.addKey(key);
             } catch (IllegalArgumentException ignore) {}
         }
-        if (!poolMap.isEmpty()) {
-            ApiKeyPool<Map.Entry<String, String>> pool = new ApiKeyPool<>(Objects::equals, poolMap.entrySet());
-            return pool;
+        if (!builder.isEmpty()) {
+            return builder.build();
         }
         return null;
     }
     public PoliticsAndWarV3 getApi(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
-        ApiKeyPool<Map.Entry<String, String>> pool = getApiPool(allianceId, requireBotToken, permissions);
+        ApiKeyPool pool = getApiPool(allianceId, requireBotToken, permissions);
         if (pool == null) {
             StringBuilder message = new StringBuilder("`No api key set. Please use `$setApiKey`");
             if (permissions.length > 0) message.append("\n - Required nation permissions: " + StringMan.getString(permissions));
@@ -207,16 +203,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return new PoliticsAndWarV3(pool);
     }
 
-    public ApiKeyPool<Map.Entry<String, String>> getMailKey() {
+    public ApiKeyPool getMailKey() {
         int aaId = getAlliance_id();
         Set<Integer> allowedNations = Settings.INSTANCE.TASKS.MAIL.getInstances().stream().map(f -> f.NATION_ID).collect(Collectors.toSet());
         for (int nationId : allowedNations) {
             DBNation nation = DBNation.byId(nationId);
             if (nation == null || nation.getAlliance_id() != aaId) continue;
-            String key = nation.getApiKey(false);
+            ApiKeyPool.ApiKey key = nation.getApiKey(false);
             if (key != null) return ApiKeyPool.builder().addKey(key).build();
         }
-        ApiKeyPool<Map.Entry<String, String>> pool = getApiPool(getAlliance_id(), false, AlliancePermission.POST_ANNOUNCEMENTS);
+        ApiKeyPool pool = getApiPool(getAlliance_id(), false, AlliancePermission.POST_ANNOUNCEMENTS);
         if (pool == null || pool.size() == 0) return null;
         return pool;
     }

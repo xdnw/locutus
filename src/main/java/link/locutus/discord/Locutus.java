@@ -91,8 +91,6 @@ public final class Locutus extends ListenerAdapter {
     private PnwPusherHandler pusher;
     private ForumDB forumDb;
 
-    private final String primaryKey;
-
     private GuildShardManager manager = new GuildShardManager();
 
     private final String discordToken;
@@ -169,17 +167,16 @@ public final class Locutus extends ListenerAdapter {
                 throw new IllegalStateException("Please set API_KEY_PRIMARY or USERNAME/PASSWORD in " + Settings.INSTANCE.getDefaultFile());
             }
             Auth auth = new Auth(0, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
-            Settings.INSTANCE.API_KEY_PRIMARY = auth.getApiKey();
+            ApiKeyPool.ApiKey key = auth.fetchApiKey();
+            Settings.INSTANCE.API_KEY_PRIMARY = key.getKey();
         }
 
         if (Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
             throw new IllegalStateException("Please set API_KEY_PRIMARY or USERNAME/PASSWORD in " + Settings.INSTANCE.getDefaultFile());
         }
 
-        this.primaryKey = Settings.INSTANCE.API_KEY_PRIMARY;
-
         Settings.INSTANCE.NATION_ID = 0;
-        Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(this.primaryKey);
+        Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
         if (nationIdFromKey == null) {
             throw new IllegalStateException("Could not get NATION_ID from key. Please ensure a valid API_KEY is set in " + Settings.INSTANCE.getDefaultFile());
         }
@@ -199,9 +196,9 @@ public final class Locutus extends ListenerAdapter {
         }
 
         this.pnwApi = new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
-        this.rootPnwApi = new PoliticsAndWarBuilder().addApiKeys(primaryKey).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
+        this.rootPnwApi = new PoliticsAndWarBuilder().addApiKeys(Settings.INSTANCE.API_KEY_PRIMARY).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
 
-        ApiKeyPool<Map.Entry<String, String>> v3Pool = ApiKeyPool.builder().addKey(primaryKey, Settings.INSTANCE.ACCESS_KEY).build();
+        ApiKeyPool v3Pool = ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY,Settings.INSTANCE.ACCESS_KEY).build();
         this.v3 = new PoliticsAndWarV3(v3Pool);
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {
@@ -373,12 +370,12 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public String getPrimaryKey() {
-        return primaryKey;
+        return Settings.INSTANCE.API_KEY_PRIMARY;
     }
 
     public Auth getRootAuth() {
         Auth auth = getNationDB().getNation(Settings.INSTANCE.NATION_ID).getAuth(null);
-        if (auth != null) auth.setApiKey(primaryKey);
+        if (auth != null) auth.setApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
         return auth;
     }
 

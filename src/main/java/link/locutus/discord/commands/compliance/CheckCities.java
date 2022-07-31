@@ -107,7 +107,7 @@ public class CheckCities extends Command {
         IACheckup checkup = new IACheckup(allianceId);
 
         boolean mail = flags.contains('m');
-        ApiKeyPool<Map.Entry<String, String>> keys = mail ? db.getMailKey() : null;
+        ApiKeyPool keys = mail ? db.getMailKey() : null;
         if (mail && keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
 
         for (DBNation nation : nations) {

@@ -119,7 +119,7 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     @HasApi
     public String announce(@Me GuildDB db, @Me Guild guild, @Me Message message, @Me MessageChannel currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch('v') @Default("0") Integer requiredVariation, @Switch('r') @Default("0") Integer requiredDepth, @Switch('s') Long seed, @Switch('m') boolean sendMail, @Switch('d') boolean sendDM, @Switch('f') boolean force) throws IOException {
-        ApiKeyPool<Map.Entry<String, String>> keys = db.getMailKey();
+        ApiKeyPool keys = db.getMailKey();
         if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
@@ -744,7 +744,7 @@ public class AdminCommands {
                     Auth auth = nation.getAuth(null);
                     registered.put(nation, Rank.byId(nation.getPosition()));
                     try {
-                        String key = auth.getApiKey();
+                        ApiKeyPool.ApiKey key = auth.fetchApiKey();
                     } catch (Throwable e) {
                         errors.put(nation, e.getMessage());
                     }

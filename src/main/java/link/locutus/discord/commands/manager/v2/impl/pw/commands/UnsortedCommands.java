@@ -232,7 +232,7 @@ public class UnsortedCommands {
     @Command(desc="Set your api and bot key\n" +
             "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
     public String setApiKey(@Me Message message, String apiKey, @Default String verifiedBotKey) {
-        PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.builder().addKey(apiKey, verifiedBotKey).build());
+        PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(apiKey, verifiedBotKey).build());
         ApiKeyDetails stats = api.getApiKeyStats();
 
         int nationId = stats.getNation().getId();
@@ -280,9 +280,9 @@ public class UnsortedCommands {
             }
 
             Auth auth = new Auth(me.getNation_id(), username, password);
-            String key = auth.getApiKey();
+            ApiKeyPool.ApiKey key = auth.fetchApiKey();
 
-            discordDB.addApiKey(me.getNation_id(), key);
+            discordDB.addApiKey(me.getNation_id(), key.getKey());
             discordDB.addUserPass(author.getIdLong(), username, password);
             if (existingAuth != null) existingAuth.setValid(false);
             Auth myAuth = me.getAuth(null);

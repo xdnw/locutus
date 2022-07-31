@@ -41,7 +41,7 @@ public class PoliticsAndWarBuilder {
   }
 
   public PoliticsAndWarV2 build() {
-    ApiKeyPool<Map.Entry<String, String>> pool = ApiKeyPool.builder().addKeys(apiKeysList).build();
+    ApiKeyPool pool = ApiKeyPool.builder().addKeys(apiKeysList).build();
     return new PoliticsAndWarV2(pool, testServerMode, enableCache);
   }
 }

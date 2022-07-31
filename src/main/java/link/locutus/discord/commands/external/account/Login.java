@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.external.account;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
@@ -60,8 +61,7 @@ public class Login extends Command {
             String password = split[2];
 
             Auth auth = new Auth(me.getNation_id(), username, password);
-            String key = auth.getApiKey();
-
+            ApiKeyPool.ApiKey key = auth.fetchApiKey();
             Locutus.imp().getDiscordDB().addUserPass(author.getIdLong(), username, password);
             if (existingAuth != null) existingAuth.setValid(false);
             Auth myAuth = me.getAuth(null);

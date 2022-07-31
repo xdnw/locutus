@@ -2490,7 +2490,7 @@ public class WarCommands {
             }
         }
 
-        ApiKeyPool<Map.Entry<String, String>> keys = db.getMailKey();
+        ApiKeyPool keys = db.getMailKey();
         if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);

@@ -94,15 +94,15 @@ public class MailCommand extends Command implements Noformat {
             message = MarkupUtil.transformURLIntoLinks(message);
             String subject = args.get(1);
 
-            String myKey = me.getApiKey(false);
+            ApiKeyPool.ApiKey myKey = me.getApiKey(false);
 
-            ApiKeyPool<Map.Entry<String, String>> key = null;
+            ApiKeyPool key = null;
             if (flags.contains('l') || myKey == null) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
                     return "You do not have the role `MAIL` (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasRole` OR use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey` to add your own key";
                 }
                 key = db.getMailKey();
-            } else if (myKey != null) {
+            } else {
                 key = ApiKeyPool.builder().addKey(myKey).build();
             }
             if (key == null){

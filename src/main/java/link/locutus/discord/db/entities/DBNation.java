@@ -1581,12 +1581,8 @@ public class DBNation implements NationOrAlliance {
         return totals;
     }
 
-    public String getApiKey(boolean dummy) {
+    public ApiKeyPool.ApiKey getApiKey(boolean dummy) {
         return Locutus.imp().getDiscordDB().getApiKey(nation_id);
-    }
-
-    public String getBotKey(boolean dummy) {
-        return Locutus.imp().getDiscordDB().getBotKey(nation_id);
     }
 
     public String commend(boolean isCommend) throws IOException {
@@ -2867,7 +2863,7 @@ public class DBNation implements NationOrAlliance {
         return maxInfra;
     }
 
-    public JsonObject sendMail(ApiKeyPool<Map.Entry<String, String>> pool, String subject, String message) throws IOException {
+    public JsonObject sendMail(ApiKeyPool pool, String subject, String message) throws IOException {
         if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Locutus.imp().getPrimaryKey())) {
             Auth auth = Locutus.imp().getRootAuth();
             if (auth != null) {
@@ -2879,7 +2875,7 @@ public class DBNation implements NationOrAlliance {
         }
 
         while (true) {
-            Map.Entry<String, String> pair = pool.getNextApiKey();
+            ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             Map<String, String> post = new HashMap<>();
             post.put("to", getNation_id() + "");
             post.put("subject", subject);
@@ -2887,10 +2883,7 @@ public class DBNation implements NationOrAlliance {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
             String result = FileUtil.readStringFromURL(url, post, null);
             if (result.contains("Invalid API key")) {
-                Locutus.imp().getDiscordDB().deleteApiKey(pair.getKey());
-                if (pair.getValue() != null) {
-                    Locutus.imp().getDiscordDB().deleteBotKey(pair.getValue());
-                }
+                pair.deleteApiKey();
             } else {
                 String successStr = "success\":";
                 int successIndex = result.indexOf(successStr);
@@ -3237,7 +3230,8 @@ public class DBNation implements NationOrAlliance {
     }
 
     public JsonObject sendMail(Auth auth, String subject, String body) throws IOException {
-        String key = auth.getApiKey();
+        ApiKeyPool.ApiKey key = auth.fetchApiKey();
+
         return sendMail(ApiKeyPool.create(key), subject, body);
     }
 

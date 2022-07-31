@@ -72,13 +72,15 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private final String baseUrl;
     private final Gson gson;
     private final JsonParser parser;
-    private final ApiKeyPool<Map.Entry<String, String>> pool;
+    private final ApiKeyPool pool;
     private final QueryExecutor legacyV1;
+
+    @Deprecated
     public PoliticsAndWarV2(String key, boolean test, boolean cache) {
-        this(ApiKeyPool.builder().addKey(key).build(), test, cache);
+        this(ApiKeyPool.builder().addKeyUnsafe(key).build(), test, cache);
     }
 
-    public PoliticsAndWarV2(ApiKeyPool<Map.Entry<String, String>> pool, boolean test, boolean cache) {
+    public PoliticsAndWarV2(ApiKeyPool pool, boolean test, boolean cache) {
         this.pool = pool;
         this.baseUrl = "https://" + (test ? "test." : "") + "politicsandwar.com/api/v2/";
         this.gson = new Gson();
@@ -173,15 +175,12 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private <T> T runWithKey(ThrowingFunction<String, T> task) {
         incrementUsage(new Exception().getStackTrace());
         while (true) {
-            Map.Entry<String, String> keyPair = pool.getNextApiKey();
+            ApiKeyPool.ApiKey keyPair = pool.getNextApiKey();
             try {
                 return task.applyThrows(keyPair.getKey());
             } catch (Throwable e) {
                 if (e.getMessage().toLowerCase(Locale.ROOT).contains("the api key sent for this request is invalid")) {
-                    Locutus.imp().getDiscordDB().deleteApiKey(keyPair.getKey());
-                    if (keyPair.getValue() != null) {
-                        Locutus.imp().getDiscordDB().deleteBotKey(keyPair.getValue());
-                    }
+                    keyPair.deleteApiKey();
                     pool.removeKey(keyPair);
                     AlertUtil.error("Invalid key", e);
                     continue;
@@ -193,8 +192,8 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
                 }
                 String msg = e.getMessage();
                 msg = StringUtils.replaceIgnoreCase(msg, keyPair.getKey(), "XXXX");
-                if (keyPair.getValue() != null) {
-                    msg = StringUtils.replaceIgnoreCase(msg, keyPair.getValue(), "YYYY");
+                if (keyPair.getBotKey() != null) {
+                    msg = StringUtils.replaceIgnoreCase(msg, keyPair.getBotKey(), "YYYY");
                 }
                 String finalMsg = msg;
                 throw new RuntimeException(e) {
@@ -396,11 +395,8 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
 
     public Map<String, Integer> getApiKeyUsageStats() {
         Map<String, Integer> result = new HashMap<>();
-        for (Map.Entry<Map.Entry<String, String>, AtomicInteger> entry : pool.getStats().entrySet()) {
-            result.put(entry.getKey().getKey(), entry.getValue().intValue());
-        }
-        for (Map.Entry<String, String> key : pool.getKeys()) {
-            result.putIfAbsent(key.getKey(), 0);
+        for (ApiKeyPool.ApiKey key : pool.getKeys()) {
+            result.put(key.getKey().toLowerCase(Locale.ROOT), key.getUsage());
         }
         return result;
     }

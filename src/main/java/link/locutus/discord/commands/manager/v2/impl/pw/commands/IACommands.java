@@ -762,9 +762,9 @@ public class IACommands {
     public String mail(@Me DBNation me, @Me Message msgObj, @Me GuildDB db, @Me MessageChannel channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch('f') boolean confirm, @Switch('l') boolean notLocal) throws IOException {
         message = MarkupUtil.transformURLIntoLinks(message);
 
-        String myKey = me.getApiKey(false);
+        ApiKeyPool.ApiKey myKey = me.getApiKey(false);
 
-        ApiKeyPool<Map.Entry<String, String>> key = null;
+        ApiKeyPool key = null;
         if (notLocal || myKey == null) {
             if (!Roles.MAIL.has(author, db.getGuild())) {
                 return "You do not have the role `MAIL` (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasRole` OR use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey` to add your own key";
@@ -1224,7 +1224,7 @@ public class IACommands {
             return null;
         }
 
-        ApiKeyPool<Map.Entry<String, String>> keys = db.getMailKey();
+        ApiKeyPool keys = db.getMailKey();
         if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
 
         int errors = 0;

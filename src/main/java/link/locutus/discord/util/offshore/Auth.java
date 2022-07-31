@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -24,7 +25,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.mozilla.javascript.ast.Assignment;
 
 import java.io.IOException;
 import java.net.CookieManager;
@@ -151,8 +151,8 @@ public class Auth {
         return valid;
     }
 
-    public synchronized String getApiKey() {
-        if (apiKey == null) {
+    public synchronized ApiKeyPool.ApiKey fetchApiKey() {
+        if (apiKey == null || apiKey.isEmpty()) {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/";
             apiKey = PnwUtil.withLogin(new Callable<String>() {
                 @Override
@@ -169,7 +169,9 @@ public class Auth {
                 }
             }, this);
         }
-        return apiKey;
+        if (apiKey == null || apiKey.isEmpty()) throw new IllegalArgumentException("Unable to fetch api key");
+        Locutus.imp().getDiscordDB().addApiKey(getNationId(), apiKey);
+        return Locutus.imp().getDiscordDB().getApiKey(nationId);
     }
 
     public String setBounty(DBNation target, WarType type, long amount) {

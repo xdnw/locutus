@@ -611,7 +611,7 @@ public class GuildHandler {
         Map.Entry<String, String> pair = getRecruitMessagePair(to);
         String subject = pair.getKey();
         String message = pair.getValue();
-        String[] keys = getDb().getOrThrow(GuildDB.Key.API_KEY);
+        ApiKeyPool keys = getDb().getMailKey();
 
         if (message.contains("%") || message.contains("{")) {
             message = DiscordUtil.format(guild, output, null, to, message);
@@ -620,7 +620,7 @@ public class GuildHandler {
             subject = DiscordUtil.format(guild, output, null, to, subject);
         }
 
-        return to.sendMail(ApiKeyPool.create(keys), subject, message);
+        return to.sendMail(keys, subject, message);
     }
 
     public Double getWithdrawLimit(int banker) {
@@ -2203,10 +2203,10 @@ public class GuildHandler {
 
             DBNation nation = DBNation.byId(root.attacker_nation_id);
             if (nation != null && db.getGuild().getMember(user) != null) {
-                String[] keys = db.getOrNull(GuildDB.Key.API_KEY);
+                ApiKeyPool keys = db.getMailKey();
                 if (keys != null) {
                     try {
-                        nation.sendMail(ApiKeyPool.create(keys), "Beige Cycle Violation", explanation);
+                        nation.sendMail(keys, "Beige Cycle Violation", explanation);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }

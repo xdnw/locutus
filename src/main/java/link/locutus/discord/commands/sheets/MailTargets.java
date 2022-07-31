@@ -92,7 +92,7 @@ public class MailTargets extends Command {
 
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        ApiKeyPool<Map.Entry<String, String>> keys = db.getMailKey();
+        ApiKeyPool keys = db.getMailKey();
         if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
 
         String header = "";
