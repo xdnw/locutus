@@ -3,12 +3,7 @@ package link.locutus.discord.apiv1.core;
 import link.locutus.discord.apiv1.PoliticsAndWarAPIException;
 import link.locutus.discord.config.Settings;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
@@ -30,12 +25,37 @@ public class ApiKeyPool<T> {
         }
     }
 
-    public ApiKeyPool(T... apiKeyPool) {
-        this(null, apiKeyPool);
+    public static SimpleBuilder builder() {
+        return new SimpleBuilder();
     }
 
-    public ApiKeyPool(BiPredicate<T, T> compare, T... apiKeyPool) {
-        this(compare, Arrays.asList(apiKeyPool));
+    public static class SimpleBuilder {
+        Map<String, String> pool = new HashMap<>();
+
+        public SimpleBuilder addKey(String key) {
+            this.pool.putIfAbsent(key.toLowerCase(Locale.ROOT), null);
+            return this;
+        }
+
+        public SimpleBuilder addKeys(String... keys) {
+            for (String key : keys) addKey(key);
+            return this;
+        }
+
+        public SimpleBuilder addKeys(List<String> keys) {
+            for (String key : keys) addKey(key);
+            return this;
+        }
+
+        public SimpleBuilder addKey(String key, String botKey) {
+            this.pool.put(key.toLowerCase(Locale.ROOT), botKey.toLowerCase(Locale.ROOT));
+            return this;
+        }
+
+        public ApiKeyPool<Map.Entry<String, String>> build() {
+            if (pool.isEmpty()) throw new IllegalArgumentException("No api keys were provided");
+            return new ApiKeyPool<>((a, b) -> a.getKey().equalsIgnoreCase(b.getKey()), new ArrayList<>(pool.entrySet()));
+        }
     }
 
     public List<T> getKeys() {

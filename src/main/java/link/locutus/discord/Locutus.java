@@ -201,7 +201,7 @@ public final class Locutus extends ListenerAdapter {
         this.pnwApi = new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
         this.rootPnwApi = new PoliticsAndWarBuilder().addApiKeys(primaryKey).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
 
-        ApiKeyPool<Map.Entry<String, String>> v3Pool = new ApiKeyPool<>(new AbstractMap.SimpleEntry<>(primaryKey, Settings.INSTANCE.ACCESS_KEY));
+        ApiKeyPool<Map.Entry<String, String>> v3Pool = ApiKeyPool.builder().addKey(primaryKey, Settings.INSTANCE.ACCESS_KEY).build();
         this.v3 = new PoliticsAndWarV3(v3Pool);
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {

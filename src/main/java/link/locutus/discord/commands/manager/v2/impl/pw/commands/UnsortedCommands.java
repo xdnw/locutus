@@ -232,7 +232,7 @@ public class UnsortedCommands {
     @Command(desc="Set your api and bot key\n" +
             "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
     public String setApiKey(@Me Message message, String apiKey, @Default String verifiedBotKey) {
-        PoliticsAndWarV3 api = new PoliticsAndWarV3(new ApiKeyPool<>(new AbstractMap.SimpleEntry<>(apiKey, verifiedBotKey)));
+        PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.builder().addKey(apiKey, verifiedBotKey).build());
         ApiKeyDetails stats = api.getApiKeyStats();
 
         int nationId = stats.getNation().getId();

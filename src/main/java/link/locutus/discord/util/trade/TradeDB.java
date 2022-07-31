@@ -1,5 +1,7 @@
 package link.locutus.discord.util.trade;
 
+import com.politicsandwar.graphql.model.GameInfo;
+import com.politicsandwar.graphql.model.Radiation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.config.Settings;
@@ -612,55 +614,49 @@ public class TradeDB {
         return global;
     }
 
-    public synchronized double getGlobalRadiation(Continent continent) {
+    public double getGlobalRadiation(Continent continent) {
+        return getGlobalRadiation(continent, false);
+    }
+
+    public synchronized double getGlobalRadiation(Continent continent, boolean forceUpdate) {
         long currentTurn = TimeUtil.getTurn();
 
-        Map.Entry<Double, Long> valuePair = radiation.get(continent);
-        if (valuePair != null) {
-            if (valuePair.getValue() == currentTurn) return valuePair.getKey();
-        }
-
-        ByteBuffer radsStr = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal());
-        if (radsStr != null) {
-            double rads = radsStr.getLong() / 100d;
-            long turn = radsStr.getLong();
-
-            radiation.put(continent, new AbstractMap.SimpleEntry<>(rads, turn));
-            if (turn == currentTurn) {
-                return rads;
+        if (!forceUpdate) {
+            Map.Entry<Double, Long> valuePair = radiation.get(continent);
+            if (valuePair != null) {
+                if (valuePair.getValue() == currentTurn) return valuePair.getKey();
             }
-        }
 
-        try {
-            String url = "" + Settings.INSTANCE.PNW_URL() + "/world/radiation/";
-            String html = FileUtil.readStringFromURL(url);
-            Document dom = Jsoup.parse(html);
+            ByteBuffer radsStr = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal());
+            if (radsStr != null) {
+                double rads = radsStr.getLong() / 100d;
+                long turn = radsStr.getLong();
 
-            Elements elems = dom.select("h3:contains(Radiation Index)");
-            for (Element elem : elems) {
-                String continentStr = elem.text().toLowerCase().replace("radiation index", "").trim().replace(" ", "_").toUpperCase();
-                try {
-                    Continent currentContinent = Continent.valueOf(continentStr);
-
-                    double rads = Double.parseDouble(elem.nextElementSibling().text().trim());
-
-                    long[] pair = new long[]{(long) (rads * 100), currentTurn};
-                    byte[] bytes = ArrayUtil.toByteArray(pair);
-                    Locutus.imp().getDiscordDB().setInfo(DiscordMeta.RADIATION_CONTINENT, currentContinent.ordinal(), bytes);
-                    radiation.put(currentContinent, new AbstractMap.SimpleEntry<>(rads, currentTurn));
-
-                } catch (IllegalArgumentException ignore) {
+                radiation.put(continent, new AbstractMap.SimpleEntry<>(rads, turn));
+                if (turn == currentTurn) {
+                    return rads;
                 }
             }
-        } catch (IOException e) {
-            AlertUtil.error("Could not fetch radiation (1)", new Exception());
         }
+        Radiation info = Locutus.imp().getV3().getGameInfo().getRadiation();
 
-        Map.Entry<Double, Long> pair = radiation.get(continent);
-        if (pair == null || pair.getValue() < currentTurn - 1) {
-            AlertUtil.error("Could not fetch radiation (2)", new Exception());
-        }
-        return pair == null ? 32.37d : pair.getKey();
+        setRadiation(Continent.NORTH_AMERICA, info.getNorth_america());
+        setRadiation(Continent.SOUTH_AMERICA, info.getSouth_america());
+        setRadiation(Continent.EUROPE, info.getEurope());
+        setRadiation(Continent.AFRICA, info.getAfrica());
+        setRadiation(Continent.ASIA, info.getAsia());
+        setRadiation(Continent.AUSTRALIA, info.getAustralia());
+        setRadiation(Continent.ANTARCTICA, info.getAntarctica());
+
+        return radiation.get(continent).getKey();
+    }
+
+    private void setRadiation(Continent continent, double rads) {
+        long currentTurn = TimeUtil.getTurn();
+        long[] pair = new long[]{(long) (rads * 100), currentTurn};
+        byte[] bytes = ArrayUtil.toByteArray(pair);
+        Locutus.imp().getDiscordDB().setInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal(), bytes);
+        radiation.put(continent, new AbstractMap.SimpleEntry<>(rads, currentTurn));
     }
 
     private Map<NationColor, Integer> tradeBonus;

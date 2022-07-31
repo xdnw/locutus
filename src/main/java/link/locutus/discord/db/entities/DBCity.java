@@ -30,6 +30,7 @@ public class DBCity {
     public boolean powered;
     public byte[] buildings = new byte[Buildings.size()];
     public volatile long fetched;
+    public long nuke_date;
 
     public DBCity() {
 
@@ -72,6 +73,7 @@ public class DBCity {
         for (int i = 0; i < buildings.length; i++) {
             buildings[i] = toCopy.buildings[i];
         }
+        this.nuke_date = toCopy.nuke_date;
     }
 
     public DBCity set(City cityV3) {
@@ -82,6 +84,17 @@ public class DBCity {
         this.land = cityV3.getLand();
         this.infra = cityV3.getInfrastructure();
         if (cityV3.getPowered() != null) this.powered = cityV3.getPowered();
+
+        if (cityV3.getNuke_date() != null) {
+            long now = System.currentTimeMillis();
+            long cutoff = now - TimeUnit.DAYS.toMillis(11);
+            long date = cityV3.getNuke_date().getTime();
+            if (date > now) {
+                if (this.nuke_date == 0) nuke_date = now;
+            } else if (date > cutoff) {
+                this.nuke_date = date;
+            }
+        }
 
         buildings[Buildings.OIL_POWER.ordinal()] = (byte) (int) cityV3.getOil_power();
         buildings[Buildings.WIND_POWER.ordinal()] = (byte) (int) cityV3.getWind_power();
@@ -140,6 +153,14 @@ public class DBCity {
             changed = true;
         }
 
+        if (this.nuke_date != previous.nuke_date) {
+            if (eventConsumer != null) {
+                if (previousClone == null) previousClone = new DBCity(previous);
+                eventConsumer.accept(new CityNukeEvent(nationId, previousClone, this));
+            }
+            changed = true;
+        }
+
         if (this.powered != previous.powered) {
             if (eventConsumer != null) {
                 if (previousClone == null) previousClone = new DBCity(previous);
@@ -189,6 +210,7 @@ public class DBCity {
         powered = rs.getBoolean("powered");
         buildings = rs.getBytes("improvements");
         fetched = rs.getLong("update_flag");
+        nuke_date = rs.getLong("nuke_date");
     }
 
     public DBCity(int id, JavaCity city) {
@@ -209,7 +231,7 @@ public class DBCity {
     }
 
     public JavaCity toJavaCity(Predicate<Project> hasProject) {
-        JavaCity javaCity = new JavaCity(buildings, infra, land, created);
+        JavaCity javaCity = new JavaCity(buildings, infra, land, created, nuke_date);
         if (!powered && javaCity.getPoweredInfra() >= infra) {
             javaCity.getMetrics(hasProject).powered = false;
         }

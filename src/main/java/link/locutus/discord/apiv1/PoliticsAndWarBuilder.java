@@ -6,6 +6,7 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 public class PoliticsAndWarBuilder {
 
@@ -40,7 +41,7 @@ public class PoliticsAndWarBuilder {
   }
 
   public PoliticsAndWarV2 build() {
-    ApiKeyPool<String> pool = new ApiKeyPool<String>(null, apiKeysList);
+    ApiKeyPool<Map.Entry<String, String>> pool = ApiKeyPool.builder().addKeys(apiKeysList).build();
     return new PoliticsAndWarV2(pool, testServerMode, enableCache);
   }
 }

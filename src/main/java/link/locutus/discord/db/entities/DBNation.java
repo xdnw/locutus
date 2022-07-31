@@ -1791,6 +1791,15 @@ public class DBNation implements NationOrAlliance {
         return total;
     }
 
+    @Command(desc = "Total population in all cities")
+    public int getPopulation() {
+        int total = 0;
+        for (JavaCity city : getCityMap(false).values()) {
+            total += city.getPopulation(this::hasProject);
+        }
+        return total;
+    }
+
     /*
     A map of resource projects, and whether they are producing it
      */
@@ -4059,5 +4068,11 @@ public class DBNation implements NationOrAlliance {
 
     public void setLastActive(long epoch) {
         this.last_active = epoch;
+    }
+
+    public void update(boolean bulk) {
+        ArrayDeque<Event> events = new ArrayDeque<>();
+        Locutus.imp().getNationDB().updateNations(List.of(nation_id), bulk, events::add);
+        Locutus.imp().runEventsAsync(events);
     }
 }

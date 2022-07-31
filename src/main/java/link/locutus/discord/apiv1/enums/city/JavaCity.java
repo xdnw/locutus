@@ -6,6 +6,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.search.BFSUtil;
 import com.google.gson.Gson;
@@ -46,6 +47,8 @@ public class JavaCity {
     private double land_;
     private long dateCreated;
 
+    private long nuke_date;
+
     private Metrics metrics;
 
     public void clear() {
@@ -75,6 +78,7 @@ public class JavaCity {
         this.infra = other.infra;
         this.dateCreated = other.dateCreated;
         this.land_ = other.land_;
+        this.nuke_date = other.nuke_date;
     }
 
     public void clearMetrics() {
@@ -82,6 +86,10 @@ public class JavaCity {
             metrics.commerce = null;
             metrics.profit = null;
         }
+    }
+
+    public long getNukeDate() {
+        return nuke_date;
     }
 
     public String getMMR() {
@@ -108,6 +116,16 @@ public class JavaCity {
         public void recalculate(JavaCity city, Predicate<Project> hasProject) {
             pollution = 0;
             commerce = 0;
+
+            if (city.nuke_date > 1596163005000L) {
+                double pollutionMax = 400d;
+                int turnsMax = 11 * 12;
+                long turns = TimeUtil.getTurn() - TimeUtil.getTurn(city.nuke_date);
+                if (turns < turnsMax) {
+                    double nukePollution = turnsMax * pollutionMax * (turnsMax - turns);
+                    pollution += (int) nukePollution;
+                }
+            }
 
             for (Building building : Buildings.POLLUTION_BUILDINGS) {
                 int amt = city.buildings[building.ordinal()];
@@ -213,11 +231,12 @@ public class JavaCity {
         initImpTotal();
     }
 
-    public JavaCity(byte[] buildings, double infra, double land, long dateCreated) {
+    public JavaCity(byte[] buildings, double infra, double land, long dateCreated, long nuke_date) {
         this.buildings = buildings;
         this.dateCreated = dateCreated;
         this.land_ = land;
         this.infra = infra;
+        this.nuke_date = nuke_date;
         initImpTotal();
     }
 
@@ -347,6 +366,11 @@ public class JavaCity {
         this.buildings = new byte[Buildings.size()];
         this.dateCreated = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(city.getAge());
         this.land_ = Double.parseDouble(city.getLand());
+
+        if (city.getNuclearpollution() > 0) {
+            double turns = 11 * 12 * (400d - city.getNuclearpollution()) / 400d;
+            nuke_date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - ((int) turns));
+        }
 
         metrics = new Metrics();
         metrics.disease = city.getDisease();

@@ -24,10 +24,7 @@ import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.alliance.AllianceDeleteEvent;
-import link.locutus.discord.event.city.CityCreateEvent;
-import link.locutus.discord.event.city.CityDeleteEvent;
-import link.locutus.discord.event.city.CityInfraBuyEvent;
-import link.locutus.discord.event.city.CityInfraDamageEvent;
+import link.locutus.discord.event.city.*;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.position.PositionCreateEvent;
 import link.locutus.discord.event.position.PositionDeleteEvent;
@@ -47,6 +44,7 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import views.grant.city;
 import views.grant.nation;
 
 import java.io.IOException;
@@ -103,6 +101,14 @@ public class NationDB extends DBMainV2 {
         importLegacyNationLoot();
 
         markDirtyIncorrectNations(true, true);
+
+        // Update nuke dates if missing
+        query("SELECT COUNT(*) FROM CITY_BUILDS WHERE nuke_date > 0", f -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            if (!rs.next() || rs.getInt(1) == 0) {
+                Locutus.imp().getWarDb().loadNukeDates();
+            }
+        });
     }
 
     public void deleteExpiredTreaties(Consumer<Event> eventConsumer) {
@@ -171,6 +177,22 @@ public class NationDB extends DBMainV2 {
         return false;
     }
 
+    public boolean setCityNukeFromAttack(int nationId, int cityId, long timestamp, Consumer<Event> eventConsumer) {
+        if (timestamp <= System.currentTimeMillis() - TimeUnit.DAYS.toMillis(11)) return false;
+
+        DBCity city = Locutus.imp().getNationDB().getDBCity(nationId, cityId);
+        if (city != null && city.nuke_date < timestamp) {
+
+            DBCity copyOriginal = eventConsumer == null ? null : new DBCity(city);
+            city.nuke_date = timestamp;
+            if (copyOriginal != null) eventConsumer.accept(new CityNukeEvent(nationId, copyOriginal, city));
+
+            saveCities(List.of(Map.entry(nationId, city)));
+            return true;
+        }
+        return false;
+    }
+
     public boolean setCityInfraFromAttack(int nationId, int cityId, double infra, long timestamp, Consumer<Event> eventConsumer) {
         DBCity city = getDBCity(nationId, cityId);
         if (city != null && city.fetched < timestamp && infra != city.infra) {
@@ -183,6 +205,7 @@ public class NationDB extends DBMainV2 {
                     eventConsumer.accept(new CityInfraDamageEvent(nationId, previous, city));
                 }
             }
+            saveCities(List.of(Map.entry(nationId, city)));
             return true;
         }
         return false;
@@ -1373,14 +1396,7 @@ public class NationDB extends DBMainV2 {
      */
     private Map.Entry<Integer, DBCity> createCity(ResultSet rs) throws SQLException {
         int nationId = rs.getInt("nation");
-        DBCity data = new DBCity();
-        data.id = rs.getInt("id");
-        data.created = rs.getLong("created");
-        data.infra = rs.getInt("infra") / 100d;
-        data.land = rs.getInt("land") / 100d;
-        data.powered = rs.getBoolean("powered");
-        data.buildings = rs.getBytes("improvements");
-        data.fetched = rs.getLong("update_flag");
+        DBCity data = new DBCity(rs);
         return Map.entry(nationId, data);
     }
 
@@ -1641,7 +1657,7 @@ public class NationDB extends DBMainV2 {
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
             if (score && Math.abs(nation.estimateScore() - nation.getScore()) > 0.01) {
                 dirtyNations.add(nation.getNation_id());
-            } else if (cities && nation.getCities() != nation.getCityMap(false).size()) {
+            } else if (cities && nation.getCities() != getCitiesV3(nation.getNation_id()).size()) {
                 dirtyNations.add(nation.getNation_id());
             }
         }
@@ -1973,8 +1989,9 @@ public class NationDB extends DBMainV2 {
         executeStmt("CREATE INDEX IF NOT EXISTS index_cities_nation ON CITIES (nation);");
 
         {
-            executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` INT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` INT NOT NULL)");
+            executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` INT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` INT NOT NULL, nuke_date INT NOT NULL)");
             executeStmt("CREATE INDEX IF NOT EXISTS index_city_builds_nation ON CITIES (nation);");
+            executeStmt("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date INT NOT NULL DEFAULT 0");
         }
 
         String kicks = "CREATE TABLE IF NOT EXISTS `KICKS` (`nation` INT NOT NULL, `alliance` INT NOT NULL, `date` INT NOT NULL, `type` INT NOT NULL)";
@@ -3292,7 +3309,7 @@ public class NationDB extends DBMainV2 {
     }
 
     public void saveCities(List<Map.Entry<Integer, DBCity>> cities) {
-        executeBatch(cities, "INSERT OR REPLACE INTO `CITY_BUILDS`(`id`, `nation`, `created`, `infra`, `land`, `powered`, `improvements`, `update_flag`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<Map.Entry<Integer, DBCity>, PreparedStatement>() {
+        executeBatch(cities, "INSERT OR REPLACE INTO `CITY_BUILDS`(`id`, `nation`, `created`, `infra`, `land`, `powered`, `improvements`, `update_flag`, `nuke_date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<Map.Entry<Integer, DBCity>, PreparedStatement>() {
             @Override
             public void acceptThrows(Map.Entry<Integer, DBCity> entry, PreparedStatement stmt) throws Exception {
                 int nationId = entry.getKey();
@@ -3305,6 +3322,7 @@ public class NationDB extends DBMainV2 {
                 stmt.setBoolean(6, city.powered);
                 stmt.setBytes(7, city.buildings);
                 stmt.setLong(8, city.fetched);
+                stmt.setLong(9, city.nuke_date);
             }
         });
     }

@@ -19,6 +19,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.handlers.ActiveWarHandler;
 import link.locutus.discord.event.Event;
+import link.locutus.discord.event.city.CityNukeEvent;
 import link.locutus.discord.event.nation.NationChangeColorEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
@@ -66,6 +67,45 @@ public class WarDB extends DBMainV2 {
 
         for (DBWar war : wars) {
             activeWars.addActiveWar(war);
+        }
+    }
+
+    public void loadNukeDates() {
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(12);
+
+        List<Integer> attackIds = new ArrayList<>();
+        query("SELECT war_attack_id FROM attacks2 WHERE `date` > ? AND attack_type = ? AND `success` != 0", new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setLong(1, cutoff);
+                stmt.setInt(2, AttackType.NUKE.ordinal());
+            }
+        }, new ThrowingConsumer<ResultSet>() {
+            @Override
+            public void acceptThrows(ResultSet rs) throws Exception {
+                while (rs.next()) {
+                    int id = rs.getInt(1);
+                    attackIds.add(id);
+                }
+            }
+        });
+        if (attackIds.isEmpty()) return;//no nule data?s
+
+        for (int i = 0; i < attackIds.size(); i += 500) {
+            List<Integer> subList = attackIds.subList(i, Math.min(i + 500, attackIds.size()));
+            for (WarAttack attack : Locutus.imp().getV3().fetchAttacks(f -> f.setId(subList), new Consumer<WarAttackResponseProjection>() {
+                @Override
+                public void accept(WarAttackResponseProjection proj) {
+                    proj.def_id();
+                    proj.city_id();
+                    proj.date();
+                }
+            })) {
+                int nationId = attack.getDef_id();
+                int cityId = attack.getCity_id();
+                long date = attack.getDate().toEpochMilli();
+                Locutus.imp().getNationDB().setCityNukeFromAttack(nationId, cityId, date, null);
+            }
         }
     }
 
@@ -1474,17 +1514,19 @@ public class WarDB extends DBMainV2 {
             if (pct == 0) pct = 0.1;
             double factor = 1/pct;
 
-            double[] lootCopy = attack.loot.clone();
-            for (int i = 0; i < lootCopy.length; i++) {
-                lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
-            }
+            if (attack.loot != null) {
+                double[] lootCopy = attack.loot.clone();
+                for (int i = 0; i < lootCopy.length; i++) {
+                    lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+                }
 
-            if (attack.attack_type == AttackType.VICTORY) {
-                Locutus.imp().getNationDB().saveLoot(attack.defender_nation_id, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
-            } else if (attack.attack_type == AttackType.A_LOOT) {
-                Integer allianceId = attack.getLooted();
-                if (allianceId != null) {
-                    Locutus.imp().getNationDB().saveAllianceLoot(allianceId, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
+                if (attack.attack_type == AttackType.VICTORY) {
+                    Locutus.imp().getNationDB().saveLoot(attack.defender_nation_id, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
+                } else if (attack.attack_type == AttackType.A_LOOT) {
+                    Integer allianceId = attack.getLooted();
+                    if (allianceId != null) {
+                        Locutus.imp().getNationDB().saveAllianceLoot(allianceId, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
+                    }
                 }
             }
         }
@@ -1509,7 +1551,7 @@ public class WarDB extends DBMainV2 {
             stmt.setInt(11, attack.defcas1);
             stmt.setInt(12, attack.defcas2);
             stmt.setInt(13, attack.defcas3);
-            stmt.setLong(14, 0);
+            stmt.setLong(14, attack.city_cached);
             stmt.setLong(15, (long) (attack.infra_destroyed * 100));
             stmt.setLong(16, attack.improvements_destroyed);
             stmt.setLong(17, (long) (attack.money_looted * 100));
@@ -1589,6 +1631,10 @@ public class WarDB extends DBMainV2 {
                 if (!defLosses.isEmpty()) {
                     Locutus.imp().getNationDB().updateNationUnits(attack.defender_nation_id, attack.epoch, defLosses, eventConsumer);
                 }
+            }
+
+            if (attack.attack_type == AttackType.NUKE && attack.success > 0 && attack.city_cached != 0) {
+                Locutus.imp().getNationDB().setCityNukeFromAttack(attack.defender_nation_id, attack.city_cached, attack.epoch, eventConsumer);
             }
 
             if (attack.attack_type == AttackType.VICTORY) {

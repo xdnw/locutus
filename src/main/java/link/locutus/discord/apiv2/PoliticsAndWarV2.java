@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv2;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.IPoliticsAndWar;
 import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv1.entities.BankRecord;
@@ -51,6 +52,7 @@ import link.locutus.discord.apiv1.queries.TradepriceQuery;
 import link.locutus.discord.apiv1.queries.WarAttacksQuery;
 import link.locutus.discord.apiv1.queries.WarQuery;
 import link.locutus.discord.apiv1.queries.WarsQuery;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -70,13 +72,13 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private final String baseUrl;
     private final Gson gson;
     private final JsonParser parser;
-    private final ApiKeyPool<String> pool;
+    private final ApiKeyPool<Map.Entry<String, String>> pool;
     private final QueryExecutor legacyV1;
     public PoliticsAndWarV2(String key, boolean test, boolean cache) {
-        this(new ApiKeyPool<String>(null, Collections.singleton(key)), test, cache);
+        this(ApiKeyPool.builder().addKey(key).build(), test, cache);
     }
 
-    public PoliticsAndWarV2(ApiKeyPool<String> pool, boolean test, boolean cache) {
+    public PoliticsAndWarV2(ApiKeyPool<Map.Entry<String, String>> pool, boolean test, boolean cache) {
         this.pool = pool;
         this.baseUrl = "https://" + (test ? "test." : "") + "politicsandwar.com/api/v2/";
         this.gson = new Gson();
@@ -171,22 +173,29 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private <T> T runWithKey(ThrowingFunction<String, T> task) {
         incrementUsage(new Exception().getStackTrace());
         while (true) {
-            String apiKey = pool.getNextApiKey();
+            Map.Entry<String, String> keyPair = pool.getNextApiKey();
             try {
-                return task.applyThrows(apiKey);
+                return task.applyThrows(keyPair.getKey());
             } catch (Throwable e) {
                 if (e.getMessage().toLowerCase(Locale.ROOT).contains("the api key sent for this request is invalid")) {
-                    pool.removeKey(apiKey);
+                    Locutus.imp().getDiscordDB().deleteApiKey(keyPair.getKey());
+                    if (keyPair.getValue() != null) {
+                        Locutus.imp().getDiscordDB().deleteBotKey(keyPair.getValue());
+                    }
+                    pool.removeKey(keyPair);
                     AlertUtil.error("Invalid key", e);
                     continue;
                 }
                 if (e.getMessage().toLowerCase(Locale.ROOT).contains("exceeded max request limit of")) {
-                    pool.removeKey(apiKey);
+                    pool.removeKey(keyPair);
                     AlertUtil.error("Exceeded max request limit", e);
                     continue;
                 }
                 String msg = e.getMessage();
-                msg = msg.replace(apiKey, "XXXX");
+                msg = StringUtils.replaceIgnoreCase(msg, keyPair.getKey(), "XXXX");
+                if (keyPair.getValue() != null) {
+                    msg = StringUtils.replaceIgnoreCase(msg, keyPair.getValue(), "YYYY");
+                }
                 String finalMsg = msg;
                 throw new RuntimeException(e) {
                     @Override
@@ -387,11 +396,11 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
 
     public Map<String, Integer> getApiKeyUsageStats() {
         Map<String, Integer> result = new HashMap<>();
-        for (Map.Entry<String, AtomicInteger> entry : pool.getStats().entrySet()) {
-            result.put(entry.getKey(), entry.getValue().intValue());
+        for (Map.Entry<Map.Entry<String, String>, AtomicInteger> entry : pool.getStats().entrySet()) {
+            result.put(entry.getKey().getKey(), entry.getValue().intValue());
         }
-        for (String key : pool.getKeys()) {
-            result.putIfAbsent(key, 0);
+        for (Map.Entry<String, String> key : pool.getKeys()) {
+            result.putIfAbsent(key.getKey(), 0);
         }
         return result;
     }
