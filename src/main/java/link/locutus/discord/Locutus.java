@@ -1,8 +1,6 @@
 package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
-import com.google.common.eventbus.Dispatcher;
-import com.google.common.util.concurrent.MoreExecutors;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
