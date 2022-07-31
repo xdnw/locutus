@@ -1,5 +1,8 @@
 package link.locutus.discord;
 
+import com.google.common.eventbus.AsyncEventBus;
+import com.google.common.eventbus.Dispatcher;
+import com.google.common.util.concurrent.MoreExecutors;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -144,7 +147,7 @@ public final class Locutus extends ListenerAdapter {
         }
 
         this.logger = Logger.getLogger("LOCUTUS");
-        this.eventBus = new EventBus();
+        this.eventBus = new AsyncEventBus("locutus", Runnable::run);
 
         this.executor = Executors.newCachedThreadPool();
 

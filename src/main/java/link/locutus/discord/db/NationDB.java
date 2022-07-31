@@ -1676,7 +1676,6 @@ public class NationDB extends DBMainV2 {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         Predicate<Nation> onEachNation = nation -> {
-            System.out.println("Nation Update " + nation);
             if (nation.getId() != null) {
                 nationsFetched.add(nation.getId());
                 if (!NationDB.this.dirtyNations.isEmpty()) {

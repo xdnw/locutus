@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.eventbus.AsyncEventBus;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -123,7 +124,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (getAlliance() != null) {
                 synchronized (this) {
                     if (this.eventBus == null) {
-                        this.eventBus = new EventBus();
+                        this.eventBus = new AsyncEventBus(getGuild().toString(), Runnable::run);
                     }
                 }
             }
@@ -133,7 +134,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public synchronized void setHandler(GuildHandler handler) {
         if (eventBus == null) {
-            eventBus = new EventBus();
+            this.eventBus = new AsyncEventBus(getGuild().toString(), Runnable::run);
         } else if (this.handler != null) {
             eventBus.unregister(this.handler);
         }
