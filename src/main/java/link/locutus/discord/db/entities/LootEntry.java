@@ -23,7 +23,7 @@ public class LootEntry {
 
     public LootEntry(ResultSet rs) throws SQLException {
         this.id = rs.getInt("id");
-        byte[] lootBytes = rs.getBytes("loot");
+        byte[] lootBytes = rs.getBytes("total_rss");
         total_rss = ArrayUtil.toDoubleArray(lootBytes);
         this.date = rs.getLong("date");
         this.type = NationLootType.values()[rs.getInt("type")];

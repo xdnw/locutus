@@ -1066,8 +1066,7 @@ public class PoliticsAndWarV3 {
         final int cityId = 375361;
         DBNation nation = DBNation.byId(id);
         {
-            JsonObject result = nation.sendMail(ApiKeyPool.create(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY), "title", "body");
-            System.out.println(result);
+
             System.exit(0);
         }
 

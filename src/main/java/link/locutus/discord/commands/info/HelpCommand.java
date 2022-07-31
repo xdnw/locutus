@@ -85,8 +85,10 @@ public class HelpCommand extends Command {
             Set<CommandCategory> requiredCategories = new HashSet<>();
 
             for (String arg : args) {
-                CommandCategory category = CommandCategory.valueOf(arg.toUpperCase());
-                requiredCategories.add(category);
+                try {
+                    CommandCategory category = CommandCategory.valueOf(arg.toUpperCase());
+                    requiredCategories.add(category);
+                } catch (IllegalArgumentException ignore) {}
             }
             if (!requiredCategories.isEmpty()) {
                 LinkedHashSet<Command> commands = new LinkedHashSet<>(manager.getCommandMap().values());
