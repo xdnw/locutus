@@ -1,12 +1,18 @@
 package link.locutus.discord.db;
 
+import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.NationResponseProjection;
+import com.politicsandwar.graphql.model.NationsQueryRequest;
 import com.ptsmods.mysqlw.query.SelectResults;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.offshore.EncryptionUtil;
@@ -28,6 +34,7 @@ import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -525,23 +532,42 @@ public class DiscordDB extends DBMainV2 {
         }
     }
 
-//    public void addGuild(Guild guild, int allianceId, String username, String password) {
-////        addTask(TaskType.GUILD, allianceId, new UniqueStatement(allianceId) {
-////            @Override
-////            public PreparedStatement get() throws SQLException {
-////                return getConnection().prepareStatement("INSERT OR REPLACE INTO `GUILDS`(`server`, `alliance`) VALUES(?, ?)");
-////            }
-////
-////            @Override
-////            public void set(PreparedStatement stmt) throws SQLException {
-////                stmt.setLong(1, guild.getIdLong());
-////                stmt.setInt(2, min);
-////                stmt.setInt(3, max);
-////                stmt.setString(4, build);
-////            }
-////        });
-//    }
 
+    public int updateUserIdsSince(int minutes) {
+        List<Integer> toFetch = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < minutes).stream().map(DBNation::getNation_id).collect(Collectors.toList());
+
+        int updated = 0;
+
+        for (int i = 0; i < toFetch.size(); i += 500) {
+            List<Integer> subList = toFetch.subList(i, Math.min(i + 500, toFetch.size()));
+            updated += updateUserIds(f -> f.setId(subList), Event::post);
+        }
+        return updated;
+    }
+
+    public int updateUserIds(Consumer<NationsQueryRequest> query, Consumer<Event> eventConsumer) {
+        int updated = 0;
+        for (Nation nation : Locutus.imp().getV3().fetchNations(query::accept, r -> {
+            r.id();
+            r.discord();
+            r.discord_id();
+        })) {
+            if (nation.getDiscord_id() == null || nation.getDiscord_id().isEmpty()) continue;
+            long discordId = Long.parseLong(nation.getDiscord_id());
+
+            PNWUser existingUser = getUserFromNationId(nation.getId());
+            if (existingUser != null && existingUser.getDiscordId() != null && existingUser.getDiscordId().equals(discordId)) {
+                continue;
+            }
+            if (eventConsumer != null) {
+                User user = Locutus.imp().getDiscordApi().getUserById(discordId);
+                eventConsumer.accept(new NationRegisterEvent(nation.getId(), null, user, existingUser == null));
+            }
+            addUser(new PNWUser(nation.getId(), discordId, nation.getDiscord()));
+            updated++;
+        }
+        return updated;
+    }
 
     public void addUser(PNWUser user) {
         if (user.getDiscordId() != null) {

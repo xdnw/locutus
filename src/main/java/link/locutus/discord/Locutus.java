@@ -369,10 +369,6 @@ public final class Locutus extends ListenerAdapter {
         }
     }
 
-    public String getPrimaryKey() {
-        return Settings.INSTANCE.API_KEY_PRIMARY;
-    }
-
     public Auth getRootAuth() {
         Auth auth = getNationDB().getNation(Settings.INSTANCE.NATION_ID).getAuth(null);
         if (auth != null) auth.setApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
@@ -698,6 +694,12 @@ public final class Locutus extends ListenerAdapter {
             AtomicBoolean updateTradeTask = new AtomicBoolean(false);
             addTaskSeconds(() -> getTradeManager().updateTradeList(false, true),
                     Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
+        }
+
+        if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
+            addTask(() ->
+                Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS),
+                Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
         }
 
         // TODO update to v3

@@ -215,6 +215,9 @@ public class Settings extends Config {
                 "*Requires setting the `trackspies` coalition in the root server"})
         public int FETCH_SPIES_INTERVAL_SECONDS = 0;
 
+        @Comment("Fetches discord ids (default: 15 minutes)")
+        public int NATION_DISCORD_SECONDS = 15 * 60;
+
         @Comment({"If network UIDs are fetched automatically (for multi checking) (disabled by default, since it is slow and uses web scraping)"})
         public boolean AUTO_FETCH_UID = false;
 

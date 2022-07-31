@@ -165,8 +165,6 @@ public class PoliticsAndWarV3 {
                     throw new IllegalArgumentException(message.replace(pair.getKey(), "XXX"));
                 }
 
-                System.out.println("```\n" + body + "\n```");
-
                 result = jacksonObjectMapper.readValue(body, resultBody);
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {
@@ -1067,6 +1065,8 @@ public class PoliticsAndWarV3 {
         DBNation nation = DBNation.byId(id);
         {
 
+            int amt = Locutus.imp().getDiscordDB().updateUserIdsSince(4880);
+            System.out.println("Update " + amt + " nation discord ids");
             System.exit(0);
         }
 

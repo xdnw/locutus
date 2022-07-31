@@ -885,6 +885,18 @@ public class DBNation implements NationOrAlliance {
             this.setNation_id(nation.getId());
             dirty = true;
         }
+        if (nation.getDiscord_id() != null && !nation.getDiscord_id().isEmpty()) {
+            Long newDiscordId = Long.parseLong(nation.getDiscord_id());
+            Long thisUserId = getUserId();
+            if (!newDiscordId.equals(thisUserId)) {
+                User user = Locutus.imp().getDiscordApi().getUserById(newDiscordId);
+                String name = user == null ? newDiscordId + "" : user.getName() + "#" + user.getDiscriminator();
+                Locutus.imp().getDiscordDB().addUser(new PNWUser(nation_id, newDiscordId, name));
+                if (eventConsumer != null) {
+                    eventConsumer.accept(new NationRegisterEvent(nation_id, null, user, thisUserId == null));
+                }
+            }
+        }
         if (nation.getNation_name() != null && (this.getNation() == null || !this.getNation().equals(nation.getNation_name()))) {
             this.setNation(nation.getNation_name());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeNameEvent(copyOriginal, this));
@@ -2864,7 +2876,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public JsonObject sendMail(ApiKeyPool pool, String subject, String message) throws IOException {
-        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Locutus.imp().getPrimaryKey())) {
+        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Settings.INSTANCE.API_KEY_PRIMARY)) {
             Auth auth = Locutus.imp().getRootAuth();
             if (auth != null) {
                 String result = new MailTask(auth, this, subject, message, null).call();
