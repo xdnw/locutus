@@ -18,7 +18,7 @@ public class ApiKeyPool {
     private int nextIndex;
 
     public static class ApiKey {
-        private final int nationId;
+        private int nationId;
         private final String key;
         private String botKey;
         private boolean valid;
@@ -77,6 +77,9 @@ public class ApiKeyPool {
         }
 
         public int getNationId() {
+            if (nationId == -1) {
+                nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+            }
             return nationId;
         }
     }
@@ -119,8 +122,7 @@ public class ApiKeyPool {
 
         @Deprecated
         public SimpleBuilder addKeyUnsafe(String key, String botKey) {
-            int nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
-            return addKey(nationId, key, botKey);
+            return addKey(-1, key, botKey);
         }
 
         @Deprecated

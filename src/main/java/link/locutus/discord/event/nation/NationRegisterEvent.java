@@ -40,7 +40,7 @@ public class NationRegisterEvent extends GuildScopeEvent {
         if (db != null) {
             post(db);
         }
-        if (isNew) {
+        if (isNew && user != null) {
             for (Guild otherGuild : user.getMutualGuilds()) {
                 if (otherGuild.getIdLong() == this.guild.getIdLong()) continue;
                 GuildDB otherDb = Locutus.imp().getGuildDB(otherGuild);
