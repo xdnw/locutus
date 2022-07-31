@@ -1705,8 +1705,8 @@ public class NationDB extends DBMainV2 {
         }
         if (fetchCitiesIfOutdated) {
             for (Map.Entry<DBNation, DBNation> entry : dirtyNations.entrySet()) {
-                DBNation prev = entry.getKey();
-                DBNation curr = entry.getValue();
+                DBNation prev = entry.getValue();
+                DBNation curr = entry.getKey();
                 if (prev == null || (Math.abs(curr.getScore() - prev.getScore()) >= 0.01 && Math.abs(curr.estimateScore() - curr.getScore()) >= 0.01)) {
                     fetchCitiesOfNations.add(curr.getNation_id());
                 }
