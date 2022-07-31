@@ -2068,7 +2068,7 @@ public class NationDB extends DBMainV2 {
 
     public DBNation getNation(String nameOrLeader) {
         
-        try (PreparedStatement stmt = prepareQuery("select id FROM NATIONS2 WHERE UPPER(`nation`) = UPPER(?) OR UPPER(`leader`) = UPPER(?)")) {
+        try (PreparedStatement stmt = prepareQuery("select nation_id FROM NATIONS2 WHERE UPPER(`nation`) = UPPER(?) OR UPPER(`leader`) = UPPER(?)")) {
             stmt.setString(1, nameOrLeader);
             stmt.setString(2, nameOrLeader);
             DBNation leader = null;
