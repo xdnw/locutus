@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
@@ -45,12 +46,6 @@ import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
 import com.google.common.collect.BiMap;
 import com.google.gson.JsonArray;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -520,6 +515,8 @@ public class WebPrimitiveBinding extends BindingHelper {
 
     public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
     public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
+
+    public final Set<Project> PROJECTS_KEY = null;
     public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
     public final Set<DBNation> NATIONS_KEY = null;
     public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
@@ -626,6 +623,18 @@ public class WebPrimitiveBinding extends BindingHelper {
                     store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                         ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                         List<AllianceMetric> options = Arrays.asList(AllianceMetric.values());
+
+                        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("PROJECTS_KEY").getGenericType();
+                Key key = Key.of(type, HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                        List<Project> options = Arrays.asList(Projects.values);
 
                         return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
                     }));
@@ -886,6 +895,12 @@ public class WebPrimitiveBinding extends BindingHelper {
     @Binding(types= OnlineStatus.class)
     public String onlineStatus(ParameterData param) {
         return multipleSelect(param, Arrays.asList(OnlineStatus.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= Continent.class)
+    public String Continent(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(Continent.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
     }
 
     @HtmlInput

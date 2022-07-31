@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.db.entities.DBCity;
@@ -41,12 +42,6 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.trade.TradeDB;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
@@ -197,6 +192,17 @@ public class PWBindings extends BindingHelper {
             metrics.add(arg);
         }
         return metrics;
+    }
+
+    @Binding
+    public Set<Project> projects(String input) {
+        Set<Project> result = new HashSet<>();
+        for (String type : input.split(",")) {
+            Project project = Projects.get(type);
+            if (project == null) throw new IllegalArgumentException("Invalid project: `" + project + "`");
+            result.add(project);
+        }
+        return result;
     }
 
     @Binding(examples = "borg,AA:Cataclysm,#position>1")
@@ -562,6 +568,11 @@ public class PWBindings extends BindingHelper {
     @Binding
     public MilitaryUnit unit(String unit) {
         return emum(MilitaryUnit.class, unit);
+    }
+
+    @Binding
+    public Continent Continent(String input) {
+        return emum(Continent.class, input);
     }
 
     @Binding

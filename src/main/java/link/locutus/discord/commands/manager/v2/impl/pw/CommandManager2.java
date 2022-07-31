@@ -90,7 +90,7 @@ public class CommandManager2 {
         this.commands.registerCommands(new GrantCommands());
 
         this.commands.registerCommands(new TestCommands());
-//        this.commands.registerCommands(new UnsortedCommands());
+        this.commands.registerCommands(new UnsortedCommands());
 
         return this;
     }
