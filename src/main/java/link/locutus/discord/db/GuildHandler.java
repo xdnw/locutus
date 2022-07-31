@@ -38,7 +38,7 @@ import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.task.MailTask;
-import link.locutus.discord.util.task.balance.GetTaxesTask;
+import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.JsonObject;

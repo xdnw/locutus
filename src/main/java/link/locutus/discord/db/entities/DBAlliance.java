@@ -568,7 +568,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             if (apiKeys != null) {
                 for (String key : apiKeys) {
                     try {
-                        ApiKeyDetails stats = new PoliticsAndWarV3(key, null).getApiKeyStats();
+                        ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
                         Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
 //                    deleteInfo(Key.API_KEY);
                     } catch (Throwable e) {

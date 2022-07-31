@@ -188,7 +188,7 @@ public class DiscordDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        ApiKeyDetails keyStats = new PoliticsAndWarV3(key, null).getApiKeyStats();
+        ApiKeyDetails keyStats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
         if (keyStats != null && keyStats.getNation() != null && keyStats.getNation().getId() != null) {
             int natId = keyStats.getNation().getId();
             addApiKey(natId, keyStats.getKey());

@@ -51,7 +51,7 @@ public class CheckCities extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return super.checkPermission(server, user);
+        return Roles.MEMBER.has(user, server);
     }
 
     private Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();

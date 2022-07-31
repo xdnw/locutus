@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
@@ -16,7 +15,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.task.balance.GetTaxesTask;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -37,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.Collections.emptyMap;
@@ -576,40 +573,6 @@ public class Auth {
             }
         };
         return login ? PnwUtil.withLogin(task, auth) : task.call();
-    }
-
-    public void updateTaxes(Long latestDate) {
-        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(getAllianceId());
-        int latestId = 1;
-        if (latestDate == null) {
-            latestDate = 0L;
-            long now = System.currentTimeMillis();
-            if (!existing.isEmpty()) {
-
-                long date = existing.get(existing.size() - 1).date;
-                if (date < now) {
-                    latestDate = Math.max(latestDate, date);
-                }
-                latestId = existing.get(existing.size() - 1).index;
-            }
-        }
-        List<BankDB.TaxDeposit> taxes = new GetTaxesTask(this, latestDate).call();
-
-        synchronized (Locutus.imp().getBankDB()) {
-            long oldestFetched = Long.MAX_VALUE;
-            for (BankDB.TaxDeposit tax : taxes) {
-                tax.index = ++latestId;
-                oldestFetched = Math.min(oldestFetched, tax.date);
-            }
-            if (oldestFetched < latestDate - TimeUnit.DAYS.toMillis(7)) {
-                throw new IllegalArgumentException("Invalid fetch date: " + oldestFetched);
-            }
-
-            if (!taxes.isEmpty()) {
-                Locutus.imp().getBankDB().deleteTaxDeposits(getAllianceId(), oldestFetched);
-                Locutus.imp().getBankDB().addTaxDeposits(taxes);
-            }
-        }
     }
 
     ///////////////////////

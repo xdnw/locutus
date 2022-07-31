@@ -399,7 +399,7 @@ public class AdminCommands {
             String[] keys = db.getOrNull(GuildDB.Key.API_KEY);
             for (String key : keys) {
                 try {
-                    ApiKeyDetails stats = new PoliticsAndWarV3(key, null).getApiKeyStats();
+                    ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
                     Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
 
                     response.append(key + ": success" + "\n");
@@ -419,7 +419,7 @@ public class AdminCommands {
         Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
         for (String key : keys) {
             try {
-                ApiKeyDetails stats = new PoliticsAndWarV3(key, null).getApiKeyStats();
+                ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
                 if (stats != null && stats.getNation() != null && stats.getNation().getId() != null) {
                     success.put(key, stats);
                 } else {

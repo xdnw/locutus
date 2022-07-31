@@ -1,4 +1,4 @@
-package link.locutus.discord.util.task.balance;
+package link.locutus.discord.util.task.deprecated;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -11,6 +11,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.task.balance.GetPageTask;
 import org.jsoup.select.Elements;
 
 import java.util.ArrayList;
