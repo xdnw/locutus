@@ -197,10 +197,11 @@ public class Projects {
             .build();
 
     public static final Project GREEN_TECHNOLOGIES = new Builder("green_tech", 22)
-            .cost(ALUMINUM, 3000)
-            .cost(STEEL, 6500)
-            .cost(GASOLINE, 5000)
-            .cost(MONEY, 40000000)
+            .cost(MONEY, 100_000_000)
+            .cost(ALUMINUM, 10_000)
+            .cost(STEEL, 10_000)
+            .cost(FOOD, 250_000)
+            .cost(IRON, 10000)
             .requiredProjects(() -> new Project[]{URBAN_PLANNING, SPACE_PROGRAM})
             .build();
 

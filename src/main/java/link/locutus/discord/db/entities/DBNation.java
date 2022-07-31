@@ -993,6 +993,13 @@ public class DBNation implements NationOrAlliance {
                 dirty = true;
             }
         }
+        if (nation.getNukes() != null) {
+            this.setNukes(nation.getNukes()); // For tracking last update time, even if no change
+            if (copyOriginal != null && copyOriginal.getNukes() != (nation.getNukes())) {
+                if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.NUKE));
+                dirty = true;
+            }
+        }
         if (nation.getSpies() != null) {
             this.setSpies(nation.getSpies(), false); // For tracking last update time, even if no change
         }
@@ -3243,14 +3250,41 @@ public class DBNation implements NationOrAlliance {
     public double estimateScore() {
         return estimateScore(getInfra());
     }
+
+    public double printScore() {
+        double base = 10;
+        System.out.println("base " + base);
+        base += getNumProjects() * Projects.getScore();
+        System.out.println("projects " + base);
+        base += (cities - 1) * 75;
+        System.out.println("cities " + base);
+        base += getInfra() / 40d;
+        System.out.println("infra " + base);
+        for (MilitaryUnit unit : MilitaryUnit.values) {
+            int amt = getUnits(unit);
+            if (amt > 0) {
+                base += unit.getScore(amt);
+                System.out.println(" - unt " + amt + " | " + unit + " | " + unit.getScore(amt));
+            } else if (unit == MilitaryUnit.NUKE) {
+                System.out.println("Unit " + amt + " | " + getNukes());
+            }
+        }
+        System.out.println("unit " + base);
+        return base;
+    }
+
     public double estimateScore(double infra) {
         double base = 10;
+        base += getNumProjects() * Projects.getScore();
         base += (cities - 1) * 75;
         base += infra / 40d;
         for (MilitaryUnit unit : MilitaryUnit.values) {
-            base += unit.getScore(getUnits(unit));
+            int amt = getUnits(unit);
+            if (amt > 0) {
+                base += unit.getScore(amt);
+            } else if (unit == MilitaryUnit.NUKE) {
+            }
         }
-        base += getNumProjects() * Projects.getScore();
         return base;
     }
 
