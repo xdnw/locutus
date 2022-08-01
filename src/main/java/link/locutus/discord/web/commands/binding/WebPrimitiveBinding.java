@@ -361,7 +361,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             options.add(new AbstractMap.SimpleEntry<>(nation.getName(), nation.getNation_id() + ""));
         }
         for (DBAlliance alliance : alliances) {
-            options.add(new AbstractMap.SimpleEntry<>(alliance.getName(), "aa:" + alliance.getId()));
+            options.add(new AbstractMap.SimpleEntry<>("AA:" + alliance.getName(), "AA:" + alliance.getId()));
         }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getKey());

@@ -14,6 +14,8 @@ import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.domains.WarAttacks;
+import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
@@ -24,6 +26,9 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.*;
+import link.locutus.discord.db.BaseballDB;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -32,6 +37,13 @@ import link.locutus.discord.util.trade.TradeDB;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.*;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Member;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RequestCallback;
 import org.springframework.web.client.RestTemplate;
@@ -48,6 +60,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
     public static int NATIONS_PER_PAGE = 500;
@@ -1098,10 +1111,27 @@ public class PoliticsAndWarV3 {
 
         ApiKeyPool pool =  ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY, Settings.INSTANCE.ACCESS_KEY).build();
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
-        final int id = 189573;
+        final int meId = 189573;
         final int cityId = 375361;
-        DBNation nation = DBNation.byId(id);
+        DBNation meNation = DBNation.byId(meId);
         {
+
+            Locutus.imp().getNationDB().updateNationsV2(false, null);
+            long last = 0;
+            for (int i = 0; i < 10; i++) {
+                last = System.currentTimeMillis();
+                Locutus.imp().getNationDB().updateMostActiveNations(500, null);
+            }
+            long diff = System.currentTimeMillis() - last;
+            long now = System.currentTimeMillis();
+            System.out.println("Diff " + MathMan.format(diff) + "ms");
+            for (Integer id : Locutus.imp().getNationDB().getMostActiveNationIds(500)) {
+                DBNation nation = DBNation.byId(id);
+                if (nation == null) continue;
+
+                System.out.println(nation.active_m() + " | " + ((now - nation.lastActiveMs()) / 1000L) + "s");
+
+            }
 
             int amt = Locutus.imp().getDiscordDB().updateUserIdsSince(4880);
             System.out.println("Update " + amt + " nation discord ids");
@@ -1120,16 +1150,16 @@ public class PoliticsAndWarV3 {
             TradeDB tradeDb = Locutus.imp().getTradeManager();
 
 
-
-            natDb.markCityDirty(id, cityId, Long.MAX_VALUE);
-            natDb.updateDirtyCities(null);
-
-            {
-                JavaCity city = nation.getCityMap(false).get(cityId);
-                System.out.println("Nuke " + city.getNukeDate());
-                System.out.println("Pollution " + city.getPollution(nation::hasProject));
-                System.out.println("Age " + city.getAge());
-            }
+//
+//            natDb.markCityDirty(id, cityId, Long.MAX_VALUE);
+//            natDb.updateDirtyCities(null);
+//
+//            {
+//                JavaCity city = nation.getCityMap(false).get(cityId);
+//                System.out.println("Nuke " + city.getNukeDate());
+//                System.out.println("Pollution " + city.getPollution(nation::hasProject));
+//                System.out.println("Age " + city.getAge());
+//            }
 
 //            double[] revenue = nation.getRevenue();
 //            System.out.println(PnwUtil.resourcesToFancyString(revenue));

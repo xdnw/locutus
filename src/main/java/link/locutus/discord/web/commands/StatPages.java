@@ -20,6 +20,7 @@ import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -83,12 +84,16 @@ public class StatPages {
     }
 
     @Command()
-    public Object metricByGroup(Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('t') boolean total) {
-        coalition.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+    public Object metricByGroup(Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('t') boolean total) {
+        Set<DBNation> coalitionNations = new HashSet<>();
+        for (NationOrAlliance natOrAA : coalition) {
+            coalitionNations.addAll(natOrAA.getDBNations());
+        }
+        coalitionNations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         NationAttributeDouble[] metricsArr = metrics.toArray(new NationAttributeDouble[0]);
         String[] labels = metrics.stream().map(NationAttribute::getName).toArray(String[]::new);
 
-        NationList coalitionList = new SimpleNationList(coalition);
+        NationList coalitionList = new SimpleNationList(coalitionNations);
 
         Function<DBNation, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
         Map<Integer, NationList> byTier = coalitionList.groupBy(groupByInt);

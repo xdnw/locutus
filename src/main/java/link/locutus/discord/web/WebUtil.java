@@ -10,6 +10,7 @@ import com.google.gson.JsonObject;
 import org.jsoup.Jsoup;
 
 import java.awt.Color;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.UUID;
@@ -25,7 +26,14 @@ public class WebUtil {
         String def = param.getDefaultValueString();
         boolean required = !param.isOptional() && !param.isFlag();
         Type type = param.getType();
-        if (multiple == null) multiple = type instanceof Class && Collection.class.isAssignableFrom((Class) type);
+        if (multiple == null) {
+            multiple = type instanceof Class && Collection.class.isAssignableFrom((Class) type);
+            if (type instanceof ParameterizedType) {
+                Type rawType = ((ParameterizedType) type).getRawType();
+                multiple = rawType instanceof Class && Collection.class.isAssignableFrom((Class) rawType);
+            }
+        }
+
         return generateSearchableDropdown(name, desc, def, required, objects, consumeObjectNamesValueSubtext, multiple);
     }
 

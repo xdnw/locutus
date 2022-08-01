@@ -66,6 +66,7 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import views.main;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -287,6 +288,9 @@ public class DBNation implements NationOrAlliance {
 //        }
 
         output.append("Registration successful. Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "?` for a list of commands.\n");
+        if (guild != null && guild.getIdLong() == 216800987002699787L) {
+            output.append("note: for 60 days of VIP, please use `/validate` instead\n");
+        }
         if (guild != null) {
             Role role = Roles.REGISTERED.toRole(guild);
             if (role != null) {
@@ -1190,6 +1194,7 @@ public class DBNation implements NationOrAlliance {
         return soldiers * (munitions ? 1.75 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
     }
 
+    @Command
     public double getGroundStrength(boolean munitions, boolean enemyAc, double includeRebuy) {
         int soldiers = this.soldiers;
         int tanks = this.tanks;
@@ -2457,6 +2462,7 @@ public class DBNation implements NationOrAlliance {
         return loot == null ? 0 : PnwUtil.convertedTotal(loot.getTotal_rss());
     }
 
+    @Command
     public double lootTotal() {
         double[] knownResources = new double[ResourceType.values.length];
         double[] buffer = new double[knownResources.length];
@@ -4026,6 +4032,12 @@ public class DBNation implements NationOrAlliance {
         return total;
     }
 
+    @Command
+    public int getFreeOffensiveSlots() {
+        return getMaxOff() - getOff();
+    }
+
+    @Command
     public int getMaxOff() {
         return hasProject(Projects.PIRATE_ECONOMY) ? 6 : 5;
     }

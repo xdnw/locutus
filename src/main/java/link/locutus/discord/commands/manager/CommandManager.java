@@ -225,6 +225,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -243,7 +244,7 @@ public class CommandManager {
         this.prefix1 = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.charAt(0);
         this.prefix2 = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.charAt(0);
         this.commandMap = new LinkedHashMap<>();
-        this.executor =new ScheduledThreadPoolExecutor(64);
+            this.executor = new ScheduledThreadPoolExecutor(256);
 
         modernized = new CommandManager2().registerDefaults();
     }
@@ -825,9 +826,9 @@ public class CommandManager {
         this.register(new LeftAA());
         this.register(new FindProducer());
         this.register(new KeyStore());
-        //
         this.register(new AddBalance());
         this.register(new Deposits());
+        //
         this.register(new GrantCmd(bankWith));
         this.register(new HelpCommand(this));
         WarCostAB warCost = new WarCostAB();

@@ -1392,19 +1392,23 @@ public class WarCommands {
             "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String Spyops(@Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch('d') boolean directMesssage, @Switch('k') boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
+    public String Spyops(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch('d') boolean directMesssage, @Switch('k') boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
         CompletableFuture<Message> msg = channel.sendMessage("Please wait... ").submit();
         targets.removeIf(f -> f.getActive_m() > 2880);
         targets.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         try {
             String title = "Recommended ops";
-            String body = runSpyOps(me, db, targets, operations, requiredSuccess);
+            String body = runSpyOps(me, db, targets, operations, requiredSuccess, prioritizeKills);
 
             DiscordUtil.createEmbedCommand(channel, title, body.toString());
 
             if (true) {
                 String response = ("Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <enemy>` first to ensure the results are up to date");
-                RateLimitUtil.queue(channel.sendMessage(response.toString()));
+                if (directMesssage) {
+                    RateLimitUtil.queue(author.openPrivateChannel().complete().sendMessage(response.toString()));
+                } else {
+                    RateLimitUtil.queue(channel.sendMessage(response.toString()));
+                }
             }
             return null;
         } finally {
@@ -1413,7 +1417,7 @@ public class WarCommands {
         }
     }
 
-    public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<SpyCount.Operation> operations, int requiredSuccess) throws IOException {
+    public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<SpyCount.Operation> operations, int requiredSuccess, boolean prioritizeKills) throws IOException {
         double minSuccess = requiredSuccess > 0 ? requiredSuccess : 50;
 
         if (me == null) {
@@ -1484,7 +1488,7 @@ public class WarCommands {
             }
             SpyCount.Operation[] opTypes = opTypesList.toArray(new SpyCount.Operation[0]);
 
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, nation, opTypes);
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!prioritizeKills, mySpies, nation, opTypes);
             if (best != null) {
                 double netDamageCost = best.getValue().getValue();
                 if (nation.hasProject(Projects.INTELLIGENCE_AGENCY)) {
@@ -1952,7 +1956,6 @@ public class WarCommands {
     @Command(desc = "Generate a sheet of alliance/nation/city MMR\n" +
             "Add `-f` to force an update\n" +
             "Add `-c` to list it by cities")
-    @WhitelistPermission
     public String MMRSheet(@Me GuildDB db, Set<DBNation> nations, @Switch('s') SpreadSheet sheet,
                            @Switch('f') boolean forceUpdate, @Switch('c') boolean showCities) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.MMR_SHEET);
@@ -2667,7 +2670,7 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command(desc="Check that all nations are in range of their blitz targets and that they have no more than the provided number of offensive wars")
+    @Command(desc="Check that all nations are in range of their blitz targets, are still in the alliance and have no more than the provided number of offensive wars")
     public String ValidateBlitzSheet(SpreadSheet sheet, @Default("3") int maxWars, @Default("*") Set<DBNation> nationsFilter, @Switch('h') Integer headerRow) {
         Function<DBNation, Boolean> isValidTarget = f -> nationsFilter.contains(f);
 

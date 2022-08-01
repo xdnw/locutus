@@ -23,8 +23,13 @@ import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.Event;
+import link.locutus.discord.db.entities.AllianceMetric;
+import link.locutus.discord.db.entities.CityInfraLand;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -216,7 +221,36 @@ public class AdminCommands {
         return output.toString().trim();
     }
 
-
+//    @Command
+//    @RolePermission(value = Roles.ADMIN, root = true)
+//    public String whitelistAuto(double requiredBank, double requiredDeposit, long timeFrame) {
+//        GuildDB rootDb = Locutus.imp().getRootDb();
+//        OffshoreInstance offshore = rootDb.getOffshore();
+//
+//        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
+//
+//        Set<Integer> currentWhitelist = rootDb.getCoalition(Coalition.WHITELISTED_AUTO);
+//        Set<Integer> offshoring = rootDb.getCoalition(Coalition.OFFSHORING);
+//
+//        Map<Integer, Double> totalDepositByAA = new HashMap<>();
+//        Map<Integer, Double> totalTransferByAA = new HashMap<>();
+//
+//        for (int allianceId : offshoring) {
+//            GuildDB other = Locutus.imp().getGuildDBByAA(allianceId);
+//            if (other == null || other.getOffshoreDB() != rootDb) continue;
+//
+//            double[] deposits = offshore.getDeposits(other, false);
+//            double total = PnwUtil.convertedTotal(deposits);
+//
+//            List<Transaction2> tx = offshore.getTransactionsAA(allianceId, false);
+//            tx.removeIf(f -> f.tx_datetime < cutoff);
+//            tx.removeIf(f -> f.sender_id != allianceId);
+//            double txWeek = tx.stream().mapToDouble(f -> f.convertedTotal()).sum();
+//
+//
+//
+//        }
+//    }
 
     @Command
     @RolePermission(Roles.ADMIN)
