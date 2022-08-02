@@ -1742,7 +1742,7 @@ public class WarDB extends DBMainV2 {
             long diff = System.currentTimeMillis() - start;
 
             if (diff > 200) {
-                AlertUtil.error("Took too long to update blockades (" + diff + "ms)", new Exception());
+                System.err.println("Took too long to update blockades (" + diff + "ms)");
             }
 
             for (DBAttack attack : dbAttacks) {
