@@ -780,7 +780,7 @@ public class WarDB extends DBMainV2 {
                 }
             }
             if (notDeleted > 0) {
-                AlertUtil.error("Unable to fetch " + notDeleted + "/" + numActive + " active wars:", new RuntimeException("Assuming these wars correspond to deleted nations:\n" + StringMan.getString(activeWarsToFetch)));
+                AlertUtil.error("Unable to fetch " + notDeleted + "/" + numActive + " active wars:", new RuntimeException("Ignore if these wars correspond to deleted nations:\n" + StringMan.getString(activeWarsToFetch)));
             }
         }
 

@@ -2860,7 +2860,7 @@ public class DBNation implements NationOrAlliance {
                         .append(String.format("%5s", (int) getScore())).append(" ns").append(" | ")
                         .append(String.format("%6s", time)).append(" | ")
                         .append(String.format("%2s", getCities())).append(" \uD83C\uDFD9").append(" | ")
-                        .append(String.format("%5s", getAvg_infra())).append(" \uD83C\uDFD7").append(" | ");
+                        .append(String.format("%5s", (int) getAvg_infra())).append(" \uD83C\uDFD7").append(" | ");
             }
             if (military) {
                 response
