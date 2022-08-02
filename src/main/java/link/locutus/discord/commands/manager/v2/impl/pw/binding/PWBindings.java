@@ -642,7 +642,18 @@ public class PWBindings extends BindingHelper {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         NationAttributeDouble metric = placeholders.getMetricDouble(stack.getStore(), input);
         if (metric == null) {
-            String optionsStr = StringMan.getString(placeholders.getMetricsDouble(stack.getStore()).stream().map(f -> f.getName()).collect(Collectors.toList()));
+            String optionsStr = StringMan.getString(placeholders.getMetricsDouble(stack.getStore()).stream().map(NationAttribute::getName).collect(Collectors.toList()));
+            throw new IllegalArgumentException("Invalid metric: `" + input + "`. Options: " + optionsStr);
+        }
+        return metric;
+    }
+
+    @Binding
+    public NationAttribute nationMetric(ArgumentStack stack, String input) {
+        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+        NationAttribute metric = placeholders.getMetric(stack.getStore(), input, false);
+        if (metric == null) {
+            String optionsStr = StringMan.getString(placeholders.getMetrics(stack.getStore()).stream().map(NationAttribute::getName).collect(Collectors.toList()));
             throw new IllegalArgumentException("Invalid metric: `" + input + "`. Options: " + optionsStr);
         }
         return metric;

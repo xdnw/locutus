@@ -43,26 +43,34 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return result;
     }
 
-    public NationAttributeDouble getMetricDouble(ValueStore store, String id) {
+    public NationAttributeDouble getMetricDouble(ValueStore<?> store, String id) {
         return getMetricDouble(store, id, false);
-
     }
 
-    public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        ParametricCallable cmd = get(getCmd(id));
-        if (cmd == null) return null;
+    public NationAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
+        Map.Entry<Type, Function<DBNation, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        if (typeFunction == null) return null;
+        return new NationAttribute<>(id, "", typeFunction.getKey(), typeFunction.getValue());
+    }
+
+    public Map.Entry<Type, Function<DBNation, Object>> getTypeFunction(ValueStore<?> store, String id, boolean ignorePerms) {
         Map.Entry<Type, Function<DBNation, Object>> typeFunction;
         try {
             typeFunction = getPlaceholderFunction(store, id);
         } catch (CommandUsageException ignore) {
             return null;
-        } catch (Throwable ignore2) {
+        } catch (Exception ignore2) {
             if (!ignorePerms) throw ignore2;
             return null;
         }
-        if (typeFunction == null) {
-            return null;
-        }
+        return typeFunction;
+    }
+
+    public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
+        ParametricCallable cmd = get(getCmd(id));
+        if (cmd == null) return null;
+        Map.Entry<Type, Function<DBNation, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        if (typeFunction == null) return null;
 
         Function<DBNation, Object> genericFunc = typeFunction.getValue();
         Function<DBNation, Double> func;

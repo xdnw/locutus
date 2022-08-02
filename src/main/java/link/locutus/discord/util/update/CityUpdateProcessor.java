@@ -89,7 +89,7 @@ public class CityUpdateProcessor {
             Map<Integer, int[]> afterByCity = new HashMap<>();
             for (MMRChange change : entry.getValue()) {
                 int[] mmrFrom = beforeByCity.computeIfAbsent(change.cityId, f -> change.mmrFrom);
-                int[] mmrTo = afterByCity.computeIfAbsent(change.nationId, f -> change.mmrTo);
+                int[] mmrTo = afterByCity.computeIfAbsent(change.cityId, f -> change.mmrTo);
                 for (int i = 0; i < change.mmrTo.length; i++) mmrFrom[i] = Math.min(mmrFrom[i], change.mmrFrom[i]);
                 for (int i = 0; i < change.mmrTo.length; i++) mmrTo[i] = Math.min(mmrTo[i], change.mmrTo[i]);
                 arrLen = change.mmrTo.length;
@@ -98,7 +98,7 @@ public class CityUpdateProcessor {
             double[] afterAvg = new double[arrLen];
             for (int cityId : afterByCity.keySet()) {
                 int[] mmrFrom = beforeByCity.get(cityId);
-                int[] mmrTo = beforeByCity.get(cityId);
+                int[] mmrTo = afterByCity.get(cityId);
                 for (int i = 0; i < mmrTo.length; i++) {
                     beforeAvg[i] += mmrFrom[i];
                     afterAvg[i] += mmrTo[i];
@@ -153,8 +153,8 @@ public class CityUpdateProcessor {
 
         public MMRChange(long time, int[] mmrFrom, int[] mmrTo, int cityId, int nationId) {
             this.time = time;
-            this.mmrTo = mmrTo;
             this.mmrFrom = mmrFrom;
+            this.mmrTo = mmrTo;
             this.cityId = cityId;
             this.nationId = nationId;
         }
