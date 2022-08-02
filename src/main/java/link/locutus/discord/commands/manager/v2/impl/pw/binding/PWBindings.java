@@ -226,6 +226,15 @@ public class PWBindings extends BindingHelper {
         return metrics;
     }
 
+    @Binding(examples = "warpolicy,color")
+    public Set<NationAttribute> nationMetrics(ArgumentStack stack, String input) {
+        Set<NationAttribute> metrics = new LinkedHashSet<>();
+        for (String arg : StringMan.split(input, ',')) {
+            metrics.add(nationMetric(stack, arg));
+        }
+        return metrics;
+    }
+
     @Binding(examples = "borg,AA:Cataclysm")
     public Set<NationOrAlliance> nationOrAlliance(@Me Guild guild, String input) {
         Set<NationOrAlliance> result = new LinkedHashSet<>();
