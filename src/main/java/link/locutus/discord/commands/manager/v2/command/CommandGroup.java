@@ -137,7 +137,7 @@ public class CommandGroup implements ICommandGroup {
     public String toHtml(ValueStore store, PermissionHandler permHandler, String endpoint) {
         Map<String, CommandCallable> allowed = getAllowedCommands(store, permHandler);
         if (endpoint == null) endpoint = "";
-        return views.command.commandgroup.template(store, this, allowed, endpoint).render().toString();
+        return rocker.command.commandgroup.template(store, this, allowed, endpoint).render().toString();
     }
 
     public CommandCallable get(String arg0) {

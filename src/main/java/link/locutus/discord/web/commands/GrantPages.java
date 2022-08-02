@@ -71,7 +71,7 @@ public class GrantPages {
         Set<Grant> grants = fetchGrants(db, user, nation, Grant.Type.PROJECT, failedRequirements, overrideRequirements, grantTokens);
         Set<Project> recommendedProjects = db.getHandler().getRecommendedProjects(nation);
 
-        return views.grant.projects.template(recommendedProjects, grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
+        return rocker.grant.projects.template(recommendedProjects, grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
@@ -87,7 +87,7 @@ public class GrantPages {
 
         try {
         Set<Grant> grants = fetchGrants(db, user, nation, Grant.Type.CITY, failedRequirements, overrideRequirements, grantTokens);
-        return views.grant.cities.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
+        return rocker.grant.cities.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
@@ -103,7 +103,7 @@ public class GrantPages {
 
         try {
             Set<Grant> grants = fetchGrants(db, user, nation, Grant.Type.INFRA, failedRequirements, overrideRequirements, grantTokens);
-            return views.grant.infras.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
+            return rocker.grant.infras.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
@@ -119,7 +119,7 @@ public class GrantPages {
 
         try {
             Set<Grant> grants = fetchGrants(db, user, nation, Grant.Type.LAND, failedRequirements, overrideRequirements, grantTokens);
-            return views.grant.lands.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
+            return rocker.grant.lands.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }

@@ -50,7 +50,7 @@ public class StatPages {
         Set<DBAlliance> alliances = spheres.getAlliances();
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricMap = AllianceMetric.getMetrics(metrics, startTurn, endTurn, alliances);
 
-        return views.guild.milcom.globalmilitarization.template(spheres, alliances, metricMap, metrics, startTurn, endTurn).render().toString();
+        return rocker.guild.milcom.globalmilitarization.template(spheres, alliances, metricMap, metrics, startTurn, endTurn).render().toString();
     }
 
     @Command()
@@ -66,7 +66,7 @@ public class StatPages {
 
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
         JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson();
-        return views.data.timechartdatasrcpage.template(title, json, true).render().toString();
+        return rocker.data.timechartdatasrcpage.template(title, json, true).render().toString();
     }
 
     @Command()
@@ -80,7 +80,7 @@ public class StatPages {
         SphereGenerator spheres = new SphereGenerator(topX);
         Set<DBAlliance> alliances = spheres.getAlliances();
 
-        return views.guild.milcom.globaltierstats.template(spheres, alliances, metrics, groupBy, total, removeVM, removeActiveM, removeApps).render().toString();
+        return rocker.guild.milcom.globaltierstats.template(spheres, alliances, metrics, groupBy, total, removeVM, removeActiveM, removeApps).render().toString();
     }
 
     @Command()
@@ -137,7 +137,7 @@ public class StatPages {
 
         JsonObject json = table.toHtmlJson();
 
-        return views.data.barchartsingle.template(title, json, false).render().toString();
+        return rocker.data.barchartsingle.template(title, json, false).render().toString();
     }
 
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
@@ -184,9 +184,9 @@ public class StatPages {
         title = table.getName();
 
         if (coalitions.size() <= 2 || barGraph) {
-            return views.data.barchartsingle.template(title, data, false).render().toString();
+            return rocker.data.barchartsingle.template(title, data, false).render().toString();
         } else {
-            return views.data.timechartdatasrcpage.template(title, data, false).render().toString();
+            return rocker.data.timechartdatasrcpage.template(title, data, false).render().toString();
         }
     }
 
@@ -237,6 +237,6 @@ public class StatPages {
         TimeNumericTable table = AllianceMetric.generateTable(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
         JsonObject json = table.toHtmlJson();
         title = table.getName();
-        return views.data.timechartdatasrcpage.template(title, json, true).render().toString();
+        return rocker.data.timechartdatasrcpage.template(title, json, true).render().toString();
     }
 }

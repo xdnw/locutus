@@ -28,7 +28,7 @@ public class PageBuilder {
     }
 
     public PageBuilder spoiler(String title, String content) {
-        output.append(views.data.spoiler.template(title + " \u25BC", content, "S" + UUID.randomUUID().getMostSignificantBits()).render().toString()).append("\n");
+        output.append(rocker.data.spoiler.template(title + " \u25BC", content, "S" + UUID.randomUUID().getMostSignificantBits()).render().toString()).append("\n");
         return this;
     }
 
@@ -38,35 +38,35 @@ public class PageBuilder {
     }
 
     public PageBuilder danger(String content) {
-        output.append(views.data.alert.template("danger", content).render().toString());
+        output.append(rocker.data.alert.template("danger", content).render().toString());
         return this;
     }
 
     public PageBuilder warning(String content) {
-        output.append(views.data.alert.template("warning", content).render().toString());
+        output.append(rocker.data.alert.template("warning", content).render().toString());
         return this;
     }
 
     public PageBuilder info(String content) {
-        output.append(views.data.alert.template("info", content).render().toString());
+        output.append(rocker.data.alert.template("info", content).render().toString());
         return this;
     }
 
     public PageBuilder alertPrimary(String content) {
-        output.append(views.data.alert.template("primary", content).render().toString());
+        output.append(rocker.data.alert.template("primary", content).render().toString());
         return this;
     }
 
     public PageBuilder alertSecondary(String content) {
-        output.append(views.data.alert.template("secondary", content).render().toString());
+        output.append(rocker.data.alert.template("secondary", content).render().toString());
         return this;
     }
 
     public String buildWithContainer() {
-        return views.main_raw.template(title, navbar, "<div class=\"bg-white container-fluid mt-3 rounded shadow py-1\">" + output.toString() + "</div>").render().toString();
+        return rocker.main_raw.template(title, navbar, "<div class=\"bg-white container-fluid mt-3 rounded shadow py-1\">" + output.toString() + "</div>").render().toString();
     }
 
     public String build() {
-        return views.main_raw.template(title, navbar, output.toString()).render().toString();
+        return rocker.main_raw.template(title, navbar, output.toString()).render().toString();
     }
 }

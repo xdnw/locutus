@@ -44,7 +44,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
-import views.grant.nation;
+import rocker.grant.nation;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -59,7 +59,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

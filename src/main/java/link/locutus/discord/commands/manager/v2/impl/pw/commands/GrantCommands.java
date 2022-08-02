@@ -39,47 +39,47 @@ import java.util.stream.Collectors;
 
 public class GrantCommands {
 
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String unit() {
-
-    }
-
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String resources() {
-
-    }
-
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String resources() {
-
-    }
-
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String city() {
-
-    }
-
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String project() {
-
-    }
-
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String infra() {
-
-    }
-
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String land(NationList nations, double landUpTo, @Default CityFilter cities, @Switch('m') boolean onlyMissingFunds, @Switch('e') int expireAfterDays, @Switch('f') boolean bypassChecks) {
-
-    }
+//    @Command
+//    @RolePermission(Roles.MEMBER)
+//    public String unit() {
+//
+//    }
+//
+//    @Command
+//    @RolePermission(Roles.MEMBER)
+//    public String resources() {
+//
+//    }
+//
+//    @Command
+//    @RolePermission(Roles.MEMBER)
+//    public String resources() {
+//
+//    }
+//
+//    @Command
+//    @RolePermission(Roles.MEMBER)
+//    public String city() {
+//
+//    }
+//
+//    @Command
+//    @RolePermission(Roles.MEMBER)
+//    public String project() {
+//
+//    }
+//
+//    @Command
+//    @RolePermission(Roles.MEMBER)
+//    public String infra() {
+//
+//    }
+//
+//    @Command
+//    @RolePermission(Roles.MEMBER)
+//    public String land(NationList nations, double landUpTo, @Default CityFilter cities, @Switch('m') boolean onlyMissingFunds, @Switch('e') int expireAfterDays, @Switch('f') boolean bypassChecks) {
+//
+//    }
 
     @WhitelistPermission
     @Command

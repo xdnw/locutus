@@ -35,7 +35,7 @@ public class BankPages {
 //
 //
 //
-//        return views.basictable.template("Deposits", header, rows).render().toString();
+//        return rocker.basictable.template("Deposits", header, rows).render().toString();
 //    }
 
     @Command
@@ -124,12 +124,12 @@ public class BankPages {
             rows.add(row);
         }
 
-        return views.basictable.template("Deposits", header, rows).render().toString();
+        return rocker.basictable.template("Deposits", header, rows).render().toString();
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
     public Object bankIndex(@Me GuildDB db, @Me DBNation me, @Me User author) {
-        return views.bank.bankindex.template(db, db.getGuild(), author).render().toString();
+        return rocker.bank.bankindex.template(db, db.getGuild(), author).render().toString();
     }
 }

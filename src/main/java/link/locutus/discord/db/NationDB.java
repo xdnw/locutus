@@ -44,8 +44,8 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import views.grant.city;
-import views.grant.nation;
+import rocker.grant.city;
+import rocker.grant.nation;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -3454,5 +3454,9 @@ public class NationDB extends DBMainV2 {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public int getDirtyNations() {
+        return dirtyNations.size();
     }
 }

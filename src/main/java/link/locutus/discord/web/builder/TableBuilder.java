@@ -76,7 +76,7 @@ public class TableBuilder<T> {
     }
 
     public String buildHtml(String title, List<T> entries) {
-        return views.data.table_data.template(title, buildJsonEncodedString(entries)).render().toString();
+        return rocker.data.table_data.template(title, buildJsonEncodedString(entries)).render().toString();
     }
 
     public TableBuilder<T> clone() {

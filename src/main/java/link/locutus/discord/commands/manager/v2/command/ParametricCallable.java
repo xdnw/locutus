@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -363,7 +362,7 @@ public class ParametricCallable implements ICommand {
 
         response.append("</form>");
 
-        return views.command.parametriccallable.template(store, this, response.toString()).render().toString();
+        return rocker.command.parametriccallable.template(store, this, response.toString()).render().toString();
     }
 
     public String stringifyArgumentMap(Map<String, String> combined, String delim) {

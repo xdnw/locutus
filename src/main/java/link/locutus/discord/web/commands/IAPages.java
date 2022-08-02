@@ -33,7 +33,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -149,7 +148,7 @@ public class IAPages {
         long diff = System.currentTimeMillis() - start;
         System.out.println("Diff " + diff + "ms");
 
-        return views.guild.ia.iachannels.template(db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels).render().toString();
+        return rocker.guild.ia.iachannels.template(db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels).render().toString();
     }
 
     @Command()
@@ -187,7 +186,7 @@ public class IAPages {
         }
 
 
-        return views.guild.ia.audits.template(db, alliance, allianceAuditResultsSorted).render().toString();
+        return rocker.guild.ia.audits.template(db, alliance, allianceAuditResultsSorted).render().toString();
     }
 
     @Command()
@@ -336,7 +335,7 @@ public class IAPages {
             }
         }
 
-        return views.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+        return rocker.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
                 mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
                 checkup).render().toString();
     }

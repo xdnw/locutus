@@ -169,16 +169,21 @@ public enum Roles {
         return toRole(event.isFromGuild() ? event.getGuild() : Locutus.imp().getServer());
     }
 
+    @Deprecated
     public Role toRole(Guild guild) {
-        if (guild == null) return null;
-        Long alias = Locutus.imp().getGuildDB(guild).getRoleAlias(this);
+        return toRole(Locutus.imp().getGuildDB(guild));
+    }
+
+    public Role toRole(GuildDB db) {
+        if (db == null) return null;
+        Long alias = db.getRoleAlias(this);
         if (alias == null) {
-            List<Role> roles = guild.getRolesByName(this.name(), true);
+            List<Role> roles = db.getGuild().getRolesByName(this.name(), true);
             if (!roles.isEmpty()) {
                 return roles.get(0);
             }
         } else {
-            return guild.getRoleById(alias);
+            return db.getGuild().getRoleById(alias);
         }
         return null;
     }

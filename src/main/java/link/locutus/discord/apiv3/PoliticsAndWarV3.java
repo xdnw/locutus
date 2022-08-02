@@ -1,60 +1,43 @@
 package link.locutus.discord.apiv3;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.JsonObject;
-import io.opencensus.trace.Tracestate;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.domains.WarAttacks;
-import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.*;
-import link.locutus.discord.db.BaseballDB;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
 import link.locutus.discord.util.trade.TradeDB;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.http.*;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
-import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Member;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RequestCallback;
 import org.springframework.web.client.RestTemplate;
-import views.grant.nation;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -1100,6 +1083,184 @@ public class PoliticsAndWarV3 {
         return taxBracketMap;
     }
 
+    public List<Nation> fetchNationActive(List<Integer> ids) {
+        return fetchNations(f -> {
+            f.setId(ids);
+            f.setVmode(false);
+        }, new Consumer<NationResponseProjection>() {
+            @Override
+            public void accept(NationResponseProjection r) {
+                r.id();
+                r.last_active();
+            }
+        });
+    }
+
+    private void pollForSpyops() {
+        long outputChannel = 672225858223734804L;
+
+        Set<Integer> whitelisted = new HashSet<>(Arrays.asList(
+                7452,8173,8624,9000,4124
+        ));
+
+        Map<DBNation, Double> inRangeNations = new HashMap<>();
+        for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < 2880 && f.getAlliancePosition() != null && f.isInSpyRange(DBNation.byId(Settings.INSTANCE.NATION_ID)))) {
+            double value = 10000 - nation.active_m();
+            if (!whitelisted.contains(nation.getAlliance_id())) {
+                value /= 2;
+                if (nation.daysSinceLastOffensive() > 200) {
+                    value /= 2;
+                }
+                if (!nation.hasProject(Projects.INTELLIGENCE_AGENCY)) {
+                    value /= 4;
+                }
+            }
+            if (nation.getUserId() == null) {
+                value /= 1.2;
+            }
+            if (nation.isBlockaded()) {
+                value /= 1.2;
+            }
+            if (nation.isEspionageFull()) {
+                value /= 1.5;
+            }
+            inRangeNations.put(nation, value);
+        }
+        inRangeNations.put(DBNation.byId(129454), Integer.MAX_VALUE * 1d);
+        inRangeNations.put(DBNation.byId(270887), Integer.MAX_VALUE * 1d);
+
+//        List<Integer> pollActivityOf = alliance.getNations(true, 10000, true).stream().map(DBNation::getNation_id).collect(Collectors.toList());
+
+        List<Integer> pollSpiesOf = List.of(189573);
+
+        Map<Integer, Nation> existingMap = new HashMap<>();
+        while (true) {
+            System.out.println("Polling for spy ops");
+
+            long start = System.currentTimeMillis();
+            List<Nation> defenders = fetchNations(f -> f.setId(pollSpiesOf), new Consumer<NationResponseProjection>() {
+                @Override
+                public void accept(NationResponseProjection r) {
+                    r.id();
+                    r.spy_casualties();
+                    r.espionage_available();
+                }
+            });
+
+            for (Nation nation : defenders) {
+                Nation existing = existingMap.get(nation.getId());
+                if (existing != null) {
+                    if (!Objects.equals(existing.getSpy_casualties(), nation.getSpy_casualties()) || existing.getEspionage_available() != nation.getEspionage_available()) {
+                        {
+                            List<Map.Entry<DBNation, Double>> pollActivityOf = new ArrayList<>(inRangeNations.entrySet());
+                            Collections.sort(pollActivityOf, (o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
+                            if (pollActivityOf.size() > 500) pollActivityOf = pollActivityOf.subList(0, 500);
+
+                            List<Integer> pollActivityOfIds = pollActivityOf.stream().map(f -> f.getKey().getNation_id()).collect(Collectors.toList());
+
+                            List<Nation> results = new ArrayList<>(fetchNationActive(pollActivityOfIds));
+                            Collections.sort(results, (o1, o2) -> Long.compare(o2.getLast_active().toEpochMilli(), o1.getLast_active().toEpochMilli()));
+//                        results.removeIf(f -> DBNation.byId(f.getId()) == null);
+//                        results.removeIf(f -> f.getLast_active().toEpochMilli() < start - 1000);
+
+                            DBNation defender = DBNation.byId(existing.getId());
+
+                            String title = "Defensive Spyop(?): " + defender.getNation() + " | " + defender.getAllianceName();
+                            StringBuilder response = new StringBuilder();
+                            response.append("Defender: " + defender.getNationUrlMarkup(true) + " | " + defender.getAllianceUrlMarkup(true) + "\n");
+
+                            if (results.isEmpty()) {
+                                response.append("Attacker: No results found");
+                            } else {
+                                response.append("Attackers:\n");
+                                long now = System.currentTimeMillis();
+                                for (Nation attActive : results) {
+                                    long lastActive = attActive.getLast_active().toEpochMilli();
+                                    DBNation attacker = DBNation.byId(attActive.getId());
+
+                                    long diff = now - lastActive;
+
+                                    response.append(" - " + attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceName() + " | " + MathMan.format(diff) + "ms");
+                                    if (attacker.hasProject(Projects.INTELLIGENCE_AGENCY)) {
+                                        response.append(" | IA=true");
+                                    }
+                                    if (attacker.hasProject(Projects.SPY_SATELLITE)) {
+                                        response.append(" | SAT=true");
+                                    }
+                                    response.append("\n");
+                                }
+                            }
+
+                            System.out.println("\n== " + title + "\n" + response + "\n");
+
+                            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(outputChannel);
+                            if (channel != null) {
+                                channel.sendMessageEmbeds(new EmbedBuilder().setTitle(title).setDescription(response.toString()).build()).queue();
+                            }
+                        }
+                        {
+                            List<Map.Entry<DBNation, Double>> pollActivityOf = new ArrayList<>(inRangeNations.entrySet());
+                            Collections.sort(pollActivityOf, (o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
+                            if (pollActivityOf.size() > 500) pollActivityOf = pollActivityOf.subList(0, 500);
+
+                            List<Integer> pollActivityOfIds = pollActivityOf.stream().map(f -> f.getKey().getNation_id()).collect(Collectors.toList());
+
+                            List<Nation> results = new ArrayList<>(fetchNationActive(pollActivityOfIds));
+                            Collections.sort(results, (o1, o2) -> Long.compare(o2.getLast_active().toEpochMilli(), o1.getLast_active().toEpochMilli()));
+                        results.removeIf(f -> DBNation.byId(f.getId()) == null);
+                        results.removeIf(f -> f.getLast_active().toEpochMilli() < start - 10000);
+
+                            DBNation defender = DBNation.byId(existing.getId());
+
+                            String title = "Defensive Spyop(?): " + defender.getNation() + " | " + defender.getAllianceName();
+                            StringBuilder response = new StringBuilder();
+                            response.append("Defender: " + defender.getNationUrlMarkup(true) + " | " + defender.getAllianceUrlMarkup(true) + "\n");
+
+                            if (results.isEmpty()) {
+                                response.append("Attacker: No results found");
+                            } else {
+                                response.append("Attackers:\n");
+                                long now = System.currentTimeMillis();
+                                for (Nation attActive : results) {
+                                    long lastActive = attActive.getLast_active().toEpochMilli();
+                                    DBNation attacker = DBNation.byId(attActive.getId());
+
+                                    long diff = now - lastActive;
+
+                                    response.append(" - " + attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceName() + " | " + MathMan.format(diff) + "ms");
+                                    if (attacker.hasProject(Projects.INTELLIGENCE_AGENCY)) {
+                                        response.append(" | IA=true");
+                                    }
+                                    if (attacker.hasProject(Projects.SPY_SATELLITE)) {
+                                        response.append(" | SAT=true");
+                                    }
+                                    response.append("\n");
+                                }
+                            }
+
+                            System.out.println("\n== " + title + "\n" + response + "\n");
+
+                            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(outputChannel);
+                            if (channel != null) {
+                                channel.sendMessageEmbeds(new EmbedBuilder().setTitle(title).setDescription(response.toString()).build()).queue();
+                            }
+                        }
+                    }
+                }
+                existingMap.put(nation.getId(), nation);
+            }
+
+            long diff = System.currentTimeMillis() - start;
+            if (diff < 1400) {
+                try {
+                    Thread.sleep(1410 - diff);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
     public static void main(String[] args) throws ParseException, LoginException, InterruptedException, SQLException, ClassNotFoundException, IOException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
@@ -1111,30 +1272,50 @@ public class PoliticsAndWarV3 {
 
         ApiKeyPool pool =  ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY, Settings.INSTANCE.ACCESS_KEY).build();
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
+
+        if (true) {
+            int id = 129454;
+            String key = "c0894922ac1210";
+            pool =  ApiKeyPool.builder().addKey(id, key).build();
+            main = new PoliticsAndWarV3(pool);
+            main.pollForSpyops();
+            System.exit(0);
+        }
+
+
         final int meId = 189573;
         final int cityId = 375361;
         DBNation meNation = DBNation.byId(meId);
         {
 
+
+
             Locutus.imp().getNationDB().updateNationsV2(false, null);
-            long last = 0;
-            for (int i = 0; i < 10; i++) {
-                last = System.currentTimeMillis();
+            while (Locutus.imp().getNationDB().getDirtyNations() > 10) {
+                System.out.println("Dirty " + Locutus.imp().getNationDB().getDirtyNations());
                 Locutus.imp().getNationDB().updateMostActiveNations(500, null);
             }
-            long diff = System.currentTimeMillis() - last;
-            long now = System.currentTimeMillis();
-            System.out.println("Diff " + MathMan.format(diff) + "ms");
-            for (Integer id : Locutus.imp().getNationDB().getMostActiveNationIds(500)) {
-                DBNation nation = DBNation.byId(id);
-                if (nation == null) continue;
 
-                System.out.println(nation.active_m() + " | " + ((now - nation.lastActiveMs()) / 1000L) + "s");
+            List<Integer> ids = Locutus.imp().getNationDB().getMostActiveNationIds(500);
+
+            long start = System.currentTimeMillis();
+            List<Nation> mostActive = main.fetchNationActive(ids);
+            long diff = System.currentTimeMillis() - start;
+            System.out.println("Diff " + MathMan.format(diff) + "ms");
+
+            Collections.sort(mostActive, (o1, o2) -> Long.compare(o2.getLast_active().toEpochMilli(), o1.getLast_active().toEpochMilli()));
+
+            long now = System.currentTimeMillis();
+
+            for (Nation nation : mostActive) {
+                long lastActive = nation.getLast_active().toEpochMilli();
+                long diff2 = now - lastActive;
+
+                DBNation dbnation = DBNation.byId(nation.getId());
+                System.out.println(dbnation.getNation() + " | " + dbnation.getAllianceName() + " | " + dbnation.getCities() + " | " + dbnation.getAlliancePosition() + " | " + MathMan.format(diff2) + "s");
 
             }
 
-            int amt = Locutus.imp().getDiscordDB().updateUserIdsSince(4880);
-            System.out.println("Update " + amt + " nation discord ids");
             System.exit(0);
         }
 

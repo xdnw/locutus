@@ -31,15 +31,8 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.web.commands.EconPages;
-import link.locutus.discord.web.commands.GrantPages;
-import link.locutus.discord.web.commands.IAPages;
-import link.locutus.discord.web.commands.StatPages;
-import link.locutus.discord.web.commands.WarPages;
+import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
-import link.locutus.discord.web.commands.BankPages;
-import link.locutus.discord.web.commands.IndexPages;
-import link.locutus.discord.web.commands.TradePages;
 import link.locutus.discord.web.commands.binding.NationListPages;
 import link.locutus.discord.web.commands.binding.StringWebBinding;
 import link.locutus.discord.web.commands.binding.WebPrimitiveBinding;
@@ -76,7 +69,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -124,6 +116,10 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(new TradePages());
         this.commands.registerCommands(new AlliancePages());
         this.commands.registerCommands(new NationListPages());
+
+        this.commands.registerCommands(new TestPages());
+
+
         this.commands.registerCommands(this);
     }
 
@@ -566,7 +562,7 @@ public class PageHandler implements Handler {
 
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
 
-        ctx.result(views.error.template(entry.getKey(), entry.getValue()).render().toString());
+        ctx.result(rocker.error.template(entry.getKey(), entry.getValue()).render().toString());
     }
 
     private Object wrap(Object call, Context ctx) {
@@ -589,7 +585,7 @@ public class PageHandler implements Handler {
                     ctx.header("Content-Type", "application/json");
                     return str;
                 }
-                return views.alert.template("Response", str).render().toString();
+                return rocker.alert.template("Response", str).render().toString();
             }
         }
         return call;

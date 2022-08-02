@@ -32,7 +32,7 @@ public class TradePages {
             rows.add(row);
         }
 
-        return views.basictable.template("Trade Price", header, rows).render().toString();
+        return rocker.basictable.template("Trade Price", header, rows).render().toString();
     }
 
     @Command
@@ -100,6 +100,6 @@ public class TradePages {
         String endpoint = "/tradepricebydayjson/" + query;
 
         String title = "Trade Price By Day";
-        return views.trade.tradeprice.template(title, endpoint).render().toString();
+        return rocker.trade.tradeprice.template(title, endpoint).render().toString();
     }
 }

@@ -30,7 +30,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
-import views.guild.memberindex;
+import rocker.guild.memberindex;
 
 import java.io.IOException;
 import java.net.URLDecoder;
@@ -166,7 +166,7 @@ public class IndexPages {
 
         PageHandler pageHandler = WebRoot.getInstance().getPageHandler();
 //        pageHandler.getCommands()
-        return views.command.search.template(term, results).render().toString();
+        return rocker.command.search.template(term, results).render().toString();
     }
 
     private void recursive(CommandCallable root, Consumer<CommandCallable> onEach) {
@@ -195,7 +195,7 @@ public class IndexPages {
                 pages.toHtml(stack.getStore(), stack.getPermissionHandler(), pageEndpoint)
         );
 
-        return views.command.guildindex.template(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages).render().toString();
+        return rocker.command.guildindex.template(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages).render().toString();
     }
 
     @Command()
@@ -205,7 +205,7 @@ public class IndexPages {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             dbs.add(db);
         }
-        return views.guild.guilds.template(dbs).render().toString();
+        return rocker.guild.guilds.template(dbs).render().toString();
     }
 
     @Command()
@@ -299,7 +299,7 @@ public class IndexPages {
         // 1 view wars
         // 2 view members
 
-        return views.alliance.allianceindex.template(db, guild, alliance, user).render().toString();
+        return rocker.alliance.allianceindex.template(db, guild, alliance, user).render().toString();
     }
 
     @Command()

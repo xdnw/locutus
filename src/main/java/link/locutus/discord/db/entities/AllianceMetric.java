@@ -11,7 +11,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import views.grant.cities;
+import rocker.grant.cities;
 
 import java.util.AbstractMap;
 import java.util.Arrays;

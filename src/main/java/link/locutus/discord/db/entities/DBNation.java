@@ -66,7 +66,6 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import views.main;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -261,14 +260,14 @@ public class DBNation implements NationOrAlliance {
         if (cache != null) cache.lastCheckUnitMS = timestamp;
     }
 
-    public String register(User user, Guild guild, boolean isNewRegistration) {
+    public String register(User user, GuildDB db, boolean isNewRegistration) {
         if (nation_id == Settings.INSTANCE.NATION_ID) {
             if (Settings.INSTANCE.ADMIN_USER_ID != user.getIdLong()) {
                 Settings.INSTANCE.ADMIN_USER_ID = user.getIdLong();
                 Settings.INSTANCE.save(Settings.INSTANCE.getDefaultFile());
             }
         }
-        new NationRegisterEvent(nation_id, guild, user, isNewRegistration).post();
+        new NationRegisterEvent(nation_id, db, user, isNewRegistration).post();
 
         StringBuilder output = new StringBuilder();
 //        try {
@@ -288,21 +287,20 @@ public class DBNation implements NationOrAlliance {
 //        }
 
         output.append("Registration successful. Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "?` for a list of commands.\n");
-        if (guild != null && guild.getIdLong() == 216800987002699787L) {
+        if (db != null && db.getIdLong() == 216800987002699787L) {
             output.append("note: for 60 days of VIP, please use `/validate` instead\n");
         }
-        if (guild != null) {
-            Role role = Roles.REGISTERED.toRole(guild);
+        if (db != null) {
+            Role role = Roles.REGISTERED.toRole(db);
             if (role != null) {
                 try {
-                    guild.addRoleToMember(user.getIdLong(), role).complete();
+                    db.getGuild().addRoleToMember(user.getIdLong(), role).complete();
 
                     output.append("You have been assigned the role: " + role.getName());
 
-                    GuildDB guildDb = Locutus.imp().getGuildDB(guild);
-                    Member member = guild.getMember(user);
-                    if (member != null && guildDb != null) {
-                        guildDb.getAutoRoleTask().autoRole(member, s -> {
+                    Member member = db.getGuild().getMember(user);
+                    if (member != null) {
+                        db.getAutoRoleTask().autoRole(member, s -> {
                             output.append("\n").append(s);
                         });
                     }
@@ -310,7 +308,7 @@ public class DBNation implements NationOrAlliance {
                     output.append(e.getMessage() + "\n");
                 }
             } else {
-                if (Roles.ADMIN.has(user, guild)) {
+                if (Roles.ADMIN.has(user, db.getGuild())) {
                     output.append("No role mapping found.");
                     output.append("\nCreate a role mapping with `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole`");
                 }

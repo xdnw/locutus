@@ -2,10 +2,7 @@ import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
 import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 
 buildscript {
-    ext.kotlin_version = '1.5.30'
-//    ext {
-//        joobyVersion = "2.9.4"
-//    }
+    ext.kotlin_version = '1.7.10'
     repositories {
         mavenCentral()
         gradlePluginPortal()
@@ -23,7 +20,8 @@ buildscript {
 plugins {
     id 'java'
     id "idea"
-    id "com.fizzed.rocker" version "1.3.0"
+//    id "com.fizzed.rocker" version "1.3.0"
+    id "nu.studer.rocker" version "3.0.4"
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0"
     id "com.github.johnrengelman.shadow" version "6.1.0"
 }
@@ -74,7 +72,7 @@ dependencies {
     implementation "org.xerial:sqlite-jdbc:3.30.1"
     implementation "com.google.code.gson:gson:2.8.6"
     implementation 'org.jsoup:jsoup:1.12.1'
-    compile 'org.bitbucket.cowwoc:diff-match-patch:1.2'
+    implementation 'org.bitbucket.cowwoc:diff-match-patch:1.2'
 
     implementation ('net.dv8tion:JDA:5.0.0-alpha.5') {
 //        implementation 'club.minnced:discord-webhooks:4.2.0_182'
@@ -145,57 +143,70 @@ dependencies {
 
 sourceSets {
     main {
-        rocker {
-            srcDir('src/main/java')
+        java {
+            srcDirs 'src'
+            srcDirs "$buildDir/generated"
+            srcDirs "$buildDir/generated-src"
         }
     }
 }
 
 rocker {
-    // (All settings are shown with their defaults)
-    //
-    // Skips building templates all together
-    skip false
-    // Base directory for generated java sources, actual target is sub directory
-    // with the name of the source set. The value is passed through project.file().
-    outputBaseDirectory = "$buildDir/generated-src/rocker"
-    // Base directory for the directory where the hot reload feature
-    // will (re)compile classes to at runtime (and where `rocker-compiler.conf`
-    // is generated, which is used by RockerRuntime.getInstance().setReloading(true)).
-    // The actual target is a sub directory with the name of the source set.
-    // The value is passed through project.file().
-    classBaseDirectory = "$buildDir/classes"
-    failOnError true
-    skipTouch true
-    // must not be empty when skipTouch is equal to false
-    touchFile ""
-    javaVersion '1.8'
-    extendsClass null
-    extendsModelClass null
-    optimize null
-    discardLogicWhitespace null
-    targetCharset null
-    suffixRegex null
-    postProcessing null
-    markAsGenerated null
-}
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
+    version = '1.3.0'
+    configurations {
+        main {
+//            optimize = true
+            templateDir = file('src/views')
+            outputDir = file("$buildDir/generated-src/views")
+        }
     }
 }
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-}
+
+//rocker {
+//    // (All settings are shown with their defaults)
+//    //
+//    // Skips building templates all together
+//    skip false
+//    // Base directory for generated java sources, actual target is sub directory
+//    // with the name of the source set. The value is passed through project.file().
+//    outputBaseDirectory = "$buildDir/generated-src/rocker"
+//    // Base directory for the directory where the hot reload feature
+//    // will (re)compile classes to at runtime (and where `rocker-compiler.conf`
+//    // is generated, which is used by RockerRuntime.getInstance().setReloading(true)).
+//    // The actual target is a sub directory with the name of the source set.
+//    // The value is passed through project.file().
+//    classBaseDirectory = "$buildDir/classes"
+//    failOnError true
+//    skipTouch true
+//    // must not be empty when skipTouch is equal to false
+//    touchFile ""
+//    javaVersion '17'
+//    extendsClass null
+//    extendsModelClass null
+//    optimize null
+//    discardLogicWhitespace null
+//    targetCharset null
+//    suffixRegex null
+//    postProcessing null
+//    markAsGenerated null
+//}
+//compileKotlin {
+//    kotlinOptions {
+//        jvmTarget = "1.8"
+//    }
+//}
+//compileTestKotlin {
+//    kotlinOptions {
+//        jvmTarget = "1.8"
+//    }
+//}
 
 
 /**
  * Generate requests and model from external service
  */
+
 compileJava.dependsOn "graphqlCodegenProductService"
-sourceSets.main.java.srcDir "$buildDir/generated"
 task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     graphqlSchemas.includePattern = "schema\\.graphqls"
     outputDir = new File("$buildDir/generated")
@@ -224,7 +235,7 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
 jar {
     manifest {
         attributes(
-                'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+                'Class-Path': configurations.runtimeClasspath.files.collect { it.getName() }.join(' '),
                 'Main-Class': 'link.locutus.discord.Locutus'
         )
     }

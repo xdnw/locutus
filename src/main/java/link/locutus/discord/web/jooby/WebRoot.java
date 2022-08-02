@@ -71,9 +71,9 @@ public class WebRoot {
         RockerRuntime.getInstance().setReloading(true);
 
         Map<String, String> staticFileMap = new LinkedHashMap<>();
-        staticFileMap.put("src/main/java/views/css", "/css");
-        staticFileMap.put("src/main/java/views/js", "/js");
-        staticFileMap.put("src/main/java/views/img", "/");
+        staticFileMap.put("src/views/rocker/css", "/css");
+        staticFileMap.put("src/views/rocker/js", "/js");
+        staticFileMap.put("src/views/rocker/img", "/");
 
         this.app = Javalin.create(config -> {
             config.server(() -> {
@@ -361,13 +361,15 @@ public class WebRoot {
 
     public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.WEB.PORT_HTTPS = 8000;
-        Settings.INSTANCE.WEB.PORT_HTTP = 0;
+        Settings.INSTANCE.WEB.PORT_HTTPS = 0;
+        Settings.INSTANCE.WEB.PORT_HTTP = 8000;
+        Settings.INSTANCE.WEB.REDIRECT = "http://localhost";
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
 
         Locutus locutus = Locutus.create().start();
 
-        WebRoot webRoot = new WebRoot(-1, Settings.INSTANCE.WEB.PORT_HTTPS);
+        System.out.println("Port " + Settings.INSTANCE.WEB.PORT_HTTP + " | " + Settings.INSTANCE.WEB.PORT_HTTPS);
+        WebRoot webRoot = new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
     }
 }

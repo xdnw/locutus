@@ -8,12 +8,12 @@ import net.dv8tion.jda.api.entities.User;
 
 public class NationRegisterEvent extends GuildScopeEvent {
     private final int nationId;
-    private final Guild guild;
+    private final GuildDB db;
     private final User user;
     private final boolean isNew;
-    public NationRegisterEvent(int nationId, Guild guild, User user, boolean isNew) {
+    public NationRegisterEvent(int nationId, GuildDB db, User user, boolean isNew) {
         this.nationId = nationId;
-        this.guild = guild;
+        this.db = db;
         this.user = user;
         this.isNew = isNew;
     }
@@ -26,8 +26,8 @@ public class NationRegisterEvent extends GuildScopeEvent {
         return nationId;
     }
 
-    public Guild getGuild() {
-        return guild;
+    public GuildDB getGuildDB() {
+        return db;
     }
 
     public User getUser() {
@@ -36,13 +36,12 @@ public class NationRegisterEvent extends GuildScopeEvent {
 
     @Override
     protected void postToGuilds() {
-        GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db != null) {
             post(db);
         }
         if (isNew && user != null) {
             for (Guild otherGuild : user.getMutualGuilds()) {
-                if (otherGuild.getIdLong() == this.guild.getIdLong()) continue;
+                if (db != null && otherGuild.getIdLong() == this.db.getIdLong()) continue;
                 GuildDB otherDb = Locutus.imp().getGuildDB(otherGuild);
                 if (otherDb != null) {
                     post(otherDb);
