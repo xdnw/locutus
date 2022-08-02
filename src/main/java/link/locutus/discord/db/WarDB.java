@@ -601,7 +601,7 @@ public class WarDB extends DBMainV2 {
         boolean callEvents = !removedBounties.isEmpty();
 
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-        Collection<Bounty> bounties = v3.fetchBounties(null, f -> f.all$(0));
+        Collection<Bounty> bounties = v3.fetchBounties(null, f -> f.all$(-1));
 
         if (bounties.isEmpty()) return;
         bounties = new HashSet<>(bounties); // Ensure uniqueness (in case of pagination concurrency issues)

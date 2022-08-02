@@ -1274,11 +1274,7 @@ public class PoliticsAndWarV3 {
         PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
 
         if (true) {
-            int id = 129454;
-            String key = "c0894922ac1210";
-            pool =  ApiKeyPool.builder().addKey(id, key).build();
-            main = new PoliticsAndWarV3(pool);
-            main.pollForSpyops();
+            Collection<Bounty> bounties = main.fetchBounties(null, f -> f.all$(-1));
             System.exit(0);
         }
 
