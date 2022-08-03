@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import com.ptsmods.mysqlw.Database;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.FileUtil;
 import org.apache.http.util.TextUtils;
 
 import java.io.Closeable;
@@ -28,7 +29,10 @@ public class DBMainV2 implements Closeable {
         }
         if (config.SQLITE.USE) {
             File file = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
-            System.out.println("File " + file);
+            // create file directory if not exist
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
             this.db = Database.connect(file);
         } else {
             this.db = Database.connect(config.MYSQL.HOST,
