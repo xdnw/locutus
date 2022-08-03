@@ -3922,7 +3922,7 @@ public class DBNation implements NationOrAlliance {
         return dc_turn - currentTurn;
     }
 
-    @Command
+    @Command(desc = "Are any cities powered")
     public boolean isPowered() {
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false, false).entrySet()) {
             JavaCity city = entry.getValue();
@@ -3933,6 +3933,27 @@ public class DBNation implements NationOrAlliance {
             return false;
         }
         return false;
+    }
+
+    @Command(desc = "Days since a nation posted a spy report")
+    public int getDaysSinceLastSpyReport() {
+        ByteBuffer lastSpyOpDayBuf = getMeta(NationMeta.SPY_OPS_DAY);
+        if (lastSpyOpDayBuf != null) {
+            long currentDay = TimeUtil.getDay();
+            return (int) (currentDay - lastSpyOpDayBuf.getLong());
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    @Command(desc = "How many spy reports they have posted today")
+    public int getSpyReportsToday() {
+        if (getDaysSinceLastSpyReport() == 0) {
+            ByteBuffer dailyOpAmt = getMeta(NationMeta.SPY_OPS_AMOUNT_DAY);
+            if (dailyOpAmt != null) {
+                return dailyOpAmt.getInt();
+            }
+        }
+        return 0;
     }
 
     @Command

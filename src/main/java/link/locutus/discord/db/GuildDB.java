@@ -3068,6 +3068,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     TaxRate rate = new TaxRate(split[1]);
                     filterToTaxRate.put(filter, rate);
                 }
+                if (filterToTaxRate.isEmpty()) throw new IllegalArgumentException("No valid nation filters provided");
 
                 return filterToTaxRate;
             }
