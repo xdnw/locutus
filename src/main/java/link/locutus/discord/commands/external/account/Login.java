@@ -33,7 +33,7 @@ public class Login extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         DBNation me = DiscordUtil.getNation(user);
-        return me.getPosition() >= Rank.OFFICER.id;
+        return me != null && me.getPosition() >= Rank.OFFICER.id;
     }
 
     @Override

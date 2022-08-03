@@ -48,6 +48,7 @@ import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
@@ -62,6 +63,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -715,7 +717,7 @@ public class DiscordUtil {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        if (message.isEmpty()) return;
+        message = WordUtils.wrap(message, 2000, "\n", true, ",");
         if (message.length() > 2000) {
             String[] lines = message.split("\\r?\\n");
             StringBuilder buffer = new StringBuilder();

@@ -220,7 +220,8 @@ public class RegisterCommand extends Command {
             }
         }
 
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+        DBNation nation = new DBNation();
+        nation.setNation_id(nationId);
 
         PNWUser pnwUser = new PNWUser(nationId, id, fullDiscriminator);
         db.addUser(pnwUser);

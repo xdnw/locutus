@@ -12,6 +12,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -44,6 +45,23 @@ public class CopyPasta extends Command implements Noformat {
         return Roles.MEMBER.has(user, server);
     }
 
+    public static boolean hasPermission(Member member, String key) {
+        String[] split = key.split("\\.");
+        if (split.length <= 1) return true;
+
+        for (int i = 1; i < split.length - 1; i++) {
+            String roleName = split[i];
+            Roles role = Roles.parse(roleName);
+            if (role != null && !role.has(member)) return false;
+
+            Role discRole = DiscordUtil.getRole(member.getGuild(), roleName);
+            if (discRole != null && !member.getRoles().contains(discRole)) return false;
+
+            return true;
+        }
+        return true;
+    }
+
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (guild == null) return "Not in a guild";
@@ -68,18 +86,11 @@ public class CopyPasta extends Command implements Noformat {
                     String[] split = otherKey.split("\\.");
                     if (!split[split.length - 1].equalsIgnoreCase(key)) continue;
 
-                    for (int i = 1; i < split.length - 1; i++) {
-                        String roleName = split[i];
-                        Roles role = Roles.parse(roleName);
-                        if (role != null && !role.has(event.getMember())) continue outer;
+                    if (!hasPermission(guild.getMember(author), otherKey)) continue;
 
-                        Role discRole = DiscordUtil.getRole(guild, roleName);
-                        if (discRole != null && !event.getMember().getRoles().contains(discRole)) continue outer;
-
-                        value = entry.getValue();
-                    }
+                    value = entry.getValue();
                 }
-            }
+            } else if (!hasPermission(guild.getMember(author), key)) return "You do not have permission to use that key";
 
             if (value == null) return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta <key> <message>`";
             if (event.getMessage().getEmbeds().isEmpty()) {
