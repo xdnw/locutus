@@ -67,6 +67,14 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AdminCommands {
+    @Command(desc = "Reset city names")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String resetCityNames(@Me DBNation me, @Me Auth auth, String name) throws IOException {
+        for (int id : me.getCityMap(false).keySet()) {
+            auth.setCityName(id, name);
+        }
+        return "Done!";
+    }
 
     @Command
     @RolePermission(Roles.ADMIN)

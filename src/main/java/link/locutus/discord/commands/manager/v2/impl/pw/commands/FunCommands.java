@@ -1,23 +1,74 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.config.Messages;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.NationMeta;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import views.grant.cities;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class FunCommands {
+
+
+    private Map<Integer, Integer> stolenCities = new HashMap<>();
+    @Command(desc = "Steal one of borgs cities")
+    public String stealBorgsCity(@Me DBNation me) throws IOException {
+        if (me.getAgeDays() < 30) {
+            int age = me.getCityMap(false).values().stream().mapToInt(JavaCity::getAge).max().orElse(0);
+            if (age < 30) {
+                return "You must have a nation at least 30 days old";
+            }
+        }
+        if (ThreadLocalRandom.current().nextInt(100) < 50) return "You were unsuccessful in stealing one of Borg's cities. Your agents were able to operate undetected. The operation cost you $0 and 0 of your spies were captured and executed.";
+
+        Auth auth = Locutus.imp().getRootAuth();
+
+        List<Integer> cities = new ArrayList<>(DBNation.byId(189573).getCityMap(false).keySet());
+        // get random city from cities
+        int id = cities.get(ThreadLocalRandom.current().nextInt(cities.size()));
+        String name =  me.getNation() + "'s city";
+
+        String result = auth.setCityName(id, name);
+
+        String url = PnwUtil.getCityUrl(id);
+
+        stolenCities.put(id, me.getNation_id());
+
+        int num = 113 + ThreadLocalRandom.current().nextInt(312);
+        String msg = "You successfully snuck in the cover of night and replaced every sign in Borg's city. Your spies replaced " + num + " signs. Your agents were able to operate undetected. The operation cost you $0 and 0 of your spies were captured and executed.";
+        msg += "\nThe city is now yours! (until someone wakes up)" + "\n - <" + url + ">";
+
+        boolean stolenAll = false;
+        if (new HashSet<>(stolenCities.values()).size() == 1 && stolenCities.size() == cities.size()) {
+            msg += "\n\nCongratulations, you have conquered borg!\nhttps://cdn.discordapp.com/attachments/672310912090243092/1004406809571905629/unknown.png";
+        }
+        return msg;
+    }
+
     private Map<Integer, Boolean> received = new ConcurrentHashMap<>();
 
     @Command(desc = "He's making a list, And checking it twice; Gonna find out Who's naughty and nice. Saint Borgolas is coming to town. **RESISTANCE IS FUTILE**")

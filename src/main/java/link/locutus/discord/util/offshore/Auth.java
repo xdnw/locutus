@@ -170,6 +170,20 @@ public class Auth {
         return apiKey;
     }
 
+    public String setCityName(int id, String name) throws IOException {
+        String url = PnwUtil.getCityUrl(id);
+        String result = readStringFromURL(url, Collections.emptyMap());
+        Document dom = Jsoup.parse(result);
+        String token = dom.select("input[name=token]").attr("value");
+
+        Map<String, String> post = new HashMap<>();
+        post.put("newcityname", name);
+        post.put("rename", "Rename");
+        post.put("token", token);
+
+        return readStringFromURL(url, post);
+    }
+
     public String setBounty(DBNation target, WarType type, long amount) {
         return PnwUtil.withLogin(new Callable<String>() {
             @Override
