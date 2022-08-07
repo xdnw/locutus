@@ -4,5 +4,5 @@ public enum NationLootType {
     ESPIONAGE,
     WAR_LOSS,
 
-    OTHER
+    ESTIMATE
 }

@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.bank.BankWith;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -101,8 +102,15 @@ public class AdminCommands {
         return response + footer;
     }
 
+
     @Command
-    @RolePermission(Roles.ADMIN)
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public void stop(boolean save) {
+        Locutus.imp().stop();
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
     public String syncReferrals(@Me GuildDB db) {
         if (!db.isValidAlliance()) return "Not in an alliance";
         Collection<DBNation> nations = db.getAlliance().getNations(true, 10000, true);

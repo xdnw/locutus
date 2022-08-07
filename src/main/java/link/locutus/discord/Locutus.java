@@ -1069,4 +1069,40 @@ public final class Locutus extends ListenerAdapter {
     public ExecutorService getExecutor() {
         return executor;
     }
+
+    public void stop() {
+        synchronized (OffshoreInstance.BANK_LOCK) {
+            if (raidEstimator != null) {
+                raidEstimator.flush();
+            }
+
+            for (JDA api : getDiscordApi().getApis()) {
+                api.shutdownNow();
+            }
+            // close pusher subscriptions
+
+            executor.shutdownNow();
+            if (commandManager != null) commandManager.getExecutor().shutdownNow();
+
+            // join all threads
+            for (Thread thread : Thread.getAllStackTraces().keySet()) {
+                if (thread != Thread.currentThread()) {
+                    try {
+                        thread.interrupt();
+                    } catch (SecurityException ignore) {}
+                }
+            }
+
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {}
+
+            System.out.println("\n == Ignore the following if the thread doesn't relate to anything modifying persistent data");
+            for (Map.Entry<Thread, StackTraceElement[]> thread : Thread.getAllStackTraces().entrySet()) {
+                System.out.println("Thread did not close after 5s: " + thread.getKey() + "\n - " + StringMan.stacktraceToString(thread.getValue()));
+            }
+
+            System.exit(1);
+        }
+    }
 }

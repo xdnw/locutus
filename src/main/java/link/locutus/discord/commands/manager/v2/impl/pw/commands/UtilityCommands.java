@@ -1130,6 +1130,29 @@ public class UtilityCommands {
                       @Switch('i') boolean listInfo,
                       @Switch('c') boolean listChannels,
                       @Switch('p') Integer page) throws IOException {
+
+        /*
+        // TODO get commands that can run with
+            // NationList
+            // Set<NationOrAlliance>
+            // Set<DBNation>
+            // Set<NationOrAllianceOrGuild>
+            // NationFilter
+            //
+            // for nation:
+            // DBNation
+            //
+            // for alliance
+            // DBAlliance
+            // Set<DBAlliance>
+
+            CommandManager2 commands = Locutus.imp().getCommandManager().getV2();
+//            commands.getCommands()
+public Map<ParametricCallable, String> getEndpoints() {
+
+    }
+         */
+
         int perpage = 15;
         StringBuilder response = new StringBuilder();
 

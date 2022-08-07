@@ -1349,10 +1349,12 @@ public class DBNation implements NationOrAlliance {
         int existing = Locutus.imp().getBankDB().getTransactionsByNationCount(nation_id);
 
         if (existing != records.size()) {
-            Locutus.imp().getBankDB().addTransactions(records2, false);
+            int[] added = Locutus.imp().getBankDB().addTransactions(records2, false);
             for (int i = existing; i < records2.size(); i++) {
-                Transaction2 tx = records2.get(i);
-                new TransactionEvent(tx).post();
+                if (added[i] > 0) {
+                    Transaction2 tx = records2.get(i);
+                    new TransactionEvent(tx).post();
+                }
             }
         } else { // Legacy fix
             List<Transaction2> toFix = new ArrayList<>();
@@ -2228,6 +2230,7 @@ public class DBNation implements NationOrAlliance {
 //                '}';
     }
 
+    @Command(desc = "Set of nation ids fighting this nation")
     public Set<Integer> getEnemies() {
         return Locutus.imp().getWarDb().getWarsByNation(getNation_id()).stream()
                 .map(dbWar -> dbWar.attacker_id == getNation_id() ? dbWar.defender_id : dbWar.attacker_id)
@@ -3105,6 +3108,7 @@ public class DBNation implements NationOrAlliance {
 //        return pnwNation;
 //    }
 
+    @Command(desc = "If this nation is not daily active and lost their most recent war")
     public boolean lostInactiveWar() {
         if (getActive_m() < 2880) return false;
         DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, nation_id);
@@ -3151,20 +3155,17 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Number of buildings per city")
     @RolePermission(Roles.MEMBER)
     public double getAvgBuildings() {
-        double total = 0;
-        Collection<DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(nation_id).values();
-        for (DBCity city : cities) {
-            total += city.getNumBuildings();
-        }
-        return total / cities.size();
+        return getBuildings() / (double) cities;
     }
 
     @Command
+    @RolePermission(Roles.ECON)
     public double getAllianceDepositValuePerCity() throws IOException {
         return getAllianceDepositValue() / cities;
     }
 
     @Command
+    @RolePermission(Roles.ECON)
     public double getAllianceDepositValue() throws IOException {
         GuildDB db = Locutus.imp().getGuildDBByAA(alliance_id);
         if (db == null) return 0;
@@ -3174,6 +3175,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
+    @RolePermission(Roles.MEMBER)
     public boolean correctAllianceMMR() {
         if (getPosition() <= 1 || getVm_turns() > 0) return true;
 
