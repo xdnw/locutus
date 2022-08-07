@@ -30,7 +30,7 @@ public class InfraCost extends Command {
     @Override
     public String desc() {
         return "Calculate the costs of purchasing infra (from current to max) e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "InfraCost 250 1000 true false`\n" +
+                "`" + Settings.commandPrefix(true) + "InfraCost 250 1000 true false`\n" +
                 "Add e.g. `cities=5` to specify city count";
     }
 

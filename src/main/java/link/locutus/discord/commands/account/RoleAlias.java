@@ -28,7 +28,7 @@ public class RoleAlias extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole <role> <discord-role>";
+        return Settings.commandPrefix(true) + "aliasrole <role> <discord-role>";
     }
 
     @Override
@@ -69,7 +69,7 @@ public class RoleAlias extends Command {
                 response.append('\n');
             }
             response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
+            response.append("Usage: `" + Settings.commandPrefix(true) + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
             return response.toString().trim();
         }
         Roles role;

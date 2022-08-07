@@ -143,7 +143,7 @@ public class CommandManager2 {
     public void run(MessageReceivedEvent event, boolean async) {
         Message message = event.getMessage();
         String content = DiscordUtil.trimContent(message.getContentRaw());
-        if (content.isEmpty() || content.charAt(0) != Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.charAt(0)) return;
+        if (content.isEmpty() || content.charAt(0) != Settings.commandPrefix(false).charAt(0)) return;
 
         Runnable task = new Runnable() {
             @Override
@@ -186,7 +186,7 @@ public class CommandManager2 {
                         String title = e.getMessage();
                         StringBuilder body = new StringBuilder();
                         if (e.getHelp() != null) {
-                            body.append("`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + e.getHelp() + "`");
+                            body.append("`" + Settings.commandPrefix(false) + e.getHelp() + "`");
                         }
                         if (e.getDescription() != null && !e.getDescription().isEmpty()) {
                             body.append("\n" + e.getDescription());

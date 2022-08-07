@@ -19,7 +19,7 @@ public class UnsubTrade extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unsub-trade <resource>";
+        return Settings.commandPrefix(true) + "unsub-trade <resource>";
     }
 
     @Override

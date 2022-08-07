@@ -23,7 +23,7 @@ public class Inactive extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive <alliance|coalition|*> [days=7] [page]";
+        return Settings.commandPrefix(true) + "inactive <alliance|coalition|*> [days=7] [page]";
     }
 
     @Override
@@ -84,8 +84,8 @@ public class Inactive extends Command {
             response.append('\n').append(nations.get(i).toMarkdown());
         }
         String title = "Inactive Players in `" + args.get(0) + "`" + "(" + page + "/" + pages + ")";
-        String prev = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive " + args.get(0) + " " + days + " " + (page - 1) + (applicants ? " -a" : "");
-        String next = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive " + args.get(0) + " " + days + " " + (page + 1) + (applicants ? " -a" : "");
+        String prev = Settings.commandPrefix(true) + "inactive " + args.get(0) + " " + days + " " + (page - 1) + (applicants ? " -a" : "");
+        String next = Settings.commandPrefix(true) + "inactive " + args.get(0) + " " + days + " " + (page + 1) + (applicants ? " -a" : "");
 
         List<String> actions = new ArrayList<>();
         if (page > 1) {

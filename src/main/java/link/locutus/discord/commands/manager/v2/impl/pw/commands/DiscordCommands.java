@@ -222,7 +222,7 @@ public class DiscordCommands {
             return "No embed commands found";
         }
 
-        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "embed " + "\"" + title + "\" \"" + desc + "\" \"" + StringMan.join(reactions.values(), "\" \"") + "\"";
+        String cmd = Settings.commandPrefix(true) + "embed " + "\"" + title + "\" \"" + desc + "\" \"" + StringMan.join(reactions.values(), "\" \"") + "\"";
         return "```" + cmd + "```";
     }
 
@@ -300,20 +300,20 @@ public class DiscordCommands {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate " + nation.getNation_id() + "` again";
+                "5. Run the command `" + Settings.commandPrefix(true) + "validate " + nation.getNation_id() + "` again";
 
         long id = user.getIdLong();
         boolean checkId = false;
 
         PNWUser existingUser = Locutus.imp().getDiscordDB().getUser(null, user.getName(), fullDiscriminator);
         if (existingUser != null) {
-            if (existingUser.getDiscordId() == null && !existingUser.getDiscordId().equals(id)) {
+            if (existingUser.getDiscordId() != id) {
                 errorMsg = "That nation is already registered to another user!" +
                         "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
                         "2. Scroll down to where it says Discord Username:\n" +
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
-                        "5. Run the command `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate " + nation.getNation_id() + "` again";
+                        "5. Run the command `" + Settings.commandPrefix(true) + "validate " + nation.getNation_id() + "` again";
                 checkId = true;
             }
         }

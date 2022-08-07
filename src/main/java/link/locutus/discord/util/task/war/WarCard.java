@@ -421,13 +421,13 @@ public class WarCard {
 
     public void embed(MessageChannel channel, boolean addReactions) {
         String warUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
-        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarInfo " + warUrl;
-        String sim = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate " + warUrl;
-        String counter = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter " + warUrl;
-        String counterSpy = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counterspy " + warUrl + " *";
+        String cmd = Settings.commandPrefix(true) + "WarInfo " + warUrl;
+        String sim = "~" + Settings.commandPrefix(true) + "simulate " + warUrl;
+        String counter = "~" + Settings.commandPrefix(true) + "counter " + warUrl;
+        String counterSpy = "~" + Settings.commandPrefix(true) + "counterspy " + warUrl + " *";
 
         String pendingEmoji = "\u2705";
-        String pending = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UpdateEmbed role:milcom 'description:{description}\n" +
+        String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed role:milcom 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'";
 

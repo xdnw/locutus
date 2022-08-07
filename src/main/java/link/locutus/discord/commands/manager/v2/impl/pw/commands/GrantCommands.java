@@ -118,7 +118,7 @@ public class GrantCommands {
             String body = db.generateEscrowedCard(receiver);
             body += "\nCommand run by: " + author.getAsMention();
 //            db.getEscrowed()
-            String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "approveEscrowed " + receiver.getNationUrl() + " " + PnwUtil.resourcesToString(actualDeposits) + " " + PnwUtil.resourcesToString(escrowed);
+            String cmd = Settings.commandPrefix(false) + "approveEscrowed " + receiver.getNationUrl() + " " + PnwUtil.resourcesToString(actualDeposits) + " " + PnwUtil.resourcesToString(escrowed);
 
             String emoji = "\u2705";
             DiscordUtil.createEmbedCommand(channel, title, body, emoji, cmd);

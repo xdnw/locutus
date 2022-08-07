@@ -125,7 +125,7 @@ public class AdminCommands {
     @HasApi
     public String announce(@Me GuildDB db, @Me Guild guild, @Me Message message, @Me MessageChannel currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch('v') @Default("0") Integer requiredVariation, @Switch('r') @Default("0") Integer requiredDepth, @Switch('s') Long seed, @Switch('m') boolean sendMail, @Switch('d') boolean sendDM, @Switch('f') boolean force) throws IOException {
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
         List<String> errors = new ArrayList<>();
@@ -371,7 +371,7 @@ public class AdminCommands {
                 response.append('\n');
             }
             response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
+            response.append("Usage: `" + Settings.commandPrefix(false) + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
             return response.toString().trim();
         }
 
@@ -379,7 +379,7 @@ public class AdminCommands {
 
         db.addRole(locutusRole, discordRole.getIdLong());
         return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + "\n" +
-                "To unregister, use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "unregisterRole <locutusRole>`";
+                "To unregister, use `" + Settings.commandPrefix(false) + "unregisterRole <locutusRole>`";
     }
 
     public String apiUsageStats(PoliticsAndWarV2 api) {

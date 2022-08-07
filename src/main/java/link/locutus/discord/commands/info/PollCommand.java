@@ -39,7 +39,7 @@ public class PollCommand extends Command {
         Message message = DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString());
 
         String emoji = "\uD83D\uDD96";
-        String command = "." + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "dummy";
+        String command = "." + Settings.commandPrefix(true) + "dummy";
 
         return null;
     }

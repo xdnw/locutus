@@ -18,7 +18,7 @@ public class Multi extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <nation>";
+        return Settings.commandPrefix(true) + getClass().getSimpleName() + " <nation>";
     }
 
     @Override

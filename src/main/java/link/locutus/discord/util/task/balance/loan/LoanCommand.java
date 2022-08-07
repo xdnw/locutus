@@ -158,7 +158,7 @@ public class LoanCommand extends Command {
                 case MISSED_PAYMENT:
                 case DEFAULTED:
             }
-            reactions.put(status.emoji, "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "updateloan " + loan.loanId + " " + status.name());
+            reactions.put(status.emoji, "~" + Settings.commandPrefix(true) + "updateloan " + loan.loanId + " " + status.name());
             body.append("\nPress " + status.emoji + " to mark as " + status.name());
         }
 

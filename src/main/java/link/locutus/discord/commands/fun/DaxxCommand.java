@@ -31,7 +31,7 @@ public class DaxxCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "daxx";
+        return Settings.commandPrefix(true) + "daxx";
     }
 
     @Override

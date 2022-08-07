@@ -383,7 +383,7 @@ public class IACategory {
                     }
 
                     String emoji = "\uD83D\uDC80";
-                    String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "deleteChannel <#" + channel.getIdLong() + ">";
+                    String cmd = Settings.commandPrefix(false) + "deleteChannel <#" + channel.getIdLong() + ">";
 
                     body.append("\n\nPress " + emoji + " to delete");
                     DiscordUtil.createEmbedCommand(output, "Interview not assigned to a member", body.toString(), emoji, cmd);
@@ -760,7 +760,7 @@ public class IACategory {
                 return false;
             }
         },
-        SPIES("hasn't used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies` and `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "intel` (and posted spy report)") {
+        SPIES("hasn't used `" + Settings.commandPrefix(true) + "spies` and `" + Settings.commandPrefix(true) + "intel` (and posted spy report)") {
             @Override
             public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;

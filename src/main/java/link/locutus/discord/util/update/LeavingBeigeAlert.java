@@ -175,14 +175,14 @@ public class LeavingBeigeAlert {
         long diff = nextTurnMs - System.currentTimeMillis();
 
         String footer = "**note1**: To find specific beige targets, go to your alliance server on discord and use e.g. " +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "raid * 25 -beige` and set a reminder using `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeReminder <nations> [required-loot]`\n" +
+                "`" + Settings.commandPrefix(true) + "raid * 25 -beige` and set a reminder using `" + Settings.commandPrefix(false) + "beigeReminder <nations> [required-loot]`\n" +
                 "**note2:** To set how you receive alerts for *any* target leaving beige automatically, update your settings:\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeAlertMode <" + StringMan.join(NationMeta.BeigeAlertMode.values(), "|") + ">` e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeAlertMode " + NationMeta.BeigeAlertMode.NONES + "`\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeAlertRequiredStatus <" + StringMan.join(NationMeta.BeigeAlertRequiredStatus.values(), "|") + ">`\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeAlertRequiredLoot 10m` (only get auto alerts for nations with 10M+ in loot)\n\n" +
+                " - `" + Settings.commandPrefix(false) + "beigeAlertMode <" + StringMan.join(NationMeta.BeigeAlertMode.values(), "|") + ">` e.g. `" + Settings.commandPrefix(false) + "beigeAlertMode " + NationMeta.BeigeAlertMode.NONES + "`\n" +
+                " - `" + Settings.commandPrefix(false) + "beigeAlertRequiredStatus <" + StringMan.join(NationMeta.BeigeAlertRequiredStatus.values(), "|") + ">`\n" +
+                " - `" + Settings.commandPrefix(false) + "beigeAlertRequiredLoot 10m` (only get auto alerts for nations with 10M+ in loot)\n\n" +
                 "**These nations are leaving beige or VM next turn**" +
                 " (Next turn in " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff) + ")\n\n" +
-                "To disable automatic alerts, go to your alliance server and use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeAlertMode NO_ALERTS`";
+                "To disable automatic alerts, go to your alliance server and use `" + Settings.commandPrefix(false) + "beigeAlertMode NO_ALERTS`";
 
         for (Map.Entry<DBNation, Map<DBNation, Boolean>> entry : nationTargets.entrySet()) {
             DBNation attacker = entry.getKey();

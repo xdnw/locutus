@@ -26,7 +26,7 @@ public class CityCost extends Command {
     @Override
     public String desc() {
         return "Calculate the costs of purchasing cities (from current to max) e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "CityCost 5 10 true false false false";
+                "`" + Settings.commandPrefix(true) + "CityCost 5 10 true false false false";
     }
 
     @Override

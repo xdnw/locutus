@@ -286,7 +286,7 @@ public class DBNation implements NationOrAlliance {
 //            output.append("Error validating your discord: " + e.getMessage() + "\n");
 //        }
 
-        output.append("Registration successful. Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "?` for a list of commands.\n");
+        output.append("Registration successful. Use `" + Settings.commandPrefix(true) + "?` for a list of commands.\n");
         if (db != null && db.getIdLong() == 216800987002699787L) {
             output.append("note: for 60 days of VIP, please use `/validate` instead\n");
         }
@@ -310,7 +310,7 @@ public class DBNation implements NationOrAlliance {
             } else {
                 if (Roles.ADMIN.has(user, db.getGuild())) {
                     output.append("No role mapping found.");
-                    output.append("\nCreate a role mapping with `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole`");
+                    output.append("\nCreate a role mapping with `" + Settings.commandPrefix(true) + "aliasrole`");
                 }
             }
         }
@@ -660,42 +660,38 @@ public class DBNation implements NationOrAlliance {
     public Auth getAuth(Roles role) {
         if (this.auth != null && !this.auth.isValid()) this.auth = null;
         if (this.auth != null) return auth;
-        if (auth == null) {
-            synchronized (this) {
-                if (auth == null) {
-                    if (this.nation_id == Settings.INSTANCE.NATION_ID) {
-                        if (!Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
-                            return auth = new Auth(nation_id, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
-                        }
+        synchronized (this) {
+            if (auth == null) {
+                if (this.nation_id == Settings.INSTANCE.NATION_ID) {
+                    if (!Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
+                        return auth = new Auth(nation_id, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
                     }
-
+                }
+                Map.Entry<String, String> pass = Locutus.imp().getDiscordDB().getUserPass2(nation_id);
+                if (pass == null) {
                     PNWUser dbUser = getDBUser();
-                    if (dbUser != null && dbUser.getDiscordId() != null) {
-                        Map.Entry<String, String> pass = Locutus.imp().getDiscordDB().getUserPass(dbUser.getDiscordId());
-                        if (pass == null) {
-                            User user = dbUser.getUser();
-                            if (user != null) {
-                                if (role != null && role.hasOnRoot(user)) {
-                                    return Locutus.imp().getRootAuth();
-                                }
-                            }
-                        }
+                    if (dbUser != null) {
+                        pass = Locutus.imp().getDiscordDB().getUserPass2(dbUser.getDiscordId());
                         if (pass != null) {
-                            auth = new Auth(nation_id, pass.getKey(), pass.getValue());
+                            Locutus.imp().getDiscordDB().addUserPass2(nation_id, pass.getKey(), pass.getValue());
+                            Locutus.imp().getDiscordDB().logout(dbUser.getDiscordId());
                         }
                     }
+                }
+                if (pass != null) {
+                    auth = new Auth(nation_id, pass.getKey(), pass.getValue());
+                }
 
-                    if (role != null) {
-                        User user = getUser();
-                        if (user != null && role.hasOnRoot(user)) {
-                            return Locutus.imp().getRootAuth();
-                        }
+                if (role != null) {
+                    User user = getUser();
+                    if (user != null && role.hasOnRoot(user)) {
+                        return Locutus.imp().getRootAuth();
                     }
                 }
             }
         }
         if (auth == null) {
-            throw new IllegalArgumentException("Please authenticate using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "login`");
+            throw new IllegalArgumentException("Please authenticate using `" + Settings.commandPrefix(true) + "login`");
         }
         return auth;
     }
@@ -1125,7 +1121,7 @@ public class DBNation implements NationOrAlliance {
         return dirty;
     }
     public DBAlliancePosition getAlliancePosition() {
-        if (alliance_id == 0 || rank.id <= Rank.APPLICANT.id || alliancePosition == 0) return null;
+        if (alliance_id == 0 || rank.id <= Rank.APPLICANT.id) return null;
         DBAlliancePosition pos = Locutus.imp().getNationDB().getPosition(alliancePosition, alliance_id, false);
         if (pos == null) {
             long permission_bits = 0;
@@ -1596,12 +1592,12 @@ public class DBNation implements NationOrAlliance {
         DBAlliance alliance = getAlliance();
         if (myKey != null) {
             pool  = ApiKeyPool.create(myKey);
-        } else if (getAlliancePosition() == null || alliance == null) {
+        } else if (getPositionEnum().id <= Rank.APPLICANT.id || alliance == null) {
             throw new IllegalArgumentException("Nation " + nation + " is not member in an alliance");
         } else {
             pool = alliance.getApiKeys(false, AlliancePermission.SEE_SPIES);
             if (pool == null) {
-                throw new IllegalArgumentException("No api key found. Please use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
+                throw new IllegalArgumentException("No api key found. Please use`" + Settings.commandPrefix(false) + "addApiKey`");
             }
         }
 
@@ -1874,6 +1870,8 @@ public class DBNation implements NationOrAlliance {
     public double getAvg_infra() {
         double total = 0;
         Collection<DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(nation_id).values();
+        if (cities.isEmpty()) return 0;
+
         for (DBCity city : cities) {
             total += city.infra;
         }
@@ -2713,11 +2711,11 @@ public class DBNation implements NationOrAlliance {
     public Message toCard(MessageChannel channel, boolean spies, boolean money, boolean refresh) {
         String title = nation;
         String counterEmoji = "\uD83C\uDD98";
-        String counterCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter " + getNationUrl();
+        String counterCmd = Settings.commandPrefix(true) + "counter " + getNationUrl();
         String simEmoji = "\uD83E\uDD16";
-        String simCommand = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate " + getNationUrl();
+        String simCommand = Settings.commandPrefix(true) + "simulate " + getNationUrl();
         String refreshEmoji = "\uD83D\uDD04";
-        String refreshCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "who " + getNationUrl();
+        String refreshCmd = Settings.commandPrefix(true) + "who " + getNationUrl();
 
         String response = toEmbedString(spies);
 

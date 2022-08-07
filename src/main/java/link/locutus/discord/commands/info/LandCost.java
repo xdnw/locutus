@@ -30,7 +30,7 @@ public class LandCost extends Command {
     @Override
     public String desc() {
         return "Calculate the costs of purchasing land (from current to max) e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "LandCost 250 1000`\n" +
+                "`" + Settings.commandPrefix(true) + "LandCost 250 1000`\n" +
                 "Add e.g. `cities=5` to specify city count";
     }
 

@@ -25,7 +25,7 @@ public class Simulate extends Command {
     }
     @Override
     public String help() {
-        return "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate <war>` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate <defender> <attacker> <type>`";
+        return "`" + Settings.commandPrefix(true) + "simulate <war>` or `" + Settings.commandPrefix(true) + "simulate <defender> <attacker> <type>`";
     }
 
     @Override
@@ -59,7 +59,7 @@ public class Simulate extends Command {
         }
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
         SimulatedWarNode origin;
 

@@ -60,7 +60,7 @@ public class GrantCmd extends Command {
                 "Add `-i` to build grants to exclude infra cost\n" +
                 "Add `-l` to build grants to exclude land cost\n" +
                 "Add `-e` or `#expire=60d` to have a grant's debt expire\n" +
-                "Add `-c` to have a grant count as cash value in `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits`\n" +
+                "Add `-c` to have a grant count as cash value in `" + Settings.commandPrefix(true) + "deposits`\n" +
                 "Add `-o` to only send what funds they are missing for a grant\n" +
                 "Add `-m` to multiply the grant per city";
     }
@@ -94,13 +94,13 @@ public class GrantCmd extends Command {
         if (args.size() != 3) {
             if (args.size() == 2) {
                 if (args.get(1).equalsIgnoreCase("project")) {
-                    return "Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1";
+                    return "Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1";
                 }
                 else if (args.get(1).equalsIgnoreCase("build") || (args.get(1).startsWith("{") && args.get(1).endsWith("}"))) {
                     num = Double.MAX_VALUE;
                 }
                 else if (args.get(1).equalsIgnoreCase("unit")) {
-                    return "Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>";
+                    return "Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>";
                 }
                 else if (args.get(1).equalsIgnoreCase("warchest")) {
                     num = 1d;
@@ -201,7 +201,7 @@ public class GrantCmd extends Command {
         if (flags.contains('c')) transferFlags.add("-c");
         if (flags.contains('e')) transferFlags.add("#expire=60d");
         if (flags.contains('o')) transferFlags.add("-o");
-        String command = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer \"" + grant.getNote() + "\" " + me.getNationUrl() + " " + StringMan.getString(resources) + " " + StringMan.join(transferFlags, " ");
+        String command = "_" + Settings.commandPrefix(true) + "transfer \"" + grant.getNote() + "\" " + me.getNationUrl() + " " + StringMan.getString(resources) + " " + StringMan.join(transferFlags, " ");
         StringBuilder msg = new StringBuilder();
         msg.append(PnwUtil.resourcesToString(resources)).append("\n")
                 .append("Current values for: " + me.getNation()).append('\n')
@@ -228,7 +228,7 @@ public class GrantCmd extends Command {
 
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(me.getNation_id());
         if (!force) {
-            if (user == null || user.getDiscordId() == null) throw new IllegalArgumentException("Invalid user: " + user);
+            if (user == null) throw new IllegalArgumentException("No user found for nation: " + me.getNation_id());
             Guild guild = guildDb.getGuild();
             Member member = guild.getMemberById(user.getDiscordId());
             if (member == null) {
@@ -287,7 +287,7 @@ public class GrantCmd extends Command {
                 resources = PnwUtil.parseResources(arg);
             }
         } else if (arg.equalsIgnoreCase("build")) {
-            throw new IllegalArgumentException("Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <json> 1");
+            throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <json> 1");
         } else if (arg.equalsIgnoreCase("warchest")) {
             Map<ResourceType, Double> stockpile = me.getStockpile();
             if (stockpile == null) throw new IllegalArgumentException("Unable to fetch stockpile (are you sure they are a member?)");
@@ -315,10 +315,10 @@ public class GrantCmd extends Command {
             if (project == null) {
                 if (arg.equalsIgnoreCase("project")) {
                     if (me.getProjectTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a project timer");
-                    throw new IllegalArgumentException("Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1");
+                    throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1");
                 }
                 if (arg.equalsIgnoreCase("unit")) {
-                    throw new IllegalArgumentException("Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>");
+                    throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>");
                 }
 
                 MilitaryUnit unit = MilitaryUnit.get(arg);

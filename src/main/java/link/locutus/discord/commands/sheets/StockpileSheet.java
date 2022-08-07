@@ -43,7 +43,7 @@ public class StockpileSheet extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         DBAlliance alliance = db.getAlliance();
-        if (alliance == null) return "Pleas set `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID`";
+        if (alliance == null) return "Pleas set `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID`";
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 

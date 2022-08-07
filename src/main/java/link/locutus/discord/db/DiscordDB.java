@@ -39,18 +39,22 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DiscordDB extends DBMainV2 {
+
     public DiscordDB() throws SQLException, ClassNotFoundException {
-        super("locutus");
+        this("locutus");
+    }
+    public DiscordDB(String name) throws SQLException, ClassNotFoundException {
+        super(name);
         if (tableExists("credentials")) migrateCredentials();
     }
 
     @Override
     public void createTables() {
-            executeStmt("CREATE TABLE IF NOT EXISTS `USERS` (`nation_id` INT NOT NULL, `discord_id` INT, `discord_name` VARCHAR, PRIMARY KEY(discord_id))");
+            executeStmt("CREATE TABLE IF NOT EXISTS `USERS` (`nation_id` INT NOT NULL, `discord_id` INT NOT NULL, `discord_name` VARCHAR, PRIMARY KEY(discord_id))");
             executeStmt("CREATE TABLE IF NOT EXISTS `UUIDS` (`nation_id` INT NOT NULL, `uuid` BLOB NOT NULL, `date` INT NOT NULL, PRIMARY KEY(nation_id, uuid, date))");
 //            executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
 
-            executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS2` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS2` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
 
             executeStmt("CREATE TABLE IF NOT EXISTS `VERIFIED` (`nation_id` INT NOT NULL PRIMARY KEY)");
 
@@ -138,9 +142,9 @@ public class DiscordDB extends DBMainV2 {
                     Long keyId = getLong(rs, "api_key");
                     if (keyId == null) return null;
 
-                    String key = Long.toHexString(keyId);
+                    String key = String.format("%014X", keyId);
                     Long botKeyId = getLong(rs, "bot_key");
-                    String botKey = botKeyId == null ? null : Long.toHexString(botKeyId);
+                    String botKey = botKeyId == null ? null : String.format("%016X", botKeyId);
                     return new ApiKeyPool.ApiKey(nationId, key, botKey);
                 }
             }
@@ -273,30 +277,26 @@ public class DiscordDB extends DBMainV2 {
         });
     }
 
-    public void logout(long discordId) {
+    public void logout(long nationId) {
         update("DELETE FROM `CREDENTIALS2` where `discordid` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, discordId);
+            stmt.setLong(1, nationId);
         });
     }
 
     private void migrateCredentials() {
-        System.out.println("Migrate");
         Set<Long> ids = new HashSet<>();
         String query = getDb().selectBuilder("credentials").select("discordId").buildQuery();
         query(query, stmt -> {},
                 (ThrowingConsumer<ResultSet>) r -> ids.add(r.getLong(1)));
         for (long discordId : ids) {
-            System.out.println(" - mig " + discordId);
-            Map.Entry<String, String> userPass = getUserPass(discordId, "credentials", EncryptionUtil.Algorithm.LEGACY);
-            addUserPass(discordId, userPass.getKey(), userPass.getValue());
+            Map.Entry<String, String> userPass = getUserPass2(discordId, "credentials", EncryptionUtil.Algorithm.LEGACY);
+            addUserPass2(discordId, userPass.getKey(), userPass.getValue());
         }
-
-        System.out.println("Drop");
 
         executeStmt("DROP TABLE CREDENTIALS");
     }
 
-    public void addUserPass(long discordId, String user, String password) {
+    public void addUserPass2(long nationId, String user, String password) {
         try {
             String secretStr = Settings.INSTANCE.CLIENT_SECRET;
             if (secretStr == null || secretStr.isEmpty()) secretStr = Settings.INSTANCE.BOT_TOKEN;
@@ -307,7 +307,7 @@ public class DiscordDB extends DBMainV2 {
             byte[] passEnc = EncryptionUtil.encrypt2(EncryptionUtil.encrypt2(password.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
 
             update("INSERT OR REPLACE INTO `CREDENTIALS2` (`discordid`, `user`, `password`, `salt`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-                stmt.setLong(1, discordId);
+                stmt.setLong(1, nationId);
                 stmt.setString(2, Base64.encodeBase64String(userEnc));
                 stmt.setString(3, Base64.encodeBase64String(passEnc));
                 stmt.setString(4, Base64.encodeBase64String(salt));
@@ -317,16 +317,16 @@ public class DiscordDB extends DBMainV2 {
         }
     }
 
-    public Map.Entry<String, String> getUserPass(long discordId) {
-        return getUserPass(discordId, "credentials2", EncryptionUtil.Algorithm.DEFAULT);
+    public Map.Entry<String, String> getUserPass2(long nationId) {
+        return getUserPass2(nationId, "credentials2", EncryptionUtil.Algorithm.DEFAULT);
     }
 
-    private Map.Entry<String, String> getUserPass(long discordId, String table, EncryptionUtil.Algorithm algorithm) {
-        if (discordId == Settings.INSTANCE.ADMIN_USER_ID && !Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
+    public Map.Entry<String, String> getUserPass2(long nationId, String table, EncryptionUtil.Algorithm algorithm) {
+        if ((nationId == Settings.INSTANCE.ADMIN_USER_ID || nationId == Settings.INSTANCE.NATION_ID) && !Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
             return Map.entry(Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
         }
         try (PreparedStatement stmt = prepareQuery("select * FROM " + table + " WHERE `discordid` = ?")) {
-            stmt.setLong(1, discordId);
+            stmt.setLong(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String secretStr = Settings.INSTANCE.CLIENT_SECRET;
@@ -556,7 +556,7 @@ public class DiscordDB extends DBMainV2 {
             long discordId = Long.parseLong(nation.getDiscord_id());
 
             PNWUser existingUser = getUserFromNationId(nation.getId());
-            if (existingUser != null && existingUser.getDiscordId() != null && existingUser.getDiscordId().equals(discordId)) {
+            if (existingUser != null && existingUser.getDiscordId() == (discordId)) {
                 continue;
             }
             if (eventConsumer != null) {
@@ -570,18 +570,15 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void addUser(PNWUser user) {
-        if (user.getDiscordId() != null) {
-            updateUserCache();
-            userCache.put(user.getDiscordId(), user);
-            userNationCache.put(user.getNationId(), user);
+        updateUserCache();
+        userCache.put(user.getDiscordId(), user);
+        PNWUser existing = userNationCache.put(user.getNationId(), user);
+        if (existing != null && existing.getDiscordId() != user.getDiscordId()) {
+//            unregister(null, existing.getDiscordId());
         }
         update("INSERT OR REPLACE INTO `USERS`(`nation_id`, `discord_id`, `discord_name`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, user.getNationId());
-            if (user.getDiscordId() == null) {
-                stmt.setNull(2, Types.INTEGER);
-            } else {
-                stmt.setLong(2, user.getDiscordId());
-            }
+            stmt.setLong(2, user.getDiscordId());
             stmt.setString(3, user.getDiscordName());
         });
     }
@@ -592,14 +589,24 @@ public class DiscordDB extends DBMainV2 {
     }
 
     private List<PNWUser> getUsersRaw() {
+        Set<Integer> nationsToDelete = new HashSet<>();
         ArrayList<PNWUser> list = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM USERS")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int nationId = rs.getInt("nation_id");
                     Long discordId = getLong(rs, "discord_id");
+                    if (discordId == null) {
+                        nationsToDelete.add(nationId);
+                        continue;
+                    }
                     String name = rs.getString("discord_name");
                     list.add(new PNWUser(nationId, discordId, name));
+                }
+            }
+            if (!nationsToDelete.isEmpty()) {
+                for (int id : nationsToDelete) {
+                    unregister(id, null);
                 }
             }
             return list;
@@ -655,12 +662,19 @@ public class DiscordDB extends DBMainV2 {
         if (!userCache.isEmpty()) return;
         synchronized (this) {
             if (!userCache.isEmpty()) return;
-            for (PNWUser user : getUsersRaw()) {
-                Long id = user.getDiscordId();
-                if (id != null) {
-                    userCache.put(user.getDiscordId(), user);
+            List<PNWUser> users = getUsersRaw();
+            for (PNWUser user : users) {
+                long id = user.getDiscordId();
+                userCache.put(user.getDiscordId(), user);
+                PNWUser existing = userNationCache.put(user.getNationId(), user);
+                if (existing != null && existing.getDiscordId() != id) {
+                    if (existing.getDiscordId() > id) {
+                        userNationCache.put(user.getNationId(), existing);
+//                        unregister(null, id);
+                    } else {
+//                        unregister(null, existing.getDiscordId());
+                    }
                 }
-                userNationCache.put(user.getNationId(), user);
             }
         }
     }
@@ -679,7 +693,6 @@ public class DiscordDB extends DBMainV2 {
         List<PNWUser> secondary = null;
         for (Map.Entry<Long, PNWUser> entry : cached.entrySet()) {
             PNWUser user = entry.getValue();
-            if (user.getDiscordId() == null) continue;
 
             if (nameWithDesc != null && nameWithDesc.equalsIgnoreCase(user.getDiscordName())) {
                 user.setDiscordId(user.getDiscordId());
@@ -687,7 +700,7 @@ public class DiscordDB extends DBMainV2 {
             }
             if (name != null && user.getDiscordName() != null) {
                 if (user.getDiscordName().contains("#")) {
-                    if (discordId == null && user.getDiscordName().startsWith(name + "#")) {
+                    if (user.getDiscordName().startsWith(name + "#")) {
                         if (secondary == null) secondary = new ArrayList<>();
                         secondary.add(user);
                     }
@@ -704,10 +717,11 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void unregister(Integer nationId, Long discordId) {
+        if (nationId == null && discordId == null) throw new IllegalArgumentException("A nation id or discord id must be provided");
         if (discordId != null) userCache.remove(discordId);
         if (nationId != null) {
-            PNWUser user = getUserFromNationId(nationId);
-            if (user != null && user.getDiscordId() != null) {
+            PNWUser user = userNationCache.remove(nationId);
+            if (user != null) {
                 userCache.remove(user.getDiscordId());
             }
         }

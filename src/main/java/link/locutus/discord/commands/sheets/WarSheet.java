@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 public class WarSheet extends Command {
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <allies> <enemies> [time]";
+        return Settings.commandPrefix(true) + getClass().getSimpleName() + " <allies> <enemies> [time]";
     }
 
     @Override

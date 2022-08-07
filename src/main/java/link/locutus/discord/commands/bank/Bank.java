@@ -32,7 +32,7 @@ public class Bank extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "bank <alliance>";
+        return Settings.commandPrefix(true) + "bank <alliance>";
     }
 
     @Override
@@ -54,7 +54,7 @@ public class Bank extends Command {
         User user = event.getAuthor();
         DBNation banker = DiscordUtil.getNation(event);
         if (banker == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
         Map<ResourceType, Double> totals = new HashMap<>();
 

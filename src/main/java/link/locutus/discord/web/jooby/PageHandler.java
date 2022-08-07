@@ -165,8 +165,8 @@ public class PageHandler implements Handler {
         try {
             String cmdStr = cmds.get(0);
             if (cmdStr.isEmpty()) return;
-            if (cmdStr.charAt(0) == '!') cmdStr = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + cmdStr.substring(1);
-            if (cmdStr.charAt(0) == '$') cmdStr = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + cmdStr.substring(1);
+            if (cmdStr.charAt(0) == '!') cmdStr = Settings.commandPrefix(true) + cmdStr.substring(1);
+            if (cmdStr.charAt(0) == '$') cmdStr = Settings.commandPrefix(false) + cmdStr.substring(1);
 
             Context ctx = sse.ctx;
             JsonObject userJson = root.getDiscordUser(ctx);
@@ -489,7 +489,7 @@ public class PageHandler implements Handler {
             }
             DBNation nation = DiscordUtil.getNation(id);
             if (nation == null) {
-                ctx.result("Please use <b>" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
+                ctx.result("Please use <b>" + Settings.commandPrefix(true) + "verify</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
                         "You are currently signed in as " + user.getName() + "#" + user.getDiscriminator() + ": " + MarkupUtil.htmlUrl("Logout", WebRoot.REDIRECT + "/logout"));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;

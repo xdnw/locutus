@@ -22,7 +22,7 @@ public class MsgInfo extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "msginfo <message-link>";
+        return Settings.commandPrefix(true) + "msginfo <message-link>";
     }
 
     @Override

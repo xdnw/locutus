@@ -30,7 +30,7 @@ public class EditAlliance extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "editalliance [attr] [value]";
+        return Settings.commandPrefix(true) + "editalliance [attr] [value]";
     }
 
     @Override

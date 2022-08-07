@@ -55,7 +55,7 @@ public enum Coalition {
         }
     },
     ALLIES("Allies"),
-    MASKEDALLIANCES("Additional alliances to mask with `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "autoRole` (if alliance masking is enabled)") {
+    MASKEDALLIANCES("Additional alliances to mask with `" + Settings.commandPrefix(true) + "autoRole` (if alliance masking is enabled)") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
             return Roles.hasAny(user, guild, Roles.ADMIN, Roles.INTERNAL_AFFAIRS);

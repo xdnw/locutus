@@ -26,7 +26,7 @@ public class SetCoalition extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> <coalition>";
+        return Settings.commandPrefix(true) + "setcoalition <alliance> <coalition>";
     }
 
     @Override
@@ -42,7 +42,7 @@ public class SetCoalition extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) {
-            return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> <coalition>";
+            return "Usage: `" + Settings.commandPrefix(true) + "setcoalition <alliance> <coalition>";
         }
         Coalition.checkPermission(args.get(1), guild, author);
 

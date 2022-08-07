@@ -33,7 +33,7 @@ public class Revenue extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "revenue [json|city-link|nation-link]";
+        return Settings.commandPrefix(true) + "revenue [json|city-link|nation-link]";
     }
 
     @Override
@@ -54,7 +54,7 @@ public class Revenue extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
 
         boolean force = flags.contains('f');

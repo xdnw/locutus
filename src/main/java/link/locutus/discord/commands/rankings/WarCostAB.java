@@ -202,10 +202,10 @@ public class WarCostAB extends Command {
         String title = "Reimburse: ~$" + MathMan.format(PnwUtil.convertedTotal(total));
         String body = "Type: " + type + "\n" + "Amt: " + totalStr;
 
-        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + nation.getNationUrl() + " " + totalStr + " \"" + note + "\"";
+        String cmd = Settings.commandPrefix(true) + "addbalance " + nation.getNationUrl() + " " + totalStr + " \"" + note + "\"";
 
         String infoEmoji = "\u2139";
-        String infoCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warinfo " + warUrl.toUrl();
+        String infoCmd = Settings.commandPrefix(true) + "warinfo " + warUrl.toUrl();
 
         DiscordUtil.createEmbedCommand(channel, title, body, "\u2705", cmd, infoEmoji, infoCmd);
     }

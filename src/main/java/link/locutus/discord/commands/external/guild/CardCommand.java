@@ -29,13 +29,13 @@ public class CardCommand extends Command implements Noformat {
     @Override
     public String desc() {
         return "Generate a card which runs a command when users react to it.\nPut commands inside \"quotes\".\n" +
-                "Prefix a command with a #channel e.g. `\"#channel " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "command\"` to have the command output go there\n\n" +
+                "Prefix a command with a #channel e.g. `\"#channel " + Settings.commandPrefix(true) + "command\"` to have the command output go there\n\n" +
                 "Prefix the command with:" +
-                "`~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "command` to remove the user's reaction upon use and keep the card\n" +
-                "`_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "command` to remove ALL reactions upon use and keep the card\n" +
-                "`." + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "command` to keep the card upon use\n\n" +
+                "`~" + Settings.commandPrefix(true) + "command` to remove the user's reaction upon use and keep the card\n" +
+                "`_" + Settings.commandPrefix(true) + "command` to remove ALL reactions upon use and keep the card\n" +
+                "`." + Settings.commandPrefix(true) + "command` to keep the card upon use\n\n" +
                 "Example:\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "embed 'Some Title' 'My First Embed' '~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "say Hello {nation}' '" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "say Goodbye {nation}'`";
+                "`" + Settings.commandPrefix(true) + "embed 'Some Title' 'My First Embed' '~" + Settings.commandPrefix(true) + "say Hello {nation}' '" + Settings.commandPrefix(true) + "say Goodbye {nation}'`";
     }
 
     @Override

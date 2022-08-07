@@ -42,7 +42,7 @@ public class BankWith extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer <alliance|nation> <resource> <amount>";
+        return Settings.commandPrefix(true) + "transfer <alliance|nation> <resource> <amount>";
     }
 
     @Override
@@ -136,14 +136,14 @@ public class BankWith extends Command {
         }
 
         if (primaryNote.isEmpty() && (!flags.contains('n') || guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID) == null)) { //  && !grant
-            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant`, or one of the following labels: " + StringMan.getString(allowedLabels) + "\n" +
+            return "Please use `" + Settings.commandPrefix(true) + "grant`, or one of the following labels: " + StringMan.getString(allowedLabels) + "\n" +
                     "note: You can add extra information after the label e.g. `\"#deposit blah\"`";
         }
 
         String arg = args.get(0);
         Integer alliance = arg.contains("/nation/") ? null : PnwUtil.parseAllianceId(arg);
         NationOrAlliance receiver;
-        if (alliance == null || Locutus.imp().getNationDB().getAllianceName(alliance) == null) {
+        if (alliance == null || DBAlliance.get(alliance) == null) {
             Integer nationId = DiscordUtil.parseNationId(arg);
             if (nationId == null) {
                 return "Invalid nation or alliance: " + arg;
@@ -216,7 +216,7 @@ public class BankWith extends Command {
 
         DBNation banker = DiscordUtil.getNation(event);
         if (banker == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
 
         if (flags.contains('e')) {
@@ -270,12 +270,12 @@ public class BankWith extends Command {
             List<String> params = new ArrayList<>();
 
 //            String allianceUrl = PnwUtil.getUrl(guildDb.getOrThrow(GuildDB.Key.ALLIANCE_ID), true);
-//            String aaCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending " + title + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer -f " + allianceUrl + " " + PnwUtil.resourcesToString(transfer) + " " + note;
+//            String aaCmd = Settings.commandPrefix(true) + "pending " + title + Settings.commandPrefix(true) + "transfer -f " + allianceUrl + " " + PnwUtil.resourcesToString(transfer) + " " + note;
 //            params.add(aaEmoji);
 //            params.add(aaCmd);
 //
 //            if (receiver.isNation()) {
-//                String nationCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending " + title + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer -f " + receiver.getUrl() + " " + PnwUtil.resourcesToString(transfer) + " " + note;
+//                String nationCmd = Settings.commandPrefix(true) + "pending " + title + Settings.commandPrefix(true) + "transfer -f " + receiver.getUrl() + " " + PnwUtil.resourcesToString(transfer) + " " + note;
 //                params.add(nationEmoji);
 //                params.add(nationCmd);
 //            }
@@ -287,8 +287,8 @@ public class BankWith extends Command {
             return "See also:\n" +
                     "> https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8\n" +
                     "To add an offshore:\n" +
-                    "1. (int this server) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetCoalition <offshore-alliance> offshore`\n" +
-                    "2. (in the offshore) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetCoalition <alliance> offshoring`";
+                    "1. (int this server) `" + Settings.commandPrefix(true) + "SetCoalition <offshore-alliance> offshore`\n" +
+                    "2. (in the offshore) `" + Settings.commandPrefix(true) + "SetCoalition <alliance> offshoring`";
         }
 
         if (!force) {
@@ -366,29 +366,29 @@ public class BankWith extends Command {
                             return "You are not a member of " + aaId2;
                     } else if (!Roles.MEMBER.has(author, guild)) {
                         Role memberRole = Roles.MEMBER.toRole(guild);
-                        if (memberRole == null) return "No member role enabled (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "AliasRole`)";
+                        if (memberRole == null) return "No member role enabled (see `" + Settings.commandPrefix(true) + "AliasRole`)";
                         return "You do not have the member role: " + memberRole.getName();
                     }
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) != Boolean.TRUE)
-                        return "`MEMBER_CAN_WITHDRAW` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore` )";
+                        return "`MEMBER_CAN_WITHDRAW` is false (see `" + Settings.commandPrefix(true) + "KeyStore` )";
                     GuildMessageChannel channel = guildDb.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (channel == null)
-                        return "Please have an admin use. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore RESOURCE_REQUEST_CHANNEL #someChannel`";
+                        return "Please have an admin use. `" + Settings.commandPrefix(true) + "KeyStore RESOURCE_REQUEST_CHANNEL #someChannel`";
                     if (event.getChannel().getIdLong() != channel.getIdLong())
                         return "Please use the transfer command in " + channel.getAsMention();
 
                     if (!Roles.ECON_WITHDRAW_SELF.has(author, guild))
-                        return "You do not have the `ECON_WITHDRAW_SELF` role. See: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole`";
+                        return "You do not have the `ECON_WITHDRAW_SELF` role. See: `" + Settings.commandPrefix(true) + "aliasrole`";
                     if (!receiver.isNation() || receiver.getId() != me.getId())
                         return "You only have permission to withdraw to yourself";
 
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE && aaId2 != null) {
                         if (!guildDb.getCoalition("enemies").isEmpty())
-                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`) and `enemies` is set (see: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions`)";
+                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.commandPrefix(true) + "KeyStore`) and `enemies` is set (see: `" + Settings.commandPrefix(true) + "setcoalition` | `" + Settings.commandPrefix(true) + "removecoalition` | `" + Settings.commandPrefix(true) + "coalitions`)";
                         DBAlliance aaObj = DBAlliance.getOrCreate(aaId2);
                         ByteBuffer warringBuf = aaObj.getMeta(AllianceMeta.IS_WARRING);
                         if (warringBuf != null && warringBuf.get() == 1)
-                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`)";
+                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.commandPrefix(true) + "KeyStore`)";
                     }
 
                     // check that we personally have the required deposits
@@ -409,8 +409,8 @@ public class BankWith extends Command {
                         double amt = myDeposits[entry.getKey().ordinal()];
                         if (amt + 0.01 < entry.getValue()) {
                             if (!rssConversion) {
-                                return "You do not have `" + MathMan.format(entry.getValue()) + "x" + entry.getKey() + "`. (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX +
-                                        "depo @user` ). RESOURCE_CONVERSION is disabled (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore RESOURCE_CONVERSION`)\n" +
+                                return "You do not have `" + MathMan.format(entry.getValue()) + "x" + entry.getKey() + "`. (see `" + Settings.commandPrefix(true) +
+                                        "depo @user` ). RESOURCE_CONVERSION is disabled (see `" + Settings.commandPrefix(true) + "KeyStore RESOURCE_CONVERSION`)\n" +
                                         "You may withdraw up to `" + MathMan.format(amt) + "` " + entry.getKey();
                             }
                             hasExactResources = false;

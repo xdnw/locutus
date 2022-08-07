@@ -1954,68 +1954,6 @@ public class WarDB extends DBMainV2 {
 //        return attack;
 //    }
 
-    public Map<ResourceType, Double> getLootEstimate(DBAttack attack) {
-        Map<ResourceType, Double> loot = new HashMap<>(attack.getLoot());
-        Double pct = attack.getLootPercent();
-        if (pct == 0) pct = 0.1;
-        double factor = 1d / pct;
-
-        for (Map.Entry<ResourceType, Double> entry : loot.entrySet()) {
-            entry.setValue((entry.getValue() * factor - entry.getValue()));
-        }
-        return loot;
-    }
-
-    public void updateLootEstimate(DBAttack attack, Map<Integer, double[]> allianceLoot, Map<Integer, Map.Entry<Long, double[]>> nationLoot) {
-        updateLootEstimate(attack, allianceLoot, nationLoot, true);
-    }
-
-    public void updateLootEstimate(DBAttack attack, Map<Integer, double[]> allianceLoot, Map<Integer, Map.Entry<Long, double[]>> nationLoot, boolean override) {
-        if (attack.attack_type == AttackType.VICTORY && nationLoot != null && attack.loot != null) {
-            Map<ResourceType, Double> loot = attack.getLoot();
-            Integer looted = attack.getLooted();
-            if (looted != null && looted != 0) {
-                Double pct = attack.getLootPercent();
-                if (pct == 0) pct = 0.1;
-                double factor = 1/pct;
-
-                double[] lootCopy = attack.loot.clone();
-                for (int i = 0; i < lootCopy.length; i++) {
-                    lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
-                }
-
-                if (override) {
-                    nationLoot.put(looted, new AbstractMap.SimpleEntry<>(attack.epoch, lootCopy));
-                } else {
-                    nationLoot.putIfAbsent(looted, new AbstractMap.SimpleEntry<>(attack.epoch, lootCopy));
-                }
-            }
-        }
-        if (attack.attack_type == AttackType.A_LOOT && allianceLoot != null) {
-            Map<ResourceType, Double> loot = attack.getLoot();
-            Integer allianceId = attack.getLooted();
-            if (allianceId != null && allianceId != 0) {
-                Double pct = attack.getLootPercent();
-                if (pct == 0) pct = 0.1;
-                double factor = 1d / pct;
-
-                double[] lootArr = PnwUtil.resourcesToArray(loot);
-                for (int i = 0; i < lootArr.length; i++) {
-                    lootArr[i] = lootArr[i] * factor - lootArr[i];
-                }
-//                loot = new HashMap<>(loot);
-//                for (Map.Entry<ResourceType, Double> entry : loot.entrySet()) {
-//                    entry.setValue((entry.getValue() * factor - entry.getValue()));
-//                }
-                if (override) {
-                    allianceLoot.put(allianceId, lootArr);
-                } else {
-                    allianceLoot.putIfAbsent(allianceId, lootArr);
-                }
-            }
-        }
-    }
-
     public Map<ResourceType, Double> getAllianceBankEstimate(int allianceId, double nationScore) {
         DBAlliance alliance = DBAlliance.get(allianceId);
         if (allianceId == 0 || alliance == null) return Collections.emptyMap();
@@ -2033,62 +1971,6 @@ public class WarDB extends DBMainV2 {
         Map<ResourceType, Double> yourLoot = PnwUtil.resourcesToMap(allianceLoot);
         yourLoot = PnwUtil.multiply(yourLoot, percent);
         return yourLoot;
-    }
-
-    public Map.Entry<Long, Map<ResourceType, Double>> getDateAndAllianceBankEstimate(int allianceId) {
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE `attack_type` = 3 AND looted = ? ORDER BY date DESC LIMIT 1")) {
-            stmt.setLong(1, allianceId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBAttack attack = createAttack(rs);
-                    return new AbstractMap.SimpleEntry<>(attack.epoch, getLootEstimate(attack));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public Map<Integer, double[]> getAllianceBankEstimate(long cutOff, boolean full) {
-        Map<Integer, double[]> allianceLoot = new ConcurrentHashMap<>();
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE `attack_type` = 3 AND date > ? ORDER BY date DESC")) {
-            stmt.setLong(1, cutOff);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    if (!full) {
-                        int victor = rs.getInt("victor");
-                        int attacker_nation_id = rs.getInt("attacker_nation_id");
-                        int defender_nation_id = rs.getInt("defender_nation_id");
-                        int loserId = victor == attacker_nation_id ? defender_nation_id : attacker_nation_id;
-                        DBNation loserNation = Locutus.imp().getNationDB().getNation(loserId);
-                        if (loserNation == null|| allianceLoot.containsKey(loserNation.getNation_id()));
-                    }
-                    DBAttack attack = createAttack(rs);
-                    updateLootEstimate(attack, allianceLoot, new HashMap<>(), false);
-                }
-            }
-            return allianceLoot;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public List<DBAttack> getAllianceLoot() {
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE `attack_type` = 3 ORDER BY date DESC")) {
-            List<DBAttack> result = new ArrayList<>();
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBAttack attack = createAttack(rs);
-                    result.add(attack);
-                }
-            }
-            return result;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy(NationDB db) {

@@ -42,7 +42,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding
     @IsAlliance
     public boolean checkAlliance(@Me GuildDB db, IsAlliance perm) {
-        if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID`");
+        if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID`");
         return true;
     }
 
@@ -50,14 +50,14 @@ public class PermissionBinding extends BindingHelper {
     @IsAuthenticated
     public boolean isAuthenticated(@Me GuildDB db, IsAuthenticated perm) {
         Auth auth = perm.value().length > 0 ? db.getAuth(perm.value()) : db.getAuth();
-        if (auth == null || !auth.isValid()) throw new IllegalArgumentException(db.getGuild() + " is not authenticaed. See: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "login`");
+        if (auth == null || !auth.isValid()) throw new IllegalArgumentException(db.getGuild() + " is not authenticaed. See: `" + Settings.commandPrefix(true) + "login`");
         return true;
     }
 
     @Binding
     @HasApi
     public boolean hasApi(@Me GuildDB db, HasApi perm) {
-        if (db.getApi() == null) throw new IllegalArgumentException("No api key set: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`");
+        if (db.getApi() == null) throw new IllegalArgumentException("No api key set: `" + Settings.commandPrefix(true) + "KeyStore API_KEY`");
         return true;
     }
 

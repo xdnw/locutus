@@ -31,7 +31,7 @@ public class WarLossesPerCity extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarLossesPerCity <alliance|coalition|*> <days>";
+        return Settings.commandPrefix(true) + "WarLossesPerCity <alliance|coalition|*> <days>";
     }
 
     @Override

@@ -16,7 +16,7 @@ public class PendingCommand extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending <command>";
+        return Settings.commandPrefix(true) + "pending <command>";
     }
 
     @Override

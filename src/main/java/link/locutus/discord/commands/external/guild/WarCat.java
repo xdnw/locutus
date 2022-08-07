@@ -40,7 +40,7 @@ public class WarCat extends Command {
     @Override
     public String desc() {
         return "Run this command in a war room to assign it to a category e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarCat raid` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarCat @borg`";
+                "`" + Settings.commandPrefix(true) + "WarCat raid` or `" + Settings.commandPrefix(true) + "WarCat @borg`";
     }
 
     @Override

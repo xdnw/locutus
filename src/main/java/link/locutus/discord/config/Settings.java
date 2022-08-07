@@ -85,6 +85,10 @@ public class Settings extends Config {
     @Create
     public DATABASE DATABASE;
 
+    public static String commandPrefix(boolean legacy) {
+        return legacy ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX;
+    }
+
     //
 
     public String PNW_URL() {

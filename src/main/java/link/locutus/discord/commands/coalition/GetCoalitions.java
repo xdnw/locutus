@@ -25,7 +25,7 @@ public class GetCoalitions extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions [filter]";
+        return Settings.commandPrefix(true) + "coalitions [filter]";
     }
 
     @Override
@@ -33,7 +33,7 @@ public class GetCoalitions extends Command {
         return "List all coalitions\n" +
                 "Add `-i` to list only IDs\n" +
                 "Add `-d` to ignore deleted AAs\n" +
-                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions enemies`";
+                "e.g. `" + Settings.commandPrefix(true) + "coalitions enemies`";
     }
 
     @Override

@@ -94,7 +94,6 @@ import link.locutus.discord.commands.external.guild.CheckPermission;
 import link.locutus.discord.commands.external.guild.KeyStore;
 import link.locutus.discord.commands.external.guild.Permission;
 import link.locutus.discord.commands.external.account.ForumScrape;
-import link.locutus.discord.commands.external.account.LoadUsers;
 import link.locutus.discord.commands.account.Say;
 import link.locutus.discord.commands.bank.Warchest;
 import link.locutus.discord.commands.fun.Jokes;
@@ -241,8 +240,8 @@ public class CommandManager {
 
     public CommandManager(Locutus locutus) {
         this.locutus = locutus;
-        this.prefix1 = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.charAt(0);
-        this.prefix2 = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.charAt(0);
+        this.prefix1 = Settings.commandPrefix(true).charAt(0);
+        this.prefix2 = Settings.commandPrefix(false).charAt(0);
         this.commandMap = new LinkedHashMap<>();
             this.executor = new ScheduledThreadPoolExecutor(256);
 
@@ -294,7 +293,7 @@ public class CommandManager {
             return false;
         }
 
-        if (content.equalsIgnoreCase(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "threads")) {
+        if (content.equalsIgnoreCase(Settings.commandPrefix(true) + "threads")) {
             threadDump();
             return false;
         }
@@ -330,11 +329,11 @@ public class CommandManager {
                 Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
                 Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
                 if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_BLACKLIST`)"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.commandPrefix(true) + "KeyStore CHANNEL_BLACKLIST`)"));
                     return false;
                 }
                 if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_WHITELIST`)"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.commandPrefix(true) + "KeyStore CHANNEL_WHITELIST`)"));
                     return false;
                 }
             }
@@ -366,7 +365,7 @@ public class CommandManager {
                         if (noPermMsg) {
                             DBNation nation = DiscordUtil.getNation(msgUser);
                             if (nation == null) {
-                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify <nation-id>`"));
+                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.commandPrefix(true) + "verify <nation-id>`"));
                                 return;
                             }
                             if (msgGuild != null) {
@@ -490,17 +489,17 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole REGISTERED @someRole`"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole REGISTERED @someRole`"));
                 return true;
             } else if (!member.getRoles().contains(registeredRole)) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` to get masked with the role: " + registeredRole.getName()));
+                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.commandPrefix(true) + "verify` to get masked with the role: " + registeredRole.getName()));
                 return true;
             }
         }
         {
             Role memberRole = Roles.MEMBER.toRole(msgGuild);
             if (memberRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No member role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole MEMBER @someRole`"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No member role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MEMBER @someRole`"));
                 return true;
             } else if (!member.getRoles().contains(memberRole)) {
                 RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + memberRole.getName()));
@@ -511,7 +510,7 @@ public class CommandManager {
             Role adminRole = Roles.ADMIN.toRole(msgGuild);
             if (adminRole == null) {
                 if (!member.hasPermission(net.dv8tion.jda.api.Permission.ADMINISTRATOR)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No admin role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole ADMIN @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`"));
                     return true;
                 }
             } else if (!member.getRoles().contains(adminRole)) {
@@ -523,7 +522,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.MILCOM)) {
                 Role milcomRole = Roles.MILCOM.toRole(msgGuild);
                 if (milcomRole == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No milcom role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole MILCOM (@someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No milcom role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MILCOM (@someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(milcomRole)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + milcomRole.getName()));
@@ -534,7 +533,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.ECON)) {
                 Role role = Roles.ECON.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.ECON + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.ECON + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.ECON + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.ECON + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
@@ -545,7 +544,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.INTERNAL_AFFAIRS)) {
                 Role role = Roles.INTERNAL_AFFAIRS.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
@@ -556,7 +555,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.FOREIGN_AFFAIRS)) {
                 Role role = Roles.FOREIGN_AFFAIRS.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
@@ -652,7 +651,6 @@ public class CommandManager {
 //        this.register(new DebugScoreRange());
 //        this.register(new DebugTyping());
         this.register(new ForumScrape());
-        this.register(new LoadUsers());
         this.register(new KickLocutus());
 
         this.register(new Sudo());

@@ -64,7 +64,7 @@ public class Spyops extends Command {
                 "Use `*` for op type to automatically find the best op type\n" +
                 "Available op types: " + StringMan.join(SpyCount.Operation.values(), ", ") + "\n" +
                 "Use `success>80` to specify a cutoff for spyop success\n\n" +
-                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyop enemies spies` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyop enemies * -s`\n" +
+                "e.g. `" + Settings.commandPrefix(true) + "spyop enemies spies` | `" + Settings.commandPrefix(true) + "spyop enemies * -s`\n" +
                 "Add `-s` to force an update of nations with full spy slots\n" +
                 "Add `-k` to prioritize kills";
     }
@@ -92,7 +92,7 @@ public class Spyops extends Command {
             }
 
             if (!flags.contains('f')) {
-                StringBuilder response = new StringBuilder("Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <enemy>` first to ensure the results are up to date");
+                StringBuilder response = new StringBuilder("Use `" + Settings.commandPrefix(true) + "spies <enemy>` first to ensure the results are up to date");
                 if (!flags.contains('s')) {
                     response.append(". Add `-s` to remove enemies who are already spy slotted");
                 }
@@ -127,7 +127,7 @@ public class Spyops extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
+            return "Please use `" + Settings.commandPrefix(true) + "validate`";
         }
 
         SpyCount.Operation operation;
@@ -135,7 +135,7 @@ public class Spyops extends Command {
             operation = args.size() >= 1 ? SpyCount.Operation.valueOf(args.get(1).toUpperCase()) : SpyCount.Operation.INTEL;
 
             if (operation.unit == null && operation != SpyCount.Operation.SPIES) {
-                return "Try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "loot <nation>`, `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "who <nation>`, `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <nation>` or (buggy) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "DebugGetRss <nation>`";
+                return "Try `" + Settings.commandPrefix(true) + "loot <nation>`, `" + Settings.commandPrefix(true) + "who <nation>`, `" + Settings.commandPrefix(true) + "spies <nation>` or (buggy) `" + Settings.commandPrefix(true) + "DebugGetRss <nation>`";
             }
         } catch (IllegalArgumentException e) {
             if (!args.get(1).equalsIgnoreCase("*")) {

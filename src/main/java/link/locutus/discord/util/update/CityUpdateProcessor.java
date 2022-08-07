@@ -22,19 +22,23 @@ import rocker.grant.nation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class CityUpdateProcessor {
-    private final ConcurrentLinkedQueue<MMRChange> changes;
+
+    private Map<Integer, Map<Integer, MMRChange>> changes2;
+//    private final ConcurrentLinkedQueue<MMRChange> changes;
 
     public CityUpdateProcessor() {
         if (Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_TOP_X > 0) {
-            changes = new ConcurrentLinkedQueue<>();
+            changes2 = new ConcurrentHashMap<>();
             Locutus.imp().addTaskSeconds(new CaughtTask() {
                 @Override
                 public void runUnsafe() throws Exception {
@@ -42,7 +46,7 @@ public class CityUpdateProcessor {
                 }
             }, 60);
         } else {
-            changes = null;
+            changes2 = null;
         }
     }
 
@@ -68,15 +72,28 @@ public class CityUpdateProcessor {
 
     private synchronized void runOfficerMMRTask() {
         System.out.println("Run officer MMR tasks");
-        long cutoff = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(60);
-        if (changes.isEmpty()) return;
+        long cutoff = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(60 * 2);
+        if (changes2.isEmpty()) return;
 
         Map<Integer, List<MMRChange>> changesByNation = new HashMap<>();
-        while (true) {
-            MMRChange next = changes.peek();
-            if (next == null || next.time > cutoff) break;
-            changesByNation.computeIfAbsent(next.nationId, f -> new ArrayList<>()).add(next);
-            changes.poll();
+        Iterator<Map.Entry<Integer, Map<Integer, MMRChange>>> iter = changes2.entrySet().iterator();
+        outer:
+        while (iter.hasNext()) {
+            Map.Entry<Integer, Map<Integer, MMRChange>> entry = iter.next();
+            DBNation nation = DBNation.byId(entry.getKey());
+            if (nation == null) {
+                iter.remove();
+                continue;
+            }
+            Map<Integer, MMRChange> changesByCities = entry.getValue();
+            // if changes are too recent, dont post
+            if (nation.getCities() * 0.5 > changesByCities.size()) continue;
+            for (MMRChange change : changesByCities.values()) {
+                if (change.time > cutoff) continue outer;
+            }
+
+            iter.remove();
+            changesByNation.put(entry.getKey(), new ArrayList<>(entry.getValue().values()));
         }
         if (changesByNation.isEmpty()) return;
 
@@ -169,14 +186,15 @@ public class CityUpdateProcessor {
     }
 
     private void processOfficerChangeMMR(DBNation nation, DBCity cityFrom, DBCity cityTo) {
-        if (this.changes == null) return;
+        if (this.changes2 == null) return;
 
         DBAlliance alliance = nation.getAlliance();
         if (alliance == null) return;
         DBAlliancePosition position = nation.getAlliancePosition();
-        if (position == null) return;
+        if (position == null && nation.getPositionEnum().id <= Rank.APPLICANT.id) return;
+        if (nation.getCities() < 10) return;
 
-        boolean officer = position.hasAnyOfficerPermissions() || position.getRank().id >= Rank.OFFICER.id;
+        boolean officer = nation.getPositionEnum().id >= Rank.OFFICER.id || (position != null && position.hasAnyOfficerPermissions());
         if (!officer) return;
         int reqRank = Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_TOP_X;
         if (alliance.getRank() > reqRank) {
@@ -185,12 +203,12 @@ public class CityUpdateProcessor {
         }
         int[] mmrFrom = cityFrom.getMMRArray();
         int[] mmrTo = cityTo.getMMRArray();
-        boolean increase = false;
-        for (int i = 0; i < mmrFrom.length; i++) increase |= mmrTo[i] > mmrFrom[i];
+        int increase = 0;
+        for (int i = 0; i < 3; i++) increase += mmrTo[i] - mmrFrom[i];
 
-        if (!increase) return;
+        if (increase <= 0) return;
 
         MMRChange change = new MMRChange(cityTo.fetched, mmrFrom, mmrTo, cityTo.id, nation.getNation_id());
-        changes.add(change);
+        changes2.computeIfAbsent(nation.getNation_id(), f -> new ConcurrentHashMap<>()).put(cityTo.id, change);
     }
 }

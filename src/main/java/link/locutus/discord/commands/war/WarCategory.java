@@ -363,7 +363,7 @@ public class WarCategory {
                                 DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message);
                             } else {
                                 String emoji = "\u2139";
-                                String cmd = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarInfo " + attack.war_id;
+                                String cmd = "_" + Settings.commandPrefix(true) + "WarInfo " + attack.war_id;
                                 message += "\n\nPress " + emoji + " to view the war card";
                                 DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message, emoji, cmd);
                             }
@@ -484,7 +484,7 @@ public class WarCategory {
         for (DBNation attacker : attackers) {
             User user = attacker.getUser();
             if (user == null) {
-                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` ?");
+                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used `" + Settings.commandPrefix(true) + "verify` ?");
                 continue;
             }
 

@@ -36,7 +36,7 @@ public class Rebuy extends Command {
         if (nation == null) return "Unknown nation `" + args.get(0) + "`";
 
         Map<Integer, Long> dcProb = nation.findDayChange();
-        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unithistory`";
+        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try `" + Settings.commandPrefix(true) + "unithistory`";
 
         if (dcProb.size() == 1) {
             Map.Entry<Integer, Long> entry = dcProb.entrySet().iterator().next();

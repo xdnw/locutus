@@ -102,7 +102,7 @@ public class DepositsSheet extends Command {
                 nations.removeIf(n -> n.getPosition() <= 1);
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID` set, or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole MEMBER` set");
+                if (role == null) throw new IllegalArgumentException("No `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID` set, or `" + Settings.commandPrefix(true) + "aliasRole MEMBER` set");
                 nations = new HashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());

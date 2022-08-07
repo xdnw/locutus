@@ -22,12 +22,12 @@ public class AlertTrades extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "alert-trades <resource> <buy|sell> >/< <ppu> <duration>";
+        return Settings.commandPrefix(true) + "alert-trades <resource> <buy|sell> >/< <ppu> <duration>";
     }
 
     @Override
     public String desc() {
-        return "Subscribe (for a duration) to get alerts about trades e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "alert-trades food buy < 75 3days`\n" +
+        return "Subscribe (for a duration) to get alerts about trades e.g. `" + Settings.commandPrefix(true) + "alert-trades food buy < 75 3days`\n" +
                 " - Where `BUY` = BUYER WANTED page, and `SELL` = SELLER WANTED page";
     }
 
@@ -86,6 +86,6 @@ public class AlertTrades extends Command {
         db.subscribe(user, resource, date, isBuy, above, ppu, TradeDB.TradeAlertType.ABSOLUTE);
 
         return "Subscribed to `" + DiscordUtil.trimContent(event.getMessage().getContentRaw()).toUpperCase() + "`" +
-                "\nCheck your subscriptions with: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "trade-subs`";
+                "\nCheck your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`";
     }
 }

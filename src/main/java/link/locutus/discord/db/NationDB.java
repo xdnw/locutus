@@ -447,7 +447,10 @@ public class NationDB extends DBMainV2 {
                     synchronized (alliancesById) {
                         alliancesById.put(alliance.getId(), existing);
                     }
-                    if (eventConsumer != null) eventConsumer.accept(new AllianceCreateEvent(existing));
+//                    if (alliance.getDate().getEpochSecond() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7))
+                    {
+                        if (eventConsumer != null) eventConsumer.accept(new AllianceCreateEvent(existing));
+                    }
                     dirtyAlliances.add(existing);
                 } else {
                     if (existing.set(alliance, eventConsumer)) {
@@ -2277,8 +2280,10 @@ public class NationDB extends DBMainV2 {
                 }
             }
         }
+        System.out.println("Score " + score.size());
         // Sorted
         score = new SummedMapRankBuilder<>(score).sort().get();
+        System.out.println("Score 2 " + score.size());
         Set<DBAlliance> result = new LinkedHashSet<>();
         for (int aaId : score.keySet()) {
             DBAlliance alliance = getAlliance(aaId);
@@ -2287,6 +2292,15 @@ public class NationDB extends DBMainV2 {
         }
         return result;
     }
+
+    public static void main(String[] args) {
+        Map<Integer, Double> score = new Int2ObjectOpenHashMap<>();
+        score.put(1, 2d);
+        score.put(2, 3d);
+        score = new SummedMapRankBuilder<>(score).sort().get();
+        System.out.println(StringMan.getString(score));
+    }
+
     public Map<Integer, ByteBuffer> getAllMeta(NationMeta key) {
         Map<Integer, ByteBuffer> results = new HashMap<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META where AND key = ?")) {

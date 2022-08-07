@@ -27,9 +27,9 @@ public class Score extends Command {
     @Override
     public String desc() {
         return "Calculate the score of various things. Each argument is option, and can go in any order e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "score cities=10 projects=2 avg_infra=1.5k mmr=0251`\n" +
+                "`" + Settings.commandPrefix(true) + "score cities=10 projects=2 avg_infra=1.5k mmr=0251`\n" +
                 "You can also specify a nation to use as a base e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "score 'Mountania' avg_infra=2000`";
+                "`" + Settings.commandPrefix(true) + "score 'Mountania' avg_infra=2000`";
     }
 
     @Override

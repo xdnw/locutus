@@ -65,7 +65,7 @@ public class Dm extends Command {
 
         if (mentions.size() > 1 && !flags.contains('f')) {
             String title = "Send " + mentions.size() + " messages";
-            String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
+            String pending = Settings.commandPrefix(true) + "pending " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());

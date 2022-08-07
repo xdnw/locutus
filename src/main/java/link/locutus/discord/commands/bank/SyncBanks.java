@@ -29,7 +29,7 @@ public class SyncBanks extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "syncbanks [epoch]";
+        return Settings.commandPrefix(true) + "syncbanks [epoch]";
     }
 
     @Override
