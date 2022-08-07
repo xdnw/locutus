@@ -30,6 +30,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -37,6 +38,10 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
+    static {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        GraphQLRequestSerializer.OBJECT_MAPPER.setDateFormat(sdf);
+    }
     public static int NATIONS_PER_PAGE = 500;
     public static int CITIES_PER_PAGE = 500;
     public static int TREATIES_PER_PAGE = 1000;

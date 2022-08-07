@@ -216,6 +216,11 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
             DateTime: "java.util.Date",
             DateTimeAuto: "java.time.Instant"
     ]
+    useObjectMapperForRequestSerialization = [
+            "DateTime",
+            "DateTimeAuto",
+            "java.util.Date",
+    ]
     parentInterfaces {
         queryResolver = "graphql.kickstart.tools.GraphQLQueryResolver"
         mutationResolver = "graphql.kickstart.tools.GraphQLMutationResolver"
