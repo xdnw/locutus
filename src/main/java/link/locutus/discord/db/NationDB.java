@@ -2076,7 +2076,12 @@ public class NationDB extends DBMainV2 {
     public DBNation getNation(String nameOrLeader) {
         synchronized (nationsById) {
             for (DBNation nation : nationsById.values()) {
-                if (nation.getNation().equalsIgnoreCase(nameOrLeader) || nation.getLeader().equalsIgnoreCase(nameOrLeader)) {
+                if (nation.getNation().equalsIgnoreCase(nameOrLeader)) {
+                    return nation;
+                }
+            }
+            for (DBNation nation : nationsById.values()) {
+                if (nation.getLeader().equalsIgnoreCase(nameOrLeader)) {
                     return nation;
                 }
             }

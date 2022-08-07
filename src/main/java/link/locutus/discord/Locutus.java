@@ -1072,9 +1072,9 @@ public final class Locutus extends ListenerAdapter {
 
     public void stop() {
         synchronized (OffshoreInstance.BANK_LOCK) {
-            if (raidEstimator != null) {
-                raidEstimator.flush();
-            }
+//            if (raidEstimator != null) {
+//              s  raidEstimator.flush();
+//            }
 
             for (JDA api : getDiscordApi().getApis()) {
                 api.shutdownNow();

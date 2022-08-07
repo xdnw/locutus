@@ -291,7 +291,6 @@ public class GrantCmd extends Command {
         } else if (arg.equalsIgnoreCase("warchest")) {
             Map<ResourceType, Double> stockpile = me.getStockpile();
             if (stockpile == null) throw new IllegalArgumentException("Unable to fetch stockpile (are you sure they are a member?)");
-            if (stockpile.get(ResourceType.CREDITS) == -1) throw new IllegalArgumentException("Please enable alliance access in: <https://politicsandwar.com/account/>");
             Map<ResourceType, Double> cityWc = guildDb.getPerCityWarchest(me);
             resources = PnwUtil.multiply(cityWc, (double) me.getCities());
             if (amt > 0 && amt != 1) {
