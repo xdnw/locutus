@@ -435,6 +435,7 @@ public class NationDB extends DBMainV2 {
         List<DBAlliancePosition> dirtyPositions = new ArrayList<>();
         Set<DBNation> saveNations = new HashSet<>();
 
+        List<DBAlliance> createdAlliances = new ArrayList<>();
         for (Alliance alliance : alliances) {
 
             if (alliance.getDate() != null && alliance.getName() != null) { // Essential components of an alliance
@@ -447,10 +448,8 @@ public class NationDB extends DBMainV2 {
                     synchronized (alliancesById) {
                         alliancesById.put(alliance.getId(), existing);
                     }
+                    createdAlliances.add(existing);
 //                    if (alliance.getDate().getEpochSecond() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7))
-                    {
-                        if (eventConsumer != null) eventConsumer.accept(new AllianceCreateEvent(existing));
-                    }
                     dirtyAlliances.add(existing);
                 } else {
                     if (existing.set(alliance, eventConsumer)) {
@@ -458,7 +457,6 @@ public class NationDB extends DBMainV2 {
                     }
                 }
             }
-
             if (alliance.getAlliance_positions() != null) {
                 Set<Integer> positionIds = alliance.getAlliance_positions().stream().map(f -> f.getId()).collect(Collectors.toSet());
                 synchronized (nationsByAlliance) {
@@ -473,7 +471,6 @@ public class NationDB extends DBMainV2 {
                                 saveNations.add(nation);
                             }
                         }
-
                     }
                 }
 
@@ -512,6 +509,14 @@ public class NationDB extends DBMainV2 {
                 if (!positionsToRemove.isEmpty()) {
                     deletePositions(positionsToRemove, eventConsumer);
                 }
+            }
+        }
+
+        if (!createdAlliances.isEmpty() && eventConsumer != null) {
+            List<Integer> createdAllianceIds = createdAlliances.stream().map(DBAlliance::getId).collect(Collectors.toList());
+            updateAlliances(f -> f.setId(createdAllianceIds), eventConsumer);
+            for (DBAlliance alliance : createdAlliances) {
+                eventConsumer.accept(new AllianceCreateEvent(alliance));
             }
         }
 
