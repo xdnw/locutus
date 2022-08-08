@@ -748,7 +748,6 @@ public class WarDB extends DBMainV2 {
             r.setId(warIdsToUpdate);
             r.setActive(false); // needs to be set otherwise inactive wars wont be fetched
         });
-
         if (wars.isEmpty()) {
             AlertUtil.error("Failed to fetch wars", new Exception());
             return false;
@@ -1713,11 +1712,17 @@ public class WarDB extends DBMainV2 {
                     attack.infra_destroyed = 0d;
                     attack.infra_destroyed_value = 0d;
                     for (DBCity city : cities.values()) {
-                        double infraStart = city.infra;
-                        double infraEnd = (city.infra) / (1 - pct);
-                        attack.infra_destroyed += infraEnd - infraStart;
-                        if (infraEnd > infraStart) {
-                            attack.infra_destroyed_value += PnwUtil.calculateInfra(infraStart, infraEnd);
+                        double infraStart, infraEnd;
+                        if (city.fetched > attack.epoch) {
+                            infraStart = city.infra / (1 - pct);
+                            infraEnd = city.infra;
+                        } else {
+                            infraStart = city.infra;
+                            infraEnd = (city.infra) * (1 - pct);
+                        }
+                        attack.infra_destroyed += infraStart - infraEnd;
+                        if (infraStart > infraEnd) {
+                            attack.infra_destroyed_value += PnwUtil.calculateInfra(infraEnd, infraStart);
                             Locutus.imp().getNationDB().setCityInfraFromAttack(attack.defender_nation_id, city.id, infraEnd, attack.epoch, eventConsumer);
                         }
                     }

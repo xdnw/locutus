@@ -224,7 +224,11 @@ public class AlertUtil {
     public static void error(String title, String body) {
         if (title == null) title = "error";
         System.err.println("# " + title + "\n    " + StringMan.join(body.split("\r?\n"), "\n    "));
-        DiscordUtil.createEmbedCommand(Settings.INSTANCE.DISCORD.CHANNEL.ERRORS, title, body);
+        try {
+            DiscordUtil.createEmbedCommand(Settings.INSTANCE.DISCORD.CHANNEL.ERRORS, title, body);
+        } catch (IllegalArgumentException ignore) {
+            ignore.printStackTrace();
+        }
     }
 
     public static void error(String title, Throwable e) {
