@@ -1647,7 +1647,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public boolean hasRequiredMMR(DBNation nation) {
         if (getOrNull(Key.REQUIRED_MMR) == null) return true;
-        return getRequiredMMR(nation).values().stream().anyMatch(f -> true);
+        return getRequiredMMR(nation).values().stream().anyMatch(f -> f);
     }
 
     public Map<String, Boolean> getRequiredMMR(DBNation nation) {
