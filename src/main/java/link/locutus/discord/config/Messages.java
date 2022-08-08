@@ -17,14 +17,14 @@ public class Messages {
             "It can end when:\n" +
             " - A war finishes (either nation is defeated). Wars also expire after 5 days\n" +
             " - All their ships are killed\n" +
-            " - You can do a naval attack that isn't an utter failure (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "navalSim`)\n" +
+            " - You can do a naval attack that isn't an utter failure (see `" + Settings.commandPrefix(false) + "navalSim`)\n" +
             " - Someone else blockades them (Immense Triumph)\n" +
             "Tips:\n" +
             " - Coordinate with other people fighting\n" +
             " - Keep enough funds on your nation (5 days) so you don't need to bother breaking a blockade\n" +
             "Things you can do if you are desperately out of funds and cant wait:\n" +
             " - Daily login can provide some cash ($500k)\n" +
-            " - Raiding (up to 5 raids), you can get cash from ground attacks or cash & other resources when you defeat a nation (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "loot <nation>`)\n" +
+            " - Raiding (up to 5 raids), you can get cash from ground attacks or cash & other resources when you defeat a nation (see `" + Settings.commandPrefix(true) + "loot <nation>`)\n" +
             " - Doing rewarded ads <https://politicsandwar.com/rewarded-ads/> or baseball (see sidebar)\n" +
             " - Selling buildings (or replacing them with some cheaper alternative) or selling units you don't need\n" +
             " - Converted a credit to resources: <https://politicsandwar.com/donate/resources/>\n" +

@@ -161,7 +161,7 @@ public class WarCommands {
             if (reminders.contains(nation)) toRemove.add(nation);
         }
 
-        if (toRemove.isEmpty()) return "No nations selected for removal. For a list of your current reminders, use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "beigeReminders`";
+        if (toRemove.isEmpty()) return "No nations selected for removal. For a list of your current reminders, use `" + Settings.commandPrefix(false) + "beigeReminders`";
 
         StringBuilder response = new StringBuilder();
         for (DBNation nation : toRemove) {
@@ -216,12 +216,12 @@ public class WarCommands {
             response.append("Added beige reminder for " + target.getNationUrl() + " (in " + diffStr + " OR " + turns + " turns)\n");
         }
         response.append("\nSee also:\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "listBeigeReminders`\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "removeBeigeReminder <nation>`\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertRequiredStatus`\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertMode`\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertRequiredLoot`\n" +
-                " - `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setBeigeAlertScoreLeeway`");
+                " - `" + Settings.commandPrefix(false) + "listBeigeReminders`\n" +
+                " - `" + Settings.commandPrefix(false) + "removeBeigeReminder <nation>`\n" +
+                " - `" + Settings.commandPrefix(false) + "setBeigeAlertRequiredStatus`\n" +
+                " - `" + Settings.commandPrefix(false) + "setBeigeAlertMode`\n" +
+                " - `" + Settings.commandPrefix(false) + "setBeigeAlertRequiredLoot`\n" +
+                " - `" + Settings.commandPrefix(false) + "setBeigeAlertScoreLeeway`");
 
         return response.toString();
     }
@@ -459,7 +459,7 @@ public class WarCommands {
                     "\nAdd `-f` to ignore this check";
         }
 
-        return "Added blockade request. See also `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "cancelUnblockadeRequest`\n> " + Messages.BLOCKADE_HELP;
+        return "Added blockade request. See also `" + Settings.commandPrefix(false) + "cancelUnblockadeRequest`\n> " + Messages.BLOCKADE_HELP;
     }
 
     @Command(desc = "Find blockade targets")
@@ -1042,7 +1042,7 @@ public class WarCommands {
                 if (nationNetValues.isEmpty()) {
                     String message;
                     if (onlyPriority) {
-                        message = "No targets found. Try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "war`";
+                        message = "No targets found. Try `" + Settings.commandPrefix(true) + "war`";
                     } else {
                         message = "No targets found:\n" +
                                 " - Add `-i` to include inactives\n" +
@@ -1151,7 +1151,7 @@ public class WarCommands {
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
         me = DiscordUtil.getNation(author);
-        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
         if (filterWeak) {
@@ -1403,7 +1403,7 @@ public class WarCommands {
             DiscordUtil.createEmbedCommand(channel, title, body.toString());
 
             if (true) {
-                String response = ("Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <enemy>` first to ensure the results are up to date");
+                String response = ("Use `" + Settings.commandPrefix(true) + "spies <enemy>` first to ensure the results are up to date");
                 if (directMesssage) {
                     RateLimitUtil.queue(author.openPrivateChannel().complete().sendMessage(response.toString()));
                 } else {
@@ -1421,7 +1421,7 @@ public class WarCommands {
         double minSuccess = requiredSuccess > 0 ? requiredSuccess : 50;
 
         if (me == null) {
-            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
+            return "Please use `" + Settings.commandPrefix(true) + "validate`";
         }
 
         boolean findOptimal = true;
@@ -2469,7 +2469,7 @@ public class WarCommands {
                               @Switch('f') boolean force,
                               @Switch('d') boolean dm) throws IOException, GeneralSecurityException {
         if (!Roles.MAIL.has(author, guild)) {
-            return "You need the MAIL role on discord (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole`) to add the custom message: `" + header + "`";
+            return "You need the MAIL role on discord (see `" + Settings.commandPrefix(true) + "aliasRole`) to add the custom message: `" + header + "`";
         }
         Map<DBNation, Set<DBNation>> warDefAttMap = new HashMap<>();
         Map<DBNation, Set<DBNation>> spyDefAttMap = new HashMap<>();
@@ -2494,7 +2494,7 @@ public class WarCommands {
         }
 
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
         Map<DBNation, Set<DBNation>> spyAttDefMap = BlitzGenerator.reverse(spyDefAttMap);
@@ -2626,7 +2626,7 @@ public class WarCommands {
 
         if (!force) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
-            String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(message.getContentRaw()) + " -f";
+            String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(message.getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : mailTargets.keySet()) alliances.add(nation.getAlliance_id());
@@ -3262,7 +3262,7 @@ public class WarCommands {
                 Set<Integer> allies = db.getAllies(true);
                 if (allies.isEmpty()) {
                     aaId = me.getAlliance_id();
-                    if (aaId == 0) return "No alliance or allies are set.\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID <alliance>`\nOR\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> allies`";
+                    if (aaId == 0) return "No alliance or allies are set.\n`" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID <alliance>`\nOR\n`" + Settings.commandPrefix(true) + "setcoalition <alliance> allies`";
                     counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));
@@ -3399,7 +3399,7 @@ public class WarCommands {
                     return null;
                 }
                 if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * 1.75) {
-                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "score`). ", 'f');
+                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see `" + Settings.commandPrefix(false) + "score`). ", 'f');
                     return null;
                 }
                 if (attacker.getOff() >= attacker.getMaxOff() && !allowAttackersWithMaxOffensives) {

@@ -89,7 +89,7 @@ public class QuestionCommand<T extends Question> extends Command { private final
 
         List<String> reactions = new ArrayList<>();
         String[] options = question.getOptions();
-        String cmdBase = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "interview " + (index) + " " + author.getAsMention();
+        String cmdBase = Settings.commandPrefix(true) + "interview " + (index) + " " + author.getAsMention();
 
         if (options.length == 0) {
             cmdBase += " Y";

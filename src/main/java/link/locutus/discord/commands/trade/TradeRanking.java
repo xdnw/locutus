@@ -31,7 +31,7 @@ public class TradeRanking extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "TradeRanking <nations> <days>";
+        return Settings.commandPrefix(true) + "TradeRanking <nations> <days>";
     }
 
     @Override

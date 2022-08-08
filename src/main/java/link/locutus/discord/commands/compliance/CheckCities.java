@@ -81,7 +81,7 @@ public class CheckCities extends Command {
         }
 
         if (nations.isEmpty()) {
-            return "No nations found for: `" + args.get(0) + "`" + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "register` ?";
+            return "No nations found for: `" + args.get(0) + "`" + ". Have they used `" + Settings.commandPrefix(true) + "register` ?";
         }
 
         int allianceId = -1;
@@ -108,7 +108,7 @@ public class CheckCities extends Command {
 
         boolean mail = flags.contains('m');
         ApiKeyPool keys = mail ? db.getMailKey() : null;
-        if (mail && keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
+        if (mail && keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
 
         for (DBNation nation : nations) {
             int failed = 0;
@@ -145,7 +145,7 @@ public class CheckCities extends Command {
 
                 if (flags.contains('p')) {
                     PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
-                    if (user != null && user.getDiscordId() != null) {
+                    if (user != null) {
                         event.getChannel().sendMessage("^ " + user.getAsMention()).complete();
                     }
                 } else if (mail) {
@@ -183,6 +183,6 @@ public class CheckCities extends Command {
     }
 
     private void createEmbed(DBNation nation, MessageReceivedEvent event, int failed, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult, Integer page) {
-        IACheckup.createEmbed(event.getChannel(), event.getMessage(), Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "Checkup " + nation.getNation_id(), nation, auditResult, page);
+        IACheckup.createEmbed(event.getChannel(), event.getMessage(), Settings.commandPrefix(true) + "Checkup " + nation.getNation_id(), nation, auditResult, page);
     }
 }

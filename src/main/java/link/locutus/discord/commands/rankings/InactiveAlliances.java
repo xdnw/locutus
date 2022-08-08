@@ -25,7 +25,7 @@ public class InactiveAlliances extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "InactiveAlliances <alliances|coalition> [days=7]";
+        return Settings.commandPrefix(true) + "InactiveAlliances <alliances|coalition> [days=7]";
     }
 
     @Override

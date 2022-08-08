@@ -205,7 +205,7 @@ public class UnsortedCommands {
 
             List<Transaction2> transfers = entry.getValue();
             String title = inflow ? name + " > " + selfName : selfName + " > " + name;
-            String followCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inflows " + url + " " + timestamp;
+            String followCmd = Settings.commandPrefix(true) + "inflows " + url + " " + timestamp;
 
             StringBuilder message = new StringBuilder();
 
@@ -222,7 +222,7 @@ public class UnsortedCommands {
 
             message.append(PnwUtil.resourcesToString(totals));
 
-            String infoCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pw-who " + url;
+            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
 //            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
             result.append(title + ": " + message).append("\n");
         }
@@ -231,7 +231,7 @@ public class UnsortedCommands {
 
     @Command(desc="Set your api and bot key\n" +
             "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
-    public String setApiKey(@Me Message message, String apiKey, @Default String verifiedBotKey) {
+    public String addApiKey(@Me Message message, String apiKey, @Default String verifiedBotKey) {
         PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(apiKey, verifiedBotKey).build());
         ApiKeyDetails stats = api.getApiKeyStats();
 
@@ -283,7 +283,7 @@ public class UnsortedCommands {
             ApiKeyPool.ApiKey key = auth.fetchApiKey();
 
             discordDB.addApiKey(me.getNation_id(), key.getKey());
-            discordDB.addUserPass(author.getIdLong(), username, password);
+            discordDB.addUserPass2(me.getNation_id(), username, password);
             if (existingAuth != null) existingAuth.setValid(false);
             Auth myAuth = me.getAuth(null);
             if (myAuth != null) myAuth.setValid(false);
@@ -298,13 +298,16 @@ public class UnsortedCommands {
 
     @Command(desc = "Remove your login details from locutus")
     public String logout(@Me DBNation me, @Me User author) {
-        if (Locutus.imp().getDiscordDB().getUserPass(author.getIdLong()) != null) {
+        if (Locutus.imp().getDiscordDB().getUserPass2(author.getIdLong()) != null || (me != null && Locutus.imp().getDiscordDB().getUserPass2(me.getNation_id()) != null)) {
             Locutus.imp().getDiscordDB().logout(author.getIdLong());
-            Auth cached = me.auth;
-            if (cached != null) {
-                cached.setValid(false);
+            if (me != null) {
+                Locutus.imp().getDiscordDB().logout(me.getNation_id());
+                Auth cached = me.auth;
+                if (cached != null) {
+                    cached.setValid(false);
+                }
+                me.auth = null;
             }
-            me.auth = null;
             return "Logged out";
         }
         return "You are not logged in";

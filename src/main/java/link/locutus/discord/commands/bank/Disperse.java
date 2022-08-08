@@ -49,7 +49,7 @@ public class Disperse extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "disburse <tax-bracket-link|nation> <days> <note>";
+        return Settings.commandPrefix(true) + "disburse <tax-bracket-link|nation> <days> <note>";
     }
 
     @Override
@@ -64,7 +64,7 @@ public class Disperse extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage(event);
         if (me == null) {
-            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
+            return "Please use `" + Settings.commandPrefix(true) + "validate`";
         }
 
         boolean disperse = false;
@@ -210,7 +210,7 @@ public class Disperse extends Command {
             BankWith.authorized.add(uuid);
             String token = "-g:" + uuid;
 
-            String command = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer \"" + note + "\" " + nation.getNationUrl() + " " + StringMan.getString(total) + " " + token;
+            String command = "_" + Settings.commandPrefix(true) + "transfer \"" + note + "\" " + nation.getNationUrl() + " " + StringMan.getString(total) + " " + token;
 
             StringBuilder body = new StringBuilder("```" + post + "```\n");
             body.append(nation.getNationUrlMarkup(true) + "\n");
@@ -225,13 +225,13 @@ public class Disperse extends Command {
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, fundsToSendAAs).build();
 
             String emoji = "\u2705";
-            String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "transferBulk " + sheet.getURL() + " " + note;
+            String cmd = Settings.commandPrefix(false) + "transferBulk " + sheet.getURL() + " " + note;
 
             StringBuilder response = new StringBuilder();
             response.append("Transfer Sheet: <" + sheet.getURL() + ">").append("\n");
             response.append("Total: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ": `" + PnwUtil.resourcesToString(total)).append("`\n");
             response.append("Info: Use the extension to disburse from offshore or press " + emoji + " to run:\n" +
-                    "`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "transferBulk <sheet> " + note + "`");
+                    "`" + Settings.commandPrefix(false) + "transferBulk <sheet> " + note + "`");
 
             DiscordUtil.createEmbedCommand(channel, "Disperse", response.toString(), emoji, cmd);
             return null;

@@ -584,7 +584,7 @@ public class TradeCommands {
                 if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
-                response.append("```" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + url + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit```");
+                response.append("```" + Settings.commandPrefix(true) + "addbalance " + url + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit```");
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {
@@ -644,7 +644,7 @@ public class TradeCommands {
         body.append("\nPress " + emoji + " to compare by day (200 days)");
 
 
-        String cmd = "_" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "compareStockpileValueByDay " + PnwUtil.resourcesToString(stockpile) + " " + PnwUtil.resourcesToString(allDeposits) + " 200";
+        String cmd = "_" + Settings.commandPrefix(false) + "compareStockpileValueByDay " + PnwUtil.resourcesToString(stockpile) + " " + PnwUtil.resourcesToString(allDeposits) + " 200";
         DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, cmd);
         return "Done!";
     }

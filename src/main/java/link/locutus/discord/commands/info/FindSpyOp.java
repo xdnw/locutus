@@ -37,7 +37,7 @@ public class FindSpyOp extends Command {
     @Override
     public String desc() {
         return "See who was online at the time of a spy op e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "findspyop \"08/05 04:33 pm\" 50`";
+                "`" + Settings.commandPrefix(true) + "findspyop \"08/05 04:33 pm\" 50`";
     }
 
     @Override

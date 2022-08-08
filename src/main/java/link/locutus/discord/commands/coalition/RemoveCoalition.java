@@ -24,7 +24,7 @@ public class RemoveCoalition extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition <coalition> [alliance]";
+        return Settings.commandPrefix(true) + "removecoalition <coalition> [alliance]";
     }
 
     @Override
@@ -45,7 +45,7 @@ public class RemoveCoalition extends Command {
 
         switch (args.size()) {
             default:
-                return "Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition <coalition> [alliance]";
+                return "Usage: " + Settings.commandPrefix(true) + "removecoalition <coalition> [alliance]";
             case 1:
                 Locutus.imp().getGuildDB(event).removeCoalition(args.get(0));
                 return "Removed coalition: `" + coalition + "`";

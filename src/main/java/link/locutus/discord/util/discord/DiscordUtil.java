@@ -237,7 +237,7 @@ public class DiscordUtil {
         boolean hasPrev = page > 0;
         boolean hasNext = page < maxPage;
 
-        String identifier = command.charAt(0) == Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.charAt(0) ? "page:" : "-p ";
+        String identifier = command.charAt(0) == Settings.commandPrefix(true).charAt(0) ? "page:" : "-p ";
 
         String cmdCleared = command.replaceAll(identifier + "[0-9]+", "");
         if (inline) cmdCleared = "~" + cmdCleared;
@@ -1416,7 +1416,7 @@ public class DiscordUtil {
 
     public static long getUserIdByNationId(int nationId) {
         PNWUser pwUser = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
-        if (pwUser != null && pwUser.getDiscordId() != null) return pwUser.getDiscordId();
+        if (pwUser != null) return pwUser.getDiscordId();
         User user = getUserByNationId(nationId);
         if (user != null) return user.getIdLong();
         return 0;

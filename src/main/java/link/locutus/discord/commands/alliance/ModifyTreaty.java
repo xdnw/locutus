@@ -40,7 +40,7 @@ public class ModifyTreaty extends Command {
 
     @Override
     public String desc() {
-        return "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "treaties` to list the current treaties";
+        return "Use `" + Settings.commandPrefix(true) + "treaties` to list the current treaties";
     }
 
     @Override

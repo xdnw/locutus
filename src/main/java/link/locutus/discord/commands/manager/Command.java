@@ -164,7 +164,7 @@ public abstract class Command {
     }
 
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + aliases.get(0);
+        return Settings.commandPrefix(true) + aliases.get(0);
     }
 
     public String desc() {

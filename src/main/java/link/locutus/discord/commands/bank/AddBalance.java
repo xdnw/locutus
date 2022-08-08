@@ -58,7 +58,7 @@ public class AddBalance extends Command {
     }
 
     public String onCommand(Message message, MessageChannel channel, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
 
         if (args.isEmpty()) return usage(channel);
         String note = null;

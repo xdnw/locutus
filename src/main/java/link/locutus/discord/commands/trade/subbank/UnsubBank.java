@@ -19,7 +19,7 @@ public class UnsubBank extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UnsubBank <nation|alliance>";
+        return Settings.commandPrefix(true) + "UnsubBank <nation|alliance>";
     }
 
     @Override

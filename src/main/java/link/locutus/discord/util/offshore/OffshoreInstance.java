@@ -435,8 +435,8 @@ public class OffshoreInstance {
                             body.append(banker.getNationUrlMarkup(true) + " | " + banker.getAllianceUrlMarkup(true)).append("\n");
                             body.append("Transfer: " + PnwUtil.resourcesToString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
                             body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
-                            body.append("To set the limit for a user: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setTransferLimit <nation> <value>`\n");
-                            body.append("To set the default `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore BANKER_WITHDRAW_LIMIT <amount>`");
+                            body.append("To set the limit for a user: `" + Settings.commandPrefix(false) + "setTransferLimit <nation> <value>`\n");
+                            body.append("To set the default `" + Settings.commandPrefix(true) + "KeyStore BANKER_WITHDRAW_LIMIT <amount>`");
                             DiscordUtil.createEmbedCommand(alertChannel, "Banker withdraw limit exceeded", body.toString());
                             Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
                             if (adminRole != null) {
@@ -462,7 +462,7 @@ public class OffshoreInstance {
             if (offshoreDB == null) throw new IllegalArgumentException("No guild is registered with this offshore");
 
             if (disabledGuilds.contains(senderDB.getGuild().getIdLong())) {
-                throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "unlocktransfers <alliance>` in the offshore server");
+                throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use `" + Settings.commandPrefix(false) + "unlocktransfers <alliance>` in the offshore server");
             }
 
             boolean hasAdmin = false;
@@ -541,7 +541,7 @@ public class OffshoreInstance {
                         body.append("\nAmount: " + PnwUtil.resourcesToString(transfer));
 
                         String id = aaId == null ? "guild:" + senderDB.getGuild().getIdLong() : ("aa:" + aaId);
-                        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + id + " " + PnwUtil.resourcesToString(transfer) + " #deposit";
+                        String cmd = Settings.commandPrefix(true) + "addbalance " + id + " " + PnwUtil.resourcesToString(transfer) + " #deposit";
                         body.append("\n" + cmd);
 
                         GuildMessageChannel txChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);

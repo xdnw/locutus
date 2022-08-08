@@ -164,7 +164,7 @@ public class ApiKeyPool {
         if (this.nextIndex >= this.apiKeyPool.size()) {
             this.nextIndex = 0;
         }
-        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`)");
+        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ Settings.commandPrefix(true) + "KeyStore API_KEY`)");
         ApiKey key = this.apiKeyPool.get(this.nextIndex++);
         key.use();
         return key;

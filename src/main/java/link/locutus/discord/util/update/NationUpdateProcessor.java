@@ -577,8 +577,6 @@ public class NationUpdateProcessor {
         DBNation previous = event.getPrevious();
         DBNation current = event.getCurrent();
 
-        checkOfficerChange(previous, current);
-
         checkExodus(previous, current);
         Rank rank = previous.getPositionEnum();
         if (rank == Rank.MEMBER) {

@@ -416,7 +416,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         if (!isRegistered && !autoAll) {
             if (registeredRole == null) {
-                output.accept("No registered role exists. Please create one on discord, then use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "AliasRole REGISTERED @rolename`");
+                output.accept("No registered role exists. Please create one on discord, then use `" + Settings.commandPrefix(true) + "AliasRole REGISTERED @rolename`");
             } else {
                 output.accept(member.getEffectiveName() + " is NOT registered");
             }

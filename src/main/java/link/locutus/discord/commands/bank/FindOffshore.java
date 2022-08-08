@@ -25,7 +25,7 @@ public class FindOffshore extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <alliance> [days]";
+        return Settings.commandPrefix(true) + getClass().getSimpleName() + " <alliance> [days]";
     }
 
     @Override

@@ -28,7 +28,7 @@ public class Damage extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "damage <alliance|coalition|*> [options...]";
+        return Settings.commandPrefix(true) + "damage <alliance|coalition|*> [options...]";
     }
 
     @Override
@@ -39,7 +39,7 @@ public class Damage extends Command {
     @Override
     public String desc() {
         return "Find a raid target, with optional alliance and sorting (default: active nations, sorted by top city infra).\n\t" +
-                "To see a list of coalitions, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions`.\n\t" +
+                "To see a list of coalitions, use `" + Settings.commandPrefix(true) + "coalitions`.\n\t" +
                 "Add `-a` To include applicants\n" +
                 "Add `-i` to include inactives\n" +
                 "Add `-w` to filter out nations with strong ground\n" +
@@ -88,7 +88,7 @@ public class Damage extends Command {
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
         me = DiscordUtil.getNation(author);
-        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
         if (filterWeak) {

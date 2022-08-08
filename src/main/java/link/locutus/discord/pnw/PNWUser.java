@@ -23,46 +23,25 @@ import java.util.concurrent.Future;
 
 public class PNWUser {
     private int nationId;
-    private Long discordId;
+    private long discordId;
     private String discordName;
 
-    public PNWUser(int nationId, Long discordId, String discordName) {
+    public PNWUser(int nationId, long discordId, String discordName) {
         this.nationId = nationId;
         this.discordId = discordId;
         this.discordName = discordName;
     }
 
     public User getUser() {
-        if (discordId != null) {
-            User user = Locutus.imp().getDiscordApi().getUserById(discordId);
-            if (user != null && !discordName.contains("#")) {
-                discordName = user.getName() + "#" + user.getDiscriminator();
-                Locutus.imp().getDiscordDB().addUser(this);
-            }
-            return user;
-        }
-        User user;
-        if (discordName.contains("#")) {
-            String[] split = discordName.split("#");
-            user = Locutus.imp().getDiscordApi().getUserByTag(split[0], split[1]);
-        } else {
-            List<User> users = Locutus.imp().getDiscordApi().getUsersByName(discordName, true);
-            if (users.size() != 1) {
-                return null;
-            }
-            user = users.get(0);
-        }
-        if (user != null) {
-            this.discordId = user.getIdLong();
-            this.discordName = user.getName() + "#" + user.getDiscriminator();
+        User user = Locutus.imp().getDiscordApi().getUserById(discordId);
+        if (user != null && !discordName.contains("#")) {
+            discordName = user.getName() + "#" + user.getDiscriminator();
             Locutus.imp().getDiscordDB().addUser(this);
         }
         return user;
     }
 
     public Map<Guild, Collection<Map.Entry<ActionType, String>>> getKicksAndBans() {
-        if (getDiscordId() == null) throw new IllegalArgumentException("Not discord id");
-
         Map<Guild, Collection<Map.Entry<ActionType, String>>> map = new HashMap<>();
         Queue<Future<?>> tasks = new ArrayDeque<>();
 
@@ -117,7 +96,7 @@ public class PNWUser {
         this.nationId = nationId;
     }
 
-    public Long getDiscordId() {
+    public long getDiscordId() {
         return discordId;
     }
 
@@ -126,11 +105,9 @@ public class PNWUser {
     }
 
     public String getDiscordName() {
-        if (discordId != null) {
-            User user = Locutus.imp().getDiscordApi().getUserById(discordId);
-            if (user != null) {
-                discordName = user.getName() + "#" + user.getDiscriminator();
-            }
+        User user = Locutus.imp().getDiscordApi().getUserById(discordId);
+        if (user != null) {
+            discordName = user.getName() + "#" + user.getDiscriminator();
         }
         return discordName;
     }

@@ -29,7 +29,7 @@ public class TradeSubscriptions extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         Set<TradeDB.Subscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(event.getAuthor().getIdLong());
         if (subscriptions.isEmpty()) {
-            return "No subscriptions. Subscribe to get alerts using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "alert-trade`";
+            return "No subscriptions. Subscribe to get alerts using `" + Settings.commandPrefix(true) + "alert-trade`";
         }
 
         for (ResourceType type : ResourceType.values) {
@@ -51,7 +51,7 @@ public class TradeSubscriptions extends Command {
             if (body.length() == 0) continue;
 
             String emoji = "\u274c";
-            String unsubCommand = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unsub-trade " + type.name();
+            String unsubCommand = Settings.commandPrefix(true) + "unsub-trade " + type.name();
 
             body.append("\n\n").append("*Press " + emoji + " to unsubscribe*");
 

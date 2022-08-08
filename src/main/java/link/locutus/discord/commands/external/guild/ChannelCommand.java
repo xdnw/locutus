@@ -123,7 +123,7 @@ public class ChannelCommand extends Command {
             if (args.size() == 3) {
                 String arg = args.get(2).toLowerCase();
                 if (arg.equalsIgnoreCase("#interview")) {
-                    DelegateMessage msg = new DelegateContentMessage(event.getMessage(), Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "interview " + author.getAsMention() + " 0");
+                    DelegateMessage msg = new DelegateContentMessage(event.getMessage(), Settings.commandPrefix(true) + "interview " + author.getAsMention() + " 0");
                     msg = new DelegateChannelMessage(msg, createdChannel);
                     MessageReceivedEvent finalEvent = new DelegateMessageEvent(event.isFromGuild() ? event.getGuild() : null, event.getResponseNumber(), msg);
                     Locutus.imp().getCommandManager().run(finalEvent);

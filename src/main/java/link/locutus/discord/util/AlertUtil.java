@@ -105,7 +105,7 @@ public class AlertUtil {
     public static void alertNation(Function<GuildDB, Boolean> hasPerm, GuildDB.Key channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
         if (nation.getAlliance_id() == 0 || nation.getPosition() <= 1) return;
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
-        if (user != null && user.getDiscordId() != null) {
+        if (user != null) {
             GuildDB guildDb = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
             if (guildDb != null && hasPerm.apply(guildDb)) {
                 Guild guild = guildDb.getGuild();

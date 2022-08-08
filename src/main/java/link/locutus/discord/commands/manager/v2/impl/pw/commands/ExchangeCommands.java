@@ -69,12 +69,12 @@ public class ExchangeCommands {
         exchange.createRoles();
 
         GuildMessageChannel exchangeChannel = exchange.getChannel();
-        RateLimitUtil.queue(exchangeChannel.sendMessage("Company info: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange description <info>`\n" +
-                "Company name: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange name <name>`\n" +
-                "Officers: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange promote <user> <MEMBER|OFFICER|HEIR|LEADER>`\n" +
-                "Charter: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange charter <doc-url>`\n" +
-                "Website: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange website <url>`\n" +
-                "Color Roles: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange color <rank> <color>`\n"
+        RateLimitUtil.queue(exchangeChannel.sendMessage("Company info: `" + Settings.commandPrefix(false) + "exchange description <info>`\n" +
+                "Company name: `" + Settings.commandPrefix(false) + "exchange name <name>`\n" +
+                "Officers: `" + Settings.commandPrefix(false) + "exchange promote <user> <MEMBER|OFFICER|HEIR|LEADER>`\n" +
+                "Charter: `" + Settings.commandPrefix(false) + "exchange charter <doc-url>`\n" +
+                "Website: `" + Settings.commandPrefix(false) + "exchange website <url>`\n" +
+                "Color Roles: `" + Settings.commandPrefix(false) + "exchange color <rank> <color>`\n"
         ));
 
         StringBuilder help = new StringBuilder("Created exchange: `" + symbol.toUpperCase() + "`. To have it listed on the exchange please complete the following:\n");
@@ -217,7 +217,7 @@ public class ExchangeCommands {
     public String owner(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation newOwner, @Switch('f') boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         User user = newOwner.getUser();
-        if (user == null) return newOwner.getNation() + " has not used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (user == null) return newOwner.getNation() + " has not used `" + Settings.commandPrefix(true) + "verify`";
 
         if (!force) {
             String title = "Transfer ownership to: " + newOwner.getNation() + " | " + newOwner.getAllianceName();

@@ -33,7 +33,7 @@ public class MailCommand extends Command implements Noformat {
 
     @Override
     public String help() {
-        return "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "mail <nation> <subject> <message...>` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "mail <leader> <message-url> <message...>`";
+        return "`" + Settings.commandPrefix(true) + "mail <nation> <subject> <message...>` or `" + Settings.commandPrefix(true) + "mail <leader> <message-url> <message...>`";
     }
 
     @Override
@@ -99,20 +99,20 @@ public class MailCommand extends Command implements Noformat {
             ApiKeyPool key = null;
             if (flags.contains('l') || myKey == null) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasRole` OR use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey` to add your own key";
+                    return "You do not have the role `MAIL` (see `" + Settings.commandPrefix(false) + "aliasRole` OR use`" + Settings.commandPrefix(false) + "addApiKey` to add your own key";
                 }
                 key = db.getMailKey();
             } else {
                 key = ApiKeyPool.builder().addKey(myKey).build();
             }
             if (key == null){
-                return "No api key found. Please use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`";
+                return "No api key found. Please use`" + Settings.commandPrefix(false) + "addApiKey`";
             }
 
 
             if (!flags.contains('f')) {
                 String title = "Send " + nations.size() + " messages";
-                String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()).replaceFirst(" ", " -f ");
+                String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()).replaceFirst(" ", " -f ");
 
                 Set<Integer> alliances = new LinkedHashSet<>();
                 for (DBNation nation : nations) alliances.add(nation.getAlliance_id());

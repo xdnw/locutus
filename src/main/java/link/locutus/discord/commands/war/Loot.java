@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
@@ -32,7 +33,7 @@ public class Loot extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "loot <nation|alliance>";
+        return Settings.commandPrefix(true) + "loot <nation|alliance>";
     }
 
     @Override
@@ -55,7 +56,7 @@ public class Loot extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
 
         String arg0 = args.get(0);
@@ -63,21 +64,20 @@ public class Loot extends Command {
 
         double percent;
 
-        Map<ResourceType, Double> loot;
+        double[] loot;
         StringBuilder extraInfo = new StringBuilder();
         if (id == null || arg0.contains("/allaince/")) {
-            Integer alliance = PnwUtil.parseAllianceId(arg0);
+            DBAlliance alliance = DBAlliance.parse(arg0, true);
             if (alliance == null) {
                 return "Invalid nation or alliance`" + arg0 + "`";
             }
-            long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
-            Map.Entry<Long, Map<ResourceType, Double>> allianceLoot = Locutus.imp().getWarDb().getDateAndAllianceBankEstimate(alliance);
+            LootEntry allianceLoot = alliance.asAlliance().getLoot();
             if (allianceLoot == null) return "No loot history";
-            loot = allianceLoot.getValue();
-            Long date = allianceLoot.getKey();
+            loot = allianceLoot.getTotal_rss();
+            Long date = allianceLoot.getDate();
             extraInfo.append("Last looted: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date));
 
-            double aaScore = MathMan.parseDouble(Locutus.imp().getPnwApi().getAlliance(alliance).getScore());
+            double aaScore = alliance.getScore();
 
             double ratio = (me.getScore() / aaScore) / (5);
 
@@ -95,10 +95,7 @@ public class Loot extends Command {
             double[] buffer = new double[knownResources.length];
             double convertedTotal = enemy.estimateRssLootValue(knownResources, lootInfo, buffer, true);
             if (convertedTotal != 0) {
-                loot = new LinkedHashMap<>();
-                for (int i = 0; i < knownResources.length; i++) {
-                    loot.put(ResourceType.values[i], knownResources[i]);
-                }
+                loot = knownResources;
             } else {
                 loot = null;
             }
@@ -120,8 +117,7 @@ public class Loot extends Command {
         if (loot == null) {
             return "No loot history";
         }
-        Map<ResourceType, Double> yourLoot = loot.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
+        Map<ResourceType, Double> yourLoot = PnwUtil.resourcesToMap(loot);
         yourLoot = PnwUtil.multiply(yourLoot, percent);
 
         StringBuilder response = new StringBuilder();

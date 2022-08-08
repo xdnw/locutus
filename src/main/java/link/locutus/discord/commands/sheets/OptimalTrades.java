@@ -19,7 +19,7 @@ public class OptimalTrades extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "optimaltrades <investment> [days]";
+        return Settings.commandPrefix(true) + "optimaltrades <investment> [days]";
     }
 
     @Override

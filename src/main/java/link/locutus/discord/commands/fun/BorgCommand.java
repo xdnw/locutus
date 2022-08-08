@@ -18,7 +18,7 @@ public class BorgCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "borg";
+        return Settings.commandPrefix(true) + "borg";
     }
 
     @Override

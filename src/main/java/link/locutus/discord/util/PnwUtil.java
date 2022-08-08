@@ -145,7 +145,7 @@ public class PnwUtil {
         long allowExpiryCutoff = 1635910300000L;
         Predicate<Transaction2> allowExpiry = transaction2 ->
                 allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;
-        if (!forceIncludeExpired) allowExpiry = f -> false;
+        if (forceIncludeExpired) allowExpiry = f -> false;
 
         if (tracked == null) {
             tracked = new HashSet<>();
@@ -448,11 +448,6 @@ public class PnwUtil {
         return new Gson().toJson(post);
     }
 
-    public static void main(String[] args) {
-        String m = "2*{steel=3}";
-        System.out.println(StringMan.getString(parseResources(m)));
-    }
-
     public static Map<ResourceType, Double> parseResources(String arg) {
         if (arg.contains("\t") || arg.contains("    ")) {
             String[] split = arg.split("[\t]");
@@ -495,7 +490,6 @@ public class PnwUtil {
 
         int preMultiply = arg.indexOf("*{");
         int postMultiply = arg.indexOf("}*");
-        System.out.println("Pre multiply " + preMultiply);
         if (preMultiply != -1) {
             String[] split = arg.split("\\*\\{", 2);
             arg = "{" + split[1];
@@ -971,6 +965,7 @@ public class PnwUtil {
                 }
             }
         }
+
         return profitBuffer;
     }
 

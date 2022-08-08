@@ -128,15 +128,15 @@ public final class Locutus extends ListenerAdapter {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
-        if (Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.length() != 1) throw new IllegalStateException("COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
-        if (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.length() != 1) throw new IllegalStateException("LEGACY_COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
-        if (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.equalsIgnoreCase(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX)) {
+        if (Settings.commandPrefix(false).length() != 1) throw new IllegalStateException("COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
+        if (Settings.commandPrefix(true).length() != 1) throw new IllegalStateException("LEGACY_COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
+        if (Settings.commandPrefix(true).equalsIgnoreCase(Settings.commandPrefix(false))) {
             throw new IllegalStateException("LEGACY_COMMAND_PREFIX cannot equal COMMAND_PREFIX in " + Settings.INSTANCE.getDefaultFile());
         }
-        if (Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.matches("[._~]")) {
+        if (Settings.commandPrefix(false).matches("[._~]")) {
             throw new IllegalStateException("COMMAND_PREFIX cannot be `.` or `_` or `~` in " + Settings.INSTANCE.getDefaultFile());
         }
-        if (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.matches("[._~]")) {
+        if (Settings.commandPrefix(true).matches("[._~]")) {
             throw new IllegalStateException("LEGACY_COMMAND_PREFIX cannot be `.` or `_` or `~` in " + Settings.INSTANCE.getDefaultFile());
         }
 
@@ -185,7 +185,7 @@ public final class Locutus extends ListenerAdapter {
 
         {
             PNWUser adminPnwUser = Locutus.imp().getDiscordDB().getUserFromNationId(Settings.INSTANCE.NATION_ID);
-            if (adminPnwUser != null && adminPnwUser.getDiscordId() != null) {
+            if (adminPnwUser != null) {
                 Settings.INSTANCE.ADMIN_USER_ID = adminPnwUser.getDiscordId();
             }
         }
@@ -501,7 +501,7 @@ public final class Locutus extends ListenerAdapter {
 
     public void autoRole(DBNation nation) {
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
-        if (user != null && user.getDiscordId() != null) {
+        if (user != null) {
             User discordUser = manager.getUserById(user.getDiscordId());
             if (discordUser != null) {
                 List<Guild> guilds = discordUser.getMutualGuilds();
@@ -612,18 +612,24 @@ public final class Locutus extends ListenerAdapter {
 
         addTaskSeconds(() -> {
             List<Event> events = new ArrayList<>();
+            System.out.println("Update active nations start");
+            long start = System.currentTimeMillis();
             nationDB.updateMostActiveNations(490, events::add);
+            long diff = System.currentTimeMillis() - start;
+            System.out.println("End update active nations " + diff);
             runEventsAsync(events);
         }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
 
         addTaskSeconds(() -> {
             List<Event> events = new ArrayList<>();
+            System.out.println("Update colored nations");
             nationDB.updateColoredNations(events::add);
             runEventsAsync(events);
         }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
 
         addTaskSeconds(() -> {
             List<Event> events = new ArrayList<>();
+            System.out.println("Update v2 nations");
             nationDB.updateNationsV2(false, events::add);
             runEventsAsync(events);
         }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
@@ -1000,10 +1006,10 @@ public final class Locutus extends ListenerAdapter {
         if (prefix) raw = raw.substring(1);
         boolean success = false;
 
-        String[] split = raw.split("\\r?\\n(?=[" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "|" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "])");
+        String[] split = raw.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "])");
         for (String cmd : split) {
             Command cmdObject = null;
-            boolean legacy = cmd.charAt(0) == Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.charAt(0);
+            boolean legacy = cmd.charAt(0) == Settings.commandPrefix(true).charAt(0);
             if (legacy) {
                 String cmdLabel = cmd.split(" ")[0].substring(1);
                 cmdObject = commandManager.getCommandMap().get(cmdLabel.toLowerCase());
@@ -1062,5 +1068,41 @@ public final class Locutus extends ListenerAdapter {
 
     public ExecutorService getExecutor() {
         return executor;
+    }
+
+    public void stop() {
+        synchronized (OffshoreInstance.BANK_LOCK) {
+//            if (raidEstimator != null) {
+//              s  raidEstimator.flush();
+//            }
+
+            for (JDA api : getDiscordApi().getApis()) {
+                api.shutdownNow();
+            }
+            // close pusher subscriptions
+
+            executor.shutdownNow();
+            if (commandManager != null) commandManager.getExecutor().shutdownNow();
+
+            // join all threads
+            for (Thread thread : Thread.getAllStackTraces().keySet()) {
+                if (thread != Thread.currentThread()) {
+                    try {
+                        thread.interrupt();
+                    } catch (SecurityException ignore) {}
+                }
+            }
+
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {}
+
+            System.out.println("\n == Ignore the following if the thread doesn't relate to anything modifying persistent data");
+            for (Map.Entry<Thread, StackTraceElement[]> thread : Thread.getAllStackTraces().entrySet()) {
+                System.out.println("Thread did not close after 5s: " + thread.getKey() + "\n - " + StringMan.stacktraceToString(thread.getValue()));
+            }
+
+            System.exit(1);
+        }
     }
 }

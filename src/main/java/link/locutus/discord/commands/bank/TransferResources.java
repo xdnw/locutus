@@ -32,14 +32,14 @@ public class TransferResources extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "tr <resource> <amount>";
+        return Settings.commandPrefix(true) + "tr <resource> <amount>";
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         if (args.isEmpty()) return usage();
         DBNation me = DiscordUtil.getNation(event);
-        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
         if (me.isGray()) {
             return "Please set your color off gray: <https://politicsandwar.com/nation/edit/>";
         }

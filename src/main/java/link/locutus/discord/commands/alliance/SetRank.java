@@ -39,7 +39,7 @@ public class SetRank extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setrank <user> <rank>";
+        return Settings.commandPrefix(true) + "setrank <user> <rank>";
     }
 
     @Override

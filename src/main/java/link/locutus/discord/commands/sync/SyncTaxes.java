@@ -61,12 +61,12 @@ public class SyncTaxes extends Command {
             switch (args.get(0).toLowerCase()) {
                 default:
                     SpreadSheet sheet = SpreadSheet.create(args.get(0));
-                    if (!args.get(0).startsWith("sheet:") && !args.get(0).startsWith("https://docs.google.com/spreadsheets/d/")) return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "synctaxes <sheet-url>";
+                    if (!args.get(0).startsWith("sheet:") && !args.get(0).startsWith("https://docs.google.com/spreadsheets/d/")) return Settings.commandPrefix(true) + "synctaxes <sheet-url>";
                     return updateTaxesLegacy(db, sheet);
                 case "sheet": {
                     if (args.size() != 1) return usage();
                     if (db.hasAuth() && !Roles.ADMIN.has(author, guild)) {
-                        return "No permission. Authentication is enabled for this guild. Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SyncTaxes auto` or have an admin run this command";
+                        return "No permission. Authentication is enabled for this guild. Please use `" + Settings.commandPrefix(true) + "SyncTaxes auto` or have an admin run this command";
                     }
                     return updateTaxesLegacy(db, null);
                 }

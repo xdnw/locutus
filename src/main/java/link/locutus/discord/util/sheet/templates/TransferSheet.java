@@ -1,5 +1,6 @@
 package link.locutus.discord.util.sheet.templates;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -82,6 +83,12 @@ public class TransferSheet extends SpreadSheet {
         List<List<Object>> rows = get("A:Z");
         List<Object> header = rows.get(0);
 
+        boolean useLeader = false;
+        if (header.size() > 0) {
+            Object name = header.get(0);
+            useLeader = name != null && name.toString().toLowerCase().contains("leader");
+        }
+
         for (int i = 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
             if (row.isEmpty() || row.size() < 2) continue;
@@ -118,7 +125,15 @@ public class TransferSheet extends SpreadSheet {
                     transfers.put(DBAlliance.getOrCreate(allianceId), transfer);
                 }
             } else {
-                DBNation nation = DiscordUtil.parseNation(nameStr);
+                DBNation nation;
+                if (useLeader) {
+                    nation = Locutus.imp().getNationDB().getNationByLeader(nameStr);
+                } else {
+                    nation = Locutus.imp().getNationDB().getNationByName(nameStr);
+                }
+                if (nation == null) {
+                    nation = DiscordUtil.parseNation(nameStr);
+                }
                 if (nation == null) invalidNationOrAlliance.add(nameStr);
                 else {
                     transfers.put(nation, transfer);

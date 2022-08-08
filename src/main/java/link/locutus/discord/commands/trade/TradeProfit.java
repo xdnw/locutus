@@ -32,7 +32,7 @@ public class TradeProfit extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "tradeprofit <nations> <days>";
+        return Settings.commandPrefix(true) + "tradeprofit <nations> <days>";
     }
 
     @Override

@@ -122,8 +122,10 @@ public class JavaCity {
                 int turnsMax = 11 * 12;
                 long turns = TimeUtil.getTurn() - TimeUtil.getTurn(city.nuke_date);
                 if (turns < turnsMax) {
-                    double nukePollution = turnsMax * pollutionMax * (turnsMax - turns);
-                    pollution += (int) nukePollution;
+                    double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
+                    if (nukePollution > 0) {
+                        pollution += (int) nukePollution;
+                    }
                 }
             }
 

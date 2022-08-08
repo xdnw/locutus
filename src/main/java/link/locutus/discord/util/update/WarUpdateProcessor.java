@@ -763,7 +763,7 @@ public class WarUpdateProcessor {
 
             if (previous == null && attacker != null && attacker.getAlliance_id() != 0) {
                 PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(attacker.getNation_id());
-                if (user != null && user.getDiscordId() != null) {
+                if (user != null) {
                     GuildDB guildDb = Locutus.imp().getGuildDBByAA(attacker.getAlliance_id());
                     if (guildDb != null && guildDb.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) {
                         Guild guild = guildDb.getGuild();

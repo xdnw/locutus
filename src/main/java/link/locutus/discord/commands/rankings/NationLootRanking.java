@@ -29,7 +29,7 @@ public class NationLootRanking extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "NationLootRanking <alliances|coalitions|*> <days>";
+        return Settings.commandPrefix(true) + "NationLootRanking <alliances|coalitions|*> <days>";
     }
 
     @Override

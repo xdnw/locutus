@@ -41,7 +41,7 @@ public class Counter extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter <war> [alliance|coalition|role]";
+        return Settings.commandPrefix(true) + "counter <war> [alliance|coalition|role]";
     }
 
     @Override
@@ -63,7 +63,7 @@ public class Counter extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
         DBNation counter;
         int defenderId;
@@ -251,7 +251,7 @@ public class Counter extends Command {
             if (count++ == maxResults) break;
 
             PNWUser user = DiscordUtil.getUser(nation);
-            if (user != null && user.getDiscordId() != null) {
+            if (user != null) {
                 String statusStr = "";
                 if(guild != null) {
                     Member member = guild.getMemberById(user.getDiscordId());

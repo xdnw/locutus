@@ -5,22 +5,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
-import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.StringMan;
 import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
-import link.locutus.discord.util.trade.TradeDB;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import org.apache.commons.lang3.StringUtils;
@@ -33,19 +29,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import javax.security.auth.login.LoginException;
-import java.io.IOException;
 import java.net.URI;
-import java.sql.SQLException;
-import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
+    static {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        GraphQLRequestSerializer.OBJECT_MAPPER.setDateFormat(sdf);
+    }
     public static int NATIONS_PER_PAGE = 500;
     public static int CITIES_PER_PAGE = 500;
     public static int TREATIES_PER_PAGE = 1000;
@@ -151,6 +147,7 @@ public class PoliticsAndWarV3 {
                 JsonNode json = (ObjectNode) jacksonObjectMapper.readTree(body);
 
                 if (json.has("errors")) {
+                    System.out.println(exchange.getBody());
                     JsonNode errors = (JsonNode) json.get("errors");
                     List<String> errorMessages = new ArrayList<>();
                     for (JsonNode error : errors) {
@@ -795,6 +792,8 @@ public class PoliticsAndWarV3 {
                 projection.beige_turns();
 
                 projection.espionage_available();
+
+                projection.tax_id();
             }
         }, f -> PoliticsAndWarV3.ErrorResponse.THROW, nationResults);
     }
@@ -988,25 +987,42 @@ public class PoliticsAndWarV3 {
         return result.game_info();
     }
 
-    public static void testPusher() throws IOException, InterruptedException, ParseException {
-        String key = Settings.INSTANCE.API_KEY_PRIMARY;
-
-        PnwPusherHandler handler = new PnwPusherHandler(key)
-        .connect()
-        .subscribeBuilder(City.class, PnwPusherEvent.UPDATE)
-        .setBulk(true)
-        .build(cities -> {
-            System.out.println("City update");
-            for (City city : cities) {
-                System.out.println("City " + city);
+    public double[] getAllianceStockpile(int allianceId) {
+        List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+            @Override
+            public void accept(AllianceResponseProjection projection) {
+                projection.money();
+                projection.coal();
+                projection.oil();
+                projection.uranium();
+                projection.iron();
+                projection.bauxite();
+                projection.lead();
+                projection.gasoline();
+                projection.munitions();
+                projection.steel();
+                projection.aluminum();
+                projection.food();
             }
         });
-
-        Thread.sleep(100000);
-
-        handler.disconnect();
-
-        System.exit(1);
+        if (alliances.size() == 0) {
+            return null;
+        }
+        Alliance rec = alliances.get(0);
+        double[] resources = ResourceType.getBuffer();
+        resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
+        resources[ResourceType.COAL.ordinal()] = rec.getCoal();
+        resources[ResourceType.OIL.ordinal()] = rec.getOil();
+        resources[ResourceType.URANIUM.ordinal()] = rec.getUranium();
+        resources[ResourceType.IRON.ordinal()] = rec.getIron();
+        resources[ResourceType.BAUXITE.ordinal()] = rec.getBauxite();
+        resources[ResourceType.LEAD.ordinal()] = rec.getLead();
+        resources[ResourceType.GASOLINE.ordinal()] = rec.getGasoline();
+        resources[ResourceType.MUNITIONS.ordinal()] = rec.getMunitions();
+        resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
+        resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
+        resources[ResourceType.FOOD.ordinal()] = rec.getFood();
+        return resources;
     }
 
     public Map<Integer, double[]> getStockPile(Consumer<NationsQueryRequest> query) {
@@ -1014,6 +1030,7 @@ public class PoliticsAndWarV3 {
         for (Nation rec : fetchNations(query::accept, new Consumer<NationResponseProjection>() {
             @Override
             public void accept(NationResponseProjection projection) {
+                projection.id();
                 projection.money();
                 projection.coal();
                 projection.oil();
@@ -1046,16 +1063,70 @@ public class PoliticsAndWarV3 {
         return result;
     }
 
-    public void testBotKey() {
-        BankDepositMutationRequest mutation = new BankDepositMutationRequest();
-        mutation.setNote("test 123");
-//        mutation.setMoney(0.01);
+    public Bankrec transferFromBank(double[] amount, NationOrAlliance destination, String note) {
+        BankWithdrawMutationRequest mutation = new BankWithdrawMutationRequest();
+        mutation.setMoney(amount[ResourceType.MONEY.ordinal()]);
+        mutation.setCoal(amount[ResourceType.COAL.ordinal()]);
+        mutation.setOil(amount[ResourceType.OIL.ordinal()]);
+        mutation.setUranium(amount[ResourceType.URANIUM.ordinal()]);
+        mutation.setIron(amount[ResourceType.IRON.ordinal()]);
+        mutation.setBauxite(amount[ResourceType.BAUXITE.ordinal()]);
+        mutation.setLead(amount[ResourceType.LEAD.ordinal()]);
+        mutation.setGasoline(amount[ResourceType.GASOLINE.ordinal()]);
+        mutation.setMunitions(amount[ResourceType.MUNITIONS.ordinal()]);
+        mutation.setSteel(amount[ResourceType.STEEL.ordinal()]);
+        mutation.setAluminum(amount[ResourceType.ALUMINUM.ordinal()]);
+        mutation.setFood(amount[ResourceType.FOOD.ordinal()]);
+
+        if (note != null) mutation.setNote(note);
+        mutation.setReceiver_type(destination.getReceiverType());
+        mutation.setReceiver(destination.getId());
 
         BankrecResponseProjection projection = new BankrecResponseProjection();
         projection.id();
         projection.date();
 
-        Bankrec result = request(mutation, projection, Bankrec.class);
+        return request(mutation, projection, Bankrec.class);
+    }
+
+
+    public Bankrec depositIntoBank(double[] amount, String note) {
+        BankDepositMutationRequest mutation = new BankDepositMutationRequest();
+        mutation.setMoney(amount[ResourceType.MONEY.ordinal()]);
+        mutation.setCoal(amount[ResourceType.COAL.ordinal()]);
+        mutation.setOil(amount[ResourceType.OIL.ordinal()]);
+        mutation.setUranium(amount[ResourceType.URANIUM.ordinal()]);
+        mutation.setIron(amount[ResourceType.IRON.ordinal()]);
+        mutation.setBauxite(amount[ResourceType.BAUXITE.ordinal()]);
+        mutation.setLead(amount[ResourceType.LEAD.ordinal()]);
+        mutation.setGasoline(amount[ResourceType.GASOLINE.ordinal()]);
+        mutation.setMunitions(amount[ResourceType.MUNITIONS.ordinal()]);
+        mutation.setSteel(amount[ResourceType.STEEL.ordinal()]);
+        mutation.setAluminum(amount[ResourceType.ALUMINUM.ordinal()]);
+        mutation.setFood(amount[ResourceType.FOOD.ordinal()]);
+
+        if (note != null) mutation.setNote(note);
+
+        BankrecResponseProjection projection = new BankrecResponseProjection();
+        projection.id();
+        projection.date();
+
+        return request(mutation, projection, Bankrec.class);
+    }
+
+    /**
+     * Try sending an empty transaction
+     * @return
+     */
+    public Bankrec testBotKey() {
+        BankDepositMutationRequest mutation = new BankDepositMutationRequest();
+        mutation.setNote("test 123");
+
+        BankrecResponseProjection projection = new BankrecResponseProjection();
+        projection.id();
+        projection.date();
+
+        return request(mutation, projection, Bankrec.class);
     }
 
     public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId) {
@@ -1095,747 +1166,6 @@ public class PoliticsAndWarV3 {
             }
         });
     }
-
-    private void pollForSpyops() {
-        long outputChannel = 672225858223734804L;
-
-        Set<Integer> whitelisted = new HashSet<>(Arrays.asList(
-                7452,8173,8624,9000,4124
-        ));
-
-        Map<DBNation, Double> inRangeNations = new HashMap<>();
-        for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < 2880 && f.getAlliancePosition() != null && f.isInSpyRange(DBNation.byId(Settings.INSTANCE.NATION_ID)))) {
-            double value = 10000 - nation.active_m();
-            if (!whitelisted.contains(nation.getAlliance_id())) {
-                value /= 2;
-                if (nation.daysSinceLastOffensive() > 200) {
-                    value /= 2;
-                }
-                if (!nation.hasProject(Projects.INTELLIGENCE_AGENCY)) {
-                    value /= 4;
-                }
-            }
-            if (nation.getUserId() == null) {
-                value /= 1.2;
-            }
-            if (nation.isBlockaded()) {
-                value /= 1.2;
-            }
-            if (nation.isEspionageFull()) {
-                value /= 1.5;
-            }
-            inRangeNations.put(nation, value);
-        }
-        inRangeNations.put(DBNation.byId(129454), Integer.MAX_VALUE * 1d);
-        inRangeNations.put(DBNation.byId(270887), Integer.MAX_VALUE * 1d);
-
-//        List<Integer> pollActivityOf = alliance.getNations(true, 10000, true).stream().map(DBNation::getNation_id).collect(Collectors.toList());
-
-        List<Integer> pollSpiesOf = List.of(189573);
-
-        Map<Integer, Nation> existingMap = new HashMap<>();
-        while (true) {
-            System.out.println("Polling for spy ops");
-
-            long start = System.currentTimeMillis();
-            List<Nation> defenders = fetchNations(f -> f.setId(pollSpiesOf), new Consumer<NationResponseProjection>() {
-                @Override
-                public void accept(NationResponseProjection r) {
-                    r.id();
-                    r.spy_casualties();
-                    r.espionage_available();
-                }
-            });
-
-            for (Nation nation : defenders) {
-                Nation existing = existingMap.get(nation.getId());
-                if (existing != null) {
-                    if (!Objects.equals(existing.getSpy_casualties(), nation.getSpy_casualties()) || existing.getEspionage_available() != nation.getEspionage_available()) {
-                        {
-                            List<Map.Entry<DBNation, Double>> pollActivityOf = new ArrayList<>(inRangeNations.entrySet());
-                            Collections.sort(pollActivityOf, (o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
-                            if (pollActivityOf.size() > 500) pollActivityOf = pollActivityOf.subList(0, 500);
-
-                            List<Integer> pollActivityOfIds = pollActivityOf.stream().map(f -> f.getKey().getNation_id()).collect(Collectors.toList());
-
-                            List<Nation> results = new ArrayList<>(fetchNationActive(pollActivityOfIds));
-                            Collections.sort(results, (o1, o2) -> Long.compare(o2.getLast_active().toEpochMilli(), o1.getLast_active().toEpochMilli()));
-//                        results.removeIf(f -> DBNation.byId(f.getId()) == null);
-//                        results.removeIf(f -> f.getLast_active().toEpochMilli() < start - 1000);
-
-                            DBNation defender = DBNation.byId(existing.getId());
-
-                            String title = "Defensive Spyop(?): " + defender.getNation() + " | " + defender.getAllianceName();
-                            StringBuilder response = new StringBuilder();
-                            response.append("Defender: " + defender.getNationUrlMarkup(true) + " | " + defender.getAllianceUrlMarkup(true) + "\n");
-
-                            if (results.isEmpty()) {
-                                response.append("Attacker: No results found");
-                            } else {
-                                response.append("Attackers:\n");
-                                long now = System.currentTimeMillis();
-                                for (Nation attActive : results) {
-                                    long lastActive = attActive.getLast_active().toEpochMilli();
-                                    DBNation attacker = DBNation.byId(attActive.getId());
-
-                                    long diff = now - lastActive;
-
-                                    response.append(" - " + attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceName() + " | " + MathMan.format(diff) + "ms");
-                                    if (attacker.hasProject(Projects.INTELLIGENCE_AGENCY)) {
-                                        response.append(" | IA=true");
-                                    }
-                                    if (attacker.hasProject(Projects.SPY_SATELLITE)) {
-                                        response.append(" | SAT=true");
-                                    }
-                                    response.append("\n");
-                                }
-                            }
-
-                            System.out.println("\n== " + title + "\n" + response + "\n");
-
-                            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(outputChannel);
-                            if (channel != null) {
-                                channel.sendMessageEmbeds(new EmbedBuilder().setTitle(title).setDescription(response.toString()).build()).queue();
-                            }
-                        }
-                        {
-                            List<Map.Entry<DBNation, Double>> pollActivityOf = new ArrayList<>(inRangeNations.entrySet());
-                            Collections.sort(pollActivityOf, (o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
-                            if (pollActivityOf.size() > 500) pollActivityOf = pollActivityOf.subList(0, 500);
-
-                            List<Integer> pollActivityOfIds = pollActivityOf.stream().map(f -> f.getKey().getNation_id()).collect(Collectors.toList());
-
-                            List<Nation> results = new ArrayList<>(fetchNationActive(pollActivityOfIds));
-                            Collections.sort(results, (o1, o2) -> Long.compare(o2.getLast_active().toEpochMilli(), o1.getLast_active().toEpochMilli()));
-                        results.removeIf(f -> DBNation.byId(f.getId()) == null);
-                        results.removeIf(f -> f.getLast_active().toEpochMilli() < start - 10000);
-
-                            DBNation defender = DBNation.byId(existing.getId());
-
-                            String title = "Defensive Spyop(?): " + defender.getNation() + " | " + defender.getAllianceName();
-                            StringBuilder response = new StringBuilder();
-                            response.append("Defender: " + defender.getNationUrlMarkup(true) + " | " + defender.getAllianceUrlMarkup(true) + "\n");
-
-                            if (results.isEmpty()) {
-                                response.append("Attacker: No results found");
-                            } else {
-                                response.append("Attackers:\n");
-                                long now = System.currentTimeMillis();
-                                for (Nation attActive : results) {
-                                    long lastActive = attActive.getLast_active().toEpochMilli();
-                                    DBNation attacker = DBNation.byId(attActive.getId());
-
-                                    long diff = now - lastActive;
-
-                                    response.append(" - " + attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceName() + " | " + MathMan.format(diff) + "ms");
-                                    if (attacker.hasProject(Projects.INTELLIGENCE_AGENCY)) {
-                                        response.append(" | IA=true");
-                                    }
-                                    if (attacker.hasProject(Projects.SPY_SATELLITE)) {
-                                        response.append(" | SAT=true");
-                                    }
-                                    response.append("\n");
-                                }
-                            }
-
-                            System.out.println("\n== " + title + "\n" + response + "\n");
-
-                            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(outputChannel);
-                            if (channel != null) {
-                                channel.sendMessageEmbeds(new EmbedBuilder().setTitle(title).setDescription(response.toString()).build()).queue();
-                            }
-                        }
-                    }
-                }
-                existingMap.put(nation.getId(), nation);
-            }
-
-            long diff = System.currentTimeMillis() - start;
-            if (diff < 1400) {
-                try {
-                    Thread.sleep(1410 - diff);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-    }
-
-    public static void main(String[] args) throws ParseException, LoginException, InterruptedException, SQLException, ClassNotFoundException, IOException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
-        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-        Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = false;
-
-
-        Locutus.create().start();
-
-        ApiKeyPool pool =  ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY, Settings.INSTANCE.ACCESS_KEY).build();
-        PoliticsAndWarV3 main = new PoliticsAndWarV3(pool);
-
-        if (true) {
-            Collection<Bounty> bounties = main.fetchBounties(null, f -> f.all$(-1));
-            System.exit(0);
-        }
-
-
-        final int meId = 189573;
-        final int cityId = 375361;
-        DBNation meNation = DBNation.byId(meId);
-        {
-
-
-
-            Locutus.imp().getNationDB().updateNationsV2(false, null);
-            while (Locutus.imp().getNationDB().getDirtyNations() > 10) {
-                System.out.println("Dirty " + Locutus.imp().getNationDB().getDirtyNations());
-                Locutus.imp().getNationDB().updateMostActiveNations(500, null);
-            }
-
-            List<Integer> ids = Locutus.imp().getNationDB().getMostActiveNationIds(500);
-
-            long start = System.currentTimeMillis();
-            List<Nation> mostActive = main.fetchNationActive(ids);
-            long diff = System.currentTimeMillis() - start;
-            System.out.println("Diff " + MathMan.format(diff) + "ms");
-
-            Collections.sort(mostActive, (o1, o2) -> Long.compare(o2.getLast_active().toEpochMilli(), o1.getLast_active().toEpochMilli()));
-
-            long now = System.currentTimeMillis();
-
-            for (Nation nation : mostActive) {
-                long lastActive = nation.getLast_active().toEpochMilli();
-                long diff2 = now - lastActive;
-
-                DBNation dbnation = DBNation.byId(nation.getId());
-                System.out.println(dbnation.getNation() + " | " + dbnation.getAllianceName() + " | " + dbnation.getCities() + " | " + dbnation.getAlliancePosition() + " | " + MathMan.format(diff2) + "s");
-
-            }
-
-            System.exit(0);
-        }
-
-        {
-            Locutus.imp().getWarDb().updateAttacks(null);
-            Locutus.imp().getWarDb().loadNukeDates();
-            System.exit(0);
-        }
-
-        {
-            NationDB natDb = Locutus.imp().getNationDB();
-
-            TradeDB tradeDb = Locutus.imp().getTradeManager();
-
-
-//
-//            natDb.markCityDirty(id, cityId, Long.MAX_VALUE);
-//            natDb.updateDirtyCities(null);
-//
-//            {
-//                JavaCity city = nation.getCityMap(false).get(cityId);
-//                System.out.println("Nuke " + city.getNukeDate());
-//                System.out.println("Pollution " + city.getPollution(nation::hasProject));
-//                System.out.println("Age " + city.getAge());
-//            }
-
-//            double[] revenue = nation.getRevenue();
-//            System.out.println(PnwUtil.resourcesToFancyString(revenue));
-
-
-//            natDb.updateOutdatedAlliances(true, null);
-//            natDb.updateOutdatedAlliances(true, null);
-//            natDb.updateIncorrectNations(null);
-//            natDb.updateIncorrectNations(null);
-//            natDb.updateIncorrectNations(null);
-//            System.out.println("Update v2");
-//            natDb.updateNationsV2(false, null);
-
-//            PnwPusherHandler pusher = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY);
-//            pusher.connect().subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).build(new Consumer<List<Nation>>() {
-//                @Override
-//                public void accept(List<Nation> nations) {
-//                    for (Nation nation : nations) {
-//                        Locutus.imp().getNationDB().markNationDirty(nation.getId());
-//                    }
-//                }
-//            });
-
-//            while (true) {
-//                natDb.updateMostActiveNations(500, null);
-//                System.out.println("Update msot active 2");
-//                long now = System.currentTimeMillis();
-//                long cutoff = now - TimeUnit.MINUTES.toMillis(1);
-//                for (DBNation nation : natDb.getNationsMatching(f -> f.lastActiveMs() > cutoff)) {
-//                    System.out.println(nation.getNation() + " | " + nation.getAlliance() + " | " + (TimeUnit.MILLISECONDS.toSeconds(now - nation.lastActiveMs())));
-//                }
-//
-//                main.fetchNationsWithInfo(f -> f.setId(List.of(Settings.INSTANCE.NATION_ID)), new Predicate<Nation>() {
-//                    @Override
-//                    public boolean test(Nation nation) {
-//                        System.out.println("Nation " + nation);
-//                        return false;
-//                    }
-//                });
-//
-//                break;
-//            }
-//            WarDB warDB = new WarDB();
-//            Collection<DBAttack> attacks = warDB.getAttacks();
-//            System.out.println("Num attcaks " + attacks.size());
-
-//            int bytes = 0;
-//            int numCities = 0;
-//            Set<Integer> builds = new HashSet<>();
-//            // test city memory
-//            NationDB db = new NationDB();
-//            for (Map<Integer, DBCity> cityEntry : db.getCities().values()) {
-//                for (DBCity city : cityEntry.values()) {
-//                    bytes += city.buildings.length;
-//                    builds.add(Arrays.hashCode(city.buildings));
-//                    numCities++;
-//                }
-//            }
-//            System.out.println(builds.size() + "  unique builds in " + numCities + " cities " + bytes);
-
-            System.exit(0);
-        }
-
-        {
-            testPusher();
-            System.exit(0);
-        }
-
-//        {
-//            String query = "mutation{bankWithdraw(receiver_type:1,receiver: 189573,money: 0.01){id, date}}";
-//            String queryFull = "{\"query\":\"" + query + "\"}";
-//            Map<String, String> header = new HashMap<>();
-//            header.put("X-Bot-Key", Settings.INSTANCE.API_KEY_PRIMARY);
-//            byte[] queryBytes = queryFull.getBytes(StandardCharsets.UTF_8);
-//
-//
-//            String url = main.getUrl(Settings.INSTANCE.API_KEY_PRIMARY);
-//            String result = FileUtil.readStringFromURL(url, queryBytes, true, null,
-//                    c -> {
-//                            c.setRequestProperty("Content-Type", "application/json");
-//                            c.setRequestProperty("X-Bot-Key", Settings.INSTANCE.API_KEY_PRIMARY);
-//                    }
-//            );
-//
-//            System.out.println("Result " + result);
-//
-//            System.exit(0);
-//        }
-
-        {
-            BankDepositMutationRequest mutation = new BankDepositMutationRequest();
-            mutation.setNote("test 123");
-            mutation.setMoney(0.01);
-
-            BankrecResponseProjection projection = new BankrecResponseProjection();
-            projection.id();
-            projection.date();
-
-            Bankrec result = main.request(mutation, projection, Bankrec.class);
-
-            System.out.println("Result " + result);
-
-            System.exit(0);
-        }
-
-        {
-            System.out.println("Starting");
-            long start = System.currentTimeMillis();
-
-            List<String> colors = new ArrayList<>();
-            for (NationColor color : NationColor.values) {
-                if (color == NationColor.GRAY || color == NationColor.BEIGE) continue;
-                colors.add(color.name().toLowerCase(Locale.ROOT));
-            }
-            List<Nation> nations = main.fetchNations(new Consumer<NationsQueryRequest>() {
-                @Override
-                public void accept(NationsQueryRequest r) {
-                    r.setColor(colors);
-                    r.setVmode(false);
-                }
-            }, new Consumer<NationResponseProjection>() {
-                @Override
-                public void accept(NationResponseProjection r) {
-                    r.id();
-                    r.last_active();
-                    r.alliance_id();
-                    r.score();
-                }
-            });
-            List<Integer> idsToFetch = new ArrayList<>();
-            long now = System.currentTimeMillis();
-//            for (Nation nation : nations) {
-//                long activeMs = nation.getLast_active().toEpochMilli();
-//                if (now - activeMs < TimeUnit.MINUTES.toMillis(15)) {
-//                    idsToFetch.add(nation.getId());
-//                }
-//            }
-            nations = main.fetchNationsWithInfo(new Consumer<NationsQueryRequest>() {
-                @Override
-                public void accept(NationsQueryRequest r) {
-                    r.setId(idsToFetch);
-                }
-            }, f -> true);
-
-            long diff = System.currentTimeMillis() - start;
-            System.out.println("Fetched " + nations.size() + " | " + diff);
-            System.exit(0);
-        }
-
-        {
-
-            int nationId = Settings.INSTANCE.NATION_ID;
-            List<Integer> ids = new ArrayList<>();
-            for (int i = 0; i < 500; i++) ids.add(i);
-
-            List<Nation> nations = main.fetchNations(new Consumer<NationsQueryRequest>() {
-                @Override
-                public void accept(NationsQueryRequest nationsQueryRequest) {
-                    nationsQueryRequest.setId(ids);
-                }
-            }, new Consumer<NationResponseProjection>() {
-                @Override
-                public void accept(NationResponseProjection r) {
-                    r.id();
-                    r.spy_attacks();
-                    r.spy_casualties();
-                    r.spy_kills();
-                    r.espionage_available();
-                }
-            });
-//            for (Nation nation : nations) {
-//                System.out.println("Nation " + nation);
-//            }
-            System.out.println("Nations " + nations.size());
-
-
-//            List<Bankrec> recs = main.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
-//                @Override
-//                public void accept(BankrecsQueryRequest r) {
-//                    r.setRtype(List.of(2));
-//                    r.setStype(List.of(2));
-//                    r.setOr_id(List.of(allianceId));
-//                }
-//            });
-
-        }
-        {
-//            int nationId = Settings.INSTANCE.NATION_ID;
-//            List<Bankrec> recs = main.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
-//                @Override
-//                public void accept(BankrecsQueryRequest r) {
-//                    r.setOr_id(List.of(nationId));
-//                    r.setOr_type(List.of(1)); //1 == nation
-//                }
-//            });
-//
-//            BankDB db = new BankDB();
-//            List<Transaction2> txs = recs.stream().map(Transaction2::fromApiV3).collect(Collectors.toList());
-//            int[] result = db.addTransactions(txs);
-//            for (int i = 0; i < result.length; i++) {
-//                System.out.println(i + " -> " + result[i] + " | " + txs.get(i).note);
-//            }
-
-        }
-
-//        testPusher();
-
-//        {
-//            long start = System.currentTimeMillis();
-//            List<SWarContainer> wars = api.getWarsByAmount(5000).getWars();
-//            long diff = System.currentTimeMillis() - start;
-//            System.out.println("Diff1 " + diff);
-//        }
-//        {
-//            long start = System.currentTimeMillis();
-//            List<SWarContainer> wars = api.getWarsByAmount(1).getWars();
-//            long diff = System.currentTimeMillis() - start;
-//            System.out.println("Diff2 " + diff);
-//        }
-//        {
-//            long start = System.currentTimeMillis();
-//            List<SWarContainer> wars = api.getWarsByAmount(1).getWars();
-//            long diff = System.currentTimeMillis() - start;
-//            System.out.println("Diff3 " + diff);
-//        }
-//        {
-//            long start = System.currentTimeMillis();
-//            main.fetchWars(new Consumer<WarsQueryRequest>() {
-//                @Override
-//                public void accept(WarsQueryRequest r) {
-//                    r.setActive(true);
-//                    r.setDays_ago(0);
-//                }
-//            });
-//            long diff = System.currentTimeMillis() - start;
-//            System.out.println("Diff4 " + diff);
-//        }
-
-
-        System.exit(1);
-
-        Locutus.create().start();
-
-        System.out.println("Nation " + Settings.INSTANCE.NATION_ID);
-        System.out.println("ADMIN_USER_ID " + Settings.INSTANCE.ADMIN_USER_ID);
-        System.out.println("APPLICATION_ID " + Settings.INSTANCE.APPLICATION_ID);
-
-        System.out.println("Update games");
-
-
-        {
-            for (Bounty bounty : main.fetchBounties(null, f -> f.all$(-1))) {
-                System.out.println(bounty);
-            }
-
-        }
-
-//        {
-//            Set<Integer> alliances = new HashSet<>();
-//            for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-//
-//            }
-//
-//            List<Nation> nations = main.fetchNations(new Consumer<NationsQueryRequest>() {
-//                @Override
-//                public void accept(NationsQueryRequest request) {
-//                    request.setAlliance_id(Arrays.asList(3427,9829,8777,4397,1742,2510,5039,9618,9620,8535,8280,5049,7484,7580,9793,9465,5722));
-//                    request.setAlliance_position(Arrays.asList(2, 3, 4, 5));
-//                    request.setMin_cities(10);
-//                    request.setVmode(false);
-//
-//                    request.setId(Collections.singletonList(189573));
-//                }
-//            }, new Consumer<NationResponseProjection>() {
-//                @Override
-//                public void accept(NationResponseProjection projection) {
-//                    projection.id();
-//
-//                    projection.gross_domestic_product();
-//                    CityResponseProjection cityProj = new CityResponseProjection();
-//                    cityProj.id();
-//                    cityProj.date();
-//                    cityProj.infrastructure();
-//                    cityProj.land();
-//                    cityProj.powered();
-//
-//                    cityProj.oil_power();
-//                    cityProj.wind_power();
-//                    cityProj.coal_power();
-//                    cityProj.nuclear_power();
-//                    cityProj.coal_mine();
-//                    cityProj.lead_mine();
-//                    cityProj.iron_mine();
-//                    cityProj.bauxite_mine();
-//                    cityProj.oil_well();
-//                    cityProj.uranium_mine();
-//                    cityProj.farm();
-//                    cityProj.police_station();
-//                    cityProj.hospital();
-//                    cityProj.recycling_center();
-//                    cityProj.subway();
-//                    cityProj.supermarket();
-//                    cityProj.bank();
-//                    cityProj.shopping_mall();
-//                    cityProj.stadium();
-//                    cityProj.oil_refinery();
-//                    cityProj.aluminum_refinery();
-//                    cityProj.steel_mill();
-//                    cityProj.munitions_factory();
-//                    cityProj.barracks();
-//                    cityProj.factory();
-//                    cityProj.hangar();
-//                    cityProj.drydock();
-////                    cityProj.nuke_date();
-//                    projection.cities(cityProj);
-//                }
-//            });
-//
-//            for (Nation nation : nations) {
-//                List<City> cities = nation.getCities();
-//                for (City city : cities) {
-//                    System.out.println("City " + city);
-//                }
-//            }
-//        }
-
-        System.exit(1);
-        List<Alliance> alliances = main.fetchAlliances(new Consumer<AlliancesQueryRequest>() {
-            @Override
-            public void accept(AlliancesQueryRequest request) {
-                request.setId(Collections.singletonList(9821));
-            }
-        }, new Consumer<AllianceResponseProjection>() {
-            @Override
-            public void accept(AllianceResponseProjection response) {
-                BankrecResponseProjection projection = new BankrecResponseProjection();
-                projection.id();
-                projection.date();
-                projection.sender_id();
-                projection.sender_type();
-                projection.receiver_id();
-                projection.receiver_type();
-                projection.banker_id();
-                projection.note();
-                projection.money();
-                projection.coal();
-                projection.oil();
-                projection.uranium();
-                projection.iron();
-                projection.bauxite();
-                projection.lead();
-                projection.gasoline();
-                projection.munitions();
-                projection.steel();
-                projection.aluminum();
-                projection.food();
-                projection.tax_id();
-
-                AllianceBankrecsParametrizedInput input = new AllianceBankrecsParametrizedInput();
-                input.rtype(Collections.singletonList(2));
-                input.stype(Collections.singletonList(2));
-                response.bankrecs(input, projection);
-//                response.bankrecs(projection);
-
-            }
-        });
-
-
-        System.out.println("Alliances " + alliances.size());
-
-        for (Alliance aa : alliances) {
-            Map<String, Object> fields = aa.getAdditionalFields();
-            System.out.println("Fields: ");
-            System.out.println(StringMan.getString(fields));
-
-            List<Bankrec> recs = aa.getBankrecs();
-            System.out.println("Recss " + recs.size());
-            for (Bankrec rec : recs) {
-                System.out.println(" - " + rec);
-            }
-        }
-
-        System.exit(1);
-
-        List<Bankrec> txs = main.fetchBankRecs(new Consumer<BankrecsQueryRequest>() {
-            @Override
-            public void accept(BankrecsQueryRequest request) {
-                request.setSid(Collections.singletonList(9821));
-            }
-        }, new Consumer<BankrecResponseProjection>() {
-            @Override
-            public void accept(BankrecResponseProjection response) {
-                response.money();
-                response.coal();
-                response.oil();
-                response.uranium();
-                response.iron();
-                response.bauxite();
-                response.lead();
-                response.gasoline();
-                response.munitions();
-                response.steel();
-                response.aluminum();
-                response.food();
-
-                response.note();
-
-                response.tax_id();
-                response.id();
-                response.date();
-
-                response.sid();
-                response.stype();
-                response.rid();
-                response.rtype();
-
-            }
-        });
-
-        System.out.println("Transactions " + txs.size());
-
-        for (Bankrec tx : txs) {
-            System.out.println(tx);
-        }
-
-//
-//        for (Alliance alliance : alliances) {
-//            for (AlliancePosition position : alliance.getAlliance_positions()) {
-//                System.out.println(position.getId() + " | " + position.getPermissions());
-//            }
-//
-//        }
-
-
-//        main.fetchNations(500, new Consumer<NationsQueryRequest>() {
-//            @Override
-//            public void accept(NationsQueryRequest request) {
-//                request.setAlliance_id(Collections.singletonList(8173));
-//                request.setAlliance_position(Arrays.asList(2, 3, 4, 5));
-//                request.setVmode(false);
-//            }
-//        }, new Consumer<NationResponseProjection>() {
-//            @Override
-//            public void accept(NationResponseProjection response) {
-//
-//            }
-//        }, e -> {
-//            System.out.println("Error " + e.getErrorType() + " | " + e.getMessage());
-//            return ErrorResponse.THROW;
-//        }, nation -> false);
-//
-//        NationsQueryRequest request = new NationsQueryRequest();
-//        request.setAlliance_id(Collections.singletonList(8173));
-//        request.setId(Collections.singletonList(239259));
-//        request.setFirst(500);
-//        request.setPage(2);
-//
-//        NationResponseProjection proj1 = new NationResponseProjection()
-//                .nation_name()
-//                .alliance_position()
-//                .alliance_id()
-//                .id()
-//                .color()
-//                ;
-//
-//        PaginatorInfoResponseProjection proj3 = new PaginatorInfoResponseProjection()
-//                .count()
-//                .currentPage()
-//                .firstItem()
-//                .hasMorePages()
-//                .lastPage()
-//                .perPage()
-//                .total()
-//                ;
-//
-//        NationPaginatorResponseProjection proj2 = new NationPaginatorResponseProjection()
-//                .paginatorInfo(proj3)
-//                .data(proj1);
-//        GraphQLRequest graphQLRequest = new GraphQLRequest(request, proj2);
-//
-//        if (result.hasErrors()) {
-//            System.out.println("Errors");
-//            for (GraphQLError error : result.getErrors()) {
-//                System.out.println("Error " + error.getErrorType() + "\n | " + error.getMessage() + "\n | " + error.getExtensions() + "\n | " + error.getLocations() + "\n | " + error.getPath());
-//            }
-//
-//        }
-//
-//        System.out.println("Result " + result.toString());
-//        NationPaginator paginator = result.nations();
-//        List<Nation> data = paginator.getData();
-//        System.out.println(data.size());
-//        System.out.println(paginator.getPaginatorInfo() + " | " + result.getData() + " | " + result.toString());
-//        System.out.println(data.get(0));
-//
-//        System.out.println(AttackType.class);
-//        System.out.println("Done!");
-    }
-
     private static HttpEntity<String> httpEntity(GraphQLRequest request, String api, String bot) {
         return new HttpEntity<>(request.toHttpJsonBody(), getHttpHeaders(api, bot));
     }

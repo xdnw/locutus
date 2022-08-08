@@ -23,7 +23,7 @@ public class CheckPermission extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkpermission <command> <user>";
+        return Settings.commandPrefix(true) + "checkpermission <command> <user>";
     }
 
     @Override

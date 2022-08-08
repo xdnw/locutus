@@ -31,12 +31,12 @@ public class AssignBuild extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "build [category]";
+        return Settings.commandPrefix(true) + "build [category]";
     }
 
     @Override
     public String desc() {
-        return "Have the bot give you a build for war or raiding, based on your city count. Available categories are: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "build ?`";
+        return "Have the bot give you a build for war or raiding, based on your city count. Available categories are: `" + Settings.commandPrefix(true) + "build ?`";
     }
 
 

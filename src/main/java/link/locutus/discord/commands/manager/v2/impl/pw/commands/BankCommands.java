@@ -102,7 +102,7 @@ public class BankCommands {
     @IsAlliance
     public String offshore(@Me Member member, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default("") String note) {
         if (!Roles.ECON_LOW_GOV.has(member) && (!Roles.MEMBER.has(member) || db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) != Boolean.TRUE)) {
-            throw new IllegalArgumentException("You need ECON to offshore or to enable `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore MEMBER_CAN_OFFSHORE`");
+            throw new IllegalArgumentException("You need ECON to offshore or to enable `" + Settings.commandPrefix(true) + "KeyStore MEMBER_CAN_OFFSHORE`");
         }
         Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
         if (auth == null) return "No authentication enabled for this guild";
@@ -116,7 +116,7 @@ public class BankCommands {
         int toId = to.getAlliance_id();
 
         Set<Integer> offshores = db.getCoalition("offshore");
-        if (!offshores.contains(toId)) return "Please add the offshore using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition " + toId + " offshore`";
+        if (!offshores.contains(toId)) return "Please add the offshore using `" + Settings.commandPrefix(true) + "setcoalition " + toId + " offshore`";
 
         double[] amountSent = ResourceType.getBuffer();
 
@@ -248,7 +248,7 @@ public class BankCommands {
             return "You do not have permisssion to send to other nations";
         }
         if (db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL) == null) {
-            return "No resource request channel set. See `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore RESOURCE_REQUEST_CHANNEL`";
+            return "No resource request channel set. See `" + Settings.commandPrefix(true) + "KeyStore RESOURCE_REQUEST_CHANNEL`";
         }
         if (!receiver.isBlockaded()) return "You are not currently blockaded";
 
@@ -335,7 +335,7 @@ public class BankCommands {
             return "You do not have permisssion to disburse to other nations";
         }
         if (db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL) == null) {
-            return "No resource request channel set. See `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore RESOURCE_REQUEST_CHANNEL`";
+            return "No resource request channel set. See `" + Settings.commandPrefix(true) + "KeyStore RESOURCE_REQUEST_CHANNEL`";
         }
         if (!receiver.isBlockaded()) return "You are not currently blockaded";
 
@@ -874,15 +874,15 @@ public class BankCommands {
             return "See also:\n" +
                     "> https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8\n" +
                     "To add an offshore:\n" +
-                    "1. (int this server) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetCoalition <offshore-alliance> offshore`\n" +
-                    "2. (in the offshore) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetCoalition <alliance> offshoring`";
+                    "1. (int this server) `" + Settings.commandPrefix(true) + "SetCoalition <offshore-alliance> offshore`\n" +
+                    "2. (in the offshore) `" + Settings.commandPrefix(true) + "SetCoalition <alliance> offshoring`";
         }
 
         if (!force) {
-            if (receiver.isNation() && receiver.asNation().getVm_turns() > 0) return "Receiver is in Vacation Mode (use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sync <nation>` to force an update, add `-f` to bypass)";
-            if (receiver.isNation() && receiver.asNation().isGray()) return "Receiver is Gray (use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sync <nation>` to force an update, add `-f` to bypass)";
-            if (receiver.isNation() && receiver.asNation().getNumWars() > 0 && receiver.asNation().isBlockaded()) return "Receiver is blockaded (use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sync <nation>` to force an update, add `-f` to bypass)";
-            if (receiver.isNation() && receiver.asNation().getActive_m() > 10000) RateLimitUtil.queue((channel.sendMessage("!! **WARN**: Receiver is inactive  (use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sync <nation>` to force an update, add `-f` to bypass)")));
+            if (receiver.isNation() && receiver.asNation().getVm_turns() > 0) return "Receiver is in Vacation Mode (use `" + Settings.commandPrefix(true) + "sync <nation>` to force an update, add `-f` to bypass)";
+            if (receiver.isNation() && receiver.asNation().isGray()) return "Receiver is Gray (use `" + Settings.commandPrefix(true) + "sync <nation>` to force an update, add `-f` to bypass)";
+            if (receiver.isNation() && receiver.asNation().getNumWars() > 0 && receiver.asNation().isBlockaded()) return "Receiver is blockaded (use `" + Settings.commandPrefix(true) + "sync <nation>` to force an update, add `-f` to bypass)";
+            if (receiver.isNation() && receiver.asNation().getActive_m() > 10000) RateLimitUtil.queue((channel.sendMessage("!! **WARN**: Receiver is inactive  (use `" + Settings.commandPrefix(true) + "sync <nation>` to force an update, add `-f` to bypass)")));
         }
 
         // confirmation prompt
@@ -931,29 +931,29 @@ public class BankCommands {
                             return "You are not a member of " + aaId2;
                     } else if (!Roles.MEMBER.has(author, guildDb.getGuild())) {
                         Role memberRole = Roles.MEMBER.toRole(guildDb.getGuild());
-                        if (memberRole == null) return "No member role enabled (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "AliasRole`)";
+                        if (memberRole == null) return "No member role enabled (see `" + Settings.commandPrefix(true) + "AliasRole`)";
                         return "You do not have the member role: " + memberRole.getName();
                     }
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) != Boolean.TRUE)
-                        return "`MEMBER_CAN_WITHDRAW` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore` )";
+                        return "`MEMBER_CAN_WITHDRAW` is false (see `" + Settings.commandPrefix(true) + "KeyStore` )";
                     GuildMessageChannel rssChannel = guildDb.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (rssChannel == null)
-                        return "Please have an admin use. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore RESOURCE_REQUEST_CHANNEL #someChannel`";
+                        return "Please have an admin use. `" + Settings.commandPrefix(true) + "KeyStore RESOURCE_REQUEST_CHANNEL #someChannel`";
                     if (channel.getIdLong() != rssChannel.getIdLong())
                         return "Please use the transfer command in " + ((GuildMessageChannel) channel).getAsMention();
 
                     if (!Roles.ECON_WITHDRAW_SELF.has(author, guildDb.getGuild()))
-                        return "You do not have the `ECON_WITHDRAW_SELF` role. See: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole`";
+                        return "You do not have the `ECON_WITHDRAW_SELF` role. See: `" + Settings.commandPrefix(true) + "aliasrole`";
                     if (!receiver.isNation() || receiver.getId() != me.getId())
                         return "You only have permission to withdraw to yourself";
 
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE && aaId2 != null) {
                         if (!guildDb.getCoalition("enemies").isEmpty())
-                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`) and `enemies` is set (see: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions`)";
+                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.commandPrefix(true) + "KeyStore`) and `enemies` is set (see: `" + Settings.commandPrefix(true) + "setcoalition` | `" + Settings.commandPrefix(true) + "removecoalition` | `" + Settings.commandPrefix(true) + "coalitions`)";
                         DBAlliance aaObj = DBAlliance.getOrCreate(aaId2);
                         ByteBuffer warringBuf = aaObj.getMeta(AllianceMeta.IS_WARRING);
                         if (warringBuf != null && warringBuf.get() == 1)
-                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`)";
+                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.commandPrefix(true) + "KeyStore`)";
                     }
 
                     // check that we personally have the required deposits
@@ -973,7 +973,7 @@ public class BankCommands {
                     for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
                         if (myDeposits[entry.getKey().ordinal()] + 0.01 < entry.getValue()) {
                             if (!rssConversion) {
-                                return "You do not have `" + MathMan.format(entry.getValue()) + "x" + entry.getKey() + "`. (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "depo @user` ). RESOURCE_CONVERSION is disabled (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`)";
+                                return "You do not have `" + MathMan.format(entry.getValue()) + "x" + entry.getKey() + "`. (see `" + Settings.commandPrefix(true) + "depo @user` ). RESOURCE_CONVERSION is disabled (see `" + Settings.commandPrefix(true) + "KeyStore`)";
                             }
                             hasExactResources = false;
                         }
@@ -1112,7 +1112,7 @@ public class BankCommands {
                 nations.removeIf(n -> n.getPosition() <= 1);
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID` set, or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole MEMBER` set");
+                if (role == null) throw new IllegalArgumentException("No `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID` set, or `" + Settings.commandPrefix(true) + "aliasRole MEMBER` set");
                 nations = new LinkedHashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -1356,7 +1356,7 @@ public class BankCommands {
             }
         }
 
-        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + txSheet.getURL() + " " + note;
+        String cmd = Settings.commandPrefix(true) + "addbalance " + txSheet.getURL() + " " + note;
         String title = "Addbalance";
         String body = "Total: \n`" + PnwUtil.resourcesToString(total) + "`\nWorth: ~$" + MathMan.format(PnwUtil.convertedTotal(total));
         String emoji = "\u2139";
@@ -1598,7 +1598,7 @@ public class BankCommands {
         messages.add("\n**About Internal Tax Rates**\n" +
                 " - Internal tax rates are NOT ingame tax rates\n" +
                 " - Internal rates determine what money%/resource% of ingame city taxes goes to the alliance\n" +
-                " - The remainder is added to a nation's `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits`");
+                " - The remainder is added to a nation's `" + Settings.commandPrefix(true) + "deposits`");
 
         return StringMan.join(messages, "\n");
     }
@@ -1689,7 +1689,7 @@ public class BankCommands {
                 " - A tax bracket decides what % of city income (money/resources) goes to the alliance bank\n" +
                 " - Funds from raiding, trading or daily login are never taxed\n" +
                 " - Taxes bypass blockades\n" +
-                " - Your internal tax rate will then determine what portion of city taxes go to your `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits`");
+                " - Your internal tax rate will then determine what portion of city taxes go to your `" + Settings.commandPrefix(true) + "deposits`");
 
         return StringMan.join(messages, "\n");
     }
@@ -1710,7 +1710,7 @@ public class BankCommands {
         if (!force && receiver.getNumWars() > 0 && (member == null || member.getOnlineStatus() != OnlineStatus.ONLINE)) return "Receiver is not online on discord. (add `-f` to ignore this check)";
 
         Auth auth = receiver.getAuth(null);
-        if (auth == null) return "Receiver is not authenticated with Locutus: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "login`";
+        if (auth == null) return "Receiver is not authenticated with Locutus: `" + Settings.commandPrefix(true) + "login`";
 
         Map.Entry<Boolean, String> result = auth.acceptAndOffshoreTrades(db, me.getNation_id());
         if (!result.getKey()) {
@@ -1805,7 +1805,7 @@ public class BankCommands {
     @Command(desc = "Send for your alliance offshore account to another alliance's offshore account (internal transfer only)")
     @RolePermission(value = Roles.ECON)
     public String sendAA(@Me Message message, @Me OffshoreInstance offshore, @Me MessageChannel channel, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me, NationOrAllianceOrGuild receiver, @AllianceDepositLimit Map<ResourceType, Double> amount, @Switch('f') boolean confirm) {
-        if (!receiver.isAlliance()) return "Alliance -> Nation is not supported. Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance`";
+        if (!receiver.isAlliance()) return "Alliance -> Nation is not supported. Please use `" + Settings.commandPrefix(true) + "transfer` or `" + Settings.commandPrefix(true) + "addbalance`";
         for (Map.Entry<ResourceType, Double> entry : amount.entrySet()) {
             if (entry.getValue() <= 0 || entry.getValue().isNaN()) return "You cannot send negative amounts for " + entry.getKey();
         }
@@ -1831,7 +1831,7 @@ public class BankCommands {
             }
 
             if (receiver.isNation()) {
-                return "To send to a nation, please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer`";
+                return "To send to a nation, please use `" + Settings.commandPrefix(true) + "transfer`";
             }
 
             GuildDB receiverDB = null;
@@ -1841,13 +1841,13 @@ public class BankCommands {
             if (receiver.isAlliance()) {
                 DBAlliance aa = receiver.asAlliance();
                 receiverDB = aa.getGuildDB();
-                if (receiverDB == null) return "Receiver AA" + aa + " does not have Locutus. This command is for internal transfers. Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer` to move funds ingame";
+                if (receiverDB == null) return "Receiver AA" + aa + " does not have Locutus. This command is for internal transfers. Please use `" + Settings.commandPrefix(true) + "transfer` to move funds ingame";
             }
             if (receiverDB == null) {
                 return "Invalid receiver type: " + receiver;
             }
             OffshoreInstance receiverOffshore = receiverDB.getOffshore();
-            if (receiverOffshore == null) return "Receiver does not have an offshore. Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer`";
+            if (receiverOffshore == null) return "Receiver does not have an offshore. Please use `" + Settings.commandPrefix(true) + "transfer`";
 
             if (!confirm) {
                 String title = "Send to " + name;
@@ -1870,7 +1870,7 @@ public class BankCommands {
             long tx_datetime = System.currentTimeMillis();
 
             if (receiverOffshore != offshore) {
-                return "Internal transfers to other offshores is not currently supported. Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer`";
+                return "Internal transfers to other offshores is not currently supported. Please use `" + Settings.commandPrefix(true) + "transfer`";
             } else {
                 GuildDB offshoreDB = offshore.getGuildDB();
                 int banker = me.getNation_id();
@@ -1913,15 +1913,15 @@ public class BankCommands {
 
         synchronized (OffshoreInstance.BANK_LOCK) {
             GuildMessageChannel rssChannel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-            if (rssChannel == null) return "Please have an admin use. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore RESOURCE_REQUEST_CHANNEL #someChannel`";
+            if (rssChannel == null) return "Please have an admin use. `" + Settings.commandPrefix(true) + "KeyStore RESOURCE_REQUEST_CHANNEL #someChannel`";
             if (channel.getIdLong() != rssChannel.getIdLong()) return "Please use the transfer command in " + rssChannel.getAsMention();
 
             if (rank.id < Rank.MEMBER.id) throw new IllegalArgumentException("You are not member");
 
             Integer guildAAId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (guildAAId == null) return "No alliance set. (see: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID`)";
+            if (guildAAId == null) return "No alliance set. (see: `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID`)";
 
-            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) != Boolean.TRUE) return "Member transfers are not enabled. (see: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore MEMBER_CAN_WITHDRAW`)";
+            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) != Boolean.TRUE) return "Member transfers are not enabled. (see: `" + Settings.commandPrefix(true) + "KeyStore MEMBER_CAN_WITHDRAW`)";
 
             if (me.getVm_turns() > 0) return "You are in VM";
             if (me.getActive_m() > 10000) return "You are inactive ingame";
@@ -1938,7 +1938,7 @@ public class BankCommands {
                     if (entry.getValue() <= 0 || entry.getValue().isNaN())
                         return "You cannot transfer " + entry.getValue() + "x" + entry.getKey();
                     if (deposits.getOrDefault(entry.getKey(), -1d) + 0.01 < entry.getValue())
-                        return "You do not have " + MathMan.format(entry.getValue()) + "x" + entry.getKey() + " (see: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits`)";
+                        return "You do not have " + MathMan.format(entry.getValue()) + "x" + entry.getKey() + " (see: `" + Settings.commandPrefix(true) + "deposits`)";
                 }
             }
 
@@ -1950,8 +1950,8 @@ public class BankCommands {
             OffshoreInstance offshore = db.getOffshore();
             OffshoreInstance receiverOffshore = receiverDb.getOffshore();
             if (receiverDb != db) {
-                if (offshore == null || receiverOffshore == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer` to send to an nation not on a bank network";
-                if (receiverOffshore != offshore) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer` to send to an nation not on the same bank network";
+                if (offshore == null || receiverOffshore == null) return "Please use `" + Settings.commandPrefix(true) + "transfer` to send to an nation not on a bank network";
+                if (receiverOffshore != offshore) return "Please use `" + Settings.commandPrefix(true) + "transfer` to send to an nation not on the same bank network";
                 double[] allianceDeposits = PnwUtil.normalize(offshore.getDeposits(db));
                 for (int i = 0; i < amountArr.length; i++) {
                     if (amountArr[i] > allianceDeposits[i]) {
@@ -1993,7 +1993,7 @@ public class BankCommands {
             }
 
             return me.getNation() + " successfully sent `" + PnwUtil.resourcesToString(amount) + "` (worth: $" + PnwUtil.convertedTotal(amount) + ") to " + receiver.getUrl() + ">)\n" +
-                    "See (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits`)";
+                    "See (`" + Settings.commandPrefix(true) + "deposits`)";
         }
     }
 
@@ -2034,7 +2034,7 @@ public class BankCommands {
                     Map<ResourceType, Double> stock = alliance.getStockpile();
                     accountDeposits.put(DepositType.DEPOSITS, PnwUtil.resourcesToArray(stock));
                 } else {
-                    return "No offshore is set. In this server, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance|guild> offshore` and from the offshore server use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance|guild> offshoring`";
+                    return "No offshore is set. In this server, use `" + Settings.commandPrefix(true) + "setcoalition <alliance|guild> offshore` and from the offshore server use `" + Settings.commandPrefix(true) + "setcoalition <alliance|guild> offshoring`";
                 }
             } else if (otherDb != db && offshore.getGuildDB() != db) {
                 return "You do not have permisssion to check another alliance's deposits";
@@ -2045,7 +2045,7 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isGuild()) {
             GuildDB otherDb = nationOrAllianceOrGuild.asGuild();
             OffshoreInstance offshore = otherDb.getOffshore();
-            if (offshore == null) return "No offshore is set. In this server, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance|guild> offshore` and from the offshore server use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance|guild> offshoring`";
+            if (offshore == null) return "No offshore is set. In this server, use `" + Settings.commandPrefix(true) + "setcoalition <alliance|guild> offshore` and from the offshore server use `" + Settings.commandPrefix(true) + "setcoalition <alliance|guild> offshoring`";
 
             if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild())) {
                 return "You do not have permission to check another guild's deposits";
@@ -2125,7 +2125,7 @@ public class BankCommands {
             if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {
                 Role role = Roles.ECON_WITHDRAW_SELF.toRole(db.getGuild());
                 if (db.getGuild().getMember(author).getRoles().contains(role)) {
-                    footers.add("To withdraw, use: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "tr");
+                    footers.add("To withdraw, use: " + Settings.commandPrefix(true) + "tr");
                 }
             }
         }
@@ -2455,11 +2455,17 @@ public class BankCommands {
         }
         OffshoreInstance currentOffshore = root.getOffshore();
         if (currentOffshore != null) {
-            return "This guild already has an offshore. If you would like to set a different offshore, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition offshore` to remove it";
+            return "This guild already has an offshore. If you would like to set a different offshore, use `" + Settings.commandPrefix(true) + "removecoalition offshore` to remove it";
         }
         Boolean enabled = offshoreDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING);
         if (enabled != Boolean.TRUE && !Roles.ECON.has(user, offshoreDB.getGuild())) {
-            return "You do not have ECON on " + offshoreDB.getGuild() + " AND `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore PUBLIC_OFFSHORING` is not enabled on that guild.";
+            return "You do not have ECON on " + offshoreDB.getGuild() + " AND `" + Settings.commandPrefix(true) + "KeyStore PUBLIC_OFFSHORING` is not enabled on that guild.";
+        }
+        if (offshoreDB.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
+            return "Please set the key `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID` in " + offshoreDB.getGuild();
+        }
+        if (offshoreDB.getOrNull(GuildDB.Key.API_KEY) == null) {
+            return "Please set the key `" + Settings.commandPrefix(true) + "KeyStore API_KEY` in " + offshoreDB.getGuild();
         }
 
         StringBuilder response = new StringBuilder();

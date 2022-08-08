@@ -38,7 +38,7 @@ public class Inflows extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfers <nation|alliance|coalition> <days>";
+        return Settings.commandPrefix(true) + "transfers <nation|alliance|coalition> <days>";
     }
 
     @Override
@@ -92,7 +92,7 @@ public class Inflows extends Command {
                 selfName = selfId == null ? "" : Locutus.imp().getNationDB().getAllianceName(selfId);
             }
             if (self == null || self.isEmpty()) {
-                return "Not found: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pnw-who <user>`";
+                return "Not found: `" + Settings.commandPrefix(true) + "pnw-who <user>`";
             }
 
             for (Integer allianceId : self) {
@@ -184,7 +184,7 @@ public class Inflows extends Command {
 
             List<Transaction2> transfers = entry.getValue();
             String title = inflow ? name + " > " + selfName : selfName + " > " + name;
-            String followCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inflows " + url + " " + days;
+            String followCmd = Settings.commandPrefix(true) + "inflows " + url + " " + days;
 
             StringBuilder message = new StringBuilder();
 
@@ -196,7 +196,7 @@ public class Inflows extends Command {
 
             message.append(PnwUtil.resourcesToString(totals));
 
-            String infoCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pw-who " + url;
+            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
 //            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
             result.append(title + ": " + message).append("\n");
         }

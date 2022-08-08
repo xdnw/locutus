@@ -118,7 +118,7 @@ public class AutoRole extends Command {
             DBNation nation = DiscordUtil.getNation(mention.getUser());
             List<String> output = new ArrayList<>();
             Consumer<String> out = output::add;
-            if (nation == null) out.accept("That nation isn't registered: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`");
+            if (nation == null) out.accept("That nation isn't registered: `" + Settings.commandPrefix(true) + "verify`");
             task.autoRole(mention, out);
 
             if (!output.isEmpty()) {
@@ -129,11 +129,11 @@ public class AutoRole extends Command {
         response.append("Done!");
 
         if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoRole`");
+            response.append("\n - AutoRole disabled. To enable it use: `" + Settings.commandPrefix(true) + "KeyStore AutoRole`");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
         if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoNick`");
+            response.append("\n - AutoNick disabled. To enable it use: `" + Settings.commandPrefix(true) + "KeyStore AutoNick`");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
 

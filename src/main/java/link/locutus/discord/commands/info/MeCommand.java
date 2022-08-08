@@ -24,7 +24,7 @@ public class MeCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "me";
+        return Settings.commandPrefix(true) + "me";
     }
 
     @Override
@@ -41,7 +41,7 @@ public class MeCommand extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
         return who.onCommand(event, Collections.singletonList(me.getNation_id() + ""));
     }

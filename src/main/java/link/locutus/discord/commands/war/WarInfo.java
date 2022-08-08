@@ -27,7 +27,7 @@ public class WarInfo extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarInfo <war-link|nation>";
+        return Settings.commandPrefix(true) + "WarInfo <war-link|nation>";
     }
 
     @Override

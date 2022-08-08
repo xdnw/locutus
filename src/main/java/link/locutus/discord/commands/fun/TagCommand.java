@@ -38,7 +38,7 @@ public class TagCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "tag";
+        return Settings.commandPrefix(true) + "tag";
     }
 
     @Override

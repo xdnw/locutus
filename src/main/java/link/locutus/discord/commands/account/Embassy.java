@@ -34,12 +34,12 @@ public class Embassy extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
+            return "Please use `" + Settings.commandPrefix(true) + "validate`";
         }
         GuildDB db = Locutus.imp().getGuildDB(event);
         Category category = db.getOrThrow(GuildDB.Key.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore " + GuildDB.Key.EMBASSY_CATEGORY + " <category>`";
+            return "Embassies are disabled. To set it up, use `" + Settings.commandPrefix(true) + "KeyStore " + GuildDB.Key.EMBASSY_CATEGORY + " <category>`";
         }
         if (args.size() == 1 && args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.ADMIN.has(event.getAuthor(), event.getGuild())) return "No permission";
@@ -69,7 +69,7 @@ public class Embassy extends Command {
 
         Role role = DiscordUtil.getAARoles(event.getGuild().getRoles()).get(aa);
         if (role == null) {
-            return "No role found (try using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "autorole` ?)";
+            return "No role found (try using `" + Settings.commandPrefix(true) + "autorole` ?)";
         }
 
         for (TextChannel channel : category.getTextChannels()) {

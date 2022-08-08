@@ -25,7 +25,7 @@ public class UnitRanking extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "PlaneRanking <alliances|coalition> <unit>";
+        return Settings.commandPrefix(true) + "PlaneRanking <alliances|coalition> <unit>";
     }
 
     @Override

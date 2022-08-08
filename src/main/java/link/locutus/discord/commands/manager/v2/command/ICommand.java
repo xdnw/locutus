@@ -25,8 +25,8 @@ public interface ICommand extends CommandCallable {
     public static String formatDescription(Command command) {
         String desc = command.desc();
         if (desc.contains("{")) {
-            desc = desc.replace("{legacy_prefix}", Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "");
-            desc = desc.replace("{prefix}", Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "");
+            desc = desc.replace("{legacy_prefix}", Settings.commandPrefix(true) + "");
+            desc = desc.replace("{prefix}", Settings.commandPrefix(false) + "");
         }
         return desc;
     }

@@ -145,7 +145,7 @@ public class IACommands {
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
-            return "No roles found. See `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addAssignableRoles`";
+            return "No roles found. See `" + Settings.commandPrefix(false) + "addAssignableRoles`";
         }
         assignable = new HashMap<>(assignable);
         if (!Roles.ADMIN.has(member)) {
@@ -177,8 +177,8 @@ public class IACommands {
         String value = GuildDB.Key.ASSIGNABLE_ROLES.toString(assignable);
         db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
 
-        return StringMan.getString(govRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addRole` / `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "removeRole`\n" +
-                " - To see a list of current mappings, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ASSIGNABLE_ROLES`";
+        return StringMan.getString(govRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via `" + Settings.commandPrefix(false) + "addRole` / `" + Settings.commandPrefix(false) + "removeRole`\n" +
+                " - To see a list of current mappings, use `" + Settings.commandPrefix(true) + "KeyStore ASSIGNABLE_ROLES`";
     }
 
     @Command(desc = "Remove permission from a role to add/remove roles from users (having manage roles perm on discord overrides this)")
@@ -207,7 +207,7 @@ public class IACommands {
         db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
 
         return response.toString() + "\n" +
-                " - To see a list of current mappings, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ASSIGNABLE_ROLES`";
+                " - To see a list of current mappings, use `" + Settings.commandPrefix(true) + "KeyStore ASSIGNABLE_ROLES`";
     }
 
     @Command(desc = "Add role to a user\n" +
@@ -235,7 +235,7 @@ public class IACommands {
             }
         }
         if (!canAssign) {
-            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addAssignableRole`)";
+            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `" + Settings.commandPrefix(false) + "addAssignableRole`)";
         }
         if (member.getRoles().contains(addRole)) {
             return member + " already has " + addRole;
@@ -269,7 +269,7 @@ public class IACommands {
             }
         }
         if (!canAssign) {
-            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addAssignableRole`)";
+            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `" + Settings.commandPrefix(false) + "addAssignableRole`)";
         }
         if (!member.getRoles().contains(addRole)) {
             return member + " does not have " + addRole;
@@ -328,7 +328,7 @@ public class IACommands {
         RateLimitUtil.queue(channel.sendMessage("please wait..."));
         boolean result = new SimpleNationList(nations).updateSpies(false);
         if (!result) {
-            return "Could not update spies (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY <key>`";
+            return "Could not update spies (see `" + Settings.commandPrefix(true) + "KeyStore API_KEY <key>`";
         }
 
         long dayCutoff = TimeUtil.getDay() - 2;
@@ -632,7 +632,7 @@ public class IACommands {
             }
         }
 
-        response.append("\n\nTo assign a nation as your mentee, use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "mentee <nation>`");
+        response.append("\n\nTo assign a nation as your mentee, use `" + Settings.commandPrefix(false) + "mentee <nation>`");
         return response.toString();
     }
 
@@ -766,19 +766,19 @@ public class IACommands {
         ApiKeyPool key = null;
         if (notLocal || myKey == null) {
             if (!Roles.MAIL.has(author, db.getGuild())) {
-                return "You do not have the role `MAIL` (see `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "aliasRole` OR use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey` to add your own key";
+                return "You do not have the role `MAIL` (see `" + Settings.commandPrefix(false) + "aliasRole` OR use`" + Settings.commandPrefix(false) + "addApiKey` to add your own key";
             }
             key = db.getMailKey();
         } else if (myKey != null) {
             key = ApiKeyPool.builder().addKey(myKey).build();
         }
         if (key == null){
-            return "No api key found. Please use`" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`";
+            return "No api key found. Please use`" + Settings.commandPrefix(false) + "addApiKey`";
         }
 
         if (!confirm) {
             String title = "Send " + nations.size() + " messages";
-            String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(msgObj.getContentRaw()).replaceFirst(" ", " -f ");
+            String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(msgObj.getContentRaw()).replaceFirst(" ", " -f ");
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
@@ -827,7 +827,7 @@ public class IACommands {
 
         boolean isGov = Roles.ECON_LOW_GOV.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
         if (!isGov) {
-            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore MEMBER_CAN_SET_BRACKET`)";
+            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also `" + Settings.commandPrefix(true) + "KeyStore MEMBER_CAN_SET_BRACKET`)";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
         }
         if (internalRate != null && !isGov) {
@@ -967,13 +967,13 @@ public class IACommands {
 
         List<AlliancePermission> requiredPermissions = new ArrayList<>();
         if (position.hasAnyOfficerPermissions() || nationPosition != null) requiredPermissions.add(AlliancePermission.CHANGE_PERMISSIONS);
-        if (position == null) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
+        if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
         Auth auth = db.getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
         if (auth == null) return "No auth for this guild found for: " + StringMan.getString(requiredPermissions);
 
         User discordUser = nation.getUser();
 
-        if (nationPosition == null && db.isWhitelisted()) {
+        if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT && db.isWhitelisted()) {
             if (!force) {
                 List<String> checks = new ArrayList<>();
                 if (nation.isGray()) {
@@ -1013,7 +1013,7 @@ public class IACommands {
                     String title = "Disburse 3 days";
                     String body = "Use this once they have a suitable city build & color to send resources for the next 5 days";
                     String emoji = "\u2705";
-                    String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "disburse " + nation.getNation() + " 3 -f";
+                    String cmd = Settings.commandPrefix(true) + "disburse " + nation.getNation() + " 3 -f";
 
                     DiscordUtil.createEmbedCommand(channel, title, body, emoji, cmd);
                 }
@@ -1026,7 +1026,7 @@ public class IACommands {
             Role role = Roles.MEMBER.toRole(db.getGuild());
             if (member != null && role != null) {
                 try {
-                    if (nationPosition == null) {
+                    if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) {
                         RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role));
                     } else if (position == DBAlliancePosition.APPLICANT || position == DBAlliancePosition.REMOVE) {
                         RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
@@ -1043,7 +1043,7 @@ public class IACommands {
             db.getHandler().onSetRank(author, channel, nation, position);
         }
         response.append(result);
-        response.append("\nSee also `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "listAssignableRoles` / `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addRole @user <role>`");
+        response.append("\nSee also `" + Settings.commandPrefix(false) + "listAssignableRoles` / `" + Settings.commandPrefix(false) + "addRole @user <role>`");
         return response.toString();
     }
 
@@ -1147,7 +1147,7 @@ public class IACommands {
         String embed = "Output: <" + sheet.getURL() + ">\n" +
                 "Press to confirm";
         String emoji = "\u2705";
-        String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "mailSheet " + sheet.getURL();
+        String cmd = Settings.commandPrefix(false) + "mailSheet " + sheet.getURL();
 
         DiscordUtil.createEmbedCommand(channel, title, embed, emoji, cmd);
 
@@ -1224,7 +1224,7 @@ public class IACommands {
         }
 
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "addApiKey`");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
 
         int errors = 0;
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : messageMap.entrySet()) {
@@ -1396,7 +1396,7 @@ public class IACommands {
                     }
                 }
                 RateLimitUtil.queue(((GuildMessageChannel) channel).getManager().setName(closeChar + channel.getName()));
-                return "Marked channel as closed. Auto deletion in >24h. Use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "open` to reopen. Use `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "close` again to force close";
+                return "Marked channel as closed. Auto deletion in >24h. Use `" + Settings.commandPrefix(false) + "open` to reopen. Use `" + Settings.commandPrefix(false) + "close` again to force close";
             }
 
             Category archiveCategory = db.getOrNull(GuildDB.Key.ARCHIVE_CATEGORY);
@@ -1494,7 +1494,7 @@ public class IACommands {
             Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, filter);
 
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId == null) return "No alliance set `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID`";
+            if (aaId == null) return "No alliance set `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID`";
 
             IACategory cat = db.getIACategory();
             if (cat.getCategories().isEmpty()) return "No `interview` categories found";
@@ -1543,7 +1543,7 @@ public class IACommands {
                         User msgAuth = message.getAuthor();
                         if (msgAuth.isBot() || msgAuth.isSystem()) continue;
                         String content = DiscordUtil.trimContent(message.getContentRaw());
-                        if (content.startsWith(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "") || content.startsWith(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "")) continue;
+                        if (content.startsWith(Settings.commandPrefix(true) + "") || content.startsWith(Settings.commandPrefix(false) + "")) continue;
 
                         long msgTime = message.getTimeCreated().toEpochSecond();
 

@@ -24,7 +24,7 @@ public class Reroll extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "reroll <nation>";
+        return Settings.commandPrefix(true) + "reroll <nation>";
     }
 
     @Override
@@ -50,7 +50,7 @@ public class Reroll extends Command {
         }
         DBNation me = Locutus.imp().getNationDB().getNation(id);
         if (me == null) {
-            return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sync ?)";
+            return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.commandPrefix(true) + "sync ?)";
         }
 
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();

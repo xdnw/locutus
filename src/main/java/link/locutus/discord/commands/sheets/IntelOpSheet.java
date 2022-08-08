@@ -51,7 +51,7 @@ public class IntelOpSheet extends Command {
                 "`<ignore-topX>` - filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
                 "Add `-l` to remove targets with loot history\n" +
                 "Add `-d` to list targets currently on the dnr\n\n" +
-                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "IntelOpSheet 10d 'Error 404' 25`";
+                "e.g. `" + Settings.commandPrefix(true) + "IntelOpSheet 10d 'Error 404' 25`";
     }
 
     @Override

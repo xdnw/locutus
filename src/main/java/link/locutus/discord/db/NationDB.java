@@ -435,6 +435,7 @@ public class NationDB extends DBMainV2 {
         List<DBAlliancePosition> dirtyPositions = new ArrayList<>();
         Set<DBNation> saveNations = new HashSet<>();
 
+        List<DBAlliance> createdAlliances = new ArrayList<>();
         for (Alliance alliance : alliances) {
 
             if (alliance.getDate() != null && alliance.getName() != null) { // Essential components of an alliance
@@ -447,7 +448,8 @@ public class NationDB extends DBMainV2 {
                     synchronized (alliancesById) {
                         alliancesById.put(alliance.getId(), existing);
                     }
-                    if (eventConsumer != null) eventConsumer.accept(new AllianceCreateEvent(existing));
+                    createdAlliances.add(existing);
+//                    if (alliance.getDate().getEpochSecond() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7))
                     dirtyAlliances.add(existing);
                 } else {
                     if (existing.set(alliance, eventConsumer)) {
@@ -455,7 +457,6 @@ public class NationDB extends DBMainV2 {
                     }
                 }
             }
-
             if (alliance.getAlliance_positions() != null) {
                 Set<Integer> positionIds = alliance.getAlliance_positions().stream().map(f -> f.getId()).collect(Collectors.toSet());
                 synchronized (nationsByAlliance) {
@@ -470,7 +471,6 @@ public class NationDB extends DBMainV2 {
                                 saveNations.add(nation);
                             }
                         }
-
                     }
                 }
 
@@ -509,6 +509,14 @@ public class NationDB extends DBMainV2 {
                 if (!positionsToRemove.isEmpty()) {
                     deletePositions(positionsToRemove, eventConsumer);
                 }
+            }
+        }
+
+        if (!createdAlliances.isEmpty() && eventConsumer != null) {
+            List<Integer> createdAllianceIds = createdAlliances.stream().map(DBAlliance::getId).collect(Collectors.toList());
+            updateAlliances(f -> f.setId(createdAllianceIds), eventConsumer);
+            for (DBAlliance alliance : createdAlliances) {
+                eventConsumer.accept(new AllianceCreateEvent(alliance));
             }
         }
 
@@ -2068,7 +2076,12 @@ public class NationDB extends DBMainV2 {
     public DBNation getNation(String nameOrLeader) {
         synchronized (nationsById) {
             for (DBNation nation : nationsById.values()) {
-                if (nation.getNation().equalsIgnoreCase(nameOrLeader) || nation.getLeader().equalsIgnoreCase(nameOrLeader)) {
+                if (nation.getNation().equalsIgnoreCase(nameOrLeader)) {
+                    return nation;
+                }
+            }
+            for (DBNation nation : nationsById.values()) {
+                if (nation.getLeader().equalsIgnoreCase(nameOrLeader)) {
                     return nation;
                 }
             }
@@ -2277,8 +2290,10 @@ public class NationDB extends DBMainV2 {
                 }
             }
         }
+        System.out.println("Score " + score.size());
         // Sorted
         score = new SummedMapRankBuilder<>(score).sort().get();
+        System.out.println("Score 2 " + score.size());
         Set<DBAlliance> result = new LinkedHashSet<>();
         for (int aaId : score.keySet()) {
             DBAlliance alliance = getAlliance(aaId);
@@ -2287,6 +2302,15 @@ public class NationDB extends DBMainV2 {
         }
         return result;
     }
+
+    public static void main(String[] args) {
+        Map<Integer, Double> score = new Int2ObjectOpenHashMap<>();
+        score.put(1, 2d);
+        score.put(2, 3d);
+        score = new SummedMapRankBuilder<>(score).sort().get();
+        System.out.println(StringMan.getString(score));
+    }
+
     public Map<Integer, ByteBuffer> getAllMeta(NationMeta key) {
         Map<Integer, ByteBuffer> results = new HashMap<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META where AND key = ?")) {

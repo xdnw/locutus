@@ -97,13 +97,11 @@ public class SummedMapRankBuilder<T, G extends Number> {
     public SummedMapRankBuilder<T, G> sort(Comparator<Map.Entry<T, G>> comparator) {
         ArrayList<Map.Entry<T, G>> list = new ArrayList<>(map.entrySet());
         Collections.sort(list, comparator);
-        this.map.clear();
-        if (!(this.map instanceof LinkedHashMap)) {
-            this.map = new LinkedHashMap<>();
-        }
+        Map<T, G> newMap = new LinkedHashMap<>();
         for (Map.Entry<T, G> entry : list) {
-            map.put(entry.getKey(), entry.getValue());
+            newMap.put(entry.getKey(), entry.getValue());
         }
+        this.map = newMap;
         return this;
     }
 

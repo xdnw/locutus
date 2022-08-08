@@ -1,11 +1,13 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -34,7 +36,7 @@ public class Offshore extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "offshore <alliance-url> [aa-warchest] [#note]";
+        return Settings.commandPrefix(true) + "offshore <alliance-url> [aa-warchest] [#note]";
     }
 
     @Override
@@ -69,8 +71,6 @@ public class Offshore extends Command {
         else note = "#tx_id=" + UUID.randomUUID();
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
-        if (auth == null) return "No authentication enabled for this guild";
         OffshoreInstance offshore = db.getOffshore();
         int from = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
         Integer to = offshore == null || offshore.getAllianceId() == from ? null : offshore.getAllianceId();
@@ -80,27 +80,48 @@ public class Offshore extends Command {
             Set<Integer> offshores = db.getCoalition("offshore");
             to = PnwUtil.parseAllianceId(args.get(0));
             if (to == null) return "Invalid alliance: " + args.get(0);
-            if (!offshores.contains(to)) return "Please add the offshore using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition " + to + " offshore";
+            if (!offshores.contains(to)) return "Please add the offshore using `" + Settings.commandPrefix(true) + "setcoalition " + to + " offshore";
         }
 
         Integer finalTo = to;
         double[] amountSent = ResourceType.getBuffer();
 
-        new BankWithTask(auth, from, to, resources -> {
-            Map<ResourceType, Double> sent = new HashMap<>(resources);
-
-            Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<ResourceType, Double> entry = iterator.next();
-                entry.setValue(warchest.getOrDefault(entry.getKey(), 0d));
+        DBAlliance alliance = db.getAlliance();
+        PoliticsAndWarV3 api = alliance.getApi(true, AlliancePermission.WITHDRAW_BANK);
+        if (api != null) {
+            Map<ResourceType, Double> resources = alliance.getStockpile();
+            double[] amtToSend = ResourceType.getBuffer();
+            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
+                double amt = entry.getValue() - warchest.getOrDefault(entry.getKey(), 0d);
+                if (amt > 0.01) amtToSend[entry.getKey().ordinal()] = amt;
             }
-            sent = PnwUtil.subResourcesToA(sent, resources);
-            for (int i = 0; i < amountSent.length; i++) amountSent[i] = sent.getOrDefault(ResourceType.values[i], 0d);
+            if (ResourceType.isEmpty(amtToSend)) return "No funds need to be sent";
 
-            Locutus.imp().getRootBank().sync();
+            return "Offshored: " + api.transferFromBank(amtToSend, DBAlliance.get(to), note);
+        } else {
+            Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
+            if (auth == null) {
+                return "Please authenticate with locutus. Options:\n" +
+                        "Option 1: Provide a bot key via `" + Settings.commandPrefix(false) + "addApiKey`\n" +
+                        "Option 2: Provide P&W username/password via `" + Settings.commandPrefix(true) + "login`";
+            }
+            new BankWithTask(auth, from, to, resources -> {
+                Map<ResourceType, Double> sent = new HashMap<>(resources);
 
-            return note;
-        }).call();
+                Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<ResourceType, Double> entry = iterator.next();
+                    entry.setValue(warchest.getOrDefault(entry.getKey(), 0d));
+                }
+                sent = PnwUtil.subResourcesToA(sent, resources);
+                for (int i = 0; i < amountSent.length; i++)
+                    amountSent[i] = sent.getOrDefault(ResourceType.values[i], 0d);
+
+                Locutus.imp().getRootBank().sync();
+
+                return note;
+            }).call();
+        }
 
         return "Sent " + PnwUtil.resourcesToString(amountSent) + " to " + PnwUtil.getName(finalTo, true);
     }

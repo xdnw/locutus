@@ -27,7 +27,7 @@ public class HelpCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "help [command]";
+        return Settings.commandPrefix(true) + "help [command]";
     }
 
     @Override
@@ -57,7 +57,7 @@ public class HelpCommand extends Command {
 
             for (CommandCategory category : categories) {
                 String categoryCase = WordUtils.capitalizeFully(category.name(), new char[]{'_'});
-                response.append("`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "? " + categoryCase + "`").append("\n");
+                response.append("`" + Settings.commandPrefix(true) + "? " + categoryCase + "`").append("\n");
             }
 
 
@@ -74,9 +74,9 @@ public class HelpCommand extends Command {
 //            }
 
             response.append("\n").append("**You can specify multiple categories**");
-            response.append("\n").append("**For help on a specific command, use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "? <command>`**");
-            response.append("\n").append("**To search for a cmd, use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "? <search>`**");
-            String footer = "Bot created and managed by the Interwebs Sourcery division of the Borg Collective. If you would like this bot in your server use the chant `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "invite` and follow the summoning ritual instructions.";
+            response.append("\n").append("**For help on a specific command, use: `" + Settings.commandPrefix(true) + "? <command>`**");
+            response.append("\n").append("**To search for a cmd, use: `" + Settings.commandPrefix(true) + "? <search>`**");
+            String footer = "Bot created and managed by the Interwebs Sourcery division of the Borg Collective. If you would like this bot in your server use the chant `" + Settings.commandPrefix(true) + "invite` and follow the summoning ritual instructions.";
             DiscordUtil.createEmbedCommandWithFooter(event.getChannel(), "Locutus Cats", response.toString().trim(), footer);
         } else {
             Integer page = DiscordUtil.parseArgInt(args, "page");
@@ -98,7 +98,7 @@ public class HelpCommand extends Command {
                             continue;
                         if (command.getCategories().containsAll(requiredCategories)) {
                             String descShort = command.desc().split("\n")[0];
-                            String helpDesc = "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "? " + command.getAliases().get(0) + "` - " + descShort;
+                            String helpDesc = "`" + Settings.commandPrefix(true) + "? " + command.getAliases().get(0) + "` - " + descShort;
                             commandsDescShort.add(helpDesc);
                         }
                     } catch (IllegalArgumentException ignore) {
@@ -128,7 +128,7 @@ public class HelpCommand extends Command {
                 if (!commands.isEmpty()) {
                     return "Did you mean:\n - " + StringMan.join(commands, "\n - ");
                 } else {
-                    return "Command not found for `" + args.get(0) + "`" + ". Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "?` to get a list of commands";
+                    return "Command not found for `" + args.get(0) + "`" + ". Use `" + Settings.commandPrefix(true) + "?` to get a list of commands";
                 }
             }
             response.append("\n").append("`").append(cmd.help()).append("`").append(" - ").append(cmd.desc());

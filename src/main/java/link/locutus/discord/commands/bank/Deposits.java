@@ -44,7 +44,7 @@ public class Deposits extends Command {
 
     @Override
     public String help() {
-        return "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits <nation|alliance|*>` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits <nation|alliance|*> [offshores]` e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits @user`";
+        return "`" + Settings.commandPrefix(true) + "deposits <nation|alliance|*>` or `" + Settings.commandPrefix(true) + "deposits <nation|alliance|*> [offshores]` e.g. `" + Settings.commandPrefix(true) + "deposits @user`";
     }
 
     @Override
@@ -57,7 +57,7 @@ public class Deposits extends Command {
                 "Add `-i` to include nation transfers with #ignore\n" +
                 "Add `-e` to include expired nation transfers\n" +
                 "Add `-t` to show taxes separately (See flag: `-b` and `!synctaxes`)\n\n" +
-                "Note: Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "synctaxes` to update tax records\n" +
+                "Note: Use `" + Settings.commandPrefix(true) + "synctaxes` to update tax records\n" +
                 "Add `-d` to show results in dm"
                 ;
     }
@@ -81,7 +81,7 @@ public class Deposits extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         DBNation banker = DiscordUtil.getNation(event);
         if (banker == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
         String requiredNote = DiscordUtil.parseArg(args, "note");
         boolean includeIgnored = flags.contains('i');
@@ -149,7 +149,7 @@ public class Deposits extends Command {
                 GuildDB otherDb = Locutus.imp().getGuildDB(Long.parseLong(arg));
                 if (otherDb == null) return "Unknown guild: " + arg;
                 OffshoreInstance offshore = otherDb.getOffshore();
-                if (offshore == null) return "No offshore is set. In this server, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance|guild> offshore` and from the offshore server use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance|guild> offshoring`";
+                if (offshore == null) return "No offshore is set. In this server, use `" + Settings.commandPrefix(true) + "setcoalition <alliance|guild> offshore` and from the offshore server use `" + Settings.commandPrefix(true) + "setcoalition <alliance|guild> offshoring`";
                 if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild()))
                     return "You do not have permission to check another guild's deposits";
 
@@ -283,7 +283,7 @@ public class Deposits extends Command {
             if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {
                 Role role = Roles.ECON_WITHDRAW_SELF.toRole(guild);
                 if (guild.getMember(author).getRoles().contains(role)) {
-                    footers.add("To withdraw, use: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "tr");
+                    footers.add("To withdraw, use: " + Settings.commandPrefix(true) + "tr");
                 }
             }
         }

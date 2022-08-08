@@ -109,7 +109,7 @@ public class CheckTradesTask implements Callable<Boolean> {
                         alert.getCurrentHighNation().getAlliance_id() != alert.getPreviousHighNation().getAlliance_id()) {
                     DBNation prevNation = alert.getPreviousHighNation();
                     PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromNationId(prevNation.getNation_id());
-                    if (pnwUser != null && pnwUser.getDiscordId() != null) {
+                    if (pnwUser != null) {
                         consumer.accept(Collections.singleton(pnwUser.getDiscordId()), link.locutus.discord.db.TradeDB.TradeAlertType.UNDERCUT, alert, true);
                     }
                 }

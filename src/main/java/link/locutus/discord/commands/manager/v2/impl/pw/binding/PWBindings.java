@@ -423,7 +423,7 @@ public class PWBindings extends BindingHelper {
     @Me
     public DBNation nation(@Me User user) {
         DBNation nation = DiscordUtil.getNation(user);
-        if (nation == null) throw new IllegalArgumentException("Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify");
+        if (nation == null) throw new IllegalArgumentException("Please use " + Settings.commandPrefix(true) + "verify");
         return nation;
     }
 
@@ -620,7 +620,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     public WarCategory warChannelBinding(@Me GuildDB db) {
         WarCategory warChannel = db.getWarChannel(true);
-        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ENABLE_WAR_ROOMS true`");
+        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. `" + Settings.commandPrefix(true) + "KeyStore ENABLE_WAR_ROOMS true`");
         return warChannel;
     }
 

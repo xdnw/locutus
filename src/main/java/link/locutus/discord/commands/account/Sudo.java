@@ -26,7 +26,7 @@ public class Sudo extends Command implements Noformat {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sudo <user> <command>";
+        return Settings.commandPrefix(true) + "sudo <user> <command>";
     }
 
     @Override

@@ -4,6 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import com.google.common.collect.BiMap;
@@ -37,13 +39,13 @@ public class LargestBanks extends Command {
         long millis = TimeUtil.timeToSec(args.get(0)) * 1000L;
         long cutOff = System.currentTimeMillis() - millis;
 
-        Map<Integer, double[]> loot = Locutus.imp().getWarDb().getAllianceBankEstimate(cutOff, true);
         Map<Integer, Double> total = new HashMap<>();
 
-        for (Map.Entry<Integer, double[]> entry : loot.entrySet()) {
-            Integer alliance = entry.getKey();
-            double convertedTotal = PnwUtil.convertedTotal(entry.getValue());
-            total.put(alliance, convertedTotal);
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            LootEntry loot = alliance.getLoot();
+            if (loot != null) {
+                total.put(alliance.getAlliance_id(), loot.convertedTotal());
+            }
         }
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(total).sort();
