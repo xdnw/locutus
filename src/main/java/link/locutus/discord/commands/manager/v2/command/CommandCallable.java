@@ -4,10 +4,8 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.StringMan;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.function.Predicate;
 
 public interface CommandCallable {
     CommandCallable getParent();
@@ -90,5 +88,9 @@ public interface CommandCallable {
             tmp = tmp.getParent();
         }
         return help.toString().trim();
+    }
+
+    default Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {
+        return Collections.emptySet();
     }
 }
