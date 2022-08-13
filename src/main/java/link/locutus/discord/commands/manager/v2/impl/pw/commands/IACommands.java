@@ -132,20 +132,10 @@ public class IACommands {
     }
 
     @Command
-    @RolePermission(value = {
-            Roles.INTERNAL_AFFAIRS_STAFF,
-            Roles.INTERNAL_AFFAIRS,
-            Roles.ECON_LOW_GOV,
-            Roles.ECON,
-            Roles.MILCOM,
-            Roles.MILCOM_ADVISOR,
-            Roles.FOREIGN_AFFAIRS,
-            Roles.FOREIGN_AFFAIRS_STAFF,
-    }, any = true)
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
-            return "No roles found. See `" + Settings.commandPrefix(false) + "addAssignableRoles`";
+            return "No roles found. See `" + Settings.commandPrefix(false) + "addAssignableRole`";
         }
         assignable = new HashMap<>(assignable);
         if (!Roles.ADMIN.has(member)) {
