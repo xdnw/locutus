@@ -3368,6 +3368,28 @@ public class DBNation implements NationOrAlliance {
         return estimateScore(getInfra());
     }
 
+
+    public double infraCost(double from, double to) {
+        double factor = 1;
+        if (hasProject(Projects.ADVANCED_ENGINEERING_CORPS)) factor -= 0.05;
+        if (hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING)) factor -= 0.05;
+        if (getDomesticPolicy() == DomesticPolicy.URBANIZATION) {
+            factor -= 0.05;
+            if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) factor -= 0.025;
+        }
+        return PnwUtil.calculateInfra(from, to) * factor;
+    }
+
+    public double landCost(double from, double to) {
+        double factor = 1;
+        if (hasProject(Projects.ADVANCED_ENGINEERING_CORPS)) factor -= 0.05;
+        if (hasProject(Projects.ARABLE_LAND_AGENCY)) factor -= 0.05;
+        if (getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION) {
+            factor -= 0.05;
+            if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) factor -= 0.025;
+        }
+        return PnwUtil.calculateLand(from, to) * factor;
+    }
     public double printScore() {
         double base = 10;
         System.out.println("base " + base);
@@ -4113,7 +4135,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
-    @RolePermission(Roles.MEMBER)
     public double getAvgLand() {
         double total = 0;
         Collection<DBCity> cities = _getCitiesV3().values();
@@ -4124,7 +4145,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
-    @RolePermission(Roles.MEMBER)
     public double getTotalLand() {
         double total = 0;
         Collection<DBCity> cities = _getCitiesV3().values();

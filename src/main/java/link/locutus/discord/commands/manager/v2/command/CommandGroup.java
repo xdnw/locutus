@@ -5,11 +5,8 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.StringMan;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Predicate;
 
 public class CommandGroup implements ICommandGroup {
     private final ValueStore store;
@@ -162,5 +159,14 @@ public class CommandGroup implements ICommandGroup {
                 output.append(prefix + " --<" + command.getPrimaryAlias() + ">").append("\n");
             }
         }
+    }
+
+    @Override
+    public Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {
+        Set<ParametricCallable> result = new HashSet<>();
+        for (CommandCallable sub : new HashSet<>(getSubcommands().values())) {
+            result.addAll(sub.getParametricCallables(returnIf));
+        }
+        return result;
     }
 }

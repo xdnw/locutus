@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class ParametricCallable implements ICommand {
 
@@ -472,6 +473,11 @@ public class ParametricCallable implements ICommand {
             paramVals[i] = value;
         }
         return paramVals;
+    }
+
+    @Override
+    public Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {
+        return (returnIf.test(this)) ? Collections.singleton(this) : Collections.emptySet();
     }
 
     public Method getMethod() {
