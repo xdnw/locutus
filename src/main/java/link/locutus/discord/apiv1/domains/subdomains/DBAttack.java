@@ -262,18 +262,18 @@ public class DBAttack {
 //            throw e;
             return resourceOutput;
         }
-        long money = MathMan.parseInt(moneyStr.substring(0, moneyStr.length() - 1));
-        long coal = MathMan.parseInt(matcher.group(2));
-        long oil = MathMan.parseInt(matcher.group(3));
-        long uranium = MathMan.parseInt(matcher.group(4));
-        long iron = MathMan.parseInt(matcher.group(5));
-        long bauxite = MathMan.parseInt(matcher.group(6));
-        long lead = MathMan.parseInt(matcher.group(7));
-        long gasoline = MathMan.parseInt(matcher.group(8));
-        long munitions = MathMan.parseInt(matcher.group(9));
-        long steel = MathMan.parseInt(matcher.group(10));
-        long aluminum = MathMan.parseInt(matcher.group(11));
-        long food = MathMan.parseInt(matcher.group(12));
+        double money = MathMan.parseDouble(moneyStr.substring(0, moneyStr.length() - 1));
+        double coal = MathMan.parseDouble(matcher.group(2));
+        double oil = MathMan.parseDouble(matcher.group(3));
+        double uranium = MathMan.parseDouble(matcher.group(4));
+        double iron = MathMan.parseDouble(matcher.group(5));
+        double bauxite = MathMan.parseDouble(matcher.group(6));
+        double lead = MathMan.parseDouble(matcher.group(7));
+        double gasoline = MathMan.parseDouble(matcher.group(8));
+        double munitions = MathMan.parseDouble(matcher.group(9));
+        double steel = MathMan.parseDouble(matcher.group(10));
+        double aluminum = MathMan.parseDouble(matcher.group(11));
+        double food = MathMan.parseDouble(matcher.group(12));
 
         resourceOutput[ResourceType.MONEY.ordinal()] = money;
         resourceOutput[ResourceType.COAL.ordinal()] = coal;
