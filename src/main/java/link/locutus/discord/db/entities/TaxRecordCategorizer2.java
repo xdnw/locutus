@@ -249,9 +249,9 @@ public class TaxRecordCategorizer2 {
         this.brackets = db.getAlliance().getTaxBrackets(true);
         for (int i = getTaxes().size() - 1; i >= 0; i--) {
             BankDB.TaxDeposit tax = getTaxes().get(i);
-            if (tax.tax_id > 0 && !getBrackets().containsKey(tax.tax_id)) {
-                TaxBracket bracket = new TaxBracket(tax.tax_id, tax.allianceId, 0, "", tax.moneyRate, tax.resourceRate);
-                getBrackets().put(tax.tax_id, bracket);
+            if (tax.tax_id > 0 && !brackets.containsKey(tax.tax_id)) {
+                TaxBracket bracket = new TaxBracket(tax.tax_id, tax.allianceId, "", tax.moneyRate, tax.resourceRate, System.currentTimeMillis());
+                brackets.put(tax.tax_id, bracket);
             }
         }
 

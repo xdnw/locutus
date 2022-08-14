@@ -212,16 +212,6 @@ public class IACommands {
 
     @Command(desc = "Add role to a user\n" +
             "See: `{prefix}listAssignableRoles`")
-    @RolePermission(value = {
-            Roles.INTERNAL_AFFAIRS_STAFF,
-            Roles.INTERNAL_AFFAIRS,
-            Roles.ECON_LOW_GOV,
-            Roles.ECON,
-            Roles.MILCOM,
-            Roles.MILCOM_ADVISOR,
-            Roles.FOREIGN_AFFAIRS,
-            Roles.FOREIGN_AFFAIRS_STAFF,
-    }, any = true)
     public String addRole(@Me GuildDB db, @Me Member author, Member member, Role addRole) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null) return "`!KeyStore ASSIGNABLE_ROLES` is not set`";
@@ -857,7 +847,7 @@ public class IACommands {
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 bracket = entry.getValue();
                 String url = bracket.getUrl();
-                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.nations + " nations) - " + bracket.name);
+                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations) - " + bracket.getName());
             }
             throw new IllegalArgumentException(response.toString());
         }

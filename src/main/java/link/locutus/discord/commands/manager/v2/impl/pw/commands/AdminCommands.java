@@ -189,6 +189,7 @@ public class AdminCommands {
         resultsArray = resultsArray.subList(0, nations.size());
 
         List<Integer> failedToDM = new ArrayList<>();
+        List<Integer> failedToMail = new ArrayList<>();
 
         StringBuilder output = new StringBuilder();
 
@@ -200,11 +201,15 @@ public class AdminCommands {
             String personal = replaced + "\n\n - " + author.getAsMention() + " " + guild.getName();
 
             boolean result = sendDM && nation.sendDM(personal);
-            if (!result) {
+            if (!result && sendDM) {
                 failedToDM.add(nation.getNation_id());
             }
             if (!result || sendMail) {
-                nation.sendMail(keys, subject, personal);
+                try {
+                    nation.sendMail(keys, subject, personal);
+                } catch (IllegalArgumentException e) {
+                    failedToMail.add(nation.getNation_id());
+                }
             }
 
             sentMessages.put(nation, replaced);
@@ -218,6 +223,9 @@ public class AdminCommands {
         }
         if (failedToDM.size() > 0) {
             output.append("\nFailed DM (sent ingame): " + StringMan.getString(failedToDM));
+        }
+        if (failedToMail.size() > 0) {
+            output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
         }
 
         int annId = db.addAnnouncement(author, subject, announcement, replacements, nationList.getFilter());
@@ -778,7 +786,7 @@ public class AdminCommands {
         Map<DBNation, Rank> registered = new LinkedHashMap<>();
         Map<DBNation, String> errors = new HashMap<>();
 
-        Set<Integer> alliances = db.getAllianceIds();
+        Set<Integer> alliances = db.getAllianceIds(false);
         for (Member member : members) {
             DBNation nation = DiscordUtil.getNation(member.getUser());
             if (nation != null && (alliances.isEmpty() || alliances.contains(nation.getAlliance_id()))) {

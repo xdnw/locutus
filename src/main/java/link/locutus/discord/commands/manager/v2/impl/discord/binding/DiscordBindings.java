@@ -201,7 +201,6 @@ public class DiscordBindings extends BindingHelper {
 
 
     @Binding
-    @Me
     public Member memberInput(@Me Guild guild, User user) {
         Member member = guild.getMember(user);
         if (member == null) throw new IllegalStateException("No member found for " + user.getName());

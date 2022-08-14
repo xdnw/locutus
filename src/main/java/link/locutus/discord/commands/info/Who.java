@@ -110,8 +110,8 @@ public class Who extends Command {
             }
             title = "(" + nations.size() + " nations) " + title;
 
-            DBNation total = new DBNation(arg0, nations, false);
-            DBNation average = new DBNation(arg0, nations, true);
+            DBNation total = DBNation.createFromList(arg0, nations, false);
+            DBNation average = DBNation.createFromList(arg0, nations, true);
 
             response.append("Total for " + arg0 + ":").append('\n');
 

@@ -123,7 +123,7 @@ public class LeavingBeigeAlert {
 
                 if (members.isEmpty()) continue;
 
-                Set<Integer> ids = db.getAllianceIds();
+                Set<Integer> ids = db.getAllianceIds(false);
 
                 for (Member member : members) {
                     DBNation attacker = DiscordUtil.getNation(member.getUser());

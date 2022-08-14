@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
@@ -110,7 +111,6 @@ public class CommandManager2 {
     public NationPlaceholders getNationPlaceholders() {
         return nationPlaceholders;
     }
-
     public CommandGroup getCommands() {
         return commands;
     }

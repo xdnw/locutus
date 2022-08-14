@@ -32,7 +32,7 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import link.locutus.discord.util.task.ia.MapFullTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
-import link.locutus.discord.util.trade.TradeDB;
+import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
 import com.google.common.eventbus.EventBus;
@@ -105,7 +105,7 @@ public final class Locutus extends ListenerAdapter {
 
     private final PoliticsAndWarV3 v3;
 
-    private final TradeDB tradeManager;
+    private final TradeManager tradeManager;
     private final WarDB warDb;
     private BaseballDB baseBallDB;
     private final BankDB bankDb;
@@ -154,7 +154,7 @@ public final class Locutus extends ListenerAdapter {
         this.warDb = new WarDB();
         this.stockDB = new StockDB();
         this.bankDb = new BankDB();
-        this.tradeManager = new TradeDB();
+        this.tradeManager = new TradeManager();
 
         this.commandManager = new CommandManager(this);
         this.commandManager.registerCommands(discordDB);
@@ -490,7 +490,7 @@ public final class Locutus extends ListenerAdapter {
         return this.baseBallDB;
     }
 
-    public TradeDB getTradeManager() {
+    public TradeManager getTradeManager() {
         this.tradeManager.load();
         return tradeManager;
     }
@@ -710,7 +710,7 @@ public final class Locutus extends ListenerAdapter {
 
         if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
             addTask(() ->
-                Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS),
+                Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false),
                 Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
         }
 
@@ -867,13 +867,13 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onGuildMemberJoin(@Nonnull GuildMemberJoinEvent event) {
         executor.submit(() -> {
-
             Guild guild = event.getGuild();
             GuildDB db = getGuildDB(guild);
 
             db.getAutoRoleTask().autoRole(event.getMember(), s -> {});
             db.getHandler().onGuildMemberJoin(event);
 
+            eventBus.post(event);
         });
     }
 

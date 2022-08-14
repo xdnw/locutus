@@ -47,6 +47,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -58,7 +59,7 @@ public class WarDB extends DBMainV2 {
 
     private ActiveWarHandler activeWars = new ActiveWarHandler();
 
-    private final ArrayList<DBAttack> allAttacks = new ArrayList<>();
+    private final Queue<DBAttack> allAttacks = new ConcurrentLinkedQueue<>();
     public WarDB() throws SQLException {
         super(Settings.INSTANCE.DATABASE, "war");
     }
@@ -1687,7 +1688,7 @@ public class WarDB extends DBMainV2 {
                     }
 
                     if (defender != null && attack.infra_destroyed_value == 0) {
-                        double pct = attack.infraPercent_cached;
+                        double pct = attack.infraPercent_cached / 100d;
 
                         if (runAlerts) {
                             attackInfraPctMembers.put(attack, pct);

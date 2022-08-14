@@ -326,11 +326,11 @@ public class DiscordCommands {
             if (checkId) {
                 userName = "" + user.getIdLong();
             }
-            if (!userName.equalsIgnoreCase(pnwDiscordName)) {
+            if (!userName.equalsIgnoreCase(pnwDiscordName) && !pnwDiscordName.contains("" + user.getIdLong())) {
                 return "Your user doesnt match: `" + pnwDiscordName + "` != `" + userName + "`\n\n" + errorMsg;
             }
 
-            PNWUser pnwUser = new PNWUser(nation.getNation_id(), id, fullDiscriminator);
+            PNWUser pnwUser = new PNWUser(nation.getNation_id(), id, userName);
             Locutus.imp().getDiscordDB().addUser(pnwUser);
             return nation.register(user, db, notRegistered);
         } catch (InsufficientPermissionException e) {

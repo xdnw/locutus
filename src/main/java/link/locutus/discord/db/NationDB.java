@@ -151,7 +151,7 @@ public class NationDB extends DBMainV2 {
                     int amt = Math.max(0, nation.getUnits(entry.getKey()) - entry.getValue());
                     DBNation copyOriginal = eventConsumer == null ? null : new DBNation(nation);
                     nation.setUnits(entry.getKey(), amt);
-                    if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, nation, entry.getKey()));
+                    if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, nation, entry.getKey(), true));
                     return true;
                 }
                 nation.setLastFetchedUnitsMs(timestamp);
@@ -1844,6 +1844,13 @@ public class NationDB extends DBMainV2 {
 
     public void createTables() {
         {
+            TablePreset nationTable = TablePreset.create("LOOT_ESTIMATE")
+                    .putColumn("nation_id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("min", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("max", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)));
+        }
+        {
             TablePreset nationTable = TablePreset.create("NATIONS2")
                     .putColumn("nation_id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("nation", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
@@ -2124,6 +2131,20 @@ public class NationDB extends DBMainV2 {
         synchronized (nationsById) {
             return new Int2ObjectOpenHashMap<>(nationsById);
         }
+    }
+
+    public Map<Integer, Integer> getAllianceIdByTaxId() {
+        Map<Integer, Integer> alliancesByTaxId = new HashMap<>();
+        synchronized (nationsByAlliance) {
+            for (Map.Entry<Integer, Map<Integer, DBNation>> entry : nationsByAlliance.entrySet()) {
+                for (DBNation nation : entry.getValue().values()) {
+                    if (nation.getTax_id() > 0) {
+                        alliancesByTaxId.put(nation.getTax_id(), entry.getKey());
+                    }
+                }
+            }
+        }
+        return alliancesByTaxId;
     }
 
     public void forNations(Consumer<DBNation> onEach, Set<Integer> alliances) {
@@ -2473,6 +2494,37 @@ public class NationDB extends DBMainV2 {
         });
     }
 
+    public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turn) {
+        if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
+        String allianceQueryStr = StringMan.getString(allianceIds);
+
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new HashMap<>();
+
+        String query = "SELECT TOP " + allianceIds.size() + " * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric = ? and turn <= ? GROUP BY alliance_id";
+        query(query, new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, metric.ordinal());
+                stmt.setLong(2, turn);
+            }
+        }, new ThrowingConsumer<ResultSet>() {
+            @Override
+            public void acceptThrows(ResultSet rs) throws Exception {
+                while (rs.next()) {
+                    int allianceId = rs.getInt("alliance_id");
+                    AllianceMetric metric = AllianceMetric.values[rs.getInt("metric")];
+                    long turn = rs.getLong("turn");
+                    double value = rs.getDouble("value");
+
+                    DBAlliance alliance = getOrCreateAlliance(allianceId);
+                    if (!result.containsKey(alliance)) {
+                        result.computeIfAbsent(alliance, f -> new HashMap<>()).computeIfAbsent(metric, f -> new HashMap<>()).put(turn, value);
+                    }
+                }
+            }
+        });
+        return result;
+    }
     public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turnStart, long turnEnd) {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         String allianceQueryStr = StringMan.getString(allianceIds);

@@ -4727,13 +4727,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return new LinkedHashSet<>(result);
     }
 
-    public Set<Integer> getAllianceIds() {
-        Set<Integer> alliances = getCoalition(Coalition.OFFSHORE);
-        Iterator<Integer> iter = alliances.iterator();
-        while (iter.hasNext()) {
-            Integer aaId = iter.next();
-            GuildDB otherGuild = Locutus.imp().getGuildDBByAA(aaId);
-            if (otherGuild != null) iter.remove();
+    /**
+     * @param onlyVerified - If only verified alliances are returned
+     * @return the alliance ids associated with the guild
+     */
+    public Set<Integer> getAllianceIds(boolean onlyVerified) {
+        Set<Integer> alliances = new LinkedHashSet<>();
+        if (!onlyVerified) {
+            alliances.addAll(getCoalition(Coalition.OFFSHORE));
+            Iterator<Integer> iter = alliances.iterator();
+            while (iter.hasNext()) {
+                Integer aaId = iter.next();
+                GuildDB otherGuild = Locutus.imp().getGuildDBByAA(aaId);
+                if (otherGuild != null) iter.remove();
+            }
         }
         Integer aaId = getOrNull(Key.ALLIANCE_ID);
         if (aaId != null) {

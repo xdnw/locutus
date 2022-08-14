@@ -2091,7 +2091,7 @@ public class WarCommands {
             navyBuyTotal /= aaNations.size();
 
             String name = PnwUtil.getName(aaId, true);
-            DBNation total = new DBNation("", entry.getValue(), false);
+            DBNation total = DBNation.createFromList("", entry.getValue(), false);
 
             total.setNation_id(0);
             total.setAlliance_id(aaId);

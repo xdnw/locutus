@@ -41,10 +41,10 @@
     @if (entry.getKey() == -1) {
         <h3>Total</h3>
     } else {
-        <h3><a href="@(brackets.get(entry.getKey()).getUrl())">Bracket: @(brackets.get(entry.getKey()).name) - #@(entry.getKey())</a></h3>
+        <h3><a href="@(brackets.get(entry.getKey()).getUrl())">Bracket: @(brackets.get(entry.getKey()).getName()) - #@(entry.getKey())</a></h3>
         <p>
             Taxrate: @(brackets.get(entry.getKey()).moneyRate)/@(brackets.get(entry.getKey()).rssRate)<br>
-            Nations: @(brackets.get(entry.getKey()).nations)<br>
+            Nations: @(brackets.get(entry.getKey()).getNations().size())<br>
         </p>
     }
     @rocker.data.timechartdatasrc.template("",

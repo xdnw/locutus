@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.bank.Disperse;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
@@ -361,7 +362,7 @@ public class BankCommands {
             sheet = SpreadSheet.create(db, GuildDB.Key.REVENUE_SHEET);
         }
 
-        Set<Integer> ids = db.getAllianceIds();
+        Set<Integer> ids = db.getAllianceIds(false);
         int sizeOriginal = nations.size();
         nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || !ids.contains(f.getAlliance_id()));
         nations.removeIf(f -> f.getActive_m() > 7200 || f.isGray() || f.isBeige() || f.getVm_turns() > 0);
@@ -1643,7 +1644,7 @@ public class BankCommands {
             header.set(2, requiredBracket != null ? requiredBracket.getKey().getFilter() : "");
             int taxId = requiredBracket != null ? requiredBracket.getValue() : -1;
             TaxBracket bracket = brackets.get(taxId);
-            header.set(3, bracket != null ? bracket.name : "");
+            header.set(3, bracket != null ? bracket.getName() : "");
             header.set(4, bracket != null ? bracket.taxId : "");
             header.set(5, bracket != null ? "'" + bracket.getTaxRate().toString() + "'" : "");
 
@@ -2332,13 +2333,24 @@ public class BankCommands {
 
         sheet.setHeader(header);
 
-        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
-        if (auth == null) return "No authentication enabled for this guild";
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
-
+        boolean failedFetch = true;
+        Map<Integer, TaxBracket> brackets;
+        try {
+            brackets = db.getAlliance().getTaxBrackets(false);
+            failedFetch = false;
+        } catch (IllegalArgumentException e) {
+            brackets = new LinkedHashMap<>();
+            Set<Integer> allianceIds = db.getAllianceIds(true);
+            Map<Integer, TaxBracket> allAllianceBrackets = Locutus.imp().getBankDB().getTaxBracketsAndEstimates();
+            for (Map.Entry<Integer, TaxBracket> entry : allAllianceBrackets.entrySet()) {
+                TaxBracket bracket = entry.getValue();
+                if (allianceIds.contains(bracket.getAllianceId(false))) {
+                    brackets.put(entry.getKey(), bracket);
+                }
+            }
+        }
         Map<DBNation, TaxBracket> nations = new HashMap<>();
         for (TaxBracket bracket : brackets.values()) {
-            if (bracket.nations == 0) continue;
             for (DBNation nation : bracket.getNations()) {
                 nations.put(nation, bracket);
             }
@@ -2371,7 +2383,9 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        StringBuilder response = new StringBuilder("<" + sheet.getURL() + ">");
+        if (failedFetch) response.append("\nnote: Please set an api key with `" + Settings.commandPrefix(false) + "addApiKey` to view updated tax brackets");
+        return response.toString();
     }
 
     @Command

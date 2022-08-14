@@ -631,10 +631,10 @@ public class PnwUtil {
         double total = 0;
         for (int city = Math.max(1, from); city < to; city++) {
             total += nextCityCost(city,
-                nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
-                nation.hasProject(Projects.URBAN_PLANNING),
-                    nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
-                    nation.hasProject(Projects.METROPOLITAN_PLANNING));
+                    nation != null && nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
+                    nation != null && nation.hasProject(Projects.URBAN_PLANNING),
+                    nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+                    nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING));
         }
         return total;
     }

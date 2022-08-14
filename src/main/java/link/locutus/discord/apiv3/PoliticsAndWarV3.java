@@ -1045,20 +1045,22 @@ public class PoliticsAndWarV3 {
                 projection.food();
             }
         })) {
-            double[] resources = ResourceType.getBuffer();
-            resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
-            resources[ResourceType.COAL.ordinal()] = rec.getCoal();
-            resources[ResourceType.OIL.ordinal()] = rec.getOil();
-            resources[ResourceType.URANIUM.ordinal()] = rec.getUranium();
-            resources[ResourceType.IRON.ordinal()] = rec.getIron();
-            resources[ResourceType.BAUXITE.ordinal()] = rec.getBauxite();
-            resources[ResourceType.LEAD.ordinal()] = rec.getLead();
-            resources[ResourceType.GASOLINE.ordinal()] = rec.getGasoline();
-            resources[ResourceType.MUNITIONS.ordinal()] = rec.getMunitions();
-            resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
-            resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
-            resources[ResourceType.FOOD.ordinal()] = rec.getFood();
-            result.put(rec.getId(), resources);
+            if (rec.getMoney() != null) {
+                double[] resources = ResourceType.getBuffer();
+                resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
+                resources[ResourceType.COAL.ordinal()] = rec.getCoal();
+                resources[ResourceType.OIL.ordinal()] = rec.getOil();
+                resources[ResourceType.URANIUM.ordinal()] = rec.getUranium();
+                resources[ResourceType.IRON.ordinal()] = rec.getIron();
+                resources[ResourceType.BAUXITE.ordinal()] = rec.getBauxite();
+                resources[ResourceType.LEAD.ordinal()] = rec.getLead();
+                resources[ResourceType.GASOLINE.ordinal()] = rec.getGasoline();
+                resources[ResourceType.MUNITIONS.ordinal()] = rec.getMunitions();
+                resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
+                resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
+                resources[ResourceType.FOOD.ordinal()] = rec.getFood();
+                result.put(rec.getId(), resources);
+            }
         }
         return result;
     }

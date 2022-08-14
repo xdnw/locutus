@@ -1015,8 +1015,8 @@ public class WebPrimitiveBinding extends BindingHelper {
         Map<Integer, TaxBracket> brackets = db.getAlliance().getTaxBrackets(true);
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(obj.name + ": " + obj.moneyRate + "/" + obj.rssRate);
-            subtext.add("#" + obj.taxId + " (" + obj.nations + " nations)");
+            names.add(obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
+            subtext.add("#" + obj.taxId + " (" + obj.getNations().size() + " nations)");
             values.add("tax_id=" + obj.taxId);
         });
     }

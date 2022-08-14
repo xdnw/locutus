@@ -200,11 +200,11 @@ public class RegisterCommand extends Command {
                 if (checkId) {
                     userName = "" + user.getIdLong();
                 }
-                if (!userName.equalsIgnoreCase(pnwDiscordName)) {
+                if (!userName.equalsIgnoreCase(pnwDiscordName) && !pnwDiscordName.contains("" + user.getIdLong())) {
                     return "Your user doesnt match: `" + pnwDiscordName + "` != `" + userName + "`\n\n" + errorMsg;
                 }
 
-                PNWUser pnwUser = new PNWUser(nationId, id, fullDiscriminator);
+                PNWUser pnwUser = new PNWUser(nationId, id, userName);
                 discordDb.addUser(pnwUser);
                 String registerMessage = nation.register(user, event.isFromGuild() ? db : null, notRegistered);;
 

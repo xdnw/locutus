@@ -11,6 +11,8 @@ import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.config.Settings;
@@ -30,10 +32,9 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.MailTask;
 import link.locutus.discord.util.task.balance.GetCityBuilds;
 import link.locutus.discord.util.task.multi.GetUid;
-import link.locutus.discord.util.trade.TradeDB;
+import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.discord.web.jooby.handler.DummyMessageOutput;
 import com.google.gson.JsonObject;
@@ -194,6 +195,34 @@ public class DBNation implements NationOrAlliance {
         this.tax_id = tax_id;
     }
 
+    public static DBNation createFromList(String coalition, Collection<DBNation> nations, boolean average) {
+        int size = nations.size();
+        int numProjects = 0;
+        Map<Integer, DBCity> cityCopy = new HashMap<>();
+        for (DBNation nation : nations) {
+            numProjects += nation.getNumProjects();
+            cityCopy.putAll(nation._getCitiesV3());
+        }
+
+        int finalNumProjects = numProjects;
+        return new DBNation(coalition, nations, average) {
+            @Override
+            public Map<Integer, DBCity> _getCitiesV3() {
+                return cityCopy;
+            }
+
+            @Override
+            public int getNations() {
+                return size;
+            }
+
+            @Override
+            public int getNumProjects() {
+                return finalNumProjects;
+            }
+        };
+    }
+
     public static DBNation byId(int nationId) {
         return Locutus.imp().getNationDB().getNation(nationId);
     }
@@ -251,6 +280,10 @@ public class DBNation implements NationOrAlliance {
     public boolean isTaxable() {
         return !isGray() && !isBeige() && getPositionEnum().id > Rank.APPLICANT.id && getVm_turns() == 0;
     }
+
+//    public double getInfraCost(double from, double to) {
+//        double cost = PnwUtil.calculateInfra(from, to);
+//    }
 
     public long getLastFetchedUnitsMs() {
         return cache != null ? cache.lastCheckUnitMS : 0;
@@ -390,6 +423,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
+    // Mock
     public int getNumProjects() {
         int count = 0;
         for (Project project : Projects.values) {
@@ -404,6 +438,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
+    // Mock
     public int getNations() {
         return 1;
     }
@@ -611,7 +646,7 @@ public class DBNation implements NationOrAlliance {
     public Auth auth = null;
 
     public String setTaxBracket(TaxBracket bracket, Auth auth) {
-        if (bracket.allianceId != alliance_id) throw new UnsupportedOperationException("Not in alliance");
+        if (bracket.getAllianceId() != alliance_id) throw new UnsupportedOperationException("Not in alliance");
 
         Map<String, String> post = new HashMap<>();
         post.put("bracket_id", "" + bracket.taxId);
@@ -714,6 +749,9 @@ public class DBNation implements NationOrAlliance {
         int numDate = 0;
 
         for (DBNation other : nations) {
+            this.projects |= other.projects;
+            this.wars_won += other.wars_won;
+            this.wars_lost += other.wars_lost;
             this.last_active += cast(other.last_active).longValue();
             this.score += cast(other.score).intValue();
             this.cities += cast(other.cities).intValue();
@@ -756,7 +794,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command
     public double getRads() {
-        TradeDB manager = Locutus.imp().getTradeManager();
+        TradeManager manager = Locutus.imp().getTradeManager();
         double radIndex = manager.getGlobalRadiation() + manager.getGlobalRadiation(getContinent());
         return (1 + (radIndex / (-1000)));
     }
@@ -852,7 +890,7 @@ public class DBNation implements NationOrAlliance {
         if (nation.getInfrastructure() != null) {
             double currentInfra = getInfra();
             if (Math.abs(currentInfra - nation.getInfrastructure()) >= 1) {
-                for (DBCity city : Locutus.imp().getNationDB().getCitiesV3(nation_id).values()) {
+                for (DBCity city : _getCitiesV3().values()) {
                     Locutus.imp().getNationDB().markCityDirty(nation_id, city.id, System.currentTimeMillis());
                 }
                 dirty |= currentInfra > nation.getInfrastructure();
@@ -1593,10 +1631,12 @@ public class DBNation implements NationOrAlliance {
 
         DBAlliance alliance = getAlliance();
         if (myKey != null) {
+            System.out.println("remove:||Create with my key");
             pool  = ApiKeyPool.create(myKey);
         } else if (getPositionEnum().id <= Rank.APPLICANT.id || alliance == null) {
             throw new IllegalArgumentException("Nation " + nation + " is not member in an alliance");
         } else {
+            System.out.println("remove:||Create with alliance key");
             pool = alliance.getApiKeys(false, AlliancePermission.SEE_SPIES);
             if (pool == null) {
                 throw new IllegalArgumentException("No api key found. Please use`" + Settings.commandPrefix(false) + "addApiKey`");
@@ -1808,7 +1848,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Total infra in all cities")
     public double getInfra() {
         double total = 0;
-        for (DBCity city : Locutus.imp().getNationDB().getCitiesV3(nation_id).values()) {
+        for (DBCity city : _getCitiesV3().values()) {
             total += city.infra;
         }
         return total;
@@ -1848,6 +1888,29 @@ public class DBNation implements NationOrAlliance {
         return cities;
     }
 
+    @Command
+    public int getCitiesSince(@Timestamp long time) {
+        return (int) _getCitiesV3().values().stream().filter(city -> city.created > time).count();
+    }
+
+    @Command
+    public int getCitiesAt(@Timestamp long time) {
+        return cities - getCitiesSince(time);
+    }
+    @Command
+    public double getCityCostSince(@Timestamp long time, boolean allowProjects) {
+        int numBuilt = getCitiesSince(time);
+        int from = cities - numBuilt;
+        return PnwUtil.cityCost(allowProjects ? this : null, from, cities);
+    }
+
+    @Command
+    public double getCityCostPerCitySince(@Timestamp long time, boolean allowProjects) {
+        int numBuilt = getCitiesSince(time);
+        int from = cities - numBuilt;
+        return numBuilt > 0 ? PnwUtil.cityCost(allowProjects ? this : null, from, cities) / numBuilt : 0;
+    }
+
     /**
      *
      * @return
@@ -1871,7 +1934,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc="average infrastructure in cities")
     public double getAvg_infra() {
         double total = 0;
-        Collection<DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(nation_id).values();
+        Collection<DBCity> cities = _getCitiesV3().values();
         if (cities.isEmpty()) return 0;
 
         for (DBCity city : cities) {
@@ -2335,6 +2398,11 @@ public class DBNation implements NationOrAlliance {
 //        return (int) (TimeUnit.SECONDS.toDays(ZonedDateTime.now(ZoneOffset.UTC).toEpochSecond()) - getDate() / 65536);
     }
 
+    // Mock
+    public Map<Integer, DBCity> _getCitiesV3() {
+        return Locutus.imp().getNationDB().getCitiesV3(nation_id);
+    }
+
     public Map<Integer, JavaCity> getCityMap(boolean force) {
         return getCityMap(false, false, force);
     }
@@ -2344,15 +2412,16 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Map<Integer, JavaCity> getCityMap(boolean updateIfOutdated, boolean updateNewCities, boolean force) {
-        Map<Integer, DBCity> cityObj = Locutus.imp().getNationDB().getCitiesV3(nation_id);
+        Map<Integer, DBCity> cityObj = _getCitiesV3();
         if (cityObj == null) cityObj = Collections.emptyMap();
 
-        boolean update = force;
-        if (updateNewCities && cityObj.size() != cities) update = true;
-        if (updateIfOutdated && estimateScore() != this.score) update = true;
-        if (update) {
-            Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), Event::post);
-            cityObj = Locutus.imp().getNationDB().getCitiesV3(nation_id);
+        if (nation_id > 0) {
+            if (updateNewCities && cityObj.size() != cities) force = true;
+            if (updateIfOutdated && estimateScore() != this.score) force = true;
+            if (force) {
+                Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), Event::post);
+                cityObj = _getCitiesV3();
+            }
         }
         Map<Integer, JavaCity> converted = new LinkedHashMap<>();
         for (Map.Entry<Integer, DBCity> entry : cityObj.entrySet()) {
@@ -2886,7 +2955,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "The infra level of their highest city")
     public double maxCityInfra() {
         double maxInfra = 0;
-        Collection<DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(nation_id).values();
+        Collection<DBCity> cities = _getCitiesV3().values();
         for (DBCity city : cities) {
             maxInfra = Math.max(city.infra, maxInfra);
         }
@@ -2894,15 +2963,15 @@ public class DBNation implements NationOrAlliance {
     }
 
     public JsonObject sendMail(ApiKeyPool pool, String subject, String message) throws IOException {
-        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Settings.INSTANCE.API_KEY_PRIMARY)) {
-            Auth auth = Locutus.imp().getRootAuth();
-            if (auth != null) {
-                String result = new MailTask(auth, this, subject, message, null).call();
-                if (result.contains("Message sent")) {
-                    return JsonParser.parseString("{\"success\":true,\"to\":\"" + nation_id + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
-                }
-            }
-        }
+//        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Settings.INSTANCE.API_KEY_PRIMARY)) {
+//            Auth auth = Locutus.imp().getRootAuth();
+//            if (auth != null) {
+//                String result = new MailTask(auth, this, subject, message, null).call();
+//                if (result.contains("Message sent")) {
+//                    return JsonParser.parseString("{\"success\":true,\"to\":\"" + nation_id + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
+//                }
+//            }
+//        }
 
         while (true) {
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
@@ -2914,6 +2983,7 @@ public class DBNation implements NationOrAlliance {
             String result = FileUtil.readStringFromURL(url, post, null);
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
+                pool.removeKey(pair);
             } else {
                 String successStr = "success\":";
                 int successIndex = result.indexOf(successStr);
@@ -2924,8 +2994,10 @@ public class DBNation implements NationOrAlliance {
                     }
                 }
             }
-            pool.removeKey(pair);
+            System.out.println("Mail response " + result);
+            break;
         }
+        return null;
     }
 
     public int estimateBeigeTime() {
@@ -3145,7 +3217,7 @@ public class DBNation implements NationOrAlliance {
     @RolePermission(Roles.MEMBER)
     public int getBuildings() {
         int total = 0;
-        Collection<DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(nation_id).values();
+        Collection<DBCity> cities = _getCitiesV3().values();
         for (DBCity city : cities) {
             total += city.getNumBuildings();
         }
@@ -3155,7 +3227,12 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Number of buildings per city")
     @RolePermission(Roles.MEMBER)
     public double getAvgBuildings() {
-        return getBuildings() / (double) cities;
+        int total = 0;
+        Collection<DBCity> cities = _getCitiesV3().values();
+        for (DBCity city : cities) {
+            total += city.getNumBuildings();
+        }
+        return total / (double) cities.size();
     }
 
     @Command
@@ -3186,22 +3263,28 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
-    public String getMMRBuildingStr() {
+    public double[] getMMRBuildingArr() {
         double barracks = 0; // for rounding
         double factories = 0;
         double hangars = 0;
         double drydocks = 0;
-        for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
+        Map<Integer, JavaCity> cityMap = getCityMap(false);
+        for (Map.Entry<Integer, JavaCity> entry : cityMap.entrySet()) {
             barracks += entry.getValue().get(Buildings.BARRACKS);
             factories += entry.getValue().get(Buildings.FACTORY);
             hangars += entry.getValue().get(Buildings.HANGAR);
             drydocks += entry.getValue().get(Buildings.DRYDOCK);
         }
-        barracks /= cities;
-        factories /= cities;
-        hangars /= cities;
-        drydocks /= cities;
-        return Math.round(barracks) + "" + Math.round(factories) + "" + Math.round(hangars) + "" + Math.round(drydocks);
+        barracks /= cityMap.size();
+        factories /= cityMap.size();
+        hangars /= cityMap.size();
+        drydocks /= cityMap.size();
+        return new double[]{barracks, factories, hangars, drydocks};
+    }
+    @Command
+    public String getMMRBuildingStr() {
+        double[] arr = getMMRBuildingArr();
+        return Math.round(arr[0]) + "" + Math.round(arr[1]) + "" + Math.round(arr[2]) + "" + Math.round(arr[3]);
     }
 
     /**
@@ -4033,7 +4116,7 @@ public class DBNation implements NationOrAlliance {
     @RolePermission(Roles.MEMBER)
     public double getAvgLand() {
         double total = 0;
-        Collection<DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(nation_id).values();
+        Collection<DBCity> cities = _getCitiesV3().values();
         for (DBCity city : cities) {
             total += city.land;
         }
@@ -4044,7 +4127,7 @@ public class DBNation implements NationOrAlliance {
     @RolePermission(Roles.MEMBER)
     public double getTotalLand() {
         double total = 0;
-        Collection<DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(nation_id).values();
+        Collection<DBCity> cities = _getCitiesV3().values();
         for (DBCity city : cities) {
             total += city.land;
         }

@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
+import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
@@ -31,7 +32,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.trade.TradeDB;
+import link.locutus.discord.util.trade.TradeManager;
 import de.erichseifert.gral.data.DataTable;
 import de.erichseifert.gral.graphics.Insets2D;
 import de.erichseifert.gral.graphics.Location;
@@ -67,6 +68,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -83,7 +85,7 @@ import java.util.stream.Collectors;
 
 public class StatCommands {
     @Command(desc = "List resources in each continent")
-    public String continent(TradeDB manager) {
+    public String continent(TradeManager manager) {
         StringBuilder response = new StringBuilder();
         for (Continent continent : Continent.values) {
             List<ResourceType> types = Arrays.asList(ResourceType.values).stream().filter(f -> {
@@ -96,8 +98,97 @@ public class StatCommands {
         return response.toString();
     }
 
+    @Command(desc = "Rank alliances by a metric")
+    public void allianceRanking(@Me MessageChannel channel, Set<DBAlliance> alliances, AllianceMetric metric, @Switch('r') boolean reverseOrder, @Switch('f') boolean uploadFile) {
+        long turn = TimeUtil.getTurn();
+        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metrics = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turn);
+
+        Map<DBAlliance, Double> metricsDiff = new LinkedHashMap<>();
+        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metrics.entrySet()) {
+            DBAlliance alliance = entry.getKey();
+            double diff = entry.getValue().get(metric).values().iterator().next();
+            metricsDiff.put(alliance, diff);
+        }
+        displayAllianceRanking(channel, metric, metricsDiff, reverseOrder, uploadFile);
+    }
+
+    public void displayAllianceRanking(MessageChannel channel, AllianceMetric metric, Map<DBAlliance, Double> metricsDiff, boolean reverseOrder, boolean uploadFile) {
+
+        SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>(metricsDiff);
+        if (reverseOrder) {
+            builder = builder.sortAsc();
+        } else {
+            builder = builder.sort();
+        }
+        String title = "Top " + metric + " by alliance";
+
+        RankBuilder<String> named = builder.nameKeys(f -> f.getName());
+        named.build(null, channel, null, title);
+        if (uploadFile && builder.get().size() > 25) {
+            DiscordUtil.upload(channel, title, builder.toString());
+        }
+    }
+    @Command(desc = "Rank alliances by a metric over a specified time period")
+    public void allianceRankingTime(@Me MessageChannel channel, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch('r') boolean reverseOrder, @Switch('f') boolean uploadFile) {
+        long turnStart = TimeUtil.getTurn(timeStart);
+        long turnEnd = TimeUtil.getTurn(timeEnd);
+        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsStart = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turnStart);
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsEnd = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turnEnd);
+
+        Map<DBAlliance, Double> metricsDiff = new LinkedHashMap<>();
+        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metricsEnd.entrySet()) {
+            DBAlliance alliance = entry.getKey();
+            if (!metricsStart.containsKey(alliance)) continue;
+            double dataStart = metricsStart.get(alliance).get(metric).values().iterator().next();
+            double dataEnd = entry.getValue().get(metric).values().iterator().next();
+            metricsDiff.put(alliance, dataEnd - dataStart);
+        }
+        displayAllianceRanking(channel, metric, metricsDiff, reverseOrder, uploadFile);
+    }
+
+    @Command(desc = "Rank nations by an attribute")
+    public void nationRanking(@Me MessageChannel channel, Set<DBNation> nations, NationAttributeDouble attribute, @Switch('a') boolean groupByAlliance, @Switch('r') boolean reverseOrder, @Switch('t') boolean total) {
+        Map<DBNation, Double> attributeByNation = new HashMap<>();
+        for (DBNation nation : nations) {
+            Double value = attribute.apply(nation);
+            if (value.isNaN() || value.isInfinite()) continue;
+            attributeByNation.put(nation, value);
+        }
+
+
+        String title = (total ? "Total" : groupByAlliance ? "Average" : "Top") + " " + attribute.getName() + " by " + (groupByAlliance ? "alliance" : "nation");
+
+        SummedMapRankBuilder<DBNation, Double> builder = new SummedMapRankBuilder<>(attributeByNation);
+
+        RankBuilder<String> named;
+        if (groupByAlliance) {
+            NumericGroupRankBuilder<Integer, Double> grouped = builder.group(new BiConsumer<Map.Entry<DBNation, Double>, GroupedRankBuilder<Integer, Double>>() {
+                @Override
+                public void accept(Map.Entry<DBNation, Double> entry, GroupedRankBuilder<Integer, Double> builder) {
+                    builder.put(entry.getKey().getAlliance_id(), entry.getValue());
+                }
+            });
+            SummedMapRankBuilder<Integer, ? extends Number> summed;
+            if (total) {
+                summed = grouped.sum();
+            } else {
+                summed = grouped.average();
+            }
+            summed = reverseOrder ? summed.sortAsc() : summed.sort();
+            named = summed.nameKeys(f -> PnwUtil.getName(f, true));
+        } else {
+            builder = reverseOrder ? builder.sortAsc() : builder.sort();
+            named = builder.nameKeys(DBNation::getName);
+        }
+        named.build(null, channel, null, title);
+    }
+
     @Command(desc = "List the radiation in each continent")
-    public String radiation(TradeDB manager) {
+    public String radiation(TradeManager manager) {
         double global = 0;
         Map<Continent, Double> radsByCont = new LinkedHashMap<>();
         for (Continent continent : Continent.values) {
@@ -635,7 +726,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph of num nation by score between two coalitions")
-    public String mmrTierGraph(@Me GuildDB db, @Me MessageChannel channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('s') SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String mmrTierGraph(@Me GuildDB db, @Me MessageChannel channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('s') SpreadSheet sheet, @Switch('b') boolean buildings) throws IOException, GeneralSecurityException {
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
 
@@ -664,7 +755,7 @@ public class StatCommands {
 
                 for (int j = 0; j < coalitions.length; j++) {
                     List<DBNation> coalition = coalitions[j];
-                    SimpleNationList natCityList = new SimpleNationList(coalition);
+                    NationList natCityList = new SimpleNationList(coalition);
                     DBNation nation = natCityList.getNations().isEmpty() ? null : natCityList.getAverage();
                     String name = j == 0 ? "" + cities : "";
                     if (nation == null) {
@@ -679,11 +770,17 @@ public class StatCommands {
                     MilitaryUnit[] units = new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP};
                     double[] pcts = new double[units.length];
 
+                    double[] arr = buildings ? nation.getMMRBuildingArr() : null;
                     for (int i = 0; i < units.length; i++) {
                         MilitaryUnit unit = units[i];
-                        double amt = nation.getUnits(unit);
-                        double cap = unit.getBuilding().cap() * unit.getBuilding().max() * cities;
-                        double pct = amt / cap;
+                        double pct;
+                        if (buildings) {
+                            pct = arr[i] / unit.getBuilding().cap();
+                        } else {
+                            double amt = nation.getUnits(unit);
+                            double cap = unit.getBuilding().cap() * unit.getBuilding().max() * cities;
+                            pct = amt / cap;
+                        }
                         pcts[i] = pct;
 
                         total += pct * 25;

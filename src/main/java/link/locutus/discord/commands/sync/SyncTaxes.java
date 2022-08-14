@@ -87,7 +87,7 @@ public class SyncTaxes extends Command {
                             + "<" + updateTurnGraph(db) + ">";
                 }
                 case "auto": {
-                    List<BankDB.TaxDeposit> taxes = db.getHandler().updateTaxes();
+                    List<BankDB.TaxDeposit> taxes = db.getAlliance().updateTaxes();
                     return "Updated " + taxes.size() + " records.";
 
                 }

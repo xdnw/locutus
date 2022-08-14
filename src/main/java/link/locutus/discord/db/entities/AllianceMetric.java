@@ -86,7 +86,7 @@ public enum AllianceMetric {
     INFRA_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            return alliance.getMembersAverage().getAvg_infra();
+            return alliance.getMembersTotal().getAvg_infra();
         }
     },
     LAND(false) {
@@ -331,6 +331,31 @@ public enum AllianceMetric {
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.ALUMINUM.ordinal()] : 0d;
         }
     },
+    BARRACKS_PCT(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            return alliance.getMembersTotal().getMMRBuildingArr()[0] / Buildings.BARRACKS.cap();
+        }
+    },
+    FACTORY_PCT(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            return alliance.getMembersTotal().getMMRBuildingArr()[1] / Buildings.FACTORY.cap();
+        }
+    },
+    HANGAR_PCT(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            return alliance.getMembersTotal().getMMRBuildingArr()[2] / Buildings.HANGAR.cap();
+        }
+    },
+    DRYDOCK_PCT(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            return alliance.getMembersTotal().getMMRBuildingArr()[3] / Buildings.DRYDOCK.cap();
+        }
+    },
+
 
     ;
 

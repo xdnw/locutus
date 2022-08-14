@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.ApiKeyDetails;
+import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
@@ -9,8 +10,10 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.*;
@@ -34,7 +37,9 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class DBAlliance implements NationList, NationOrAlliance {
@@ -260,6 +265,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
         for (Map.Entry<Integer, com.politicsandwar.graphql.model.TaxBracket> entry : bracketsV3.entrySet()) {
             TaxBracket bracket = new TaxBracket(entry.getValue());
+            Locutus.imp().getBankDB().addTaxBracket(bracket);
             BRACKETS_CACHED.put(bracket.taxId, bracket);
         }
         return Collections.unmodifiableMap(BRACKETS_CACHED);
@@ -305,13 +311,13 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public DBNation getMembersTotal() {
-        DBNation result = new DBNation(getName(), getNations(true, 0, true), false);
+        DBNation result = DBNation.createFromList(getName(), getNations(true, 0, true), false);
         result.setAlliance_id(allianceId);
         return result;
     }
 
     public DBNation getMembersAverage() {
-        DBNation result = new DBNation(getName(), getNations(true, 0, true), true);
+        DBNation result = DBNation.createFromList(getName(), getNations(true, 0, true), true);
         result.setAlliance_id(allianceId);
         return result;
     }
@@ -353,7 +359,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public DBNation getTotal() {
-        DBNation result = new DBNation(getName(), getNations(), false);
+        DBNation result = DBNation.createFromList(getName(), getNations(), false);
         result.setAlliance_id(allianceId);
         return result;
     }
@@ -469,7 +475,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public DBNation getAverage() {
-        DBNation result = new DBNation(getName(), getNations(), true);
+        DBNation result = DBNation.createFromList(getName(), getNations(), true);
         result.setAlliance_id(allianceId);
         return result;
     }
@@ -578,7 +584,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
         GuildDB db = getGuildDB();
         if (db != null) {
             String[] apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
-            System.out.println("Keys " + StringMan.getString(apiKeys));
 
             if (apiKeys != null) {
                 for (String key : apiKeys) {
@@ -818,5 +823,69 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     public LootEntry getLoot() {
         return Locutus.imp().getNationDB().getAllianceLoot(allianceId);
+    }
+
+    public List<BankDB.TaxDeposit> updateTaxes() {
+        long oldestApiFetchDate = getDateCreated() - TimeUnit.HOURS.toMillis(2);
+
+        GuildDB db = Locutus.imp().getGuildDB(allianceId);
+
+        PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
+        if (api == null) {
+            api = getApi(false);
+        }
+        if (api == null) return null;
+
+        BankDB bankDb = Locutus.imp().getBankDB();
+        BankDB.TaxDeposit latestTaxRecord = bankDb.getLatestTaxDeposit(getAlliance_id());
+
+        long afterDate = oldestApiFetchDate;
+        if (latestTaxRecord != null) afterDate = latestTaxRecord.date;
+
+        List<Bankrec> bankRecs = api.fetchTaxRecsWithInfo(getAlliance_id(), afterDate);
+
+        if (bankRecs.isEmpty()) return new ArrayList<>();
+
+        Map<Integer, com.politicsandwar.graphql.model.TaxBracket> taxRates = api.fetchTaxBrackets(getAlliance_id());
+
+        List<BankDB.TaxDeposit> taxes = new ArrayList<>();
+        Map<Integer, TaxRate> internalTaxRateCache = new HashMap<>();
+        for (Bankrec bankrec : bankRecs) {
+            int nationId = bankrec.getSender_id();
+            TaxRate internal = internalTaxRateCache.get(nationId);
+            if (internal == null) {
+                if (db != null) {
+                    internal = db.getHandler().getInternalTaxrate(nationId);
+                } else {
+                    internal = new TaxRate(-1, -1);
+                }
+                internalTaxRateCache.put(nationId, internal);
+            }
+
+            double[] deposit = ResourceType.fromApiV3(bankrec, null);
+            if (ResourceType.isEmpty(deposit)) continue;
+
+            int moneyTax = 0;
+            int resourceTax = 0;
+            com.politicsandwar.graphql.model.TaxBracket taxRate = taxRates.get(bankrec.getTax_id());
+            if (taxRate != null) {
+                moneyTax = taxRate.getTax_rate();
+                resourceTax = taxRate.getResource_tax_rate();
+            }
+
+            BankDB.TaxDeposit taxRecord = new BankDB.TaxDeposit(bankrec.getReceiver_id(), bankrec.getDate().toEpochMilli(), bankrec.getId(), bankrec.getTax_id(), nationId, moneyTax, resourceTax, internal.money, internal.resources, deposit);
+            taxes.add(taxRecord);
+
+        }
+        Locutus.imp().getBankDB().addTaxDeposits(taxes);
+        return taxes;
+    }
+
+    public Set<DBNation> getNations(Predicate<DBNation> filter) {
+        Set<DBNation> nations = new HashSet<>();
+        for (DBNation nation : getNations()) {
+            if (filter.test(nation)) nations.add(nation);
+        }
+        return nations;
     }
 }

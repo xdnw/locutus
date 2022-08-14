@@ -43,6 +43,9 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
         if (args.size() != 1) return usage();
         GuildDB db = Locutus.imp().getGuildDB(guild);
         IACategory iaCat = db.getIACategory();
+        if (iaCat == null) {
+            throw new IllegalArgumentException("No interview category found");
+        }
         if (iaCat.getCategories().isEmpty()) {
             return "No categories found starting with: `interview`";
         }

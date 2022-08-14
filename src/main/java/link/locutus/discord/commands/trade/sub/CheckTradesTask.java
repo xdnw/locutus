@@ -7,7 +7,7 @@ import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.Offer;
-import link.locutus.discord.util.trade.TradeDB;
+import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -27,7 +27,7 @@ import java.util.concurrent.Callable;
 public class CheckTradesTask implements Callable<Boolean> {
     private final ResourceType resource;
     private final link.locutus.discord.db.TradeDB db;
-    private final TradeDB manager;
+    private final TradeManager manager;
     private final TradeAlertConsumer consumer;
 
     public CheckTradesTask(ResourceType resource, TradeAlertConsumer consumer) {

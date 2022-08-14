@@ -1,6 +1,5 @@
 package link.locutus.discord.util.trade;
 
-import com.politicsandwar.graphql.model.GameInfo;
 import com.politicsandwar.graphql.model.Radiation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
@@ -9,7 +8,6 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -57,7 +55,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class TradeDB {
+public class TradeManager {
     private final Map<ResourceType, Integer> high;
     private final Map<ResourceType, Integer> low;
     private final Map<ResourceType, Integer> highNation;
@@ -69,7 +67,7 @@ public class TradeDB {
     private final Map<ResourceType, Double> stockPile;
     private final link.locutus.discord.db.TradeDB tradeDb;
 
-    public TradeDB() throws SQLException, ClassNotFoundException {
+    public TradeManager() throws SQLException, ClassNotFoundException {
         this.stockPile = new ConcurrentHashMap<>();
         this.tradeDb = new link.locutus.discord.db.TradeDB();
         this.high = tradeDb.getTradePrice(true);
@@ -692,7 +690,7 @@ public class TradeDB {
         } else {
             long currentTurn = TimeUtil.getTurn();
             if (currentTurn != tradeBonusTurn) {
-                Map<NationColor, Integer> tradeBonusTmp = TimeUtil.runTurnTask(TradeDB.class.getSimpleName() + ".bonus", aLong -> {
+                Map<NationColor, Integer> tradeBonusTmp = TimeUtil.runTurnTask(TradeManager.class.getSimpleName() + ".bonus", aLong -> {
                     try {
                         return task.call();
                     } catch (Exception e) {

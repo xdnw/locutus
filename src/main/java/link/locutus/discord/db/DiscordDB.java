@@ -533,19 +533,19 @@ public class DiscordDB extends DBMainV2 {
     }
 
 
-    public int updateUserIdsSince(int minutes) {
+    public int updateUserIdsSince(int minutes, boolean overrideExisting) {
         List<Integer> toFetch = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < minutes).stream().map(DBNation::getNation_id).collect(Collectors.toList());
 
         int updated = 0;
 
         for (int i = 0; i < toFetch.size(); i += 500) {
             List<Integer> subList = toFetch.subList(i, Math.min(i + 500, toFetch.size()));
-            updated += updateUserIds(f -> f.setId(subList), Event::post);
+            updated += updateUserIds(overrideExisting, f -> f.setId(subList), Event::post);
         }
         return updated;
     }
 
-    public int updateUserIds(Consumer<NationsQueryRequest> query, Consumer<Event> eventConsumer) {
+    public int updateUserIds(boolean overrideExisting, Consumer<NationsQueryRequest> query, Consumer<Event> eventConsumer) {
         int updated = 0;
         for (Nation nation : Locutus.imp().getV3().fetchNations(query::accept, r -> {
             r.id();
@@ -556,7 +556,7 @@ public class DiscordDB extends DBMainV2 {
             long discordId = Long.parseLong(nation.getDiscord_id());
 
             PNWUser existingUser = getUserFromNationId(nation.getId());
-            if (existingUser != null && existingUser.getDiscordId() == (discordId)) {
+            if (existingUser != null && (!overrideExisting || existingUser.getDiscordId() == (discordId))) {
                 continue;
             }
             if (eventConsumer != null) {

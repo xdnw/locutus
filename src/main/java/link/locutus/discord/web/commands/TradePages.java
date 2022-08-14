@@ -6,7 +6,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.trade.TradeDB;
+import link.locutus.discord.util.trade.TradeManager;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 public class TradePages {
     @Command
-    public Object tradePrice(TradeDB manager) {
+    public Object tradePrice(TradeManager manager) {
         List<String> header = new ArrayList<>(Arrays.asList("Resource", "Low", "High"));
         List<List<Object>> rows = new ArrayList<>();
         for (ResourceType type : ResourceType.values()) {
@@ -36,7 +36,7 @@ public class TradePages {
     }
 
     @Command
-    public Object tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeDB manager, List<ResourceType> resources, int days) {
+    public Object tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeManager manager, List<ResourceType> resources, int days) {
         if (days <= 1) return "Invalid number of days";
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
@@ -95,7 +95,7 @@ public class TradePages {
     }
 
     @Command
-    public Object tradePriceByDay(TradeDB manager, List<ResourceType> resources, int days) {
+    public Object tradePriceByDay(TradeManager manager, List<ResourceType> resources, int days) {
         String query = StringMan.join(resources, ",") + "/" + days;
         String endpoint = "/tradepricebydayjson/" + query;
 

@@ -980,7 +980,7 @@ public class UtilityCommands {
         Map<Integer, DBNation> totals = new HashMap<>();
         for (Map.Entry<Integer, List<DBNation>> entry : nationMap.entrySet()) {
             Integer id = entry.getKey();
-            DBNation total = new DBNation(PnwUtil.getName(id, true), entry.getValue(), false);
+            DBNation total = DBNation.createFromList(PnwUtil.getName(id, true), entry.getValue(), false);
             totals.put(id, total);
         }
 

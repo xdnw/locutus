@@ -10,7 +10,7 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.trade.TradeDB;
+import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -145,7 +145,7 @@ public class CheckAllTradesTask extends CaughtRunnable implements Callable<Boole
 //            }).call();
             }
             if (this.values.contains(ResourceType.CREDITS)) {
-                TradeDB tradeMan = Locutus.imp().getTradeManager();
+                TradeManager tradeMan = Locutus.imp().getTradeManager();
                 int max = 0;
                 ResourceType maxType = null;
                 for (ResourceType type : ResourceType.values) {

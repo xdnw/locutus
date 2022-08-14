@@ -245,6 +245,19 @@ public class DBMainV2 implements Closeable {
         }
     }
 
+    protected int update(String sql, Object... values) {
+        synchronized (this) {
+            try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+                for (int i = 0; i < values.length; i++) {
+                    stmt.setObject(i + 1, values[i]);
+                }
+                return stmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+    }
     protected int update(String sql, Consumer<PreparedStatement> withStmt) {
         synchronized (this) {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {

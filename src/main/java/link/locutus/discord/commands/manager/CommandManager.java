@@ -30,7 +30,6 @@ import link.locutus.discord.commands.alliance.SetBracket;
 import link.locutus.discord.commands.sync.SyncTreaties;
 import link.locutus.discord.commands.alliance.Unregister;
 import link.locutus.discord.commands.bank.AddBalance;
-import link.locutus.discord.commands.bank.AddTaxBracket;
 import link.locutus.discord.commands.bank.TransferResources;
 import link.locutus.discord.commands.info.CounterStats;
 import link.locutus.discord.commands.bank.FindOffshore;
@@ -608,6 +607,7 @@ public class CommandManager {
                             RateLimitUtil.queue(event.getMessage().addReaction("\u2705"));
                             double converted = PnwUtil.convertedTotal(value.getValue());
                             double pct = attacker == null ? 0.10 : attacker.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
+                            if (nation.asNation().getWarPolicy() == WarPolicy.MONEYBAGS) pct *= 0.6;
                             RateLimitUtil.queue(event.getMessage().getChannel().sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct)));
                         }
                         return;
@@ -675,7 +675,6 @@ public class CommandManager {
         this.register(new CheckPermission());
         this.register(new Meta());
         this.register(new CheckMail());
-        this.register(new AddTaxBracket());
 
         // unfinished
         this.register(new LoanCommand());
@@ -829,15 +828,16 @@ public class CommandManager {
         //
         this.register(new GrantCmd(bankWith));
         this.register(new HelpCommand(this));
+
         WarCostAB warCost = new WarCostAB();
         this.register(warCost);
         this.register(new WarCostRanking());
         this.register(new ROI());
         this.register(new MyLoot(warCost));
-
-        this.register(new IASheet());
         this.register(new WarCostByDay());
         this.register(new WarCostRankingByDay());
+
+        this.register(new IASheet());
 
         this.register(new MilitaryRanking());
         this.register(new AllianceLootRanking());
@@ -872,6 +872,8 @@ public class CommandManager {
         this.register(new AssignBuild());
 
         this.register(new Simulate());
+
+        // suggest tax bracket
 
     }
 

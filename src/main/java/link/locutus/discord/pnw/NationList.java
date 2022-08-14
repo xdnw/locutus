@@ -27,12 +27,13 @@ public interface NationList {
     Collection<DBNation> getNations();
 
     default DBNation getTotal() {
-        return new DBNation(null, getNations(), false);
+        return DBNation.createFromList(null, getNations(), false);
     }
 
     default DBNation getAverage() {
-        return new DBNation(null, getNations(), true);
+        return DBNation.createFromList(null, getNations(), true);
     }
+
 
     default double[] getAverageMMR(boolean update) {
         double[] total = getTotalMMR(update);

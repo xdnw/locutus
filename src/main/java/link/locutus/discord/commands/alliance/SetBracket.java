@@ -78,7 +78,7 @@ public class SetBracket extends Command {
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 String url = bracket.getUrl();
-                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.nations + " nations) - " + bracket.name);
+                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations) - " + bracket.getName());
             }
             return usage(event, response.toString());
         }
@@ -91,7 +91,7 @@ public class SetBracket extends Command {
             bracket = brackets.get(taxId);
         } else {
             for (TaxBracket other : brackets.values()) {
-                if (other.name.equalsIgnoreCase(arg)) {
+                if (other.getName().equalsIgnoreCase(arg)) {
                     bracket = other;
                     break;
                 }

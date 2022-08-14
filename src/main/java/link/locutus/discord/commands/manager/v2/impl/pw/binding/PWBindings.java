@@ -41,7 +41,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
-import link.locutus.discord.util.trade.TradeDB;
+import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
@@ -517,7 +517,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public TradeDB tradeManager() {
+    public TradeManager tradeManager() {
         return Locutus.imp().getTradeManager();
     }
 

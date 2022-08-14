@@ -3,7 +3,7 @@ package link.locutus.discord.apiv1.enums;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.trade.TradeDB;
+import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -183,7 +183,7 @@ public enum MilitaryUnit {
     public double getConvertedCost() {
         if (costConverted == 0) {
             double total = this.cost;
-            TradeDB tradeDb = Locutus.imp().getTradeManager();
+            TradeManager tradeDb = Locutus.imp().getTradeManager();
             for (ResourceType type : resources) {
                 total += tradeDb.getLowAvg(type) * getRssAmt(type);
             }
