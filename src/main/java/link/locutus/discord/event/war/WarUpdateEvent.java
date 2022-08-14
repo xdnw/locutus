@@ -11,6 +11,7 @@ public class WarUpdateEvent extends GuildScopeEvent {
     private final DBWar current;
 
     public WarUpdateEvent(DBWar previous, DBWar current) {
+        super(previous == null ? current.date : System.currentTimeMillis());
         this.previous = previous;
         this.current = current;
     }

@@ -605,7 +605,8 @@ public class PnwUtil {
     private static double[] LAND_COST_CACHE = null;
 
     public static double calculateLand(double from, double to) {
-        if (to <= from || from < 0) return 0;
+        if (from < 0 || from == to) return 0;
+        if (to <= from) return (from - to) * -50;
         if (to > 10000) throw new IllegalArgumentException("Land cannot exceed 10,000");
         double[] tmp = LAND_COST_CACHE;
         if (tmp != null && from == tmp[0] && to == tmp[1]) {
@@ -673,7 +674,8 @@ public class PnwUtil {
     private static double[] INFRA_COST_CACHE = null;
 
     public static double calculateInfra(double from, double to) {
-        if (to <= from || from < 0) return 0;
+        if (from < 0) return 0;
+        if (to <= from) return (from - to) * -150;
         if (to > 10000) throw new IllegalArgumentException("Infra cannot exceed 10,000");
 
         double[] tmp = INFRA_COST_CACHE;

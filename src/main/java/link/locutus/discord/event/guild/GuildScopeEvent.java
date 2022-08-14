@@ -4,6 +4,15 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.event.Event;
 
 public abstract class GuildScopeEvent extends Event {
+
+    public GuildScopeEvent(long time) {
+        super(time);
+    }
+
+    public GuildScopeEvent() {
+        super();
+    }
+
     protected abstract void postToGuilds();
 
     public final void post(GuildDB db) {

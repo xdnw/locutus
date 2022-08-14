@@ -377,14 +377,20 @@ public class SpyCount {
     }
 
     public static enum Safety {
-        QUICK(1),
-        NORMAL(2),
-        COVERT(3);
+        QUICK(1, 1),
+        NORMAL(2, 2.8284271428571428571428571428571),
+        COVERT(3, 5.1961524285714285714285714285714d);
 
         public final int id;
+        private final double costFactor;
 
-        Safety(int id) {
+        Safety(int id, double costFactor) {
             this.id = id;
+            this.costFactor = costFactor;
+        }
+
+        public double getCostFactor() {
+            return costFactor;
         }
 
         public static Safety byId(int safety) {
@@ -565,7 +571,7 @@ public class SpyCount {
 
     public static double getNetDamage(int attacking, DBNation defender, Operation operation, int safety, boolean countOpCost) {
         double net = getNetSpyKills(attacking, defender.getSpies(), operation, safety, defender);
-        double netDamage = net * MilitaryUnit.SPIES.getCost();
+        double netDamage = net * MilitaryUnit.SPIES.getConvertedCost();
 
         double odds = getOdds(attacking, defender.getSpies(), safety, operation, defender);
         if (operation != Operation.SPIES) {
@@ -583,7 +589,7 @@ public class SpyCount {
         double losses = getFailedSpyLosses(attacking, defender.getSpies(), operation, safety);
         double kills = operation == Operation.SPIES ? getSpyKills(attacking, defender.getSpies()) : 0;
 
-        double netDamage = kills * MilitaryUnit.SPIES.getCost();
+        double netDamage = kills * MilitaryUnit.SPIES.getConvertedCost();
 
         if (operation != Operation.SPIES) {
             kills = getKills(attacking, defender, operation, safety) * (odds / 100d);

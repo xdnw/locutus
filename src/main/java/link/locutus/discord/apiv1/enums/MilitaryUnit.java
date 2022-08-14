@@ -2,6 +2,8 @@ package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -17,60 +19,94 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import static link.locutus.discord.apiv1.enums.ResourceType.*;
+
 public enum MilitaryUnit {
-    SOLDIER("soldiers", 0.0004, 5),
-    TANK("tanks", 0.025,60, new double[]{0.5d}, ResourceType.STEEL),
-    AIRCRAFT("aircraft", 0.3,4000, new double[]{5}, ResourceType.ALUMINUM),
-    SHIP("navy", 1, 50000, new double[]{30}, ResourceType.STEEL),
+    SOLDIER("soldiers", 0.0004,
+            ResourceType.MONEY.builder(5).build(),
+            ResourceType.MONEY.builder(1.25).add(ResourceType.FOOD, 1/750d).build(),
+            true,
+            MUNITIONS.toArray(1 / 5000d)
+    ),
+    TANK("tanks", 0.025,
+            ResourceType.MONEY.builder(60).add(STEEL, 0.5d).build(),
+            ResourceType.MONEY.toArray(50),
+            true,
+            GASOLINE.builder(1 / 100d).add(MUNITIONS, 1 / 100d).build()
+        ),
+    AIRCRAFT("aircraft", 0.3,
+            ResourceType.MONEY.builder(4000).add(ALUMINUM, 5).build(),
+            ResourceType.MONEY.toArray(500),
+            true,
+            GASOLINE.builder(1 / 4d).add(MUNITIONS, 1 / 4d).build()
+    ),
+    SHIP("navy", 1,
+            ResourceType.MONEY.builder(50000).add(STEEL, 30).build(),
+            ResourceType.MONEY.toArray(3375),
+            true,
+            GASOLINE.builder(1.5).add(MUNITIONS, 2.5).build()
+    ),
 
-    MONEY(null, 0, 1), // Is a unit type because you can airstrike money
+    MONEY(null, 0,
+            // Is a unit type because you can airstrike money
+            ResourceType.MONEY.builder(1).build(),
+            ResourceType.MONEY.toArray(0),
+            false,
+            ResourceType.getBuffer()
+    ),
 
-    MISSILE("missiles", 5, 150000, new double[]{100, 75, 75}, ResourceType.ALUMINUM, ResourceType.GASOLINE, ResourceType.MUNITIONS) {
+    MISSILE("missiles", 5,
+            ResourceType.MONEY.builder(150000).add(ALUMINUM, 100).add(GASOLINE, 75).add(MUNITIONS, 75).build(),
+            ResourceType.MONEY.toArray(21000),
+            true,
+            ResourceType.getBuffer()
+    ) {
         @Override
         public double getScore(int amt) {
             return this.score * Math.min(50, amt);
         }
     },
-    NUKE("nukes", 15, 1750000, new double[]{750, 500, 250}, ResourceType.ALUMINUM, ResourceType.GASOLINE, ResourceType.URANIUM) {
+    NUKE("nukes", 15,
+             ResourceType.MONEY.builder(1750000).add(ALUMINUM, 750).add(GASOLINE, 500).add(URANIUM, 250).build(),
+            ResourceType.MONEY.toArray(35000),
+            true,
+            ResourceType.getBuffer()
+    ) {
         @Override
         public double getScore(int amt) {
             return this.score * Math.min(50, amt);
         }
     },
 
-    SPIES("spies", 0, 50000),
+    SPIES("spies", 0,
+            ResourceType.MONEY.builder(50_000).build(),
+            ResourceType.MONEY.toArray(2400),
+            true,
+            ResourceType.MONEY.toArray(3500)
+    ),
     ;
 
-    static {
-        SOLDIER.setUpkeep(ResourceType.MONEY, 1.25, 1.88).setUpkeep(ResourceType.FOOD, 1 / 750d, 1 / 500d);
-        TANK.setUpkeep(ResourceType.MONEY, 50, 75);
-        AIRCRAFT.setUpkeep(ResourceType.MONEY, 500, 750);
-        SHIP.setUpkeep(ResourceType.MONEY, 3750, 5625);
-        SPIES.setUpkeep(ResourceType.MONEY, 2400, 2400);
-        MISSILE.setUpkeep(ResourceType.MONEY, 21000, 31500);
-        NUKE.setUpkeep(ResourceType.MONEY, 35000, 52500);
-    }
+    private final double[] cost;
 
-    private final int cost;
     protected final double score;
-    private double costConverted = 0;
-    private final ResourceType[] resources;
-    private final double[] rssAmt;
+    private final double[] consumption;
+    private double costConverted = -1;
     private final String name;
-    private final double[] upkeepPeace = new double[ResourceType.values.length];
-    private final double[] upkeepWar = new double[ResourceType.values.length];
+    private final double[] upkeepPeace;
+    private final double[] upkeepWar;
 
     public static MilitaryUnit[] values = values();
 
-    MilitaryUnit(String name, double score, int cost) {
-        this(name, score, cost, new double[]{});
-    }
-
-    MilitaryUnit(String name, double score, int cost, double[] rssAmt, ResourceType... resource) {
+    MilitaryUnit(String name, double score, double[] cost, double[] peacetimeUpkeep, boolean multiplyWartimeUpkeep, double[] consumption) {
         this.name = name;
         this.cost = cost;
-        this.resources = resource;
-        this.rssAmt = rssAmt;
+        this.upkeepPeace = peacetimeUpkeep;
+        if (multiplyWartimeUpkeep) {
+            this.upkeepWar = PnwUtil.multiply(peacetimeUpkeep, 1.5);
+        } else {
+            this.upkeepWar = peacetimeUpkeep;
+        }
+        this.consumption = consumption;
         this.score = score;
     }
 
@@ -131,22 +167,12 @@ public enum MilitaryUnit {
         }
     }
 
-    private MilitaryUnit setUpkeep(ResourceType type, double peace, double war) {
-        upkeepPeace[type.ordinal()] += peace;
-        upkeepWar[type.ordinal()] += war;
-        return this;
-    }
-
     public double getScore(int amt) {
         return score * amt;
     }
 
     public double[] getUpkeep(boolean war) {
         return war ? upkeepWar : upkeepPeace;
-    }
-
-    public int getCost() {
-        return cost;
     }
 
     public String getName() {
@@ -171,29 +197,36 @@ public enum MilitaryUnit {
         return null;
     }
 
-    public Map<ResourceType, Double> getResourceCost() {
-        Map<ResourceType, Double> result = new HashMap<>();
-        result.put(ResourceType.MONEY, (double) cost);
-        for (ResourceType type : resources) {
-            result.put(type, (double) getRssAmt(type));
-        }
-        return result;
-    }
-
     public double getConvertedCost() {
-        if (costConverted == 0) {
-            double total = this.cost;
-            TradeManager tradeDb = Locutus.imp().getTradeManager();
-            for (ResourceType type : resources) {
-                total += tradeDb.getLowAvg(type) * getRssAmt(type);
-            }
-            costConverted = total;
+        if (costConverted == -1) {
+            costConverted = PnwUtil.convertedTotal(cost);
         }
         return costConverted;
     }
 
-    public ResourceType[] getResources() {
-        return resources;
+    public double[] getCost() {
+        return this.cost;
+    }
+
+    public double[] getCost(int amt) {
+        if (amt > 0) {
+            if (amt == 1) return cost;
+            return PnwUtil.multiply(cost.clone(), amt);
+        } else if (amt < 0) {
+            // 0% of money + 75% of resources
+            double[] copy = cost.clone();
+            copy[0] = 0;
+            PnwUtil.multiply(copy, amt);
+            for (int i = 1; i < copy.length; i++) {
+                copy[i] *= 0.75;
+            }
+            return copy;
+        }
+        return ResourceType.getBuffer();
+    }
+
+    public double[] getConsumption() {
+        return consumption;
     }
 
     public static MilitaryUnit valueOfVerbose(String arg) {
@@ -202,14 +235,5 @@ public enum MilitaryUnit {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid MilitaryUnit type: `" + arg + "`. options: " + StringMan.getString(values()));
         }
-    }
-
-    public double getRssAmt(ResourceType type) {
-        for (int i = 0; i < resources.length; i++) {
-            if (resources[i] == type) {
-                return rssAmt[i];
-            }
-        }
-        return 0;
     }
 }

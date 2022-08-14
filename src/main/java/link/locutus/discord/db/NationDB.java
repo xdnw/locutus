@@ -199,9 +199,7 @@ public class NationDB extends DBMainV2 {
             DBCity previous = new DBCity(city);
             city.infra = infra;
             if (eventConsumer != null) {
-                if (infra < previous.infra) {
-                    eventConsumer.accept(new CityInfraBuyEvent(nationId, previous, city));
-                } else if (infra > previous.infra) {
+                if (infra != previous.infra) {
                     eventConsumer.accept(new CityInfraDamageEvent(nationId, previous, city));
                 }
             }

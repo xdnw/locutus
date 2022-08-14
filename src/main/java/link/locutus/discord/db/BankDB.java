@@ -864,41 +864,32 @@ public class BankDB extends DBMainV2 {
     }
 
     public void addTaxDeposits(Collection<TaxDeposit> records) {
-        try {
-            synchronized (this) {
-                String query = "INSERT OR IGNORE INTO `TAX_DEPOSITS_DATE` (`alliance`, `date`, `id`, `nation`, `moneyrate`, `resoucerate`, `resources`, `internal_taxrate`, `tax_id`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                executeBatch(records, query, new ThrowingBiConsumer<TaxDeposit, PreparedStatement>() {
-                    @Override
-                    public void acceptThrows(TaxDeposit record, PreparedStatement stmt) throws SQLException {
-                        stmt.setInt(1, record.allianceId);
+        String query = "INSERT OR IGNORE INTO `TAX_DEPOSITS_DATE` (`alliance`, `date`, `id`, `nation`, `moneyrate`, `resoucerate`, `resources`, `internal_taxrate`, `tax_id`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        executeBatch(records, query, new ThrowingBiConsumer<TaxDeposit, PreparedStatement>() {
+            @Override
+            public void acceptThrows(TaxDeposit record, PreparedStatement stmt) throws SQLException {
+                stmt.setInt(1, record.allianceId);
 
-                        long dateRounded = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(record.date));
+                long dateRounded = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(record.date));
 
-                        stmt.setLong(2, dateRounded);
-                        stmt.setInt(3, record.index);
-                        stmt.setInt(4, record.nationId);
-                        stmt.setInt(5, (int) record.moneyRate);
-                        stmt.setInt(6, (int) record.resourceRate);
+                stmt.setLong(2, dateRounded);
+                stmt.setInt(3, record.index);
+                stmt.setInt(4, record.nationId);
+                stmt.setInt(5, (int) record.moneyRate);
+                stmt.setInt(6, (int) record.resourceRate);
 
-                        double[] deposit = record.resources;
-                        long[] depositCents = new long[deposit.length];
-                        for (int i = 0; i < deposit.length; i++) depositCents[i] = (long) (deposit[i] * 100);
-                        byte[] depositBytes = ArrayUtil.toByteArray(depositCents);
+                double[] deposit = record.resources;
+                long[] depositCents = new long[deposit.length];
+                for (int i = 0; i < deposit.length; i++) depositCents[i] = (long) (deposit[i] * 100);
+                byte[] depositBytes = ArrayUtil.toByteArray(depositCents);
 
-                        stmt.setBytes(7, depositBytes);
+                stmt.setBytes(7, depositBytes);
 
-                        short internalPair = MathMan.pairByte(record.internalMoneyRate, record.internalResourceRate);
-                        stmt.setShort(8, internalPair);
-                        stmt.setInt(9, record.tax_id);
-                    }
-                });
+                short internalPair = MathMan.pairByte(record.internalMoneyRate, record.internalResourceRate);
+                stmt.setShort(8, internalPair);
+                stmt.setInt(9, record.tax_id);
             }
-        } catch (Throwable e) {
-            e.printStackTrace();
-            for (TaxDeposit record : records) {
-                addTaxDeposit(record);
-            }
-        }
+        });
     }
 
     public void addTaxDeposit(int allianceId, long date, int taxIndex, int nation, int moneyRate, int rssRate, int internalMoneyRate, int internalResourceRate, double[] deposit) {

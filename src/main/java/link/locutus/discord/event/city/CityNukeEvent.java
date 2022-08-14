@@ -5,5 +5,7 @@ import link.locutus.discord.db.entities.DBCity;
 public class CityNukeEvent extends CityChangeEvent {
     public CityNukeEvent(int nation, DBCity previous, DBCity current) {
         super(nation, previous, current);
+        setTime(current.nuke_date);
+
     }
 }

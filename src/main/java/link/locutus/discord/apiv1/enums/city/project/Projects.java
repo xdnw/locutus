@@ -192,7 +192,7 @@ public class Projects {
             .cost(MUNITIONS, 10000)
             .cost(GASOLINE, 10000)
             .cost(STEEL, 10000)
-            .cost(MONEY, 40000000)
+            .cost(MONEY, 25_000_000)
             .otherRequirements(f -> f.getWars_won() + f.getWars_lost() >= 50)
             .build();
 

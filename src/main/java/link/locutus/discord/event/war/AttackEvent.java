@@ -7,6 +7,7 @@ public class AttackEvent extends Event {
     private final DBAttack attack;
 
     public AttackEvent(DBAttack attack) {
+        super(attack.epoch);
         this.attack = attack;
     }
 

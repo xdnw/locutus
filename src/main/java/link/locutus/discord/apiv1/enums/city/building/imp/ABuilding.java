@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import rocker.grant.city;
 
 import java.util.Map;
 import java.util.function.Predicate;
@@ -69,8 +70,17 @@ public class ABuilding<task> implements Building {
 
     @Override
     public double[] cost(double[] buffer, double num) {
-        for (int i = 0; i < costArr.length; i++) {
-            buffer[i] += costArr[i] * num;
+        if (num > 0) {
+            for (int i = 0; i < costArr.length; i++) {
+                buffer[i] += costArr[i] * num;
+            }
+        } else if (num < 0) {
+            // 50% of money back for selling
+            buffer[0] += costArr[0] * num * 0.5;
+            for (int i = 1; i < costArr.length; i++) {
+                // 75% of rss back for selling
+                buffer[i] += costArr[i] * num * 0.75;
+            }
         }
         return buffer;
     }

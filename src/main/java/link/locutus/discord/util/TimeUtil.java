@@ -268,6 +268,10 @@ public class TimeUtil {
         return ChronoUnit.DAYS.between(Instant.EPOCH, utc);
     }
 
+    public static long getDay(long timestamp) {
+        return ChronoUnit.DAYS.between(Instant.EPOCH, Instant.ofEpochMilli(timestamp));
+    }
+
     public static <T> T runDayTask(String id, Function<Long, T> task) {
         return runTimeTask(id, TimeUtil::getDay, task);
     }

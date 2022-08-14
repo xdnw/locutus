@@ -188,6 +188,13 @@ public class DBMainV2 implements Closeable {
         if (objects.isEmpty()) return new int[0];
         synchronized (this) {
             try {
+                if (objects.size() == 1) {
+                    try (PreparedStatement ps = getConnection().prepareStatement(query)) {
+                        consumer.accept(objects.iterator().next(), ps);
+                        int result = ps.executeUpdate();
+                        return new int[]{result};
+                    }
+                }
                 getConnection().setAutoCommit(false);
                 try (PreparedStatement ps = getConnection().prepareStatement(query)) {
                     boolean clear = false;

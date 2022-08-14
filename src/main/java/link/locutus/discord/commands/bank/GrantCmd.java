@@ -349,7 +349,7 @@ public class GrantCmd extends Command {
                     throw new IllegalArgumentException(me.getNation() + " can only have up to " + max + " " + unit.getName());
                 }
 
-                resources = PnwUtil.multiply(unit.getResourceCost(), amt);
+                resources = PnwUtil.resourcesToMap(unit.getCost((int) amt));
                 grant = new Grant(me, Grant.Type.UNIT);
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {

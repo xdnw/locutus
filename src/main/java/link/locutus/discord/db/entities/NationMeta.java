@@ -96,7 +96,11 @@ public enum NationMeta {
 
     LAST_CHECKED_AUDITS,
 
-    UNBLOCKADE_REASON
+    UNBLOCKADE_REASON,
+
+    LAST_LOGIN_DAY,
+
+    LAST_LOGIN_COUNT,
 
     ;
 

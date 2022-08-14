@@ -12,6 +12,7 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 public enum ResourceType {
@@ -128,6 +129,54 @@ public enum ResourceType {
 
     public static double[] getBuffer() {
         return new double[ResourceType.values.length];
+    }
+
+    public ResourcesBuilder builder(double amt) {
+        return new ResourcesBuilder().add(this, amt);
+    }
+
+    public static class ResourcesBuilder {
+        private double[] resources = null;
+
+        private double[] getResources() {
+            if (resources == null) resources = getBuffer();
+            return resources;
+        }
+
+        public ResourcesBuilder add(ResourceType type, double amt) {
+            if (amt != 0) {
+                getResources()[type.ordinal()] += amt;
+            }
+            return this;
+        }
+
+        public ResourcesBuilder add(double[] amt) {
+            for (ResourceType type : ResourceType.values) {
+                add(type, amt[type.ordinal()]);
+            }
+            return this;
+        }
+
+        public ResourcesBuilder add(Map<ResourceType, Double> amt) {
+            for (Map.Entry<ResourceType, Double> entry : amt.entrySet()) {
+                add(entry.getKey(), entry.getValue());
+            }
+            return this;
+        }
+
+        public ResourcesBuilder addMoney(double amt) {
+            return add(ResourceType.MONEY, amt);
+        }
+
+        public boolean isEmpty() {
+            return resources == null || ResourceType.isEmpty(resources);
+        }
+
+        public double[] build() {
+            return getResources();
+        }
+
+
     }
 
     public static double[] fromApiV3(Bankrec rec, double[] buffer) {

@@ -4,7 +4,20 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.util.AlertUtil;
 
 public class Event {
-    private final long time = System.currentTimeMillis();
+    private long time;
+
+    public Event(long time) {
+        this.time = time;
+    }
+
+    public Event() {
+        this(System.currentTimeMillis());
+    }
+
+    public void setTime(long time) {
+        this.time = time;
+    }
+
     public void post() {
         long start = System.currentTimeMillis();
         Locutus.post(this);

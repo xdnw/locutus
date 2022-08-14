@@ -3377,7 +3377,7 @@ public class DBNation implements NationOrAlliance {
             factor -= 0.05;
             if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) factor -= 0.025;
         }
-        return PnwUtil.calculateInfra(from, to) * factor;
+        return PnwUtil.calculateInfra(from, to) * (to > from ? factor : 1);
     }
 
     public double landCost(double from, double to) {
@@ -3388,7 +3388,7 @@ public class DBNation implements NationOrAlliance {
             factor -= 0.05;
             if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) factor -= 0.025;
         }
-        return PnwUtil.calculateLand(from, to) * factor;
+        return PnwUtil.calculateLand(from, to) * (to > from ? factor : 1);
     }
     public double printScore() {
         double base = 10;
@@ -4229,5 +4229,13 @@ public class DBNation implements NationOrAlliance {
         ArrayDeque<Event> events = new ArrayDeque<>();
         Locutus.imp().getNationDB().updateNations(List.of(nation_id), bulk, events::add);
         Locutus.imp().runEventsAsync(events);
+    }
+
+    public double[] projectCost(Project project) {
+        double[] cost = PnwUtil.resourcesToArray(project.cost());
+        if (getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
+            cost = PnwUtil.multiply(cost, 0.95);
+        }
+        return cost;
     }
 }

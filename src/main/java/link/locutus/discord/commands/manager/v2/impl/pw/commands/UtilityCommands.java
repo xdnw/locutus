@@ -1517,7 +1517,7 @@ public Map<ParametricCallable, String> getEndpoints() {
             MilitaryUnit unit = entry.getKey();
             Long amt = entry.getValue();
 
-            double[] unitCost = PnwUtil.resourcesToArray(unit.getResourceCost());
+            double[] unitCost = unit.getCost(amt.intValue());
             double[] unitUpkeep = unit.getUpkeep(wartime).clone();
 
             unitCost = PnwUtil.multiply(unitCost, amt);
@@ -1552,8 +1552,8 @@ public Map<ParametricCallable, String> getEndpoints() {
                 projectCost = PnwUtil.addResourcesToA(projectCost, project.cost());
             }
             for (MilitaryUnit unit : MilitaryUnit.values) {
-                double units = nation.getUnits(unit);
-                militaryCost = PnwUtil.addResourcesToA(militaryCost, PnwUtil.multiply(unit.getResourceCost(), units));
+                int units = nation.getUnits(unit);
+                militaryCost = PnwUtil.addResourcesToA(militaryCost, PnwUtil.resourcesToMap(unit.getCost(units)));
             }
             int cities = nation.getCities();
             for (int i = 1; i <= cities; i++) {

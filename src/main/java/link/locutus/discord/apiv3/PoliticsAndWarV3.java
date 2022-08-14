@@ -19,6 +19,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.HttpEntity;
@@ -1154,6 +1155,61 @@ public class PoliticsAndWarV3 {
             }
         }
         return taxBracketMap;
+    }
+
+    public List<Trade> fetchTradesWithInfo(Consumer<TradesQueryRequest> filter, Predicate<Trade> tradeResults) {
+        TradesQueryRequest test = new TradesQueryRequest();
+        return fetchTrades(TRADES_PER_PAGE, filter, new Consumer<TradeResponseProjection>() {
+            @Override
+            public void accept(TradeResponseProjection projection) {
+                projection.id();
+                projection.type();
+                projection.date();
+                projection.sender_id();
+                projection.receiver_id();
+                projection.offer_resource();
+                projection.offer_amount();
+                projection.buy_or_sell();
+                projection.price();
+
+                projection.date_accepted();
+                projection.original_trade_id();
+            }
+        }, f -> PoliticsAndWarV3.ErrorResponse.THROW, tradeResults);
+    }
+
+    public List<Trade> fetchTrades(int perPage, Consumer<TradesQueryRequest> filter, Consumer<TradeResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Trade> tradeResults) {
+        List<Trade> allResults = new ArrayList<>();
+
+        handlePagination(page -> {
+            TradesQueryRequest request = new TradesQueryRequest();
+            if (filter != null) filter.accept(request);
+            request.setFirst(perPage);
+            request.setPage(page);
+
+            TradeResponseProjection respProj = new TradeResponseProjection();
+            query.accept(respProj);
+
+            TradePaginatorResponseProjection pagRespProj = new TradePaginatorResponseProjection()
+                    .paginatorInfo(new PaginatorInfoResponseProjection().hasMorePages())
+                    .data(respProj);
+            return new GraphQLRequest(request, pagRespProj);
+        }, errorBehavior, TradesQueryResponse.class,
+        response -> {
+            TradePaginator paginator = response.trades();
+            PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+            return pageInfo != null && pageInfo.getHasMorePages();
+        }, result -> {
+            TradePaginator paginator = result.trades();
+            if (paginator != null) {
+                List<Trade> nations = paginator.getData();
+                for (Trade trade : nations) {
+                    if (tradeResults.test(trade)) allResults.add(trade);
+                }
+            }
+        });
+
+        return allResults;
     }
 
     public List<Nation> fetchNationActive(List<Integer> ids) {

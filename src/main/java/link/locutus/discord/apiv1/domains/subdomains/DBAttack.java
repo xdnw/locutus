@@ -8,7 +8,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
-import com.google.common.collect.BiMap;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -358,9 +357,15 @@ public class DBAttack {
             Map<MilitaryUnit, Integer> unitLosses = getUnitLosses(attacker);
             for (Map.Entry<MilitaryUnit, Integer> entry : unitLosses.entrySet()) {
                 MilitaryUnit unit = entry.getKey();
-                losses.put(ResourceType.MONEY, losses.getOrDefault(ResourceType.MONEY, 0d) + unit.getCost() * entry.getValue());
-                for (ResourceType rss : unit.getResources()) {
-                    losses.put(rss, losses.getOrDefault(rss, 0d) + unit.getRssAmt(rss) * entry.getValue());
+                int amt = entry.getValue();
+                if (amt > 0) {
+                    double[] cost = unit.getCost(amt);
+                    for (ResourceType type : ResourceType.values) {
+                        double rssCost = cost[type.ordinal()];
+                        if (rssCost > 0) {
+                            losses.put(type, losses.getOrDefault(type, 0d) + rssCost);
+                        }
+                    }
                 }
             }
         }
@@ -390,8 +395,6 @@ public class DBAttack {
                     infra_destroyed_value = PnwUtil.calculateInfra(this.city_infra_before - infra_destroyed, this.city_infra_before);
                 }
                 losses.put(ResourceType.MONEY, (losses.getOrDefault(ResourceType.MONEY, 0d) + infra_destroyed_value));
-            }
-            if (includeLoot) {
             }
         }
 
