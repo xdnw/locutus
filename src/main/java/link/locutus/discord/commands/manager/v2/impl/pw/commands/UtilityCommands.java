@@ -1517,10 +1517,9 @@ public Map<ParametricCallable, String> getEndpoints() {
             MilitaryUnit unit = entry.getKey();
             Long amt = entry.getValue();
 
-            double[] unitCost = unit.getCost(amt.intValue());
+            double[] unitCost = unit.getCost(amt.intValue()).clone();
             double[] unitUpkeep = unit.getUpkeep(wartime).clone();
 
-            unitCost = PnwUtil.multiply(unitCost, amt);
             unitUpkeep = PnwUtil.multiply(unitUpkeep, amt);
 
             PnwUtil.add(cost, unitCost);

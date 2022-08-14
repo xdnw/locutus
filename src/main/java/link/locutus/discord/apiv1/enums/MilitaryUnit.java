@@ -102,7 +102,7 @@ public enum MilitaryUnit {
         this.cost = cost;
         this.upkeepPeace = peacetimeUpkeep;
         if (multiplyWartimeUpkeep) {
-            this.upkeepWar = PnwUtil.multiply(peacetimeUpkeep, 1.5);
+            this.upkeepWar = PnwUtil.multiply(peacetimeUpkeep.clone(), 1.5);
         } else {
             this.upkeepWar = peacetimeUpkeep;
         }
