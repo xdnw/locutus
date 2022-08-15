@@ -497,7 +497,11 @@ public class PnwUtil {
             sign *= MathMan.parseDouble(split[1]);
         }
 
+
         Map<ResourceType, Double> transfer = new Gson().fromJson(arg, type);
+        if (transfer.containsKey(null)) {
+            throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
+        }
         if (sign != 1) {
             for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
                 entry.setValue(entry.getValue() * sign);
