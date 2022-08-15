@@ -206,20 +206,21 @@ public class DBMainV2 implements Closeable {
                     }
                     return ps.executeBatch();
                 }
+                finally {
+                    try {
+                        getConnection().commit();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        getConnection().setAutoCommit(true);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);
-            } finally {
-                try {
-                    getConnection().commit();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-                try {
-                    getConnection().setAutoCommit(true);
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
             }
         }
     }
