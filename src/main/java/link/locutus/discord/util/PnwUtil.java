@@ -5,12 +5,8 @@ import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.trade.Offer;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
@@ -378,7 +374,7 @@ public class PnwUtil {
                                     } else {
                                         if (amt < 1) continue;
 
-                                        List<Offer> trades = tradeDb.getOffers(resource, start, end);
+                                        List<DBTrade> trades = tradeDb.getTrades(resource, start, end);
 
                                         Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
                                         if (avg != null) {
@@ -950,7 +946,7 @@ public class PnwUtil {
         }
 
         if (tradeBonus) {
-            profitBuffer[0] += Locutus.imp().getTradeManager().getTradeBonus(nation.getColor()) * 12;
+            profitBuffer[0] += nation.getColor().getTurnBonus() * 12;
         }
 
         if (!nation.hasUnsetMil() && militaryUpkeep) {

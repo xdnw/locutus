@@ -332,7 +332,6 @@ public class DiscordUtil {
     }
 
 
-
     public static Message createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, Map<String, String> reactionArguments) {
         EmbedBuilder embed = new EmbedBuilder();
         builder.accept(embed);

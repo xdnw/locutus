@@ -1,14 +1,17 @@
 package link.locutus.discord.db;
 
+import com.ptsmods.mysqlw.query.QueryCondition;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.Trade;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.TradeSubscription;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.User;
 
@@ -16,18 +19,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.*;
+import java.util.function.Consumer;
 
 public class TradeDB extends DBMainV2 {
     public TradeDB() throws SQLException, ClassNotFoundException {
@@ -55,11 +50,16 @@ public class TradeDB extends DBMainV2 {
                 .addIndex(TableIndex.index("index_trade_type", "resource", TableIndex.Type.INDEX))
                 .create(getDb());
 
-        try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE TRADES " +
-                "ADD COLUMN `type` INT NOT NULL DEFAULT 0, " +
-                "ADD COLUMN `date_accepted` INT NOT NULL DEFAULT 0," +
-                "ADD COLUMN `parent_id` INT NOT NULL DEFAULT 0")) {
-            stmt.executeUpdate();
+        TablePreset.create("COLOR_BLOC")
+                .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("name", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
+                .putColumn("bonus", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .create(getDb());
+
+        try {
+            try (PreparedStatement close = prepareQuery("ALTER TABLE TRADES ADD COLUMN `type` INT NOT NULL DEFAULT 0" )) {close.execute();}
+            try (PreparedStatement close = prepareQuery("ALTER TABLE TRADES ADD COLUMN `date_accepted` INT NOT NULL DEFAULT 0" )) {close.execute();}
+            try (PreparedStatement close = prepareQuery("ALTER TABLE TRADES ADD COLUMN `parent_id` INT NOT NULL DEFAULT 0" )) {close.execute();}
         } catch (SQLException ignore) {}
 
         String query = TablePreset.create("SUBSCRIPTIONS_2")
@@ -84,12 +84,41 @@ public class TradeDB extends DBMainV2 {
                 e.printStackTrace();
             }
         }
-        ;
+
+        purgeSubscriptions();
+        loadColorBlocs();
     }
 
-//    public boolean updateTrades() {
-//
-//    }
+    public void saveColorBlocs() {
+        executeBatch(Arrays.asList(NationColor.values), "INSERT OR REPLACE INTO `COLOR_BLOC`(`id`, `name`, `bonus`) VALUES(?, ?, ?)", new ThrowingBiConsumer<NationColor, PreparedStatement>() {
+            @Override
+            public void acceptThrows(NationColor color, PreparedStatement stmt) throws Exception {
+                stmt.setObject(1, color.ordinal());
+                stmt.setObject(2, color.getVotedName());
+                stmt.setObject(3, color.getTurnBonus());
+            }
+        });
+    }
+
+    public void loadColorBlocs() {
+        query("SELECT * FROM `COLOR_BLOC`", f -> {}, new Consumer<ResultSet>() {
+            @Override
+            public void accept(ResultSet resultSet) {
+                try {
+                    while (resultSet.next()) {
+                        int id = resultSet.getInt("id");
+                        String name = resultSet.getString("name");
+                        int bonus = resultSet.getInt("bonus");
+                        NationColor color = NationColor.values[id];
+                        color.setVotedName(name);
+                        color.setTurnBonus(bonus);
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
 
     public void setTradePrice(ResourceType type, int ppu, boolean isBuy) {
         update("INSERT OR REPLACE INTO `TRADEPRICE`(`resource`, `ppu`, `isBuy`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
@@ -138,13 +167,20 @@ public class TradeDB extends DBMainV2 {
         });
     }
 
+    public List<DBTrade> getActiveTrades() {
+        return getTrades(builder -> builder.where(QueryCondition.equals("date_accepted", -1L)));
+    }
+
+    public DBTrade getTradeById(int id) {
+        return getTrades(builder -> builder.where(QueryCondition.equals("id", id))).stream().findFirst().orElse(null);
+    }
+
     public enum TradeAlertType {
         MIXUP,
         UNDERCUT,
         DISPARITY,
         ABSOLUTE,
-        NO_LOW,
-        NO_HIGH,
+        NO_OFFER,
     }
 
     public void subscribe(User user, ResourceType resource, long date, boolean isBuy, boolean above, int ppu, TradeAlertType type) {
@@ -159,179 +195,89 @@ public class TradeDB extends DBMainV2 {
         });
     }
 
-    public Set<Long> getSubscriptions(ResourceType type, TradeAlertType alert) {
-            long date = System.currentTimeMillis();
-            Set<Long> list = new LinkedHashSet<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM SUBSCRIPTIONS_2 WHERE resource = ? AND DATE > ? AND type = ?")) {
-            stmt.setInt(1, type.ordinal());
-            stmt.setLong(2, date);
-            stmt.setInt(3, alert.ordinal());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    long userId = rs.getLong("user");
-                    list.add(userId);
-                }
+    public List<TradeSubscription> getSubscriptions(Consumer<SelectBuilder> query) {
+        List<TradeSubscription> list = new ArrayList<>();
+        SelectBuilder builder = getDb().selectBuilder("SUBSCRIPTIONS_2")
+                .select("*");
+        if (query != null) query.accept(builder);
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                list.add(new TradeSubscription(rs));
             }
             return list;
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
+            throw new RuntimeException(e);
         }
     }
 
-    public Set<Long> getSubscriptions(ResourceType type,  double disparity) {
-            long date = System.currentTimeMillis();
-            Set<Long> list = new LinkedHashSet<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM SUBSCRIPTIONS_2 WHERE resource = ? AND DATE > ? AND type = ?")) {
-            stmt.setInt(1, type.ordinal());
-            stmt.setLong(2, date);
-            stmt.setInt(3, TradeAlertType.DISPARITY.ordinal());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    long userId = rs.getLong("user");
-                    list.add(userId);
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
+
+    public List<TradeSubscription> getSubscriptions(long userId) {
+        return getSubscriptions(f ->
+                f.where(QueryCondition.equals("user", userId))
+                        .where(QueryCondition.greater("date", System.currentTimeMillis()))
+        );
+    }
+
+    public void deleteTradesById(Collection<Integer> ids) {
+        if (ids.isEmpty()) {
+            return;
         }
+        executeStmt("DELETE FROM TRADES WHERE id tradeId " + StringMan.getString(ids));
     }
-
-    public Set<Long> getSubscriptions(ResourceType type,  boolean isBuy, boolean above, int ppu, TradeAlertType alert) {
-            long date = System.currentTimeMillis();
-            String symbol = above ? "<" : ">";
-            Set<Long> list = new LinkedHashSet<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM SUBSCRIPTIONS_2 WHERE resource = ? AND DATE > ? AND isBuy = ? AND above = ? AND ppu " + symbol + " ? AND type = ?")) {
-            stmt.setInt(1, type.ordinal());
-            stmt.setLong(2, date);
-            stmt.setBoolean(3, isBuy);
-            stmt.setBoolean(4, above);
-            stmt.setInt(5, ppu);
-            stmt.setInt(6, alert.ordinal());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    long userId = rs.getLong("user");
-                    list.add(userId);
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public static class Subscription {
-        public final ResourceType resource;
-        public final long endDate;
-        public final boolean isBuy;
-        public final boolean above;
-        public final int ppu;
-
-        public Subscription(ResourceType resource, long endDate, boolean isBuy, boolean above, int ppu) {
-            this.resource = resource;
-            this.endDate = endDate;
-            this.isBuy = isBuy;
-            this.above = above;
-            this.ppu = ppu;
-        }
-    }
-
-    public Set<Subscription> getSubscriptions(long userId) {
-            long date = System.currentTimeMillis();
-            Set<Subscription> list = new LinkedHashSet<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM SUBSCRIPTIONS_2 WHERE user = ? AND date > ?")) {
-            stmt.setLong(1, userId);
-            stmt.setLong(2, date);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    ResourceType resource = ResourceType.values[rs.getInt("resource")];
-                    long endDate = rs.getLong("date");
-                    boolean isBuy = rs.getBoolean("isBuy");
-                    boolean above = rs.getBoolean("above");
-                    int ppu = rs.getInt("ppu");
-
-                    list.add(new Subscription(resource, endDate, isBuy, above, ppu));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public void addTrades(Collection<Offer> offers) {
-        try {
-            synchronized (this) {
-                String query = "INSERT OR REPLACE INTO `TRADES`(`tradeId`, `date`, `seller`, `buyer`, `resource`, `isBuy`, `quantity`, `ppu`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
-                executeBatch(offers, query, new ThrowingBiConsumer<Offer, PreparedStatement>() {
-                    @Override
-                    public void acceptThrows(Offer offer, PreparedStatement stmt) throws SQLException {
-                        stmt.setInt(1, offer.getTradeId());
-                        stmt.setLong(2, offer.getEpochms());
-                        if (offer.getSeller() == null) stmt.setNull(3, Types.INTEGER);
-                        else stmt.setInt(3, offer.getSeller());
-                        if (offer.getBuyer() == null) stmt.setNull(4, Types.INTEGER);
-                        else stmt.setInt(4, offer.getBuyer());
-                        stmt.setInt(5, offer.getResource().ordinal());
-                        stmt.setBoolean(6, offer.isBuy());
-                        stmt.setInt(7, offer.getAmount());
-                        stmt.setInt(8, offer.getPpu());
-                    }
-                });
-            }
-        } catch (Throwable e) {
-            e.printStackTrace();
-            for (Offer offer : offers) {
-                addTrade(offer);
-            }
-        }
-    }
-
-    public void addTrade(Offer offer) {
-        addTrade(offer.getTradeId(), offer.getEpochms(), offer.getSeller(), offer.getBuyer(), offer.getResource(), offer.isBuy(), offer.getAmount(), offer.getPpu());
-    }
-
-    private void addTrades(List<Trade> trades) {
-        executeBatch(trades, "INSERT OR REPLACE INTO `TRADES`(`tradeId`, `date`, `seller`, `buyer`, `resource`, `isBuy`, `quantity`, `ppu`, `type`,  `date_accepted`, `parent_id`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<Trade, PreparedStatement>() {
+    public void saveTrades(Collection<DBTrade> trades) {
+        executeBatch(trades, "INSERT OR REPLACE INTO `TRADES`(`tradeId`, `date`, `seller`, `buyer`, `resource`, `isBuy`, `quantity`, `ppu`, `type`,  `date_accepted`, `parent_id`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<DBTrade, PreparedStatement>() {
             @Override
-            public void acceptThrows(Trade trade, PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, trade.tradeId);
-                stmt.setLong(2, trade.date);
-                stmt.setInt(3, trade.seller);
-                stmt.setInt(4, trade.buyer);
-                stmt.setInt(5, trade.type.ordinal());
-                stmt.setBoolean(6, trade.isBuy);
-                stmt.setInt(7, trade.quantity);
-                stmt.setInt(8, trade.ppu);
-                stmt.setInt(9, trade.type.ordinal());
-                stmt.setLong(10, trade.date_accepted);
-                stmt.setInt(11, trade.parent_id);
+            public void acceptThrows(DBTrade trade, PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, trade.getTradeId());
+                stmt.setLong(2, trade.getDate());
+                stmt.setInt(3, trade.getSeller());
+                stmt.setInt(4, trade.getBuyer());
+                stmt.setInt(5, trade.getType().ordinal());
+                stmt.setBoolean(6, trade.isBuy());
+                stmt.setInt(7, trade.getQuantity());
+                stmt.setInt(8, trade.getPpu());
+                stmt.setInt(9, trade.getType().ordinal());
+                stmt.setLong(10, trade.getDate_accepted());
+                stmt.setInt(11, trade.getParent_id());
             }
         });
     }
 
-    public Offer getLatestTrade() {
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRADES ORDER BY tradeId DESC LIMIT 0, 1")) {
-
-            int maxId = 6620000;
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return create(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+    public List<DBTrade> getTrades(long startDate) {
+        return getTrades(f ->
+                f.where(QueryCondition.greater("date", startDate))
+        );
     }
 
-    // `tradeId` INT NOT NULL PRIMARY KEY, `date` INT NOT NULL, seller INT NOT NULL, buyer INT NOT NULL, resource INT NOT NULL, isBuy INT NOT NULL, quantity INT NOT NULL, ppu INT NOT NULL
+    public List<DBTrade> getTrades(ResourceType type, long startDate, long endDate) {
+        return getTrades(f ->
+                f.where(QueryCondition.equals("resource", type.ordinal()))
+                        .where(QueryCondition.greater("date", startDate))
+                        .where(QueryCondition.less("date", endDate))
+        );
+    }
 
+    public List<DBTrade> getTrades(int nationId, long startDate) {
+        return getTrades(f -> f.where(QueryCondition.greater("date", startDate))
+                .where(QueryCondition.equals("seller", nationId).or(QueryCondition.equals("buyer", nationId)))
+        );
+    }
+    public List<DBTrade> getTrades(Consumer<com.ptsmods.mysqlw.query.builder.SelectBuilder> query) {
+        List<DBTrade> result = new ArrayList<>();
+        com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADES")
+                .select("*");
+        if (query != null) query.accept(builder);
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                result.add(new DBTrade(rs));
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
     public Map<Long, Double> getAverage(long minDate, ResourceType type, int minQuantity, int min, int max) {
         String query = "select\n" +
                 "trades.date,sum(ppu * quantity),sum(quantity)\n" +
@@ -364,100 +310,5 @@ public class TradeDB extends DBMainV2 {
             e.printStackTrace();
         }
         return null;
-    }
-
-    public List<Offer> getOffers(long minDateMs) {
-        ArrayList<Offer> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRADES WHERE DATE > ?")) {
-            stmt.setLong(1, minDateMs);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(create(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public List<Offer> getOffers(ResourceType type, long minDateMs) {
-        ArrayList<Offer> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRADES WHERE DATE > ? AND resource = ?")) {
-            stmt.setLong(1, minDateMs);
-            stmt.setInt(2, type.ordinal());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(create(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public List<Offer> getOffers(ResourceType type, long start, long end) {
-        ArrayList<Offer> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRADES WHERE resource = ? AND DATE > ? AND DATE < ?")) {
-            stmt.setInt(1, type.ordinal());
-            stmt.setLong(2, start);
-            stmt.setLong(3, end);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(create(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public Offer getOffer(int tradeId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRADES WHERE tradeId = ?")) {
-            stmt.setLong(1, tradeId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return create(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public Offer create(ResultSet rs) throws SQLException {
-        int tradeId = rs.getInt("tradeId");
-        long date = rs.getLong("date");
-        Integer seller = getInt(rs, "seller");
-        Integer buyer = getInt(rs, "buyer");
-        ResourceType type = ResourceType.values[rs.getInt("resource")];
-        boolean isBuy = rs.getBoolean("isBuy");
-        int quantity = rs.getInt("quantity");
-        int ppu = rs.getInt("ppu");
-        return new Offer(seller, buyer, type, isBuy, quantity, ppu, tradeId, date);
-    }
-
-    public List<Offer> getOffers(int nationId, long cutoffMs) {
-            ArrayList<Offer> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRADES WHERE DATE > ? AND (seller = ? OR buyer = ?)")) {
-            stmt.setLong(1, cutoffMs);
-            stmt.setInt(2, nationId);
-            stmt.setInt(3, nationId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(create(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 }

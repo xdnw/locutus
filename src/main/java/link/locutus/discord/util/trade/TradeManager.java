@@ -1,12 +1,18 @@
 package link.locutus.discord.util.trade;
 
+import com.politicsandwar.graphql.model.Color;
 import com.politicsandwar.graphql.model.Radiation;
+import com.politicsandwar.graphql.model.Trade;
+import com.politicsandwar.graphql.model.TradeType;
+import com.ptsmods.mysqlw.query.QueryOrder;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.event.trade.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
@@ -20,7 +26,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import link.locutus.discord.apiv1.domains.subdomains.TradeContainer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -37,56 +42,52 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TradeManager {
-    private final Map<ResourceType, Integer> high;
-    private final Map<ResourceType, Integer> low;
-    private final Map<ResourceType, Integer> highNation;
-    private final Map<ResourceType, Integer> lowNation;
 
+    private int[] low, high;
     private double[] highAvg;
     private double[] lowAvg;
-
-    private final Map<ResourceType, Double> stockPile;
     private final link.locutus.discord.db.TradeDB tradeDb;
 
+    private Map<Integer, DBTrade> activeTradesById = new ConcurrentHashMap<>();
+
     public TradeManager() throws SQLException, ClassNotFoundException {
-        this.stockPile = new ConcurrentHashMap<>();
         this.tradeDb = new link.locutus.discord.db.TradeDB();
-        this.high = tradeDb.getTradePrice(true);
-        this.low = tradeDb.getTradePrice(false);
-        this.lowNation = new HashMap<>();
-        this.highNation = new HashMap<>();
+    }
+
+    private void updateLowHighCache() {
+        double[] low = ResourceType.getBuffer();
+        Arrays.fill(low, Double.MAX_VALUE);
+        double[] high = ResourceType.getBuffer();
+        for (DBTrade trade : activeTradesById.values()) {
+            if (trade.getType() != TradeType.GLOBAL) continue;
+            low[trade.getResource().ordinal()] = Math.min(low[trade.getResource().ordinal()], trade.getPpu());
+            high[trade.getResource().ordinal()] = Math.max(high[trade.getResource().ordinal()], trade.getPpu());
+        }
+    }
+
+    private void loadActiveTrades() {
+        activeTradesById = tradeDb.getActiveTrades().stream().collect(Collectors.toConcurrentMap(DBTrade::getTradeId, Function.identity()));
+        updateLowHighCache();
     }
 
     public synchronized void load() {
         if (lowAvg != null) return;
         long cutOff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
-        List<Offer> trades = getTradeDb().getOffers(cutOff);
+        List<DBTrade> trades = getTradeDb().getTrades(cutOff);
         if (trades.isEmpty() && Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
-            try {
-                updateTradeList(true, false);
-                trades = getTradeDb().getOffers(cutOff);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            Locutus.imp().runEventsAsync(this::updateTradeList);
+            trades = getTradeDb().getTrades(cutOff);
         }
 
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = getAverage(trades);
@@ -98,9 +99,9 @@ public class TradeManager {
         highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
     }
 
-    public Collection<Transfer> toTransfers(Collection<Offer> offers, boolean onlyMoneyTrades) {
+    public Collection<Transfer> toTransfers(Collection<DBTrade> offers, boolean onlyMoneyTrades) {
         ArrayList<Transfer> allTransfers = new ArrayList<>();
-        for (Offer offer : offers) {
+        for ( DBTrade offer : offers) {
             int per = offer.getPpu();
             ResourceType type = offer.getResource();
             if (per > 1 && (per < 10000 || (type != ResourceType.FOOD && per < 100000))) {
@@ -108,23 +109,23 @@ public class TradeManager {
             } else if (!onlyMoneyTrades) {
                 continue;
             }
-            long amount = offer.getAmount();
+            long amount = offer.getQuantity();
             if (per <= 1) {
                 amount = offer.getTotal();
                 type = ResourceType.MONEY;
             }
-            Transfer transfer = new Transfer(offer.getEpochms(), null, offer.getSeller(), false, offer.getBuyer(), false, 0, type, amount);
+            Transfer transfer = new Transfer(offer.getDate(), null, offer.getSeller(), false, offer.getBuyer(), false, 0, type, amount);
             allTransfers.add(transfer);
         }
         return allTransfers;
     }
 
     public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(long cutOff) {
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(cutOff);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(cutOff);
         return getAverage(trades);
     }
 
-    public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<Offer> trades) {
+    public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades) {
         return getAverage(trades, new Function<ResourceType, Integer>() {
             @Override
             public Integer apply(ResourceType type) {
@@ -172,7 +173,7 @@ public class TradeManager {
         });
     }
 
-    public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<Offer> trades, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {
+    public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {
         long[][] ppuHigh = new long[ResourceType.values.length][];
         long[][] ppuLow = new long[ResourceType.values.length][];
         int[] ppuWindowLow = new int[ResourceType.values.length];
@@ -198,10 +199,10 @@ public class TradeManager {
             ppuLow[i] = new long[len];
         }
 
-        for (Offer offer : trades) {
+        for ( DBTrade offer : trades) {
             ResourceType type = offer.getResource();
             int factor = type == ResourceType.FOOD ? 1 : 25;
-            if (offer.getPpu() <= 20 * factor || offer.getPpu() > (type == ResourceType.FOOD ? 200 : 10000)) {
+            if (offer.getPpu() <= 20 * factor || offer.getPpu() > 300 * factor) {
                 continue;
             }
             long[] ppuArr;
@@ -212,12 +213,13 @@ public class TradeManager {
             }
             int min = ppuWindowLow[type.ordinal()];
             if (min == -1) {
-                ppuArr[0] += offer.getAmount();
-                ppuArr[1] += offer.getPpu() * (long) offer.getAmount();
+                ppuArr[0] += offer.getQuantity();
+                ppuArr[1] += offer.getPpu() * (long) offer.getQuantity();
             } else {
                 int arrI = offer.getPpu() - min;
+                if (ppuArr == null) System.out.println("remove:||Null ppu " + type + " | " + offer.getTradeId());
                 if (arrI >= 0 && arrI < ppuArr.length) {
-                    ppuArr[arrI] += offer.getAmount();
+                    ppuArr[arrI] += offer.getQuantity();
                 }
             }
         }
@@ -271,28 +273,28 @@ public class TradeManager {
         return totals;
     }
 
-    public long[] totalByResource(Collection<Offer> offers) {
+    public long[] totalByResource(Collection<DBTrade> offers) {
         long[] total = new long[ResourceType.values.length];
-        for (Offer offer : offers) {
+        for ( DBTrade offer : offers) {
             total[offer.getResource().ordinal()] += offer.getTotal();
         }
         return total;
     }
 
-    public long[] volumeByResource(Collection<Offer> offers) {
+    public long[] volumeByResource(Collection<DBTrade> offers) {
         long[] volume = new long[ResourceType.values.length];
-        for (Offer offer : offers) {
-            volume[offer.getResource().ordinal()] += offer.getAmount();
+        for ( DBTrade offer : offers) {
+            volume[offer.getResource().ordinal()] += offer.getQuantity();
         }
         return volume;
     }
 
-    public Collection<Offer> filterOutliers(Collection<Offer> offers) {
-        List<Offer> result = new ArrayList<>(offers.size());
-        for (Offer offer : offers) {
+    public Collection<DBTrade> filterOutliers(Collection<DBTrade> offers) {
+        List<DBTrade> result = new ArrayList<>(offers.size());
+        for ( DBTrade offer : offers) {
             ResourceType type = offer.getResource();
             int factor = type == ResourceType.FOOD ? 1 : 25;
-            if (offer.getPpu() <= 20 * factor || offer.getPpu() > (type == ResourceType.FOOD ? 200 : 10000)) {
+            if (offer.getPpu() <= 20 * factor || offer.getPpu() > (type == ResourceType.FOOD ? 300 : 10000)) {
                 continue;
             }
             result.add(offer);
@@ -300,25 +302,25 @@ public class TradeManager {
         return result;
     }
 
-    public Collection<Offer> getLow(Collection<Offer> offers) {
+    public Collection<DBTrade> getLow(Collection<DBTrade> offers) {
         return offers.stream().filter(f -> f.isBuy()).collect(Collectors.toList());
     }
 
-    public Collection<Offer> getHigh(Collection<Offer> offers) {
+    public Collection<DBTrade> getHigh(Collection<DBTrade> offers) {
         return offers.stream().filter(f -> !f.isBuy()).collect(Collectors.toList());
     }
 
-    public Map<Integer, double[]> ppuByNation(Collection<Offer> offers) {
+    public Map<Integer, double[]> ppuByNation(Collection<DBTrade> offers) {
         return ppuByNation(offers, false);
     }
 
-    public Map<Integer, double[]> ppuByNation(Collection<Offer> offers, boolean byAA) {
+    public Map<Integer, double[]> ppuByNation(Collection<DBTrade> offers, boolean byAA) {
         Map<Integer, long[]> volume = new HashMap<>();
         Map<Integer, double[]> ppu = new HashMap<>();
 
         int len = ResourceType.values.length;
 
-        for (Offer offer : offers) {
+        for ( DBTrade offer : offers) {
             int sender = offer.getSeller();
             int receiver = offer.getBuyer();
 
@@ -330,7 +332,7 @@ public class TradeManager {
             }
 
             int ord = offer.getResource().ordinal();
-            int amt = (int) offer.getAmount();
+            int amt = (int) offer.getQuantity();
             double total = offer.getTotal();
 
             volume.computeIfAbsent(sender, f -> new long[len])[ord] += amt;
@@ -426,33 +428,19 @@ public class TradeManager {
         return tradeDb;
     }
 
-    public Double setStockStr(String type, Number value) {
-        return setStock(ResourceType.valueOf(type.toUpperCase()), value.doubleValue());
-    }
-
     public int getPrice(ResourceType type, boolean isBuy) {
         if (type == ResourceType.MONEY) return 1;
-        return isBuy ? high.get(type) : low.get(type);
+        return isBuy ? high[type.ordinal()] : low[type.ordinal()];
     }
 
     public int getHigh(ResourceType type) {
         if (type == ResourceType.MONEY) return 1;
-        return high.getOrDefault(type, 0);
-    }
-
-    public DBNation getLowNation(ResourceType type) {
-        Integer id = lowNation.get(type);
-        return id == null ? null : Locutus.imp().getNationDB().getNation(id);
-    }
-
-    public DBNation getHighNation(ResourceType type) {
-        Integer id = highNation.get(type);
-        return id == null ? null : Locutus.imp().getNationDB().getNation(id);
+        return high[type.ordinal()];
     }
 
     public int getLow(ResourceType type) {
         if (type == ResourceType.MONEY) return 1;
-        return low.getOrDefault(type, 0);
+        return low[type.ordinal()];
     }
 
     public double getHighAvg(ResourceType type) {
@@ -465,84 +453,258 @@ public class TradeManager {
         return lowAvg[type.ordinal()];
     }
 
-    public Map<ResourceType, Integer> getHigh() {
-        return high;
+    public Map<ResourceType, Double> getHigh() {
+        Map<ResourceType, Double> result = new EnumMap<ResourceType, Double>(ResourceType.class);
+        for (int i = 0; i < high.length; i++) {
+            result.put(ResourceType.values[i], (double) high[i]);
+        }
+        return result;
     }
 
-    public Map<ResourceType, Integer> getLow() {
-        return low;
+    public Map<ResourceType, Double> getLow() {
+        Map<ResourceType, Double> result = new EnumMap<ResourceType, Double>(ResourceType.class);
+        for (int i = 0; i < low.length; i++) {
+            result.put(ResourceType.values[i], (double) low[i]);
+        }
+        return result;
     }
 
-    public void setHigh(ResourceType type, Offer offer) {
-        if (offer == null) {
-            this.high.remove(type);
-            this.highNation.remove(type);
+
+
+    private boolean fetchNewTradesNextTick = true;
+
+    public synchronized boolean updateTradeList(Consumer<Event> eventConsumer) throws IOException {
+        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        // get last trade
+        List<DBTrade> latestTrades = tradeDb.getTrades(f -> f.order("tradeId", QueryOrder.OrderDirection.DESC).limit(1));
+        DBTrade latest = latestTrades.isEmpty() ? null : latestTrades.get(0);
+        int latestId = latest == null ? 0 : latest.getTradeId();
+        long latestDate = latest == null ? 0 : latest.getDate();
+        if (latest == null || latestDate < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(2)) {
+
+            ArrayDeque<DBTrade> trades = new ArrayDeque<>();
+            api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), new Predicate<Trade>() {
+                @Override
+                public boolean test(Trade trade) {
+                    trades.add(new DBTrade(trade));
+                    if (trades.size() > 1000) {
+                        tradeDb.saveTrades(new ArrayList<>(trades));
+                        trades.clear();
+                    }
+                    return false;
+                }
+            });
+            tradeDb.saveTrades(new ArrayList<>(trades));
+
         } else {
-            this.high.put(type, offer.getPpu());
-            this.highNation.put(type, offer.getBuyer());
-            tradeDb.setTradePrice(type, offer.getPpu(), true);
-        }
-    }
+            boolean mixupAlerts = (System.currentTimeMillis() - latestDate) < TimeUnit.MINUTES.toMillis(30);
 
-    public void setLow(ResourceType type, Offer offer) {
-        if (offer == null) {
-            this.low.remove(type);
-            this.lowNation.remove(type);
-        } else {
-            this.low.put(type, offer.getPpu());
-            this.lowNation.put(type, offer.getSeller());
-            tradeDb.setTradePrice(type, offer.getPpu(), false);
-        }
-    }
+            boolean fetchedNewTrades = false;
+            List<Trade> fetched = new ArrayList<>();
 
-    public Double setStock(ResourceType type, double value) {
-        if (type == null) {
-            new Exception().printStackTrace();
-        }
-        return this.stockPile.put(type, value);
-    }
+            if (fetchNewTradesNextTick) {
+                List<Trade> trades = api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), f -> true);
+                fetched.addAll(trades);
 
-    public double getStock(ResourceType type) {
-        return stockPile.getOrDefault(type, 0d);
-    }
-
-    public double getBalance() {
-        return stockPile.getOrDefault(ResourceType.MONEY, 0d);
-    }
-
-    public synchronized boolean updateTradeList(boolean force, boolean alerts) throws IOException {
-        List<TradeContainer> trades = new ArrayList<>();
-        if (force) {
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.MONEY) continue;
-                PoliticsAndWarV2 api = Locutus.imp().getPnwApi();
-                System.out.println("API " + api);
-                List<TradeContainer> apiTrades = api.getTradehistory(10000, type).getTrades();
-                trades.addAll(apiTrades);
+                fetchedNewTrades = true;
+                fetchNewTradesNextTick = false;
             }
-        } else {
-            trades = Locutus.imp().getPnwApi().getTradehistoryByAmount(10000).getTrades();
-        }
 
-        Offer latest = tradeDb.getLatestTrade();
-        int latestId = latest == null ? -1 : latest.getTradeId();
+            // fetch new trades
+            {
+                List<Integer> idsToFetch = new ArrayList<>(activeTradesById.keySet());
+                int idToAdd = latestId + 1;
+                if (!fetchedNewTrades) {
+                    while (idsToFetch.size() < 999) {
+                        idsToFetch.add(idToAdd++);
+                    }
+                    Collections.sort(idsToFetch);
+                }
 
-        Set<Integer> alertedNations = new HashSet<>();
-        List<Offer> offers = new ArrayList<>();
-        for (TradeContainer trade : trades) {
-            Offer offer = new Offer(trade);
+                api.iterateIdChunks(idsToFetch, 999, new Consumer<List<Integer>>() {
+                    @Override
+                    public void accept(List<Integer> integers) {
+                        List<Trade> trades = api.fetchTradesWithInfo(f -> f.setId(integers), f -> true);
+                        fetched.addAll(trades);
+                    }
+                });
+                int finalIdToAdd = idToAdd;
+                if (!fetchedNewTrades && (idsToFetch.size() > 999 || fetched.stream().anyMatch(t -> t.getId() >= finalIdToAdd - 1))) {
+                    fetchNewTradesNextTick = true;
+                }
 
-            if (offer.getTradeId() > latestId && alerts) {
-                handleTradeAlerts(offer, alertedNations);
+                processTrades(fetched, idsToFetch, mixupAlerts, eventConsumer);
             }
-            offers.add(offer);
+
+
+
+
+            List<DBTrade> newTrades = new ArrayList<>();
         }
-        tradeDb.addTrades(offers);
+        updateLowHighCache();
+
+
+
+//        List<TradeContainer> trades = new ArrayList<>();
+//        if (force) {
+//            for (ResourceType type : ResourceType.values) {
+//                if (type == ResourceType.MONEY) continue;
+//                PoliticsAndWarV2 api = Locutus.imp().getPnwApi();
+//                System.out.println("API " + api);
+//                List<TradeContainer> apiTrades = api.getTradehistory(10000, type).getTrades();
+//                trades.addAll(apiTrades);
+//            }
+//        } else {
+//            trades = Locutus.imp().getPnwApi().getTradehistoryByAmount(10000).getTrades();
+//        }
+//
+//        DBTrade latest = tradeDb.getLatestTrade();
+//        int latestId = latest == null ? -1 : latest.getTradeId();
+//
+//        Set<Integer> alertedNations = new HashSet<>();
+//        List<DBTrade> DBTrades = new ArrayList<>();
+//        for (TradeContainer trade : trades) {
+//             DBTrade offer = new DBTrade(trade);
+//
+//            if (offer.getTradeId() > latestId && alerts) {
+//                handleTradeAlerts(DBTrade, alertedNations);
+//            }
+//            DBTrades.add(DBTrade);
+//        }
+//        tradeDb.addTrades(DBTrades);
 
         return true;
     }
 
-    public void handleTradeAlerts(Offer offer, Set<Integer> alertedNations) {
+    // cached
+    private Map<ResourceType, List<TradeSubscription>> subscriptionsByRss;
+    private long lastSubscriptionUpdate;
+
+    public Map<ResourceType, List<TradeSubscription>> getSubscriptions() {
+        // cache by minute
+        Map<ResourceType, List<TradeSubscription>> localSubMap = this.subscriptionsByRss;
+        if (localSubMap != null && System.currentTimeMillis() - lastSubscriptionUpdate < TimeUnit.MINUTES.toMillis(1)) {
+            return localSubMap;
+        }
+        lastSubscriptionUpdate = System.currentTimeMillis();
+        List<TradeSubscription> subscriptions = tradeDb.getSubscriptions(f -> {});
+        localSubMap = new EnumMap<>(ResourceType.class);
+        for (TradeSubscription subscription : subscriptions) {
+            localSubMap.computeIfAbsent(subscription.getResource(), k -> new ArrayList<>()).add(subscription);
+        }
+        this.subscriptionsByRss = localSubMap;
+        return localSubMap;
+    }
+
+    public Map<ResourceType, DBTrade> getTopTrades(boolean isBuy) {
+        Map<ResourceType, DBTrade> result = new EnumMap<ResourceType, DBTrade>(ResourceType.class);
+        activeTradesById.forEach((id, trade) -> {
+            if (trade.isBuy() == isBuy && trade.getType() == TradeType.GLOBAL) {
+                DBTrade existing = result.get(trade.getResource());
+                if (
+                        existing == null ||
+                    (isBuy ? trade.getPpu() > existing.getPpu() : trade.getPpu() < existing.getPpu()) ||
+                    (trade.getPpu() == existing.getPpu() && trade.getDate() < existing.getDate()))
+                {
+                    result.put(trade.getResource(), trade);
+                }
+            }
+        });
+        return result;
+    }
+
+    private void processTrades(List<Trade> trades, List<Integer> idsRequested, boolean mixupAlerts, Consumer<Event> eventConsumer) {
+        Map<ResourceType, DBTrade> topBuys = getTopTrades(true);
+        Map<ResourceType, DBTrade> topSells = getTopTrades(false);
+
+        Map<Integer, DBTrade> newTrades = new HashMap<>();
+        for (Trade trade : trades) {
+            DBTrade dbTrade = new DBTrade(trade);
+            newTrades.put(dbTrade.getTradeId(), dbTrade);
+        }
+
+        Set<DBTrade> toDelete = new HashSet<>();
+        Set<DBTrade> toSave = new HashSet<>();
+
+        Set<ResourceType> resourcesAffected = new HashSet<>();
+
+        // Delete trades
+        for (int id : idsRequested) {
+            if (newTrades.containsKey(id)) continue;
+            DBTrade existing = activeTradesById.remove(id);
+            if (existing != null) {
+                existing.setDate_accepted(0);
+                toDelete.add(existing);
+                resourcesAffected.add(existing.getResource());
+
+                if (eventConsumer != null) eventConsumer.accept(new TradeDeleteEvent(existing));
+            }
+        }
+
+        for (Map.Entry<Integer, DBTrade> entry : newTrades.entrySet()) {
+            DBTrade previous = activeTradesById.get(entry.getKey());
+            DBTrade current = entry.getValue();
+
+            if (!current.equals(previous)) {
+                resourcesAffected.add(current.getResource());
+                toSave.add(current);
+
+                if (eventConsumer != null) {
+                    if (previous == null) {
+                        eventConsumer.accept(new TradeCreateEvent(previous));
+                    } else if (current.isActive()) {
+                        eventConsumer.accept(new TradeUpdateEvent(previous, current));
+                    } else {
+                        eventConsumer.accept(new TradeCompleteEvent(previous, current));
+                    }
+                }
+                if (current.isActive()) {
+                    activeTradesById.put(current.getTradeId(), current);
+                } else {
+                    activeTradesById.remove(current.getTradeId());
+                }
+            }
+        }
+
+        if (eventConsumer != null && mixupAlerts) {
+            Map<ResourceType, List<TradeSubscription>> subscriptions = getSubscriptions();
+
+            Map<ResourceType, DBTrade> topBuysNew = getTopTrades(true);
+            Map<ResourceType, DBTrade> topSellsNew = getTopTrades(false);
+
+            for (ResourceType type : resourcesAffected) {
+                List<TradeSubscription> subscriptionsToCall = new ArrayList<>();
+
+                DBTrade topBuyOld = topBuys.get(type);
+                DBTrade topSellOld = topSells.get(type);
+                DBTrade topBuy = topBuysNew.get(type);
+                DBTrade topSell = topSellsNew.get(type);
+
+                List<TradeSubscription> rssSubs = subscriptions.get(type);
+                if (rssSubs != null) {
+                    for (TradeSubscription subscription : rssSubs) {
+                        if (subscription.applies(topBuy, topSell, topBuyOld, topSellOld)) {
+                            subscriptionsToCall.add(subscription);
+                        }
+                    }
+                }
+                if (!subscriptionsToCall.isEmpty()) {
+                    eventConsumer.accept(new BulkTradeSubscriptionEvent(subscriptionsToCall, topBuyOld, topSellOld, topBuy, topSell));
+                }
+            }
+        }
+
+        tradeDb.saveTrades(toSave);
+        tradeDb.deleteTradesById(toDelete.stream().map(DBTrade::getTradeId).toList());
+
+
+
+        // mixups
+        // undercut
+        // subscriptions
+    }
+
+    public void handleTradeAlerts(DBTrade offer, Set<Integer> alertedNations) {
         if (offer.getResource() == ResourceType.CREDITS) return;
         if (offer.getTotal() <= 50000) return; // Don't do alerts for less than 50k
         if (offer.getPpu() < 10 || offer.getPpu() > 10000) return;
@@ -553,8 +715,8 @@ public class TradeManager {
         DBNation acceptingNation = DBNation.byId(acceptingNationId);
         if (acceptingNation == null || acceptingNation.getPosition() <= 1 || acceptingNation.getAlliance_id() == 0) return;
 
-        DBNation offeringNation = DBNation.byId(offer.isBuy() ? offer.getSeller() : offer.getBuyer());
-        if (offeringNation == null || offeringNation.getAlliance_id() == acceptingNation.getAlliance_id()) return;
+        DBNation DBTradeingNation = DBNation.byId(offer.isBuy() ? offer.getSeller() : offer.getBuyer());
+        if (DBTradeingNation == null || DBTradeingNation.getAlliance_id() == acceptingNation.getAlliance_id()) return;
 
         if (offer.isBuy() && offer.getPpu() < getHigh(offer.getResource())) return; // bought cheaper than market
         if (!offer.isBuy() && offer.getPpu() > getLow(offer.getResource())) return; // bought higher than market
@@ -577,18 +739,18 @@ public class TradeManager {
         Set<Integer> tradePartners = db.getAllies(true);
         tradePartners.addAll(db.getCoalition(Coalition.TRADE));
 
-        if (!tradePartners.contains(offeringNation.getAlliance_id())) return;
+        if (!tradePartners.contains(DBTradeingNation.getAlliance_id())) return;
 
         alertedNations.add(acceptingNationId);
 
         String type = offer.isBuy() ? "buy" : "sell";
-        String offerStr = MathMan.format(offer.getAmount()) + "x" + offer.getResource() + " @ $" + MathMan.format(offer.getPpu()) + " -> " + offeringNation.getNation();
+        String DBTradeStr = MathMan.format(offer.getQuantity()) + "x" + offer.getResource() + " @ $" + MathMan.format(offer.getPpu()) + " -> " + DBTradeingNation.getNation();
         StringBuilder message = new StringBuilder();
 
         message.append(user.getAsMention() + " (see pins to opt out)");
-        message.append("\nYou accepted a " + type + " offer directly from a nation that is not a trade partner (" + offerStr + ")");
+        message.append("\nYou accepted a " + type + " DBTrade directly from a nation that is not a trade partner (" + DBTradeStr + ")");
         message.append("\nConsider instead:");
-        message.append("\n1. Creating trade offers, see the trading guide for more info: <https://docs.google.com/document/d/1sO4TnONEg3nPMr3SXK_Q1zeYj--V42xa-hhVKHxhv1A/edit#heading=h.723u4ibh8mxy>");
+        message.append("\n1. Creating trade DBTrades, see the trading guide for more info: <https://docs.google.com/document/d/1sO4TnONEg3nPMr3SXK_Q1zeYj--V42xa-hhVKHxhv1A/edit#heading=h.723u4ibh8mxy>");
         message.append("\n2. Buy from the alliance by asking in " + rssChannel.getAsMention());
         message.append("\n3. Sell to the alliance by depositing with the note `#cash`");
         Set<String> tradePartnerNames = new LinkedHashSet<>();
@@ -657,125 +819,12 @@ public class TradeManager {
         radiation.put(continent, new AbstractMap.SimpleEntry<>(rads, currentTurn));
     }
 
-    private Map<NationColor, Integer> tradeBonus;
-    private long tradeBonusTurn = 0L;
-
-    public synchronized int getTradeBonus(NationColor color) {
-        Callable<Map<NationColor, Integer>> task;
-        task = new Callable<Map<NationColor, Integer>>() {
-            @Override
-            public Map<NationColor, Integer> call() throws Exception {
-                Map<NationColor, Integer> map = new HashMap<>();
-                String html = FileUtil.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/leaderboards/display=color");
-                Document dom = Jsoup.parse(html);
-                Element table = dom.getElementsByClass("nationtable").get(0);
-                Elements rows = table.getElementsByTag("tr");
-                for (int i = 1; i < rows.size(); i++) {
-                    Element row = rows.get(i);
-                    Elements columns = row.getElementsByTag("td");
-                    String rowColor = columns.get(0).child(0).attr("title");
-                    Integer value = MathMan.parseInt(columns.get(5).text());
-                    NationColor color = NationColor.valueOf(rowColor.toUpperCase());
-                    map.put(color, value);
-                }
-                return map;
-            }
-        };
-        if (tradeBonus == null) {
-            try {
-                tradeBonus = task.call();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else {
-            long currentTurn = TimeUtil.getTurn();
-            if (currentTurn != tradeBonusTurn) {
-                Map<NationColor, Integer> tradeBonusTmp = TimeUtil.runTurnTask(TradeManager.class.getSimpleName() + ".bonus", aLong -> {
-                    try {
-                        return task.call();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-                tradeBonusTurn = currentTurn;
-                if (tradeBonusTmp != null && !tradeBonusTmp.isEmpty()) {
-                    tradeBonus = tradeBonusTmp;
-                }
-            }
+    public void updateColorBlocs() {
+        for (Color color : Locutus.imp().getV3().getColors()) {
+            NationColor dbColor = NationColor.fromV3(color);
+            dbColor.setTurnBonus(color.getTurn_bonus());
+            dbColor.setVotedName(color.getBloc_name());
         }
-        return tradeBonus != null ? tradeBonus.getOrDefault(color, 0) : 0;
-    }
-
-//    public void updateSheets() throws GeneralSecurityException, IOException {
-//        Map<ResourceType, Map<Integer, LongAdder>> sold = new EnumMap<>(ResourceType.class);
-//        Map<ResourceType, Map<Integer, LongAdder>> bought = new EnumMap<>(ResourceType.class);
-//
-//        long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(7).toEpochSecond() * 1000L;
-//
-//        TradeDB db = Locutus.imp().getTradeManager().getTradeDb();
-//        for (Offer offer : db.getOffers(cutoffMs)) {
-//            // Ignore outliers
-//            int ppu = offer.getPpu();
-//            if (offer.getResource() != ResourceType.CREDITS) {
-//                if (ppu <= 1 || ppu >= 10000) continue;
-//            } else {
-//                if (ppu < 15000000 || ppu >= 30000000) continue;
-//                ppu /= 10000;
-//            }
-//
-//            Map<ResourceType, Map<Integer, LongAdder>> map = offer.isBuy() ? sold : bought;
-//            Map<Integer, LongAdder> rssMap = map.get(offer.getResource());
-//            if (rssMap == null) {
-//                rssMap = new HashMap<>();
-//                map.put(offer.getResource(), rssMap);
-//            }
-//            LongAdder cumulative = rssMap.get(ppu);
-//            if (cumulative == null) {
-//                cumulative = new LongAdder();
-//                rssMap.put(ppu, cumulative);
-//            }
-//            cumulative.add(offer.getAmount());
-//        }
-//
-//        updateSheet(Settings.INSTANCE.Drive.TRADE_VOLUME_SPREADSHEET_BUY, bought);
-//        updateSheet(Settings.INSTANCE.Drive.TRADE_VOLUME_SPREADSHEET_SELL, sold);
-//    }
-
-    public void updateSheet(String sheetId, Map<ResourceType, Map<Integer, LongAdder>> prices) throws GeneralSecurityException, IOException {
-        SpreadSheet sheet = SpreadSheet.create(sheetId);
-        List<Object> header = new ArrayList<>();
-        header.add("PPU");
-        for (ResourceType value : ResourceType.values) {
-            if (value != ResourceType.MONEY) {
-                header.add(value.name());
-            }
-        }
-        sheet.setHeader(header);
-
-        for (int i = 30; i < 5000; i++) {
-            header.set(0, Integer.toString(i));
-            for (int j = 1; j < ResourceType.values.length; j++) {
-                ResourceType value = ResourceType.values[j];
-                Map<Integer, LongAdder> soldByType = prices.get(value);
-                if (soldByType == null) {
-                    header.set(j, null);
-                    continue;
-                }
-                LongAdder amt = soldByType.get(i);
-                Object previous = header.get(j);
-                if (!(previous instanceof Long)) {
-                    previous = 0L;
-                }
-                if (amt == null) {
-                    header.set(j, previous);
-                    continue;
-                }
-                header.set(j, (Long) previous + amt.longValue());
-            }
-
-            sheet.addRow(header);
-        }
-
-        sheet.set(0, 7);
+        tradeDb.saveColorBlocs();
     }
 }

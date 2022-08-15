@@ -2562,7 +2562,7 @@ public class DBNation implements NationOrAlliance {
 //            int days = 7;
 //            long cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
 //            List<Transaction2> transfers = Locutus.imp().getBankDB().getNationTransfers(nation_id, cutoffMs);
-//            List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nation_id, cutoffMs);
+//            List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nation_id, cutoffMs);
 //
 //            Map<ResourceType, Double> offset = new HashMap<>();
 //            Map<ResourceType, Double> bank = new HashMap<>();
@@ -2575,7 +2575,7 @@ public class DBNation implements NationOrAlliance {
 //                bank = PnwUtil.add(bank, PnwUtil.resourcesToMap(transfer.resources));
 //            }
 //
-//            for (Offer offer : trades) {
+//            for (DBTrade offer : trades) {
 //                Integer buyer = offer.getBuyer();
 //                Integer seller = offer.getSeller();
 //                int sign = (seller.equals(nation_id) ^ offer.isBuy()) ? -1 : 1;
@@ -4226,9 +4226,8 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void update(boolean bulk) {
-        ArrayDeque<Event> events = new ArrayDeque<>();
-        Locutus.imp().getNationDB().updateNations(List.of(nation_id), bulk, events::add);
-        Locutus.imp().runEventsAsync(events);
+        Locutus.imp().runEventsAsync(events ->
+        Locutus.imp().getNationDB().updateNations(List.of(nation_id), bulk, events));
     }
 
     public double[] projectCost(Project project) {

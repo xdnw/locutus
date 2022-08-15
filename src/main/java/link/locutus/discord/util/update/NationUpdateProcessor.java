@@ -22,7 +22,6 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -702,7 +701,7 @@ public class NationUpdateProcessor {
     private static void processVMTransfers(DBNation previous, DBNation current) {
         long cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14);
         List<Transaction2> transfers = Locutus.imp().getBankDB().getNationTransfers(current.getNation_id(), cutoffMs);
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(current.getNation_id(), cutoffMs);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(current.getNation_id(), cutoffMs);
 
         long total = 0;
 
@@ -726,7 +725,7 @@ public class NationUpdateProcessor {
             total += value;
         }
 
-        for (Offer offer : trades) {
+        for (DBTrade offer : trades) {
             if (offer.getPpu() > 1 && offer.getPpu() < 10000) {
                 continue;
             }
@@ -742,7 +741,7 @@ public class NationUpdateProcessor {
             int otherId = seller.equals(current.getNation_id()) ? buyer : seller;
             String name = PnwUtil.getBBUrl(otherId, false);
 
-            double value = offer.getPpu() > 1 ? offer.getAmount() * offer.getPpu() : Locutus.imp().getTradeManager().getLow(offer.getResource()) * offer.getAmount();
+            double value = offer.getPpu() > 1 ? offer.getQuantity() * offer.getPpu() : Locutus.imp().getTradeManager().getLow(offer.getResource()) * offer.getQuantity();
             map.put(name, map.getOrDefault(name, 0d) + value);
 
             total += value;

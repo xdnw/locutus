@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -27,7 +28,7 @@ public class TradeSubscriptions extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        Set<TradeDB.Subscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(event.getAuthor().getIdLong());
+        List<TradeSubscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(event.getAuthor().getIdLong());
         if (subscriptions.isEmpty()) {
             return "No subscriptions. Subscribe to get alerts using `" + Settings.commandPrefix(true) + "alert-trade`";
         }
@@ -36,15 +37,15 @@ public class TradeSubscriptions extends Command {
             String title = type.name();
             StringBuilder body = new StringBuilder();
 
-            for (TradeDB.Subscription subscription : subscriptions) {
-                if (subscription.resource == type) {
-                    String buySell = subscription.isBuy ? "Buy" : "Sell";
-                    String operator = subscription.above ? ">" : "<";
+            for (TradeSubscription subscription : subscriptions) {
+                if (subscription.getResource() == type) {
+                    String buySell = subscription.isBuy() ? "Buy" : "Sell";
+                    String operator = subscription.isAbove() ? ">" : "<";
 
-                    String msg = buySell + " " + subscription.resource.name().toLowerCase() + " " + operator + " " + subscription.ppu;
+                    String msg = buySell + " " + subscription.getResource().name().toLowerCase() + " " + operator + " " + subscription.getPpu();
 
                     body.append('\n').append(msg);
-                    String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(subscription.endDate)) + " (UTC)";
+                    String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(subscription.getDate())) + " (UTC)";
                     body.append(" until ").append(dateStr);
                 }
             }

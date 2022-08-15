@@ -1172,24 +1172,24 @@ public class NationDB extends DBMainV2 {
                 .build(cities -> {
                     DBCity buffer = new DBCity();
                     AtomicBoolean dirtyFlag = new AtomicBoolean();
-                    ArrayDeque<Event> events = new ArrayDeque<>();
-                    List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
+                    List<Map.Entry<Integer, DBCity>> citiesToSave = new ArrayList<>();
 
-                    for (City city : cities) {
-                        dirtyFlag.set(false);
+                    Locutus.imp().runEventsAsync(eventConsumer -> {
+                        for (City city : cities) {
+                            dirtyFlag.set(false);
 
-                        DBCity existing = getDBCity(city.getNation_id(), city.getId());
-                        DBCity dbCity = processCityUpdate(city, buffer, events::add, dirtyFlag);
-                        if (dirtyFlag.get()) {
-                            dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
+                            DBCity existing = getDBCity(city.getNation_id(), city.getId());
+                            DBCity dbCity = processCityUpdate(city, buffer, eventConsumer, dirtyFlag);
+                            if (dirtyFlag.get()) {
+                                citiesToSave.add(Map.entry(city.getNation_id(), dbCity));
+                            }
+                            if (existing == null) {
+                                markCityDirty(city.getNation_id(), city.getId(), dbCity.fetched);
+                            }
                         }
-                        if (existing == null) {
-                            markCityDirty(city.getNation_id(), city.getId(), dbCity.fetched);
-                        }
-                    }
+                    });
 
-                    Locutus.imp().runEventsAsync(events);
-                    saveCities(dirtyCities);
+                    saveCities(citiesToSave);
                 });
     }
 

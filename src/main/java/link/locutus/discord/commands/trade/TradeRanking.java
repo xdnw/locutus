@@ -6,10 +6,10 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -76,9 +76,9 @@ public class TradeRanking extends Command {
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(cutoffMs);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(cutoffMs);
 
-        for (Offer trade : trades) {
+        for (DBTrade trade : trades) {
             Integer buyer = trade.getBuyer();
             Integer seller = trade.getSeller();
 
@@ -101,21 +101,21 @@ public class TradeRanking extends Command {
                 int groupId = groupBy.apply(nation);
 
                 int sign = (nationId == seller ^ trade.isBuy()) ? 1 : -1;
-                long total = trade.getAmount() * (long) trade.getPpu();
+                long total = trade.getQuantity() * (long) trade.getPpu();
 
                 TradeProfitContainer container = tradeContainers.computeIfAbsent(groupId, f -> new TradeProfitContainer());
 
                 if (sign > 0) {
-                    container.inflows.put(type, trade.getAmount() + container.inflows.getOrDefault(type, 0L));
-                    container.sales.put(type, trade.getAmount() + container.sales.getOrDefault(type, 0L));
+                    container.inflows.put(type, trade.getQuantity() + container.inflows.getOrDefault(type, 0L));
+                    container.sales.put(type, trade.getQuantity() + container.sales.getOrDefault(type, 0L));
                     container.salesPrice.put(type, total + container.salesPrice.getOrDefault(type, 0L));
                 } else {
-                    container.outflow.put(type, trade.getAmount() + container.inflows.getOrDefault(type, 0L));
-                    container.purchases.put(type, trade.getAmount() + container.purchases.getOrDefault(type, 0L));
+                    container.outflow.put(type, trade.getQuantity() + container.inflows.getOrDefault(type, 0L));
+                    container.purchases.put(type, trade.getQuantity() + container.purchases.getOrDefault(type, 0L));
                     container.purchasesPrice.put(type, total + container.purchasesPrice.getOrDefault(type, 0L));
                 }
 
-                container.netOutflows.put(type, ((-1) * sign * trade.getAmount()) + container.netOutflows.getOrDefault(type, 0L));
+                container.netOutflows.put(type, ((-1) * sign * trade.getQuantity()) + container.netOutflows.getOrDefault(type, 0L));
                 container.netOutflows.put(ResourceType.MONEY, (sign * total) + container.netOutflows.getOrDefault(ResourceType.MONEY, 0L));
             }
         }

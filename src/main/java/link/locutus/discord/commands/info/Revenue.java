@@ -163,7 +163,7 @@ public class Revenue extends Command {
             }
 
             NationColor color = nation.getColor();
-            tradeBonus = Locutus.imp().getTradeManager().getTradeBonus(color) * 12;
+            tradeBonus = color.getTurnBonus() * 12L;
 
             if (!nation.hasUnsetMil()) {
                 boolean war = nation.getOff() > 0 || nation.getDef() > 0;

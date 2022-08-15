@@ -124,8 +124,6 @@ public class PoliticsAndWarV3 {
             }
         }
 
-        System.out.println(graphQLRequest.toQueryString() + " | " + graphQLRequest.getRequest());
-
         ResponseEntity<String> exchange = null;
         T result = null;
 
@@ -148,7 +146,10 @@ public class PoliticsAndWarV3 {
                 JsonNode json = (ObjectNode) jacksonObjectMapper.readTree(body);
 
                 if (json.has("errors")) {
-                    System.out.println(exchange.getBody());
+                    System.out.println("Body " + exchange.getBody());
+                    System.out.println("\n\n------\n");
+                    System.out.println(graphQLRequest.toQueryString() + " | " + graphQLRequest.getRequest());
+                    System.out.println("\n\n------\n");
                     JsonNode errors = (JsonNode) json.get("errors");
                     List<String> errorMessages = new ArrayList<>();
                     for (JsonNode error : errors) {
@@ -975,7 +976,8 @@ public class PoliticsAndWarV3 {
                         .requests()
                         .nation(new NationResponseProjection().id()),
                 MeQueryResponse.class);
-        if (result.me() == null) throw new GraphQLException("Error fetching api key " + result.toString());
+        System.out.println("Error fetching api key " + result.toString());
+        if (result.me() == null) throw new GraphQLException("Error fetching api key");
         return result.me();
     }
 
@@ -1157,6 +1159,18 @@ public class PoliticsAndWarV3 {
         return taxBracketMap;
     }
 
+    public void iterateIdChunks(List<Integer> ids, int maxSize, Consumer<List<Integer>> subListConsumer) {
+        ids = new ArrayList<>(ids);
+        Collections.sort(ids);
+        if (ids.size() <= maxSize) {
+            subListConsumer.accept(ids);
+        } else {
+            for (int i = 0; i < ids.size(); i += maxSize) {
+                List<Integer> subList = ids.subList(i, Math.min(i + maxSize, ids.size()));
+                subListConsumer.accept(subList);
+            }
+        }
+    }
     public List<Trade> fetchTradesWithInfo(Consumer<TradesQueryRequest> filter, Predicate<Trade> tradeResults) {
         TradesQueryRequest test = new TradesQueryRequest();
         return fetchTrades(TRADES_PER_PAGE, filter, new Consumer<TradeResponseProjection>() {
@@ -1210,6 +1224,16 @@ public class PoliticsAndWarV3 {
         });
 
         return allResults;
+    }
+
+    public List<Color> getColors() {
+        ColorsQueryResponse result = request(new ColorsQueryRequest(), new ColorResponseProjection()
+                        .color()
+                        .bloc_name()
+                        .turn_bonus(),
+                ColorsQueryResponse.class);
+        if (result.colors() == null) throw new GraphQLException("Error fetching colors");
+        return result.colors();
     }
 
     public List<Nation> fetchNationActive(List<Integer> ids) {
