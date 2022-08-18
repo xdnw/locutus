@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
@@ -15,21 +16,18 @@ import java.util.function.Predicate;
 
 public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     private final int baseInput;
-    private final Function<Nation, Boolean> hasWorks;
     private final double boostFactor;
     private final ResourceType output;
     private final ResourceType[] inputs;
     private boolean[] continents;
 
-    public AResourceBuilding(AResourceBuilding other) {
-        this(other, other.baseInput, other.boostFactor, other.hasWorks, other.output, other.inputs);
+    public AResourceBuilding(BuildingBuilder parent, ResourceType output) {
+        this(parent, output.getBaseInput(), output.getBoostFactor(), output, output.getInputs());
     }
-
-    public AResourceBuilding(Building parent, int baseInput, double boostFactor, Function<Nation, Boolean> hasWorks, ResourceType output, ResourceType... inputs) {
+    public AResourceBuilding(BuildingBuilder parent, int baseInput, double boostFactor, ResourceType output, ResourceType... inputs) {
         super(parent);
         this.baseInput = baseInput;
         this.boostFactor = boostFactor;
-        this.hasWorks = hasWorks;
         this.output = output;
         this.inputs = inputs;
     }
@@ -55,19 +53,17 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double profitConverted(double rads, Predicate hasProjects, JavaCity city, int amt) {
-        double profit = super.profitConverted(rads, hasProjects, city, amt);
+    public double profitConverted(Continent continent, double rads, Predicate hasProjects, JavaCity city, int amt) {
+        double profit = super.profitConverted(continent, rads, hasProjects, city, amt);
 
         int improvements = city.get(this);
 
-        Project project = output.getProject();
-        boolean hasProject = project != null && hasProjects.test(project);
 
-        double production = output.getProduction(rads, hasProject, city.getLand(), improvements);
+        double production = output.getProduction(continent, rads, hasProjects, city.getLand(), improvements);
         if (production != 0) {
             profit += PnwUtil.convertedTotalPositive(output, production);
 
-            double inputAmt = output.getInput(rads, hasProject, city, improvements);
+            double inputAmt = output.getInput(continent, rads, hasProjects, city, improvements);
 
             if (inputAmt > 0) {
                 switch (inputs.length) {
@@ -87,54 +83,39 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double[] profit(double rads, Predicate hasProjects, JavaCity city, double[] profitBuffer) {
-        profitBuffer = super.profit(rads, hasProjects, city, profitBuffer);
+    public double[] profit(Continent continent, double rads, Predicate hasProjects, JavaCity city, double[] profitBuffer, int turns) {
+        profitBuffer = super.profit(continent, rads, hasProjects, city, profitBuffer, turns);
 
         ResourceType type = resource();
         int improvements = city.get(this);
 
-        Project project = type.getProject();
-        boolean hasProject = project != null && hasProjects.test(project);
-
-        double production = type.getProduction(rads, hasProject, city.getLand(), improvements);
+        double production = type.getProduction(continent, rads, hasProjects, city.getLand(), improvements);
         if (production != 0) {
-            profitBuffer[type.ordinal()] += production;
+            profitBuffer[type.ordinal()] += production * turns / 12;
 
-            double inputAmt = type.getInput(rads, hasProject, city, improvements);
+            double inputAmt = type.getInput(continent, rads, hasProjects, city, improvements);
 
             for (ResourceType input : inputs) {
                 if (inputAmt != 0) {
-                    profitBuffer[input.ordinal()] -= inputAmt;
+                    profitBuffer[input.ordinal()] -= inputAmt * turns / 12;
                 }
             }
         }
         return profitBuffer;
     }
 
-    public double getProduction(Nation nation, double land, JavaCity city) {
-        return getProduction(nation, land, city.get(this));
-    }
-
-    public double getProduction(Nation nation, JavaCity city) {
-        return getProduction(nation, city.getLand(), city.get(this));
-    }
-
-    public double getProduction(Nation nation, SCityContainer city, int improvements) {
-        return getProduction(nation, Double.parseDouble(city.getLand()), improvements);
-    }
-
-    public double getProduction(Nation nation, double land, int improvements) {
-        double base = baseProduction();
-
-        if (inputs.length > 0 && nation != null && hasWorks.apply(nation)) {
-            base = base * boostFactor;
-        }
-
-        return base * (1+0.5*((improvements - 1)/(cap() - 1))) *improvements;
-    }
-
     @Override
     public boolean canBuild(Continent continent) {
         return this.continents == null || continents[continent.ordinal()];
+    }
+
+    @Override
+    public double upkeep(ResourceType type, Predicate<Project> hasProject) {
+        return super.upkeep(type, hasProject) * (hasProject.test(Projects.GREEN_TECHNOLOGIES) ? 0.9d : 1d);
+    }
+
+    @Override
+    public double getUpkeepConverted(Predicate<Project> hasProject) {
+        return super.getUpkeepConverted(hasProject) * (hasProject.test(Projects.GREEN_TECHNOLOGIES) ? 0.9d : 1d);
     }
 }

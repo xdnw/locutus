@@ -30,6 +30,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import rocker.grant.nation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -325,7 +326,9 @@ public class OptimalBuild extends Command {
         int numCities = me.getCities();
 
         DBNation finalMe = me;
+        Continent finalContinent = continent;
         Predicate<Project> hasProject = project -> addProject.contains(project) || project.get(finalMe) > 0;
+        double grossModifier = finalMe.getGrossModifier();;
 
         Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
 
@@ -338,7 +341,7 @@ public class OptimalBuild extends Command {
                 @Override
                 public Double apply(JavaCity javaCity) {
                     Arrays.fill(buffer, 0);
-                    double[] profit = javaCity.profit(rads, hasProject, buffer, numCities);
+                    double[] profit = javaCity.profit(finalContinent, rads, hasProject, buffer, numCities, grossModifier, 12);
                     profit[0] *= moneyFactor;
                     for (int i = 1; i < profit.length; i++) {
                         if (profit[i] > 0) {
@@ -350,7 +353,7 @@ public class OptimalBuild extends Command {
             };
         } else {
             valueFunc = javaCity -> {
-                return javaCity.profitConvertedCached(rads, hasProject, numCities) / javaCity.getImpTotal();
+                return javaCity.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier()) / javaCity.getImpTotal();
             };
         }
 
@@ -437,7 +440,7 @@ public class OptimalBuild extends Command {
                 public Boolean apply(JavaCity city) {
                     if (parentGoal.apply(city)) {
                         Arrays.fill(profitBuffer, 0);
-                        city.profit(0, hasProject, profitBuffer, numCities);
+                        city.profit(finalContinent, 0, hasProject, profitBuffer, numCities, finalMe.getGrossModifier(), 12);
                         profitBuffer[0] += 500000d / numCities;
                         double original = profitBuffer[0];
 
@@ -470,16 +473,16 @@ public class OptimalBuild extends Command {
 
         JavaCity optimized;
         if (days == null) {
-            optimized = origin.optimalBuild(continent, rads, numCities, hasProject, timeout, modifyValueFunc, goal);
+            optimized = origin.optimalBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), timeout, modifyValueFunc, goal);
         } else {
-            optimized = origin.roiBuild(continent, rads, numCities, hasProject, days, timeout, modifyValueFunc, goal);
+            optimized = origin.roiBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), days, timeout, modifyValueFunc, goal);
         }
 
         RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
 
         optimized.setInfra(origin.getInfra());
         optimized.getMetrics(hasProject).recalculate(optimized, hasProject);
-        double profit = optimized.profitConvertedCached(rads, hasProject, numCities);
+        double profit = optimized.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier());
         double cost = PnwUtil.convertedTotal(optimized.calculateCost(origin));
 
         String json = optimized.toCityBuild().toString();
@@ -488,7 +491,7 @@ public class OptimalBuild extends Command {
         String title = "$" + MathMan.format(profit) + " / day";
 
         if (days != null) {
-            double baseProfit = origin.profitConvertedCached(rads, hasProject, numCities);
+            double baseProfit = origin.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier());
             double netProfit = ((profit - baseProfit) * days - cost);
 
             result.append("\nNet Profit: (" + days + " days): $"  + MathMan.format(netProfit));

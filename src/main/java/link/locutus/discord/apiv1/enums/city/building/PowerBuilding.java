@@ -11,7 +11,7 @@ public interface PowerBuilding extends Building {
 
     int infraMax();
 
-    double[] consumption(int infra, double[] profitBuffer);
+    double[] consumption(int infra, double[] profitBuffer, int turns);
 
     double consumptionConverted(int infra);
 }

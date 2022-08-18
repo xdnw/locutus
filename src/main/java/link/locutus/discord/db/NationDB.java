@@ -24,6 +24,7 @@ import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.alliance.AllianceDeleteEvent;
+import link.locutus.discord.event.bank.LootInfoEvent;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.position.PositionCreateEvent;
@@ -994,7 +995,7 @@ public class NationDB extends DBMainV2 {
         updateCities(nationIdCityIdCityMap, eventConsumer);
     }
 
-    public void updateCitiesOfNations(Set<Integer> nationIds, Consumer<Event> eventConsumer) {
+    public void updateCitiesOfNations(Set<Integer> nationIds, boolean bulk, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         List<Integer> idList = new ArrayList<>(nationIds);
@@ -1005,12 +1006,14 @@ public class NationDB extends DBMainV2 {
             else estimatedCitiesToFetch += nation.getCities();
         }
 
-        // Pad with most outdated cities, to make full use of api call
-        if (estimatedCitiesToFetch < 490) { // Slightly below 500 to avoid off by 1 errors with api
-            int numToFetch = 490 - idList.size();
-            List<Integer> mostActiveNations = getMostActiveNationIdsLimitCities(numToFetch, new HashSet<>(idList));
-            System.out.println("Fetching active nation cities: " + mostActiveNations.size());
-            idList.addAll(mostActiveNations);
+        if (bulk) {
+            // Pad with most outdated cities, to make full use of api call
+            if (estimatedCitiesToFetch < 490) { // Slightly below 500 to avoid off by 1 errors with api
+                int numToFetch = 490 - idList.size();
+                List<Integer> mostActiveNations = getMostActiveNationIdsLimitCities(numToFetch, new HashSet<>(idList));
+                System.out.println("Fetching active nation cities: " + mostActiveNations.size());
+                idList.addAll(mostActiveNations);
+            }
         }
 
         for (int i = 0; i < 500 && !idList.isEmpty(); i += 500) {
@@ -1060,7 +1063,7 @@ public class NationDB extends DBMainV2 {
             for (City city : cities) deletedCities.remove(city.getId());
             updateCities(cities, eventConsumer);
         }
-        if (!deletedCities.isEmpty()) deleteCitiesInDB(deletedCities);
+        if (!deletedCities.isEmpty()) deleteCities(deletedCities, eventConsumer);
 
         return true;
     }
@@ -1167,38 +1170,64 @@ public class NationDB extends DBMainV2 {
     }
 
     public void subscribeCities(PnwPusherHandler pusher) {
+        pusher.connect().subscribeBuilder(City.class, PnwPusherEvent.CREATE)
+        .build(cities -> {
+            Locutus.imp().runEventsAsync(events -> updateCities(cities, events));
+        });
         pusher.connect()
-                .subscribeBuilder(City.class, PnwPusherEvent.UPDATE)
-                .build(cities -> {
-                    DBCity buffer = new DBCity();
-                    AtomicBoolean dirtyFlag = new AtomicBoolean();
-                    List<Map.Entry<Integer, DBCity>> citiesToSave = new ArrayList<>();
-
-                    Locutus.imp().runEventsAsync(eventConsumer -> {
-                        for (City city : cities) {
-                            dirtyFlag.set(false);
-
-                            DBCity existing = getDBCity(city.getNation_id(), city.getId());
-                            DBCity dbCity = processCityUpdate(city, buffer, eventConsumer, dirtyFlag);
-                            if (dirtyFlag.get()) {
-                                citiesToSave.add(Map.entry(city.getNation_id(), dbCity));
-                            }
-                            if (existing == null) {
-                                markCityDirty(city.getNation_id(), city.getId(), dbCity.fetched);
-                            }
-                        }
-                    });
-
-                    saveCities(citiesToSave);
-                });
+        .subscribeBuilder(City.class, PnwPusherEvent.UPDATE)
+        .build(cities -> {
+            Locutus.imp().runEventsAsync(events -> updateCities(cities, events));
+        });
+        pusher.connect().subscribeBuilder(City.class, PnwPusherEvent.DELETE)
+        .build(cities -> {
+            Map<Integer, Integer> nationIdCityId = new HashMap<>();
+            for (City city : cities) {
+                nationIdCityId.put(city.getNation_id(), city.getId());
+            }
+            Locutus.imp().runEventsAsync(events -> deleteCities(nationIdCityId, events));
+        });
     }
 
-    private void deleteCitiesInDB(Set<Integer> ids) {
+    public boolean deleteCities(Set<Integer> cityIds, Consumer<Event> eventConsumer) {
+        Map<Integer, Integer> nationIdCityId = new HashMap<>();
+        for (Map.Entry<Integer, Map<Integer, DBCity>> entry : citiesByNation.entrySet()) {
+            Map<Integer, DBCity> nationCities = entry.getValue();
+            for (Map.Entry<Integer, DBCity> cityEntry : nationCities.entrySet()) {
+                if (cityIds.contains(cityEntry.getKey())) {
+                    nationIdCityId.put(entry.getKey(), cityEntry.getKey());
+                }
+            }
+        }
+        return deleteCities(nationIdCityId, eventConsumer);
+    }
+
+    public boolean deleteCities(Map<Integer, Integer> nationIdCityId, Consumer<Event> eventConsumer) {
+        if (nationIdCityId.isEmpty()) return true;
+        boolean success = true;
+        for (Map.Entry<Integer, Integer> entry : nationIdCityId.entrySet()) {
+            int nationId = entry.getKey();
+            int cityId = entry.getValue();
+            DBCity existing;
+            synchronized (citiesByNation) {
+                existing = ((Map<Integer, DBCity>) citiesByNation.getOrDefault(nationId, Collections.EMPTY_MAP)).remove(cityId);
+            }
+            if (eventConsumer != null && existing != null) {
+                eventConsumer.accept(new CityDeleteEvent(nationId, existing));
+            }
+        }
+        deleteCitiesInDB(nationIdCityId.values());
+        return success;
+    }
+
+    private void deleteCitiesInDB(Collection<Integer> ids) {
         if (ids.size() == 1) {
             int id = ids.iterator().next();
             executeStmt("DELETE FROM CITY_BUILDS WHERE id = " + id);
         } else {
-            executeStmt("DELETE FROM CITY_BUILDS WHERE `id` in " + StringMan.getString(ids));
+            List<Integer> idsSorted = new ArrayList<>(ids);
+            Collections.sort(idsSorted);
+            executeStmt("DELETE FROM CITY_BUILDS WHERE `id` in " + StringMan.getString(idsSorted));
         }
     }
 
@@ -1726,7 +1755,7 @@ public class NationDB extends DBMainV2 {
 
         if (!fetchCitiesOfNations.isEmpty() || (fetchCitiesIfNew && fetchMostActiveIfNoneOutdated)) {
             System.out.println("Update cities " + fetchCitiesOfNations.size());
-            updateCitiesOfNations(fetchCitiesOfNations, eventConsumer);
+            updateCitiesOfNations(fetchCitiesOfNations, true, eventConsumer);
         }
 
         if (fetchAlliancesIfOutdated || fetchPositionsIfOutdated) {
@@ -2648,6 +2677,11 @@ public class NationDB extends DBMainV2 {
                     .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("type", Col
          */
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
+        for (LootEntry entry : entries) {
+            if (entry.getDate() < cutoff) continue;
+            new LootInfoEvent(entry).post();
+        }
 
         String query = "INSERT OR REPLACE INTO `NATION_LOOT3` (`id`, `total_rss`, `date`, `type`) VALUES(?,?,?,?)";
         ThrowingBiConsumer<LootEntry, PreparedStatement> setLoot = new ThrowingBiConsumer<LootEntry, PreparedStatement>() {

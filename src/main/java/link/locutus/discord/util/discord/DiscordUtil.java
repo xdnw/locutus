@@ -1160,20 +1160,20 @@ public class DiscordUtil {
                         continue;
                     }
                     case "#soldier%": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getSoldiers() / (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() * n.getCities())))));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getSoldiers() / (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(n::hasProject) * n.getCities())))));
                         continue;
                     }
                     case "#tank%": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getTanks() / (Math.max(1, Buildings.FACTORY.max() * Buildings.FACTORY.cap() * n.getCities())))));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getTanks() / (Math.max(1, Buildings.FACTORY.max() * Buildings.FACTORY.cap(n::hasProject) * n.getCities())))));
                         continue;
                     }
                     case "#plane%":
                     case "#aircraft%": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getAircraft() / (Math.max(1, Buildings.HANGAR.max() * Buildings.HANGAR.cap() * n.getCities())))));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getAircraft() / (Math.max(1, Buildings.HANGAR.max() * Buildings.HANGAR.cap(n::hasProject) * n.getCities())))));
                         continue;
                     }
                     case "#ship%": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getShips() / (Math.max(1, Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap() * n.getCities())))));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getShips() / (Math.max(1, Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(n::hasProject) * n.getCities())))));
                         continue;
                     }
                     case "#registered":

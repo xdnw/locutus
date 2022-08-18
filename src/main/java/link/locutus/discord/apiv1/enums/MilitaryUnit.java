@@ -114,7 +114,7 @@ public enum MilitaryUnit {
         MilitaryBuilding building = getBuilding();
         int cap;
         if (building != null) {
-            cap = building.cap() * building.perDay() * cities;
+            cap = building.cap(hasProject) * building.perDay() * cities;
             if (hasProject.test(Projects.PROPAGANDA_BUREAU)) {
                 cap *= 1.1;
             }
@@ -151,7 +151,7 @@ public enum MilitaryUnit {
                         pop += city.getPopulation(hasProject);
                     }
                 }
-                int cap = building.cap() * amt;
+                int cap = building.cap(hasProject) * amt;
                 if (cap > 0 && building.requiredCitizens() > 0) {
                     cap = (int) Math.min(pop / building.requiredCitizens(), cap);
                 }

@@ -542,12 +542,16 @@ public class GrantCmd extends Command {
 
         StringBuilder result = new StringBuilder();
 
-        if (currentCity > 10 && !cp && !force) {
+        if (currentCity >= Projects.URBAN_PLANNING.requiredCities() && !cp && !force) {
             result.append(Projects.URBAN_PLANNING + " has not been built\n");
         }
 
-        if (currentCity > 15 && !acp && !force) {
+        if (currentCity >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !acp && !force) {
             result.append(Projects.ADVANCED_URBAN_PLANNING + " has not been built\n");
+        }
+
+        if (currentCity >= Projects.METROPOLITAN_PLANNING.requiredCities() && !mp && !force) {
+            result.append(Projects.METROPOLITAN_PLANNING.requiredCities() + " has not been built\n");
         }
 
 

@@ -171,7 +171,7 @@ public class JavaCity {
             double crimeDeaths = Math.max((crime * 0.1) * (100 * city.getInfra()) - 25, 0);
 
             double ageBonus = (1 + Math.log(Math.max(1, city.getAge())) * 0.0666666666666666666666666666666);
-            population = Math.max(10, (int) ((basePopulation - diseaseDeaths - crimeDeaths) * ageBonus));
+            population = (int) Math.round(Math.max(10, ((basePopulation - diseaseDeaths - crimeDeaths) * ageBonus)));
         }
     }
 
@@ -466,18 +466,18 @@ public class JavaCity {
     }
 
     public JavaCity optimalBuild(DBNation nation, long timeout) {
-        return optimalBuild(nation.getContinent(), nation.getRads(), nation.getCities(), nation::hasProject, timeout);
+        return optimalBuild(nation.getContinent(), nation.getRads(), nation.getCities(), nation::hasProject, nation.getGrossModifier(), timeout);
     }
 
-    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, long timeout) {
-        return optimalBuild(continent, rads, numCities, hasProject, timeout, f -> f, null);
+    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, long timeout) {
+        return optimalBuild(continent, rads, numCities, hasProject, grossModifier, timeout, f -> f, null);
     }
 
-    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, long timeout,
+    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, long timeout,
                                  Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
         Predicate<Project> finalHasProject = Projects.hasProjectCached(hasProject);
         Function<JavaCity, Double> valueFunction = javaCity -> {
-            return javaCity.profitConvertedCached(rads, finalHasProject, numCities) / javaCity.getImpTotal();
+            return javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier) / javaCity.getImpTotal();
         };
         valueFunction = modifyValueFunc.apply(valueFunction);
 
@@ -486,11 +486,11 @@ public class JavaCity {
         return optimalBuild(continent, tradeCenter, valueFunction, goal, finalHasProject, timeout);
     }
 
-    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, int days, long timeout) {
-        return roiBuild(continent, rads, numCities, hasProject, days, timeout, f -> f, null);
+    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout) {
+        return roiBuild(continent, rads, numCities, hasProject, grossModifier, days, timeout, f -> f, null);
     }
 
-    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, int days, long timeout, Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
+    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
         JavaCity origin = new JavaCity(this);
         origin.setAge(this.getAge() + days / 2);
 
@@ -500,8 +500,8 @@ public class JavaCity {
         int maxImp = (int) (this.getInfra() / 50);
         if (maxImp == zeroed.getImpTotal()) return zeroed;
 
-        double baseProfit = origin.profitConvertedCached(rads, hasProject, numCities);
-        double zeroedProfit = zeroed.profitConvertedCached(rads, hasProject, numCities);
+        double baseProfit = origin.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
+        double zeroedProfit = zeroed.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
 
         int baseImp = zeroed.getImpTotal();
         int impOverZero = maxImp - zeroed.getImpTotal();
@@ -510,7 +510,7 @@ public class JavaCity {
 
         Predicate<Project> finalHasProject = Projects.hasProjectCached(hasProject);
         Function<JavaCity, Double> valueFunction = javaCity -> {
-            double newProfit = javaCity.profitConvertedCached(rads, finalHasProject, numCities);
+            double newProfit = javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier);
 
             double cost = javaCity.calculateCostConverted(origin);
 
@@ -565,11 +565,11 @@ public class JavaCity {
         return optimized == null ? null : optimized.getKey();
     }
 
-    public double profitConvertedCached(double rads, Predicate<Project> hasProject, int numCities) {
+    public double profitConvertedCached(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
         if (metrics != null && metrics.profit != null) {
             return metrics.profit;
         }
-        double profit = profitConverted2(rads, hasProject, numCities);
+        double profit = profitConverted2(continent, rads, hasProject, numCities, grossModifier);
         if (metrics != null) {
             metrics.profit = profit;
         }
@@ -634,18 +634,7 @@ public class JavaCity {
         return powered;
     }
 
-    public double[] profit(DBNation nation, double[] myProfit) {
-        Predicate<Project> hasProject = p -> p != null && p.get(nation) > 0;
-
-        double radIndex = nation.getRads();
-        double rads = (1 + (radIndex * (-0.001)));
-
-        int numCities = nation.getCities();
-
-        return profit(rads, hasProject, myProfit, numCities);
-    }
-
-    public double profitConverted2(double rads, Predicate<Project> hasProject, int numCities) {
+    public double profitConverted2(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
         double profit = 0;
 
         final boolean powered = (metrics == null || metrics.powered != Boolean.FALSE) && (getPoweredInfra() >= infra);
@@ -664,14 +653,14 @@ public class JavaCity {
                         unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).infraMax();
                     }
                 }
-                profit += building.profitConverted(rads, hasProject, this, amt);
+                profit += building.profitConverted(continent, rads, hasProject, this, amt);
             }
             for (int ordinal = Buildings.GAS_REFINERY.ordinal(); ordinal < buildings.length; ordinal++) {
                 int amt = buildings[ordinal];
                 if (amt == 0) continue;
 
                 Building building = Buildings.get(ordinal);
-                profit += building.profitConverted(rads, hasProject, this, amt);
+                profit += building.profitConverted(continent, rads, hasProject, this, amt);
             }
         }
 
@@ -680,7 +669,7 @@ public class JavaCity {
             if (amt == 0) continue;
 
             Building building = Buildings.get(ordinal);
-            profit += building.profitConverted(rads, hasProject, this, amt);
+            profit += building.profitConverted(continent, rads, hasProject, this, amt);
         }
 
         // if any commerce buildings
@@ -697,7 +686,8 @@ public class JavaCity {
 
         double newPlayerBonus = numCities < 10 ? Math.max(1, (200d - ((numCities - 1) * 10d)) * 0.01) : 1;
 
-        double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * metrics.population * newPlayerBonus);
+        double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * metrics.population * newPlayerBonus) * grossModifier;;
+
 
         profit += income;
 
@@ -706,7 +696,7 @@ public class JavaCity {
         return profit;
     }
 
-    public double[] profit(double rads, Predicate<Project> hasProject, double[] profitBuffer, int numCities) {
+    public double[] profit(Continent continent, double rads, Predicate<Project> hasProject, double[] profitBuffer, int numCities, double grossModifier, int turns) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
         boolean powered = true;
@@ -724,11 +714,11 @@ public class JavaCity {
                     continue;
                 }
             }
-            profitBuffer = building.profit(rads, hasProject, this, profitBuffer);
+            profitBuffer = building.profit(continent, rads, hasProject, this, profitBuffer, turns);
             if (building instanceof APowerBuilding) {
                 for (int i = 0; i < amt; i++) {
                     if (unpoweredInfra > 0) {
-                        profitBuffer = ((APowerBuilding) building).consumption(unpoweredInfra, profitBuffer);
+                        profitBuffer = ((APowerBuilding) building).consumption(unpoweredInfra, profitBuffer, turns);
                         unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).infraMax();
                     }
                 }
@@ -744,14 +734,19 @@ public class JavaCity {
 
         double newPlayerBonus = Math.max(1, (200d - ((numCities - 1) * 10d)) / 100d);
 
-        double income = Math.max(0, (((commerce/50d) * 0.725) + 0.725) * metrics.population * newPlayerBonus);
+        double income = Math.max(0, (((commerce/50d) * 0.725) + 0.725) * metrics.population * newPlayerBonus) * grossModifier;
 
-        profitBuffer[ResourceType.MONEY.ordinal()] += income;
+        grossIncomeTOtalCache += income;
+        System.out.println(" - income " + MathMan.format(grossIncomeTOtalCache));
 
-        profitBuffer[ResourceType.FOOD.ordinal()] -= metrics.population / 1000d;
+        profitBuffer[ResourceType.MONEY.ordinal()] += income * turns / 12;
+
+        profitBuffer[ResourceType.FOOD.ordinal()] -= metrics.population * turns / (1000d * 12);
 
         return profitBuffer;
     }
+
+    private static double grossIncomeTOtalCache = 0;
 
 
     public double[] calculateCost(JavaCity from) {
@@ -801,19 +796,6 @@ public class JavaCity {
             buffer[ResourceType.MONEY.ordinal()] += PnwUtil.calculateLand(from.getLand(), getLand());
         }
         return buffer;
-    }
-
-    public Map<ResourceType, Double> calculateImprovementCost(Map<ResourceType, Double> total) {
-        if (total == null) {
-            total = new HashMap<>();
-        }
-        for (int i = 0; i < buildings.length; i++) {
-            int amt = buildings[i];
-            if (amt != 0) {
-                total = PnwUtil.addResourcesToA(total, Buildings.get(i).cost());
-            }
-        }
-        return total;
     }
 
     private void initImpTotal() {

@@ -35,7 +35,7 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            return (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap() * Buildings.BARRACKS.max());
+            return (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.max());
         }
     },
     TANK(false) {
@@ -48,7 +48,7 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            return (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap() * Buildings.FACTORY.max());
+            return (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.max());
         }
     },
     AIRCRAFT(false) {
@@ -61,7 +61,7 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            return (double) total.getAircraft() / (total.getCities() * Buildings.HANGAR.cap() * Buildings.HANGAR.max());
+            return (double) total.getAircraft() / (total.getCities() * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max());
         }
     },
     SHIP(false) {
@@ -74,7 +74,7 @@ public enum AllianceMetric {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            return (double) total.getShips() / (total.getCities() * Buildings.DRYDOCK.cap() * Buildings.DRYDOCK.max());
+            return (double) total.getShips() / (total.getCities() * Buildings.DRYDOCK.cap(f -> false) * Buildings.DRYDOCK.max());
         }
     },
     INFRA(false) {
@@ -199,7 +199,6 @@ public enum AllianceMetric {
 
             Map<Integer, Map<Integer, DBCity>> allCities = Locutus.imp().getNationDB().getCitiesV3(nationIds);
 
-            double[] profitBuffer = ResourceType.getBuffer();
             double[] totalRss = ResourceType.getBuffer();
             for (DBNation nation : nations) {
                 Map<Integer, DBCity> v3Cities = allCities.get(nation.getNation_id());
@@ -207,10 +206,8 @@ public enum AllianceMetric {
 
                 Map<Integer, JavaCity> cities = Locutus.imp().getNationDB().toJavaCity(v3Cities);
 
-                Arrays.fill(profitBuffer, 0);
-                double[] revenue = PnwUtil.getRevenue(profitBuffer, nation, cities, true, true, true);
-                totalRss = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, totalRss, revenue);
-
+                double[] revenue = nation.getRevenue();
+                ResourceType.add(totalRss, revenue);
             }
 
             aaRevenueCache = new AbstractMap.SimpleEntry<>(alliance.getAlliance_id(), totalRss);
@@ -334,25 +331,25 @@ public enum AllianceMetric {
     BARRACKS_PCT(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            return alliance.getMembersTotal().getMMRBuildingArr()[0] / Buildings.BARRACKS.cap();
+            return alliance.getMembersTotal().getMMRBuildingArr()[0] / Buildings.BARRACKS.cap(f -> false);
         }
     },
     FACTORY_PCT(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            return alliance.getMembersTotal().getMMRBuildingArr()[1] / Buildings.FACTORY.cap();
+            return alliance.getMembersTotal().getMMRBuildingArr()[1] / Buildings.FACTORY.cap(f -> false);
         }
     },
     HANGAR_PCT(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            return alliance.getMembersTotal().getMMRBuildingArr()[2] / Buildings.HANGAR.cap();
+            return alliance.getMembersTotal().getMMRBuildingArr()[2] / Buildings.HANGAR.cap(f -> false);
         }
     },
     DRYDOCK_PCT(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            return alliance.getMembersTotal().getMMRBuildingArr()[3] / Buildings.DRYDOCK.cap();
+            return alliance.getMembersTotal().getMMRBuildingArr()[3] / Buildings.DRYDOCK.cap(f -> false);
         }
     },
 

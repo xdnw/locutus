@@ -67,6 +67,8 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import rocker.grant.city;
+import rocker.grant.project;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -511,8 +513,8 @@ public class DBNation implements NationOrAlliance {
         }
 
         // value for weak military
-        double soldierPct = (double) getSoldiers() / (Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() * getCities());
-        double tankPct = (double) getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap() * getCities());
+        double soldierPct = (double) getSoldiers() / (Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(this::hasProject) * getCities());
+        double tankPct = (double) getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap(this::hasProject) * getCities());
         value = value + value * (2 - soldierPct - tankPct);
 
         return new AbstractMap.SimpleEntry<>(value, loot != null);
@@ -1231,13 +1233,13 @@ public class DBNation implements NationOrAlliance {
         int soldiers = this.soldiers;
         int tanks = this.tanks;
         if (includeRebuy > 0) {
-            int barracks = Buildings.BARRACKS.cap() * cities;
+            int barracks = Buildings.BARRACKS.cap(this::hasProject) * cities;
             int soldierMax = Buildings.BARRACKS.max() * barracks;
             int soldPerDay = barracks * Buildings.BARRACKS.perDay();
 
             soldiers = Math.min(soldierMax, (int) (soldiers + soldPerDay * includeRebuy));
 
-            int factories = Buildings.FACTORY.cap() * cities;
+            int factories = Buildings.FACTORY.cap(this::hasProject) * cities;
             int tankMax = Buildings.FACTORY.max() * barracks;
             int tankPerDay = barracks * Buildings.FACTORY.perDay();
 
@@ -1251,7 +1253,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Integer updateSpies(boolean update, boolean force) {
-        if (!update) {
+        if (!update && spies >= 0) {
             return spies;
         }
         return updateSpies(force);
@@ -1309,7 +1311,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Last fetched spy count")
     @RolePermission(value = Roles.MILCOM)
     public int getSpies() {
-        return spies;
+        return Math.max(spies, 0);
     }
 
     public void setSpies(int spies, boolean events) {
@@ -1605,12 +1607,10 @@ public class DBNation implements NationOrAlliance {
             citiesNoRaws.put(cityEntry.getKey(), city);
         }
 
-        double[] daily = PnwUtil.getRevenue(null, this, cityMap, true, true, true);
-        double[] turn = PnwUtil.getRevenue(null, this, citiesNoRaws, true, true, true);
-        turn[0] = Math.min(daily[0], turn[0]);
-        for (int i = 0; i < turn.length; i++) {
-            turn[i] /= 12d;
-        }
+        double[] daily = PnwUtil.getRevenue(null, 12, this, cityMap.values(), true, true, true, true, false);
+        double[] turn = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, false, true);
+
+//        turn[0] = Math.min(daily[0], turn[0]);
 
         Map<ResourceType, Double> profit = PnwUtil.resourcesToMap(daily);
         Map<ResourceType, Double> profitDays = PnwUtil.multiply(profit, (double) days);
@@ -2000,22 +2000,22 @@ public class DBNation implements NationOrAlliance {
 
     @Command
     public double getAircraftPct() {
-        return getAircraft() / (double) (Math.max(1, Buildings.HANGAR.max() * Buildings.HANGAR.cap() * getCities()));
+        return getAircraft() / (double) (Math.max(1, Buildings.HANGAR.max() * Buildings.HANGAR.cap(this::hasProject) * getCities()));
     }
 
     @Command
     public double getTankPct() {
-        return getTanks() / (double) (Math.max(1, Buildings.FACTORY.max() * Buildings.FACTORY.cap() * getCities()));
+        return getTanks() / (double) (Math.max(1, Buildings.FACTORY.max() * Buildings.FACTORY.cap(this::hasProject) * getCities()));
     }
 
     @Command
     public double getSoldierPct() {
-        return getSoldiers() / (double) (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() *getCities()));
+        return getSoldiers() / (double) (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(this::hasProject) *getCities()));
     }
 
     @Command
     public double getShipPct() {
-        return getShips() / (double) (Math.max(1, Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap() * getCities()));
+        return getShips() / (double) (Math.max(1, Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(this::hasProject) * getCities()));
     }
 
     public void setAircraft(int aircraft) {
@@ -2419,7 +2419,7 @@ public class DBNation implements NationOrAlliance {
             if (updateNewCities && cityObj.size() != cities) force = true;
             if (updateIfOutdated && estimateScore() != this.score) force = true;
             if (force) {
-                Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), Event::post);
+                Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), true, Event::post);
                 cityObj = _getCitiesV3();
             }
         }
@@ -2483,12 +2483,11 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double equilibriumTaxRate(boolean updateNewCities, boolean force) {
-        double[] buffer = ResourceType.getBuffer();
-        buffer = getRevenue(buffer, true, false, true, updateNewCities, force);
+        double[] revenue = getRevenue(12, false, true, updateNewCities, false, force);
         double consumeCost = 0;
         double taxable = 0;
         for (ResourceType type : ResourceType.values) {
-            double value = buffer[type.ordinal()];
+            double value = revenue[type.ordinal()];
             if (value < 0) {
                 consumeCost += PnwUtil.convertedTotal(type, -value);
             } else {
@@ -2501,19 +2500,17 @@ public class DBNation implements NationOrAlliance {
         return Double.NaN;
     }
 
-    @Command
     public double[] getRevenue() {
-        return getRevenue(null, true, true, true, false);
+        return getRevenue(12);
+    }
+    @Command
+    public double[] getRevenue(int turns) {
+        return getRevenue(turns, true, true, true, false, false);
     }
 
-    public double[] getRevenue(double[] profitBuffer, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean force) {
-        return getRevenue(profitBuffer, militaryUpkeep, tradeBonus, bonus, false, force);
-    }
-
-    public double[] getRevenue(double[] profitBuffer, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean update, boolean force) {
-        if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
+    public double[] getRevenue(int turns, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean force) {
         Map<Integer, JavaCity> cityMap = getCityMap(force, false);
-        double[] revenue = PnwUtil.getRevenue(profitBuffer, this, cityMap, militaryUpkeep, tradeBonus, bonus);
+        double[] revenue = PnwUtil.getRevenue(null, turns, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, true, noFood);
         return revenue;
     }
 
@@ -3455,7 +3452,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, JavaCity> cityMap = getCityMap(update, false);
         for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(0, f -> hasProject(f), new double[ResourceType.values.length], cities));
+            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(continent, getRads(), this::hasProject, null, cities, 1, 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue() * 7);
@@ -3795,10 +3792,10 @@ public class DBNation implements NationOrAlliance {
     public Map<Integer, Long> findDayChange() {
         MilitaryUnit[] units = new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.MISSILE, MilitaryUnit.NUKE};
         int[] caps = new int[units.length];
-        caps[0] = Buildings.BARRACKS.perDay() * Buildings.BARRACKS.cap() * getCities();
-        caps[1] = Buildings.FACTORY.perDay() * Buildings.FACTORY.cap() * getCities();
-        caps[2] = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap() * getCities();
-        caps[3] = Buildings.DRYDOCK.perDay() * Buildings.DRYDOCK.cap() * getCities();
+        caps[0] = Buildings.BARRACKS.perDay() * Buildings.BARRACKS.cap(this::hasProject) * getCities();
+        caps[1] = Buildings.FACTORY.perDay() * Buildings.FACTORY.cap(this::hasProject) * getCities();
+        caps[2] = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap(this::hasProject) * getCities();
+        caps[3] = Buildings.DRYDOCK.perDay() * Buildings.DRYDOCK.cap(this::hasProject) * getCities();
         caps[4] = hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
         caps[5] = 1;
 
@@ -4230,11 +4227,42 @@ public class DBNation implements NationOrAlliance {
         Locutus.imp().getNationDB().updateNations(List.of(nation_id), bulk, events));
     }
 
+    public void updateCities(boolean bulk) {
+        Locutus.imp().runEventsAsync(events ->
+                Locutus.imp().getNationDB().updateCitiesOfNations(Set.of(nation_id), bulk, events));
+    }
+
     public double[] projectCost(Project project) {
         double[] cost = PnwUtil.resourcesToArray(project.cost());
         if (getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
             cost = PnwUtil.multiply(cost, 0.95);
         }
         return cost;
+    }
+
+    public double getGrossModifier() {
+        return getGrossModifier(false);
+    }
+    public double getGrossModifier(boolean noFood) {
+        double grossModifier = 1;
+        if (getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS) {
+            grossModifier += 0.01;
+            if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) {
+                grossModifier += 0.005;
+            }
+        }
+        if (noFood) grossModifier -= 0.33;
+        return grossModifier;
+    }
+
+    public double getMilitaryUpkeepFactor() {
+        double factor = 1;
+        if (getDomesticPolicy() == DomesticPolicy.IMPERIALISM) {
+            factor -= 0.05;
+            if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) {
+                factor -= 0.025;
+            }
+        }
+        return factor;
     }
 }

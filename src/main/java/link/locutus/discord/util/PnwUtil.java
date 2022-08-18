@@ -1,6 +1,7 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -14,10 +15,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -934,27 +931,42 @@ public class PnwUtil {
         return total;
     }
 
-    public static double[] getRevenue(double[] profitBuffer, DBNation nation, Map<Integer, JavaCity> cityMap, boolean militaryUpkeep, boolean tradeBonus, boolean bonus) {
+    public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
-        Predicate<Project> hasProject = project -> project != null && nation.hasProject(project);
-
+        Continent continent = nation.getContinent();
+        double grossModifier = nation.getGrossModifier(noFood);
         double rads = nation.getRads();
-
         int numCities = bonus ? nation.getCities() : 10;
 
-        Collection<JavaCity> cityList = cityMap.values();
-
-        for (JavaCity build : cityList) {
-            profitBuffer = build.profit(rads, hasProject, profitBuffer, numCities);
+        // Project revenue
+        if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.RESOURCE_PRODUCTION_CENTER)) {
+            for (ResourceType type : ResourceType.values) {
+                if (type.isRaw()) {
+                    profitBuffer[type.ordinal()] += turns * nation.getCities();
+                }
+            }
         }
 
+        // city revenue
+        for (JavaCity build : cities) {
+            profitBuffer = build.profit(continent, rads, nation::hasProject, profitBuffer, numCities, grossModifier, turns);
+        }
+
+        System.out.println("Profit " + MathMan.format(profitBuffer[0]) + " | food: " + MathMan.format(profitBuffer[ResourceType.FOOD.ordinal()]));
+
+        // trade revenue
         if (tradeBonus) {
-            profitBuffer[0] += nation.getColor().getTurnBonus() * 12;
+            profitBuffer[0] += nation.getColor().getTurnBonus() * turns * grossModifier;
         }
 
+        System.out.println("Turn bonus " + MathMan.format(nation.getColor().getTurnBonus() * turns * grossModifier));
+        System.out.println("Gross modifier " + MathMan.format(grossModifier) + " | " + MathMan.format(rads));
+
+        // Add military upkeep
         if (!nation.hasUnsetMil() && militaryUpkeep) {
-            boolean war = nation.getOff() > 0 || nation.getDef() > 0;
+            boolean war = nation.getNumWars() > 0;
+            double factor = nation.getMilitaryUpkeepFactor();
 
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int amt = nation.getUnits(unit);
@@ -964,7 +976,7 @@ public class PnwUtil {
                 for (int i = 0; i < upkeep.length; i++) {
                     double value = upkeep[i];
                     if (value != 0) {
-                        profitBuffer[i] -= value * amt;
+                        profitBuffer[i] -= value * amt * factor * turns / 12;
                     }
                 }
             }

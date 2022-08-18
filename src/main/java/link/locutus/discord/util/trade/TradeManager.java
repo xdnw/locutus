@@ -1,9 +1,6 @@
 package link.locutus.discord.util.trade;
 
-import com.politicsandwar.graphql.model.Color;
-import com.politicsandwar.graphql.model.Radiation;
-import com.politicsandwar.graphql.model.Trade;
-import com.politicsandwar.graphql.model.TradeType;
+import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -42,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -798,7 +796,8 @@ public class TradeManager {
                 }
             }
         }
-        Radiation info = Locutus.imp().getV3().getGameInfo().getRadiation();
+        GameInfo gameInfo = Locutus.imp().getV3().getGameInfo();
+        Radiation info = gameInfo.getRadiation();
 
         setRadiation(Continent.NORTH_AMERICA, info.getNorth_america());
         setRadiation(Continent.SOUTH_AMERICA, info.getSouth_america());
@@ -808,7 +807,18 @@ public class TradeManager {
         setRadiation(Continent.AUSTRALIA, info.getAustralia());
         setRadiation(Continent.ANTARCTICA, info.getAntarctica());
 
+        this.gameDate = gameInfo.getGame_date();
+
         return radiation.get(continent).getKey();
+    }
+
+    private Instant gameDate;
+
+    public Instant getGameDate() {
+        if (this.gameDate == null) {
+            getGlobalRadiation(Continent.AFRICA, true);
+        }
+        return this.gameDate;
     }
 
     private void setRadiation(Continent continent, double rads) {

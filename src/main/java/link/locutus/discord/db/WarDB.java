@@ -66,8 +66,13 @@ public class WarDB extends DBMainV2 {
     public void load() {
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
 
+        Set<DBWar> toSave=  new HashSet<>();
+        long currentTurn = TimeUtil.getTurn();
         for (DBWar war : wars) {
-            activeWars.addActiveWar(war);
+            long warTurn = TimeUtil.getTurn(war.date);
+            if (currentTurn - warTurn < 60) {
+                activeWars.addActiveWar(war);
+            }
         }
     }
 

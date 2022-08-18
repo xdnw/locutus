@@ -10,6 +10,7 @@ public class TransactionEvent extends GuildScopeEvent {
     private final Transaction2 tx;
 
     public TransactionEvent(Transaction2 tx) {
+        super(tx.tx_datetime);
         this.tx = tx;
     }
 

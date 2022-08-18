@@ -38,6 +38,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import rocker.grant.nation;
 
 import java.awt.Desktop;
 import java.io.IOException;
@@ -492,7 +493,7 @@ public class WarUpdateProcessor {
                 double enemyStrength = defender.getGroundStrength(true, false);
                 double groundStrength = attacker.getGroundStrength(false, false);
 
-                double maxAir80pct = Buildings.HANGAR.max() * Buildings.HANGAR.cap() * attacker.getCities() * 0.66;
+                double maxAir80pct = Buildings.HANGAR.max() * Buildings.HANGAR.cap(attacker::hasProject) * attacker.getCities() * 0.66;
                 if (defender.getAircraft() == 0 && root.defcas2 == 0 && root.defcas3 == 0 && root.attcas2 > 0 && root.money_looted == 0 && defender.getSoldiers() > attacker.getSoldiers() && attacker.getAircraft() > maxAir80pct) {
                     double cost = root.getLossesConverted(true);
                     if (defender.getActive_m() < 10000) {

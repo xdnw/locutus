@@ -57,7 +57,7 @@ public enum Continent {
 
     public double getSeasonModifier() {
         double season = 1;
-        switch (ZonedDateTime.now(ZoneOffset.UTC).getMonth()) {
+        switch (ZonedDateTime.from(Locutus.imp().getTradeManager().getGameDate()).getMonth()) {
             case DECEMBER:
             case JANUARY:
             case FEBRUARY:

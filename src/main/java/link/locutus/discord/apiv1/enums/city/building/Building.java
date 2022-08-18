@@ -10,6 +10,7 @@ import link.locutus.discord.apiv1.enums.city.building.imp.AMilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.building.imp.APowerBuilding;
 import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import rocker.grant.city;
 
 
 import java.util.Map;
@@ -24,20 +25,27 @@ public interface Building {
         return name().replaceAll("([A-Z])", "_$1").toLowerCase();
     }
 
-    Map<ResourceType, Double> cost();
+    double cost(ResourceType type);
 
     double costConverted(double num);
 
-    double[] cost(double[] buffer, double num);
-
-    Map<ResourceType, Double> upkeep();
-
-    /**
-     * @return how many of these buildings can be built in a city
-     */
-    default int cap() {
-        return cap(f -> false);
+    default double[] cost(double[] buffer, double num) {
+        if (num > 0) {
+            for (ResourceType type : ResourceType.values) {
+                buffer[type.ordinal()] += cost(type) * num;
+            }
+        } else if (num < 0) {
+            // 50% of money back for selling
+            buffer[0] += cost(ResourceType.MONEY) * num * 0.5;
+            for (int i = 2; i < ResourceType.values.length; i++) {
+                // 75% of rss back for selling
+                buffer[i] += cost(ResourceType.values[i]) * num * 0.75;
+            }
+        }
+        return buffer;
     }
+
+    double upkeep(ResourceType type, Predicate<Project> hasProject);
 
     int cap(Predicate<Project> hasProject);
 
@@ -47,33 +55,9 @@ public interface Building {
         return true;
     }
 
-    default MilitaryBuilding unit(MilitaryUnit unit, int max, int perDay, double requiredCitizens) {
-        return new AMilitaryBuilding(this, unit, max, perDay, requiredCitizens);
-    }
-
-    default PowerBuilding power(ResourceType input, double inputAmt, int infraBase, int infraMax) {
-        return new APowerBuilding(this, input, inputAmt, infraBase, infraMax);
-    }
-
-    default ResourceBuilding resource(ResourceType output) {
-        return resource(output, t -> false);
-    }
-
-    default ResourceBuilding resource(ResourceType output, Function<Nation, Boolean> hasWorks) {
-        return resource(output.getBaseInput(), output.getBoostFactor(), hasWorks, output, output.getInputs());
-    }
-
-    default ResourceBuilding resource(int baseInput, double boostFactor, Function<Nation, Boolean> hasWorks, ResourceType output, ResourceType... inputs) {
-        return new AResourceBuilding(this, baseInput, boostFactor, hasWorks, output, inputs);
-    }
-
-    default CommerceBuilding commerce(int commerce) {
-        return new ACommerceBuilding(this, commerce);
-    }
-
     int ordinal();
 
-    double profitConverted(double rads, Predicate<Project> hasProject, JavaCity city, int amt);
+    double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int amt);
 
-    double[] profit(double rads, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer);
+    double[] profit(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns);
 }

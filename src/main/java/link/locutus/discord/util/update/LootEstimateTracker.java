@@ -8,11 +8,10 @@ import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.LootEntry;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.event.bank.LootInfoEvent;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.event.baseball.BaseballGameEvent;
 import link.locutus.discord.event.city.CityBuildingChangeEvent;
@@ -25,20 +24,16 @@ import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.nation.NationChangeActiveEvent;
 import link.locutus.discord.event.nation.NationChangeUnitEvent;
 import link.locutus.discord.event.nation.NationCreateProjectEvent;
+import link.locutus.discord.event.trade.TradeCompleteEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import org.checkerframework.checker.units.qual.min;
+import rocker.grant.nation;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -62,8 +57,9 @@ public class LootEstimateTracker {
 
     public void update() {
         long cutoff = System.currentTimeMillis() - queueBufferMs;
-        Map<Integer, LootEstimate> toUpdate = new HashMap<>();
         Map<Integer, LootEstimate> toSave = new HashMap<>();
+        Set<Integer> toDelete = new HashSet<>();
+
         synchronized (nationLootMap) {
             // remove deleted nations
             for (Map.Entry<Integer, LootEstimate> entry : nationLootMap.entrySet()) {
@@ -75,21 +71,18 @@ public class LootEstimateTracker {
                     if (nation == null) {
                         estimate.markDeleted();
                         toSave.put(nationId, estimate);
+                        toDelete.add(nationId);
                         continue;
                     }
-                    if (estimate.hasQueue(cutoff)) {
-                        toUpdate.put(nationId, estimate);
+                    estimate.flushOrders(cutoff);
+                    if (estimate.isDirty()) {
+                        toSave.put(nationId, estimate);
+                        estimate.dirty = false;
                     }
                 }
             }
-            for (Map.Entry<Integer, LootEstimate> entry : toSave.entrySet()) {
-                nationLootMap.remove(entry.getKey());
-            }
-        }
-        for (Map.Entry<Integer, LootEstimate> entry : toUpdate.entrySet()) {
-            LootEstimate estimate = entry.getValue();
-            if (estimate.flushOrders(cutoff)) {
-                toSave.put(entry.getKey(), estimate);
+            for (int id : toDelete) {
+                nationLootMap.remove(id);
             }
         }
         if (!toSave.isEmpty()) {
@@ -117,11 +110,7 @@ public class LootEstimateTracker {
 
         if (date <= 0) date = System.currentTimeMillis();
         Order order = new Order(min, max, date);
-        if (allowQueue) {
-            estimate.addOrder(order);
-        } else {
-            estimate.flushOrder(order);
-        }
+        estimate.addOrder(order, allowQueue);
     }
 
     private LootEstimate getOrCreate(int nationId) {
@@ -133,7 +122,8 @@ public class LootEstimateTracker {
         synchronized (nationLootMap) {
             existing = nationLootMap.get(nationId);
             if (existing == null) {
-                nationLootMap.put(nationId, existing = new LootEstimate());
+                existing = new LootEstimate();
+                nationLootMap.put(nationId, existing);
                 newInstance = true;
             }
         }
@@ -142,13 +132,17 @@ public class LootEstimateTracker {
             if (loot != null) {
                 existing.min = loot.getTotal_rss().clone();
                 existing.max = loot.getTotal_rss().clone();
-
-                // TODO turns revenue until now
-                existing.lastUpdated = loot.getDate();
+                existing.lastTurnRevenue = TimeUtil.getTurn(loot.getDate());
             } else {
+                if (nation.isPowered()) {
+                    nation.getResourcesNeeded(new HashMap<>(), 5, false);
+                } else if (nation.getCities() == 1) {
+                    // start with $1m
+
+                }
                 existing.min = ResourceType.getBuffer();
                 existing.max = ResourceType.getBuffer();
-                existing.lastUpdated = System.currentTimeMillis();
+                existing.lastTurnRevenue = TimeUtil.getTurn();
             }
             save.accept(Collections.singletonMap(nation.getId(), existing));
         }
@@ -179,7 +173,8 @@ public class LootEstimateTracker {
         public double[] max;
 
         public double[] revenueCache;
-        public long lastUpdated;
+        public long lastTurnRevenue;
+        public boolean dirty;
 
         private Deque<Order> orders = null;
 
@@ -189,8 +184,8 @@ public class LootEstimateTracker {
         }
 
         public void markDeleted() {
-            this.min = min;
-            this.max = max;
+            this.min = null;
+            this.max = null;
             this.revenueCache = null;
             this.orders = null;
         }
@@ -199,69 +194,88 @@ public class LootEstimateTracker {
             return min == null;
         }
 
-        public void addOrder(Order order) {
-            if (this.orders == null) {
-                this.orders = new ArrayDeque<>();
-            }
-            this.orders.add(order);
-        }
-
-        public LootEstimate flushOrder(Order order) {
-            min = PnwUtil.add(min, order.min);
-            max = PnwUtil.add(max, order.max);
-            return this;
-        }
-
-        public LootEstimate ceilZero() {
-            for (int i = 0; i < min.length; i++) {
-                if (min[i] < 0) min[i] = 0;
-                if (max[i] < 0) max[i] = 0;
-            }
-            return this;
-        }
-
-        public Map.Entry<double[], double[]> getLootEstimateRange(boolean includeOrders) {
-            double[] min = this.min;
-            double[] max = this.max;
-            if (includeOrders && orders != null && !orders.isEmpty()) {
-                min = min.clone();
-                max = max.clone();
-                for (Order order : orders) {
-                    min = PnwUtil.add(min, order.min);
-                    max = PnwUtil.add(max, order.max);
-                }
-            }
-            return Map.entry(min, max);
-        }
-
-        public boolean flushOrders(long maxDate) {
-            if (orders != null) {
-                List<Order> ordersSorted = null;
-                for (Order order : orders) {
-                    if (order.date < maxDate) {
-                        if (ordersSorted == null) ordersSorted = new ArrayList<>(orders.size());
-                        ordersSorted.add(order);
+        public synchronized void addOrder(Order order, boolean allowQueue) {
+            if (allowQueue) {
+                if (order.isAbsolute) {
+                    if (this.orders != null) {
+                        orders.removeIf(f -> f.date < order.date);
                     }
                 }
-                // nothing to flush
-                if (ordersSorted == null) return false;
-
-                // If some orders were not included
-                if (orders.size() > ordersSorted.size()) {
-                    orders.removeAll(ordersSorted);
-                } else {
-                    orders = null;
+                if (this.orders == null) {
+                    this.orders = new ArrayDeque<>();
                 }
+                this.orders.add(order);
+            }
+            if (order.isAbsolute) {
+                if (!Arrays.equals(min, order.min) || !Arrays.equals(max, order.max)) {
+                    min = order.min.clone();
+                    max = order.max.clone();
+                    if (this.orders != null && this.orders.size() > 1) {
+                        for (Order newOrder : this.orders) {
+                            if (newOrder.date > order.date) {
+                                this.min = ResourceType.add(this.min, newOrder.min);
+                                this.max = ResourceType.add(this.max, newOrder.max);
+                            }
+                        }
+                    }
+                    dirty = true;
+                }
+            } else {
+                this.min = ResourceType.add(this.min, order.min);
+                this.max = ResourceType.add(this.max, order.max);
+                dirty = true;
+            }
+        }
+        public Map.Entry<double[], double[]> getLootEstimateRange() {
+            return Map.entry(ResourceType.ceil(min.clone(), 0), max.clone());
+        }
 
-                if (ordersSorted.size() > 1) {
+
+        public synchronized void flushOrders(long maxDate) {
+            if (orders != null && !orders.isEmpty()) {
+                List<Order> ordersSorted = new ArrayList<>(orders.size());
+                if (ordersSorted.size() > 0) {
                     ordersSorted.sort(Comparator.comparingLong(o -> o.date));
                 }
-                for (Order order : ordersSorted) {
-                    flushOrder(order).ceilZero();
+                double[] minCopy = min.clone();
+                double[] maxCopy = max.clone();
+                int i = ordersSorted.size() - 1;
+                for (; i >= 0; i--) {
+                    Order order = ordersSorted.get(i);
+                    if (order.isAbsolute) {
+                        System.arraycopy(order.min, 0, minCopy, 0, minCopy.length);
+                        System.arraycopy(order.max, 0, maxCopy, 0, maxCopy.length);
+                        i++;
+                        break;
+                    } else {
+                        // subtract
+                        minCopy = ResourceType.subtract(minCopy, order.min);
+                        maxCopy = ResourceType.subtract(maxCopy, order.max);
+                    }
                 }
-                return true;
+
+                ResourceType.ceil(minCopy, 0);
+                ResourceType.ceil(maxCopy, 0);
+                for (; i < ordersSorted.size(); i++) {
+                    Order order = ordersSorted.get(i);
+                    minCopy = ResourceType.add(minCopy, order.min);
+                    maxCopy = ResourceType.add(maxCopy, order.max);
+                    if (order.date > maxDate) {
+                        // don't ceil after set
+                    } else {
+                        ResourceType.ceil(minCopy, 0);
+                        ResourceType.ceil(maxCopy, 0);
+                    }
+                }
+                if (!dirty) {
+                    dirty |= !Arrays.equals(min, minCopy) || !Arrays.equals(max, maxCopy);
+                }
+                min = minCopy;
+                max = maxCopy;
+
+                orders.removeIf(f -> f.date <= maxDate);
+                if (orders.isEmpty()) orders = null;
             }
-            return false;
         }
 
         public boolean hasQueue(long cutoff) {
@@ -273,17 +287,32 @@ public class LootEstimateTracker {
             }
             return false;
         }
+
+        public void set(long date, double[] resources, boolean allowQueue) {
+            Order order = new Order(resources, resources, date).setAbsolute();
+            addOrder(order, allowQueue);
+        }
+
+        public boolean isDirty() {
+            return isDirty();
+        }
     }
 
-    public class Order {
+    public static class Order {
         public final double[] min;
         public final double[] max;
         public final long date;
+        public boolean isAbsolute = false;
 
         public Order(double[] min, double[] max, long date) {
             this.min = min;
             this.max = max;
             this.date = date;
+        }
+
+        public Order setAbsolute() {
+            this.isAbsolute = true;
+            return this;
         }
     }
 
@@ -312,7 +341,6 @@ public class LootEstimateTracker {
         City revenue
             - If taxable, then add lower/upper
 
-        TODO: Add each order to the queue with date
         write the queue to a file
         Only update nation every 2h, or when saving
         // flush the queue every 2h (or when force save)
@@ -323,11 +351,46 @@ public class LootEstimateTracker {
     public void onTurnChange(TurnChangeEvent event) {
         Map<Integer, TaxBracket> brackets = Locutus.imp().getBankDB().getTaxBracketsAndEstimates();
 
+        double[] existingBuffer = ResourceType.getBuffer();
+
         long date = event.getTimeCreated();
-        for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0)) {
+        long turn = TimeUtil.getTurn();
+
+        for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(f -> true)) {
+            if (nation.getVm_turns() > 0) {
+                LootEstimate estimate = getOrCreate(nation.getId());
+                if (estimate != null) {
+                    estimate.lastTurnRevenue = turn;
+                    estimate.dirty = true;
+                }
+                continue;
+            }
             // get num turns since last update
-            int nationId = nation.getId();
-            double[] revenue = nation.getRevenue();
+            LootEstimate estimate = getOrCreate(nation.getNation_id());
+            if (estimate == null) continue;
+
+            System.arraycopy(estimate.max, 0, existingBuffer, 0, estimate.max.length);
+
+            int turnDiff = (int) (turn - estimate.lastTurnRevenue);
+            boolean noFood = estimate.max[ResourceType.FOOD.ordinal()] <= 0;
+
+            double[] revenue = nation.getRevenue(turnDiff, true, true, true, noFood, false);
+            for (ResourceType type : ResourceType.values) {
+                if (type.isManufactured()) {
+                    double min = 0;
+                    for (ResourceType input : type.getInputs()) {
+                        double net = estimate.max[input.ordinal()] + revenue[input.ordinal()];
+                        if (net < min) min = net;
+                    }
+                    if (min < 0) {
+                        for (ResourceType input : type.getInputs()) {
+                            revenue[input.ordinal()] -= min;
+                        }
+                        revenue[type.ordinal()] += min * type.getManufacturingMultiplier();
+                    }
+                }
+            }
+
 
             if (nation.isTaxable()) {
                 TaxBracket rate = brackets.get(nation.getTax_id());
@@ -335,19 +398,19 @@ public class LootEstimateTracker {
                     // add X% to min and max
                     for (ResourceType type : ResourceType.values()) {
                         if (type.isRaw() || type.isManufactured()) {
-                            revenue[type.ordinal()] *= (rate.rssRate / 100d);
+                            revenue[type.ordinal()] *= ((100 - rate.rssRate) / 100d);
                         } else {
-                            revenue[type.ordinal()] *= (rate.moneyRate / 100d);
+                            revenue[type.ordinal()] *= ((100 - rate.moneyRate) / 100d);
                         }
                     }
-                    add(nationId, date, revenue, revenue);
+                    add(nation.getId(), date, revenue, revenue);
                 } else {
-                    // add to max
-                    add(nationId, date, ResourceType.getBuffer(), revenue);
+                    add(nation.getId(), date, ResourceType.getBuffer(), revenue);
                 }
             } else {
-                add(nationId, date, revenue, revenue);
+                add(nation.getId(), date, revenue, revenue);
             }
+            estimate.lastTurnRevenue = turn;
         }
     }
 
@@ -405,15 +468,24 @@ public class LootEstimateTracker {
         DBAttack attack = event.getAttack();
 
         // consumption
-        Map<ResourceType, Double> attLoss = attack.getLosses(true, false, false, true, true);
-        Map<ResourceType, Double> defLoss = attack.getLosses(false, false, false, true, true);
+        double[] attLoss = PnwUtil.resourcesToArray(attack.getLosses(true, false, false, true, true));
+        double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true));
 
         // Handle airstrike money (since it comes under unit losses, which we are excluding)
         if (attack.attack_type == AttackType.AIRSTRIKE4 && attack.defcas1 > 0) {
-            defLoss.put(ResourceType.MONEY, (defLoss.getOrDefault(ResourceType.MONEY, 0d) + attack.defcas1));
+            defLoss[ResourceType.MONEY.ordinal()] += attack.defcas1;
         }
-        add(attack.attacker_nation_id, event.getTimeCreated(), PnwUtil.resourcesToArray(attLoss));
-        add(attack.attacker_nation_id, event.getTimeCreated(), PnwUtil.resourcesToArray(defLoss));
+        if (attack.success > 0) {
+            DBNation attacker = nationFactory.apply(attack.attacker_nation_id);
+            if (attacker != null && attacker.hasProject(Projects.MILITARY_SALVAGE)) {
+                Map<ResourceType, Double> unitLosses = attack.getLosses(true, true, false, false, false);
+                attLoss[ResourceType.STEEL.ordinal()] -= unitLosses.getOrDefault(ResourceType.STEEL, 0d) * 0.05;;
+                attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses.getOrDefault(ResourceType.ALUMINUM, 0d) * 0.05;;
+            }
+        }
+        // negate this
+        add(attack.attacker_nation_id, event.getTimeCreated(), ResourceType.negative(attLoss));
+        add(attack.defender_nation_id, event.getTimeCreated(), ResourceType.negative(defLoss));
     }
 
     @Subscribe
@@ -453,7 +525,7 @@ public class LootEstimateTracker {
         DBNation previous = event.getPrevious();
         DBNation nation = event.getCurrent();
         long day = TimeUtil.getDay();
-        if (TimeUtil.getDay(previous.lastActiveMs()) == day) return;
+        if (TimeUtil.getDay(previous.lastActiveMs()) == day || nation.getVm_turns() != 0) return;
 
         // get last login day
 
@@ -493,22 +565,33 @@ public class LootEstimateTracker {
 
     @Subscribe
     public void onTrade(TradeCompleteEvent event) {
-        // Add the following to pusher
-
-        // fetch trades every turn
-        // add trades to pusher
+        DBTrade trade = event.getCurrent();
+        add(trade.getSeller(), event.getTimeCreated(),
+                trade.getResource().builder(-trade.getQuantity()).addMoney(trade.getTotal()).build());
+        add(trade.getBuyer(), event.getTimeCreated(),
+                trade.getResource().builder(trade.getQuantity()).addMoney(-trade.getTotal()).build());
     }
 
     @Subscribe
     public void bankEvent(TransactionEvent event) {
-        // add syncbanks command <nations>
-        // todo add bank subscription to pusher
-        // fetch bank recs every turn and at startup
+        Transaction2 tx = event.getTransaction();
+        if (tx.isSenderNation()) {
+            double[] negativeResources = ResourceType.MONEY.builder(0).subtract(tx.resources).build();
+            add((int) tx.receiver_id, tx.tx_datetime, negativeResources);
+        }
+        if (tx.isReceiverNation()) {
+            add((int) tx.receiver_id, tx.tx_datetime, tx.resources);
+        }
     }
 
     @Subscribe
     public void onLootInfo(LootInfoEvent event) {
-        // get the current estimate
+        LootEntry loot = event.getLoot();
+        if (!loot.isAlliance()) {
+            int id = loot.getId();
+            LootEstimate estimate = getOrCreate(id);
+            estimate.set(loot.getDate(), loot.getTotal_rss(), allowQueue);
+        }
     }
 
 

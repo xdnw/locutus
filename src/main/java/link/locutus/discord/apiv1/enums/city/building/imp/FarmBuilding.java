@@ -7,7 +7,7 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import java.util.function.Function;
 
 public class FarmBuilding extends AResourceBuilding {
-    public FarmBuilding(Building parent, int baseInput, double boostFactor, Function<Nation, Boolean> hasWorks, ResourceType output, ResourceType... inputs) {
-        super(parent, baseInput, boostFactor, hasWorks, output, inputs);
+    public FarmBuilding(BuildingBuilder parent) {
+        super(parent, ResourceType.FOOD.getBaseInput(), ResourceType.FOOD.getBoostFactor(), ResourceType.FOOD, ResourceType.FOOD.getInputs());
     }
 }

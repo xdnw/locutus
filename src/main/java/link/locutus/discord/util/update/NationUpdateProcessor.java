@@ -40,6 +40,7 @@ import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import rocker.grant.nation;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -428,7 +429,7 @@ public class NationUpdateProcessor {
                         if (attacker.getScore() < minScore || attacker.getScore() > maxScore) continue;
                         if (attacker.getOff() > 4) continue;
                         if (attacker.hasUnsetMil() || current.hasUnsetMil()) continue;
-                        int planeCap = Buildings.HANGAR.cap() * Buildings.HANGAR.max() * attacker.getCities();
+                        int planeCap = Buildings.HANGAR.cap(attacker::hasProject) * Buildings.HANGAR.max() * attacker.getCities();
                         if (attacker.getAircraft() < planeCap * 0.8) continue;
 
                         double attStr = BlitzGenerator.getAirStrength(attacker, true, true);

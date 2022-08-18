@@ -388,7 +388,7 @@ type Nation {
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
   food: Float
   projects: Int
-  project_bits: Int
+  project_bits: Long
   ironw: Boolean @deprecated(reason: "Use iron_works instead")
   iron_works: Boolean
   bauxitew: Boolean @deprecated(reason: "Use bauxite_works instead")

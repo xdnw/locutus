@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -9,48 +10,35 @@ import rocker.grant.city;
 
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
-public class ABuilding<task> implements Building {
-    private final Map<ResourceType, Double> cost;
+public class ABuilding implements Building {
     private final int pollution;
     private final int cap;
-    private final Map<ResourceType, Double> upkeep;
     private final double[] costArr;
-    private double costConverted;
+    private final double costConverted;
 
     private final double[] upkeepArr;
     private final String name;
-    private double upkeepConverted;
+    private final double upkeepConverted;
     private int ordinal;
 
-    public ABuilding(Building parent) {
-        this(parent.name(), parent.cap(f -> false), parent.pollution(f -> false), parent.cost(), parent.upkeep());
-        this.ordinal = parent.ordinal();
+    public ABuilding(BuildingBuilder parent) {
+        this(parent.getName(), parent.getCap(), parent.getPollution(), parent.getCost(), parent.getUpkeep());
     }
 
-    public ABuilding(String name, int cap, int pollution, Map<ResourceType, Double> cost, Map<ResourceType, Double> upkeep) {
+    public ABuilding(String name, int cap, int pollution, double[] cost, double[] upkeep) {
         this.name = name;
         this.cap = cap;
         this.pollution = pollution;
-        this.cost = cost;
-        this.upkeep = upkeep;
-        this.costArr = new double[ResourceType.values.length];
-        for (Map.Entry<ResourceType, Double> entry : cost.entrySet()) {
-            costArr[entry.getKey().ordinal()] += entry.getValue();
-        }
+        this.costArr = cost;
         this.costConverted = PnwUtil.convertedTotal(costArr);
-
-        upkeepArr = new double[ResourceType.values.length];
-        for (Map.Entry<ResourceType, Double> entry : upkeep.entrySet()) {
-            upkeepArr[entry.getKey().ordinal()] += entry.getValue();
-        }
-
+        this.upkeepArr = upkeep;
         this.upkeepConverted = PnwUtil.convertedTotal(upkeepArr);
     }
 
-    private void updateUpkeepConverted() {
-        this.costConverted = PnwUtil.convertedTotal(costArr);
-        this.upkeepConverted = PnwUtil.convertedTotal(upkeepArr);
+    public double getUpkeepConverted(Predicate<Project> hasProject) {
+        return upkeepConverted;
     }
 
     @Override
@@ -59,8 +47,8 @@ public class ABuilding<task> implements Building {
     }
 
     @Override
-    public Map<ResourceType, Double> cost() {
-        return cost;
+    public double cost(ResourceType type) {
+        return this.costArr[type.ordinal()];
     }
 
     @Override
@@ -69,25 +57,8 @@ public class ABuilding<task> implements Building {
     }
 
     @Override
-    public double[] cost(double[] buffer, double num) {
-        if (num > 0) {
-            for (int i = 0; i < costArr.length; i++) {
-                buffer[i] += costArr[i] * num;
-            }
-        } else if (num < 0) {
-            // 50% of money back for selling
-            buffer[0] += costArr[0] * num * 0.5;
-            for (int i = 1; i < costArr.length; i++) {
-                // 75% of rss back for selling
-                buffer[i] += costArr[i] * num * 0.75;
-            }
-        }
-        return buffer;
-    }
-
-    @Override
-    public Map<ResourceType, Double> upkeep() {
-        return upkeep;
+    public double upkeep(ResourceType type, Predicate<Project> hasProject) {
+        return upkeepArr[type.ordinal()];
     }
 
     @Override
@@ -110,16 +81,16 @@ public class ABuilding<task> implements Building {
     }
 
     @Override
-    public double profitConverted(double rads, Predicate<Project> hasProject, JavaCity city, int amt) {
-        return -(upkeepConverted * amt);
+    public double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int amt) {
+        return -(getUpkeepConverted(hasProject) * amt);
     }
 
     @Override
-    public double[] profit(double rads, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer) {
+    public double[] profit(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns) {
         int amt = city.get(this);
         if (amt > 0) {
-            for (int i = 0; i < profitBuffer.length; i++) {
-                profitBuffer[i] -= upkeepArr[i] * amt;
+            for (ResourceType type : ResourceType.values) {
+                profitBuffer[type.ordinal()] -= upkeep(type, hasProject) * amt * turns / 12;
             }
         }
         return profitBuffer;

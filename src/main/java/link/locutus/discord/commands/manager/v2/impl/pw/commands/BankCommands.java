@@ -442,11 +442,11 @@ public class BankCommands {
 
             JavaCity city1 = cities.entrySet().iterator().next().getValue();
 
-            double profit = city1.profitConvertedCached(nation.getRads(), nation::hasProject, nation.getCities());
+            double profit = city1.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
             JavaCity origin = new JavaCity(city1);
             origin.zeroNonMilitary();
             JavaCity optimal = origin.optimalBuild(nation, 0);
-            double profitOptimal = optimal.profitConvertedCached(nation.getRads(), nation::hasProject, nation.getCities());
+            double profitOptimal = optimal.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
 
             double optimalGain = profit >= profitOptimal ? 1 : profit / profitOptimal;
 

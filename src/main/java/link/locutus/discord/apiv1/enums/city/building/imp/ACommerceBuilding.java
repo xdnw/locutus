@@ -6,7 +6,7 @@ import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
 public class ACommerceBuilding extends ABuilding implements CommerceBuilding {
     private final int commerce;
 
-    public ACommerceBuilding(Building parent, int commerce) {
+    public ACommerceBuilding(BuildingBuilder parent, int commerce) {
         super(parent);
         this.commerce = commerce;
     }

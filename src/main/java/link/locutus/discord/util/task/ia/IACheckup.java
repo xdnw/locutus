@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.ia;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
 import link.locutus.discord.commands.sheets.ROI;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
@@ -20,7 +21,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.ServiceBuilding;
+import link.locutus.discord.apiv1.enums.city.building.imp.AServiceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -663,7 +664,7 @@ public class IACheckup {
         if (!db.getCoalition("enemies").isEmpty()) return null;
         Map<ResourceType, Double> perCity = db.getOrNull(GuildDB.Key.WARCHEST_PER_CITY);
         if (perCity == null) return null;
-        int airCap = nation.getCities() * Buildings.HANGAR.cap() * Buildings.HANGAR.max();
+        int airCap = nation.getCities() * Buildings.HANGAR.cap(nation::hasProject) * Buildings.HANGAR.max();
         double airPct = (double) nation.getAircraft() / airCap;
         if (airPct < 0.8) return null;
         Map<ResourceType, Double> required = PnwUtil.multiply(perCity, (double) nation.getCities());
@@ -752,7 +753,7 @@ public class IACheckup {
             pop += entry.getValue().getPopulation(nation::hasProject);
         }
 
-        double maxPlanes = Math.min(pop * 0.1, hangars * Buildings.HANGAR.cap());
+        double maxPlanes = Math.min(pop * 0.1, hangars * Buildings.HANGAR.cap(nation::hasProject));
         double threshold = maxPlanes * 0.9;
         if (nation.getAircraft() < threshold) {
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(3);
@@ -852,7 +853,7 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkRevenue(DBNation nation) {
-        double[] revenue = nation.getRevenue(ResourceType.getBuffer(), true, false, false, false);
+        double[] revenue = nation.getRevenue(12, true, false, false, false, false);
 
         double total = PnwUtil.convertedTotal(revenue, false);
         if (total < 0) {
@@ -955,7 +956,7 @@ public class IACheckup {
 
         for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getRads(), nation::hasProject, new double[ResourceType.values.length], nation.getCities()));
+            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue());
@@ -985,7 +986,7 @@ public class IACheckup {
 
         for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getRads(), nation::hasProject, new double[ResourceType.values.length], nation.getCities()));
+            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue() * 7);
@@ -1431,7 +1432,7 @@ public class IACheckup {
             response.append("The following cities are unpowered (insufficient power buildings) " + StringMan.getString(unpoweredInfra));
         }
         if (!unpoweredRss.isEmpty()) {
-            double[] revenue = PnwUtil.getRevenue(null, nation, cities, true, false, false);
+            double[] revenue = PnwUtil.getRevenue(null, 12, nation, cities.values(), true, false, false, false, true);
             for (int i = 0; i < revenue.length; i++) {
                 if (revenue[i] >= 0) revenue[i] = 0;
                 else revenue[i] = -revenue[i];
