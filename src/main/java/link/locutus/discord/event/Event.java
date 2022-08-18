@@ -23,7 +23,9 @@ public class Event {
         Locutus.post(this);
         long diff = System.currentTimeMillis() - start;
         if (diff > 100) {
-            AlertUtil.error(this.getClass().getSimpleName() + " took too long (" + diff + "ms)", new Exception());
+            System.out.println("Posted " + this.getClass().getSimpleName() + "(took " + diff + ")");
+        } else {
+            System.out.println("Posted " + this.getClass().getSimpleName());
         }
     }
 

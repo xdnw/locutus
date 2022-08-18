@@ -1,8 +1,10 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CoalitionWarStatus;
@@ -25,7 +27,9 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -61,10 +65,15 @@ public class WarCostAB extends Command {
         if (args.isEmpty() || args.size() > 3 || (args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
             return usage(event);
         }
+        String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
 
         String arg0 = args.get(0);
 
         WarAttackParser parser = new WarAttackParser(guild, args, flags);
+        if (attackTypeStr != null) {
+            Set<AttackType> options = new HashSet<>(BindingHelper.emumList(AttackType.class, attackTypeStr.toUpperCase(Locale.ROOT)));
+            parser.getAttacks().removeIf(f -> !options.contains(f.attack_type));
+        }
 
         AttackCost cost = parser.toWarCost();
 

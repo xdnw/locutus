@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -20,6 +21,7 @@ import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
+import link.locutus.discord.util.AuditType;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -55,6 +57,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -3816,6 +3819,32 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String help() {
                 return "The #channel to ping members about audits";
+            }
+        },
+
+        DISABLED_MEMBER_AUDITS(true, MEMBER_AUDIT_ALERTS, CommandCategory.INTERNAL_AFFAIRS) {
+            @Override
+            public String validate(GuildDB db, String value) {
+                return toString(parse(db, value));
+            }
+
+            @Override
+            public boolean allowed(GuildDB db) {
+                return MEMBER_AUDIT_ALERTS.allowed(db);
+            }
+
+            @Override
+            public Object parse(GuildDB db, String input) {
+                return new HashSet<>(BindingHelper.emumList(AuditType.class, input));
+            }
+
+            @Override
+            public String toString(Object value) {
+                return StringMan.join((Collection) value, ",");
+            }
+            @Override
+            public String help() {
+                return "A comma separated list of audit types to ignore: " + StringMan.getString(AuditType.values());
             }
         },
 

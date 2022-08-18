@@ -124,8 +124,6 @@ public class PoliticsAndWarV3 {
             }
         }
 
-        System.out.println(graphQLRequest.toQueryString() + " | " + graphQLRequest.getRequest());
-
         ResponseEntity<String> exchange = null;
         T result = null;
 

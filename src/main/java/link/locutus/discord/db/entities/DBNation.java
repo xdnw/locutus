@@ -1111,13 +1111,13 @@ public class DBNation implements NationOrAlliance {
             dirty = true;
         }
         if (nation.getEspionage_available() != null) {
-            if (nation.getEspionage_available() != this.isEspionageFull()) {
+            if (nation.getEspionage_available() != (this.isEspionageAvailable())) {
                 if (nation.getEspionage_available()) {
                     this.setEspionageFull(false);
                 } else {
                     this.setEspionageFull(true);
                 }
-                if (eventConsumer != null) eventConsumer.accept(new NationChangeSpyFullEvent(copyOriginal, this));
+                if (eventConsumer != null && this.getVm_turns() > 0) eventConsumer.accept(new NationChangeSpyFullEvent(copyOriginal, this));
             } else {
                 // Set to same so that last update can be tracked
                 this.setEspionageFull(this.isEspionageFull());
@@ -4009,6 +4009,11 @@ public class DBNation implements NationOrAlliance {
     @Command
     public boolean isEspionageFull() {
         return this.getVm_turns() > 0 || this.espionageFull > TimeUtil.getTurn();
+    }
+
+    @Command
+    public boolean isEspionageAvailable() {
+        return !isEspionageFull();
     }
 
     @Command

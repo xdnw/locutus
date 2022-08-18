@@ -4,7 +4,6 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.Trade;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
@@ -27,7 +26,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
 
 public class TradeDB extends DBMainV2 {
     public TradeDB() throws SQLException, ClassNotFoundException {
@@ -47,20 +45,10 @@ public class TradeDB extends DBMainV2 {
                 .putColumn("quantity", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("ppu", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
 
-                .putColumn("type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("date_accepted", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("parent_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-
                 .addIndex(TableIndex.index("index_trade_date", "date", TableIndex.Type.INDEX))
                 .addIndex(TableIndex.index("index_trade_type", "resource", TableIndex.Type.INDEX))
-                .create(getDb());
-
-        try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE TRADES " +
-                "ADD COLUMN `type` INT NOT NULL DEFAULT 0, " +
-                "ADD COLUMN `date_accepted` INT NOT NULL DEFAULT 0," +
-                "ADD COLUMN `parent_id` INT NOT NULL DEFAULT 0")) {
-            stmt.executeUpdate();
-        } catch (SQLException ignore) {}
+                .create(getDb())
+        ;
 
         String query = TablePreset.create("SUBSCRIPTIONS_2")
                 .putColumn("user", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
@@ -87,11 +75,8 @@ public class TradeDB extends DBMainV2 {
         ;
     }
 
-//    public boolean updateTrades() {
-//
-//    }
-
     public void setTradePrice(ResourceType type, int ppu, boolean isBuy) {
+        long pair = (isBuy ? 1 : 0) ^ ((type.ordinal() ^ (ppu << 4)) << 1);
         update("INSERT OR REPLACE INTO `TRADEPRICE`(`resource`, `ppu`, `isBuy`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, type.ordinal());
             stmt.setInt(2, ppu);
@@ -295,22 +280,18 @@ public class TradeDB extends DBMainV2 {
         addTrade(offer.getTradeId(), offer.getEpochms(), offer.getSeller(), offer.getBuyer(), offer.getResource(), offer.isBuy(), offer.getAmount(), offer.getPpu());
     }
 
-    private void addTrades(List<Trade> trades) {
-        executeBatch(trades, "INSERT OR REPLACE INTO `TRADES`(`tradeId`, `date`, `seller`, `buyer`, `resource`, `isBuy`, `quantity`, `ppu`, `type`,  `date_accepted`, `parent_id`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<Trade, PreparedStatement>() {
-            @Override
-            public void acceptThrows(Trade trade, PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, trade.tradeId);
-                stmt.setLong(2, trade.date);
-                stmt.setInt(3, trade.seller);
-                stmt.setInt(4, trade.buyer);
-                stmt.setInt(5, trade.type.ordinal());
-                stmt.setBoolean(6, trade.isBuy);
-                stmt.setInt(7, trade.quantity);
-                stmt.setInt(8, trade.ppu);
-                stmt.setInt(9, trade.type.ordinal());
-                stmt.setLong(10, trade.date_accepted);
-                stmt.setInt(11, trade.parent_id);
-            }
+    private void addTrade(int tradeId, long date, Integer seller, Integer buyer, ResourceType type, boolean isBuy, int quantity, int ppu) {
+        update("INSERT OR REPLACE INTO `TRADES`(`tradeId`, `date`, `seller`, `buyer`, `resource`, `isBuy`, `quantity`, `ppu`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, tradeId);
+            stmt.setLong(2, date);
+            if (seller == null) stmt.setNull(3, Types.INTEGER);
+            else stmt.setInt(3, seller);
+            if (buyer == null) stmt.setNull(4, Types.INTEGER);
+            else stmt.setInt(4, buyer);
+            stmt.setInt(5, type.ordinal());
+            stmt.setBoolean(6, isBuy);
+            stmt.setInt(7, quantity);
+            stmt.setInt(8, ppu);
         });
     }
 
