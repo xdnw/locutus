@@ -734,10 +734,7 @@ public class JavaCity {
 
         double newPlayerBonus = Math.max(1, (200d - ((numCities - 1) * 10d)) / 100d);
 
-        double income = Math.max(0, (((commerce/50d) * 0.725) + 0.725) * metrics.population * newPlayerBonus) * grossModifier;
-
-        grossIncomeTOtalCache += income;
-        System.out.println(" - income " + MathMan.format(grossIncomeTOtalCache));
+        double income = (((commerce/50d) * 0.725d) + 0.725d) * metrics.population * newPlayerBonus * grossModifier;
 
         profitBuffer[ResourceType.MONEY.ordinal()] += income * turns / 12;
 
@@ -745,8 +742,6 @@ public class JavaCity {
 
         return profitBuffer;
     }
-
-    private static double grossIncomeTOtalCache = 0;
 
 
     public double[] calculateCost(JavaCity from) {

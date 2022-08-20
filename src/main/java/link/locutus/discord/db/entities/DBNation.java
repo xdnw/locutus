@@ -1374,39 +1374,13 @@ public class DBNation implements NationOrAlliance {
     }
 
     public List<Transaction2> updateTransactions() {
-        PoliticsAndWarV2 apiV2 = Locutus.imp().getPnwApi();
-        List<BankRecord> records = apiV2.getBankRecords(nation_id);
-        List<Transaction2> records2 = new ArrayList<>();
-        for (BankRecord record : records) {
-            records2.add(new Transaction2(record));
+        BankDB bankDb = Locutus.imp().getBankDB();
+        if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
+            Locutus.imp().runEventsAsync(bankDb::updateBankRanks);
+        } else {
+            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, events));
         }
-        setMeta(NationMeta.LAST_BANK_UPDATE, System.currentTimeMillis());
-
-        if (records.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        int existing = Locutus.imp().getBankDB().getTransactionsByNationCount(nation_id);
-
-        if (existing != records.size()) {
-            int[] added = Locutus.imp().getBankDB().addTransactions(records2, false);
-            for (int i = existing; i < records2.size(); i++) {
-                if (added[i] > 0) {
-                    Transaction2 tx = records2.get(i);
-                    new TransactionEvent(tx).post();
-                }
-            }
-        } else { // Legacy fix
-            List<Transaction2> toFix = new ArrayList<>();
-            for (Transaction2 record2 : records2) {
-                int rssInt = (int) (record2.resources[0] * 100);
-                if (rssInt == 2147483647) {
-                    toFix.add(record2);
-                }
-            }
-            Locutus.imp().getBankDB().addTransactions(toFix, false);
-        }
-        return records2;
+        return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
     }
 
     @Command
@@ -1476,22 +1450,14 @@ public class DBNation implements NationOrAlliance {
      * @return
      */
     public List<Transaction2> getTransactions(long updateThreshold) {
-        ByteBuffer lastUpdateMeta = getMeta(NationMeta.LAST_BANK_UPDATE);
-        if (lastUpdateMeta == null) {
-            return updateTransactions();
+        boolean update = updateThreshold == 0;
+        if (!update && updateThreshold > 0) {
+            Transaction2 tx = Locutus.imp().getBankDB().getLatestTransaction();
+            if (tx.tx_datetime < last_active) update = true;
+            else if (System.currentTimeMillis() - tx.tx_datetime > updateThreshold) update = true;
         }
-        if (updateThreshold >= 0) {
-            long lastUpdate = lastUpdateMeta == null ? 0 : lastUpdateMeta.getLong();
-            long active_ms = TimeUnit.MINUTES.toMillis(5 + getActive_m());
-            if (active_ms > updateThreshold || updateThreshold == 0) {
-                long lastActive = System.currentTimeMillis() - active_ms;
-                if (lastActive > lastUpdate || updateThreshold == 0) {
-                    Map<Integer, Map.Entry<Long, Rank>> history = getAllianceHistory();
-                    // check alliance history
-//                    history
-                    return updateTransactions();
-                }
-            }
+        if (update) {
+            return updateTransactions();
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
     }

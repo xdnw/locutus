@@ -761,6 +761,8 @@ public class AdminCommands {
         channel.sendMessage("Syncing bank for " + db.getGuild()).queue();
         OffshoreInstance bank = db.getHandler().getBank();
         bank.sync(timestamp, false);
+
+        Locutus.imp().getBankDB().updateBankRanks(Event::post);
         return "Done!";
     }
 

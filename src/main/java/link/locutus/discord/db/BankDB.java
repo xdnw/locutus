@@ -1,8 +1,6 @@
 package link.locutus.discord.db;
 
-import com.politicsandwar.graphql.model.BBGame;
-import com.politicsandwar.graphql.model.Bankrec;
-import com.politicsandwar.graphql.model.BankrecsQueryRequest;
+import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
@@ -13,13 +11,10 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.Transfer;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -32,6 +27,7 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -53,6 +49,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class BankDB extends DBMainV2 {
 
@@ -199,7 +196,89 @@ public class BankDB extends DBMainV2 {
         }
     }
 
-    // method to insert or replace tax rate suggestion
+    public Transaction2 getLatestTransaction() {
+        List<Transaction2> latestList = selectTransactions(query -> query.order("id", QueryOrder.OrderDirection.DESC).limit(1));
+        return latestList.isEmpty() ? null : latestList.get(0);
+    }
+
+    public void updateBankRecs(int nationId, Consumer<Event> eventConsumer) {
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+
+        List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
+        int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
+        List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+            @Override
+            public void accept(BankrecsQueryRequest request) {
+                request.setOr_type(List.of(1));
+                request.setOr_id(List.of(nationId));
+                if (minId > 0) request.setMin_id(minId + 1);
+            }
+        });
+
+        saveBankRecs(bankRecs, eventConsumer);
+    }
+
+    public void updateBankRanks(Consumer<Event> eventConsumer) {
+        ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
+        int latestId = info == null ? -1 : info.getInt();
+
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+
+        List<Bankrec> records = new ArrayList<>();
+        Runnable saveTransactions = () -> {
+            if (records.isEmpty()) return;
+            List<Bankrec> copy = new ArrayList<>(records);
+            records.clear();
+            int maxId = copy.stream().mapToInt(Bankrec::getId).max().getAsInt();
+            saveBankRecs(copy, eventConsumer);
+
+            byte[] maxIdData = ByteBuffer.allocate(4).putInt(maxId).array();
+            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
+        };
+        v3.fetchBankRecs(new Consumer<BankrecsQueryRequest>() {
+            @Override
+            public void accept(BankrecsQueryRequest f) {
+                f.setOr_type(List.of(1));
+                if (latestId > 0) f.setMin_id(latestId + 1);
+                f.setOrderBy(List.of(new QueryBankrecsOrderByOrderByClause(QueryBankrecsOrderByColumn.ID, SortOrder.ASC, null)));
+            }
+        }, v3.createBankRecProjection(), new Predicate<Bankrec>() {
+            @Override
+            public boolean test(Bankrec bankrec) {
+                records.add(bankrec);
+                if (records.size() > 1000) {
+                    saveTransactions.run();
+                }
+                return false;
+            }
+        });
+        saveTransactions.run();
+    }
+
+    public void saveBankRecs(List<Bankrec> bankrecs, Consumer<Event> eventConsumer) {
+        List<Transaction2> transfers = new ArrayList<>();
+        for (Bankrec bankrec : bankrecs) {
+            if (bankrec.getSender_type() != 1 && bankrec.getReceiver_type() != 1) {
+                throw new UnsupportedOperationException("Alliance -> alliance transfers are not currently supported");
+            }
+            Transaction2 tx = Transaction2.fromApiV3(bankrec);
+            transfers.add(tx);
+        }
+        Collections.sort(transfers, Comparator.comparingLong(Transaction2::getDate));
+        int[] modified = addTransactions(transfers, true);
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
+        if (eventConsumer != null) {
+            for (int i = 0; i < modified.length; i++) {
+                if (modified[i] > 0) {
+                    Transaction2 tx = transfers.get(i);
+                    if (tx.tx_datetime > cutoff) {
+                        eventConsumer.accept(new TransactionEvent(tx));
+                    }
+                }
+            }
+        }
+    }
+
     public void suggestTaxRate(int taxId, int resourceRate, int moneyRate) {
         long date = System.currentTimeMillis();
         update("INSERT OR REPLACE INTO tax_rate_suggestions (id, date, money, resources) VALUES (?, ?, ?, ?)", taxId, date, moneyRate, resourceRate);
@@ -604,13 +683,17 @@ public class BankDB extends DBMainV2 {
     }
 
     public List<Transaction2> getTransactionsByNation(int nation) {
+        return getTransactionsByNation(nation, -1);
+    }
+
+    public List<Transaction2> getTransactionsByNation(int nation, int limit) {
         Reference<Map.Entry<Integer, List<Transaction2>>> tmp = txNationCache;
         Map.Entry<Integer, List<Transaction2>> cached = tmp == null ? null : tmp.get();
         if (cached != null && cached.getKey() == nation) {
             return cached.getValue();
         }
         List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE (sender_id = ? AND sender_type = 1) OR (receiver_id = ? AND receiver_type = 1)")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE (sender_id = ? AND sender_type = 1) OR (receiver_id = ? AND receiver_type = 1)" + (limit > 0 ? " ORDER BY tx_id DESC LIMIT " + limit : ""))) {
             stmt.setInt(1, nation);
             stmt.setInt(2, nation);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -622,7 +705,7 @@ public class BankDB extends DBMainV2 {
             return list;
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
+            throw new RuntimeException("Unable to fetch transactions " + e.getMessage());
         }
     }
 
@@ -691,7 +774,7 @@ public class BankDB extends DBMainV2 {
         }
     }
 
-    public int[] addTransactions(List<Transaction2> transactions, boolean ignoreInto) {
+    private int[] addTransactions(List<Transaction2> transactions, boolean ignoreInto) {
         if (transactions.isEmpty()) return new int[0];
         invalidateTXCache();
         String query = transactions.get(0).createInsert("TRANSACTIONS_2", true, ignoreInto);

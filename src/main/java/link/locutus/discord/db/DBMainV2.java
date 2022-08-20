@@ -211,11 +211,14 @@ public class DBMainV2 implements Closeable {
                         getConnection().commit();
                     } catch (SQLException e) {
                         e.printStackTrace();
-                    }
-                    try {
-                        getConnection().setAutoCommit(true);
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+                        throw new RuntimeException(e);
+                    } finally {
+                        try {
+                            getConnection().setAutoCommit(true);
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             } catch (SQLException e) {

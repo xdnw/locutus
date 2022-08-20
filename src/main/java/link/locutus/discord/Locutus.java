@@ -699,23 +699,6 @@ public final class Locutus extends ListenerAdapter {
                 Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
         }
 
-        // TODO update to v3
-        int activeTradeSeconds = Settings.INSTANCE.TASKS.TRADE_PRICE_SECONDS;
-        if (activeTradeSeconds > 0) {
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(FOOD), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(COAL), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(OIL), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(URANIUM), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(LEAD), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(IRON), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(BAUXITE), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(GASOLINE), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(MUNITIONS), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(STEEL), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(ALUMINUM), 73, activeTradeSeconds, TimeUnit.SECONDS);
-//            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(CREDITS), 15 * activeTradeSeconds, 15 * activeTradeSeconds, TimeUnit.SECONDS);
-        }
-
         if (forumDb != null && Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS > 0) {
             addTaskSeconds(forumDb::update, Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS);
         }

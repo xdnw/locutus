@@ -604,8 +604,8 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
-    public List<Bankrec> fetchBankRecsWithInfo(Consumer<BankrecsQueryRequest> filter) {
-        return fetchBankRecs(filter, new Consumer<BankrecResponseProjection>() {
+    public Consumer<BankrecResponseProjection> createBankRecProjection() {
+        return new Consumer<BankrecResponseProjection>() {
             @Override
             public void accept(BankrecResponseProjection proj) {
                 proj.id();
@@ -629,11 +629,19 @@ public class PoliticsAndWarV3 {
                 proj.aluminum();
                 proj.food();
             }
-        });
+        };
+    }
+
+    public List<Bankrec> fetchBankRecsWithInfo(Consumer<BankrecsQueryRequest> filter) {
+        return fetchBankRecs(filter, createBankRecProjection());
     }
 
     public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
         return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+    }
+
+    public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Predicate<Bankrec> recResults) {
+        return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, recResults);
     }
 
     public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
@@ -658,6 +666,7 @@ public class PoliticsAndWarV3 {
                 response -> {
                     BankrecPaginator paginator = response.bankrecs();
                     PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    System.out.println("Page  " + pageInfo);
                     return pageInfo != null && pageInfo.getHasMorePages();
                 }, result -> {
                     BankrecPaginator paginator = result.bankrecs();
@@ -976,7 +985,6 @@ public class PoliticsAndWarV3 {
                         .requests()
                         .nation(new NationResponseProjection().id()),
                 MeQueryResponse.class);
-        System.out.println("Error fetching api key " + result.toString());
         if (result.me() == null) throw new GraphQLException("Error fetching api key");
         return result.me();
     }

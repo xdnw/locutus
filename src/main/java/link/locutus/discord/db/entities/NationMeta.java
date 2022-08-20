@@ -26,7 +26,7 @@ public enum NationMeta {
     INTERVIEW_WAR_ROOM,
     INTERVIEW_CHECKUP,
 
-    LAST_BANK_UPDATE(ByteBuffer::getLong),
+    DEPRECATED_LAST_BANK_UPDATE(ByteBuffer::getLong),
 
     INTERVIEW_INDEX,
 

@@ -34,6 +34,7 @@ import rocker.grant.nation;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -479,8 +480,8 @@ public class LootEstimateTracker {
             DBNation attacker = nationFactory.apply(attack.attacker_nation_id);
             if (attacker != null && attacker.hasProject(Projects.MILITARY_SALVAGE)) {
                 Map<ResourceType, Double> unitLosses = attack.getLosses(true, true, false, false, false);
-                attLoss[ResourceType.STEEL.ordinal()] -= unitLosses.getOrDefault(ResourceType.STEEL, 0d) * 0.05;;
-                attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses.getOrDefault(ResourceType.ALUMINUM, 0d) * 0.05;;
+                attLoss[ResourceType.STEEL.ordinal()] -= unitLosses.getOrDefault(ResourceType.STEEL, 0d) * 0.05;
+                attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses.getOrDefault(ResourceType.ALUMINUM, 0d) * 0.05;
             }
         }
         // negate this
@@ -492,7 +493,7 @@ public class LootEstimateTracker {
     public void onCityBuy(CityCreateEvent event) {
         DBNation nation = event.getNation();
         DBCity city = event.getCurrent();
-        if (nation != null) {
+        if (nation != null && city.created > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
             Map<Integer, DBCity> cities = nation._getCitiesV3();
             int index = (int) cities.values().stream().filter(f -> f.created <= city.created).count();
             double cost = PnwUtil.cityCost(nation, index - 1, index);

@@ -118,7 +118,7 @@ public class NationDB extends DBMainV2 {
         synchronized (treatiesByAlliance) {
             for (Map<Integer, Treaty> allianceTreaties : treatiesByAlliance.values()) {
                 for (Treaty treaty : allianceTreaties.values()) {
-                    if (treaty.getTurnEnds() <= currentTurn) {
+                    if (treaty.getTurnEnds() < currentTurn) {
                         expiredTreaties.add(treaty);
                     }
                 }
@@ -409,8 +409,8 @@ public class NationDB extends DBMainV2 {
     public void deleteTreaties(Set<Treaty> treaties) {
         for (Treaty treaty : treaties) {
             synchronized (treatiesByAlliance) {
-                treatiesByAlliance.getOrDefault(treaty.getFromId(), Collections.EMPTY_MAP).remove(treaty.getId());
-                treatiesByAlliance.getOrDefault(treaty.getToId(), Collections.EMPTY_MAP).remove(treaty.getId());
+                treatiesByAlliance.getOrDefault(treaty.getFromId(), Collections.EMPTY_MAP).remove(treaty.getToId());
+                treatiesByAlliance.getOrDefault(treaty.getToId(), Collections.EMPTY_MAP).remove(treaty.getFromId());
             }
         }
         Set<Integer> ids = treaties.stream().map(f -> f.getId()).collect(Collectors.toSet());
@@ -1380,7 +1380,7 @@ public class NationDB extends DBMainV2 {
                     treatiesToDelete.add(treaty.getId());
                     continue;
                 }
-                if (currentTurn >= treaty.getTurnEnds()) {
+                if (currentTurn > treaty.getTurnEnds()) {
                     if (Locutus.imp() != null) {
                         new TreatyExpireEvent(treaty).post();
                     }
@@ -2759,6 +2759,26 @@ public class NationDB extends DBMainV2 {
                 }
             }
             return null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public Map<Integer, LootEntry> getNationLootMap() {
+        Map<Integer, LootEntry> result = new HashMap<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id > 0 ORDER BY `date` DESC LIMIT 1")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    LootEntry entry = new LootEntry(rs);
+                    LootEntry existing = result.get(entry.getId());
+                    if (existing == null || existing.getDate() < entry.getDate()) {
+                        result.put(entry.getId(), entry);
+                    }
+                }
+            }
+            return result;
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
