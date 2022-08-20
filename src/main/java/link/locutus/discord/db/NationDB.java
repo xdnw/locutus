@@ -980,6 +980,7 @@ public class NationDB extends DBMainV2 {
                 }
             }
 
+            System.out.println("Delete cities 1 " + citiesToDeleteToNationId.size());
             deleteCitiesInDB(citiesToDeleteToNationId.keySet());
         }
     }
@@ -1020,9 +1021,9 @@ public class NationDB extends DBMainV2 {
             int end = Math.min(i + 500, idList.size());
             List<Integer> toFetch = idList.subList(i, end);
             List<City> cities = v3.fetchCitiesWithInfo(r -> r.setNation_id(toFetch), true);
-            Map<Integer, Map<Integer, City>> completeCities = new HashMap<>();
+            Map<Integer, Map<Integer, City>> completeCities = new Int2ObjectOpenHashMap<>();
             for (City city : cities) {
-                completeCities.computeIfAbsent(city.getNation_id(), f -> new HashMap<>())
+                completeCities.computeIfAbsent(city.getNation_id(), f -> new Int2ObjectOpenHashMap<>())
                         .put(city.getId(), city);
             }
             updateCities(completeCities, eventConsumer);
@@ -1052,7 +1053,7 @@ public class NationDB extends DBMainV2 {
             }
         }
 
-        Set<Integer> deletedCities = new HashSet<>(cityIds);
+        Set<Integer> deletedCities = new HashSet<>();
         Collections.sort(cityIds);
 
         for (int i = 0; i < 500 && !cityIds.isEmpty(); i += 500) {
@@ -1063,8 +1064,10 @@ public class NationDB extends DBMainV2 {
             for (City city : cities) deletedCities.remove(city.getId());
             updateCities(cities, eventConsumer);
         }
-        if (!deletedCities.isEmpty()) deleteCities(deletedCities, eventConsumer);
-
+        if (!deletedCities.isEmpty()) {
+            System.out.println("Delete cities 2 " + deletedCities.size());
+            deleteCities(deletedCities, eventConsumer);
+        }
         return true;
     }
 
@@ -1160,7 +1163,7 @@ public class NationDB extends DBMainV2 {
             }
         }
         if (!citiesToDelete.isEmpty()) {
-            System.out.println("Delete cities");
+            System.out.println("Delete cities 3 " + citiesToDelete.size());
             deleteCitiesInDB(citiesToDelete);
         }
         if (!dirtyCities.isEmpty()) {
@@ -3382,12 +3385,8 @@ public class NationDB extends DBMainV2 {
 
     public Map<Integer, DBCity> getCitiesV3(int nation_id) {
         synchronized (citiesByNation) {
-            return citiesByNation.getOrDefault(nation_id, Collections.EMPTY_MAP);
+            return Collections.unmodifiableMap(citiesByNation.getOrDefault(nation_id, Collections.EMPTY_MAP));
         }
-    }
-
-    public Map<Integer, Map<Integer, DBCity>> getCities() {
-        return Collections.synchronizedMap(citiesByNation);
     }
 
     public Map<Integer, Map<Integer, DBCity>> getCitiesV3(Set<Integer> nationIds) {
@@ -3522,6 +3521,7 @@ public class NationDB extends DBMainV2 {
 
     private void deleteNations(Set<Integer> ids, Consumer<Event> eventConsumer) {
         Set<Integer> citiesToDelete = new HashSet<>();
+        Set<Integer> deleteInDb = new HashSet<>();
         for (int id : new HashSet<>(ids)) {
             DBNation nation;
             synchronized (nationsById) {
@@ -3547,13 +3547,17 @@ public class NationDB extends DBMainV2 {
                     }
                 }
                 if (eventConsumer != null) eventConsumer.accept(new NationDeleteEvent(nation));
+            } else {
+                ids.remove(id);
             }
         }
         if (ids.isEmpty()) return;
 
         if (!citiesToDelete.isEmpty()) {
+            System.out.println("Delete cities 3 " + citiesToDelete.size());
             deleteCitiesInDB(citiesToDelete);
         }
+        new Exception().printStackTrace();
         System.out.println("Delete nations " + StringMan.getString(ids));
         deleteNationsInDB(ids);
     }

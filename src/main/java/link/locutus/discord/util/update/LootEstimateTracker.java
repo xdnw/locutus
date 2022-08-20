@@ -227,6 +227,7 @@ public class LootEstimateTracker {
                 dirty = true;
             }
         }
+
         public Map.Entry<double[], double[]> getLootEstimateRange() {
             return Map.entry(ResourceType.ceil(min.clone(), 0), max.clone());
         }
@@ -594,55 +595,4 @@ public class LootEstimateTracker {
             estimate.set(loot.getDate(), loot.getTotal_rss(), allowQueue);
         }
     }
-
-
-
-//    public void update(Map<Integer, Map.Entry<Long, double[]>> lootData) {
-//        for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : lootData.entrySet()) {
-//            Integer id = entry.getKey();
-//            Map.Entry<Long, double[]> turnLoot = entry.getValue();
-//            update(id, turnLoot.getValue(), turnLoot.getKey());
-//        }
-//    }
-//
-//    public void update(int nationId, double[] loot, long turn) {
-//        AbstractMap.SimpleEntry<Long, double[]> existing = lootData.get(nationId);
-//        if (existing == null || existing.getKey() <= turn) {
-//            existing = new AbstractMap.SimpleEntry<>(turn, loot);
-//            lootData.put(nationId, existing);
-//        }
-//    }
-//
-//    public double[] estimateLoot(DBNation nation, boolean update, double[] buffer) {
-//        if (buffer == null) buffer = new double[ResourceType.values.length];
-//
-//        Map<Integer, JavaCity> cities = nation.getCityMap(update, false);
-//        Arrays.fill(buffer, 0);
-//        double rads = (1 + (35 / (-1000d)));
-//        for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-//            buffer = entry.getValue().profit(rads, p -> false, buffer, nation.getCities());
-//        }
-//
-//        AbstractMap.SimpleEntry<Long, double[]> last = lootData.get(nation.getNation_id());
-//
-//        long currentTurn = TimeUtil.getTurn();
-//        long minutesInactive = TimeUnit.DAYS.toMinutes(7);
-//
-//        if (last != null) {
-//            long lastTurn = last.getKey();
-//            double[] loot = last.getValue();
-//
-//
-//
-//            // subtract unit purchases
-//            // subtract war cost + add loot
-//            // subtract city purchases
-//            // subtract trades
-//            // subtract bank transfers
-//
-//        } else {
-//
-//        }
-//        return null;
-//    }
 }

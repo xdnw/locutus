@@ -18,8 +18,11 @@ public enum AuditType {
 
     WAR_TYPE_NOT_RAID("<{war}> is declared as a {type} but should be " + WarType.RAID),
 
-    WAR_POLICY("<{war}> is declared against an inactive enemy. You can go to <https://politicsandwar.com/nation/edit/> and switch your `WAR POLICY` to `PIRATE` to get 40% more loot")
-    ;
+    WAR_POLICY("<{war}> is declared against an inactive enemy. You can go to <https://politicsandwar.com/nation/edit/> and switch your `WAR POLICY` to `PIRATE` to get 40% more loot"),
+
+    INACTIVE("Please remember to login every day to deter raiders and collect the login bonus"),
+
+        ;
 
 
     public final String message;

@@ -17,27 +17,27 @@ public class TreatyUpdateProcessor {
 
     @Subscribe
     public void onTreatyCreate(TreatyCreateEvent event) {
-        String title = "Signed";
+        update("Signed", event);
     }
     @Subscribe
     public void onTreatyCancel(TreatyCancelEvent event) {
-        String title = "Cancelled";
+        update("Cancelled", event);
     }
     @Subscribe
     public void onTreatyDowngrade(TreatyDowngradeEvent event) {
-        String title = "Downgraded";
+        update("Downgraded", event);
     }
     @Subscribe
     public void onTreatyExtend(TreatyExtendEvent event) {
-        String title = "Extended";
+        update("Extended", event);
     }
     @Subscribe
     public void onTreatyUpgraded(TreatyUpgradeEvent event) {
-        String title = "Upgraded";
+        update("Upgraded", event);
     }
     @Subscribe
     public void onTreatyExpire(TreatyExpireEvent event) {
-        String title = "Expired";
+        update("Expired", event);
     }
 
     private void update(String title, TreatyChangeEvent event) {
@@ -49,10 +49,21 @@ public class TreatyUpdateProcessor {
         DBAlliance fromAA = DBAlliance.getOrCreate(existing.getFromId());
         DBAlliance toAA = DBAlliance.getOrCreate(existing.getToId());
 
-        StringBuilder body = new StringBuilder();
-        body.append("From: " + PnwUtil.getMarkdownUrl(current.getFromId(), true)).append("\n");
-        body.append("To: " + PnwUtil.getMarkdownUrl(current.getToId(), true)).append("\n");
+        if (previous == null) {
+            title += " " + current.getType();
+        } else if (current == null) {
+            title += " " + previous.getType();
+        } else  if(current.getType() != previous.getType()) {
+            title += " " + (previous.getType() + "->" + current.getType());
+        } else {
+            title += " " + current.getType();
+        }
 
+        StringBuilder body = new StringBuilder();
+        body.append("From: " + PnwUtil.getMarkdownUrl(existing.getFromId(), true)).append("\n");
+        body.append("To: " + PnwUtil.getMarkdownUrl(existing.getToId(), true)).append("\n");
+
+        String finalTitle = title;
         AlertUtil.forEachChannel(f -> true, GuildDB.Key.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
@@ -73,7 +84,7 @@ public class TreatyUpdateProcessor {
                         }
                     }
                 }
-                DiscordUtil.createEmbedCommand(channel, title, finalBody.toString());
+                DiscordUtil.createEmbedCommand(channel, finalTitle, finalBody.toString());
             }
         });
     }

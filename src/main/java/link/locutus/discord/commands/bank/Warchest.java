@@ -33,8 +33,7 @@ public class Warchest extends Command {
     }
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return (super.checkPermission(server, user) || (Roles.MEMBER.has(user, server) && server != null && Locutus.imp().getGuildDB(server).isAllyOfRoot())) &&
-                Roles.ECON.has(user, server);
+        return Roles.MEMBER.has(user, server) && server != null;
     }
 
     @Override
@@ -67,15 +66,18 @@ public class Warchest extends Command {
             note += "=" + guild.getIdLong();
         }
 
+        boolean hasEcon = Roles.ECON.has(author, guild);
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
-            if (!Roles.ECON.has(author, guild)) {
+            if (!hasEcon) {
                 return "No permission: " + Roles.ECON.name();
             }
             nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
         } else {
             nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         }
+        if (nations.isEmpty()) return "No nations specified";
+        if (!hasEcon && (nations.size() != 1 || nations.iterator().next().equals(me))) return "You only have permission to send to your own nation";
 
         nations.removeIf(f -> f.getActive_m() > 7200);
         nations.removeIf(f -> f.getPosition() <= 1);

@@ -1086,7 +1086,7 @@ public class BankDB extends DBMainV2 {
     }
 
     public void addTaxBracket(TaxBracket bracket) {
-        update("INSERT OR REPLACE INTO `TAX_BRACKETS`(`id`, `money`, `resources`, `date_fetched`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `TAX_BRACKETS`(`id`, `money`, `resources`, `date`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, bracket.taxId);
             stmt.setInt(2, bracket.moneyRate);
             stmt.setInt(3, bracket.rssRate);

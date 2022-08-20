@@ -88,6 +88,11 @@ public class AlertUtil {
         String message = messageSuplier.apply(guildDb);
         if (message == null) return;
 
+        if (type != null) {
+            Set<AuditType> optOut = guildDb.getOrNull(GuildDB.Key.DISABLED_MEMBER_AUDITS);
+            if (optOut != null && optOut.contains(type)) return;
+        }
+
         // TODO put result in database
 
         if (pingOptOut != null && member.getRoles().contains(pingOptOut)) {

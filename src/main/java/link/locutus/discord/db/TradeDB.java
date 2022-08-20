@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
@@ -23,6 +24,14 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class TradeDB extends DBMainV2 {
     public TradeDB() throws SQLException, ClassNotFoundException {
@@ -41,10 +50,6 @@ public class TradeDB extends DBMainV2 {
                 .putColumn("isBuy", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("quantity", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("ppu", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-
-                .putColumn("type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("date_accepted", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("parent_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
 
                 .addIndex(TableIndex.index("index_trade_date", "date", TableIndex.Type.INDEX))
                 .addIndex(TableIndex.index("index_trade_type", "resource", TableIndex.Type.INDEX))
@@ -121,6 +126,7 @@ public class TradeDB extends DBMainV2 {
     }
 
     public void setTradePrice(ResourceType type, int ppu, boolean isBuy) {
+        long pair = (isBuy ? 1 : 0) ^ ((type.ordinal() ^ (ppu << 4)) << 1);
         update("INSERT OR REPLACE INTO `TRADEPRICE`(`resource`, `ppu`, `isBuy`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, type.ordinal());
             stmt.setInt(2, ppu);

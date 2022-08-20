@@ -2294,73 +2294,92 @@ public class GuildHandler {
 
     @Subscribe
     public void onTurnChange(TurnChangeEvent event) {
-
+        handleInactiveAudit();
     }
 
-    private static Set<Integer> sentMail = new HashSet<>();
+    public void handleInactiveAudit() {
+        if (db.getOrNull(GuildDB.Key.MEMBER_AUDIT_ALERTS) == null) return;
+        Set<AuditType> disabledAudits = db.getOrNull(GuildDB.Key.DISABLED_MEMBER_AUDITS);
+        if (disabledAudits != null && disabledAudits.contains(AuditType.INACTIVE)) return;
+
+        DBAlliance alliance = db.getAlliance();
+        if (alliance == null) return;
+        long turnStart = TimeUtil.getTurn() - 12 * 3;
+        long timeCheckStart = TimeUtil.getTimeFromTurn(turnStart - 1);
+        long timeCheckEnd = TimeUtil.getTimeFromTurn(turnStart);
+
+        alliance.getNations(f -> f.getPositionEnum().id > Rank.APPLICANT.id && f.getVm_turns() == 0 && f.lastActiveMs() > timeCheckStart && f.lastActiveMs() < timeCheckEnd).forEach(nation -> {
+            AlertUtil.auditAlert(nation, AuditType.INACTIVE, f ->
+                    AuditType.INACTIVE.message
+            );
+        });
+    }
+
+    private final Set<Integer> sentMail = new HashSet<>();
     private static Set<Long> guildsFailedMailSend = new HashSet<>();
 
     @Subscribe
     public void onNationCreate(NationCreateEvent event) {
-        DBNation current = event.getCurrent();
+        onNewApplicant(event.getCurrent());
+    }
 
-        onNewApplicant(current);
-
-        sendMail(current);
+    public void onGlobalNationCreate(NationCreateEvent event) {
+        sendMail(event.getCurrent());
     }
 
     private void sendMail(DBNation current) {
         if (!sentMail.contains(current.getNation_id())) {
             sentMail.add(current.getNation_id());
 
-            ArrayList<GuildDB> databases = new ArrayList<>(Locutus.imp().getGuildDatabases().values());
 
-            for (GuildDB db : databases) {
-                if (db.isDelegateServer()) continue;
-                GuildMessageChannel output = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT, false);
-                if (output == null) continue;
+            if (db.isDelegateServer()) return;
+            GuildMessageChannel output = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT, false);
+            if (output == null) return;
 
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
-                if (aaId == null) continue;
+            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
+            if (aaId == null) return;
+            System.out.println("remove:||Send mail 2" + getGuild());
 
-                Set<DBNation> members = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
-                members.removeIf(f -> f.getPosition() < Rank.LEADER.id);
-                members.removeIf(f -> f.getActive_m() > 2880);
-                if (members.isEmpty()) continue;
+            Set<DBNation> members = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
+            members.removeIf(f -> f.getPosition() < Rank.LEADER.id);
+            members.removeIf(f -> f.getActive_m() > 2880);
+            if (members.isEmpty()) return;
+            System.out.println("remove:||Send mail 3" + getGuild());
 
-                if (!GuildDB.Key.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
-                    try {
-                        RateLimitUtil.queueWhenFree(output.sendMessage("Only whitelisted or top 25 alliances (active member score) are (eligable"));
-                    } catch (Throwable e) {
-                        db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
-                        e.printStackTrace();
-                    }
-                    continue;
+            if (!GuildDB.Key.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
+                try {
+                    RateLimitUtil.queueWhenFree(output.sendMessage("Only whitelisted or top 25 alliances (active member score) are (eligable"));
+                } catch (Throwable e) {
+                    db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
+                    e.printStackTrace();
                 }
+                return;
+            }
+            System.out.println("remove:||Send mail 3" + getGuild());
 
-                Long delay = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_DELAY);
-                Runnable task = new CaughtRunnable() {
-                    @Override
-                    public void runUnsafe() {
+            Long delay = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_DELAY);
+            Runnable task = new CaughtRunnable() {
+                @Override
+                public void runUnsafe() {
+                    try {
+                        System.out.println("remove:||Send mail 3" + getGuild());
+                        JsonObject response = db.sendRecruitMessage(current);
+                        RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true);
+                    } catch (Throwable e) {
                         try {
-                            JsonObject response = db.sendRecruitMessage(current);
-                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true);
-                        } catch (Throwable e) {
-                            try {
-                                if (guildsFailedMailSend.contains(db.getIdLong())) {
-                                    guildsFailedMailSend.add(db.getIdLong());
-                                    RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + e.getMessage()), true);
-                                }
-                            } catch (Throwable e2) {
-                                db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
+                            if (guildsFailedMailSend.contains(db.getIdLong())) {
+                                guildsFailedMailSend.add(db.getIdLong());
+                                RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + e.getMessage()), true);
                             }
+                        } catch (Throwable e2) {
+                            db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
                         }
                     }
-                };
-                if (delay == null || delay <= 60) task.run();
-                else {
-                    Locutus.imp().getCommandManager().getExecutor().schedule(task, delay, TimeUnit.SECONDS);
                 }
+            };
+            if (delay == null || delay <= 60) task.run();
+            else {
+                Locutus.imp().getCommandManager().getExecutor().schedule(task, delay, TimeUnit.SECONDS);
             }
         }
     }

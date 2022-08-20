@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.war.SpyCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -120,6 +121,15 @@ public class Who extends Command {
             response.append("Average for " + arg0 + ":").append('\n');
 
             printAA(response, average, isAdmin);
+
+            if (allianceId > 0) {
+                for (DBAlliance other : Locutus.imp().getNationDB().getAlliances()) {
+                    DBAlliance parent = other.getCachedParentOfThisOffshore();
+                    if (parent != null && parent.getAlliance_id() == allianceId) {
+                        response.append("\n - Offshore: " + other.getMarkdownUrl());
+                    }
+                }
+            }
 
             // min score
             // max score
