@@ -53,6 +53,7 @@ public class PoliticsAndWarV3 {
     public static int TRADES_PER_PAGE = 1000;
     public static int BOUNTIES_PER_PAGE = 1000;
     public static int BASEBALL_PER_PAGE = 1000;
+    public static int EMBARGO_PER_PAGE = 1000;
 
     private final String endpoint;
     private final RestTemplate restTemplate;
@@ -136,6 +137,8 @@ public class PoliticsAndWarV3 {
                 restTemplate.acceptHeaderRequestCallback(String.class);
 //
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
+
+                System.out.println("request " + graphQLRequest.toQueryString());
 
                 exchange = restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
@@ -334,7 +337,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<BBGame> fetchBaseballGames(Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query) {
-        return fetchBaseballGames(BOUNTIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchBaseballGames(BASEBALL_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<BBGame> fetchBaseballGames(int perPage, Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<BBGame> recResults) {
@@ -1200,6 +1203,40 @@ public class PoliticsAndWarV3 {
         }, f -> PoliticsAndWarV3.ErrorResponse.THROW, tradeResults);
     }
 
+    public List<Embargo> fetchEmbargoWithInfo(Consumer<EmbargoesQueryRequest> filter, Consumer<EmbargoResponseProjection> query, Predicate<Embargo> embargoResults) {
+        List<Embargo> allResults = new ArrayList<>();
+
+        handlePagination(page -> {
+                    EmbargoesQueryRequest request = new EmbargoesQueryRequest();
+                    if (filter != null) filter.accept(request);
+                    request.setFirst(EMBARGO_PER_PAGE);
+                    request.setPage(page);
+
+                    EmbargoResponseProjection respProj = new EmbargoResponseProjection();
+                    query.accept(respProj);
+
+                    EmbargoPaginatorResponseProjection pagRespProj = new EmbargoPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection().hasMorePages())
+                            .data(respProj);
+                    return new GraphQLRequest(request, pagRespProj);
+                }, f -> ErrorResponse.THROW, EmbargoesQueryResponse.class,
+                response -> {
+                    EmbargoPaginator paginator = response.embargoes();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    EmbargoPaginator paginator = result.embargoes();
+                    if (paginator != null) {
+                        List<Embargo> nations = paginator.getData();
+                        for (Embargo elem : nations) {
+                            if (embargoResults.test(elem)) allResults.add(elem);
+                        }
+                    }
+                });
+
+        return allResults;
+    }
+
     public List<Trade> fetchTrades(int perPage, Consumer<TradesQueryRequest> filter, Consumer<TradeResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Trade> tradeResults) {
         List<Trade> allResults = new ArrayList<>();
 
@@ -1269,8 +1306,10 @@ public class PoliticsAndWarV3 {
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (bot != null && !bot.isEmpty()) {
-            headers.set("X-Bot-Key", bot);
-            headers.set("X-Api-Key", api);
+//            headers.set("X-Bot-Key", bot);
+//            headers.set("X-Api-Key", api);
+            headers.set("X-Bot-Key", Settings.INSTANCE.ACCESS_KEY);
+            headers.set("X-Api-Key", Settings.INSTANCE.API_KEY_PRIMARY);
         }
         return headers;
     }

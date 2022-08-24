@@ -615,6 +615,12 @@ public final class Locutus extends ListenerAdapter {
                     }
                 }
             }, 5);
+            addTaskSeconds(new CaughtTask() {
+                @Override
+                public void runUnsafe() throws Exception {
+                    NationUpdateProcessor.onActivityCheck();
+                }
+            }, 60);
         }
 
         addTaskSeconds(() -> {
@@ -679,10 +685,7 @@ public final class Locutus extends ListenerAdapter {
 
         if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
             addTaskSeconds(() -> {
-                BaseballDB db = Locutus.imp().getBaseballDB();
-                Integer minId = db.getMinGameId();
-                if (minId != null) minId++;
-                db.updateGames(true, false, minId, null);
+                runEventsAsync(baseBallDB::updateGames);
             }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
         }
 

@@ -14,16 +14,18 @@ buildscript {
 //        classpath "io.jooby:jooby-gradle-plugin:2.8.5"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "com.github.jengelman.gradle.plugins:shadow:6.1.0"
+        classpath 'org.jooq:jooq-codegen:3.17.3'
+        classpath 'org.xerial:sqlite-jdbc:3.36.0.3'
     }
 }
 
 plugins {
     id 'java'
     id "idea"
-//    id "com.fizzed.rocker" version "1.3.0"
     id "nu.studer.rocker" version "3.0.4"
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0"
     id "com.github.johnrengelman.shadow" version "6.1.0"
+    id "nu.studer.jooq" version "7.1.1"
 }
 
 apply plugin: "kotlin"
@@ -61,9 +63,6 @@ compileJava.options.compilerArgs.add '-parameters'
 compileTestJava.options.compilerArgs.add '-parameters'
 
 dependencies {
-//    implementation name: 'pw4j-1.6.1'
-//    implementation 'io.github.adorable-skullmaster:pw4j:1.6.0'
-
     implementation 'com.pusher:pusher-java-client:2.3.0-beta'
 
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
@@ -78,25 +77,12 @@ dependencies {
 //        implementation 'club.minnced:discord-webhooks:4.2.0_182'
         exclude module: 'opus-java'
     }
-    // https://mvnrepository.com/artifact/club.minnced/discord-webhooks
     implementation group: 'club.minnced', name: 'discord-webhooks', version: '0.7.2'
 
-
-    // https://mvnrepository.com/artifact/io.jooby/jooby
-//    implementation group: 'io.jooby', name: 'jooby', version: '2.9.4'
-//    implementation "io.jooby:jooby-http2-undertow:2.9.4"
-//    implementation 'io.jooby:jooby-gson:2.9.4'
-
-//    annotationProcessor "io.jooby:jooby:2.9.4"
-//    implementation "io.jooby:jooby-netty:2.9.4"
-//    implementation 'io.jooby:jooby-gson:2.8.5'
 
     implementation 'io.javalin:javalin:4.0.0.RC3'
     implementation 'io.javalin:javalin-parent:4.0.0.RC3'
     implementation 'io.javalin:javalin-bundle:4.0.0.RC3'
-
-// https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk15on
-//    implementation group: 'org.bouncycastle', name: 'bcpkix-jdk15on', version: '1.69'
 
     implementation 'com.ptsmods:mysqlw:1.7'
 
@@ -143,16 +129,16 @@ dependencies {
     // https://mvnrepository.com/artifact/de.siegmar/fastcsv
     implementation group: 'de.siegmar', name: 'fastcsv', version: '2.2.0'
 
-}
+    implementation("org.xerial:sqlite-jdbc:3.36.0.3")
+    implementation("org.hibernate:hibernate-core:6.1.1.Final")
+    implementation("org.hibernate:hibernate-community-dialects:6.1.1.Final")
 
-sourceSets {
-    main {
-        java {
-            srcDirs 'src'
-            srcDirs "$buildDir/generated"
-            srcDirs "$buildDir/generated-src"
-        }
-    }
+    implementation("org.jooq:jooq:3.17.3")
+    implementation("org.jooq:jooq-meta:3.17.3")
+    implementation("org.jooq:jooq-codegen:3.17.3")
+
+    jooqGenerator 'org.xerial:sqlite-jdbc:3.36.0.3'
+
 }
 
 rocker {
@@ -166,44 +152,66 @@ rocker {
     }
 }
 
-//rocker {
-//    // (All settings are shown with their defaults)
-//    //
-//    // Skips building templates all together
-//    skip false
-//    // Base directory for generated java sources, actual target is sub directory
-//    // with the name of the source set. The value is passed through project.file().
-//    outputBaseDirectory = "$buildDir/generated-src/rocker"
-//    // Base directory for the directory where the hot reload feature
-//    // will (re)compile classes to at runtime (and where `rocker-compiler.conf`
-//    // is generated, which is used by RockerRuntime.getInstance().setReloading(true)).
-//    // The actual target is a sub directory with the name of the source set.
-//    // The value is passed through project.file().
-//    classBaseDirectory = "$buildDir/classes"
-//    failOnError true
-//    skipTouch true
-//    // must not be empty when skipTouch is equal to false
-//    touchFile ""
-//    javaVersion '17'
-//    extendsClass null
-//    extendsModelClass null
-//    optimize null
-//    discardLogicWhitespace null
-//    targetCharset null
-//    suffixRegex null
-//    postProcessing null
-//    markAsGenerated null
-//}
-//compileKotlin {
-//    kotlinOptions {
-//        jvmTarget = "1.8"
-//    }
-//}
-//compileTestKotlin {
-//    kotlinOptions {
-//        jvmTarget = "1.8"
-//    }
-//}
+jooq {
+    version = "3.17.3"  // default (can be omitted)
+    edition = nu.studer.gradle.jooq.JooqEdition.OSS  // default (can be omitted)
+    configurations {
+        web {
+            generateSchemaSourceOnCompilation = true; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/web.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+
+                        packageName = 'org.example.jooq'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+//        locutus {
+//            generateSchemaSourceOnCompilation = true; // default (can be omitted)
+//
+//            generationTool {
+//                jdbc {
+//                    driver = 'org.sqlite.JDBC'
+//                    url = 'jdbc:sqlite:database/locutus.db'
+//                }
+//                generator {
+//                    name = 'org.jooq.codegen.DefaultGenerator'
+//                    database {
+//                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+//                    }
+//                    generate {
+//                        deprecated = false
+//                        records = true
+//                        immutablePojos = true
+//                        fluentSetters = true
+//                    }
+//                    target {
+//                        packageName = 'org.example.jooq'
+//                    }
+//                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+//                }
+//            }
+//        }
+    }
+}
 
 
 /**
@@ -241,6 +249,21 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     unknownFieldsPropertyName = "additionalFields"
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs 'src'
+            srcDirs "$buildDir/generated"
+            srcDirs "$buildDir/generated-src"
+        }
+    }
+}
+
+sourceSets.main.java.srcDirs (
+//        tasks.named('generateLocutusJooq').flatMap { it.outputDir },
+        tasks.named('generateWebJooq').flatMap { it.outputDir }
+)
+
 jar {
     manifest {
         attributes(
@@ -254,4 +277,5 @@ shadowJar {
     archiveName = "${name}-${project.name}-${version}.jar"
 }
 
+build.dependsOn(jooq);
 build.dependsOn(shadowJar);

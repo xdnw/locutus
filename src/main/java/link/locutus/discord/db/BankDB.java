@@ -5,12 +5,10 @@ import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
-import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.event.Event;
@@ -32,7 +30,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Instant;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,7 +39,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -185,15 +181,46 @@ public class BankDB extends DBMainV2 {
             executeStmt("CREATE INDEX IF NOT EXISTS index_tax_deposits_nation ON TAX_DEPOSITS_DATE (nation);");
         }
         {
-            // create TablePreset tax_rate_suggestions with the columns id, date, money, resources
-            TablePreset.create("tax_rate_suggestions")
-                    .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+            String query = TablePreset.create("loot_diff_by_tax_id")
+                    .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("tax_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("money", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("resources", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("resources", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .buildQuery(getDb().getType());
+            query = query.replace(");", ", PRIMARY KEY(nation_id, tax_id));");
+            getDb().executeUpdate(query);
+
+            TablePreset.create("tax_estimate")
+                    .putColumn("tax_id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("min_cash", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("max_cash", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("min_rss", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("max_rss", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb())
             ;
         }
+    }
+
+    // add tax estimate
+    public void addTaxEstimate(int taxId, int minCash, int maxCash, int minRss, int maxRss) {
+        update("INSERT INTO tax_estimate (tax_id, min_cash, max_cash, min_rss, max_rss) VALUES (?, ?, ?, ?, ?)", taxId, minCash, maxCash, minRss, maxRss);
+    }
+
+    public Map<Integer, TaxEstimate> getTaxEstimates() {
+        Map<Integer, TaxEstimate> result = new Int2ObjectOpenHashMap<>();
+        query("SELECT * FROM tax_estimate", f -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                TaxEstimate estimate = new TaxEstimate();
+                estimate.tax_id = (rs.getInt("tax_id"));
+                estimate.min_cash = (rs.getInt("min_cash"));
+                estimate.max_cash = (rs.getInt("max_cash"));
+                estimate.min_rss = (rs.getInt("min_rss"));
+                estimate.max_rss = (rs.getInt("max_rss"));
+                result.put(estimate.tax_id, estimate);
+            }
+        });
+        return result;
     }
 
     public Transaction2 getLatestTransaction() {
@@ -218,7 +245,7 @@ public class BankDB extends DBMainV2 {
         saveBankRecs(bankRecs, eventConsumer);
     }
 
-    public void updateBankRanks(Consumer<Event> eventConsumer) {
+    public void updateBankRecs(Consumer<Event> eventConsumer) {
         ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
         int latestId = info == null ? -1 : info.getInt();
 
@@ -247,6 +274,7 @@ public class BankDB extends DBMainV2 {
             public boolean test(Bankrec bankrec) {
                 records.add(bankrec);
                 if (records.size() > 1000) {
+                    System.out.println("MIN " + records.get(0).getId());
                     saveTransactions.run();
                 }
                 return false;
@@ -276,39 +304,6 @@ public class BankDB extends DBMainV2 {
                     }
                 }
             }
-        }
-    }
-
-    public void suggestTaxRate(int taxId, int resourceRate, int moneyRate) {
-        long date = System.currentTimeMillis();
-        update("INSERT OR REPLACE INTO tax_rate_suggestions (id, date, money, resources) VALUES (?, ?, ?, ?)", taxId, date, moneyRate, resourceRate);
-    }
-
-    public Map<Integer, TaxBracket> getTaxBracketSuggestions() {
-        return getTaxBracketSuggestions(new HashMap<>());
-    }
-
-    public Map<Integer, TaxBracket> getTaxBracketSuggestions(Map<Integer, Integer> alliancesByTaxId) {
-        Map<Integer, TaxBracket> taxRateSuggestions = new HashMap<>();
-        SelectBuilder builder = getDb().selectBuilder("tax_rate_suggestions").select("*");
-
-        if (alliancesByTaxId.isEmpty()) alliancesByTaxId.putAll(Locutus.imp().getNationDB().getAllianceIdByTaxId());
-
-        try (ResultSet rs = builder.executeRaw()) {
-            while (rs.next()) {
-                long date = rs.getLong("date");
-
-                int id = rs.getInt("id");
-                int money = rs.getInt("money");
-                int resources = rs.getInt("resources");
-                int allianceId = alliancesByTaxId.getOrDefault(id, 0);
-                TaxBracket bracket = new TaxBracket(id, allianceId, "", money, resources, date);
-                taxRateSuggestions.put(id, bracket);
-            }
-            return taxRateSuggestions;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
         }
     }
 
@@ -1020,9 +1015,9 @@ public class BankDB extends DBMainV2 {
     }
 
     public Map<Integer, TaxBracket> getTaxBracketsAndEstimates() {
-        return getTaxBracketsAndEstimates(true, true, true, true);
+        return getTaxBracketsAndEstimates(true, true, true);
     }
-    public Map<Integer, TaxBracket> getTaxBracketsAndEstimates(boolean allowDeposits, boolean allowApi, boolean allowSuggestions, boolean addUnknownBrackets) {
+    public Map<Integer, TaxBracket> getTaxBracketsAndEstimates(boolean allowDeposits, boolean allowApi, boolean addUnknownBrackets) {
         Map<Integer, TaxBracket> rates = new HashMap<>();
 
         Map<Integer, Integer> taxIdByAlliances = new HashMap<>();
@@ -1031,7 +1026,7 @@ public class BankDB extends DBMainV2 {
 
         if (allowDeposits) bracketEntries.addAll(getTaxBracketsFromDeposits().entrySet());
         if (allowApi) bracketEntries.addAll(getTaxBrackets(taxIdByAlliances).entrySet());
-        if (allowSuggestions) bracketEntries.addAll(getTaxBracketSuggestions(taxIdByAlliances).entrySet());
+//        if (allowSuggestions) bracketEntries.addAll(getTaxBracketSuggestions(taxIdByAlliances).entrySet());
 
         for (Map.Entry<Integer, TaxBracket> entry : bracketEntries) {
             TaxBracket bracket = entry.getValue();

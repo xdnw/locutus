@@ -341,7 +341,7 @@ public class OptimalBuild extends Command {
                 @Override
                 public Double apply(JavaCity javaCity) {
                     Arrays.fill(buffer, 0);
-                    double[] profit = javaCity.profit(finalContinent, rads, hasProject, buffer, numCities, grossModifier, 12);
+                    double[] profit = javaCity.profit(finalContinent, rads, -1L, hasProject, buffer, numCities, grossModifier, 12);
                     profit[0] *= moneyFactor;
                     for (int i = 1; i < profit.length; i++) {
                         if (profit[i] > 0) {
@@ -440,7 +440,7 @@ public class OptimalBuild extends Command {
                 public Boolean apply(JavaCity city) {
                     if (parentGoal.apply(city)) {
                         Arrays.fill(profitBuffer, 0);
-                        city.profit(finalContinent, 0, hasProject, profitBuffer, numCities, finalMe.getGrossModifier(), 12);
+                        city.profit(finalContinent, rads, -1L, hasProject, profitBuffer, numCities, finalMe.getGrossModifier(), 12);
                         profitBuffer[0] += 500000d / numCities;
                         double original = profitBuffer[0];
 

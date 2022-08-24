@@ -159,7 +159,7 @@ public class Revenue extends Command {
             Collection<JavaCity> cityList = entry.getValue().values();
 
             for (JavaCity build : cityList) {
-                cityProfit = build.profit(me.getContinent(), rads, hasProject, cityProfit, numCities, me.getGrossModifier(), 12);
+                cityProfit = build.profit(me.getContinent(), rads, -1L, hasProject, cityProfit, numCities, me.getGrossModifier(), 12);
             }
 
             NationColor color = nation.getColor();

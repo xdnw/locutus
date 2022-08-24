@@ -1,6 +1,8 @@
 package link.locutus.discord.db;
 
+import ch.qos.logback.classic.db.names.TableName;
 import com.ptsmods.mysqlw.Database;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.FileUtil;
 import org.apache.http.util.TextUtils;
@@ -49,7 +51,6 @@ public class DBMainV2 implements Closeable {
         this.db = Database.connect(file);
         init();
     }
-
 
     public DBMainV2(String host, int port, String name, String username, String password) throws SQLException {
         this.db = Database.connect(host, port, name, username, password);

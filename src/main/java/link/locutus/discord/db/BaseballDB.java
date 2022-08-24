@@ -8,6 +8,7 @@ import com.ptsmods.mysqlw.table.TablePreset;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.event.baseball.BaseballGameEvent;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
@@ -52,10 +53,17 @@ public class BaseballDB extends DBMainV2{
         return latestGame.isEmpty() ? null : latestGame.get(0).getId();
     }
 
-    public void updateGames(boolean runEvents, boolean wagered, Integer minId, Integer maxId) {
+    public void updateGames(Consumer<Event> eventConsumer) {
+        BaseballDB db = Locutus.imp().getBaseballDB();
+        Integer minId = db.getMinGameId();
+        if (minId != null) minId++;
+        db.updateGames(eventConsumer, false, minId, null);
+    }
+
+    public void updateGames(Consumer<Event> eventConsumer, boolean wagered, Integer minId, Integer maxId) {
         Set<Integer> gameIds = getBaseballGameIds();
 
-        if (gameIds.isEmpty()) runEvents = false;
+        if (gameIds.isEmpty()) eventConsumer = null;
 
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<BBGame> games = v3.fetchBaseballGames(req -> {
@@ -82,9 +90,9 @@ public class BaseballDB extends DBMainV2{
         for (BBGame game : games) {
             addGame(game);
         }
-        if (runEvents) {
+        if (eventConsumer != null) {
             for (BBGame game : games) {
-                new BaseballGameEvent(game).post();
+                eventConsumer.accept(new BaseballGameEvent(game));
             }
         }
     }

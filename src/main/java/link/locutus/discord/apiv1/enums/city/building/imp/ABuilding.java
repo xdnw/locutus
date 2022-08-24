@@ -86,7 +86,7 @@ public class ABuilding implements Building {
     }
 
     @Override
-    public double[] profit(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns) {
+    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns) {
         int amt = city.get(this);
         if (amt > 0) {
             for (ResourceType type : ResourceType.values) {

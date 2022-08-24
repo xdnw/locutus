@@ -7,6 +7,11 @@ import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.longs.Long2DoubleLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -1874,11 +1879,19 @@ public class NationDB extends DBMainV2 {
 
     public void createTables() {
         {
+            // loot_estimates int nation_id, double[] min, double[] max, double[] offset, long lastTurnRevenue, int tax_id
             TablePreset nationTable = TablePreset.create("LOOT_ESTIMATE")
                     .putColumn("nation_id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("last_turn_revenue", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("last_resolved", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("tax_id", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("min", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("max", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)));
+                    .putColumn("max", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("offset", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .create(getDb());
+
+            // negatives apply to nation
+            // positives apply to taxes
         }
         {
             TablePreset nationTable = TablePreset.create("NATIONS2")
@@ -2106,8 +2119,38 @@ public class NationDB extends DBMainV2 {
         executeStmt("CREATE TABLE IF NOT EXISTS expenses (nation INT NOT NULL, date INT NOT NULL, expense INT NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS loot_cache (nation INT PRIMARY KEY, date INT NOT NULL, loot BLOB NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS ALLIANCE_METRICS (alliance_id INT NOT NULL, metric INT NOT NULL, turn INT NOT NULL, value DOUBLE NOT NULL, PRIMARY KEY(alliance_id, metric, turn))");
+        executeStmt("CREATE TABLE IF NOT EXISTS RADIATION_BY_TURN (continent INT NOT NULL, radiation INT NOT NULL, turn INT NOT NULL, PRIMARY KEY(continent, turn))");
+        executeStmt("CREATE TABLE IF NOT EXISTS GAME_DATE_BY_DAY (day INT NOT NULL, game_date INT NOT NULL, PRIMARY KEY(day))");
 
         purgeOldBeigeReminders();
+    }
+
+    public Map<Long, Map<Continent, Double>> getRadiationByDay() {
+        Map<Long, Map<Continent, Double>> result = new Long2ObjectOpenHashMap<>();
+        try (PreparedStatement stmt = getConnection().prepareStatement("SELECT continent, radiation, turn FROM RADIATION_BY_TURN")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Continent continent = Continent.values[(rs.getInt(1))];
+                    double radiation = rs.getInt(2) / 100d;
+                    long turn = rs.getLong(3);
+                    result.computeIfAbsent(turn, f -> new Object2ObjectOpenHashMap<>()).put(continent, radiation);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public void addRadiationByDay(Continent continent, long turn, double radiation) {
+        try (PreparedStatement stmt = getConnection().prepareStatement("INSERT OR IGNORE INTO RADIATION_BY_TURN (continent, radiation, turn) VALUES (?, ?, ?)")) {
+            stmt.setInt(1, continent.ordinal());
+            stmt.setInt(2, (int) (radiation * 100));
+            stmt.setLong(3, turn);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public DBNation getNation(String nameOrLeader) {
@@ -2726,7 +2769,7 @@ public class NationDB extends DBMainV2 {
                 }
             }
 
-            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy(this);
+            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
             for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
                 int nationId = entry.getKey();
                 long date = entry.getValue().getKey();
@@ -2770,8 +2813,8 @@ public class NationDB extends DBMainV2 {
 
 
     public Map<Integer, LootEntry> getNationLootMap() {
-        Map<Integer, LootEntry> result = new HashMap<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id > 0 ORDER BY `date` DESC LIMIT 1")) {
+        Map<Integer, LootEntry> result = new Int2ObjectOpenHashMap<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id > 0")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     LootEntry entry = new LootEntry(rs);
@@ -2808,6 +2851,28 @@ public class NationDB extends DBMainV2 {
             result.add(turn / 12);
         }
         return result;
+    }
+
+    public Map<Long, Set<Integer>> getActivityByDay(long minDate, Predicate<Integer> allowNation) {
+        long minTurn = TimeUtil.getTurn(minDate);
+        try (PreparedStatement stmt = prepareQuery("select nation, (`turn`/12) FROM ACTIVITY WHERE turn > ?")) {
+            stmt.setLong(1, minTurn);
+
+            Map<Long, Set<Integer>> result = new Long2ObjectOpenHashMap<>();
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt(1);
+                    if (!allowNation.test(id)) continue;
+                    long day = rs.getLong(2);
+                    result.computeIfAbsent(day, f -> new IntOpenHashSet()).add(id);
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     public Set<Long> getActivity(int nationId, long minTurn) {

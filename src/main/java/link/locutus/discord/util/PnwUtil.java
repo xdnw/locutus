@@ -932,11 +932,17 @@ public class PnwUtil {
     }
 
     public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood) {
+        double rads = nation.getRads();
+        boolean atWar = nation.getNumWars() > 0;
+        long date = -1L;
+        return getRevenue(profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, checkRpc, noFood, rads, atWar);
+    }
+
+    public static double[] getRevenue(double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
         Continent continent = nation.getContinent();
         double grossModifier = nation.getGrossModifier(noFood);
-        double rads = nation.getRads();
         int numCities = bonus ? nation.getCities() : 10;
 
         // Project revenue
@@ -950,7 +956,7 @@ public class PnwUtil {
 
         // city revenue
         for (JavaCity build : cities) {
-            profitBuffer = build.profit(continent, rads, nation::hasProject, profitBuffer, numCities, grossModifier, turns);
+            profitBuffer = build.profit(continent, rads, date, nation::hasProject, profitBuffer, numCities, grossModifier, turns);
         }
 
         System.out.println("Profit " + MathMan.format(profitBuffer[0]) + " | food: " + MathMan.format(profitBuffer[ResourceType.FOOD.ordinal()]));
@@ -965,14 +971,13 @@ public class PnwUtil {
 
         // Add military upkeep
         if (!nation.hasUnsetMil() && militaryUpkeep) {
-            boolean war = nation.getNumWars() > 0;
             double factor = nation.getMilitaryUpkeepFactor();
 
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int amt = nation.getUnits(unit);
                 if (amt == 0) continue;
 
-                double[] upkeep = unit.getUpkeep(war);
+                double[] upkeep = unit.getUpkeep(atWar);
                 for (int i = 0; i < upkeep.length; i++) {
                     double value = upkeep[i];
                     if (value != 0) {

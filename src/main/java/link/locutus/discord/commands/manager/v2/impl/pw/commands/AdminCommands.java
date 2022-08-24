@@ -5,7 +5,6 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.bank.BankWith;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -25,12 +24,9 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.CityInfraLand;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -762,7 +758,7 @@ public class AdminCommands {
         OffshoreInstance bank = db.getHandler().getBank();
         bank.sync(timestamp, false);
 
-        Locutus.imp().getBankDB().updateBankRanks(Event::post);
+        Locutus.imp().getBankDB().updateBankRecs(Event::post);
         return "Done!";
     }
 

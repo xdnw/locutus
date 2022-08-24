@@ -86,6 +86,8 @@ public enum MilitaryUnit {
     ),
     ;
 
+    public static double NUKE_RADIATION = 5;
+
     private final double[] cost;
 
     protected final double score;

@@ -696,7 +696,7 @@ public class JavaCity {
         return profit;
     }
 
-    public double[] profit(Continent continent, double rads, Predicate<Project> hasProject, double[] profitBuffer, int numCities, double grossModifier, int turns) {
+    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, double[] profitBuffer, int numCities, double grossModifier, int turns) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
         boolean powered = true;
@@ -714,7 +714,7 @@ public class JavaCity {
                     continue;
                 }
             }
-            profitBuffer = building.profit(continent, rads, hasProject, this, profitBuffer, turns);
+            profitBuffer = building.profit(continent, rads, date, hasProject, this, profitBuffer, turns);
             if (building instanceof APowerBuilding) {
                 for (int i = 0; i < amt; i++) {
                     if (unpoweredInfra > 0) {

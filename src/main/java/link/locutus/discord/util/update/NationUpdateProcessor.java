@@ -165,8 +165,7 @@ public class NationUpdateProcessor {
 
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(120, TimeUnit.MINUTES);
 
-    @Subscribe
-    public void onTurnChange(TurnChangeEvent event) {
+    public static void onActivityCheck() {
         Map<Integer, Integer> membersByAA = new HashMap<>(); // only <7d non vm nations
         Map<Integer, Integer> activeMembersByAA = new HashMap<>();
         Map<Integer, Double> averageMilitarization = new HashMap<>();
@@ -176,7 +175,7 @@ public class NationUpdateProcessor {
             int aaId = nation.getAlliance_id();
             membersByAA.put(aaId, membersByAA.getOrDefault(aaId, 0) + 1);
             boolean active = nation.getActive_m() < 15;
-            if (!active && nation.getActive_m() < 1440 && nation.getVm_turns() == 0 && nation.getPosition() > 1) {
+            if (!active && nation.getActive_m() < 1440 && nation.getVm_turns() == 0 && nation.getPositionEnum().id > Rank.APPLICANT.id) {
                 User user = nation.getUser();
                 if (user != null) {
                     List<Guild> mutual = user.getMutualGuilds();

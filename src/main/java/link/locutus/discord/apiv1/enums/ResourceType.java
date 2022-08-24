@@ -22,7 +22,7 @@ public enum ResourceType {
 
     FOOD("food", "withfood", 11, 400, 2, 0, 20, 1.25d, () -> Projects.MASS_IRRIGATION, 0) {
             @Override
-            public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land) {
+            public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, long date) {
                 int factor = 500;
                 if (hasProject.test(getProject())) {
                     factor = 400;
@@ -33,14 +33,14 @@ public enum ResourceType {
                     rads = Math.max(0, rads);
                 }
 
-                double season = continent.getSeasonModifier();
+                double season = date <= 0 ? continent.getSeasonModifier() : continent.getSeasonModifier(date);
 
                 return Math.max(0, (land / factor) * 12 * season * rads);
             }
 
         @Override
-        public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, int improvements) {
-            return improvements * (1 + ((0.5 * (improvements - 1)) / (20 - 1))) * getBaseProduction(continent, rads, hasProject, land);
+        public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, int improvements, long date) {
+            return improvements * (1 + ((0.5 * (improvements - 1)) / (20 - 1))) * getBaseProduction(continent, rads, hasProject, land, date);
         }
     },
     COAL("coal", "withcoal", 10, 600, 12, 3, 10),
@@ -294,13 +294,13 @@ public enum ResourceType {
     public double getInput(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements) {
         if (inputs == null) return 0;
 
-        double base = getBaseProduction(continent, rads, hasProject, city.getLand());
+        double base = getBaseProduction(continent, rads, hasProject, city.getLand(), -1);
         base = (base * baseProductionInverse) * baseInput;
 
         return base * (1+0.5*((improvements - 1d) * capInverse)) * improvements;
     }
 
-    public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land) {
+    public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, long date) {
         double factor = 1;
         if (getProject() != null && hasProject.test(getProject())) {
             factor = boostFactor;
@@ -320,12 +320,12 @@ public enum ResourceType {
         return cap;
     }
 
-    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements) {
-        return getProduction(continent, rads, hasProject, city.getLand(), improvements);
+    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements, long date) {
+        return getProduction(continent, rads, hasProject, city.getLand(), improvements, date);
     }
 
-    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, int improvements) {
-        double base = getBaseProduction(continent, rads, hasProject, land);
+    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, int improvements, long date) {
+        double base = getBaseProduction(continent, rads, hasProject, land, date);
         return base * (1+0.5*((improvements - 1) * capInverse)) *improvements;
     }
 

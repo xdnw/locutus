@@ -66,7 +66,6 @@ public class WarDB extends DBMainV2 {
     public void load() {
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
 
-        Set<DBWar> toSave=  new HashSet<>();
         long currentTurn = TimeUtil.getTurn();
         for (DBWar war : wars) {
             long warTurn = TimeUtil.getTurn(war.date);
@@ -1602,15 +1601,25 @@ public class WarDB extends DBMainV2 {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         // Dont run events if attacks are > 1 day old
         if (latest == null || latest.epoch < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
-            System.out.println("No recent attack data in DB. Updating attacks without event handling");
+            System.out.println("No recent attack data in DB. Updating attacks without event handling: " + maxId);
+            List<DBAttack> attackList = new ArrayList<>();
             v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
                 @Override
                 public boolean test(WarAttack v3Attack) {
                     DBAttack attack = new DBAttack(v3Attack);
-                    saveAttacks(Collections.singleton(attack));
+                    synchronized (attackList) {
+                        attackList.add(attack);
+                        if (attackList.size() > 1000) {
+                            System.out.println("Save " + attack.war_attack_id);
+                            saveAttacks(attackList);
+                            attackList.clear();
+                            System.out.println("Save end");
+                        }
+                    }
                     return false;
                 }
             });
+            saveAttacks(attackList);
             return true;
         }
 
@@ -1984,7 +1993,7 @@ public class WarDB extends DBMainV2 {
         return yourLoot;
     }
 
-    public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy(NationDB db) {
+    public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy() {
         Map<Integer, Map.Entry<Long, double[]>> nationLoot = new ConcurrentHashMap<>();
 
         // `attacker_nation_id`, `defender_nation_id`
@@ -1997,9 +2006,6 @@ public class WarDB extends DBMainV2 {
 
                     int looted = attack.getLooted();
                     int looter = attack.getLooter();
-
-                    DBNation victor = db.getNation(looter);
-                    DBNation loser = db.getNation(looted);
 
 //                    double factor = 0.1;
 //                    if (victor != null && victor.getPolicy().equalsIgnoreCase("Pirate")) {

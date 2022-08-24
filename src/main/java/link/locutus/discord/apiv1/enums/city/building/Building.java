@@ -59,5 +59,5 @@ public interface Building {
 
     double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int amt);
 
-    double[] profit(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns);
+    double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns);
 }

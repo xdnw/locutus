@@ -23,6 +23,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,6 +55,8 @@ public class TradeDB extends DBMainV2 {
                 .addIndex(TableIndex.index("index_trade_date", "date", TableIndex.Type.INDEX))
                 .addIndex(TableIndex.index("index_trade_type", "resource", TableIndex.Type.INDEX))
                 .create(getDb());
+
+        deleteIncompleteTrades();
 
         TablePreset.create("COLOR_BLOC")
                 .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
@@ -225,6 +228,11 @@ public class TradeDB extends DBMainV2 {
         );
     }
 
+    public void deleteIncompleteTrades() {
+        long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(15);
+        executeStmt("DELETE FROM TRADES WHERE seller = 0 OR buyer = 0 AND date < " + date);
+    }
+
     public void deleteTradesById(Collection<Integer> ids) {
         if (ids.isEmpty()) {
             return;
@@ -239,7 +247,7 @@ public class TradeDB extends DBMainV2 {
                 stmt.setLong(2, trade.getDate());
                 stmt.setInt(3, trade.getSeller());
                 stmt.setInt(4, trade.getBuyer());
-                stmt.setInt(5, trade.getType().ordinal());
+                stmt.setInt(5, trade.getResource().ordinal());
                 stmt.setBoolean(6, trade.isBuy());
                 stmt.setInt(7, trade.getQuantity());
                 stmt.setInt(8, trade.getPpu());

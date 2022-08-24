@@ -59,7 +59,7 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
         int improvements = city.get(this);
 
 
-        double production = output.getProduction(continent, rads, hasProjects, city.getLand(), improvements);
+        double production = output.getProduction(continent, rads, hasProjects, city.getLand(), improvements, -1);
         if (production != 0) {
             profit += PnwUtil.convertedTotalPositive(output, production);
 
@@ -83,13 +83,13 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double[] profit(Continent continent, double rads, Predicate hasProjects, JavaCity city, double[] profitBuffer, int turns) {
-        profitBuffer = super.profit(continent, rads, hasProjects, city, profitBuffer, turns);
+    public double[] profit(Continent continent, double rads, long date, Predicate hasProjects, JavaCity city, double[] profitBuffer, int turns) {
+        profitBuffer = super.profit(continent, rads, date, hasProjects, city, profitBuffer, turns);
 
         ResourceType type = resource();
         int improvements = city.get(this);
 
-        double production = type.getProduction(continent, rads, hasProjects, city.getLand(), improvements);
+        double production = type.getProduction(continent, rads, hasProjects, city.getLand(), improvements, date);
         if (production != 0) {
             profitBuffer[type.ordinal()] += production * turns / 12;
 

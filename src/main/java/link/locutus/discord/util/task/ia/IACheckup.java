@@ -956,7 +956,7 @@ public class IACheckup {
 
         for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
+            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), -1L, nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue());
@@ -986,7 +986,7 @@ public class IACheckup {
 
         for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
+            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(nation.getContinent(), nation.getRads(), -1L, nation::hasProject, null, nation.getCities(), nation.getGrossModifier(), 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue() * 7);

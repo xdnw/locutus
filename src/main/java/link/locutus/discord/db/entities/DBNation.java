@@ -3,15 +3,12 @@ package link.locutus.discord.db.entities;
 import com.politicsandwar.graphql.model.Nation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
-import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
@@ -20,7 +17,6 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
-import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -67,8 +63,6 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import rocker.grant.city;
-import rocker.grant.project;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -793,7 +787,6 @@ public class DBNation implements NationOrAlliance {
             last_active = System.currentTimeMillis() - ((System.currentTimeMillis() - diffAvg) * nations.size());
         }
     }
-
     @Command
     public double getRads() {
         TradeManager manager = Locutus.imp().getTradeManager();
@@ -1376,7 +1369,7 @@ public class DBNation implements NationOrAlliance {
     public List<Transaction2> updateTransactions() {
         BankDB bankDb = Locutus.imp().getBankDB();
         if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
-            Locutus.imp().runEventsAsync(bankDb::updateBankRanks);
+            Locutus.imp().runEventsAsync(bankDb::updateBankRecs);
         } else {
             Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, events));
         }
@@ -3418,7 +3411,7 @@ public class DBNation implements NationOrAlliance {
         Map<Integer, JavaCity> cityMap = getCityMap(update, false);
         for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
             JavaCity city = cityEntry.getValue();
-            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(continent, getRads(), this::hasProject, null, cities, 1, 12));
+            Map<ResourceType, Double> cityProfit = PnwUtil.resourcesToMap(city.profit(continent, getRads(), -1L, this::hasProject, null, cities, 1, 12));
             for (Map.Entry<ResourceType, Double> entry : cityProfit.entrySet()) {
                 if (entry.getValue() < 0) {
                     required.put(entry.getKey(), required.getOrDefault(entry.getKey(), 0d) - entry.getValue() * 7);
