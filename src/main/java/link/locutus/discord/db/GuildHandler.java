@@ -216,8 +216,10 @@ public class GuildHandler {
                 String response = nation.setTaxBracket(required, auth);
                 responses.accept(nation.getNation() + ": " + response);
                 nationsMovedBracket.put(nation, new AbstractMap.SimpleEntry<>(required, reason));
+                Locutus.imp().getNationDB().markNationDirty(nation.getId());
             }
         }
+        Locutus.imp().runEventsAsync(Locutus.imp().getNationDB()::updateDirtyNations);
         return nationsMovedBracket;
     }
 

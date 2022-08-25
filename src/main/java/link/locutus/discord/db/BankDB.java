@@ -243,7 +243,7 @@ public class BankDB extends DBMainV2 {
     }
 
     public Transaction2 getLatestTransaction() {
-        List<Transaction2> latestList = selectTransactions(query -> query.order("id", QueryOrder.OrderDirection.DESC).limit(1));
+        List<Transaction2> latestList = selectTransactions(query -> query.order("tx_id", QueryOrder.OrderDirection.DESC).limit(1));
         return latestList.isEmpty() ? null : latestList.get(0);
     }
 
