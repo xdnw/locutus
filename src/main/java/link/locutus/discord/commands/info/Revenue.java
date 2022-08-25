@@ -159,11 +159,11 @@ public class Revenue extends Command {
             Collection<JavaCity> cityList = entry.getValue().values();
 
             for (JavaCity build : cityList) {
-                cityProfit = build.profit(rads, hasProject, cityProfit, numCities);
+                cityProfit = build.profit(me.getContinent(), rads, -1L, hasProject, cityProfit, numCities, me.getGrossModifier(), 12);
             }
 
             NationColor color = nation.getColor();
-            tradeBonus = Locutus.imp().getTradeManager().getTradeBonus(color) * 12;
+            tradeBonus = color.getTurnBonus() * 12L;
 
             if (!nation.hasUnsetMil()) {
                 boolean war = nation.getOff() > 0 || nation.getDef() > 0;

@@ -4,13 +4,12 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.trade.Offer;
-import com.google.common.collect.BiMap;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -106,14 +105,14 @@ public class Inflows extends Command {
 
             allTransfers.addAll(Locutus.imp().getBankDB().getNationTransfers(nationId, cutoffMs));
 
-            List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nationId, cutoffMs);
-            for (Offer offer : trades) {
+            List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nationId, cutoffMs);
+            for (DBTrade offer : trades) {
                 int per = offer.getPpu();
                 ResourceType type = offer.getResource();
                 if (per > 1 && (per < 10000 || (type != ResourceType.FOOD && per < 100000))) {
                     continue;
                 }
-                long amount = offer.getAmount();
+                long amount = offer.getQuantity();
                 if (per <= 1) {
                     amount = offer.getTotal();
                     type = ResourceType.MONEY;

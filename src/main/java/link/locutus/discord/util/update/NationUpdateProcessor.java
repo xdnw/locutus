@@ -22,7 +22,6 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -41,6 +40,7 @@ import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import rocker.grant.nation;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -165,8 +165,7 @@ public class NationUpdateProcessor {
 
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(120, TimeUnit.MINUTES);
 
-    @Subscribe
-    public void onTurnChange(TurnChangeEvent event) {
+    public static void onActivityCheck() {
         Map<Integer, Integer> membersByAA = new HashMap<>(); // only <7d non vm nations
         Map<Integer, Integer> activeMembersByAA = new HashMap<>();
         Map<Integer, Double> averageMilitarization = new HashMap<>();
@@ -176,7 +175,7 @@ public class NationUpdateProcessor {
             int aaId = nation.getAlliance_id();
             membersByAA.put(aaId, membersByAA.getOrDefault(aaId, 0) + 1);
             boolean active = nation.getActive_m() < 15;
-            if (!active && nation.getActive_m() < 1440 && nation.getVm_turns() == 0 && nation.getPosition() > 1) {
+            if (!active && nation.getActive_m() < 1440 && nation.getVm_turns() == 0 && nation.getPositionEnum().id > Rank.APPLICANT.id) {
                 User user = nation.getUser();
                 if (user != null) {
                     List<Guild> mutual = user.getMutualGuilds();
@@ -429,7 +428,7 @@ public class NationUpdateProcessor {
                         if (attacker.getScore() < minScore || attacker.getScore() > maxScore) continue;
                         if (attacker.getOff() > 4) continue;
                         if (attacker.hasUnsetMil() || current.hasUnsetMil()) continue;
-                        int planeCap = Buildings.HANGAR.cap() * Buildings.HANGAR.max() * attacker.getCities();
+                        int planeCap = Buildings.HANGAR.cap(attacker::hasProject) * Buildings.HANGAR.max() * attacker.getCities();
                         if (attacker.getAircraft() < planeCap * 0.8) continue;
 
                         double attStr = BlitzGenerator.getAirStrength(attacker, true, true);
@@ -702,7 +701,7 @@ public class NationUpdateProcessor {
     private static void processVMTransfers(DBNation previous, DBNation current) {
         long cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14);
         List<Transaction2> transfers = Locutus.imp().getBankDB().getNationTransfers(current.getNation_id(), cutoffMs);
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(current.getNation_id(), cutoffMs);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(current.getNation_id(), cutoffMs);
 
         long total = 0;
 
@@ -726,7 +725,7 @@ public class NationUpdateProcessor {
             total += value;
         }
 
-        for (Offer offer : trades) {
+        for (DBTrade offer : trades) {
             if (offer.getPpu() > 1 && offer.getPpu() < 10000) {
                 continue;
             }
@@ -742,7 +741,7 @@ public class NationUpdateProcessor {
             int otherId = seller.equals(current.getNation_id()) ? buyer : seller;
             String name = PnwUtil.getBBUrl(otherId, false);
 
-            double value = offer.getPpu() > 1 ? offer.getAmount() * offer.getPpu() : Locutus.imp().getTradeManager().getLow(offer.getResource()) * offer.getAmount();
+            double value = offer.getPpu() > 1 ? offer.getQuantity() * offer.getPpu() : Locutus.imp().getTradeManager().getLow(offer.getResource()) * offer.getQuantity();
             map.put(name, map.getOrDefault(name, 0d) + value);
 
             total += value;

@@ -703,24 +703,24 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `INTERNAL_TRANSACTIONS2` (" +
                     "`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "tx_datetime INT NOT NULL, " +
-                    "sender_id INT NOT NULL, " +
+                    "tx_datetime BIGINT NOT NULL, " +
+                    "sender_id BIGINT NOT NULL, " +
                     "sender_type INT NOT NULL, " +
-                    "receiver_id INT NOT NULL, " +
+                    "receiver_id BIGINT NOT NULL, " +
                     "receiver_type INT NOT NULL, " +
                     "banker_nation_id INT NOT NULL, " +
                     "note varchar");
 
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
-                query.append(", " + type.name() + " INT NOT NULL");
+                query.append(", " + type.name() + " BIGINT NOT NULL");
             }
             query.append(")");
 
             executeStmt(query.toString());
         }
         {
-            String nations = "CREATE TABLE IF NOT EXISTS `TRANSACTIONS` (`id` INT NOT NULL PRIMARY KEY, `from` INT NOT NULL, `to` INT NOT NULL, `resources` BLOB NOT NULL, `note` VARCHAR)";
+            String nations = "CREATE TABLE IF NOT EXISTS `TRANSACTIONS` (`id` INT NOT NULL PRIMARY KEY, `from` BIGINT NOT NULL, `to` BIGINT NOT NULL, `resources` BLOB NOT NULL, `note` VARCHAR)";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(nations);
                 stmt.executeBatch();
@@ -731,7 +731,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         };
 
         {
-            String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `sender` INT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` INT NOT NULL)";
+            String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `sender` BIGINT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` BIGINT NOT NULL)";
             executeStmt(query);
 
             String query2 = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS_PLAYER2` (`receiver` INT NOT NULL, `ann_id` INT NOT NULL, `active` BOOLEAN NOT NULL, `diff` BLOB NOT NULL, PRIMARY KEY(receiver, ann_id), FOREIGN KEY(ann_id) REFERENCES ANNOUNCEMENTS2(ann_id))";
@@ -744,13 +744,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //        }
 
         {
-            String query = "CREATE TABLE IF NOT EXISTS `INTERVIEW_MESSAGES2` (`message_id` INT NOT NULL PRIMARY KEY, `channel_id` INTEGER NOT NULL, `sender` INT NOT NULL, `date_created`, `date_updated`, `message` VARCHAR NOT NULL)";
+            String query = "CREATE TABLE IF NOT EXISTS `INTERVIEW_MESSAGES2` (`message_id` BIGINT NOT NULL PRIMARY KEY, `channel_id` BIGINT NOT NULL, `sender` BIGINT NOT NULL, `date_created` BIGINT NOT NULL, `date_updated` BIGINT NOT NULL, `message` VARCHAR NOT NULL)";
             executeStmt(query);
             purgeOldInterviews(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14));
         }
 
         {
-            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` INT NOT NULL, `key` INT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
+            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(nations);
                 stmt.executeBatch();
@@ -761,7 +761,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         };
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `ROLES` (`role` VARCHAR NOT NULL, `alias` INT NOT NULL, PRIMARY KEY(role))";
+            String create = "CREATE TABLE IF NOT EXISTS `ROLES` (`role` VARCHAR NOT NULL, `alias` BIGINT NOT NULL, PRIMARY KEY(role))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
@@ -771,7 +771,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         };
         {
-            String create = "CREATE TABLE IF NOT EXISTS `COALITIONS` (`alliance_id` INT NOT NULL, `coalition` VARCHAR NOT NULL, PRIMARY KEY(alliance_id, coalition))";
+            String create = "CREATE TABLE IF NOT EXISTS `COALITIONS` (`alliance_id` BIGINT NOT NULL, `coalition` VARCHAR NOT NULL, PRIMARY KEY(alliance_id, coalition))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
@@ -810,18 +810,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 e.printStackTrace();
             }
         };
+        // deprecated
+//        {
+//            String create = "CREATE TABLE IF NOT EXISTS `BANK_DEPOSIT` (`nationId` INT NOT NULL, `resource` INT NOT NULL, `amount` INT NOT NULL, `note` VARCHAR NOT NULL, PRIMARY KEY(nationId, resource, note))";
+//            try (Statement stmt = getConnection().createStatement()) {
+//                stmt.addBatch(create);
+//                stmt.executeBatch();
+//                stmt.clearBatch();
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+//        };
         {
-            String create = "CREATE TABLE IF NOT EXISTS `BANK_DEPOSIT` (`nationId` INT NOT NULL, `resource` INT NOT NULL, `amount` INT NOT NULL, `note` VARCHAR NOT NULL, PRIMARY KEY(nationId, resource, note))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `LOANS` (`loan_id` INTEGER PRIMARY KEY AUTOINCREMENT, `server` INT NOT NULL, `message`, `receiver` INT NOT NULL, `resources` BLOB NOT NULL, `due` INT NOT NULL, `repaid` INT NOT NULL)";
+            String create = "CREATE TABLE IF NOT EXISTS `LOANS` (`loan_id` INTEGER PRIMARY KEY AUTOINCREMENT, `server` BIGINT NOT NULL, `message`, `receiver` INT NOT NULL, `resources` BLOB NOT NULL, `due` BIGINT NOT NULL, `repaid` BIGINT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();

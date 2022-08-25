@@ -5,10 +5,11 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.trade.Offer;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -53,13 +54,13 @@ public class MoneyTrades extends Command {
         long cuttOff = System.currentTimeMillis() - timeDiff;
 
         if (flags.contains('f')) {
-            Locutus.imp().getTradeManager().updateTradeList(false, true);
+            Locutus.imp().runEventsAsync(Locutus.imp().getTradeManager()::updateTradeList);
         }
 
         Map<Integer, Map<ResourceType, Long>> netInflows = new HashMap<>();
 
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(user, cuttOff);
-        for (Offer offer : trades) {
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(user, cuttOff);
+        for ( DBTrade offer : trades) {
             if (offer.getResource() == ResourceType.CREDITS) continue;
             int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;
             if (offer.getPpu() > 1 && offer.getPpu() < max) continue;
@@ -67,12 +68,12 @@ public class MoneyTrades extends Command {
             int sign = offer.isBuy() ? -1 : 1;
             int per = offer.getPpu();
 
-            Integer client = (offer.getSeller().equals(user)) ? offer.getBuyer() : offer.getSeller();
+            Integer client = (offer.getSeller() == (user)) ? offer.getBuyer() : offer.getSeller();
 
             Map<ResourceType, Long> existing = netInflows.computeIfAbsent(client,  integer -> Maps.newLinkedHashMap());
 
             if (per <= 1) {
-                existing.put(offer.getResource(), (long) (offer.getAmount() * sign + existing.getOrDefault(offer.getResource(), 0L)));
+                existing.put(offer.getResource(), (long) (offer.getQuantity() * sign + existing.getOrDefault(offer.getResource(), 0L)));
             } else {
                 existing.put(ResourceType.MONEY, (long) (sign * offer.getTotal()) + existing.getOrDefault(ResourceType.MONEY, 0L));
             }

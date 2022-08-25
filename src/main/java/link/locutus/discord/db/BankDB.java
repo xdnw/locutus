@@ -1,25 +1,18 @@
 package link.locutus.discord.db;
 
-import com.politicsandwar.graphql.model.BBGame;
-import com.politicsandwar.graphql.model.Bankrec;
-import com.politicsandwar.graphql.model.BankrecsQueryRequest;
+import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
-import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.Transfer;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -30,13 +23,14 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.User;
 
+import java.io.File;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Instant;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,18 +40,25 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class BankDB extends DBMainV2 {
 
-    public BankDB() throws SQLException, ClassNotFoundException {
-        super("bank");
+    public BankDB(String name, boolean init) throws SQLException, ClassNotFoundException {
+        super(name, init);
+        if (name.equalsIgnoreCase("bank") && new File("database/import_bank.db").exists()) {
+            System.out.println("Importing external bank recs");
+            importFromExternal("import_bank");
+            System.out.println("Exporting external bank recs");
+            byte[] maxIdData = ByteBuffer.allocate(4).putInt(87004798).array();
+            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
+        }
     }
 
 //    public void updateBankRecs(int nationId) {
@@ -106,10 +107,21 @@ public class BankDB extends DBMainV2 {
         }
     }
 
+    public void importFromExternal(String fileName) throws SQLException, ClassNotFoundException {
+        BankDB otherDb = new BankDB(fileName, false);
+        List<Transaction2> transactions = selectTransactions(f -> {
+        });
+        int batchSize = 10000;
+        for (int i = 0; i < transactions.size(); i+= batchSize) {
+            List<Transaction2> subList = transactions.subList(i, Math.min(i + batchSize, transactions.size()));
+            addTransactions(subList, true);
+        }
+    }
+
     @Override
     public void createTables() {
         {
-            StringBuilder txTableCreate = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_2` (`tx_id` INT NOT NULL PRIMARY KEY, tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
+            StringBuilder txTableCreate = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_2` (`tx_id` INT NOT NULL PRIMARY KEY, tx_datetime BIGINT NOT NULL, sender_id BIGINT NOT NULL, sender_type INT NOT NULL, receiver_id BIGINT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 txTableCreate.append(", " + type.name() + " INT NOT NULL");
@@ -129,7 +141,7 @@ public class BankDB extends DBMainV2 {
         }
 
         {
-            StringBuilder transactions = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_ALLIANCE_2` (`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
+            StringBuilder transactions = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_ALLIANCE_2` (`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, tx_datetime BIGINT NOT NULL, sender_id BIGINT NOT NULL, sender_type INT NOT NULL, receiver_id BIGINT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 transactions.append(", " + type.name() + " INT NOT NULL");
@@ -149,18 +161,18 @@ public class BankDB extends DBMainV2 {
             executeStmt("CREATE INDEX IF NOT EXISTS index_receiver_type ON TRANSACTIONS_ALLIANCE_2 (receiver_type);");
             executeStmt("CREATE INDEX IF NOT EXISTS index_tx_datetime ON TRANSACTIONS_ALLIANCE_2 (tx_datetime);");
         }
+//        {
+//            String transactions = "CREATE TABLE IF NOT EXISTS `TRANSACTIONS_BANK` (`date` INT NOT NULL, note VARCHAR, bank INT NOT NULL, receiver INT NOT NULL, banker INT NOT NULL, resource INT NOT NULL, amount REAL NOT NULL, PRIMARY KEY(date, bank, receiver, banker, resource, amount))";
+//            try (Statement stmt = getConnection().createStatement()) {
+//                stmt.addBatch(transactions);
+//                stmt.executeBatch();
+//                stmt.clearBatch();
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+//        };
         {
-            String transactions = "CREATE TABLE IF NOT EXISTS `TRANSACTIONS_BANK` (`date` INT NOT NULL, note VARCHAR, bank INT NOT NULL, receiver INT NOT NULL, banker INT NOT NULL, resource INT NOT NULL, amount REAL NOT NULL, PRIMARY KEY(date, bank, receiver, banker, resource, amount))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(transactions);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
-            String query = "CREATE TABLE IF NOT EXISTS `SUBSCRIPTIONS` (`user` INT NOT NULL, `allianceOrNation` INT NOT NULL, `isNation` INT NOT NULL, `date` INT NOT NULL, `isReceive` INT NOT NULL, `amount` INT NOT NULL, PRIMARY KEY(user, allianceOrNation, isNation))";
+            String query = "CREATE TABLE IF NOT EXISTS `SUBSCRIPTIONS` (`user` BIGINT NOT NULL, `allianceOrNation` INT NOT NULL, `isNation` INT NOT NULL, `date` BIGINT NOT NULL, `isReceive` INT NOT NULL, `amount` BIGINT NOT NULL, PRIMARY KEY(user, allianceOrNation, isNation))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(query);
                 stmt.executeBatch();
@@ -170,14 +182,14 @@ public class BankDB extends DBMainV2 {
             }
         }
         {
-            String query = "CREATE TABLE IF NOT EXISTS `TAX_BRACKETS` (`id` INT NOT NULL, `money` INT NOT NULL, `resources` INT NOT NULL, `date` INT NOT NULL, PRIMARY KEY(id))";
+            String query = "CREATE TABLE IF NOT EXISTS `TAX_BRACKETS` (`id` INT NOT NULL, `money` INT NOT NULL, `resources` INT NOT NULL, `date` BIGINT NOT NULL, PRIMARY KEY(id))";
             executeStmt(query);
-            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE TAX_BRACKETS ADD COLUMN `date` INT NOT NULL DEFAULT 0")){
+            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE TAX_BRACKETS ADD COLUMN `date` BIGINT NOT NULL DEFAULT 0")){
                 stmt.executeUpdate();
             } catch (SQLException ignore) {}
         }
         {
-            String query = "CREATE TABLE IF NOT EXISTS `TAX_DEPOSITS_DATE` (`tax_id` INT NOT NULL DEFAULT (-1), `alliance` INT NOT NULL, `date` INT NOT NULL, `id` INT NOT NULL, `nation` INT NOT NULL, `moneyrate` INT NOT NULL, `resoucerate` INT NOT NULL, `resources` BLOB NOT NULL, `internal_taxrate` INT NOT NULL DEFAULT (-1), PRIMARY KEY(alliance, date, nation))";
+            String query = "CREATE TABLE IF NOT EXISTS `TAX_DEPOSITS_DATE` (`tax_id` INT NOT NULL DEFAULT (-1), `alliance` INT NOT NULL, `date` BIGINT NOT NULL, `id` INT NOT NULL, `nation` INT NOT NULL, `moneyrate` INT NOT NULL, `resoucerate` INT NOT NULL, `resources` BLOB NOT NULL, `internal_taxrate` INT NOT NULL DEFAULT (-1), PRIMARY KEY(alliance, date, nation))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(query);
                 stmt.executeBatch();
@@ -188,48 +200,129 @@ public class BankDB extends DBMainV2 {
             executeStmt("CREATE INDEX IF NOT EXISTS index_tax_deposits_nation ON TAX_DEPOSITS_DATE (nation);");
         }
         {
-            // create TablePreset tax_rate_suggestions with the columns id, date, money, resources
-            TablePreset.create("tax_rate_suggestions")
-                    .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+            String query = TablePreset.create("loot_diff_by_tax_id")
+                    .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("tax_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("money", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("resources", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("resources", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .buildQuery(getDb().getType());
+            query = query.replace(");", ", PRIMARY KEY(nation_id, tax_id));");
+            getDb().executeUpdate(query);
+
+            TablePreset.create("tax_estimate")
+                    .putColumn("tax_id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("min_cash", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("max_cash", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("min_rss", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("max_rss", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb())
             ;
         }
     }
 
-    // method to insert or replace tax rate suggestion
-    public void suggestTaxRate(int taxId, int resourceRate, int moneyRate) {
-        long date = System.currentTimeMillis();
-        update("INSERT OR REPLACE INTO tax_rate_suggestions (id, date, money, resources) VALUES (?, ?, ?, ?)", taxId, date, moneyRate, resourceRate);
+    // add tax estimate
+    public void addTaxEstimate(int taxId, int minCash, int maxCash, int minRss, int maxRss) {
+        update("INSERT INTO tax_estimate (tax_id, min_cash, max_cash, min_rss, max_rss) VALUES (?, ?, ?, ?, ?)", taxId, minCash, maxCash, minRss, maxRss);
     }
 
-    public Map<Integer, TaxBracket> getTaxBracketSuggestions() {
-        return getTaxBracketSuggestions(new HashMap<>());
-    }
-
-    public Map<Integer, TaxBracket> getTaxBracketSuggestions(Map<Integer, Integer> alliancesByTaxId) {
-        Map<Integer, TaxBracket> taxRateSuggestions = new HashMap<>();
-        SelectBuilder builder = getDb().selectBuilder("tax_rate_suggestions").select("*");
-
-        if (alliancesByTaxId.isEmpty()) alliancesByTaxId.putAll(Locutus.imp().getNationDB().getAllianceIdByTaxId());
-
-        try (ResultSet rs = builder.executeRaw()) {
+    public Map<Integer, TaxEstimate> getTaxEstimates() {
+        Map<Integer, TaxEstimate> result = new Int2ObjectOpenHashMap<>();
+        query("SELECT * FROM tax_estimate", f -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
-                long date = rs.getLong("date");
-
-                int id = rs.getInt("id");
-                int money = rs.getInt("money");
-                int resources = rs.getInt("resources");
-                int allianceId = alliancesByTaxId.getOrDefault(id, 0);
-                TaxBracket bracket = new TaxBracket(id, allianceId, "", money, resources, date);
-                taxRateSuggestions.put(id, bracket);
+                TaxEstimate estimate = new TaxEstimate();
+                estimate.tax_id = (rs.getInt("tax_id"));
+                estimate.min_cash = (rs.getInt("min_cash"));
+                estimate.max_cash = (rs.getInt("max_cash"));
+                estimate.min_rss = (rs.getInt("min_rss"));
+                estimate.max_rss = (rs.getInt("max_rss"));
+                result.put(estimate.tax_id, estimate);
             }
-            return taxRateSuggestions;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
+        });
+        return result;
+    }
+
+    public Transaction2 getLatestTransaction() {
+        List<Transaction2> latestList = selectTransactions(query -> query.order("id", QueryOrder.OrderDirection.DESC).limit(1));
+        return latestList.isEmpty() ? null : latestList.get(0);
+    }
+
+    public void updateBankRecs(int nationId, Consumer<Event> eventConsumer) {
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+
+        List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
+        int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
+        List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+            @Override
+            public void accept(BankrecsQueryRequest request) {
+                request.setOr_type(List.of(1));
+                request.setOr_id(List.of(nationId));
+                if (minId > 0) request.setMin_id(minId + 1);
+            }
+        });
+
+        saveBankRecs(bankRecs, eventConsumer);
+    }
+
+    public void updateBankRecs(Consumer<Event> eventConsumer) {
+        ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
+        int latestId = info == null ? -1 : info.getInt();
+
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+
+        List<Bankrec> records = new ArrayList<>();
+        Runnable saveTransactions = () -> {
+            if (records.isEmpty()) return;
+            List<Bankrec> copy = new ArrayList<>(records);
+            records.clear();
+            int maxId = copy.stream().mapToInt(Bankrec::getId).max().getAsInt();
+            saveBankRecs(copy, eventConsumer);
+
+            byte[] maxIdData = ByteBuffer.allocate(4).putInt(maxId).array();
+            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
+        };
+        v3.fetchBankRecs(new Consumer<BankrecsQueryRequest>() {
+            @Override
+            public void accept(BankrecsQueryRequest f) {
+                f.setOr_type(List.of(1));
+                if (latestId > 0) f.setMin_id(latestId + 1);
+                f.setOrderBy(List.of(new QueryBankrecsOrderByOrderByClause(QueryBankrecsOrderByColumn.ID, SortOrder.ASC, null)));
+            }
+        }, v3.createBankRecProjection(), new Predicate<Bankrec>() {
+            @Override
+            public boolean test(Bankrec bankrec) {
+                records.add(bankrec);
+                if (records.size() > 1000) {
+                    System.out.println("MIN " + records.get(0).getId());
+                    saveTransactions.run();
+                }
+                return false;
+            }
+        });
+        saveTransactions.run();
+    }
+
+    public void saveBankRecs(List<Bankrec> bankrecs, Consumer<Event> eventConsumer) {
+        List<Transaction2> transfers = new ArrayList<>();
+        for (Bankrec bankrec : bankrecs) {
+            if (bankrec.getSender_type() != 1 && bankrec.getReceiver_type() != 1) {
+                throw new UnsupportedOperationException("Alliance -> alliance transfers are not currently supported");
+            }
+            Transaction2 tx = Transaction2.fromApiV3(bankrec);
+            transfers.add(tx);
+        }
+        Collections.sort(transfers, Comparator.comparingLong(Transaction2::getDate));
+        int[] modified = addTransactions(transfers, true);
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
+        if (eventConsumer != null) {
+            for (int i = 0; i < modified.length; i++) {
+                if (modified[i] > 0) {
+                    Transaction2 tx = transfers.get(i);
+                    if (tx.tx_datetime > cutoff) {
+                        eventConsumer.accept(new TransactionEvent(tx));
+                    }
+                }
+            }
         }
     }
 
@@ -604,13 +697,17 @@ public class BankDB extends DBMainV2 {
     }
 
     public List<Transaction2> getTransactionsByNation(int nation) {
+        return getTransactionsByNation(nation, -1);
+    }
+
+    public List<Transaction2> getTransactionsByNation(int nation, int limit) {
         Reference<Map.Entry<Integer, List<Transaction2>>> tmp = txNationCache;
         Map.Entry<Integer, List<Transaction2>> cached = tmp == null ? null : tmp.get();
         if (cached != null && cached.getKey() == nation) {
             return cached.getValue();
         }
         List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE (sender_id = ? AND sender_type = 1) OR (receiver_id = ? AND receiver_type = 1)")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE (sender_id = ? AND sender_type = 1) OR (receiver_id = ? AND receiver_type = 1)" + (limit > 0 ? " ORDER BY tx_id DESC LIMIT " + limit : ""))) {
             stmt.setInt(1, nation);
             stmt.setInt(2, nation);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -622,7 +719,7 @@ public class BankDB extends DBMainV2 {
             return list;
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
+            throw new RuntimeException("Unable to fetch transactions " + e.getMessage());
         }
     }
 
@@ -691,7 +788,7 @@ public class BankDB extends DBMainV2 {
         }
     }
 
-    public int[] addTransactions(List<Transaction2> transactions, boolean ignoreInto) {
+    private int[] addTransactions(List<Transaction2> transactions, boolean ignoreInto) {
         if (transactions.isEmpty()) return new int[0];
         invalidateTXCache();
         String query = transactions.get(0).createInsert("TRANSACTIONS_2", true, ignoreInto);
@@ -911,7 +1008,7 @@ public class BankDB extends DBMainV2 {
 
     public void clearTaxDeposits(int allianceId) {
         update("DELETE FROM `TAX_DEPOSITS_DATE` WHERE `alliance` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, allianceId);
+            stmt.setInt(1, allianceId);
         });
     }
 
@@ -937,9 +1034,9 @@ public class BankDB extends DBMainV2 {
     }
 
     public Map<Integer, TaxBracket> getTaxBracketsAndEstimates() {
-        return getTaxBracketsAndEstimates(true, true, true, true);
+        return getTaxBracketsAndEstimates(true, true, true);
     }
-    public Map<Integer, TaxBracket> getTaxBracketsAndEstimates(boolean allowDeposits, boolean allowApi, boolean allowSuggestions, boolean addUnknownBrackets) {
+    public Map<Integer, TaxBracket> getTaxBracketsAndEstimates(boolean allowDeposits, boolean allowApi, boolean addUnknownBrackets) {
         Map<Integer, TaxBracket> rates = new HashMap<>();
 
         Map<Integer, Integer> taxIdByAlliances = new HashMap<>();
@@ -948,7 +1045,7 @@ public class BankDB extends DBMainV2 {
 
         if (allowDeposits) bracketEntries.addAll(getTaxBracketsFromDeposits().entrySet());
         if (allowApi) bracketEntries.addAll(getTaxBrackets(taxIdByAlliances).entrySet());
-        if (allowSuggestions) bracketEntries.addAll(getTaxBracketSuggestions(taxIdByAlliances).entrySet());
+//        if (allowSuggestions) bracketEntries.addAll(getTaxBracketSuggestions(taxIdByAlliances).entrySet());
 
         for (Map.Entry<Integer, TaxBracket> entry : bracketEntries) {
             TaxBracket bracket = entry.getValue();
@@ -1359,101 +1456,4 @@ public class BankDB extends DBMainV2 {
             return null;
         }
     }
-
-//    public void removeBankTransactions(int allianceId, long timestamp) {
-//        update("DELETE FROM `TRANSACTIONS_BANK` WHERE (bank = ? or receiver = ?) and date >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//            stmt.setLong(3, timestamp);
-//        });
-//    }
-//
-//    public void removeBankTransactions(int allianceId) {
-//        update("DELETE FROM `TRANSACTIONS_BANK` WHERE bank = ? or receiver = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//        });
-//    }
-//
-//    public void addBankTransactions(Collection<Transfer> transfers) {
-//        try {
-//            synchronized (this) {
-//                LinkedList<Transfer> copy = new ArrayList<>(transfers);
-//                copy.removeIf(transfer -> {
-//                    long bankTurn = TimeUtil.getTurn(transfer.getDate());
-//                    return (bankTurn > TimeUtil.getTurn() + 1) || transfer.getSender() == 0 || transfer.getReceiver() == 0;
-//                });
-//                String query = "INSERT OR IGNORE INTO `TRANSACTIONS_BANK` (`date`, note, bank, receiver, banker, resource, amount) VALUES(?, ?, ?, ?, ?, ?, ?)";
-//                executeBatch(transfers, query, new ThrowingBiConsumer<Transfer, PreparedStatement>() {
-//                    @Override
-//                    public void acceptThrows(Transfer transfer, PreparedStatement stmt) throws SQLException {
-//                        stmt.setLong(1, transfer.getDate());
-//                        stmt.setString(2, transfer.getNote());
-//                        stmt.setInt(3, transfer.getSender());
-//                        stmt.setInt(4, transfer.getReceiver());
-//                        stmt.setInt(5, transfer.getBanker());
-//                        stmt.setInt(6, transfer.getRss().ordinal());
-//                        stmt.setDouble(7, transfer.getAmount());
-//                    }
-//                });
-//            }
-//        } catch (Throwable e) {
-//            e.printStackTrace();
-//            for (Transfer transfer : transfers) {
-//                Locutus.imp().getBankDB().addBankTransaction(transfer);
-//            }
-//        }
-//    }
-//
-//    public void addBankTransaction(Transfer transfer) {
-//        long bankTurn = TimeUtil.getTurn(transfer.getDate());
-//        if (bankTurn > TimeUtil.getTurn() + 1) return;
-//        if (transfer.isReceiverAA() || transfer.isSenderAA()) {
-//            update("INSERT OR IGNORE INTO `TRANSACTIONS_BANK` (`date`, note, bank, receiver, banker, resource, amount) VALUES(?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//                stmt.setLong(1, transfer.getDate());
-//                stmt.setString(2, transfer.getNote());
-//                stmt.setInt(3, transfer.getSender());
-//                stmt.setInt(4, transfer.getReceiver());
-//                stmt.setInt(5, transfer.getBanker());
-//                stmt.setInt(6, transfer.getRss().ordinal());
-//                stmt.setDouble(7, transfer.getAmount());
-//            });
-//            return;
-//        }
-//    }
-//
-//    public List<Transfer> getBankTransactions(long guildId) {
-//        ArrayList<Transfer> list = new ArrayList<>();
-//        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_BANK WHERE lower(note) like ?")) {
-//            stmt.setString(1, "%#guild=" + guildId + "%");
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    list.add(create(rs));
-//                }
-//            }
-//            return list;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
-//
-//    public List<Transfer> getBankTransactions(int allianceId) {
-//        ArrayList<Transfer> list = new ArrayList<>();
-//        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_BANK WHERE bank = ? OR receiver = ? OR lower(note) like ?")) {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//            stmt.setString(3, "%#alliance=" + allianceId + "%");
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    list.add(create(rs));
-//                }
-//            }
-//            return list;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
-//
 }

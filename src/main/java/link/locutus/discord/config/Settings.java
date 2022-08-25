@@ -203,9 +203,6 @@ public class Settings extends Config {
         @Comment("Fetches the treaties (default 6 minutes)")
         public int TREATY_UPDATE_SECONDS = 60 * 6;
 
-        @Comment("Fetches active trade offers (default: disabled)")
-        public int TRADE_PRICE_SECONDS = 0;
-
         @Comment("Fetches trades (default: 15 minutes)")
         public int COMPLETED_TRADES_SECONDS = 15 * 60;
 
@@ -221,6 +218,10 @@ public class Settings extends Config {
 
         @Comment("Fetches discord ids (default: 15 minutes)")
         public int NATION_DISCORD_SECONDS = 15 * 60;
+
+        @Comment({"Fetches all bank records at invterval (default: disabled)",
+                "If disabled, bank records will be fetched when needed"})
+        public int BANK_RECORDS_INTERVAL_SECONDS = 0;
 
         @Comment({"If network UIDs are fetched automatically (for multi checking) (disabled by default, since it is slow and uses web scraping)"})
         public boolean AUTO_FETCH_UID = false;
@@ -253,10 +254,6 @@ public class Settings extends Config {
             public boolean ALLIANCE_METRICS = true;
             @Comment("TODO: Not finished")
             public boolean MAP_FULL_ALERT = true;
-
-            @Comment({"If bank records should be fetched each turn (default: false)",
-                    " - If disabled, records will be fetched on demand"})
-            public boolean BANK_RECORDS = false;
 
             @Comment({"Fetches spies in the background via the api (default: false)",
                     "If disabled, spies will be fetched when needed",
@@ -463,8 +460,8 @@ public class Settings extends Config {
     }
 
     public static class DATABASE {
-        @Create
-        public MYSQL MYSQL;
+//        @Create
+//        public MYSQL MYSQL;
         @Create
         public SQLITE SQLITE;
 
@@ -474,16 +471,16 @@ public class Settings extends Config {
             @Comment("The directory to store the database in")
             public String DIRECTORY = "database";
         }
-
-        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")
-        public static final class MYSQL {
-            @Comment("Should MySQL be used?")
-            public boolean USE = false;
-            public String HOST = "localhost";
-            public int PORT = 3306;
-            public String USER = "root";
-            public String PASSWORD = "password";
-        }
+//
+//        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")
+//        public static final class MYSQL {
+//            @Comment("Should MySQL be used?")
+//            public boolean USE = false;
+//            public String HOST = "localhost";
+//            public int PORT = 3306;
+//            public String USER = "root";
+//            public String PASSWORD = "password";
+//        }
     }
 
     private File defaultFile = new File("config" + File.separator + "config.yaml");

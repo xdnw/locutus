@@ -53,6 +53,7 @@ public class PoliticsAndWarV3 {
     public static int TRADES_PER_PAGE = 1000;
     public static int BOUNTIES_PER_PAGE = 1000;
     public static int BASEBALL_PER_PAGE = 1000;
+    public static int EMBARGO_PER_PAGE = 1000;
 
     private final String endpoint;
     private final RestTemplate restTemplate;
@@ -137,6 +138,8 @@ public class PoliticsAndWarV3 {
 //
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
 
+                System.out.println("request " + graphQLRequest.toQueryString());
+
                 exchange = restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
                         entity,
@@ -146,7 +149,10 @@ public class PoliticsAndWarV3 {
                 JsonNode json = (ObjectNode) jacksonObjectMapper.readTree(body);
 
                 if (json.has("errors")) {
-                    System.out.println(exchange.getBody());
+                    System.out.println("Body " + exchange.getBody());
+                    System.out.println("\n\n------\n");
+                    System.out.println(graphQLRequest.toQueryString() + " | " + graphQLRequest.getRequest());
+                    System.out.println("\n\n------\n");
                     JsonNode errors = (JsonNode) json.get("errors");
                     List<String> errorMessages = new ArrayList<>();
                     for (JsonNode error : errors) {
@@ -331,7 +337,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<BBGame> fetchBaseballGames(Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query) {
-        return fetchBaseballGames(BOUNTIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchBaseballGames(BASEBALL_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
     public List<BBGame> fetchBaseballGames(int perPage, Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<BBGame> recResults) {
@@ -601,8 +607,8 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
-    public List<Bankrec> fetchBankRecsWithInfo(Consumer<BankrecsQueryRequest> filter) {
-        return fetchBankRecs(filter, new Consumer<BankrecResponseProjection>() {
+    public Consumer<BankrecResponseProjection> createBankRecProjection() {
+        return new Consumer<BankrecResponseProjection>() {
             @Override
             public void accept(BankrecResponseProjection proj) {
                 proj.id();
@@ -626,11 +632,19 @@ public class PoliticsAndWarV3 {
                 proj.aluminum();
                 proj.food();
             }
-        });
+        };
+    }
+
+    public List<Bankrec> fetchBankRecsWithInfo(Consumer<BankrecsQueryRequest> filter) {
+        return fetchBankRecs(filter, createBankRecProjection());
     }
 
     public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
         return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+    }
+
+    public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Predicate<Bankrec> recResults) {
+        return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, recResults);
     }
 
     public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
@@ -655,6 +669,7 @@ public class PoliticsAndWarV3 {
                 response -> {
                     BankrecPaginator paginator = response.bankrecs();
                     PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    System.out.println("Page  " + pageInfo);
                     return pageInfo != null && pageInfo.getHasMorePages();
                 }, result -> {
                     BankrecPaginator paginator = result.bankrecs();
@@ -973,7 +988,7 @@ public class PoliticsAndWarV3 {
                         .requests()
                         .nation(new NationResponseProjection().id()),
                 MeQueryResponse.class);
-        if (result.me() == null) throw new GraphQLException("Error fetching api key " + result.toString());
+        if (result.me() == null) throw new GraphQLException("Error fetching api key");
         return result.me();
     }
 
@@ -1155,6 +1170,18 @@ public class PoliticsAndWarV3 {
         return taxBracketMap;
     }
 
+    public void iterateIdChunks(List<Integer> ids, int maxSize, Consumer<List<Integer>> subListConsumer) {
+        ids = new ArrayList<>(ids);
+        Collections.sort(ids);
+        if (ids.size() <= maxSize) {
+            subListConsumer.accept(ids);
+        } else {
+            for (int i = 0; i < ids.size(); i += maxSize) {
+                List<Integer> subList = ids.subList(i, Math.min(i + maxSize, ids.size()));
+                subListConsumer.accept(subList);
+            }
+        }
+    }
     public List<Trade> fetchTradesWithInfo(Consumer<TradesQueryRequest> filter, Predicate<Trade> tradeResults) {
         TradesQueryRequest test = new TradesQueryRequest();
         return fetchTrades(TRADES_PER_PAGE, filter, new Consumer<TradeResponseProjection>() {
@@ -1174,6 +1201,40 @@ public class PoliticsAndWarV3 {
                 projection.original_trade_id();
             }
         }, f -> PoliticsAndWarV3.ErrorResponse.THROW, tradeResults);
+    }
+
+    public List<Embargo> fetchEmbargoWithInfo(Consumer<EmbargoesQueryRequest> filter, Consumer<EmbargoResponseProjection> query, Predicate<Embargo> embargoResults) {
+        List<Embargo> allResults = new ArrayList<>();
+
+        handlePagination(page -> {
+                    EmbargoesQueryRequest request = new EmbargoesQueryRequest();
+                    if (filter != null) filter.accept(request);
+                    request.setFirst(EMBARGO_PER_PAGE);
+                    request.setPage(page);
+
+                    EmbargoResponseProjection respProj = new EmbargoResponseProjection();
+                    query.accept(respProj);
+
+                    EmbargoPaginatorResponseProjection pagRespProj = new EmbargoPaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection().hasMorePages())
+                            .data(respProj);
+                    return new GraphQLRequest(request, pagRespProj);
+                }, f -> ErrorResponse.THROW, EmbargoesQueryResponse.class,
+                response -> {
+                    EmbargoPaginator paginator = response.embargoes();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    EmbargoPaginator paginator = result.embargoes();
+                    if (paginator != null) {
+                        List<Embargo> nations = paginator.getData();
+                        for (Embargo elem : nations) {
+                            if (embargoResults.test(elem)) allResults.add(elem);
+                        }
+                    }
+                });
+
+        return allResults;
     }
 
     public List<Trade> fetchTrades(int perPage, Consumer<TradesQueryRequest> filter, Consumer<TradeResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Trade> tradeResults) {
@@ -1210,6 +1271,16 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
+    public List<Color> getColors() {
+        ColorsQueryResponse result = request(new ColorsQueryRequest(), new ColorResponseProjection()
+                        .color()
+                        .bloc_name()
+                        .turn_bonus(),
+                ColorsQueryResponse.class);
+        if (result.colors() == null) throw new GraphQLException("Error fetching colors");
+        return result.colors();
+    }
+
     public List<Nation> fetchNationActive(List<Integer> ids) {
         return fetchNations(f -> {
             f.setId(ids);
@@ -1235,8 +1306,10 @@ public class PoliticsAndWarV3 {
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (bot != null && !bot.isEmpty()) {
-            headers.set("X-Bot-Key", bot);
-            headers.set("X-Api-Key", api);
+//            headers.set("X-Bot-Key", bot);
+//            headers.set("X-Api-Key", api);
+            headers.set("X-Bot-Key", Settings.INSTANCE.ACCESS_KEY);
+            headers.set("X-Api-Key", Settings.INSTANCE.API_KEY_PRIMARY);
         }
         return headers;
     }

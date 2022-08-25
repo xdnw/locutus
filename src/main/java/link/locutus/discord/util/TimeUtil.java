@@ -276,6 +276,16 @@ public class TimeUtil {
         return runTimeTask(id, TimeUtil::getDay, task);
     }
 
+    public static long getOrbisDate(long date) {
+        long origin = 16482268800000L / 11L;
+        return origin + (date - origin) * 12;
+    }
+
+    public static long getRealDate(long orbisDate) {
+        long origin = 16482268800000L / 11L;
+        return ((orbisDate - origin) / 12) + origin;
+    }
+
     public static <T> T runTurnTask(String id, Function<Long, T> task) {
         return runTimeTask(id, TimeUtil::getTurn, task);
     }

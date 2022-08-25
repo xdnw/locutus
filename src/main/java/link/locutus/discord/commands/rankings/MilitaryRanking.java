@@ -162,10 +162,10 @@ public class MilitaryRanking extends Command {
                 row.add(total.getAircraft());
                 row.add(total.getShips());
 
-                double soldierPct = 100 * (double) total.getSoldiers() / (Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() * total.getCities());
-                double tankPct = 100 * (double) total.getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap() * total.getCities());
-                double airPct = 100 * (double) total.getAircraft() / (Buildings.HANGAR.max() * Buildings.HANGAR.cap() * total.getCities());
-                double navyPct = 100 * (double) total.getShips() / (Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap() * total.getCities());
+                double soldierPct = 100 * (double) total.getSoldiers() / (Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(total::hasProject) * total.getCities());
+                double tankPct = 100 * (double) total.getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap(total::hasProject) * total.getCities());
+                double airPct = 100 * (double) total.getAircraft() / (Buildings.HANGAR.max() * Buildings.HANGAR.cap(total::hasProject) * total.getCities());
+                double navyPct = 100 * (double) total.getShips() / (Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(total::hasProject) * total.getCities());
 
                 row.add(soldierPct);
                 row.add(tankPct);
@@ -173,10 +173,10 @@ public class MilitaryRanking extends Command {
                 row.add( navyPct);
 
                 double[] mmr = nations.getAverageMMR(false);
-                row.add(mmr[0] * 100 / Buildings.BARRACKS.cap());
-                row.add(mmr[1] * 100 / Buildings.FACTORY.cap());
-                row.add(mmr[2] * 100 / Buildings.HANGAR.cap());
-                row.add(mmr[3] * 100 / Buildings.DRYDOCK.cap());
+                row.add(mmr[0] * 100 / Buildings.BARRACKS.cap(total::hasProject));
+                row.add(mmr[1] * 100 / Buildings.FACTORY.cap(total::hasProject));
+                row.add(mmr[2] * 100 / Buildings.HANGAR.cap(total::hasProject));
+                row.add(mmr[3] * 100 / Buildings.DRYDOCK.cap(total::hasProject));
 
                 double[] buy = nations.getMilitaryBuyPct(false);
                 row.add(buy[0]);

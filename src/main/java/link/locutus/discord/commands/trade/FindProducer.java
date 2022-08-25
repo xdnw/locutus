@@ -105,7 +105,7 @@ public class FindProducer extends Command {
             Map<Integer, JavaCity> cities = Locutus.imp().getNationDB().toJavaCity(v3Cities);
 
             Arrays.fill(profitBuffer, 0);
-            double[] profit = PnwUtil.getRevenue(profitBuffer, nation, cities, militaryUpkeep, tradeBonus, newNationBonus);
+            double[] profit = nation.getRevenue();
             double value;
             if (types.size() == 1) {
                 value = profit[types.get(0).ordinal()];

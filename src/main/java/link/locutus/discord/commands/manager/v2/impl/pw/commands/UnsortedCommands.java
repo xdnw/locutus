@@ -34,6 +34,7 @@ import link.locutus.discord.commands.trade.FindProducer;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -50,7 +51,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -128,14 +128,14 @@ public class UnsortedCommands {
                 DBNation nation = nationOrAlliance.asNation();
                 allTransfers.addAll(Locutus.imp().getBankDB().getNationTransfers(nation.getNation_id(), cutoffMs));
 
-                List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nation.getNation_id(), cutoffMs);
-                for (Offer offer : trades) {
+                List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nation.getNation_id(), cutoffMs);
+                for (DBTrade offer : trades) {
                     int per = offer.getPpu();
                     ResourceType type = offer.getResource();
                     if (per > 1 && (per < 10000 || (type != ResourceType.FOOD && per < 100000))) {
                         continue;
                     }
-                    long amount = offer.getAmount();
+                    long amount = offer.getQuantity();
                     if (per <= 1) {
                         amount = offer.getTotal();
                         type = ResourceType.MONEY;

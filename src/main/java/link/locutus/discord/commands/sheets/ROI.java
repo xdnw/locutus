@@ -363,14 +363,14 @@ public class ROI extends Command {
         double rads = (1 + (radIndex / (-1000)));
 
         int numCities = nation.getCities();
-        double baseProfit = existingCity.profitConvertedCached(rads, p -> p.get(nation) > 0, numCities);
+        double baseProfit = existingCity.profitConvertedCached(nation.getContinent(), rads, p -> p.get(nation) > 0, numCities, nation.getGrossModifier());
 
         Predicate<Project> hasProjects = p -> p.get(nation) > 0;
 
         {
-            JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjects, days, timeout);
+            JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout);
             if (optimal != null) {
-                double baseOptimizedProfit = optimal.profitConvertedCached(rads, hasProjects, numCities);
+                double baseOptimizedProfit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 if (baseOptimizedProfit > baseProfit) {
                     Map<ResourceType, Double> cost = PnwUtil.resourcesToMap(optimal.calculateCost(existingCity, new double[ResourceType.values.length]));
                     double costConverted = PnwUtil.convertedTotal(cost);
@@ -402,9 +402,9 @@ public class ROI extends Command {
                     }
                 };
 
-                JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, days, timeout);
+                JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, nation.getGrossModifier(), days, timeout);
                 if (optimal != null) {
-                    double profit = optimal.profitConvertedCached(rads, hasProjectsProxy, numCities);
+                    double profit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjectsProxy, numCities, nation.getGrossModifier());
                     Map<ResourceType, Double> cost = PnwUtil.add(
                             project.cost(),
                             PnwUtil.multiply(
@@ -431,9 +431,9 @@ public class ROI extends Command {
                         return project == p || p.get(nation) > 0;
                     }
                 };
-                JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, days, timeout);
+                JavaCity optimal = existingCity.roiBuild(nation.getContinent(), rads, numCities, hasProjectsProxy, nation.getGrossModifier(), days, timeout);
                 if (optimal != null) {
-                    double profit = optimal.profitConvertedCached(rads, hasProjectsProxy, numCities);
+                    double profit = optimal.profitConvertedCached(nation.getContinent(), rads, hasProjectsProxy, numCities, nation.getGrossModifier());
                     Map<ResourceType, Double> cost = PnwUtil.add(
                             project.cost(),
                             PnwUtil.multiply(
@@ -479,9 +479,9 @@ public class ROI extends Command {
 
         {
             JavaCity withInfra = new JavaCity(existingCity).setInfra(existingCity.getInfra() + Math.max(100, 1500 - existingCity.getInfra()));
-            withInfra = withInfra.roiBuild(nation.getContinent(), rads, numCities, hasProjects, days, timeout);
+            withInfra = withInfra.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout);
             if (withInfra != null) {
-                double profit = withInfra.profitConvertedCached(rads, hasProjects, numCities);
+                double profit = withInfra.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 double[] cost = withInfra.calculateCost(existingCity);
                 cost[ResourceType.MONEY.ordinal()] += PnwUtil.calculateInfra((int) existingCity.getInfra(), (int) withInfra.getInfra());
                 double costConverted = PnwUtil.convertedTotal(cost);
@@ -495,9 +495,9 @@ public class ROI extends Command {
 
         {
             JavaCity withLand = new JavaCity(existingCity).setLand(existingCity.getLand() + 500);
-            withLand = withLand.roiBuild(nation.getContinent(), rads, numCities, hasProjects, days, timeout);
+            withLand = withLand.roiBuild(nation.getContinent(), rads, numCities, hasProjects, nation.getGrossModifier(), days, timeout);
             if (withLand != null) {
-                double profit = withLand.profitConvertedCached(rads, hasProjects, numCities);
+                double profit = withLand.profitConvertedCached(nation.getContinent(), rads, hasProjects, numCities, nation.getGrossModifier());
                 double[] cost = withLand.calculateCost(existingCity);
                 cost[ResourceType.MONEY.ordinal()] += (PnwUtil.calculateLand(existingCity.getLand(), withLand.getLand()));
                 double costConverted = PnwUtil.convertedTotal(cost);

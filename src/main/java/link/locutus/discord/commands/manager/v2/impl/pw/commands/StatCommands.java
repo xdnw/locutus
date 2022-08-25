@@ -775,10 +775,10 @@ public class StatCommands {
                         MilitaryUnit unit = units[i];
                         double pct;
                         if (buildings) {
-                            pct = arr[i] / unit.getBuilding().cap();
+                            pct = arr[i] / unit.getBuilding().cap(nation::hasProject);
                         } else {
                             double amt = nation.getUnits(unit);
-                            double cap = unit.getBuilding().cap() * unit.getBuilding().max() * cities;
+                            double cap = unit.getBuilding().cap(nation::hasProject) * unit.getBuilding().max() * cities;
                             pct = amt / cap;
                         }
                         pcts[i] = pct;

@@ -11,6 +11,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import rocker.grant.nation;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -368,7 +369,7 @@ public class BlitzGenerator {
 
     public Map<DBNation, List<DBNation>> assignEasyTargets(double maxCityRatio, double maxGroundRatio, double maxAirRatio) {
         init();
-        int airCap = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap();
+//        int airCap = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap(f -> false);
 //        colA.removeIf(n -> n.getAircraft() < airCap * n.getCities() * 0.8);
 
         Map<DBNation, List<DBNation>> attPool = new HashMap<>(); // Pool of nations that could be used as targets
@@ -896,12 +897,12 @@ public class BlitzGenerator {
     }
 
     public static double getBaseStrength(int cities) {
-        int max = Buildings.HANGAR.cap() * Buildings.HANGAR.max() * cities;
+        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * cities;
         return max / 2d;
     }
 
     public static double getAirStrength(DBNation nation, boolean isAttacker) {
-        int max = Buildings.HANGAR.cap() * Buildings.HANGAR.max() * nation.getCities();
+        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * nation.getCities();
         double str = nation.getAircraft() + max / 2d;
         str += nation.getTanks() / 32d;
 
@@ -909,15 +910,15 @@ public class BlitzGenerator {
     }
 
     public double getGroundStrength(DBNation nation, boolean isAttacker) {
-        int max = Buildings.BARRACKS.cap() * Buildings.BARRACKS.max() * nation.getCities();
+        int max = Buildings.BARRACKS.cap(nation::hasProject) * Buildings.BARRACKS.max() * nation.getCities();
         double str = nation.getSoldiers() + max / 2d;
         str -= nation.getTanks() * 20;
         return str;
     }
 
     public double getValue(DBNation defender, boolean isAttacker, List<DBNation> attackers) {
-        int airRebuyPerCity = Buildings.HANGAR.cap() * Buildings.HANGAR.perDay();
-        int maxAirPerCity = Buildings.HANGAR.cap() * Buildings.HANGAR.max();
+        int airRebuyPerCity = Buildings.HANGAR.cap(defender::hasProject) * Buildings.HANGAR.perDay();
+        int maxAirPerCity = Buildings.HANGAR.cap(defender::hasProject) * Buildings.HANGAR.max();
 
 //        double scoreRatio = enemyPlaneRatio.apply(defender.getScore());
 //        double activity = activityFactor(defender, false);

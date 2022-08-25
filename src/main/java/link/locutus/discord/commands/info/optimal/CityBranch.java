@@ -3,11 +3,8 @@ package link.locutus.discord.commands.info.optimal;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.ServiceBuilding;
+import link.locutus.discord.apiv1.enums.city.building.*;
+import link.locutus.discord.apiv1.enums.city.building.imp.AServiceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import it.unimi.dsi.fastutil.PriorityQueue;
@@ -139,7 +136,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
             Building building = Buildings.get(i);
             if (!building.canBuild(continent)) continue;
             int amt = origin.get(i);
-            if (amt >= building.cap()) continue;
+            if (amt >= building.cap(hasProject)) continue;
 
             if (building instanceof ResourceBuilding) {
                 ResourceBuilding rssBuild = (ResourceBuilding) building;
@@ -161,7 +158,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
                 {
 //                    int previousAmt = origin.get(i - 1);
 //                    Building previousBuilding = Buildings.get(i - 1);
-//                    if (!(previousBuilding instanceof CommerceBuilding) || previousAmt >= previousBuilding.cap()) {
+//                    if (!(previousBuilding instanceof CommerceBuilding) || previousAmt >= previousBuilding.cap(nation::hasProject)) {
 //
 //                    }
                     cities.enqueue(create(originPair, building, i));

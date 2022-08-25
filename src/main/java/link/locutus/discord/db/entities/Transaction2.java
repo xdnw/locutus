@@ -9,7 +9,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.trade.Offer;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import org.jsoup.nodes.Element;
@@ -204,16 +203,16 @@ public class Transaction2 {
         this.resources = tax.resources;
     }
 
-    public Transaction2(Offer offer) {
+    public Transaction2(DBTrade offer) {
         tx_id = offer.getTradeId();
-        tx_datetime = offer.getEpochms();
+        tx_datetime = offer.getDate();
         sender_id = offer.getSeller();
         receiver_id = offer.getBuyer();
         receiver_type = 1;
         sender_type = 1;
         banker_nation = 0;
         resources = new double[ResourceType.values.length];
-        resources[offer.getResource().ordinal()] += offer.getAmount();
+        resources[offer.getResource().ordinal()] += offer.getQuantity();
         resources[0] -= offer.getTotal();
     }
 

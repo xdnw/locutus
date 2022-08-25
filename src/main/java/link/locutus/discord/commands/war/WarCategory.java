@@ -222,7 +222,7 @@ public class WarCategory {
     }
 
     public static boolean isActive(DBNation nation) {
-        if (nation != null && nation.getVm_turns() == 0 && nation.getActive_m() < 2880 && (nation.getPosition() <= Rank.APPLICANT.id || nation.getActive_m() < 1440 || nation.getOff() > 0)) return true;
+        if (nation != null && nation.getVm_turns() <= 0 && nation.getActive_m() < 2880 && (nation.getPosition() <= Rank.APPLICANT.id || nation.getActive_m() < 1440 || nation.getOff() > 0)) return true;
         return false;
     }
 

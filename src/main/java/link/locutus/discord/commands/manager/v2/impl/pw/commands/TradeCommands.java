@@ -16,8 +16,10 @@ import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transfer;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -28,7 +30,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.util.trade.TradeManager;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -262,9 +263,9 @@ public class TradeCommands {
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
         Map<Integer, TradeRanking.TradeProfitContainer> tradeContainers = new HashMap<>();
 
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(time);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(time);
 
-        for (Offer trade : trades) {
+        for (DBTrade trade : trades) {
             Integer buyer = trade.getBuyer();
             Integer seller = trade.getSeller();
 
@@ -287,21 +288,21 @@ public class TradeCommands {
                 int groupId = groupBy.apply(nation);
 
                 int sign = (nationId == seller ^ trade.isBuy()) ? 1 : -1;
-                long total = trade.getAmount() * (long) trade.getPpu();
+                long total = trade.getQuantity() * (long) trade.getPpu();
 
                 TradeRanking.TradeProfitContainer container = tradeContainers.computeIfAbsent(groupId, f -> new TradeRanking.TradeProfitContainer());
 
                 if (sign > 0) {
-                    container.inflows.put(type, trade.getAmount() + container.inflows.getOrDefault(type, 0L));
-                    container.sales.put(type, trade.getAmount() + container.sales.getOrDefault(type, 0L));
+                    container.inflows.put(type, trade.getQuantity() + container.inflows.getOrDefault(type, 0L));
+                    container.sales.put(type, trade.getQuantity() + container.sales.getOrDefault(type, 0L));
                     container.salesPrice.put(type, total + container.salesPrice.getOrDefault(type, 0L));
                 } else {
-                    container.outflow.put(type, trade.getAmount() + container.inflows.getOrDefault(type, 0L));
-                    container.purchases.put(type, trade.getAmount() + container.purchases.getOrDefault(type, 0L));
+                    container.outflow.put(type, trade.getQuantity() + container.inflows.getOrDefault(type, 0L));
+                    container.purchases.put(type, trade.getQuantity() + container.purchases.getOrDefault(type, 0L));
                     container.purchasesPrice.put(type, total + container.purchasesPrice.getOrDefault(type, 0L));
                 }
 
-                container.netOutflows.put(type, ((-1) * sign * trade.getAmount()) + container.netOutflows.getOrDefault(type, 0L));
+                container.netOutflows.put(type, ((-1) * sign * trade.getQuantity()) + container.netOutflows.getOrDefault(type, 0L));
                 container.netOutflows.put(ResourceType.MONEY, (sign * total) + container.netOutflows.getOrDefault(ResourceType.MONEY, 0L));
             }
         }
@@ -360,7 +361,7 @@ public class TradeCommands {
         Map<ResourceType, Double> highMap = averages.getValue();
 
         link.locutus.discord.db.TradeDB tradeDB = Locutus.imp().getTradeManager().getTradeDb();
-        for (Offer offer : tradeDB.getOffers(time)) {
+        for (DBTrade offer : tradeDB.getTrades(time)) {
             // Ignore outliers
             int ppu = offer.getPpu();
 
@@ -387,7 +388,7 @@ public class TradeCommands {
                 cumulative = new LongAdder();
                 rssMap.put(ppu, cumulative);
             }
-            cumulative.add(offer.getAmount());
+            cumulative.add(offer.getQuantity());
         }
 
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TRADE_VOLUME_SHEET);
@@ -447,7 +448,7 @@ public class TradeCommands {
     public String tradeProfit(@Me GuildDB db, Set<DBNation> nations, @Timestamp long time) throws GeneralSecurityException, IOException {
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
 
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(time);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(time);
 
         Map<ResourceType, Long> netOutflows = new HashMap<>();
 
@@ -461,7 +462,7 @@ public class TradeCommands {
 
         Map<ResourceType, Long> salesPrice = new HashMap<>();
 
-        for (Offer trade : trades) {
+        for (DBTrade trade : trades) {
             Integer buyer = trade.getBuyer();
             Integer seller = trade.getSeller();
 
@@ -477,19 +478,19 @@ public class TradeCommands {
             }
 
             int sign = (nationIds.contains(seller) ^ trade.isBuy()) ? 1 : -1;
-            long total = trade.getAmount() * (long) trade.getPpu();
+            long total = trade.getQuantity() * (long) trade.getPpu();
 
             if (sign > 0) {
-                inflows.put(type, trade.getAmount() + inflows.getOrDefault(type, 0L));
-                sales.put(type, trade.getAmount() + sales.getOrDefault(type, 0L));
+                inflows.put(type, trade.getQuantity() + inflows.getOrDefault(type, 0L));
+                sales.put(type, trade.getQuantity() + sales.getOrDefault(type, 0L));
                 salesPrice.put(type, total + salesPrice.getOrDefault(type, 0L));
             } else {
-                outflow.put(type, trade.getAmount() + outflow.getOrDefault(type, 0L));
-                purchases.put(type, trade.getAmount() + purchases.getOrDefault(type, 0L));
+                outflow.put(type, trade.getQuantity() + outflow.getOrDefault(type, 0L));
+                purchases.put(type, trade.getQuantity() + purchases.getOrDefault(type, 0L));
                 purchasesPrice.put(type, total + purchasesPrice.getOrDefault(type, 0L));
             }
 
-            netOutflows.put(type, ((-1) * sign * trade.getAmount()) + netOutflows.getOrDefault(type, 0L));
+            netOutflows.put(type, ((-1) * sign * trade.getQuantity()) + netOutflows.getOrDefault(type, 0L));
             netOutflows.put(ResourceType.MONEY, (sign * total) + netOutflows.getOrDefault(ResourceType.MONEY, 0L));
         }
 
@@ -547,13 +548,13 @@ public class TradeCommands {
     @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation.")
     public String moneyTrades(TradeManager manager, DBNation nation, @Timestamp long time, @Switch('f') boolean forceUpdate, @Switch('a') boolean addBalance) throws IOException {
         if (forceUpdate) {
-            manager.updateTradeList(false, true);
+            manager.updateTradeList(Event::post);
         }
 
         Map<Integer, Map<ResourceType, Long>> netInflows = new HashMap<>();
 
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nation.getNation_id(), time);
-        for (Offer offer : trades) {
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nation.getNation_id(), time);
+        for (DBTrade offer : trades) {
             if (offer.getResource() == ResourceType.CREDITS) continue;
             int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;
             if (offer.getPpu() > 1 && offer.getPpu() < max) continue;
@@ -561,12 +562,12 @@ public class TradeCommands {
             int sign = offer.isBuy() ? -1 : 1;
             int per = offer.getPpu();
 
-            Integer client = (offer.getSeller().equals(nation.getNation_id())) ? offer.getBuyer() : offer.getSeller();
+            Integer client = (offer.getSeller() == (nation.getNation_id())) ? offer.getBuyer() : offer.getSeller();
 
             Map<ResourceType, Long> existing = netInflows.computeIfAbsent(client,  integer -> Maps.newLinkedHashMap());
 
             if (per <= 1) {
-                existing.put(offer.getResource(), (long) (offer.getAmount() * sign + existing.getOrDefault(offer.getResource(), 0L)));
+                existing.put(offer.getResource(), (long) (offer.getQuantity() * sign + existing.getOrDefault(offer.getResource(), 0L)));
             } else {
                 existing.put(ResourceType.MONEY, (long) (sign * offer.getTotal()) + existing.getOrDefault(ResourceType.MONEY, 0L));
             }
@@ -787,13 +788,13 @@ public class TradeCommands {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(days + 1);
 
-        List<Offer> allOffers = manager.getTradeDb().getOffers(cutoff);
-        Map<Long, List<Offer>> offersByDay = new LinkedHashMap<>();
+        List<DBTrade> allOffers = manager.getTradeDb().getTrades(cutoff);
+        Map<Long, List<DBTrade>> offersByDay = new LinkedHashMap<>();
 
         long minDay = Long.MAX_VALUE;
         long maxDay = TimeUtil.getDay();
-        for (Offer offer : allOffers) {
-            long turn = TimeUtil.getTurn(offer.getEpochms());
+        for (DBTrade offer : allOffers) {
+            long turn = TimeUtil.getTurn(offer.getDate());
             long day = turn / 12;
             minDay = Math.min(minDay, day);
             offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
@@ -803,9 +804,9 @@ public class TradeCommands {
 
         Map<Long, Map<ResourceType, Double>> marginsByDay = new HashMap<>();
 
-        for (Map.Entry<Long, List<Offer>> entry : offersByDay.entrySet()) {
+        for (Map.Entry<Long, List<DBTrade>> entry : offersByDay.entrySet()) {
             long day = entry.getKey();
-            List<Offer> offers = entry.getValue();
+            List<DBTrade> offers = entry.getValue();
             Map<ResourceType, Double> dayMargins = new HashMap<>();
 
             Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> avg = manager.getAverage(offers);
@@ -890,22 +891,22 @@ public class TradeCommands {
         return null;
     }
 
-    public void rssTradeByDay(String title, MessageChannel channel, int days, Function<Collection<Offer>, long[]> rssFunction) throws IOException {
+    public void rssTradeByDay(String title, MessageChannel channel, int days, Function<Collection<DBTrade>, long[]> rssFunction) throws IOException {
         TradeManager manager = Locutus.imp().getTradeManager();
         link.locutus.discord.db.TradeDB tradeDb = manager.getTradeDb();
 
-        Map<Long, List<Offer>> tradesByDay = getOffersByDay(days);
+        Map<Long, List<DBTrade>> tradesByDay = getOffersByDay(days);
         long minDay = Collections.min(tradesByDay.keySet());
         long maxDay = Collections.max(tradesByDay.keySet());
 
         Map<Long, Map<ResourceType, Map.Entry<Long, Long>>> volumeByDay = new HashMap<>();
 
-        for (Map.Entry<Long, List<Offer>> entry : tradesByDay.entrySet()) {
+        for (Map.Entry<Long, List<DBTrade>> entry : tradesByDay.entrySet()) {
             Long day = entry.getKey();
-            Collection<Offer> offers = entry.getValue();
+            Collection<DBTrade> offers = entry.getValue();
             offers = manager.filterOutliers(offers);
-            Collection<Offer> lows = manager.getLow(offers);
-            Collection<Offer> highs = manager.getHigh(offers);
+            Collection<DBTrade> lows = manager.getLow(offers);
+            Collection<DBTrade> highs = manager.getHigh(offers);
 
             long[] volumesLow = rssFunction.apply(lows);
             long[] volumesHigh = rssFunction.apply(highs);
@@ -944,18 +945,18 @@ public class TradeCommands {
         }
     }
 
-    private Map<Long, List<Offer>> getOffersByDay(int days) {
+    private Map<Long, List<DBTrade>> getOffersByDay(int days) {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(days + 1);
 
-        List<Offer> allOffers = Locutus.imp().getTradeManager().getTradeDb().getOffers(cutoff);
-        Map<Long, List<Offer>> offersByDay = new LinkedHashMap<>();
+        List<DBTrade> allOffers = Locutus.imp().getTradeManager().getTradeDb().getTrades(cutoff);
+        Map<Long, List<DBTrade>> offersByDay = new LinkedHashMap<>();
 
         long minDay = Long.MAX_VALUE;
         long maxDay = TimeUtil.getDay();
-        for (Offer offer : allOffers) {
-            if (offer.getEpochms() > now) continue;
-            long turn = TimeUtil.getTurn(offer.getEpochms());
+        for (DBTrade offer : allOffers) {
+            if (offer.getDate() > now) continue;
+            long turn = TimeUtil.getTurn(offer.getDate());
             long day = turn / 12;
             minDay = Math.min(minDay, day);
             offersByDay.computeIfAbsent(day, f -> new ArrayList<>()).add(offer);
@@ -969,7 +970,7 @@ public class TradeCommands {
     @WhitelistPermission
     public String findTrader(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch('a') boolean groupByAlliance) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
-        List<Offer> offers = db.getOffers(cutoff);
+        List<DBTrade> offers = db.getTrades(cutoff);
         int findsign = isBuy ? 1 : -1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);

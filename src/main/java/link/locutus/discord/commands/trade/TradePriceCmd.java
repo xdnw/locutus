@@ -4,13 +4,13 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -140,12 +140,12 @@ public class TradePriceCmd extends Command {
         return null;
     }
 
-    public void addFields(Map<ResourceType, Offer> map, EmbedBuilder b) {
+    public void addFields(Map<ResourceType, DBTrade> map, EmbedBuilder b) {
         for (ResourceType type : ResourceType.values()) {
             if (type == ResourceType.MONEY) continue;
 
             StringBuilder body = new StringBuilder();
-            Offer offer = map.get(type);
+            DBTrade offer = map.get(type);
             if (offer != null) {
                 body.append(toString(offer));
             }
@@ -154,10 +154,10 @@ public class TradePriceCmd extends Command {
         }
     }
 
-    public String toString(Offer offer) {
-        int id = offer.getBuyer() == null ? offer.getSeller() : offer.getBuyer();
+    public String toString(DBTrade offer) {
+        int id = offer.getBuyer() == 0 ? offer.getSeller() : offer.getBuyer();
         String name = PnwUtil.getName(id, false);
         String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + id;
-        return "$" + MathMan.format(offer.getPpu()) + "\n" + MathMan.format(offer.getAmount()) + "\n" + MarkupUtil.markdownUrl(name, url);
+        return "$" + MathMan.format(offer.getPpu()) + "\n" + MathMan.format(offer.getQuantity()) + "\n" + MarkupUtil.markdownUrl(name, url);
     }
 }

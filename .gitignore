@@ -3,6 +3,7 @@
 
 # Log file
 *.log
+data/
 
 # BlueJ files
 *.ctxt
@@ -24,8 +25,14 @@ hs_err_pid*
 .git
 .gradle/
 .idea/
-build/
+
+build/*
+build/generated-src/views
+!build/generated-src/
+
+
 database/
+database2/
 /config/
 tokens/
 out/

@@ -1,6 +1,8 @@
 package link.locutus.discord.db;
 
+import ch.qos.logback.classic.db.names.TableName;
 import com.ptsmods.mysqlw.Database;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.FileUtil;
 import org.apache.http.util.TextUtils;
@@ -18,15 +20,14 @@ import java.util.function.Consumer;
 public class DBMainV2 implements Closeable {
     private boolean isDelegate;
     private final Database db;
-
     public DBMainV2(String name) throws SQLException {
-        this(Settings.INSTANCE.DATABASE, name);
+        this(name, true);
+    }
+    public DBMainV2(String name, boolean init) throws SQLException {
+        this(Settings.INSTANCE.DATABASE, name, init);
     }
 
-    public DBMainV2(Settings.DATABASE config, String name) throws SQLException {
-        if (config.SQLITE.USE == config.MYSQL.USE) {
-            throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
-        }
+    public DBMainV2(Settings.DATABASE config, String name, boolean init) throws SQLException {
         if (config.SQLITE.USE) {
             File file = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
             // create file directory if not exist
@@ -35,12 +36,13 @@ public class DBMainV2 implements Closeable {
             }
             this.db = Database.connect(file);
         } else {
-            this.db = Database.connect(config.MYSQL.HOST,
-                    config.MYSQL.PORT,
-                    name,
-                    config.MYSQL.USER,
-                    config.MYSQL.PASSWORD
-                    );
+            throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
+//            this.db = Database.connect(config.MYSQL.HOST,
+//                    config.MYSQL.PORT,
+//                    name,
+//                    config.MYSQL.USER,
+//                    config.MYSQL.PASSWORD
+//                    );
         }
         init();
     }
@@ -49,7 +51,6 @@ public class DBMainV2 implements Closeable {
         this.db = Database.connect(file);
         init();
     }
-
 
     public DBMainV2(String host, int port, String name, String username, String password) throws SQLException {
         this.db = Database.connect(host, port, name, username, password);
@@ -211,11 +212,14 @@ public class DBMainV2 implements Closeable {
                         getConnection().commit();
                     } catch (SQLException e) {
                         e.printStackTrace();
-                    }
-                    try {
-                        getConnection().setAutoCommit(true);
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+                        throw new RuntimeException(e);
+                    } finally {
+                        try {
+                            getConnection().setAutoCommit(true);
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             } catch (SQLException e) {

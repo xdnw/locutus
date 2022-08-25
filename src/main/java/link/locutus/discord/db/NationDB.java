@@ -7,6 +7,11 @@ import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.longs.Long2DoubleLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -24,6 +29,7 @@ import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.alliance.AllianceDeleteEvent;
+import link.locutus.discord.event.bank.LootInfoEvent;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.position.PositionCreateEvent;
@@ -117,7 +123,7 @@ public class NationDB extends DBMainV2 {
         synchronized (treatiesByAlliance) {
             for (Map<Integer, Treaty> allianceTreaties : treatiesByAlliance.values()) {
                 for (Treaty treaty : allianceTreaties.values()) {
-                    if (treaty.getTurnEnds() <= currentTurn) {
+                    if (treaty.getTurnEnds() < currentTurn) {
                         expiredTreaties.add(treaty);
                     }
                 }
@@ -994,7 +1000,7 @@ public class NationDB extends DBMainV2 {
         updateCities(nationIdCityIdCityMap, eventConsumer);
     }
 
-    public void updateCitiesOfNations(Set<Integer> nationIds, Consumer<Event> eventConsumer) {
+    public void updateCitiesOfNations(Set<Integer> nationIds, boolean bulk, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         List<Integer> idList = new ArrayList<>(nationIds);
@@ -1005,12 +1011,14 @@ public class NationDB extends DBMainV2 {
             else estimatedCitiesToFetch += nation.getCities();
         }
 
-        // Pad with most outdated cities, to make full use of api call
-        if (estimatedCitiesToFetch < 490) { // Slightly below 500 to avoid off by 1 errors with api
-            int numToFetch = 490 - idList.size();
-            List<Integer> mostActiveNations = getMostActiveNationIdsLimitCities(numToFetch, new HashSet<>(idList));
-            System.out.println("Fetching active nation cities: " + mostActiveNations.size());
-            idList.addAll(mostActiveNations);
+        if (bulk) {
+            // Pad with most outdated cities, to make full use of api call
+            if (estimatedCitiesToFetch < 490) { // Slightly below 500 to avoid off by 1 errors with api
+                int numToFetch = 490 - idList.size();
+                List<Integer> mostActiveNations = getMostActiveNationIdsLimitCities(numToFetch, new HashSet<>(idList));
+                System.out.println("Fetching active nation cities: " + mostActiveNations.size());
+                idList.addAll(mostActiveNations);
+            }
         }
 
         for (int i = 0; i < 500 && !idList.isEmpty(); i += 500) {
@@ -1062,9 +1070,8 @@ public class NationDB extends DBMainV2 {
         }
         if (!deletedCities.isEmpty()) {
             System.out.println("Delete cities 2 " + deletedCities.size());
-            deleteCitiesInDB(deletedCities);
+            deleteCities(deletedCities, eventConsumer);
         }
-
         return true;
     }
 
@@ -1170,38 +1177,64 @@ public class NationDB extends DBMainV2 {
     }
 
     public void subscribeCities(PnwPusherHandler pusher) {
+        pusher.connect().subscribeBuilder(City.class, PnwPusherEvent.CREATE)
+        .build(cities -> {
+            Locutus.imp().runEventsAsync(events -> updateCities(cities, events));
+        });
         pusher.connect()
-                .subscribeBuilder(City.class, PnwPusherEvent.UPDATE)
-                .build(cities -> {
-                    DBCity buffer = new DBCity();
-                    AtomicBoolean dirtyFlag = new AtomicBoolean();
-                    ArrayDeque<Event> events = new ArrayDeque<>();
-                    List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
-
-                    for (City city : cities) {
-                        dirtyFlag.set(false);
-
-                        DBCity existing = getDBCity(city.getNation_id(), city.getId());
-                        DBCity dbCity = processCityUpdate(city, buffer, events::add, dirtyFlag);
-                        if (dirtyFlag.get()) {
-                            dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
-                        }
-                        if (existing == null) {
-                            markCityDirty(city.getNation_id(), city.getId(), dbCity.fetched);
-                        }
-                    }
-
-                    Locutus.imp().runEventsAsync(events);
-                    saveCities(dirtyCities);
-                });
+        .subscribeBuilder(City.class, PnwPusherEvent.UPDATE)
+        .build(cities -> {
+            Locutus.imp().runEventsAsync(events -> updateCities(cities, events));
+        });
+        pusher.connect().subscribeBuilder(City.class, PnwPusherEvent.DELETE)
+        .build(cities -> {
+            Map<Integer, Integer> nationIdCityId = new HashMap<>();
+            for (City city : cities) {
+                nationIdCityId.put(city.getNation_id(), city.getId());
+            }
+            Locutus.imp().runEventsAsync(events -> deleteCities(nationIdCityId, events));
+        });
     }
 
-    private void deleteCitiesInDB(Set<Integer> ids) {
+    public boolean deleteCities(Set<Integer> cityIds, Consumer<Event> eventConsumer) {
+        Map<Integer, Integer> nationIdCityId = new HashMap<>();
+        for (Map.Entry<Integer, Map<Integer, DBCity>> entry : citiesByNation.entrySet()) {
+            Map<Integer, DBCity> nationCities = entry.getValue();
+            for (Map.Entry<Integer, DBCity> cityEntry : nationCities.entrySet()) {
+                if (cityIds.contains(cityEntry.getKey())) {
+                    nationIdCityId.put(entry.getKey(), cityEntry.getKey());
+                }
+            }
+        }
+        return deleteCities(nationIdCityId, eventConsumer);
+    }
+
+    public boolean deleteCities(Map<Integer, Integer> nationIdCityId, Consumer<Event> eventConsumer) {
+        if (nationIdCityId.isEmpty()) return true;
+        boolean success = true;
+        for (Map.Entry<Integer, Integer> entry : nationIdCityId.entrySet()) {
+            int nationId = entry.getKey();
+            int cityId = entry.getValue();
+            DBCity existing;
+            synchronized (citiesByNation) {
+                existing = ((Map<Integer, DBCity>) citiesByNation.getOrDefault(nationId, Collections.EMPTY_MAP)).remove(cityId);
+            }
+            if (eventConsumer != null && existing != null) {
+                eventConsumer.accept(new CityDeleteEvent(nationId, existing));
+            }
+        }
+        deleteCitiesInDB(nationIdCityId.values());
+        return success;
+    }
+
+    private void deleteCitiesInDB(Collection<Integer> ids) {
         if (ids.size() == 1) {
             int id = ids.iterator().next();
             executeStmt("DELETE FROM CITY_BUILDS WHERE id = " + id);
         } else {
-            executeStmt("DELETE FROM CITY_BUILDS WHERE `id` in " + StringMan.getString(ids));
+            List<Integer> idsSorted = new ArrayList<>(ids);
+            Collections.sort(idsSorted);
+            executeStmt("DELETE FROM CITY_BUILDS WHERE `id` in " + StringMan.getString(idsSorted));
         }
     }
 
@@ -1354,7 +1387,7 @@ public class NationDB extends DBMainV2 {
                     treatiesToDelete.add(treaty.getId());
                     continue;
                 }
-                if (currentTurn >= treaty.getTurnEnds()) {
+                if (currentTurn > treaty.getTurnEnds()) {
                     if (Locutus.imp() != null) {
                         new TreatyExpireEvent(treaty).post();
                     }
@@ -1729,7 +1762,7 @@ public class NationDB extends DBMainV2 {
 
         if (!fetchCitiesOfNations.isEmpty() || (fetchCitiesIfNew && fetchMostActiveIfNoneOutdated)) {
             System.out.println("Update cities " + fetchCitiesOfNations.size());
-            updateCitiesOfNations(fetchCitiesOfNations, eventConsumer);
+            updateCitiesOfNations(fetchCitiesOfNations, true, eventConsumer);
         }
 
         if (fetchAlliancesIfOutdated || fetchPositionsIfOutdated) {
@@ -1845,11 +1878,19 @@ public class NationDB extends DBMainV2 {
 
     public void createTables() {
         {
+            // loot_estimates int nation_id, double[] min, double[] max, double[] offset, long lastTurnRevenue, int tax_id
             TablePreset nationTable = TablePreset.create("LOOT_ESTIMATE")
                     .putColumn("nation_id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("last_turn_revenue", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("last_resolved", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("tax_id", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("min", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("max", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)));
+                    .putColumn("max", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("offset", ColumnType.BINARY.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .create(getDb());
+
+            // negatives apply to nation
+            // positives apply to taxes
         }
         {
             TablePreset nationTable = TablePreset.create("NATIONS2")
@@ -1857,7 +1898,7 @@ public class NationDB extends DBMainV2 {
                     .putColumn("nation", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
                     .putColumn("leader", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
                     .putColumn("alliance_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("last_active", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("last_active", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("score", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("cities", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("domestic_policy", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
@@ -1869,21 +1910,21 @@ public class NationDB extends DBMainV2 {
                     .putColumn("missiles", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("nukes", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("spies", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("entered_vm", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("leaving_vm", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("entered_vm", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("leaving_vm", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("color", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("position", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("alliancePosition", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("continent", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("projects", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("cityTimer", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("projectTimer", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("beigeTimer", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("warPolicyTimer", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("domesticPolicyTimer", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("colorTimer", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("espionageFull", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("projects", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("cityTimer", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("projectTimer", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("beigeTimer", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("warPolicyTimer", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("domesticPolicyTimer", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("colorTimer", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("espionageFull", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("dc_turn", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("wars_won", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("wars_lost", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
@@ -1902,10 +1943,10 @@ public class NationDB extends DBMainV2 {
                     .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("alliance_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("name", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
-                    .putColumn("date_created", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date_created", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("position_level", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("rank", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("permission_bits", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("permission_bits", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb());
 
             TablePreset.create("ALLIANCES")
@@ -1916,50 +1957,36 @@ public class NationDB extends DBMainV2 {
                     .putColumn("forum_link", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(256)))
                     .putColumn("discord_link", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(256)))
                     .putColumn("wiki_link", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(256)))
-                    .putColumn("dateCreated", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("dateCreated", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("color", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb());
 
             TablePreset.create("TREATIES2")
                     .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.BIGINT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("type", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("from_id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("to_id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("turn_ends", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("turn_ends", ColumnType.BIGINT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb());
 
             String nationLoot = TablePreset.create("NATION_LOOT3")
                     .putColumn("id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("total_rss", ColumnType.BINARY.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.BIGINT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("type", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .buildQuery(getDb().getType());
             nationLoot = nationLoot.replace(");", ", PRIMARY KEY(id, type));");
             getDb().executeUpdate(nationLoot);
-
-            String aaLoot = TablePreset.create("ALLIANCE_LOOT2")
-                    .putColumn("id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("total_rss", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("type", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .buildQuery(getDb().getType());
-            aaLoot = aaLoot.replace(");", ", PRIMARY KEY(id, date));");
-            getDb().executeUpdate(aaLoot);
         };
 
         {
-            String query = "CREATE TABLE IF NOT EXISTS `BEIGE_REMINDERS` (`target` INT NOT NULL, `attacker` INT NOT NULL, `turn` INT NOT NULL, PRIMARY KEY(target, attacker))";
+            String query = "CREATE TABLE IF NOT EXISTS `BEIGE_REMINDERS` (`target` INT NOT NULL, `attacker` INT NOT NULL, `turn` BIGINT NOT NULL, PRIMARY KEY(target, attacker))";
             executeStmt(query);
         }
 
         {
-            String query = "CREATE TABLE IF NOT EXISTS `AUDITS` (`nation` INT NOT NULL, `guild` INT NOT NULL, `audit`VARCHAR NOT NULL, `date`  INT NOT NULL)";
-            executeStmt(query);
-        }
-
-        {
-            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` INT NOT NULL, `key` INT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
+            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(nations);
                 stmt.executeBatch();
@@ -1968,19 +1995,8 @@ public class NationDB extends DBMainV2 {
                 e.printStackTrace();
             }
         };
-
         {
-            String milup = "CREATE TABLE IF NOT EXISTS `SPY_DAILY` (`attacker` INT NOT NULL, `defender` INT NOT NULL, `turn` INT NOT NULL, `amount` INT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(milup);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
-            String milup = "CREATE TABLE IF NOT EXISTS `NATION_MIL_HISTORY` (`id` INT NOT NULL, `date` INT NOT NULL, `unit` INT NOT NULL, `amount` INT NOT NULL, PRIMARY KEY(id,date))";
+            String milup = "CREATE TABLE IF NOT EXISTS `NATION_MIL_HISTORY` (`id` INT NOT NULL, `date` BIGINT NOT NULL, `unit` INT NOT NULL, `amount` INT NOT NULL, PRIMARY KEY(id,date))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(milup);
                 stmt.executeBatch();
@@ -1992,26 +2008,14 @@ public class NationDB extends DBMainV2 {
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_unit ON NATION_MIL_HISTORY (unit);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_amount ON NATION_MIL_HISTORY (amount);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_date ON NATION_MIL_HISTORY (date);");
-        String cities = "CREATE TABLE IF NOT EXISTS `CITIES` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` INT NOT NULL, `land` INT NOT NULL, `improvements` BLOB NOT NULL, `update_flag` INT NOT NULL)";
-        try (Statement stmt = getConnection().createStatement()) {
-            stmt.addBatch(cities);
-            stmt.executeBatch();
-            stmt.clearBatch();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        // unit = ? AND date < ?
-        executeStmt("CREATE INDEX IF NOT EXISTS index_cities_nation ON CITIES (nation);");
-
         {
-            executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` INT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` INT NOT NULL, nuke_date INT NOT NULL)");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_city_builds_nation ON CITIES (nation);");
-            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date INT NOT NULL DEFAULT 0")){
+            executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` BIGINT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` BIGINT NOT NULL, nuke_date BIGINT NOT NULL)");
+            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date BIGINT NOT NULL DEFAULT 0")){
                 stmt.executeUpdate();
             } catch (SQLException ignore) {}
         }
 
-        String kicks = "CREATE TABLE IF NOT EXISTS `KICKS` (`nation` INT NOT NULL, `alliance` INT NOT NULL, `date` INT NOT NULL, `type` INT NOT NULL)";
+        String kicks = "CREATE TABLE IF NOT EXISTS `KICKS` (`nation` INT NOT NULL, `alliance` INT NOT NULL, `date` BIGINT NOT NULL, `type` INT NOT NULL)";
         try (Statement stmt = getConnection().createStatement()) {
             stmt.addBatch(kicks);
             stmt.executeBatch();
@@ -2020,16 +2024,7 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
         }
 
-        String projects = "CREATE TABLE IF NOT EXISTS `PROJECTS` (`nation` INT NOT NULL, `project` INT NOT NULL)";
-        try (Statement stmt = getConnection().createStatement()) {
-            stmt.addBatch(projects);
-            stmt.executeBatch();
-            stmt.clearBatch();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        String spies = "CREATE TABLE IF NOT EXISTS `SPIES_BUILDUP` (`nation` INT NOT NULL, `spies` INT NOT NULL, `day` INT NOT NULL, PRIMARY KEY(nation, day))";
+        String spies = "CREATE TABLE IF NOT EXISTS `SPIES_BUILDUP` (`nation` INT NOT NULL, `spies` INT NOT NULL, `day` BIGINT NOT NULL, PRIMARY KEY(nation, day))";
         try (Statement stmt = getConnection().createStatement()) {
             stmt.addBatch(spies);
             stmt.executeBatch();
@@ -2038,7 +2033,7 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
         }
 
-        String activity = "CREATE TABLE IF NOT EXISTS `activity` (`nation` INT NOT NULL, `turn` INT NOT NULL, PRIMARY KEY(nation, turn))";
+        String activity = "CREATE TABLE IF NOT EXISTS `activity` (`nation` INT NOT NULL, `turn` BIGINT NOT NULL, PRIMARY KEY(nation, turn))";
         try (Statement stmt = getConnection().createStatement()) {
             stmt.addBatch(activity);
             stmt.executeBatch();
@@ -2047,7 +2042,7 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
         }
 
-        String activity_m = "CREATE TABLE IF NOT EXISTS `spy_activity` (`nation` INT NOT NULL, `timestamp` INT NOT NULL, `projects` INT NOT NULL, `change` INT NOT NULL, `spies` INT NOT NULL, PRIMARY KEY(nation, timestamp))";
+        String activity_m = "CREATE TABLE IF NOT EXISTS `spy_activity` (`nation` INT NOT NULL, `timestamp` BIGINT NOT NULL, `projects` BIGINT NOT NULL, `change` BIGINT NOT NULL, `spies` INT NOT NULL, PRIMARY KEY(nation, timestamp))";
         try (Statement stmt = getConnection().createStatement()) {
             stmt.addBatch(activity_m);
             stmt.executeBatch();
@@ -2074,11 +2069,38 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
         }
 
-        executeStmt("CREATE TABLE IF NOT EXISTS expenses (nation INT NOT NULL, date INT NOT NULL, expense INT NOT NULL)");
-        executeStmt("CREATE TABLE IF NOT EXISTS loot_cache (nation INT PRIMARY KEY, date INT NOT NULL, loot BLOB NOT NULL)");
-        executeStmt("CREATE TABLE IF NOT EXISTS ALLIANCE_METRICS (alliance_id INT NOT NULL, metric INT NOT NULL, turn INT NOT NULL, value DOUBLE NOT NULL, PRIMARY KEY(alliance_id, metric, turn))");
+        executeStmt("CREATE TABLE IF NOT EXISTS ALLIANCE_METRICS (alliance_id INT NOT NULL, metric INT NOT NULL, turn BIGINT NOT NULL, value DOUBLE NOT NULL, PRIMARY KEY(alliance_id, metric, turn))");
+        executeStmt("CREATE TABLE IF NOT EXISTS RADIATION_BY_TURN (continent INT NOT NULL, radiation INT NOT NULL, turn BIGINT NOT NULL, PRIMARY KEY(continent, turn))");
 
         purgeOldBeigeReminders();
+    }
+
+    public Map<Long, Map<Continent, Double>> getRadiationByDay() {
+        Map<Long, Map<Continent, Double>> result = new Long2ObjectOpenHashMap<>();
+        try (PreparedStatement stmt = getConnection().prepareStatement("SELECT continent, radiation, turn FROM RADIATION_BY_TURN")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Continent continent = Continent.values[(rs.getInt(1))];
+                    double radiation = rs.getInt(2) / 100d;
+                    long turn = rs.getLong(3);
+                    result.computeIfAbsent(turn, f -> new Object2ObjectOpenHashMap<>()).put(continent, radiation);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public void addRadiationByDay(Continent continent, long turn, double radiation) {
+        try (PreparedStatement stmt = getConnection().prepareStatement("INSERT OR IGNORE INTO RADIATION_BY_TURN (continent, radiation, turn) VALUES (?, ?, ?)")) {
+            stmt.setInt(1, continent.ordinal());
+            stmt.setInt(2, (int) (radiation * 100));
+            stmt.setLong(3, turn);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public DBNation getNation(String nameOrLeader) {
@@ -2611,38 +2633,6 @@ public class NationDB extends DBMainV2 {
         });
     }
 
-    public void setSpyDaily(int attackerId, int defenderId, int turn, int amt) {
-        update("INSERT OR REPLACE INTO `SPY_DAILY` (`attacker`, `defender`, `turn`, `amount`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, attackerId);
-            stmt.setInt(2, defenderId);
-            stmt.setLong(3, turn);
-            stmt.setInt(4, amt);
-        });
-        long pair = MathMan.pairInt(attackerId, defenderId);
-    }
-
-    public Map<Long, Integer> getTargetSpyDailyByTurn(int targetId, long minTurn) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM SPY_DAILY WHERE defender = ? AND turn >= ? ORDER BY turn ASC")) {
-            stmt.setInt(1, targetId);
-            stmt.setLong(2, minTurn);
-
-            Map<Long, Integer> map = new LinkedHashMap<>();
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int attacker = rs.getInt("attacker");
-                    long turn = rs.getLong("turn");
-                    int amt = rs.getInt("amount");
-                    map.put(turn, map.getOrDefault(turn, 0) + amt);
-                }
-            }
-            return map;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
     private int[] saveNationLoot(List<LootEntry> entries) {
         if (entries.isEmpty()) return new int[0];
         /*
@@ -2651,6 +2641,11 @@ public class NationDB extends DBMainV2 {
                     .putColumn("date", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("type", Col
          */
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
+        for (LootEntry entry : entries) {
+            if (entry.getDate() < cutoff) continue;
+            new LootInfoEvent(entry).post();
+        }
 
         String query = "INSERT OR REPLACE INTO `NATION_LOOT3` (`id`, `total_rss`, `date`, `type`) VALUES(?,?,?,?)";
         ThrowingBiConsumer<LootEntry, PreparedStatement> setLoot = new ThrowingBiConsumer<LootEntry, PreparedStatement>() {
@@ -2692,7 +2687,7 @@ public class NationDB extends DBMainV2 {
                 }
             }
 
-            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy(this);
+            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
             for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
                 int nationId = entry.getKey();
                 long date = entry.getValue().getKey();
@@ -2734,6 +2729,26 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+
+    public Map<Integer, LootEntry> getNationLootMap() {
+        Map<Integer, LootEntry> result = new Int2ObjectOpenHashMap<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id > 0")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    LootEntry entry = new LootEntry(rs);
+                    LootEntry existing = result.get(entry.getId());
+                    if (existing == null || existing.getDate() < entry.getDate()) {
+                        result.put(entry.getId(), entry);
+                    }
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public void setSpyActivity(int nationId, long projects, int spies, long timestamp, WarPolicy policy) {
         update("INSERT OR REPLACE INTO `spy_activity` (`nation`, `timestamp`, `projects`, `change`, `spies`) VALUES(?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
@@ -2754,6 +2769,28 @@ public class NationDB extends DBMainV2 {
             result.add(turn / 12);
         }
         return result;
+    }
+
+    public Map<Long, Set<Integer>> getActivityByDay(long minDate, Predicate<Integer> allowNation) {
+        long minTurn = TimeUtil.getTurn(minDate);
+        try (PreparedStatement stmt = prepareQuery("select nation, (`turn`/12) FROM ACTIVITY WHERE turn > ?")) {
+            stmt.setLong(1, minTurn);
+
+            Map<Long, Set<Integer>> result = new Long2ObjectOpenHashMap<>();
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt(1);
+                    if (!allowNation.test(id)) continue;
+                    long day = rs.getLong(2);
+                    result.computeIfAbsent(day, f -> new IntOpenHashSet()).add(id);
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     public Set<Long> getActivity(int nationId, long minTurn) {
@@ -2813,10 +2850,6 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
-    }
-
-    public void setCityCount(long date, int nationId, int cities) {
-        setNationChange(date, nationId, -1, 0, cities);
     }
 
     public void setMilChange(long date, int nationId, MilitaryUnit unit, int previous, int current) {

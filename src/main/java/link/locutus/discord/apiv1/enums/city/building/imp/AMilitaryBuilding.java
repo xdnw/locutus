@@ -10,7 +10,7 @@ public class AMilitaryBuilding extends ABuilding implements MilitaryBuilding {
     private final int perDay;
     private final double requiredCitizens;
 
-    public AMilitaryBuilding(Building parent, MilitaryUnit unit, int max, int perDay, double requiredCitizens) {
+    public AMilitaryBuilding(BuildingBuilder parent, MilitaryUnit unit, int max, int perDay, double requiredCitizens) {
         super(parent);
         this.unit = unit;
         this.max = max;

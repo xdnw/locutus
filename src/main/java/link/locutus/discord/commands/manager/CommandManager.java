@@ -155,7 +155,6 @@ import link.locutus.discord.commands.trade.ConvertedTotal;
 import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.commands.trade.Trending;
 import link.locutus.discord.commands.trade.sub.AlertTrades;
-import link.locutus.discord.commands.trade.sub.CheckTradesCommand;
 import link.locutus.discord.commands.trade.sub.TradeSubscriptions;
 import link.locutus.discord.commands.trade.sub.UnsubTrade;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
@@ -212,7 +211,6 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -223,7 +221,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -681,7 +678,6 @@ public class CommandManager {
         this.register(new Setup());
 
         this.register(new AlertTrades());
-        this.register(new CheckTradesCommand());
         this.register(new UnsubTrade());
         this.register(new TradeSubscriptions());
         this.register(new BankAlerts());

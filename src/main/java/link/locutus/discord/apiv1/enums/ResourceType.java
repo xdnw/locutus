@@ -13,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public enum ResourceType {
@@ -21,61 +22,25 @@ public enum ResourceType {
 
     FOOD("food", "withfood", 11, 400, 2, 0, 20, 1.25d, () -> Projects.MASS_IRRIGATION, 0) {
             @Override
-            public double getBaseProduction(double rads, boolean project, double land) {
+            public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, long date) {
                 int factor = 500;
-                if (project) {
+                if (hasProject.test(getProject())) {
                     factor = 400;
                 }
-//                double radIndex = nation.getRads() + 32.37;
-//                rads = (1 + (radIndex / (-1000)));
+                if (hasProject.test(Projects.FALLOUT_SHELTER)) {
+                    rads = Math.max(0.1, rads);
+                } else {
+                    rads = Math.max(0, rads);
+                }
 
-                double season = 1;
-
-//            switch (ZonedDateTime.now(ZoneOffset.UTC).getMonth()) {
-//                case DECEMBER:
-//                case JANUARY:
-//                case FEBRUARY:
-//                    switch (nation.getContinent().toLowerCase()) {
-//                        case "north america":
-//                        case "europe":
-//                        case "asia":
-//                            season = 0.8;
-//                            break;
-//                        case "antarctica":
-//                            season = 0.5;
-//                            break;
-//                        default:
-//                            season = 1.2;
-//                            break;
-//                    }
-//                    break;
-//                case JUNE:
-//                case JULY:
-//                case AUGUST:
-//                    switch (nation.getContinent().toLowerCase()) {
-//                        case "north america":
-//                        case "europe":
-//                        case "asia":
-//                            season = 1.2;
-//                            break;
-//                        case "antarctica":
-//                            season = 0.5;
-//                            break;
-//                        default:
-//                            season = 0.8;
-//                            break;
-//                    }
-//                    break;
-//            }
-
-            // 0.0025 - 0.002
+                double season = date <= 0 ? continent.getSeasonModifier() : continent.getSeasonModifier(date);
 
                 return Math.max(0, (land / factor) * 12 * season * rads);
             }
 
         @Override
-        public double getProduction(double rads, boolean project, double land, int improvements) {
-            return improvements * (1 + ((0.5 * (improvements - 1)) / (20 - 1))) * getBaseProduction(rads, project, land);
+        public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, int improvements, long date) {
+            return improvements * (1 + ((0.5 * (improvements - 1)) / (20 - 1))) * getBaseProduction(continent, rads, hasProject, land, date);
         }
     },
     COAL("coal", "withcoal", 10, 600, 12, 3, 10),
@@ -107,6 +72,47 @@ public enum ResourceType {
         return true;
     }
 
+    public static double[] floor(double[] resources, double min) {
+        for (int i = 0; i < resources.length; i++) {
+            if (resources[i] < min) resources[i] = min;
+        }
+        return resources;
+    }
+
+    public static double[] ceil(double[] resources, double max) {
+        for (int i = 0; i < resources.length; i++) {
+            if (resources[i] > max) resources[i] = max;
+        }
+        return resources;
+    }
+
+    public static double[] set(double[] resources, double[] values) {
+        for (int i = 0; i < values.length; i++) {
+            resources[i] = values[i];
+        }
+        return resources;
+    }
+
+    public static double[] subtract(double[] resources, double[] values) {
+        for (int i = 0; i < values.length; i++) {
+            resources[i] -= values[i];
+        }
+        return resources;
+    }
+
+    public static double[] add(double[] resources, double[] values) {
+        for (int i = 0; i < values.length; i++) {
+            resources[i] -= values[i];
+        }
+        return resources;
+    }
+
+    public static double[] negative(double[] resources) {
+        for (int i = 0; i < resources.length; i++) {
+            resources[i] = -resources[i];
+        }
+        return resources;
+    }
 
     public double[] toArray(double amt) {
         double[] result = getBuffer();
@@ -177,6 +183,12 @@ public enum ResourceType {
         }
 
 
+        public ResourcesBuilder subtract(double[] resources) {
+            for (int i = 0; i < resources.length; i++) {
+                add(ResourceType.values[i], -resources[i]);
+            }
+            return this;
+        }
     }
 
     public static double[] fromApiV3(Bankrec rec, double[] buffer) {
@@ -279,21 +291,25 @@ public enum ResourceType {
         return boostFactor;
     }
 
-    public double getInput(double rads, boolean project, JavaCity city, int improvements) {
+    public double getInput(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements) {
         if (inputs == null) return 0;
 
-        double base = getBaseProduction(rads, project, city.getLand());
+        double base = getBaseProduction(continent, rads, hasProject, city.getLand(), -1);
         base = (base * baseProductionInverse) * baseInput;
 
         return base * (1+0.5*((improvements - 1d) * capInverse)) * improvements;
     }
 
-    public double getBaseProduction(double rads, boolean project, double land) {
+    public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, long date) {
         double factor = 1;
-        if (project) {
+        if (getProject() != null && hasProject.test(getProject())) {
             factor = boostFactor;
         }
         return baseProduction * factor;
+    }
+
+    public double getManufacturingMultiplier() {
+        return baseProduction / baseInput;
     }
 
     public Project getProject() {
@@ -304,12 +320,12 @@ public enum ResourceType {
         return cap;
     }
 
-    public double getProduction(double rads, boolean project, JavaCity city, int improvements) {
-        return getProduction(rads, project, city.getLand(), improvements);
+    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements, long date) {
+        return getProduction(continent, rads, hasProject, city.getLand(), improvements, date);
     }
 
-    public double getProduction(double rads, boolean project, double land, int improvements) {
-        double base = getBaseProduction(rads, project, land);
+    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, int improvements, long date) {
+        double base = getBaseProduction(continent, rads, hasProject, land, date);
         return base * (1+0.5*((improvements - 1) * capInverse)) *improvements;
     }
 

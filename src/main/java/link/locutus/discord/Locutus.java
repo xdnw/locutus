@@ -12,7 +12,6 @@ import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.stock.StockDB;
-import link.locutus.discord.commands.trade.sub.CheckAllTradesTask;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.*;
@@ -30,6 +29,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.CaughtTask;
+import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.task.ia.MapFullTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.trade.TradeManager;
@@ -69,6 +69,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
@@ -153,7 +154,7 @@ public final class Locutus extends ListenerAdapter {
         this.nationDB = new NationDB();
         this.warDb = new WarDB();
         this.stockDB = new StockDB();
-        this.bankDb = new BankDB();
+        this.bankDb = new BankDB("bank",true);
         this.tradeManager = new TradeManager();
 
         this.commandManager = new CommandManager(this);
@@ -218,6 +219,7 @@ public final class Locutus extends ListenerAdapter {
     public void registerEvents() {
         eventBus.register(new TreatyUpdateProcessor());
         eventBus.register(new NationUpdateProcessor());
+        eventBus.register(new TradeListener());
         eventBus.register(new CityUpdateProcessor());
         eventBus.register(new BankUpdateProcessor());
         eventBus.register(new WarUpdateProcessor());
@@ -559,6 +561,12 @@ public final class Locutus extends ListenerAdapter {
         return commandManager.getExecutor().scheduleWithFixedDelay(task, interval, interval, unit);
     }
 
+    public void runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
+        ArrayDeque<Event> events = new ArrayDeque<>();
+        eventHandler.accept(events::add);
+        runEventsAsync(events);
+    }
+
     public void runEventsAsync(Collection<Event> events) {
         if (events.isEmpty()) return;
         getExecutor().submit(new CaughtRunnable() {
@@ -608,36 +616,32 @@ public final class Locutus extends ListenerAdapter {
                     }
                 }
             }, 5);
+            addTaskSeconds(new CaughtTask() {
+                @Override
+                public void runUnsafe() throws Exception {
+                    NationUpdateProcessor.onActivityCheck();
+                }
+            }, 60);
         }
 
         addTaskSeconds(() -> {
-            List<Event> events = new ArrayList<>();
-            System.out.println("Update active nations start");
-            long start = System.currentTimeMillis();
-            nationDB.updateMostActiveNations(490, events::add);
-            long diff = System.currentTimeMillis() - start;
-            System.out.println("End update active nations " + diff);
-            runEventsAsync(events);
+            runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
         }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
 
         addTaskSeconds(() -> {
-            List<Event> events = new ArrayList<>();
-            System.out.println("Update colored nations");
-            nationDB.updateColoredNations(events::add);
-            runEventsAsync(events);
+            runEventsAsync(bankDb::updateBankRecs);
+        }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS);
+
+        addTaskSeconds(() -> {
+            runEventsAsync(nationDB::updateColoredNations);
         }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
 
         addTaskSeconds(() -> {
-            List<Event> events = new ArrayList<>();
-            System.out.println("Update v2 nations");
-            nationDB.updateNationsV2(false, events::add);
-            runEventsAsync(events);
+            runEventsAsync(events -> nationDB.updateNationsV2(false, events));
         }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
 
         addTaskSeconds(() -> {
-            List<Event> events = new ArrayList<>();
-            nationDB.updateDirtyCities(events::add);
-            runEventsAsync(events);
+            runEventsAsync(nationDB::updateDirtyCities);
         }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS);
 
         if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
@@ -657,24 +661,15 @@ public final class Locutus extends ListenerAdapter {
 
         addTaskSeconds(() -> {
             synchronized (warDb) {
-                ArrayDeque<Event> events = new ArrayDeque<>();
-                warDb.updateActiveWars(events::add);
-                runEventsAsync(events);
-                events = new ArrayDeque<>();
-                warDb.updateAttacks(events::add);
-                runEventsAsync(events);
+                runEventsAsync(warDb::updateActiveWars);
+                runEventsAsync(warDb::updateAttacks);
             }
         }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
 
         addTaskSeconds(() -> {
             synchronized (warDb) {
-                ArrayDeque<Event> events = new ArrayDeque<>();
-                warDb.updateAllWars(events::add);
-                runEventsAsync(events);
-
-                events = new ArrayDeque<>();
-                warDb.updateAttacks(events::add);
-                runEventsAsync(events);
+                runEventsAsync(warDb::updateAllWars);
+                runEventsAsync(warDb::updateAttacks);
 
                 if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
                     long start = System.currentTimeMillis();
@@ -695,40 +690,21 @@ public final class Locutus extends ListenerAdapter {
 
         if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
             addTaskSeconds(() -> {
-                BaseballDB db = Locutus.imp().getBaseballDB();
-                Integer minId = db.getMinGameId();
-                if (minId != null) minId++;
-                db.updateGames(true, false, minId, null);
+                runEventsAsync(baseBallDB::updateGames);
             }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
         }
 
         if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
-            AtomicBoolean updateTradeTask = new AtomicBoolean(false);
-            addTaskSeconds(() -> getTradeManager().updateTradeList(false, true),
-                    Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
+            addTaskSeconds(() -> {
+                runEventsAsync(getTradeManager()::updateTradeList);
+            },
+            Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
         }
 
         if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
             addTask(() ->
                 Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false),
                 Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
-        }
-
-        // TODO update to v3
-        int activeTradeSeconds = Settings.INSTANCE.TASKS.TRADE_PRICE_SECONDS;
-        if (activeTradeSeconds > 0) {
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(FOOD), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(COAL), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(OIL), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(URANIUM), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(LEAD), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(IRON), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(BAUXITE), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(GASOLINE), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(MUNITIONS), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(STEEL), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(ALUMINUM), 73, activeTradeSeconds, TimeUnit.SECONDS);
-            commandManager.getExecutor().scheduleWithFixedDelay(new CheckAllTradesTask(CREDITS), 15 * activeTradeSeconds, 15 * activeTradeSeconds, TimeUnit.SECONDS);
         }
 
         if (forumDb != null && Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS > 0) {
@@ -753,27 +729,22 @@ public final class Locutus extends ListenerAdapter {
                 // Update all nations
 
                 {
-                    List<Event> events = new ArrayList<>();
-                    nationDB.updateNationsV2(true, events::add);
-                    runEventsAsync(events);
+                    runEventsAsync(events -> nationDB.updateNationsV2(true, events));
                 }
                 {
-                    List<Event> events = new ArrayList<>();
-                    nationDB.updateMostActiveNations(490, events::add);
-                    runEventsAsync(events);
+                    runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
                 }
                 {
-                    List<Event> events = new ArrayList<>();
-                    nationDB.updateAlliances(null, events::add);
-                    runEventsAsync(events);
+                    runEventsAsync(events -> nationDB.updateAlliances(null, events));
                 }
 
-                nationDB.deleteExpiredTreaties(Event::post);
-                nationDB.updateTreaties(Event::post);
+                runEventsAsync(nationDB::deleteExpiredTreaties);
+                runEventsAsync(nationDB::updateTreaties);
 
                 nationDB.saveAllCities(); // TODO save all cities
 
 
+                tradeManager.updateColorBlocs(); // TODO move to configurable task
             }
 
             if (Settings.INSTANCE.TASKS.TURN_TASKS.ALLIANCE_METRICS) {

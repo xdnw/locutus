@@ -2,6 +2,7 @@ package link.locutus.discord.util.trade;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import org.jetbrains.annotations.NotNull;
@@ -43,10 +44,10 @@ public class OptimalTradeTask implements Callable<Long> {
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
         TradeDB db = Locutus.imp().getTradeManager().getTradeDb();
-        for (Offer offer : db.getOffers(cutoffMs)) {
+        for (DBTrade offer : db.getTrades(cutoffMs)) {
             int ppu = offer.getPpu();
             if (offer.getResource() != ResourceType.CREDITS) {
-                if (offer.getAmount() <= 5) continue;
+                if (offer.getQuantity() <= 5) continue;
                 if (offer.getResource() != ResourceType.FOOD) {
                     if (offer.getPpu() < 1000 || offer.getPpu() > 5000) continue;
                 } else {
@@ -69,7 +70,7 @@ public class OptimalTradeTask implements Callable<Long> {
                 cumulative = new AtomicInteger();
                 rssMap.put(ppu, cumulative);
             }
-            cumulative.addAndGet(offer.getAmount());
+            cumulative.addAndGet(offer.getQuantity());
         }
         AtomicInteger minPpu = new AtomicInteger();
         AtomicInteger maxPpu = new AtomicInteger();

@@ -1,67 +1,62 @@
 package link.locutus.discord.web.test;
 
-import link.locutus.discord.db.DBMain;
-import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.DBMain;
+import link.locutus.discord.db.DBMainV3;
+import org.jooq.DSLContext;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DSL;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class WebDB extends DBMain {
+import static org.example.jooq.web.Tables.TOKENS3;
+import static org.jooq.impl.DSL.asterisk;
+
+public class WebDB extends DBMainV3 {
+
+
     public WebDB() throws SQLException, ClassNotFoundException {
-        super("web");
+        super(Settings.INSTANCE.DATABASE, "web", false);
         purgeTokens(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(28));
     }
 
     @Override
     public void createTables() {
-        executeStmt("CREATE TABLE IF NOT EXISTS `tokens3` (`user_id`, `token_id` VARCHAR NOT NULL, `value` VARCHAR NOT NULL, `timestamp` INT NOT NULL, PRIMARY KEY(user_id))");
+        ctx().createTableIfNotExists(TOKENS3).columns(TOKENS3.USER_ID, TOKENS3.TOKEN_ID, TOKENS3.VALUE, TOKENS3.TIMESTAMP).execute();
     }
 
     public void purgeTokens(long cutoff) {
-        update("DELETE FROM `tokens3` WHERE `timestamp` < ?", (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, cutoff));
+        ctx().delete(TOKENS3).where(TOKENS3.TIMESTAMP.lessThan(cutoff)).execute();
     }
 
     public void addToken(long userId, String token, JsonObject obj) {
-        String query = "INSERT OR REPLACE INTO `tokens3`(`user_id`, `token_id`,`value`,`timestamp`) VALUES(?, ?,?,?)";
-        update(query, new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setLong(1, userId);
-                stmt.setString(2, token);
-                stmt.setString(3, obj.toString());
-                stmt.setLong(4, System.currentTimeMillis());
-            }
-        });
+        long now = System.currentTimeMillis();
+        ctx().insertInto(TOKENS3)
+                .values(userId, token, obj.toString(), now)
+                .onDuplicateKeyUpdate()
+                .set(TOKENS3.VALUE, obj.toString())
+                .set(TOKENS3.TOKEN_ID, token)
+                .set(TOKENS3.TIMESTAMP, now)
+                .execute();
     }
 
     public Map<Long, Map.Entry<String, JsonObject>> loadTokens() {
         Map<Long, Map.Entry<String, JsonObject>> result = new ConcurrentHashMap<>();
 
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
-        query("SELECT * FROM `tokens3` where `timestamp` > ?", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setLong(1, cutoff);
-            }
-        }, new ThrowingConsumer<ResultSet>() {
-            @Override
-            public void acceptThrows(ResultSet rs) throws SQLException {
-                while (rs.next()) {
-                    long userId = rs.getLong(1);
-                    String key = rs.getString(2);
-                    String jsonStr = rs.getString(3);
-                    JsonObject json = JsonParser.parseString(jsonStr).getAsJsonObject();
 
-                    result.put(userId, new AbstractMap.SimpleEntry<>(key, json));
-                }
-            }
+        ctx().select(asterisk()).from(TOKENS3).where(TOKENS3.TIMESTAMP.greaterThan(cutoff)).fetch().forEach(row -> {
+            long userId = row.get(TOKENS3.USER_ID);
+            String token = row.get(TOKENS3.TOKEN_ID);
+            String value = row.get(TOKENS3.VALUE);
+            JsonObject obj = JsonParser.parseString(value).getAsJsonObject();
+            result.put(userId, new AbstractMap.SimpleEntry<>(token, obj));
         });
         return result;
     }

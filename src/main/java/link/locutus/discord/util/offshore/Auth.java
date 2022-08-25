@@ -9,6 +9,7 @@ import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
@@ -172,6 +173,31 @@ public class Auth {
         if (apiKey == null || apiKey.isEmpty()) throw new IllegalArgumentException("Unable to fetch api key");
         Locutus.imp().getDiscordDB().addApiKey(getNationId(), apiKey);
         return Locutus.imp().getDiscordDB().getApiKey(nationId);
+    }
+
+    public String createAllianceEmbargo(int embargoFrom, NationOrAlliance embargo, String message) {
+        Map<String, String> post = new HashMap<>();
+
+        post.put("create_embargo_target", embargo.isAlliance() ? embargo.getName() : embargo.asNation().getLeader());
+        post.put("create_embargo_type", embargo.isNation() ? "3" : "4");
+        post.put("create_embargo_reason", message);
+        post.put("create_embargo", "");
+        post.put("validation_token", "");
+
+        String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + embargoFrom + "&display=embargoes";
+        return PnwUtil.withLogin(new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+//                String result = Auth.this.readStringFromURL(url, emptyMap());
+//                Document dom = Jsoup.parse(result);
+//                String token = dom.getElementsByAttributeValue("name", "token").get(0).attr("value");
+
+                String result = Auth.this.readStringFromURL(url, post);
+                return PnwUtil.getAlert(Jsoup.parse(result));
+            }
+        }, this);
+
+
     }
 
     public String setBounty(DBNation target, WarType type, long amount) {
