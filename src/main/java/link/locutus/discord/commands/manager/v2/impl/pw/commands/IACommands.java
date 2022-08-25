@@ -45,6 +45,7 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import rocker.grant.nation;
+import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -68,6 +69,18 @@ import java.util.stream.Collectors;
 
 public class IACommands {
 
+    @Command(desc = "Add a role to all users in a server")
+    @RolePermission(Roles.ADMIN)
+    public String addRoleToAllMembers(@Me Guild guild, Role role) {
+        int amt = 0;
+        for (Member member : guild.getMembers()) {
+            if (!member.getRoles().contains(role)) {
+                guild.addRoleToMember(member, role).queue();
+                amt ++;
+            }
+        }
+        return "Added " + amt + " roles to members (note: it may take a few minutes to update)";
+    }
     @Command
     @RolePermission(Roles.ADMIN)
     public String msgInfo(@Me MessageChannel channel, Message message, @Switch('i') boolean useIds) {
@@ -889,7 +902,7 @@ public class IACommands {
         int allianceId = position.getAlliance_id();
         if (allianceId <= 0) allianceId = db.getAlliance_id();
 
-        if (nation.getAlliance_id() != allianceId && position != DBAlliancePosition.APPLICANT && position != DBAlliancePosition.REMOVE) {
+        if ((nation.getAlliance_id() != allianceId || nation.getAlliance_id() != position.getAlliance_id()) && position != DBAlliancePosition.APPLICANT && position != DBAlliancePosition.REMOVE) {
             return "That nation is not in the alliance: " + PnwUtil.getName(allianceId, true);
         }
         // Cannot promote above your own permissions
@@ -940,9 +953,6 @@ public class IACommands {
         // Cannot promote to leader, or any leader perms -> done
         if (position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) {
             return "You cannot promote to leadership positions (do this ingame)";
-        }
-        if (nation.getAlliance_id() != position.getAlliance_id()) {
-            return "That nation is not in the alliance AA:" + position.getAlliance_id();
         }
 
         List<AlliancePermission> requiredPermissions = new ArrayList<>();

@@ -69,14 +69,24 @@ public class WarAttackParser {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
         Map<Integer, DBWar> warMap = null;
 
-        if (args.size() == 3) {
-            long cutoffMs;
+        if (args.size() == 3 || args.size() == 4) {
+            long start;
+            long end = Long.MAX_VALUE;
             if (!MathMan.isInteger(args.get(2))) {
-                cutoffMs = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(2)) * 1000L;
+                start = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(2)) * 1000L;
             } else {
                 int days = MathMan.parseInt(args.get(2));
-                cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
+                start = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
             }
+            if (args.size() > 3) {
+                if (!MathMan.isInteger(args.get(3))) {
+                    end = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(3)) * 1000L;
+                } else {
+                    int days = MathMan.parseInt(args.get(3));
+                    end = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
+                }
+            }
+            if (end <= start) throw new IllegalArgumentException("End date must be greater than start date");
 
             Set<Integer> aaIdss1 = DiscordUtil.parseAlliances(guild, args.get(0));
             Set<Integer> aaIdss2 = DiscordUtil.parseAlliances(guild, args.get(1));
@@ -84,10 +94,10 @@ public class WarAttackParser {
                 HashSet<Integer> alliances = new HashSet<>();
                 alliances.addAll(aaIdss1);
                 alliances.addAll(aaIdss2);
-                List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, cutoffMs);
+                List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start, end);
                 warMap = new HashMap<>();
                 for (DBWar war : wars) warMap.put(war.warId, war);
-                attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, cutoffMs);
+                attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, start, end);
                 Map<Integer, DBWar> finalWarMap = warMap;
                 isPrimary = a -> {
                     DBWar war = finalWarMap.get(a.war_id);
@@ -123,15 +133,15 @@ public class WarAttackParser {
 
 
                 if (alliances1.size() == 1) {
-                    attacks = Locutus.imp().getWarDb().getAttacks(alliances1.iterator().next().getNation_id(), cutoffMs);
+                    attacks = Locutus.imp().getWarDb().getAttacks(alliances1.iterator().next().getNation_id(), start, end);
                 } else if (alliances2.size() == 1) {
-                    attacks = Locutus.imp().getWarDb().getAttacks(alliances2.iterator().next().getNation_id(), cutoffMs);
+                    attacks = Locutus.imp().getWarDb().getAttacks(alliances2.iterator().next().getNation_id(), start, end);
                 } else if (args.get(0).equalsIgnoreCase("*")) {
-                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances2.stream().map(f -> f.getNation_id()).collect(Collectors.toSet()), cutoffMs);
+                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances2.stream().map(f -> f.getNation_id()).collect(Collectors.toSet()), start, end);
                 } else if (args.get(1).equalsIgnoreCase("*")) {
-                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances1.stream().map(f -> f.getNation_id()).collect(Collectors.toSet()), cutoffMs);
+                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances1.stream().map(f -> f.getNation_id()).collect(Collectors.toSet()), start, end);
                 } else {
-                    attacks = Locutus.imp().getWarDb().getAttacks(allIds, cutoffMs);
+                    attacks = Locutus.imp().getWarDb().getAttacks(allIds, start, end);
                 }
 
                 if (args.get(0).equalsIgnoreCase("*")) {

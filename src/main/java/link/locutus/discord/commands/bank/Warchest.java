@@ -48,13 +48,10 @@ public class Warchest extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 3) {
-            GuildDB db = Locutus.imp().getGuildDB(guild);
-            return usage(event, "Current warchest (per city): " + PnwUtil.resourcesToString(db.getPerCityWarchest(me)));
-        }
-
-        int allianceId = Settings.INSTANCE.getAlliance(event);
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
+        if (args.size() < 3) {
+            return usage(event, "Current warchest (per city): " + PnwUtil.resourcesToString(guildDb.getPerCityWarchest(me)));
+        }
 
         String note = "#warchest";
         if (args.size() >= 3) note = args.get(2);
@@ -72,12 +69,13 @@ public class Warchest extends Command {
             if (!hasEcon) {
                 return "No permission: " + Roles.ECON.name();
             }
-            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
         } else {
             nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         }
         if (nations.isEmpty()) return "No nations specified";
-        if (!hasEcon && (nations.size() != 1 || nations.iterator().next().equals(me))) return "You only have permission to send to your own nation";
+        if (!hasEcon && (nations.size() != 1 || !nations.iterator().next().equals(me))) return "You only have permission to send to your own nation";
+
 
         nations.removeIf(f -> f.getActive_m() > 7200);
         nations.removeIf(f -> f.getPosition() <= 1);
@@ -94,7 +92,7 @@ public class Warchest extends Command {
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
 
-        Map<DBNation, Map<ResourceType, Double>> memberResources2 = DBAlliance.getOrCreate(allianceId).getMemberStockpile();
+        Map<DBNation, Map<ResourceType, Double>> memberResources2 = DBAlliance.getOrCreate(aaId).getMemberStockpile();
         for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : memberResources2.entrySet()) {
             DBNation nation = entry.getKey();
             if (!nationIds.contains(nation.getNation_id())) continue;

@@ -20,6 +20,7 @@ import link.locutus.discord.event.alliance.*;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -828,7 +829,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public List<BankDB.TaxDeposit> updateTaxes() {
         long oldestApiFetchDate = getDateCreated() - TimeUnit.HOURS.toMillis(2);
 
-        GuildDB db = Locutus.imp().getGuildDB(allianceId);
+        GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
 
         PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
         if (api == null) {
@@ -844,6 +845,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         List<Bankrec> bankRecs = api.fetchTaxRecsWithInfo(getAlliance_id(), afterDate);
 
+        if (bankRecs == null) return null;
         if (bankRecs.isEmpty()) return new ArrayList<>();
 
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> taxRates = api.fetchTaxBrackets(getAlliance_id());

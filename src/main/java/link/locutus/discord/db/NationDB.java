@@ -408,8 +408,8 @@ public class NationDB extends DBMainV2 {
     public void deleteTreaties(Set<Treaty> treaties) {
         for (Treaty treaty : treaties) {
             synchronized (treatiesByAlliance) {
-                treatiesByAlliance.getOrDefault(treaty.getFromId(), Collections.EMPTY_MAP).remove(treaty.getId());
-                treatiesByAlliance.getOrDefault(treaty.getToId(), Collections.EMPTY_MAP).remove(treaty.getId());
+                treatiesByAlliance.getOrDefault(treaty.getFromId(), Collections.EMPTY_MAP).remove(treaty.getToId());
+                treatiesByAlliance.getOrDefault(treaty.getToId(), Collections.EMPTY_MAP).remove(treaty.getFromId());
             }
         }
         Set<Integer> ids = treaties.stream().map(f -> f.getId()).collect(Collectors.toSet());
@@ -666,7 +666,7 @@ public class NationDB extends DBMainV2 {
                 if (current == null) {
                     toDelete.add(previous);
                     if (eventConsumer != null && previous.getFromId() == aaId) {
-                        if (previous.getTurnEnds() >= turn) {
+                        if (previous.getTurnEnds() <= turn + 1) {
                             eventConsumer.accept(new TreatyExpireEvent(previous));
                         } else {
                             eventConsumer.accept(new TreatyCancelEvent(previous));
@@ -951,7 +951,6 @@ public class NationDB extends DBMainV2 {
             DBCity existing = getDBCity(nationId, cityId);
             if (existing == null) {
                 existing = new DBCity();
-
                 if (eventConsumer != null) eventConsumer.accept(new CityCreateEvent(nationId, existing));
 
                 dirtyCities.add(cityId);

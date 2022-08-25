@@ -103,7 +103,7 @@ public class WarCostRanking extends Command {
             }
         }
 
-        if (args.size() != 1 && args.size() != 2) return usage(event);
+        if (args.size() == 0 || args.size() > 3) return usage(event);
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
         Map<Integer, DBNation> nationMap = nations.stream().collect(Collectors.toMap(DBNation::getNation_id, e -> e));
@@ -126,13 +126,20 @@ public class WarCostRanking extends Command {
 
         int sign = profit ? -1 : 1;
         long diff = TimeUtil.timeToSec(args.get(1)) * 1000L;
-        String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
-        long cutoffMs = System.currentTimeMillis() - diff;
+        long start = System.currentTimeMillis() - diff;
+        long end = args.size() >= 3 ? System.currentTimeMillis() - (TimeUtil.timeToSec(args.get(2)) * 1000L) : Long.MAX_VALUE;
+
+        String diffStr;
+        if (end == Long.MAX_VALUE) {
+            diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
+        } else {
+            diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, end - start);
+        }
 
         String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
         title = String.format(title, diffStr);
 
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(start, end);
 
         boolean finalUnits = units;
         boolean finalInfra = infra;

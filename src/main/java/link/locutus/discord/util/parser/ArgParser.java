@@ -154,8 +154,8 @@ public class ArgParser {
         for (Method method : DBNation.class.getDeclaredMethods()) {
             if (method.getParameters().length != 0) continue;
             if(method.getReturnType().equals(Void.TYPE)) continue;
-            if (method.getName().toLowerCase().contains("money")) continue;
-
+            link.locutus.discord.commands.manager.v2.binding.annotation.Command annotation = method.getAnnotation(link.locutus.discord.commands.manager.v2.binding.annotation.Command.class);
+            if (annotation == null) continue;
             Command cmd = Command.create((event, guild, author, me, args, flags) -> {
                 DBNation nation = me;
                 if (nation == null && args.isEmpty()) {

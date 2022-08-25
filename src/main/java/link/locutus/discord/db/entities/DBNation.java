@@ -3214,7 +3214,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Number of buildings total")
-    @RolePermission(Roles.MEMBER)
     public int getBuildings() {
         int total = 0;
         Collection<DBCity> cities = _getCitiesV3().values();
@@ -3225,7 +3224,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Number of buildings per city")
-    @RolePermission(Roles.MEMBER)
     public double getAvgBuildings() {
         int total = 0;
         Collection<DBCity> cities = _getCitiesV3().values();
@@ -3921,7 +3919,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
-    @RolePermission(Roles.MILCOM)
     public int projectSlots() {
         int warBonus = this.wars_won + this.wars_lost >= 100 ? 1 : 0;
         int projectBonus = hasProject(Projects.RESEARCH_AND_DEVELOPMENT_CENTER) ? 2 : 0;

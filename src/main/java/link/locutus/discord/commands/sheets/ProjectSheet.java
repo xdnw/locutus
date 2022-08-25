@@ -81,8 +81,9 @@ public class ProjectSheet extends Command {
             header.set(3, nation.getAvg_infra());
             header.set(4, nation.getScore());
 
-            for (Project value : Projects.values) {
-                header.set(5 + value.ordinal(), nation.hasProject(value) + "");
+            for (int i = 0; i < Projects.values.length; i++) {
+                Project project = Projects.values[i];
+                header.set(5 + i, nation.hasProject(project) + "");
             }
 
             sheet.addRow(header);

@@ -25,7 +25,7 @@ public class Event {
         if (diff > 100) {
             System.out.println("Posted " + this.getClass().getSimpleName() + "(took " + diff + ")");
         } else {
-            System.out.println("Posted " + this.getClass().getSimpleName());
+//            System.out.println("Posted " + this.getClass().getSimpleName());
         }
     }
 

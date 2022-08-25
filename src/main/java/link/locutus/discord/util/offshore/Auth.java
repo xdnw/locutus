@@ -14,6 +14,7 @@ import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -338,7 +339,6 @@ public class Auth {
             post.put("alliance_positions_new_position_select", position.getInputName());
             post.put("validation_token", token);
             post.put("alliance_positions_assign_submit", "Save Position Assignment");
-
 
             StringBuilder response = new StringBuilder();
 

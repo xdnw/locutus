@@ -1045,8 +1045,9 @@ public class BankCommands {
             header.set(3, nation.getAvg_infra());
             header.set(4, nation.getScore());
 
-            for (Project value : Projects.values) {
-                header.set(5 + value.ordinal(), nation.hasProject(value) + "");
+            for (int i = 0; i < Projects.values.length; i++) {
+                Project project = Projects.values[i];
+                header.set(5 + i, nation.hasProject(project) + "");
             }
 
             sheet.addRow(header);
@@ -2141,7 +2142,7 @@ public class BankCommands {
         MessageChannel output = replyInDMs ? author.openPrivateChannel().complete() : channel;
         Message message = RateLimitUtil.complete(output.sendMessage(response.toString()));
 
-        if (me != null && nationOrAllianceOrGuild.isNation() && nationOrAllianceOrGuild.asNation().getPosition() > 1 && db.isWhitelisted() && db.getOrNull(GuildDB.Key.API_KEY) != null) {
+        if (me != null && nationOrAllianceOrGuild.isNation() && nationOrAllianceOrGuild.asNation().getPosition() > 1 && db.isWhitelisted() && db.getOrNull(GuildDB.Key.API_KEY) != null && db.getAllianceIds(true).contains(nationOrAllianceOrGuild.asNation().getAlliance_id())) {
             DBNation finalNation = nationOrAllianceOrGuild.asNation();
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override

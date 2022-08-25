@@ -805,7 +805,7 @@ public final class Locutus extends ListenerAdapter {
             try {
                 Auth auth = nation.getAuth(null);
                 AlertMailTask alertMailTask = new AlertMailTask(auth, channelId);
-                commandManager.getExecutor().scheduleWithFixedDelay(alertMailTask, 5 * 60, task.FETCH_INTERVAL_SECONDS, TimeUnit.SECONDS);
+                commandManager.getExecutor().scheduleWithFixedDelay(alertMailTask, 60, task.FETCH_INTERVAL_SECONDS, TimeUnit.SECONDS);
             } catch (IllegalArgumentException e) {
                 AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): They are not authenticated (user/pass)");
             }

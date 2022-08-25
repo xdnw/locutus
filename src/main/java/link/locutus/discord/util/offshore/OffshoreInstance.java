@@ -574,12 +574,15 @@ public class OffshoreInstance {
                 GuildDB db = alliance == null ? null : alliance.getGuildDB();
                 if (db != null) {
                     OffshoreInstance bank = db.getHandler().getBank();
-
-                    result = transfer(alliance, transfer, "#ignore");
-
                     StringBuilder response = new StringBuilder();
-                    response.append("\nSent to AA:" + alliance.getName() + "/" + alliance.getAlliance_id());
-                    response.append("\n" + result.getValue());
+                    if (bank.getGuildDB() != db) {
+                        result = transfer(alliance, transfer, "#ignore");
+
+                        response.append("\nSent to AA:" + alliance.getName() + "/" + alliance.getAlliance_id());
+                        response.append("\n" + result.getValue());
+                    } else {
+                        result = Map.entry(TransferStatus.SUCCESS, "Withdrawing funds using local account");
+                    }
                     if (result.getKey() == TransferStatus.SUCCESS) {
                         if (bank != null) {
                             response.append("\nTransferring to nation...");

@@ -1364,12 +1364,19 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public List<DBWar> getWars(Set<Integer> alliances, long cutOff) {
+    public List<DBWar> getWars(Set<Integer> alliances, long start) {
+        return getWars(alliances, start, Long.MAX_VALUE);
+    }
+
+    public List<DBWar> getWars(Set<Integer> alliances, long start, long end) {
         String aaArg = StringMan.getString(alliances);
-        String query = "SELECT * from `wars` where date > ? AND (attacker_aa in " + aaArg + " or defender_aa in " + aaArg + ")";
+        String query = "SELECT * from `wars` where date > ? " + (end < Long.MAX_VALUE ? ("AND date < ? ") : "") + "AND (attacker_aa in " + aaArg + " or defender_aa in " + aaArg + ")";
             List<DBWar> list = new ArrayList<>();
         try (PreparedStatement stmt= getConnection().prepareStatement(query)) {
-            stmt.setLong(1, cutOff);
+            stmt.setLong(1, start);
+            if (end < Long.MAX_VALUE) {
+                stmt.setLong(2, end);
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     DBWar war = create(rs);
@@ -1821,12 +1828,20 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<DBAttack> getAttacks(long cuttoffMs) {
-        if (cuttoffMs < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(20)) {
-            return getAttacks(f -> f.epoch > cuttoffMs);
+        return getAttacks(cuttoffMs, Long.MAX_VALUE);
+    }
+    public List<DBAttack> getAttacks(long start, long end) {
+        if (start < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(20)) {
+            System.out.println("remove:||Get from cache");
+            return getAttacks(f -> f.epoch > start && f.epoch < end);
         }
+        System.out.println("remove:||get from db");
         ArrayList<DBAttack> list = new ArrayList<>();
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE date > ?")) {
-            stmt.setLong(1, cuttoffMs);
+        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE date > ?" + (end < Long.MAX_VALUE ? " AND date < ?" : ""))) {
+            stmt.setLong(1, start);
+            if (end < Long.MAX_VALUE) {
+                stmt.setLong(2, end);
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     list.add(createAttack(rs));
@@ -2055,14 +2070,20 @@ public class WarDB extends DBMainV2 {
             return null;
         }
     }
-
     public List<DBAttack> getAttacks(int nation_id, long cuttoffMs) {
-        if (cuttoffMs <= 0) return getAttacks(nation_id);
+        return getAttacks(nation_id, cuttoffMs, Long.MAX_VALUE);
+    }
+    public List<DBAttack> getAttacks(int nation_id, long start, long end) {
+        if (start <= 0 && end == Long.MAX_VALUE) return getAttacks(nation_id);
         ArrayList<DBAttack> list = new ArrayList<>();
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE date > ? AND (attacker_nation_id = ? OR defender_nation_id = ?)")) {
-            stmt.setLong(1, cuttoffMs);
-            stmt.setInt(2, nation_id);
-            stmt.setInt(3, nation_id);
+        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE date > ? " + (end < Long.MAX_VALUE ? "AND date < ? " : "") +" AND (attacker_nation_id = ? OR defender_nation_id = ?)")) {
+            int i = 1;
+            stmt.setLong(i++, start);
+            if (end < Long.MAX_VALUE) {
+                stmt.setLong(i++, end);
+            }
+            stmt.setInt(i++, nation_id);
+            stmt.setInt(i++, nation_id);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     list.add(createAttack(rs));
@@ -2141,16 +2162,26 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<DBAttack> getAttacksByWars(List<DBWar> wars, long cuttoffMs) {
+        return getAttacksByWars(wars, cuttoffMs, Long.MAX_VALUE);
+    }
+
+    public List<DBAttack> getAttacksByWars(List<DBWar> wars, long start, long end) {
         Set<Integer> warIds = new HashSet<>();
         for (DBWar war : wars) warIds.add(war.warId);
-        return getAttacksByWarIds(warIds, cuttoffMs, Long.MAX_VALUE);
+        return getAttacksByWarIds(warIds, start, end);
     }
 
     public List<DBAttack> getAttacks(Set<Integer> nationIds, long cuttoffMs) {
+        return getAttacks(nationIds, cuttoffMs, Long.MAX_VALUE);
+    }
+    public List<DBAttack> getAttacks(Set<Integer> nationIds, long start, long end) {
         ArrayList<DBAttack> list = new ArrayList<>();
         String ids = StringMan.getString(nationIds).replaceAll(" ", "");
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE date > ? AND (attacker_nation_id in " + ids + " AND defender_nation_id in " + ids + ")")) {
-            stmt.setLong(1, cuttoffMs);
+        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE date > ? " + (end < Long.MAX_VALUE ? "AND date < ? " : "") + "AND (attacker_nation_id in " + ids + " AND defender_nation_id in " + ids + ")")) {
+            stmt.setLong(1, start);
+            if (end < Long.MAX_VALUE) {
+                stmt.setLong(2, end);
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     list.add(createAttack(rs));
@@ -2164,10 +2195,16 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<DBAttack> getAttacksAny(Set<Integer> nationIds, long cuttoffMs) {
+        return getAttacksAny(nationIds, cuttoffMs, Long.MAX_VALUE);
+    }
+    public List<DBAttack> getAttacksAny(Set<Integer> nationIds, long start, long end) {
         ArrayList<DBAttack> list = new ArrayList<>();
         String ids = StringMan.getString(nationIds).replaceAll(" ", "");
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE date > ? AND (attacker_nation_id in " + ids + " OR defender_nation_id in " + ids + ")")) {
-            stmt.setLong(1, cuttoffMs);
+        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` WHERE date > ? " + (end < Long.MAX_VALUE ? "AND date < ? " : "") + "AND (attacker_nation_id in " + ids + " OR defender_nation_id in " + ids + ")")) {
+            stmt.setLong(1, start);
+            if (end < Long.MAX_VALUE) {
+                stmt.setLong(2, end);
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     list.add(createAttack(rs));
