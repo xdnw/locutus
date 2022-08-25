@@ -156,8 +156,144 @@ jooq {
     version = "3.17.3"  // default (can be omitted)
     edition = nu.studer.gradle.jooq.JooqEdition.OSS  // default (can be omitted)
     configurations {
+        bank {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/bank.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+
+                        packageName = 'org.example.jooq.bank'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        locutus {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/locutus.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.locutus'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        nations {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/nations.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.nations'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        trade {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/trade.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.trade'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        war {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/war.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.war'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
         web {
-            generateSchemaSourceOnCompilation = true; // default (can be omitted)
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
 
             generationTool {
                 jdbc {
@@ -176,40 +312,12 @@ jooq {
                         fluentSetters = true
                     }
                     target {
-
-                        packageName = 'org.example.jooq'
+                        packageName = 'org.example.jooq.web'
                     }
                     strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
                 }
             }
         }
-
-//        locutus {
-//            generateSchemaSourceOnCompilation = true; // default (can be omitted)
-//
-//            generationTool {
-//                jdbc {
-//                    driver = 'org.sqlite.JDBC'
-//                    url = 'jdbc:sqlite:database/locutus.db'
-//                }
-//                generator {
-//                    name = 'org.jooq.codegen.DefaultGenerator'
-//                    database {
-//                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-//                    }
-//                    generate {
-//                        deprecated = false
-//                        records = true
-//                        immutablePojos = true
-//                        fluentSetters = true
-//                    }
-//                    target {
-//                        packageName = 'org.example.jooq'
-//                    }
-//                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-//                }
-//            }
-//        }
     }
 }
 
@@ -259,10 +367,14 @@ sourceSets {
     }
 }
 
-sourceSets.main.java.srcDirs (
+//sourceSets.main.java.srcDirs (
+//        tasks.named('generateBankJooq').flatMap { it.outputDir },
 //        tasks.named('generateLocutusJooq').flatMap { it.outputDir },
-        tasks.named('generateWebJooq').flatMap { it.outputDir }
-)
+//        tasks.named('generateNationsJooq').flatMap { it.outputDir },
+//        tasks.named('generateTradeJooq').flatMap { it.outputDir },
+//        tasks.named('generateWarJooq').flatMap { it.outputDir },
+//        tasks.named('generateWebJooq').flatMap { it.outputDir }
+//)
 
 jar {
     manifest {

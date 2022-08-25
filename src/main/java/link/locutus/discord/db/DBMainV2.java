@@ -26,9 +26,6 @@ public class DBMainV2 implements Closeable {
     }
 
     public DBMainV2(Settings.DATABASE config, String name) throws SQLException {
-        if (config.SQLITE.USE == config.MYSQL.USE) {
-            throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
-        }
         if (config.SQLITE.USE) {
             File file = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
             // create file directory if not exist
@@ -37,12 +34,13 @@ public class DBMainV2 implements Closeable {
             }
             this.db = Database.connect(file);
         } else {
-            this.db = Database.connect(config.MYSQL.HOST,
-                    config.MYSQL.PORT,
-                    name,
-                    config.MYSQL.USER,
-                    config.MYSQL.PASSWORD
-                    );
+            throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
+//            this.db = Database.connect(config.MYSQL.HOST,
+//                    config.MYSQL.PORT,
+//                    name,
+//                    config.MYSQL.USER,
+//                    config.MYSQL.PASSWORD
+//                    );
         }
         init();
     }

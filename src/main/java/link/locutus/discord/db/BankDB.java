@@ -102,7 +102,7 @@ public class BankDB extends DBMainV2 {
     @Override
     public void createTables() {
         {
-            StringBuilder txTableCreate = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_2` (`tx_id` INT NOT NULL PRIMARY KEY, tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
+            StringBuilder txTableCreate = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_2` (`tx_id` INT NOT NULL PRIMARY KEY, tx_datetime BIGINT NOT NULL, sender_id BIGINT NOT NULL, sender_type INT NOT NULL, receiver_id BIGINT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 txTableCreate.append(", " + type.name() + " INT NOT NULL");
@@ -122,7 +122,7 @@ public class BankDB extends DBMainV2 {
         }
 
         {
-            StringBuilder transactions = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_ALLIANCE_2` (`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
+            StringBuilder transactions = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_ALLIANCE_2` (`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, tx_datetime BIGINT NOT NULL, sender_id BIGINT NOT NULL, sender_type INT NOT NULL, receiver_id BIGINT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 transactions.append(", " + type.name() + " INT NOT NULL");
@@ -142,18 +142,18 @@ public class BankDB extends DBMainV2 {
             executeStmt("CREATE INDEX IF NOT EXISTS index_receiver_type ON TRANSACTIONS_ALLIANCE_2 (receiver_type);");
             executeStmt("CREATE INDEX IF NOT EXISTS index_tx_datetime ON TRANSACTIONS_ALLIANCE_2 (tx_datetime);");
         }
+//        {
+//            String transactions = "CREATE TABLE IF NOT EXISTS `TRANSACTIONS_BANK` (`date` INT NOT NULL, note VARCHAR, bank INT NOT NULL, receiver INT NOT NULL, banker INT NOT NULL, resource INT NOT NULL, amount REAL NOT NULL, PRIMARY KEY(date, bank, receiver, banker, resource, amount))";
+//            try (Statement stmt = getConnection().createStatement()) {
+//                stmt.addBatch(transactions);
+//                stmt.executeBatch();
+//                stmt.clearBatch();
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+//        };
         {
-            String transactions = "CREATE TABLE IF NOT EXISTS `TRANSACTIONS_BANK` (`date` INT NOT NULL, note VARCHAR, bank INT NOT NULL, receiver INT NOT NULL, banker INT NOT NULL, resource INT NOT NULL, amount REAL NOT NULL, PRIMARY KEY(date, bank, receiver, banker, resource, amount))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(transactions);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
-            String query = "CREATE TABLE IF NOT EXISTS `SUBSCRIPTIONS` (`user` INT NOT NULL, `allianceOrNation` INT NOT NULL, `isNation` INT NOT NULL, `date` INT NOT NULL, `isReceive` INT NOT NULL, `amount` INT NOT NULL, PRIMARY KEY(user, allianceOrNation, isNation))";
+            String query = "CREATE TABLE IF NOT EXISTS `SUBSCRIPTIONS` (`user` BIGINT NOT NULL, `allianceOrNation` INT NOT NULL, `isNation` INT NOT NULL, `date` BIGINT NOT NULL, `isReceive` INT NOT NULL, `amount` BIGINT NOT NULL, PRIMARY KEY(user, allianceOrNation, isNation))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(query);
                 stmt.executeBatch();
@@ -163,14 +163,14 @@ public class BankDB extends DBMainV2 {
             }
         }
         {
-            String query = "CREATE TABLE IF NOT EXISTS `TAX_BRACKETS` (`id` INT NOT NULL, `money` INT NOT NULL, `resources` INT NOT NULL, `date` INT NOT NULL, PRIMARY KEY(id))";
+            String query = "CREATE TABLE IF NOT EXISTS `TAX_BRACKETS` (`id` INT NOT NULL, `money` INT NOT NULL, `resources` INT NOT NULL, `date` BIGINT NOT NULL, PRIMARY KEY(id))";
             executeStmt(query);
-            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE TAX_BRACKETS ADD COLUMN `date` INT NOT NULL DEFAULT 0")){
+            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE TAX_BRACKETS ADD COLUMN `date` BIGINT NOT NULL DEFAULT 0")){
                 stmt.executeUpdate();
             } catch (SQLException ignore) {}
         }
         {
-            String query = "CREATE TABLE IF NOT EXISTS `TAX_DEPOSITS_DATE` (`tax_id` INT NOT NULL DEFAULT (-1), `alliance` INT NOT NULL, `date` INT NOT NULL, `id` INT NOT NULL, `nation` INT NOT NULL, `moneyrate` INT NOT NULL, `resoucerate` INT NOT NULL, `resources` BLOB NOT NULL, `internal_taxrate` INT NOT NULL DEFAULT (-1), PRIMARY KEY(alliance, date, nation))";
+            String query = "CREATE TABLE IF NOT EXISTS `TAX_DEPOSITS_DATE` (`tax_id` INT NOT NULL DEFAULT (-1), `alliance` INT NOT NULL, `date` BIGINT NOT NULL, `id` INT NOT NULL, `nation` INT NOT NULL, `moneyrate` INT NOT NULL, `resoucerate` INT NOT NULL, `resources` BLOB NOT NULL, `internal_taxrate` INT NOT NULL DEFAULT (-1), PRIMARY KEY(alliance, date, nation))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(query);
                 stmt.executeBatch();
@@ -989,7 +989,7 @@ public class BankDB extends DBMainV2 {
 
     public void clearTaxDeposits(int allianceId) {
         update("DELETE FROM `TAX_DEPOSITS_DATE` WHERE `alliance` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, allianceId);
+            stmt.setInt(1, allianceId);
         });
     }
 
@@ -1437,101 +1437,4 @@ public class BankDB extends DBMainV2 {
             return null;
         }
     }
-
-//    public void removeBankTransactions(int allianceId, long timestamp) {
-//        update("DELETE FROM `TRANSACTIONS_BANK` WHERE (bank = ? or receiver = ?) and date >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//            stmt.setLong(3, timestamp);
-//        });
-//    }
-//
-//    public void removeBankTransactions(int allianceId) {
-//        update("DELETE FROM `TRANSACTIONS_BANK` WHERE bank = ? or receiver = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//        });
-//    }
-//
-//    public void addBankTransactions(Collection<Transfer> transfers) {
-//        try {
-//            synchronized (this) {
-//                LinkedList<Transfer> copy = new ArrayList<>(transfers);
-//                copy.removeIf(transfer -> {
-//                    long bankTurn = TimeUtil.getTurn(transfer.getDate());
-//                    return (bankTurn > TimeUtil.getTurn() + 1) || transfer.getSender() == 0 || transfer.getReceiver() == 0;
-//                });
-//                String query = "INSERT OR IGNORE INTO `TRANSACTIONS_BANK` (`date`, note, bank, receiver, banker, resource, amount) VALUES(?, ?, ?, ?, ?, ?, ?)";
-//                executeBatch(transfers, query, new ThrowingBiConsumer<Transfer, PreparedStatement>() {
-//                    @Override
-//                    public void acceptThrows(Transfer transfer, PreparedStatement stmt) throws SQLException {
-//                        stmt.setLong(1, transfer.getDate());
-//                        stmt.setString(2, transfer.getNote());
-//                        stmt.setInt(3, transfer.getSender());
-//                        stmt.setInt(4, transfer.getReceiver());
-//                        stmt.setInt(5, transfer.getBanker());
-//                        stmt.setInt(6, transfer.getRss().ordinal());
-//                        stmt.setDouble(7, transfer.getAmount());
-//                    }
-//                });
-//            }
-//        } catch (Throwable e) {
-//            e.printStackTrace();
-//            for (Transfer transfer : transfers) {
-//                Locutus.imp().getBankDB().addBankTransaction(transfer);
-//            }
-//        }
-//    }
-//
-//    public void addBankTransaction(Transfer transfer) {
-//        long bankTurn = TimeUtil.getTurn(transfer.getDate());
-//        if (bankTurn > TimeUtil.getTurn() + 1) return;
-//        if (transfer.isReceiverAA() || transfer.isSenderAA()) {
-//            update("INSERT OR IGNORE INTO `TRANSACTIONS_BANK` (`date`, note, bank, receiver, banker, resource, amount) VALUES(?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//                stmt.setLong(1, transfer.getDate());
-//                stmt.setString(2, transfer.getNote());
-//                stmt.setInt(3, transfer.getSender());
-//                stmt.setInt(4, transfer.getReceiver());
-//                stmt.setInt(5, transfer.getBanker());
-//                stmt.setInt(6, transfer.getRss().ordinal());
-//                stmt.setDouble(7, transfer.getAmount());
-//            });
-//            return;
-//        }
-//    }
-//
-//    public List<Transfer> getBankTransactions(long guildId) {
-//        ArrayList<Transfer> list = new ArrayList<>();
-//        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_BANK WHERE lower(note) like ?")) {
-//            stmt.setString(1, "%#guild=" + guildId + "%");
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    list.add(create(rs));
-//                }
-//            }
-//            return list;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
-//
-//    public List<Transfer> getBankTransactions(int allianceId) {
-//        ArrayList<Transfer> list = new ArrayList<>();
-//        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_BANK WHERE bank = ? OR receiver = ? OR lower(note) like ?")) {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//            stmt.setString(3, "%#alliance=" + allianceId + "%");
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    list.add(create(rs));
-//                }
-//            }
-//            return list;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
-//
 }

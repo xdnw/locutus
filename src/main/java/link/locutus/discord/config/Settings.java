@@ -460,8 +460,8 @@ public class Settings extends Config {
     }
 
     public static class DATABASE {
-        @Create
-        public MYSQL MYSQL;
+//        @Create
+//        public MYSQL MYSQL;
         @Create
         public SQLITE SQLITE;
 
@@ -471,16 +471,16 @@ public class Settings extends Config {
             @Comment("The directory to store the database in")
             public String DIRECTORY = "database";
         }
-
-        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")
-        public static final class MYSQL {
-            @Comment("Should MySQL be used?")
-            public boolean USE = false;
-            public String HOST = "localhost";
-            public int PORT = 3306;
-            public String USER = "root";
-            public String PASSWORD = "password";
-        }
+//
+//        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")
+//        public static final class MYSQL {
+//            @Comment("Should MySQL be used?")
+//            public boolean USE = false;
+//            public String HOST = "localhost";
+//            public int PORT = 3306;
+//            public String USER = "root";
+//            public String PASSWORD = "password";
+//        }
     }
 
     private File defaultFile = new File("config" + File.separator + "config.yaml");

@@ -95,7 +95,7 @@ public class ForumDB extends DBMain {
     @Override
     public void createTables() {
         {
-            String nations = "CREATE TABLE IF NOT EXISTS `FORUM_POSTS` (`comment_id`INT PRIMARY KEY, `topic_id` INT NOT NULL, `poster_id` INT NOT NULL, `category_id` INT NOT NULL, `topic_name` VARCHAR NOT NULL, `topic_urlname` VARCHAR NOT NULL, `poster_name` VARCHAR NOT NULL, `category_name` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `timestamp` INT NOT NULL)";
+            String nations = "CREATE TABLE IF NOT EXISTS `FORUM_POSTS` (`comment_id` INT PRIMARY KEY, `topic_id` INT NOT NULL, `poster_id` INT NOT NULL, `category_id` INT NOT NULL, `topic_name` VARCHAR NOT NULL, `topic_urlname` VARCHAR NOT NULL, `poster_name` VARCHAR NOT NULL, `category_name` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `timestamp` BIGINT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(nations);
                 stmt.executeBatch();

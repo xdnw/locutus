@@ -28,17 +28,17 @@ public class BaseballDB extends DBMainV2{
     protected void createTables() {
         TablePreset.create("games")
                 .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("date", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("home_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("away_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("home_nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("away_nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("home_score", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("away_score", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("home_revenue", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("spoils", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("home_revenue", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("spoils", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("open", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("wager", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("wager", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .create(getDb())
         ;
     }

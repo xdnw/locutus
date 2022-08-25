@@ -52,20 +52,16 @@ import java.util.function.Supplier;
 public class LootEstimateTracker {
     private final Map<Integer, LootEstimate> nationLootMap = new Int2ObjectOpenHashMap<>();
     private final long queueBufferMs;
-    private final boolean allowQueue;
     private final Consumer<Map<Integer, LootEstimate>> saveLootEstimate;
     private final Function<Integer, DBNation> nationFactory;
     private final TriConsumer<Integer, Integer, double[]> saveTaxDiff;
 
-    public LootEstimateTracker(boolean allowQueue, long queueBufferMS, boolean checkValid, Supplier<Map<Integer, LootEstimate>> load, Consumer<Map<Integer, LootEstimate>> saveLootEstimate, TriConsumer<Integer, Integer, double[]> saveTaxDiff, Function<Integer, DBNation> nationFactory) {
-        this.allowQueue = allowQueue;
+    public LootEstimateTracker(boolean allowQueue, long queueBufferMS, boolean checkValid, Consumer<Map<Integer, LootEstimate>> saveLootEstimate, TriConsumer<Integer, Integer, double[]> saveTaxDiff, Function<Integer, DBNation> nationFactory) {
         this.queueBufferMs = queueBufferMS;
 
         this.saveLootEstimate = saveLootEstimate;
         this.saveTaxDiff = saveTaxDiff;
         this.nationFactory = nationFactory;
-
-        loadLootEstimates(load.get(), checkValid);
     }
 
     public void update() {
@@ -113,18 +109,15 @@ public class LootEstimateTracker {
     }
 
     public void add(int nationId, long date, double[] minAndMax) {
-        add(nationId, date, minAndMax, minAndMax);
+        if (ResourceType.isEmpty(minAndMax)) return;
+        LootEstimate estimate = getOrCreate(nationId);
+        if (estimate != null) estimate.addRelative(minAndMax, date);
     }
 
-    public void add(int nationId, long date, double[] min, double[] max) {
-        if (ResourceType.isEmpty(min) && ResourceType.isEmpty(max)) return;
+    public void addRevenue(int nationId, long date, double[] minAndMax, int taxId) {
+        if (ResourceType.isEmpty(minAndMax)) return;
         LootEstimate estimate = getOrCreate(nationId);
-        if (estimate == null) return;
-        if (max == null) max = min;
-
-        if (date <= 0) date = System.currentTimeMillis();
-        Order order = new Order(min, max, date);
-        estimate.addOrder(order, allowQueue);
+        if (estimate != null) estimate.addUnknownRevenue(this, nationId, taxId, date, minAndMax);
     }
 
     public LootEstimate getOrCreate(int nationId) {
@@ -205,22 +198,48 @@ public class LootEstimateTracker {
         }
     }
 
-    public static class LootEstimate {
-        public double[] min;
-        public double[] requiredOffset;
-        public double[] max;
+    public void addLootEstimate(int nationId, LootEstimate estimate) {
+        nationLootMap.put(nationId, estimate);
+    }
 
-        public int tax_id;
-        public Map<Integer, double[]> diffByTaxId;
-        public long lastTurnRevenue;
-        public long lastResolved;
-        public boolean dirty;
+    public static class LootEstimate {
+        private double[] min;
+        private double[] requiredOffset;
+        private double[] max;
+
+        private int tax_id;
+        private Map<Integer, double[]> diffByTaxId;
+        private long lastTurnRevenue;
+        private long lastResolved;
+        private boolean dirty;
 
         private Deque<Order> orders = null;
 
         public LootEstimate() {
             this.min = ResourceType.getBuffer();
             this.max = ResourceType.getBuffer();
+            this.requiredOffset = ResourceType.getBuffer();
+        }
+
+        public LootEstimate(double[] resources, long date) {
+            this.min = resources.clone();
+            this.max = resources.clone();
+            this.lastTurnRevenue = TimeUtil.getTurn(date);
+            this.lastResolved = date;
+        }
+
+        public LootEstimate(double[] min, double[] offset, double[] max, int taxId, Map<Integer, double[]> diffByTaxId, long lastTurnRevenue, long lastResolved) {
+            this.min = min;
+            this.requiredOffset = offset;
+            this.max = max;
+            this.tax_id = taxId;
+            this.diffByTaxId = diffByTaxId;
+            this.lastTurnRevenue = lastTurnRevenue;
+            this.lastResolved = lastResolved;
+        }
+
+        public long getLastResolved() {
+            return lastResolved;
         }
 
         public synchronized void addDiffByTaxId(int taxId, double[] diff) {
@@ -285,10 +304,10 @@ public class LootEstimateTracker {
                 double value = revenue[i];
                 if (value < 0) onlyNegatives[i] = value;
             }
-            addOrder(new Order(onlyNegatives, revenue, timestamp), false);
+            addOrder(new Order(onlyNegatives, revenue, timestamp));
         }
 
-        public synchronized void addAbsolute(LootEstimateTracker parent, int nationId, long timestamp, double[] resources, boolean allowQueue) {
+        public synchronized void addAbsolute(LootEstimateTracker parent, int nationId, long timestamp, double[] resources) {
             // invalid resolution
             if (lastResolved >= timestamp) return;
 
@@ -319,12 +338,16 @@ public class LootEstimateTracker {
             diffByTaxId = null;
 
             lastResolved = Math.max(lastResolved, timestamp);
-            addOrder(new Order(resources, resources, timestamp).setAbsolute(), allowQueue);
-
+            addOrder(new Order(resources, resources, timestamp).setAbsolute());
         }
 
-        public synchronized void addOrder(Order order, boolean allowQueue) {
-            if (allowQueue) {
+        public synchronized void addRelative(double[] amt, long timestamp) {
+            addOrder(new Order(amt, amt, timestamp));
+        }
+
+        private synchronized void addOrder(Order order) {
+            if (order.date > lastResolved) return;
+            {
                 if (order.isAbsolute) {
                     if (this.orders != null) {
                         orders.removeIf(f -> f.date < order.date);
@@ -502,18 +525,21 @@ public class LootEstimateTracker {
                 if (rate != null) {
                     // add X% to min and max
                     for (ResourceType type : ResourceType.values()) {
-                        if (type.isRaw() || type.isManufactured()) {
-                            revenue[type.ordinal()] *= ((100 - rate.rssRate) / 100d);
-                        } else {
-                            revenue[type.ordinal()] *= ((100 - rate.moneyRate) / 100d);
+                        double value = revenue[type.ordinal()];
+                        if (value > 0) {
+                            if (type.isRaw() || type.isManufactured()) {
+                                revenue[type.ordinal()] = value * ((100 - rate.rssRate) / 100d);
+                            } else {
+                                revenue[type.ordinal()] = value * ((100 - rate.moneyRate) / 100d);
+                            }
                         }
                     }
-                    add(nation.getId(), date, revenue, revenue);
+                    add(nation.getId(), date, revenue);
                 } else {
-                    add(nation.getId(), date, ResourceType.getBuffer(), revenue);
+                    addRevenue(nation.getId(), date, revenue, nation.getTax_id());
                 }
             } else {
-                add(nation.getId(), date, revenue, revenue);
+                add(nation.getId(), date, revenue);
             }
             estimate.lastTurnRevenue = turn;
         }
@@ -714,7 +740,7 @@ public class LootEstimateTracker {
         if (!loot.isAlliance()) {
             int id = loot.getId();
             LootEstimate estimate = getOrCreate(id);
-            estimate.addAbsolute(this, id, loot.getDate(), loot.getTotal_rss(), allowQueue);
+            estimate.addAbsolute(this, id, loot.getDate(), loot.getTotal_rss());
         }
     }
 }

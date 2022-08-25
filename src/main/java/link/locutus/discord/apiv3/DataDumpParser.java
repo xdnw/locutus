@@ -1,4 +1,4 @@
-package link.locutus.discord.util;
+package link.locutus.discord.apiv3;
 
 import com.politicsandwar.graphql.model.BBGame;
 import com.politicsandwar.graphql.model.WarAttack;
@@ -8,7 +8,6 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.*;
@@ -22,11 +21,11 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.event.baseball.BaseballGameEvent;
-import link.locutus.discord.event.nation.NationCreateProjectEvent;
-import link.locutus.discord.event.trade.TradeCompleteEvent;
 import link.locutus.discord.event.trade.TradeCreateEvent;
-import link.locutus.discord.event.trade.TradeEvent;
-import link.locutus.discord.event.war.AttackEvent;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.update.LootEstimateTracker;
@@ -34,14 +33,10 @@ import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import rocker.grant.nation;
-import rocker.grant.project;
 
 import javax.security.auth.login.LoginException;
 import java.io.*;
 import java.lang.reflect.Field;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
@@ -51,8 +46,6 @@ import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import static link.locutus.discord.web.WebUtil.InputType.date;
 
 public class DataDumpParser {
 
@@ -237,36 +230,20 @@ public class DataDumpParser {
 
         long twoDays = TimeUnit.DAYS.toMillis(2);
 
-        LootEstimateTracker tracker = new LootEstimateTracker(true, 0L, false, new Supplier<Map<Integer, LootEstimateTracker.LootEstimate>>() {
-            @Override
-            public Map<Integer, LootEstimateTracker.LootEstimate> get() {
-                Map<Integer, LootEstimateTracker.LootEstimate> result = new Int2ObjectOpenHashMap<>();
-                for (Map.Entry<Integer, LootEntry> entry : minLootDate.entrySet()) {
-                    int nationId = entry.getKey();
-                    LootEntry minEntry = entry.getValue();
-                    LootEstimateTracker.LootEstimate estimate = new LootEstimateTracker.LootEstimate();
-                    double[] rss = minEntry.getTotal_rss();
-                    estimate.min = rss.clone();
-                    estimate.max = rss.clone();
-                    estimate.lastResolved = minEntry.getDate();
-                    estimate.addOrder(new LootEstimateTracker.Order(rss, rss, minEntry.getDate()).setAbsolute(), true);
-                    result.put(nationId, estimate);
-                }
-                return result;
-            }
-        }, f -> {
-        }, new TriConsumer<Integer, Integer, double[]>() {
-            @Override
-            public void consume(Integer nationId, Integer taxIds, double[] doubles) {
-                System.out.println("Ignore saving tax rate");
-            }
-        }, new Function<Integer, DBNation>() {
-            @Override
-            public DBNation apply(Integer id) {
-                return DBNation.byId(id);
+        LootEstimateTracker tracker = new LootEstimateTracker(true, 0L, false, f -> {
+        }, (nationId, taxIds, doubles) -> System.out.println("Ignore saving tax rate"),
+            id -> {
+            return DBNation.byId(id);
 //                throw new IllegalArgumentException("Call to get nation not allowed");
-            }
         });
+
+        for (Map.Entry<Integer, LootEntry> entry : minLootDate.entrySet()) {
+            int nationId = entry.getKey();
+            LootEntry minEntry = entry.getValue();
+            double[] rss = minEntry.getTotal_rss();
+            LootEstimateTracker.LootEstimate estimate = new LootEstimateTracker.LootEstimate(rss, minEntry.getDate());
+            tracker.addLootEstimate(nationId, estimate);
+        }
 
         // add daily logins
         {
@@ -374,7 +351,7 @@ public class DataDumpParser {
                             tracker.getOrCreate(nation.getId()).addUnknownRevenue(tracker, nation.getId(), -1, turnTimestamp, revenue);
 //                            tracker.add(nation.getId(), turnTimestamp, EMPTY, revenue);
                         } else {
-                            tracker.add(nation.getId(), turnTimestamp, revenue, revenue);
+                            tracker.addRevenue(nation.getId(), turnTimestamp, revenue, -1);
                         }
                     }
                 }

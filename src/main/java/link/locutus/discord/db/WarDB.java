@@ -119,11 +119,11 @@ public class WarDB extends DBMainV2 {
         {
             TablePreset.create("BOUNTIES_V3")
                     .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("posted_by", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("attack_type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("amount", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("amount", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb());
 
             String subCatQuery = TablePreset.create("ATTACK_SUBCATEGORY_CACHE")
@@ -136,7 +136,7 @@ public class WarDB extends DBMainV2 {
         }
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` INT NOT NULL)";
+            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
@@ -176,7 +176,7 @@ public class WarDB extends DBMainV2 {
         {
             String nations = "CREATE TABLE IF NOT EXISTS `attacks2` (" +
                     "`war_attack_id` INT NOT NULL PRIMARY KEY, " +
-                    "`date` INT NOT NULL, " +
+                    "`date` BIGINT NOT NULL, " +
                     "war_id INT NOT NULL, " +
                     "attacker_nation_id INT NOT NULL, " +
                     "defender_nation_id INT NOT NULL, " +
@@ -191,7 +191,7 @@ public class WarDB extends DBMainV2 {
                     "city_id INT NOT NULL," + // Not used anymore
                     "infra_destroyed INT," +
                     "improvements_destroyed INT," +
-                    "money_looted INT," +
+                    "money_looted BIGINT," +
                     "looted INT," +
                     "loot BLOB," +
                     "pct_looted INT," +
@@ -553,20 +553,6 @@ public class WarDB extends DBMainV2 {
         stat.type = type;
         stat.isActive = isActive;
         return stat;
-    }
-
-    @Deprecated
-    private Map<Integer, Set<DBBounty>> getBounties_legacy() {
-            Map<Integer, Set<DBBounty>> map = new HashMap<>();
-        query("SELECT * FROM `BOUNTIES` ORDER BY date DESC", (ThrowingConsumer<PreparedStatement>) stmt -> {
-
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                DBBounty bounty = DBBounty.fromLegacy(rs);
-                map.computeIfAbsent(bounty.getNationId(), f -> new LinkedHashSet<>()).add(bounty);
-            }
-        });
-        return map;
     }
 
     public Set<DBBounty> getBounties(int nationId) {
