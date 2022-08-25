@@ -2,6 +2,7 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import com.politicsandwar.graphql.model.TradeType;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
@@ -10,11 +11,15 @@ import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.event.trade.BulkTradeSubscriptionEvent;
 import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.MessageBuilder;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.Role;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -29,14 +34,28 @@ public class TradeListener {
         Map<GuildDB, Map<ResourceType, List<TradeSubscription>>> guildIdToUserSubscription = new HashMap<>();
 
         for (TradeSubscription subscription : subscriptions) {
-            long user = subscription.getUser();
-            DBNation nation = DiscordUtil.getNation(user);
-            if (nation == null) continue;
-            GuildDB guild = nation.getGuildDB();
-            if (guild != null) {
-                guildIdToUserSubscription.computeIfAbsent(guild, k -> new HashMap<>())
-                        .computeIfAbsent(subscription.getResource(), f -> new ArrayList<>())
-                        .add(subscription);
+            if (subscription.isRole()) {
+                for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+                    MessageChannel channel = db.getOrNull(GuildDB.Key.TRADE_ALERT_CHANNEL);
+                    if (channel == null) continue;
+                    Role role = subscription.toRole(db);
+                    if (role != null) {
+                        guildIdToUserSubscription.computeIfAbsent(db, k -> new HashMap<>())
+                                .computeIfAbsent(subscription.getResource(), f -> new ArrayList<>())
+                                .add(subscription);
+                    }
+                }
+
+            } else {
+                long user = subscription.getUser();
+                DBNation nation = DiscordUtil.getNation(user);
+                if (nation == null) continue;
+                GuildDB db = nation.getGuildDB();
+                if (db != null) {
+                    guildIdToUserSubscription.computeIfAbsent(db, k -> new HashMap<>())
+                            .computeIfAbsent(subscription.getResource(), f -> new ArrayList<>())
+                            .add(subscription);
+                }
             }
         }
 
@@ -81,14 +100,14 @@ public class TradeListener {
 
                 List<String> pings = new ArrayList<>();
                 for (TradeSubscription sub : rssSubs) {
-                    String ping = "<@" + sub.getUser() + "> " + sub.getType() + " " + (sub.isBuy() ? "buying" : "selling") + " " + (sub.isAbove() ? "above" : "below") + " $" + sub.getPpu() + " (expires: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, sub.getDate() - System.currentTimeMillis()) + ")";
+                    String ping = sub.getPing(db) + " " + sub.getType() + " " + (sub.isBuy() ? "buying" : "selling") + " " + (sub.isAbove() ? "above" : "below") + " $" + sub.getPpu() + " (expires: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, sub.getDate() - System.currentTimeMillis()) + ")";
                     pings.add(ping);
                 }
 
-                // send embed to channel
-
-                // send pings
-
+                Message message = new MessageBuilder()
+                        .setEmbeds(new EmbedBuilder().setTitle(title).appendDescription(body.toString()).build())
+                        .setContent(StringMan.join(pings, "\n")).build();
+                RateLimitUtil.queue(channel.sendMessage(message));
             }
         }
     }

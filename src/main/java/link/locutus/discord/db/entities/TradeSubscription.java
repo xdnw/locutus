@@ -2,8 +2,11 @@ package link.locutus.discord.db.entities;
 
 import com.ptsmods.mysqlw.table.ColumnType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Role;
 import rocker.grant.nation;
 
 import java.sql.ResultSet;
@@ -14,12 +17,15 @@ import java.util.function.BinaryOperator;
 
 public class TradeSubscription {
     private long user;
+
+    private boolean isRole;
     private ResourceType resource;
     private long date;
     private boolean isBuy;
     private boolean above;
     private int ppu;
     private TradeDB.TradeAlertType type;
+
 
     public TradeSubscription(long user, ResourceType resource, long date, boolean isBuy, boolean above, int ppu, TradeDB.TradeAlertType type) {
         this.user = user;
@@ -39,6 +45,25 @@ public class TradeSubscription {
         this.above = rs.getBoolean("above");
         this.ppu = rs.getInt("ppu");
         this.type = TradeDB.TradeAlertType.values()[rs.getInt("type")];
+    }
+
+    public TradeSubscription setRole(boolean value) {
+        this.isRole = value;
+        return this;
+    }
+
+    public boolean isRole() {
+        return isRole;
+    }
+
+    public Role toRole(GuildDB db) {
+        return Roles.values[(int) user].toRole(db);
+    }
+
+    public String getPing(GuildDB db) {
+        if (!isRole) return "<@" + user + ">";
+        Role role = toRole(db);
+        return role == null ? null : role.getAsMention();
     }
 
     public long getUser() {

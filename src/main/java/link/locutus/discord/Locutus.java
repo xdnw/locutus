@@ -219,6 +219,7 @@ public final class Locutus extends ListenerAdapter {
     public void registerEvents() {
         eventBus.register(new TreatyUpdateProcessor());
         eventBus.register(new NationUpdateProcessor());
+        eventBus.register(new TradeListener());
         eventBus.register(new CityUpdateProcessor());
         eventBus.register(new BankUpdateProcessor());
         eventBus.register(new WarUpdateProcessor());

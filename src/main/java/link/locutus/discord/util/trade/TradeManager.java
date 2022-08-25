@@ -7,6 +7,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.Event;
@@ -716,6 +717,15 @@ public class TradeManager {
                         }
                     }
                 }
+
+                // if it's a mixup
+                {
+                    TradeSubscription mixupAlert = new TradeSubscription(Roles.TRADE_ALERT.ordinal(), type, Long.MAX_VALUE, true, true, 1, TradeDB.TradeAlertType.MIXUP).setRole(true);
+                    if (mixupAlert.applies(topBuy, topSell, topBuyOld, topSellOld)) {
+                        subscriptionsToCall.add(mixupAlert);
+                    }
+                }
+
                 if (!subscriptionsToCall.isEmpty()) {
                     eventConsumer.accept(new BulkTradeSubscriptionEvent(subscriptionsToCall, topBuyOld, topSellOld, topBuy, topSell));
                 }
