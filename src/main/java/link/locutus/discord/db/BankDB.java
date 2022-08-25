@@ -23,6 +23,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.User;
 
+import java.io.File;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
@@ -49,8 +50,15 @@ import java.util.function.Predicate;
 
 public class BankDB extends DBMainV2 {
 
-    public BankDB() throws SQLException, ClassNotFoundException {
-        super("bank");
+    public BankDB(String name, boolean init) throws SQLException, ClassNotFoundException {
+        super(name, init);
+        if (name.equalsIgnoreCase("bank") && new File("database/import_bank.db").exists()) {
+            System.out.println("Importing external bank recs");
+            importFromExternal("import_bank");
+            System.out.println("Exporting external bank recs");
+            byte[] maxIdData = ByteBuffer.allocate(4).putInt(87004798).array();
+            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
+        }
     }
 
 //    public void updateBankRecs(int nationId) {
@@ -96,6 +104,17 @@ public class BankDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
+        }
+    }
+
+    public void importFromExternal(String fileName) throws SQLException, ClassNotFoundException {
+        BankDB otherDb = new BankDB(fileName, false);
+        List<Transaction2> transactions = selectTransactions(f -> {
+        });
+        int batchSize = 10000;
+        for (int i = 0; i < transactions.size(); i+= batchSize) {
+            List<Transaction2> subList = transactions.subList(i, Math.min(i + batchSize, transactions.size()));
+            addTransactions(subList, true);
         }
     }
 

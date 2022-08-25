@@ -154,7 +154,7 @@ public final class Locutus extends ListenerAdapter {
         this.nationDB = new NationDB();
         this.warDb = new WarDB();
         this.stockDB = new StockDB();
-        this.bankDb = new BankDB();
+        this.bankDb = new BankDB("bank",true);
         this.tradeManager = new TradeManager();
 
         this.commandManager = new CommandManager(this);

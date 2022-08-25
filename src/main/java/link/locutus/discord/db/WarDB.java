@@ -61,7 +61,7 @@ public class WarDB extends DBMainV2 {
 
     private final Queue<DBAttack> allAttacks = new ConcurrentLinkedQueue<>();
     public WarDB() throws SQLException {
-        super(Settings.INSTANCE.DATABASE, "war");
+        super(Settings.INSTANCE.DATABASE, "war", true);
     }
     public void load() {
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
