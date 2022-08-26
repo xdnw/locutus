@@ -4,11 +4,14 @@ import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
@@ -84,6 +87,36 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class StatCommands {
+
+    /**
+     *  "Add -u to exclude unit cost\n" +
+     *                 "Add -i to exclude infra cost\n" +
+     *                 "Add -c to exclude consumption\n" +
+     *                 "Add -l to exclude loot\n" +
+     *                 "Add -w to list the wars (txt file)\n" +
+     *                 "Add -t to list the war types\n" +
+     *                 "Add `-s` to list war status\n" +
+     *                 "Add e.g `attack_type:GROUND,VICTORY` to filter by attack type";
+     * @param coalition1
+     * @param coalition2
+     * @param timeStart
+     * @param timeEnd
+     * @return
+     */
+    @Command(desc = "War cost stats between two coalitions")
+    public String warCost(Set<NationOrAlliance> coalition1, NationFilter coalition2, @Switch('1') NationFilter coalition1SnapshotFilter, @Switch('2') NationFilter coalition2SnapshotFilter, @Timestamp long timeStart,
+                          @Default @Timestamp Long timeEnd,
+                          @Switch('i') boolean ignoreInfra,
+                          @Switch('c') boolean ignoreConsumption,
+                          @Switch('l') boolean ignoreLoot,
+                          @Switch('t')Set<WarType> allowedWarTypes,
+                          @Switch('s') Set<WarStatus> allowedWarStatus,
+                          @Switch('a')Set<AttackType> allowedAttackTypes) {
+        if (timeEnd == null) timeEnd = Long.MAX_VALUE;
+        Set<DBWar> wars = DBWar.getWars(coalition1, coalition2, timeStart, timeEnd);
+
+    }
+
     @Command(desc = "List resources in each continent")
     public String continent(TradeManager manager) {
         StringBuilder response = new StringBuilder();

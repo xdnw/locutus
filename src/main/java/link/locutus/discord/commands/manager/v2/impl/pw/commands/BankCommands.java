@@ -159,9 +159,9 @@ public class BankCommands {
 
         Set<DBNation> nations = Locutus.imp().getNationDB().getNations(allyIds);
         nations.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= 1);
-        List<DBWar> wars = Locutus.imp().getWarDb().getWarsByAlliance(allyIds, enemyIds);
-        wars.removeIf(f -> f.date < cutoff);
-        wars.removeIf(f -> (!allyIds.contains(f.attacker_aa) || !enemyIds.contains(f.defender_aa)) && (!allyIds.contains(f.defender_aa) || !enemyIds.contains(f.attacker_aa)));
+        List<DBWar> wars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(null,
+                f -> (allyIds.contains(f) || enemyIds.contains(f)),
+                f -> (allyIds.contains(f.attacker_aa) || allyIds.contains(f.defender_aa)) && (enemyIds.contains(f.attacker_aa) || enemyIds.contains(f.defender_aa)) && f.date > cutoff)
 
         Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
         List<DBAttack> allattacks = Locutus.imp().getWarDb().getAttacksByWarIds(warIds);
