@@ -2499,10 +2499,13 @@ public class NationDB extends DBMainV2 {
             throw new RuntimeException(e);
         }
     }
-
     public void addMetric(DBAlliance alliance, AllianceMetric metric, long turn, double value) {
+        addMetric(alliance, metric, turn, value, false);
+    }
+
+    public void addMetric(DBAlliance alliance, AllianceMetric metric, long turn, double value, boolean ignore) {
         checkNotNull(metric);
-        String query = "INSERT OR REPLACE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)";
+        String query = "INSERT OR " + (ignore ? "IGNORE" : "REPLACE") + " INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)";
 
         if (Double.isNaN(value)) {
             return;

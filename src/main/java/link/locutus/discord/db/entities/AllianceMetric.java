@@ -197,15 +197,9 @@ public enum AllianceMetric {
             nations.removeIf(f -> f.isGray() || f.isBeige() || f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
             Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
-            Map<Integer, Map<Integer, DBCity>> allCities = Locutus.imp().getNationDB().getCitiesV3(nationIds);
 
             double[] totalRss = ResourceType.getBuffer();
             for (DBNation nation : nations) {
-                Map<Integer, DBCity> v3Cities = allCities.get(nation.getNation_id());
-                if (v3Cities == null || v3Cities.isEmpty()) continue;
-
-                Map<Integer, JavaCity> cities = Locutus.imp().getNationDB().toJavaCity(v3Cities);
-
                 double[] revenue = nation.getRevenue();
                 ResourceType.add(totalRss, revenue);
             }
@@ -375,13 +369,19 @@ public enum AllianceMetric {
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
         for (DBAlliance alliance : alliances) {
             for (AllianceMetric metric : values) {
-                double value = metric.apply(alliance);
+                double value = metric.apply(alliance, turn);
                 Locutus.imp().getNationDB().addMetric(alliance, metric, turn, value);
             }
         }
     }
 
-    public abstract double apply(DBAlliance alliance);
+    public double apply(DBAlliance alliance) {
+        return apply(alliance, TimeUtil.getTurn());
+    }
+
+    public double apply(DBAlliance alliance, long turn) {
+        return apply(alliance);
+    }
 
     public static TimeNumericTable generateTable(AllianceMetric metric, long cutoffTurn, Collection<String> coalitionNames, Set<DBAlliance>... coalitions) {
         return generateTable(metric, cutoffTurn, TimeUtil.getTurn(), coalitionNames, coalitions);

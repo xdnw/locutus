@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.BBGame;
 import com.politicsandwar.graphql.model.WarAttack;
 import com.politicsandwar.graphql.model.WarAttackResponseProjection;
 import de.siegmar.fastcsv.reader.*;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -97,6 +98,83 @@ public class DataDumpParser {
             });
         }
         return continentByNationByDay;
+    }
+
+    public void backCalculateInfra() throws IOException, ParseException, NoSuchFieldException, IllegalAccessException {
+
+
+        load();
+        for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
+            File cityFile = cityFilesByDay.get(entry.getKey());
+            if (cityFile == null) return;
+
+            Map<Integer, Double> infraTotal = new Int2DoubleOpenHashMap();
+            Map<Integer, Integer> numCities = new Int2IntOpenHashMap();
+
+            Map<Integer, Integer> nationAlliances = new Int2IntOpenHashMap();
+
+            // nation, non vm, position >1, infra
+            readAll(entry.getValue(), new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
+                @Override
+                public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws Exception {
+                    NationHeader header = loadHeader(new NationHeader(), headerList);
+                    while (rows.hasNext()) {
+                        CsvRow row = rows.next();
+
+                        int nationId = Integer.parseInt(row.getField(header.nation_id));
+                        int alliance = Integer.parseInt(row.getField(header.alliance_id));
+                        if (alliance == 0) continue;
+                        int vm = Integer.parseInt(row.getField(header.vm_turns));
+                        if (vm > 0) continue;
+                        int pos = Integer.parseInt(row.getField(header.alliance_position));
+                        if (pos <= Rank.APPLICANT.id) continue;
+
+                        nationAlliances.put(nationId, alliance);
+                    }
+                }
+            });
+
+            readAll(cityFile, new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
+                @Override
+                public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws Exception {
+                    CityHeader header = loadHeader(new CityHeader(), headerList);
+                    while (rows.hasNext()) {
+                        CsvRow row = rows.next();
+
+                        int nationId = Integer.parseInt(row.getField(header.nation_id));
+                        Integer aaId = nationAlliances.get(nationId);
+                        if (aaId == null) continue;
+                        double infra = Double.parseDouble(row.getField(header.infrastructure));
+                        numCities.put(aaId, numCities.getOrDefault(aaId, 0) + 1);
+                        infraTotal.put(aaId, infraTotal.getOrDefault(aaId, 0d) + infra);
+                    }
+                }
+            });
+
+
+            // INFRA_AVG
+            // INFRA
+
+            long day = entry.getKey();
+            long turnStart = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
+            long turnEnd = turnStart + 12;
+
+            for (long turn = turnStart; turn < turnEnd; turn++) {
+                for (Map.Entry<Integer, Double> infraEntry : infraTotal.entrySet()) {
+                    int aaId = infraEntry.getKey();
+                    double total = infraEntry.getValue();
+                    double average = total / numCities.get(aaId);
+
+                    DBAlliance aa = DBAlliance.getOrCreate(aaId);
+                    Locutus.imp().getNationDB().addMetric(aa, AllianceMetric.INFRA, turn, total, true);
+                    Locutus.imp().getNationDB().addMetric(aa, AllianceMetric.INFRA_AVG, turn, average, true);
+
+                }
+
+
+            }
+
+        }
     }
 
     public Map<Continent, Double> getRadsAt(long currentTurn, List<DBAttack> attacks, Map<Long, Map<Integer, Continent>> continentInfo) {
