@@ -1085,25 +1085,8 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<DBWar> getWarByStatus(WarStatus... statuses) {
-        return getWars(f -> statusSet.contains(f.status))
-        Set<Integer> statusIds = new HashSet<>();
-        for (WarStatus status : statuses) {
-            statusIds.add(status.ordinal());
-        }
-        String query = "SELECT * from wars WHERE status in " + StringMan.getString(statusIds);
-        List<DBWar> list = new ArrayList<>();
-        try (PreparedStatement stmt= getConnection().prepareStatement(query)) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBWar war = create(rs);
-                    list.add(war);
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        Set<WarStatus> statusSet = new HashSet<>(Arrays.asList(statuses));
+        return new ArrayList<>(getWars(f -> statusSet.contains(f.status)).values());
     }
 
     public List<DBWar> getWars(Set<Integer> alliances, long start) {
@@ -1111,25 +1094,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<DBWar> getWars(Set<Integer> alliances, long start, long end) {
-        String aaArg = StringMan.getString(alliances);
-        String query = "SELECT * from wars where date > ? " + (end < Long.MAX_VALUE ? ("AND date < ? ") : "") + "AND (attacker_aa in " + aaArg + " or defender_aa in " + aaArg + ")";
-            List<DBWar> list = new ArrayList<>();
-        try (PreparedStatement stmt= getConnection().prepareStatement(query)) {
-            stmt.setLong(1, start);
-            if (end < Long.MAX_VALUE) {
-                stmt.setLong(2, end);
-            }
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBWar war = create(rs);
-                    list.add(war);
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return new ArrayList<>(getWarsForNationOrAlliance(null, f -> alliances.contains(f), f -> f.date > start && f.date < end).values());
     }
 
     public List<DBWar> getWarsById(Set<Integer> warIds) {

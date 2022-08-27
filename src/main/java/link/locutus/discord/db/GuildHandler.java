@@ -2346,6 +2346,7 @@ public class GuildHandler {
             members.removeIf(f -> f.getPosition() < Rank.LEADER.id);
             members.removeIf(f -> f.getActive_m() > 2880);
             members.removeIf(f -> f.getVm_turns() > 0);
+
             if (members.isEmpty()) return;
             System.out.println("remove:||Send mail 3" + getGuild());
 
