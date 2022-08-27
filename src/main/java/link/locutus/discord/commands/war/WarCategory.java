@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -609,7 +610,9 @@ public class WarCategory {
             String filterStr = split[1];
             if (filterStr.charAt(0) == 'c') {
                 if (!filterStr.contains("-")) filterStr += "+";
-                return CityRanges.parse(filterStr);
+                try {
+                    return CityRanges.parse(filterStr);
+                } catch (IllegalArgumentException ignore) {}
             }
         }
         return null;

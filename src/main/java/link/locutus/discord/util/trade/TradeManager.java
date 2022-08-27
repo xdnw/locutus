@@ -67,9 +67,9 @@ public class TradeManager {
     }
 
     private void updateLowHighCache() {
-        double[] low = ResourceType.getBuffer();
-        Arrays.fill(low, Double.MAX_VALUE);
-        double[] high = ResourceType.getBuffer();
+        low = new int[ResourceType.values.length];
+        Arrays.fill(low, Integer.MAX_VALUE);
+        high = new int[ResourceType.values.length];
         for (DBTrade trade : activeTradesById.values()) {
             if (trade.getType() != TradeType.GLOBAL) continue;
             low[trade.getResource().ordinal()] = Math.min(low[trade.getResource().ordinal()], trade.getPpu());
@@ -98,6 +98,8 @@ public class TradeManager {
         highAvg = PnwUtil.resourcesToArray(averages.getValue());
         highAvg[0] = 1;
         highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
+
+        loadActiveTrades();
     }
 
     public Collection<Transfer> toTransfers(Collection<DBTrade> offers, boolean onlyMoneyTrades) {
@@ -680,7 +682,7 @@ public class TradeManager {
 
                 if (eventConsumer != null) {
                     if (previous == null) {
-                        eventConsumer.accept(new TradeCreateEvent(previous));
+                        eventConsumer.accept(new TradeCreateEvent(current));
                     } else if (current.isActive()) {
                         eventConsumer.accept(new TradeUpdateEvent(previous, current));
                     } else {

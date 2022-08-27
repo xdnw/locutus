@@ -102,9 +102,9 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                 GuildDB db = Locutus.imp().getGuildDB(guild);
                 message = DiscordUtil.createEmbedCommand(output, title, body.toString(), replyEmoji, reply, infoEmoji, info);
 
-                Role role = Roles.INTERNAL_AFFAIRS.toRole(guild);
+                Role role = Roles.MAIL.toRole(guild);
                 if (role != null) {
-//                channel.sendMessage("^ " + link.locutus.discord.util.RateLimitUtil.queue(role.getAsMention()));
+                    link.locutus.discord.util.RateLimitUtil.queue(channel.sendMessage("^ " + role.getAsMention()));
                 }
 
                 processCommands(guild, mail, strings);

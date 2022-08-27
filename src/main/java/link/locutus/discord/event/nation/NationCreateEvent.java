@@ -14,7 +14,6 @@ public class NationCreateEvent extends NationChangeEvent2 {
     protected void postToGuilds() {
         super.postToGuilds();
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            System.out.println("Post global nation create");
             db.getHandler().onGlobalNationCreate(this);
         }
 

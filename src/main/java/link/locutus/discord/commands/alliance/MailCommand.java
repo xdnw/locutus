@@ -49,6 +49,7 @@ public class MailCommand extends Command implements Noformat {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() < 3) return usage(event);
+        String fromStr = DiscordUtil.parseArg(args, "from");
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
@@ -59,7 +60,6 @@ public class MailCommand extends Command implements Noformat {
             if (arg1.contains("message/id=")) {
                 Auth auth = null;
 
-                String fromStr = DiscordUtil.parseArg(args, "from");
                 if (fromStr != null) {
                     DBNation from = DiscordUtil.parseNation(fromStr);
                     if (from == null) throw new IllegalArgumentException("Invalid sender: " + fromStr);

@@ -52,13 +52,13 @@ public class BankDB extends DBMainV2 {
 
     public BankDB(String name, boolean init) throws SQLException, ClassNotFoundException {
         super(name, init);
-        if (name.equalsIgnoreCase("bank") && new File("database/import_bank.db").exists()) {
-            System.out.println("Importing external bank recs");
-            importFromExternal("import_bank");
-            System.out.println("Exporting external bank recs");
-            byte[] maxIdData = ByteBuffer.allocate(4).putInt(87004798).array();
-            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
-        }
+//        if (name.equalsIgnoreCase("bank") && new File("database/import_bank.db").exists()) {
+//            System.out.println("Importing external bank recs");
+//            importFromExternal("import_bank");
+//            System.out.println("Exporting external bank recs");
+//            byte[] maxIdData = ByteBuffer.allocate(4).putInt(87004798).array();
+//            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
+//        }
     }
 
 //    public void updateBankRecs(int nationId) {
@@ -243,7 +243,7 @@ public class BankDB extends DBMainV2 {
     }
 
     public Transaction2 getLatestTransaction() {
-        List<Transaction2> latestList = selectTransactions(query -> query.order("id", QueryOrder.OrderDirection.DESC).limit(1));
+        List<Transaction2> latestList = selectTransactions(query -> query.order("tx_id", QueryOrder.OrderDirection.DESC).limit(1));
         return latestList.isEmpty() ? null : latestList.get(0);
     }
 
@@ -303,6 +303,7 @@ public class BankDB extends DBMainV2 {
     }
 
     public void saveBankRecs(List<Bankrec> bankrecs, Consumer<Event> eventConsumer) {
+        invalidateTXCache();
         List<Transaction2> transfers = new ArrayList<>();
         for (Bankrec bankrec : bankrecs) {
             if (bankrec.getSender_type() != 1 && bankrec.getReceiver_type() != 1) {

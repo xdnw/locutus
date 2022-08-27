@@ -216,8 +216,10 @@ public class GuildHandler {
                 String response = nation.setTaxBracket(required, auth);
                 responses.accept(nation.getNation() + ": " + response);
                 nationsMovedBracket.put(nation, new AbstractMap.SimpleEntry<>(required, reason));
+                Locutus.imp().getNationDB().markNationDirty(nation.getId());
             }
         }
+        Locutus.imp().runEventsAsync(Locutus.imp().getNationDB()::updateDirtyNations);
         return nationsMovedBracket;
     }
 
@@ -2343,6 +2345,7 @@ public class GuildHandler {
             Set<DBNation> members = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
             members.removeIf(f -> f.getPosition() < Rank.LEADER.id);
             members.removeIf(f -> f.getActive_m() > 2880);
+            members.removeIf(f -> f.getVm_turns() > 0);
             if (members.isEmpty()) return;
             System.out.println("remove:||Send mail 3" + getGuild());
 

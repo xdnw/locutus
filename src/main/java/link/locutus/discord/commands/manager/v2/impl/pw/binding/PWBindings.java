@@ -550,8 +550,13 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public DBAlliancePosition position(@Me GuildDB db, String name) {
-        return DBAlliancePosition.parse(name, db.getAlliance_id(), true);
+    public static DBAlliancePosition position(@Me GuildDB db, String name) {
+        DBAlliancePosition result = DBAlliancePosition.parse(name, db.getAlliance_id(), true);
+        System.out.println("Position " + result + " | " + name);
+        if (result == null) throw new IllegalArgumentException("Unknown position: `" + name +
+                "`. Options: " + StringMan.getString(db.getAlliance().getPositions().stream().map(DBAlliancePosition::getName).collect(Collectors.toList()))
+                + " / Special: remove/applicant");
+        return result;
     }
 
     @Binding

@@ -672,7 +672,7 @@ public class NationDB extends DBMainV2 {
                 if (current == null) {
                     toDelete.add(previous);
                     if (eventConsumer != null && previous.getFromId() == aaId) {
-                        if (previous.getTurnEnds() >= turn) {
+                        if (previous.getTurnEnds() <= turn + 1) {
                             eventConsumer.accept(new TreatyExpireEvent(previous));
                         } else {
                             eventConsumer.accept(new TreatyCancelEvent(previous));
@@ -826,6 +826,16 @@ public class NationDB extends DBMainV2 {
         return fetched;
     }
 
+    public void updateDirtyNations(Consumer<Event> eventConsumer) {
+        List<Integer> ids;
+        synchronized (dirtyNations) {
+            ids = new ArrayList<>(dirtyNations);
+            dirtyNations.clear();
+        }
+        System.out.println("Ids " + ids.size());
+        updateNationsById(ids, eventConsumer);
+    }
+
     private Set<Integer> updateNationsById(List<Integer> ids, Consumer<Event> eventConsumer) {
         List<Integer> idsFinal = new ArrayList<>(ids);
         Collections.sort(idsFinal);
@@ -957,7 +967,6 @@ public class NationDB extends DBMainV2 {
             DBCity existing = getDBCity(nationId, cityId);
             if (existing == null) {
                 existing = new DBCity();
-
                 if (eventConsumer != null) eventConsumer.accept(new CityCreateEvent(nationId, existing));
 
                 dirtyCities.add(cityId);

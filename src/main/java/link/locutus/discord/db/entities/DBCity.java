@@ -176,12 +176,12 @@ public class DBCity {
         }
 
         if (this.infra != previous.infra) {
-            if (this.infra > previous.infra) {
+            if (this.infra > previous.infra + 0.01) {
                 if (eventConsumer != null) {
                     if (previousClone == null) previousClone = new DBCity(previous);
                     eventConsumer.accept(new CityInfraBuyEvent(nationId, previousClone, this));
                 }
-            } else {
+            } else if (this.infra < previous.infra - 0.01) {
                 if (eventConsumer != null) {
                     if (previousClone == null) previousClone = new DBCity(previous);
                     boolean isAttack = (this.toJavaCity(f -> false).getRequiredInfra() > this.infra);

@@ -10,6 +10,7 @@ import link.locutus.discord.event.position.PositionChangeLevelEvent;
 import link.locutus.discord.event.position.PositionChangeNameEvent;
 import link.locutus.discord.event.position.PositionChangePermissionEvent;
 import link.locutus.discord.event.position.PositionChangeRankEvent;
+import link.locutus.discord.util.MathMan;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -51,8 +52,26 @@ public class DBAlliancePosition {
     }
 
     public static DBAlliancePosition parse(String input, int aaId, boolean allowApplicantAndRemove) {
+        if (allowApplicantAndRemove) {
+            switch (input.toLowerCase()) {
+                case "applicant":
+                    return APPLICANT;
+                case "remove":
+                    return REMOVE;
+            }
+        }
         DBAlliance alliance = DBAlliance.get(aaId);
         if (alliance == null) throw new IllegalStateException("No alliance found with id: " + aaId);
+        for (DBAlliancePosition position : alliance.getPositions()) {
+            if (position.getName().equalsIgnoreCase(input)) {
+                return position;
+            }
+        }
+        if (MathMan.isInteger(input)) {
+            int id = Integer.parseInt(input);
+            DBAlliancePosition position = Locutus.imp().getNationDB().getPosition(id, alliance.getId(), false);
+            return position;
+        }
         return null;
     }
 

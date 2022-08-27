@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -60,9 +61,8 @@ public class SetRank extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage();
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        int aaId = db.getAlliance_id();
         DBNation nation = DiscordUtil.parseNation(args.get(0));
-        DBAlliancePosition position = DBAlliancePosition.parse(args.get(1), aaId, true);
+        DBAlliancePosition position = PWBindings.position(db, args.get(1));
         return IACommands.setRank(event.getAuthor(), event.getChannel(), db, me, nation, position, flags.contains('f'), flags.contains('d'));
     }
 }

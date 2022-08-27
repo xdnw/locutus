@@ -298,7 +298,7 @@ public class Deposits extends Command {
         MessageChannel output = flags.contains('d') ? author.openPrivateChannel().complete() : event.getChannel();
         Message message = RateLimitUtil.complete(output.sendMessage(response.toString()));
 
-        if (requiredUser != null && requiredUser.getPosition() > 1 && guildDb.isWhitelisted() && guildDb.getOrNull(GuildDB.Key.API_KEY) != null) {
+        if (requiredUser != null && requiredUser.getPosition() > 1 && guildDb.isWhitelisted() && guildDb.getOrNull(GuildDB.Key.API_KEY) != null && guildDb.getAllianceIds(true).contains(requiredUser.getAlliance_id())) {
             DBNation finalNation = requiredUser;
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override

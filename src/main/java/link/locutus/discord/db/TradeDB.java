@@ -83,7 +83,7 @@ public class TradeDB extends DBMainV2 {
         getDb().executeUpdate(query);
 
         {
-            query = "CREATE TABLE IF NOT EXISTS `TRADEPRICE` (`resource` INT NOT NULL, `ppu` INT NOT NULL, `isBuy` INT NOT NULL, PRIMARY KEY(resource, ppu, isBuy))";
+            query = "CREATE TABLE IF NOT EXISTS `TRADEPRICE_2` (`resource` INT NOT NULL, `ppu` INT NOT NULL, `isBuy` INT NOT NULL, PRIMARY KEY(resource, isBuy))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(query);
                 stmt.executeBatch();
@@ -130,7 +130,7 @@ public class TradeDB extends DBMainV2 {
 
     public void setTradePrice(ResourceType type, int ppu, boolean isBuy) {
         long pair = (isBuy ? 1 : 0) ^ ((type.ordinal() ^ (ppu << 4)) << 1);
-        update("INSERT OR REPLACE INTO `TRADEPRICE`(`resource`, `ppu`, `isBuy`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `TRADEPRICE_2`(`resource`, `ppu`, `isBuy`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, type.ordinal());
             stmt.setInt(2, ppu);
             stmt.setBoolean(3, isBuy);
@@ -140,12 +140,12 @@ public class TradeDB extends DBMainV2 {
     public Map<ResourceType, Integer> getTradePrice(boolean isBuy) {
             long date = System.currentTimeMillis();
             Map<ResourceType, Integer> result = new EnumMap<>(ResourceType.class);
-        try (PreparedStatement stmt = prepareQuery("select * FROM `TRADEPRICE` WHERE isBuy = ?")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM `TRADEPRICE_2` WHERE isBuy = ?")) {
             stmt.setBoolean(1, isBuy);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    ResourceType type = ResourceType.values[rs.getInt("resource")];
                     int ppu = rs.getInt("ppu");
+                    ResourceType type = ResourceType.values[rs.getInt("resource")];
                     result.put(type, ppu);
                 }
             }

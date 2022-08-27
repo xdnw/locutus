@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import org.apache.commons.lang3.text.WordUtils;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Locale;
@@ -57,11 +58,16 @@ public enum Continent {
     }
 
     public double getSeasonModifier() {
-        return getSeasonModifier(Locutus.imp().getTradeManager().getGameDate().toEpochMilli());
+        return getSeasonModifier(Locutus.imp().getTradeManager().getGameDate());
     }
+
     public double getSeasonModifier(long date) {
+        return getSeasonModifier(Instant.ofEpochMilli(date));
+    }
+
+    public double getSeasonModifier(Instant instant) {
         double season = 1;
-        switch (ZonedDateTime.from(Instant.ofEpochMilli(date)).getMonth()) {
+        switch (LocalDateTime.ofInstant(instant, ZoneOffset.UTC).getMonth()) {
             case DECEMBER:
             case JANUARY:
             case FEBRUARY:

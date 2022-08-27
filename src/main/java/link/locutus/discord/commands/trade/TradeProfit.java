@@ -79,6 +79,7 @@ public class TradeProfit extends Command {
 
         Map<ResourceType, Long> salesPrice = new HashMap<>();
 
+        int numTrades = 0;
         for (DBTrade trade : trades) {
             Integer buyer = trade.getBuyer();
             Integer seller = trade.getSeller();
@@ -94,6 +95,8 @@ public class TradeProfit extends Command {
             if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000))) {
                 continue;
             }
+
+            numTrades++;
 
             int sign = (nationIds.contains(seller) ^ trade.isBuy()) ? 1 : -1;
             long total = trade.getQuantity() * (long) trade.getPpu();
@@ -158,7 +161,7 @@ public class TradeProfit extends Command {
             .append(' ').append("Total Volume:```")
             .append(String.format("%16s", PnwUtil.resourcesToString(totalVolume)))
             .append("```");
-        response.append("Profit total: $").append(MathMan.format(profitTotal));
+        response.append("Profit total: $").append(MathMan.format(profitTotal) + " (" + numTrades + " trades)");
         return response.toString().trim();
     }
 }

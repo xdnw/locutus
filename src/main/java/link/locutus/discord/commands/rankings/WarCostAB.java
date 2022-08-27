@@ -40,7 +40,7 @@ public class WarCostAB extends Command {
 
     @Override
     public String help() {
-        return "`" + super.help() + " <alliance|coalition> <alliance|coalition> <days>` OR `" + super.help() + " <war-url>`";
+        return "`" + super.help() + " <alliance|coalition> <alliance|coalition> <days> [days-end]` OR `" + super.help() + " <war-url>`";
     }
 
     @Override
@@ -57,15 +57,16 @@ public class WarCostAB extends Command {
                 "Add -l to exclude loot\n" +
                 "Add -w to list the wars (txt file)\n" +
                 "Add -t to list the war types\n" +
-                "Add `-s` to list war status";
+                "Add `-s` to list war status\n" +
+                "Add e.g `attack_type:GROUND,VICTORY` to filter by attack type";
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty() || args.size() > 3 || (args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
+        String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
+        if (args.isEmpty() || args.size() > 4 || (args.size() >= 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
             return usage(event);
         }
-        String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
 
         String arg0 = args.get(0);
 
