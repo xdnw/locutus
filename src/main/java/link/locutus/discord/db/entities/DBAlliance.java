@@ -390,7 +390,15 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Set<DBAlliance> getSphereCached(Map<Integer, DBAlliance> aaCache) {
-        return getTreaties(this, new HashMap<>(), aaCache);
+        Set<DBAlliance> result = getTreaties(this, new HashMap<>(), aaCache);
+
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            DBAlliance parent = alliance.getCachedParentOfThisOffshore();
+            if (parent != null && (result.contains(parent) || parent == this)) {
+                result.add(alliance);
+            }
+        }
+        return result;
     }
 
     public List<DBAlliance> getSphereRankedCached(Map<Integer, DBAlliance> aaCache) {
@@ -469,7 +477,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             }
         }
         if (protector != null) {
-            return getTreaties(protector, new HashMap<>(), aaCache);
+            return getTreaties(protector, currentWeb, aaCache);
         }
 
         return new HashSet<>(currentWeb.keySet());

@@ -229,7 +229,7 @@ public class DBMainV2 implements Closeable {
         }
     }
 
-    protected boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
+    public boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
         {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
                 stmt.setFetchSize(10000);

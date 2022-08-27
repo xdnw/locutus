@@ -13,11 +13,14 @@ import java.awt.Color;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SphereGenerator {
     private final Map<Integer, DBAlliance> alliances;
@@ -50,6 +53,7 @@ public class SphereGenerator {
         this.alliancesBySphere = new HashMap<>();
 
         for (DBAlliance alliance : alliances) {
+            System.out.println("remove:||" + alliance.getName());
             this.alliances.put(alliance.getId(), alliance);
             List<DBAlliance> sphere = alliance.getSphereRankedCached(aaCache);
             int sphereId = sphere.get(0).getAlliance_id();
@@ -57,7 +61,14 @@ public class SphereGenerator {
             Color color = sphereColors.computeIfAbsent(sphereId, f -> CIEDE2000.randomColor(sphereId, DiscordUtil.BACKGROUND_COLOR, sphereColors.values()));
 
             sphereColors.put(sphereId, color);
-            alliancesBySphere.put(sphereId, sphere);
+            List<DBAlliance> root = alliancesBySphere.computeIfAbsent(sphereId, k -> new ArrayList<>());
+            int originalRootSize = root.size();
+            for (DBAlliance toAdd : sphere) {
+                if (!root.contains(toAdd)) root.add(toAdd);
+            }
+            if (originalRootSize != 0 && originalRootSize != root.size()) {
+                Collections.sort(root, (o1, o2) -> Double.compare(o2.getScore(), o1.getScore()));
+            }
 
             {
                 Set<DBNation> nations = alliance.getNations(true, 7200, true);
@@ -84,6 +95,14 @@ public class SphereGenerator {
 
         this.spheresRanked = new ArrayList<>(sphereScore.keySet());
         spheresRanked.sort((o1, o2) -> Double.compare(sphereScore.get(o2), sphereScore.get(o1)));
+
+        Map<Integer, Integer> sphereByAA = new HashMap<>();
+        for (Map.Entry<Integer, List<DBAlliance>> entry : alliancesBySphere.entrySet()) {
+            for (DBAlliance alliance : entry.getValue()) {
+                sphereByAA.put(alliance.getId(), entry.getKey());
+            }
+
+        }
 
     }
 

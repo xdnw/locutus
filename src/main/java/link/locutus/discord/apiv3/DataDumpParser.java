@@ -28,6 +28,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
+import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.update.LootEstimateTracker;
 import org.apache.commons.io.FileUtils;
@@ -38,6 +39,8 @@ import org.jsoup.nodes.Element;
 import javax.security.auth.login.LoginException;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
@@ -100,13 +103,27 @@ public class DataDumpParser {
         return continentByNationByDay;
     }
 
+    private class MetricValue {
+        int alliance;
+        AllianceMetric metric;
+        long turn;
+        double value;
+
+        public MetricValue(int alliance, AllianceMetric metric, long turn, double value) {
+            this.alliance = alliance;
+            this.metric = metric;
+            this.turn = turn;
+            this.value = value;
+        }
+    }
+
     public void backCalculateInfra() throws IOException, ParseException, NoSuchFieldException, IllegalAccessException {
-
-
         load();
         for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
             File cityFile = cityFilesByDay.get(entry.getKey());
-            if (cityFile == null) return;
+            if (cityFile == null) continue;
+            if (TimeUtil.getTimeFromDay(entry.getKey()) < 1629861913000L) continue;
+            System.out.println("File " + cityFile);
 
             Map<Integer, Double> infraTotal = new Int2DoubleOpenHashMap();
             Map<Integer, Integer> numCities = new Int2IntOpenHashMap();
@@ -121,7 +138,7 @@ public class DataDumpParser {
                     while (rows.hasNext()) {
                         CsvRow row = rows.next();
 
-                        int nationId = Integer.parseInt(row.getField(header.nation_id));
+
                         int alliance = Integer.parseInt(row.getField(header.alliance_id));
                         if (alliance == 0) continue;
                         int vm = Integer.parseInt(row.getField(header.vm_turns));
@@ -129,6 +146,7 @@ public class DataDumpParser {
                         int pos = Integer.parseInt(row.getField(header.alliance_position));
                         if (pos <= Rank.APPLICANT.id) continue;
 
+                        int nationId = Integer.parseInt(row.getField(header.nation_id));
                         nationAlliances.put(nationId, alliance);
                     }
                 }
@@ -151,14 +169,11 @@ public class DataDumpParser {
                 }
             });
 
-
-            // INFRA_AVG
-            // INFRA
-
             long day = entry.getKey();
             long turnStart = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
             long turnEnd = turnStart + 12;
 
+            List<MetricValue> values = new ArrayList<>();
             for (long turn = turnStart; turn < turnEnd; turn++) {
                 for (Map.Entry<Integer, Double> infraEntry : infraTotal.entrySet()) {
                     int aaId = infraEntry.getKey();
@@ -166,14 +181,19 @@ public class DataDumpParser {
                     double average = total / numCities.get(aaId);
 
                     DBAlliance aa = DBAlliance.getOrCreate(aaId);
-                    Locutus.imp().getNationDB().addMetric(aa, AllianceMetric.INFRA, turn, total, true);
-                    Locutus.imp().getNationDB().addMetric(aa, AllianceMetric.INFRA_AVG, turn, average, true);
-
+                    values.add(new MetricValue(aaId, AllianceMetric.INFRA, turn, total));
+                    values.add(new MetricValue(aaId, AllianceMetric.INFRA_AVG, turn, average));
                 }
-
-
             }
-
+            Locutus.imp().getNationDB().executeBatch(values, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", new ThrowingBiConsumer<MetricValue, PreparedStatement>() {
+                @Override
+                public void acceptThrows(MetricValue value, PreparedStatement stmt) throws Exception {
+                    stmt.setInt(1, value.alliance);
+                    stmt.setInt(2, value.metric.ordinal());
+                    stmt.setLong(3, value.turn);
+                    stmt.setDouble(4, value.value);
+                }
+            });
         }
     }
 
