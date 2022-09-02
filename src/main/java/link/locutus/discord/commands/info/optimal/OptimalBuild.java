@@ -30,6 +30,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import rocker.grant.city;
 import rocker.grant.nation;
 
 import java.util.ArrayList;
@@ -55,7 +56,7 @@ public class OptimalBuild extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return super.checkPermission(server, user);
+        return Roles.MEMBER.has(user, server);
     }
 
     @Override
@@ -148,6 +149,7 @@ public class OptimalBuild extends Command {
         Integer gasoline = null;
         Integer aluminum = null;
         TaxRate taxes = null;
+        Map<ResourceType, Double> overrideResourcePrice = null;
 
         Integer age = null;
         Continent continent = null;
@@ -375,16 +377,6 @@ public class OptimalBuild extends Command {
             };
         }
 
-        if (diseaseLimit != null) {
-            Double finalDiseaseLimit = diseaseLimit;
-
-            Function<JavaCity, Double> parent = valueFunc;
-            valueFunc = city -> {
-                if (city.getDisease(hasProject) > finalDiseaseLimit) return Double.NEGATIVE_INFINITY;
-                return parent.apply(city);
-            };
-        }
-
         if (popLimit != null) {
             Double finalpopLimit = popLimit;
 
@@ -405,15 +397,6 @@ public class OptimalBuild extends Command {
             };
         }
 
-        if (crimeLimit != null) {
-            Double finalCrimeLimit = crimeLimit;
-
-            Function<JavaCity, Double> parent = valueFunc;
-            valueFunc = city -> {
-                if (city.getCrime(hasProject) > finalCrimeLimit) return Double.NEGATIVE_INFINITY;
-                return parent.apply(city);
-            };
-        }
         if (!manu) {
             Function<JavaCity, Double> parent = valueFunc;
             valueFunc = city -> {
@@ -429,6 +412,80 @@ public class OptimalBuild extends Command {
         Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc = f -> finalValueFunc;
 
         Function<JavaCity, Boolean> goal = javaCity -> javaCity.getFreeInfra() < 50;
+
+        if (diseaseLimit != null) {
+            Double finalDiseaseLimit = diseaseLimit;
+
+            double hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
+            double recyclingPct = (-Buildings.RECYCLING_CENTER.pollution(hasProject)) / 20d;
+            double subwayPct = (-Buildings.SUBWAY.pollution(hasProject)) / 20d;
+
+
+            Function<JavaCity, Double> parent = valueFunc;
+            valueFunc = city -> {
+                Double disease = city.getDisease(hasProject);
+                if (disease > finalDiseaseLimit) {
+                    int remainingSlots = city.getFreeSlots();
+                    if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
+                    int latestBuilding = 0;
+                    for (int j = Buildings.SUBWAY.ordinal(); j < city.getBuildings().length; j++) {
+                        if (city.get(j) > 0) latestBuilding = j;
+                    }
+                    double reduced = disease;
+
+                    if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
+                        int amt = Math.min(Buildings.RECYCLING_CENTER.cap(hasProject), remainingSlots);
+                        reduced -= recyclingPct * amt;
+                        if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                        remainingSlots -= amt;
+                        if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
+                    }
+
+                    if (latestBuilding <= Buildings.HOSPITAL.ordinal()) {
+                        int amt = Math.min(Buildings.HOSPITAL.cap(hasProject), remainingSlots);
+                        reduced -= hospitalPct * amt;
+                        if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                        remainingSlots -= amt;
+                        if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
+                    }
+
+                    if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
+                        int amt = Math.min(Buildings.SUBWAY.cap(hasProject), remainingSlots);
+                        reduced -= subwayPct * amt;
+                        if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                    }
+
+                    return Double.NEGATIVE_INFINITY;
+                }
+                return parent.apply(city);
+            };
+        }
+
+        if (crimeLimit != null) {
+            double policePct = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 3.5 : 2.5;
+            int max = Buildings.POLICE_STATION.cap(hasProject);
+            Double finalCrimeLimit = crimeLimit;
+
+            Function<JavaCity, Double> parent = valueFunc;
+            valueFunc = city -> {
+                double crime = city.getCrime(hasProject);
+
+                if (crime > finalCrimeLimit) {
+                    int remainingSlots = city.getFreeSlots();
+                    if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
+                    double reduced = crime - Math.min(max, remainingSlots) * policePct;
+                    if (reduced > crime) return Double.NEGATIVE_INFINITY;
+
+                    // if has any building past police station
+                    byte[] buildings = city.getBuildings();
+                    for (int i = Buildings.POLICE_STATION.ordinal() + 1; i < buildings.length; i++) {
+                        if (buildings[i] > 0) return Double.NEGATIVE_INFINITY;
+                    }
+                }
+                return parent.apply(city);
+            };
+        }
+
 
         if (positiceCash) {
             Function<JavaCity, Boolean> parentGoal = goal;
@@ -469,7 +526,7 @@ public class OptimalBuild extends Command {
         if (aaId == null) aaId = 0;
         Guild root = Locutus.imp().getServer();
         GuildDB rootDb = Locutus.imp().getGuildDB(root);
-        long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || rootDb.getCoalition("raidperms").contains(aaId)) ? 15000 : 1000;
+        long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || rootDb.getCoalition("raidperms").contains(aaId)) ? 15000 : 5000;
 
         JavaCity optimized;
         if (days == null) {

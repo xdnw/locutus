@@ -387,6 +387,22 @@ public class OffshoreInstance {
 //        return false;//
 //    }
 
+    public boolean isDisabled(long guild) {
+        if (disabledGuilds.contains(guild)) {
+            return true;
+        }
+        Set<Long> coalition = getGuildDB().getCoalitionRaw(Coalition.FROZEN_FUNDS);
+        if (coalition.contains(guild)) return true;
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        if (db != null) {
+            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            if (aaId != null && coalition.contains((long) aaId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Set<Long> disabledGuilds = new HashSet<>();
 
     public Map.Entry<TransferStatus, String> transferFromDeposits(DBNation banker, GuildDB senderDB, NationOrAlliance receiver, double[] amount, String note) {
@@ -461,7 +477,7 @@ public class OffshoreInstance {
             GuildDB offshoreDB = getGuildDB();
             if (offshoreDB == null) throw new IllegalArgumentException("No guild is registered with this offshore");
 
-            if (disabledGuilds.contains(senderDB.getGuild().getIdLong())) {
+            if (isDisabled(senderDB.getGuild().getIdLong())) {
                 throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use `" + Settings.commandPrefix(false) + "unlocktransfers <alliance>` in the offshore server");
             }
 

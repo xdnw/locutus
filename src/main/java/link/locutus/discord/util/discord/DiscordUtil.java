@@ -856,7 +856,9 @@ public class DiscordUtil {
                     nations.removeIf(f -> not.contains(f));
                     continue;
                 } else if (name.toLowerCase().startsWith("aa:")) {
-                    Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(parseAlliances(guild, name.split(":", 2)[1]));
+                    Set<Integer> alliances = parseAlliances(guild, name.split(":", 2)[1].trim());
+                    if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
+                    Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
                     if (noApplicants) {
                         allianceMembers.removeIf(n -> n.getPosition() <= 1);
                     }

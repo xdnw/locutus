@@ -216,7 +216,6 @@ public class StatCommands {
 
     @Command(desc = "View an alliances stats for counters")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
     public String counterStats(@Me MessageChannel channel, DBAlliance alliance) {
         List<Map.Entry<DBWar, CounterStat>> counters = Locutus.imp().getWarDb().getCounters(Collections.singleton(alliance.getAlliance_id()));
 

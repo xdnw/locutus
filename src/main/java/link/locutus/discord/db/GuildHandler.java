@@ -53,6 +53,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
@@ -2340,25 +2341,52 @@ public class GuildHandler {
 
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
             if (aaId == null) return;
-            System.out.println("remove:||Send mail 2" + getGuild());
 
             Set<DBNation> members = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
             members.removeIf(f -> f.getPosition() < Rank.LEADER.id);
             members.removeIf(f -> f.getActive_m() > 2880);
             members.removeIf(f -> f.getVm_turns() > 0);
+            members.removeIf(DBNation::isGray);
             if (members.isEmpty()) return;
+            if (members.size() < 10 && !db.isWhitelisted()) {
+                Role iaRole = Roles.INTERNAL_AFFAIRS.toRole(db);
+                if (iaRole == null || guild.getMembersWithRoles(iaRole).isEmpty()) {
+                    try {
+                        RateLimitUtil.queueWhenFree(output.sendMessage("Please set `" + Settings.commandPrefix(true) + "aliasRole INTERNAL_AFFAIRS` and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
+                        db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                    return;
+                }
+                boolean allowed = false;
+                for (Member member : guild.getMembersWithRoles(iaRole)) {
+                    if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
+                        allowed = true;
+                    }
+                }
+                if (!allowed) {
+                    try {
+                        RateLimitUtil.queueWhenFree(output.sendMessage("No INTERNAL_AFFAIRS is currently online (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)"));
+                    } catch (Throwable e) {
+                        db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
+                        e.printStackTrace();
+                    }
+                    return;
+                }
+            }
             System.out.println("remove:||Send mail 3" + getGuild());
 
             if (!GuildDB.Key.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
                 try {
-                    RateLimitUtil.queueWhenFree(output.sendMessage("Only whitelisted or top 25 alliances (active member score) are (eligable"));
-                } catch (Throwable e) {
+                    RateLimitUtil.queueWhenFree(output.sendMessage("Only existant alliances can send messages (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
                     db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
+                } catch (Throwable e) {
                     e.printStackTrace();
                 }
                 return;
             }
-            System.out.println("remove:||Send mail 3" + getGuild());
+            System.out.println("remove:||Send mail 4" + getGuild());
 
             Long delay = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_DELAY);
             Runnable task = new CaughtRunnable() {

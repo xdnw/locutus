@@ -10,6 +10,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -43,11 +44,7 @@ public class Loot extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        GuildDB db = Locutus.imp().getGuildDB(server);
-        if (db != null && db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) {
-            return super.checkPermission(server, user);
-        }
-        return false;
+        return Roles.MEMBER.has(user, server);
     }
 
     @Override

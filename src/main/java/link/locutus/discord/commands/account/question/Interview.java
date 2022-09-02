@@ -80,7 +80,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
             }
         }
 
-        GuildMessageChannel channel = iaCat.getOrCreate(user);
+        GuildMessageChannel channel = iaCat.getOrCreate(user, true);
         if (channel == null) {
             String reason = "";
 

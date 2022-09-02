@@ -104,6 +104,13 @@ public enum Coalition {
         public boolean hasPermission(Guild guild, User user) {
             return Roles.ADMIN.hasOnRoot(user);
         }
+    },
+
+    FROZEN_FUNDS("Funds frozen by game admin or by member ban ingame") {
+        @Override
+        public boolean hasPermission(Guild guild, User user) {
+            return Roles.ADMIN.hasOnRoot(user);
+        }
     }
 
     ;

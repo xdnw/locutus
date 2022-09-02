@@ -495,7 +495,6 @@ public class AdminCommands {
     }
 
     @Command()
-    @WhitelistPermission
     @RolePermission(value = Roles.ADMIN)
     public String testRecruitMessage(@Me GuildDB db) throws IOException {
         JsonObject response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNation(Settings.INSTANCE.NATION_ID));

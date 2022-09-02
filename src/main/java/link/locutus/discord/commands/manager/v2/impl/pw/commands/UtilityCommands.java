@@ -804,9 +804,7 @@ public class UtilityCommands {
     }
 
     @Command
-    @WhitelistPermission
     @RolePermission(Roles.MEMBER)
-    @CoalitionPermission(Coalition.RAIDPERMS)
     public String loot(@Me DBNation me, NationOrAlliance nationOrAlliance) {
         double[] loot;
         StringBuilder extraInfo = new StringBuilder();
@@ -1028,7 +1026,6 @@ public class UtilityCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     @Command
-    @WhitelistPermission
     public String NationSheet(@Me MessageChannel channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
                            @Switch('e') boolean updateSpies, @Switch('s') SpreadSheet sheet,
                            @Switch('t') boolean updateTimer) throws GeneralSecurityException, IOException {

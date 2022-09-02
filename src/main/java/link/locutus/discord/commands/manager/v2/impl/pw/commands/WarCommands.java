@@ -228,7 +228,6 @@ public class WarCommands {
 
     @Command(desc = "Get a raw list of nones in war range. This is not sorted by loot")
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
-    @WhitelistPermission
     public String raidNone(@Me User author, @Me GuildDB db, @Me DBNation me, Set<DBNation> nations, @Default("5") Integer numResults, @Switch('s') Double score) {
         if (score == null) score = me.getScore();
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
@@ -464,7 +463,6 @@ public class WarCommands {
 
     @Command(desc = "Find blockade targets")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
     public String unblockade(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me MessageChannel channel,
                              Set<DBNation> allies,
                              @Default("*") Set<DBNation> targets,
@@ -671,7 +669,6 @@ public class WarCommands {
 
     @Command(desc = "Find nations who aren't protected, or are in an alliance unable to provide suitable counters")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
 //    @CoalitionPermission(Coalition.RAIDPERMS)
     public String unprotected(@Me MessageChannel channel, @Me GuildDB db, Set<DBNation> targets, @Me DBNation me, @Switch('r') @Default("10") @Range(min=1, max=25) Integer numResults, @Switch('d') boolean ignoreDNR, @Switch('a') boolean includeAllies,
                               @Switch('s') @Default("1.2") Double maxRelativeTargetStrength,
@@ -948,7 +945,6 @@ public class WarCommands {
             "Add `-w` to only list weak enemies\n" +
             "Add `-c` to only list enemies with less cities")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
     public String war(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
                       @Switch('i') boolean includeInactives,
                       @Switch('a') boolean includeApplicants,
@@ -1130,7 +1126,6 @@ public class WarCommands {
             "Add `-b` to include beige targets" +
             "Add `-s 1234` to filter by war range (score)")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
     public String damage(@Me MessageChannel channel, @Me DBNation me, @Me User author, Set<DBNation> nations, @Switch('a') boolean includeApps,
                          @Switch('i') boolean includeInactives, @Switch('w') boolean filterWeak, @Switch('n') boolean noNavy,
                          @Switch('m') boolean targetMeanInfra, @Switch('c') boolean targetCityMax, @Switch('b') boolean includeBeige,
@@ -1280,7 +1275,6 @@ public class WarCommands {
                     "The alliance argument is optional\n" +
                     "Use `success>80` to specify a cutoff for spyop success")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
     public String Counterspy(@Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch('s') @Range(min=0, max=100) int minSuccess) throws ExecutionException, InterruptedException, IOException {
         if (operations.isEmpty()) throw new IllegalArgumentException("Valid operations: " + StringMan.getString(SpyCount.Operation.values()));
         if (counterWith == null) {
@@ -1391,7 +1385,6 @@ public class WarCommands {
             "Use `success>80` to specify a cutoff for spyop success\n\n" +
             "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
     public String Spyops(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch('d') boolean directMesssage, @Switch('k') boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
         CompletableFuture<Message> msg = channel.sendMessage("Please wait... ").submit();
         targets.removeIf(f -> f.getActive_m() > 2880);
@@ -1573,7 +1566,6 @@ public class WarCommands {
             "Add `-l` to remove targets with loot history\n" +
             "Add `-d` to list targets currently on the dnr\n\n" +
             "e.g. `{prefix}IntelOpSheet 10d 'Error 404' 25`")
-    @WhitelistPermission
     @RolePermission(Roles.MILCOM)
     public String IntelOpSheet(@Me GuildDB db, @Timestamp long time, Set<DBNation> attackers, @Default() Integer dnrTopX,
                                @Switch('l') boolean ignoreWithLootHistory, @Switch('d') boolean ignoreDNR, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -1764,7 +1756,6 @@ public class WarCommands {
 
     @Command(desc = "Generate a spy blitz sheet")
     @RolePermission(Roles.MILCOM)
-    @WhitelistPermission
     public String SpySheet(@Me User author, @Me GuildDB db, Set<DBNation> attackers, Set<DBNation> defenders, @Default("nuke,missile,ships,aircraft,tanks,spies") Set<SpyCount.Operation> allowedTypes,
                            @Switch('f') boolean forceUpdate,
                            @Switch('e') boolean checkEspionageSlots,
@@ -1881,7 +1872,6 @@ public class WarCommands {
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation activity from a nation id\n" +
             "(use normal activity sheet unless you need the activity of a deleted nation)   ")
-    @WhitelistPermission
     public String ActivitySheetFromId(@Me GuildDB db, int nationId, @Default("2w") @Timestamp long trackTime, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
         DBNation nation = new DBNation();
         nation.setNation_id(nationId);
@@ -1892,7 +1882,6 @@ public class WarCommands {
     @Command(desc = "Generate a sheet of nation activity\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in")
-    @WhitelistPermission
     public String ActivitySheet(@Me GuildDB db, Set<DBNation> nations, @Default("2w") @Timestamp long trackTime, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVITY_SHEET);
@@ -2146,7 +2135,6 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command
-    @WhitelistPermission
     public String DeserterSheet(@Me GuildDB db, Set<DBAlliance> alliances, @Timestamp long cuttOff,
                                 @Default("*") Set<DBNation> filter,
                                 @Switch('a') boolean ignoreInactive,
@@ -2254,7 +2242,6 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command(desc = "List of nations and their relative military")
-    @WhitelistPermission
     public String combatantSheet(@Me GuildDB db, Set<DBAlliance> alliances) {
         Set<Integer> alliancesIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliancesIds, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
@@ -2461,7 +2448,6 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command
-    @WhitelistPermission
     public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me Message message, @Me User author, @Me MessageChannel channel,
                               String warsheet, String spysheet,
                               @Default("*") Set<DBNation> allowedNations, @Default("") String header,
@@ -2957,7 +2943,6 @@ public class WarCommands {
             "Add `-a` to filter out applicants\n" +
             "Add `-i` to filter out inactive members\n" +
             "Add `-e` to include enemies not attacking")
-    @WhitelistPermission
     public String counterSheet(@Me GuildDB db, @Default() Set<DBNation> enemyFilter, @Default() Set<DBAlliance> allies, @Switch('a') boolean excludeApplicants, @Switch('i') boolean excludeInactives, @Switch('e') boolean includeAllEnemies, @Switch('s') String sheetUrl) throws IOException, GeneralSecurityException {
         boolean includeProtectorates = true;
         boolean includeCoalition = true;
@@ -3342,7 +3327,6 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MILCOM)
-    @WhitelistPermission
     @Command(desc = "Auto generate counters\n" +
             "Add `-p` to ping users that are added\n" +
             "Add `-a` to skip adding users\n" +
@@ -3473,7 +3457,6 @@ public class WarCommands {
 
     private Map<Long, List<String>> blitzTargetCache = new HashMap<>();
 
-    @WhitelistPermission
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Generate a list of possible blitz targets (for practice)", aliases = {"blitzpractice","blitztargets"})
     public String BlitzPractice(@Me GuildDB db, int topX, @Me MessageChannel channel, @Me Message message, @Switch('p') Integer page) {

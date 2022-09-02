@@ -185,13 +185,22 @@ public class IACategory {
     }
 
     public GuildMessageChannel getOrCreate(User user) {
+        return getOrCreate(user, false);
+    }
+    public GuildMessageChannel getOrCreate(User user, boolean throwError) {
         Member member = guild.getMember(user);
-        if (member == null) return null;
+        if (member == null) {
+            if (throwError) throw new IllegalArgumentException("Member is null");
+            return null;
+        }
 
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null) {
             IAChannel iaChannel = channelMap.get(nation);
-            if (iaChannel != null && iaChannel.getChannel() != null) return iaChannel.getChannel();
+            if (iaChannel != null && iaChannel.getChannel() != null) {
+                TextChannel channel = guild.getTextChannelById(iaChannel.getChannel().getIdLong());
+                if (channel != null) return iaChannel.getChannel();
+            }
 
             for (TextChannel channel : getAllChannels()) {
                 String[] split = channel.getName().split("-");
@@ -214,7 +223,10 @@ public class IACategory {
         }
         Category category = getFreeCategory(activeCategories);
 
-        if (category == null) return null;
+        if (category == null) {
+            if (throwError) throw new IllegalArgumentException("No interview category found");
+            return null;
+        }
 
         String channelName;
         if (nation != null) {
@@ -222,7 +234,21 @@ public class IACategory {
         }
 
         TextChannel channel = RateLimitUtil.complete(category.createTextChannel(user.getName()));
-        if (channel == null) return null;
+        if (channel == null) {
+            if (guild.getCategoryById(category.getIdLong()) == null) {
+                fetchChannels();
+                category = getFreeCategory(activeCategories);
+                if (category == null) {
+                    if (throwError) throw new IllegalArgumentException("Interview category was deleted or is inaccessible");
+                    return null;
+                }
+                channel = RateLimitUtil.complete(category.createTextChannel(user.getName()));
+            }
+            if (channel == null) {
+                if (throwError) throw new IllegalArgumentException("Error creating channel");
+                return null;
+            }
+        }
         channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL).complete();
 
         Role interviewer = Roles.INTERVIEWER.toRole(guild);

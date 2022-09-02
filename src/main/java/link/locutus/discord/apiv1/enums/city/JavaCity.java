@@ -514,9 +514,9 @@ public class JavaCity {
 
             double cost = javaCity.calculateCostConverted(origin);
 
-            int imp = javaCity.getImpTotal() - baseImp;
-            double expectedProfit = profitPerImp * imp;
-            return ((newProfit - zeroedProfit) - expectedProfit) * days - cost;
+//            int imp = javaCity.getImpTotal() - baseImp;
+//            double expectedProfit = profitPerImp * imp;
+            return (newProfit * days - cost) / javaCity.getImpTotal();
         };
 
         valueFunction = modifyValueFunc.apply(valueFunction);

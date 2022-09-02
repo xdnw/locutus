@@ -350,7 +350,6 @@ public class TradeCommands {
 
     @Command
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
     public String trending(@Me GuildDB db, @Timestamp long time) throws GeneralSecurityException, IOException {
         Map<ResourceType, Map<Integer, LongAdder>> sold = new EnumMap<>(ResourceType.class);
         Map<ResourceType, Map<Integer, LongAdder>> bought = new EnumMap<>(ResourceType.class);
@@ -652,7 +651,6 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph comparing two resource stockpiles by day")
     @RolePermission(value = Roles.MEMBER)
-    @WhitelistPermission
     public String compareStockpileValueByDay(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int days) throws IOException, GeneralSecurityException {
         Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
@@ -783,7 +781,6 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade margin (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    @WhitelistPermission
     public String trademarginbyday(@Me MessageChannel channel, TradeManager manager, @Range(min=1, max=300) int days, @Default("true") boolean percent) throws IOException, GeneralSecurityException {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(days + 1);
@@ -875,7 +872,6 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade volume (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    @WhitelistPermission
     public String tradevolumebyday(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
         String title = "volume by day";
         rssTradeByDay(title, channel, days, offers -> manager.volumeByResource(offers));
@@ -884,7 +880,6 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade total (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    @WhitelistPermission
     public String tradetotalbyday(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
         String title = "total by day";
         rssTradeByDay(title, channel, days, offers -> manager.totalByResource(offers));
@@ -967,7 +962,6 @@ public class TradeCommands {
 
     @Command(desc = "List nations who have bought/sold the most of a resource over a period")
     @RolePermission(value = Roles.MEMBER)
-    @WhitelistPermission
     public String findTrader(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch('a') boolean groupByAlliance) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<DBTrade> offers = db.getTrades(cutoff);

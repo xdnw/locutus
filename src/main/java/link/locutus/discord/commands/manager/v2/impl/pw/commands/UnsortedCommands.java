@@ -497,7 +497,6 @@ public class UnsortedCommands {
 
     @Command(desc = "Generate an optimal build for a city")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
     public String optimalBuild(@Me Message message, @Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
             CityBuild build, @Default Integer days,
                                @Switch('x') @Filter("[0-9]{4}") String buildMMR,
@@ -564,7 +563,6 @@ public class UnsortedCommands {
     }
 
     @Command
-    @WhitelistPermission
     @RolePermission(Roles.MEMBER)
     public String checkCities(@Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
                               NationList nations, @Switch('p') boolean ping, @Switch('m') boolean mailResults, @Switch('c') boolean postInInterviewChannels) throws Exception {

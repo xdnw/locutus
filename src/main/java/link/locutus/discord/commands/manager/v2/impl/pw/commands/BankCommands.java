@@ -917,7 +917,7 @@ public class BankCommands {
             Integer aaId2 = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
             if (!isAdmin) {
-                if (offshore.disabledGuilds.contains(guildDb.getGuild().getIdLong())) {
+                if (offshore.isDisabled(guildDb.getGuild().getIdLong())) {
                     MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (logChannel != null) {
                         String msg = "Transfer error: " + guildDb.getGuild().toString() + " | " + aaId2 + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + (">");
@@ -1557,8 +1557,19 @@ public class BankCommands {
     @RolePermission(value = Roles.ADMIN)
     public String unlockTransfers(@Me GuildDB db, @Me User user, NationOrAllianceOrGuild alliance) {
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore.getGuildDB() != db) return "Please run in the offshore server";
         if (offshore == null) return "No offshore is set";
+        if (offshore.getGuildDB() != db) return "Please run in the offshore server";
+        Set<Long> coalition = offshore.getGuildDB().getCoalitionRaw(Coalition.FROZEN_FUNDS);
+        if (alliance.isAlliance()) {
+            if (coalition.contains((long) alliance.getAlliance_id())) return "Please use `!removecoalition FROZEN_FUNDS " +  alliance.getAlliance_id() + "`";
+            GuildDB otherDb = alliance.asAlliance().getGuildDB();
+            if (otherDb != null && coalition.contains(otherDb.getIdLong()))return "Please use `!removecoalition FROZEN_FUNDS " + otherDb.getIdLong() + "`";
+        } else {
+            if (coalition.contains((long) alliance.getIdLong())) return "Please use `!removecoalition FROZEN_FUNDS " +  alliance.getIdLong() + "`";
+            Integer aaId = alliance.asGuild().getOrNull(GuildDB.Key.ALLIANCE_ID);
+            if (aaId != null && coalition.contains((long) aaId))return "Please use `!removecoalition FROZEN_FUNDS " + aaId + "`";
+        }
+
         if (alliance.isGuild()) {
             offshore.disabledGuilds.remove(alliance.asGuild().getGuild().getIdLong());
         } else if (alliance.isAlliance()) {

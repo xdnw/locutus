@@ -102,6 +102,8 @@ public enum NationMeta {
 
     LAST_LOGIN_COUNT,
 
+    RECRUIT_AD_COUNT
+
     ;
 
     public static NationMeta[] values = values();

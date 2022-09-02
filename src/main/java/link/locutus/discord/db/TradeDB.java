@@ -237,7 +237,7 @@ public class TradeDB extends DBMainV2 {
         if (ids.isEmpty()) {
             return;
         }
-        executeStmt("DELETE FROM TRADES WHERE id tradeId " + StringMan.getString(ids));
+        executeStmt("DELETE FROM TRADES WHERE tradeId in " + StringMan.getString(ids));
     }
     public void saveTrades(Collection<DBTrade> trades) {
         executeBatch(trades, "INSERT OR REPLACE INTO `TRADES`(`tradeId`, `date`, `seller`, `buyer`, `resource`, `isBuy`, `quantity`, `ppu`, `type`,  `date_accepted`, `parent_id`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<DBTrade, PreparedStatement>() {

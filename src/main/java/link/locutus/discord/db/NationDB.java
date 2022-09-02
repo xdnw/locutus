@@ -808,7 +808,6 @@ public class NationDB extends DBMainV2 {
         return updateNations(ids, true, eventConsumer);
     }
     public Set<Integer> updateNations(List<Integer> ids, boolean allowPadding, Consumer<Event> eventConsumer) {
-        System.out.println("Fetching " + ids.size());
         Set<Integer> fetched = new LinkedHashSet<>();
         if (ids.isEmpty()) return fetched;
         ids = new ArrayList<>(ids);
@@ -1734,7 +1733,7 @@ public class NationDB extends DBMainV2 {
                     NationDB.this.dirtyNations.remove(nation.getId());
                 }
             }
-            updateNation(nation, true, eventConsumer, (prev, curr) -> dirtyNations.put(curr, prev));
+            updateNation(nation, eventConsumer, (prev, curr) -> dirtyNations.put(curr, prev));
             return false;
         };
 
@@ -1789,25 +1788,23 @@ public class NationDB extends DBMainV2 {
      * @param eventConsumer any nation events to call
      * @param nationsToSave (previous, current)
      */
-    private void updateNation(Nation nation, boolean nationInfo, Consumer<Event> eventConsumer, BiConsumer<DBNation, DBNation> nationsToSave) {
-        if (nationInfo) {
-            dirtyNations.remove(nation.getId());
+    private void updateNation(Nation nation, Consumer<Event> eventConsumer, BiConsumer<DBNation, DBNation> nationsToSave) {
+        dirtyNations.remove(nation.getId());
 
-            DBNation existing = getNation(nation.getId());
-            Consumer<Event> eventHandler;
-            if (existing == null) {
-                eventHandler = null;
-            } else {
-                eventHandler = eventConsumer;
-            }
-            AtomicBoolean isDirty = new AtomicBoolean();
-            DBNation newNation = updateNationInfo(existing, nation, eventHandler, isDirty);
-            if (isDirty.get()) {
-                nationsToSave.accept(existing, newNation);
-            }
-            if (existing == null && eventConsumer != null) {
-                eventConsumer.accept(new NationCreateEvent(null, newNation));
-            }
+        DBNation existing = getNation(nation.getId());
+        Consumer<Event> eventHandler;
+        if (existing == null) {
+            eventHandler = null;
+        } else {
+            eventHandler = eventConsumer;
+        }
+        AtomicBoolean isDirty = new AtomicBoolean();
+        DBNation newNation = updateNationInfo(existing, nation, eventHandler, isDirty);
+        if (isDirty.get()) {
+            nationsToSave.accept(existing, newNation);
+        }
+        if (existing == null && eventConsumer != null) {
+            eventConsumer.accept(new NationCreateEvent(null, newNation));
         }
         if (nation.getBankrecs() != null && !nation.getBankrecs().isEmpty()) {
             List<Bankrec> bankRecords = nation.getBankrecs();
@@ -1859,6 +1856,7 @@ public class NationDB extends DBMainV2 {
         if (base.updateNationInfo(copyOriginal, nation, eventConsumer)) {
             markDirty.set(true);
         }
+        processNationAllianceChange(copyOriginal, base);
         return base;
     }
 

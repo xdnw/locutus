@@ -138,7 +138,6 @@ public class PoliticsAndWarV3 {
 //
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
 
-                System.out.println("request " + graphQLRequest.toQueryString());
 
                 exchange = restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
@@ -503,7 +502,6 @@ public class PoliticsAndWarV3 {
                     return new GraphQLRequest(request, pagRespProj);
                 }, errorBehavior, WarsQueryResponse.class,
                 response -> {
-                    System.out.println("Fetch page");
                     WarPaginator paginator = response.wars();
                     PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
                     return pageInfo != null && pageInfo.getHasMorePages();
@@ -669,7 +667,6 @@ public class PoliticsAndWarV3 {
                 response -> {
                     BankrecPaginator paginator = response.bankrecs();
                     PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
-                    System.out.println("Page  " + pageInfo);
                     return pageInfo != null && pageInfo.getHasMorePages();
                 }, result -> {
                     BankrecPaginator paginator = result.bankrecs();

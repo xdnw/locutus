@@ -15,6 +15,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -29,10 +30,14 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.OnlineStatus;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
@@ -819,6 +824,8 @@ public class NationUpdateProcessor {
         if (previous.getActive_m() < 14400 && current == null) {
             processVMTransfers(previous, previous);
 
+            List<String> adminInfo = new ArrayList<>();
+
             String type = "DELETION";
             String body = previous.toEmbedString(false);
             String url = previous.getNationUrl();
@@ -826,22 +833,53 @@ public class NationUpdateProcessor {
                 String html = FileUtil.readStringFromURL(url);
                 Document dom = Jsoup.parse(html);
                 String alert = PnwUtil.getAlert(dom);
-                if (alert.startsWith("This nation was banned")) {
+                if (alert != null && alert.startsWith("This nation was banned")) {
                     alert = alert.replace("Visit your nation, or go to the search page.",  "");
                     type = "BAN";
                     body += "\n" + alert;
+
+                    if (previous.getAlliance_id() != 0 && previous.getPosition() > Rank.APPLICANT.id) {
+                        GuildDB db = Locutus.imp().getGuildDBByAA(previous.getAlliance_id());
+                        if (db != null && db.getOffshore() == Locutus.imp().getRootBank()) {
+                            body += "\n" + previous.getAllianceUrlMarkup(true);
+                            Locutus.imp().getRootDb().addCoalition(previous.getAlliance_id(), Coalition.FROZEN_FUNDS);
+                            adminInfo.add(previous.getAllianceUrlMarkup(true));
+                        }
+                    }
+                    User user = previous.getUser();
+                    for (Guild guild : user.getMutualGuilds()) {
+                        Member member = guild.getMember(user);
+                        if (member != null && member.hasPermission(Permission.ADMINISTRATOR)) {
+                            GuildDB db = Locutus.imp().getGuildDB(guild);
+                            if (db != null && db.getOffshore() == Locutus.imp().getRootBank()) {
+                                Locutus.imp().getRootDb().addCoalition(guild.getIdLong(), Coalition.FROZEN_FUNDS);
+                                body += "\nguild: " + guild;
+                                adminInfo.add(guild.toString());
+                            }
+                        }
+                    }
                 }
             } catch (Throwable ignore) {}
 
             String finalType = type;
             String finalBody = body;
+            String title = "Detected " + finalType + ": " + previous.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAllianceName();
             AlertUtil.forEachChannel(BankAlerts.class, GuildDB.Key.DELETION_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB db) {
-                    String title = "Detected " + finalType + ": " + previous.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAllianceName();
                     AlertUtil.displayChannel(title, finalBody, channel.getIdLong());
                 }
             });
+
+            if (!adminInfo.isEmpty()) {
+                MessageChannel channel = Locutus.imp().getRootDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                if (channel != null) {
+                    Message message = new MessageBuilder().append(new EmbedBuilder().setTitle(title, finalBody)).append("<@217897994375266304>\n" +
+                            "See `$unlockTransfers <alliance-id>` and `$unlockTransfers <guild-id>`\n" +
+                            "See `!coalitions FROZEN_FUNDS`").build();
+                    channel.sendMessage(message).queue();
+                }
+            }
         }
     }
 }

@@ -629,6 +629,26 @@ public class IACommands {
         return response.toString();
     }
 
+    @Command(desc = "Ranking of nations by how many advertisements they have registered (WIP)")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
+    public String adRanking(@Me User author, @Me GuildDB db, @Me MessageChannel channel, @Me Message message) {
+        Role role = Roles.MEMBER.toRole(db);
+        if (role == null) throw new IllegalArgumentException("No member role is set via `" + Settings.commandPrefix(true) + "aliasRole`");
+
+        Map<DBNation, Integer> rankings = new HashMap<>();
+
+        for (Member member : db.getGuild().getMembers()) {
+            DBNation nation = DiscordUtil.getNation(member.getUser());
+            if (nation == null) continue;
+            ByteBuffer countBuf = nation.getMeta(NationMeta.RECRUIT_AD_COUNT);
+            if (countBuf == null) continue;
+            rankings.put(nation, countBuf.getInt());
+        }
+        if (rankings.isEmpty()) return "No rankings founds";
+        new SummedMapRankBuilder<>(rankings).sort().nameKeys(DBNation::getName).build(author, channel, DiscordUtil.trimContent(message.getContentRaw()), "Most advertisements");
+        return null;
+    }
+
     @Command
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     public String incentiveRanking(@Me GuildDB db, @Me MessageChannel channel, @Me Message message, @Timestamp long timestamp) {
@@ -686,7 +706,6 @@ public class IACommands {
 
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
             "e.g. `{prefix}lootValueSheet #cities<10,#position>1,#active_m<2880,someAlliance`")
-    @WhitelistPermission
     @RolePermission(Roles.MILCOM)
     public String lootValueSheet(@Me GuildDB db, Set<DBNation> attackers, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
         attackers.removeIf(f -> f.getActive_m() > 10000);
@@ -1065,7 +1084,6 @@ public class IACommands {
     }
 
     @Command(desc = "Bulk send the result of a Locutus command to a list of nations")
-    @HasApi
     @RolePermission(value=Roles.ADMIN)
     public String mailCommandOutput(@Me GuildDB db, @Me Guild guild, @Me User author, @Me MessageChannel channel, Set<DBNation> nations, String subject, @TextArea String command, @TextArea String body, @Switch('s') SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
@@ -1087,8 +1105,16 @@ public class IACommands {
             return "Max allowed: 300 nations.";
         }
 
+        if (nations.isEmpty()) return "No nations specified";
+
+        Message message = channel.sendMessage("Please wait...").complete();
+        long start = System.currentTimeMillis();
+
         int success = 0;
         for (DBNation nation : nations) {
+            if (-start + (start = System.currentTimeMillis()) > 5000) {
+                message.editMessage("Running for: " + nation.getNation() + "...").queue();
+            }
             User nationUser = nation.getUser();
             String subjectFormat = DiscordUtil.format(guild, channel, author, nation, subject);
             String bodyFormat = DiscordUtil.format(guild, channel, author, nation, body);
@@ -1147,6 +1173,7 @@ public class IACommands {
 
     @Command(desc = "Bulk send ingame mail from a google sheet\n" +
             "Columns: nation, subject, body")
+    @HasApi
     @RolePermission(Roles.ADMIN)
     public String mailSheet(@Me GuildDB db, @Me Message message, @Me MessageChannel channel, @Me User author, SpreadSheet sheet, @Switch('f') boolean confirm) {
         List<List<Object>> data = sheet.loadValues();
@@ -1433,7 +1460,7 @@ public class IACommands {
             return "No categories found starting with: `interview`";
         }
 
-        GuildMessageChannel channel = iaCat.getOrCreate(user);
+        GuildMessageChannel channel = iaCat.getOrCreate(user, true);
         if (channel == null) return "Unable to find or create channel (does a category called `interview` exist?)";
 
         return channel.getAsMention();

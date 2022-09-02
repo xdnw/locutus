@@ -351,7 +351,7 @@ public class BankWith extends Command {
             Integer aaId2 = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
             if (!isAdmin) {
-                if (offshore.disabledGuilds.contains(guildDb.getGuild().getIdLong())) {
+                if (offshore.isDisabled(guildDb.getGuild().getIdLong())) {
                     MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (logChannel != null) {
                         String msg = "Transfer error: " + guild.toString() + " | " + aaId2 + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + (">");

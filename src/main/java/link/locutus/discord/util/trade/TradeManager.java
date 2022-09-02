@@ -67,14 +67,20 @@ public class TradeManager {
     }
 
     private void updateLowHighCache() {
-        low = new int[ResourceType.values.length];
-        Arrays.fill(low, Integer.MAX_VALUE);
-        high = new int[ResourceType.values.length];
+        int[] lowTmp = new int[ResourceType.values.length];
+        int[] highTmp = new int[ResourceType.values.length];
+        Arrays.fill(highTmp, Integer.MAX_VALUE);
         for (DBTrade trade : activeTradesById.values()) {
             if (trade.getType() != TradeType.GLOBAL) continue;
-            low[trade.getResource().ordinal()] = Math.min(low[trade.getResource().ordinal()], trade.getPpu());
-            high[trade.getResource().ordinal()] = Math.max(high[trade.getResource().ordinal()], trade.getPpu());
+            if (trade.isBuy()) {
+                lowTmp[trade.getResource().ordinal()] = Math.max(lowTmp[trade.getResource().ordinal()], trade.getPpu());
+            } else {
+                highTmp[trade.getResource().ordinal()] = Math.min(highTmp[trade.getResource().ordinal()], trade.getPpu());
+            }
         }
+        System.out.println(StringMan.getString(lowTmp) + " | " + StringMan.getString(highTmp));
+        low = lowTmp;
+        high = highTmp;
     }
 
     private void loadActiveTrades() {
@@ -180,7 +186,6 @@ public class TradeManager {
         long[][] ppuHigh = new long[ResourceType.values.length][];
         long[][] ppuLow = new long[ResourceType.values.length][];
         int[] ppuWindowLow = new int[ResourceType.values.length];
-        int[] ppuWindowHigh = new int[ResourceType.values.length];
 
         for (int i = 0; i < ResourceType.values.length; i++) {
             ResourceType type = ResourceType.values[i];
@@ -189,7 +194,6 @@ public class TradeManager {
             int max = maxF.apply(type);
 
             ppuWindowLow[i] = min;
-            ppuWindowHigh[i] = max;
 
             if (min == -1) {
                 ppuHigh[i] = new long[2];
@@ -202,10 +206,10 @@ public class TradeManager {
             ppuLow[i] = new long[len];
         }
 
-        for ( DBTrade offer : trades) {
+        for (DBTrade offer : trades) {
             ResourceType type = offer.getResource();
             int factor = type == ResourceType.FOOD ? 1 : 25;
-            if (offer.getPpu() <= 20 * factor || offer.getPpu() > 300 * factor) {
+            if (offer.getPpu() <= 20 * factor || offer.getPpu() > (type == ResourceType.FOOD ? 200 : 10000)) {
                 continue;
             }
             long[] ppuArr;
@@ -220,7 +224,6 @@ public class TradeManager {
                 ppuArr[1] += offer.getPpu() * (long) offer.getQuantity();
             } else {
                 int arrI = offer.getPpu() - min;
-                if (ppuArr == null) System.out.println("remove:||Null ppu " + type + " | " + offer.getTradeId());
                 if (arrI >= 0 && arrI < ppuArr.length) {
                     ppuArr[arrI] += offer.getQuantity();
                 }
@@ -692,6 +695,7 @@ public class TradeManager {
                 if (current.isActive()) {
                     activeTradesById.put(current.getTradeId(), current);
                 } else {
+                    current.setDate_accepted(0);
                     activeTradesById.remove(current.getTradeId());
                 }
             }
