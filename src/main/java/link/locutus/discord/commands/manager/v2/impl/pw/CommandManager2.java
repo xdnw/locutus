@@ -96,7 +96,7 @@ public class CommandManager2 {
         legacy.registerCommands(new UnsortedCommands());
         legacy.registerSubCommands(new ReportCommands(), "report");
 
-        this.commands.registerCommandsWithMapping(legacy, loadDefaultMapping(), 2, true);
+        this.commands.registerCommandsWithMapping(legacy, loadDefaultMapping(), 2, false);
 
         return this;
     }

@@ -7,8 +7,10 @@ import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class CommandGroup implements ICommandGroup {
     private final ValueStore store;
@@ -237,6 +239,16 @@ public class CommandGroup implements ICommandGroup {
             if (path.size() > maxDepth) throw new IllegalArgumentException("Path " + StringMan.getString(path) + " is too deep");
 
             registerWithPath(callable, path, split[split.length - 1]);
+        }
+
+        if (!ignoreMissingMapping) {
+            Set<Method> legacyMethod = commands.getParametricCallables(f -> true).stream().map(f -> f.getMethod()).collect(Collectors.toSet());
+            Set<Method> currentMethods = getParametricCallables(f -> true).stream().map(f -> f.getMethod()).collect(Collectors.toSet());
+            for (Method method : legacyMethod) {
+                if (!currentMethods.contains(method)) {
+                    throw new IllegalArgumentException("Could not find mapping for method " + method.getName() + " | " + StringMan.getString(method.getGenericParameterTypes()));
+                }
+            }
         }
     }
 }
