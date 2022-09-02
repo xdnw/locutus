@@ -232,11 +232,11 @@ public class SlashCommandManager extends ListenerAdapter {
 //            }
 //        }
 
-
         Guild guild = root.getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER); // testing
         System.out.println("remove:||Guild " + guild + " | " + toRegister.size());
         if (!toRegister.isEmpty()) {
-            guild.updateCommands().addCommands(toRegister).queue();
+            Locutus.imp().getDiscordApi(guild.getIdLong()).updateCommands().addCommands(toRegister).queue();
+//            guild.updateCommands().addCommands(toRegister).queue();
         }
     }
 

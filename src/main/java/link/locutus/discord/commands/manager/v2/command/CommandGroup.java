@@ -143,7 +143,8 @@ public class CommandGroup implements ICommandGroup {
 
     @Override
     public String desc(ValueStore store) {
-        return null;
+        return " - " + StringMan.join(primarySubCommandIds(), "\n - ");
+//        return null;
     }
 
     public Map<String, CommandCallable> getAllowedCommands(ValueStore store, PermissionHandler permHandler) {
