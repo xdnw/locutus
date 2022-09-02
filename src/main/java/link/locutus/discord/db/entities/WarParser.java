@@ -1,6 +1,8 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -115,9 +117,24 @@ public class WarParser {
         return ofNatObj(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end);
     }
 
+    public WarParser allowedWarTypes(Set<WarType> allowedWarTypes) {
+        if (allowedWarTypes != null) getWars().entrySet().removeIf(f -> !allowedWarTypes.contains(f.getValue()));
+        return this;
+    }
+
+    public WarParser allowWarStatuses(Set<WarStatus> statuses) {
+        if (statuses != null) getWars().entrySet().removeIf(f -> !statuses.contains(f.getValue().status));
+        return this;
+    }
+
+    public WarParser allowedAttackTypes(Set<AttackType> attackTypes) {
+        if (attackTypes != null) getAttacks().removeIf(f -> !attackTypes.contains(f));
+        return this;
+    }
+
     public Map<Integer, DBWar> getWars() {
         if (this.wars == null) {
-            this.wars = Locutus.imp().getWarDb().getWars(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end, true);
+            this.wars = Locutus.imp().getWarDb().getWars(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end);
         }
         return wars;
     }
@@ -295,5 +312,9 @@ public class WarParser {
     }
     public String getNameB() {
         return nameB;
+    }
+
+    public DBNation getNation(int nationId, DBWar war) {
+        return DBNation.byId(nationId);
     }
 }

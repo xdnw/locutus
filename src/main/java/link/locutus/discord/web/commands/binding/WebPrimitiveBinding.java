@@ -26,8 +26,10 @@ import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.CityRanges;
@@ -69,6 +71,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.web.WebUtil.createInput;
@@ -76,6 +79,7 @@ import static link.locutus.discord.web.WebUtil.generateSearchableDropdown;
 import static link.locutus.discord.web.WebUtil.wrapLabel;
 
 public class WebPrimitiveBinding extends BindingHelper {
+
 
     @HtmlInput
     @Binding(types={int.class, Integer.class}, examples = {"3"})
@@ -286,6 +290,14 @@ public class WebPrimitiveBinding extends BindingHelper {
         return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
     }
 
+
+    @HtmlInput
+    @Binding(types=DBWar.class)
+    public String war(ParameterData param) {
+        String pattern = Pattern.quote(Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war") + "=[0-9]+";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
+    }
+
     /*
     --------------------------------------------------------------------
      */
@@ -485,6 +497,12 @@ public class WebPrimitiveBinding extends BindingHelper {
         return multipleSelect(param, objects, toNameValue, false);
     }
 
+    public <T> String multipleSelectEmum(Class<T> emum, ValueStore valueStore) {
+        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+        List<T> options = Arrays.asList(emum.getEnumConstants());
+        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.toString(), t.toString()), true);
+    }
+
     public <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue, boolean multiple) {
         if (true) {
             return WebUtil.generateSearchableDropdown(param, objects, new QuadConsumer<T, JsonArray, JsonArray, JsonArray>() {
@@ -526,6 +544,10 @@ public class WebPrimitiveBinding extends BindingHelper {
     public final Set<DBAlliance> ALLIANCES_KEY = null;
     public final List<ResourceType> RESOURCE_LIST_KEY = null;
     public final Set<WarStatus> WARSTATUSES_KEY = null;
+
+    public final Set<WarType> WARTYPES_KEY = null;
+
+    public final Set<AttackType> ATTACKTYPES_KEY = null;
     public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
     public final Map<MilitaryUnit, Long> UNIT_MAP_KEY = null;
 
@@ -585,8 +607,23 @@ public class WebPrimitiveBinding extends BindingHelper {
                     store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                         ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                         List<WarStatus> options = Arrays.asList(WarStatus.values());
-
                         return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                    }));
+                });
+            }
+            {
+                Key key = Key.of(getClass().getDeclaredField("WARTYPES_KEY").getGenericType(), HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        return multipleSelectEmum(WarType.class, valueStore);
+                    }));
+                });
+            }
+            {
+                Key key = Key.of(getClass().getDeclaredField("ATTACKTYPES_KEY").getGenericType(), HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        return multipleSelectEmum(AttackType.class, valueStore);
                     }));
                 });
             }
@@ -839,6 +876,12 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
+    @Binding(types= AttackType.class)
+    public String AttackType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(AttackType.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+    }
+
+    @HtmlInput
     @Binding(types=Rank.class)
     public String rank(ParameterData param) {
         return multipleSelect(param, Arrays.asList(Rank.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
@@ -937,6 +980,12 @@ public class WebPrimitiveBinding extends BindingHelper {
     @Binding(types= TreatyType.class)
     public String TreatyType(ParameterData param) {
         return multipleSelect(param, Arrays.asList(TreatyType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= ReportCommands.ReportType.class)
+    public String ReportType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(ReportCommands.ReportType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
     }
 
     @HtmlInput

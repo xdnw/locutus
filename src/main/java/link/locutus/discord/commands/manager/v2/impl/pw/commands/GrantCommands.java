@@ -77,7 +77,7 @@ public class GrantCommands {
 //
 //    @Command
 //    @RolePermission(Roles.MEMBER)
-//    public String land(NationList nations, double landUpTo, @Default CityFilter cities, @Switch('m') boolean onlyMissingFunds, @Switch('e') int expireAfterDays, @Switch('f') boolean bypassChecks) {
+//    public String land(NationList nations, double landUpTo, @Default CityFilter cities, @Switch("m") boolean onlyMissingFunds, @Switch("e") int expireAfterDays, @Switch("f") boolean bypassChecks) {
 //
 //    }
 
@@ -157,7 +157,7 @@ public class GrantCommands {
     @WhitelistPermission
     @Command
     @RolePermission(Roles.ECON_LOW_GOV)
-    public synchronized String approveGrant(@Me MessageChannel channel, @Me DBNation banker, @Me Message message, @Me GuildDB db, UUID key, @Switch('f') boolean force) {
+    public synchronized String approveGrant(@Me MessageChannel channel, @Me DBNation banker, @Me Message message, @Me GuildDB db, UUID key, @Switch("f") boolean force) {
         try {
             Grant grant = Grant.getApprovedGrant(db.getIdLong(), key);
             if (grant == null) {

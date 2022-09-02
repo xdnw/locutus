@@ -3140,7 +3140,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "If this nation is not daily active and lost their most recent war")
     public boolean lostInactiveWar() {
         if (getActive_m() < 2880) return false;
-        DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, nation_id);
+        DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id);
         if (lastWar != null && lastWar.defender_id == nation_id && lastWar.status == WarStatus.ATTACKER_VICTORY) {
             long lastActiveCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(Math.max(active_m() + 1220, 7200));
             if (lastWar.date > lastActiveCutoff) return true;

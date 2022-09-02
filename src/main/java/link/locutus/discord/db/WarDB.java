@@ -68,17 +68,33 @@ public class WarDB extends DBMainV2 {
         super(Settings.INSTANCE.DATABASE, "war", true);
     }
 
-    public void load() {
-        warsById = getWars();
-        warsByAllianceId = new Int2ObjectOpenHashMap<>();
-        warsByNationId = new Int2ObjectOpenHashMap<>();
-        for (Map.Entry<Integer, DBWar> entry : warsById.entrySet()) {
-            DBWar war = entry.getValue();
-            if (war.attacker_aa != 0) warsByAllianceId.computeIfAbsent(war.attacker_aa, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
-            if (war.defender_aa != 0) warsByAllianceId.computeIfAbsent(war.defender_aa, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
+    private void setWar(DBWar war) {
+        synchronized (warsByAllianceId) {
+            if (war.attacker_aa != 0)
+                warsByAllianceId.computeIfAbsent(war.attacker_aa, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
+            if (war.defender_aa != 0)
+                warsByAllianceId.computeIfAbsent(war.defender_aa, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
+        }
+        synchronized (warsByNationId) {
             warsByNationId.computeIfAbsent(war.attacker_id, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
             warsByNationId.computeIfAbsent(war.defender_id, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
         }
+        synchronized (warsById) {
+            warsById.put(war.warId, war);
+        }
+    }
+
+    public void load() {
+        warsById = new Int2ObjectOpenHashMap<>();
+        warsByAllianceId = new Int2ObjectOpenHashMap<>();
+        warsByNationId = new Int2ObjectOpenHashMap<>();
+
+        query("SELECT * FROM wars", f -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                DBWar war = create(rs);
+                setWar(war);
+            }
+        });
 
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
 
@@ -913,6 +929,9 @@ public class WarDB extends DBMainV2 {
     }
 
     public void saveWars(Collection<DBWar> values) {
+        for (DBWar war : values) {
+            setWar(war);
+        }
         Map<Integer, DBNation> nationSnapshots = new HashMap<>();
         for (DBWar war : values) {
             DBNation attacker = war.getNation(true);
@@ -1031,7 +1050,9 @@ public class WarDB extends DBMainV2 {
 
     public List<DBWar> getWarsByAlliance(int attacker) {
         synchronized (warsByAllianceId) {
-            return new ArrayList<>(warsByAllianceId.get(attacker).values());
+            Map<Integer, DBWar> wars = warsByAllianceId.get(attacker);
+            if (wars == null) return Collections.emptyList();
+            return new ArrayList<>(wars.values());
         }
     }
 
@@ -1046,7 +1067,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public DBWar getLastDefensiveWar(int nation) {
-        getWarsByNation(nation).stream().filter(f -> f.defender_id == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
+        return getWarsByNation(nation).stream().filter(f -> f.defender_id == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
 
     public DBWar getLastWar(int nationId) {
@@ -1098,125 +1119,92 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<DBWar> getWarsById(Set<Integer> warIds) {
-        String query = "SELECT * from wars WHERE `id` in " + StringMan.getString(warIds);
-        List<DBWar> list = new ArrayList<>();
-        try (PreparedStatement stmt= getConnection().prepareStatement(query)) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBWar war = create(rs);
-                    list.add(war);
-                }
+        List<DBWar> result = new ArrayList<>();
+        synchronized (warsById) {
+            for (Integer id : warIds) {
+                DBWar war = warsById.get(id);
+                if (war != null) result.add(war);
             }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
         }
+        return result;
     }
-
-    public List<DBAttack> getAttacks(Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {
-        if (coal1Alliances.isEmpty() && coal1Nations.isEmpty() && coal2Alliances.isEmpty() && coal2Nations.isEmpty()) return Collections.emptyList();
-
-//        String warQuery = generateWarQuery("b.", coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end, union);
-//        warQuery = warQuery.split(" WHERE ")[1];
-//        String attQuery = "SELECT a.* " +
-////                "FROM attacks2 a " +
-////                "LEFT OUTER JOIN wars b on " +
-////                "b.id = a.war_id WHERE " + warQuery;
-
-        String warQuery = generateWarQuery("", coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end, union);
-        warQuery = warQuery.split(" WHERE ")[1];
-        String attQuery = "SELECT * FROM attacks2 WHERE war_id in (SELECT id from wars WHERE " + warQuery + ")";
-
-        ArrayList<DBAttack> list = new ArrayList<>();
-        try (PreparedStatement stmt= getConnection().prepareStatement(attQuery)) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(createAttack(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public Map<Integer, DBWar> getWars(Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {
+    public Map<Integer, DBWar> getWars(Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end) {
         if (coal1Alliances.isEmpty() && coal1Nations.isEmpty() && coal2Alliances.isEmpty() && coal2Nations.isEmpty()) return Collections.emptyMap();
 
-        String query = generateWarQuery("", coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end, union);
+        Set<Integer> alliances = new HashSet<>();
+        alliances.addAll(coal1Alliances);
+        alliances.addAll(coal2Alliances);
+        Set<Integer> nations = new HashSet<>();
+        nations.addAll(coal1Nations);
+        nations.addAll(coal2Nations);
 
-        Map<Integer, DBWar> wars = new LinkedHashMap<>();
-        try (PreparedStatement stmt= getConnection().prepareStatement(query)) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBWar war = create(rs);
-                    wars.put(war.warId, war);
-                }
+        Predicate<DBWar> isAllowed = new Predicate<DBWar>() {
+            @Override
+            public boolean test(DBWar war) {
+                if (war.date < start || war.date > end) return false;
+                return ((coal1Alliances.contains(war.attacker_aa) || coal1Nations.contains(war.attacker_id)) && (coal2Alliances.contains(war.defender_aa) || coal2Nations.contains(war.defender_id))) ||
+                        ((coal1Alliances.contains(war.defender_aa) || coal1Nations.contains(war.defender_id)) && (coal2Alliances.contains(war.attacker_aa) || coal2Nations.contains(war.attacker_id)));
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        };
 
-        return wars;
+        return getWarsForNationOrAlliance(alliances.isEmpty() ? null : f -> alliances.contains(f), nations.isEmpty() ? null : f -> nations.contains(f), isAllowed);
     }
-
-    private String generateWarQuery(String prefix, Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {
-        List<String> requirements = new ArrayList<>();
-        if (start > 0) {
-            requirements.add(prefix + "date > " + start);
-        }
-        if (end < System.currentTimeMillis()) {
-            requirements.add(prefix + "date < " + end);
-        }
-
-        List<String> attReq = new ArrayList<>();
-        if (!coal1Alliances.isEmpty()) {
-            if (coal1Alliances.size() == 1) {
-                Integer id = coal1Alliances.iterator().next();
-                attReq.add(prefix + "attacker_aa = " + id);
-            } else {
-                attReq.add(prefix + "attacker_aa in " + StringMan.getString(coal1Alliances));
-            }
-        }
-        if (!coal1Nations.isEmpty()) {
-            if (coal1Nations.size() == 1) {
-                Integer id = coal1Nations.iterator().next();
-                attReq.add(prefix + "attacker_id = " + id);
-            } else {
-                attReq.add(prefix + "attacker_id in " + StringMan.getString(coal1Nations));
-            }
-        }
-
-        List<String> defReq = new ArrayList<>();
-        if (!coal2Alliances.isEmpty()) {
-            if (coal2Alliances.size() == 1) {
-                Integer id = coal2Alliances.iterator().next();
-                defReq.add(prefix + "defender_aa = " + id);
-            } else {
-                defReq.add(prefix + "defender_aa in " + StringMan.getString(coal2Alliances));
-            }
-        }
-        if (!coal2Nations.isEmpty()) {
-            if (coal2Nations.size() == 1) {
-                Integer id = coal2Nations.iterator().next();
-                defReq.add(prefix + "defender_id = " + id);
-            } else {
-                defReq.add(prefix + "defender_id in " + StringMan.getString(coal2Nations));
-            }
-        }
-
-        List<String> natOrAAReq = new ArrayList<>();
-        if (!attReq.isEmpty()) natOrAAReq.add("(" + StringMan.join(attReq, " AND ") + ")");
-        if (!defReq.isEmpty()) natOrAAReq.add("(" + StringMan.join(defReq, " AND ") + ")");
-        String natOrAAReqStr = "(" + StringMan.join(natOrAAReq, union ? " AND " : " OR ") + ")";
-        requirements.add(natOrAAReqStr);
-
-
-        String query = "SELECT * from wars WHERE " + StringMan.join(requirements, " AND ");
-        return query;
-    }
+//
+//    private String generateWarQuery(String prefix, Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {
+//        List<String> requirements = new ArrayList<>();
+//        if (start > 0) {
+//            requirements.add(prefix + "date > " + start);
+//        }
+//        if (end < System.currentTimeMillis()) {
+//            requirements.add(prefix + "date < " + end);
+//        }
+//
+//        List<String> attReq = new ArrayList<>();
+//        if (!coal1Alliances.isEmpty()) {
+//            if (coal1Alliances.size() == 1) {
+//                Integer id = coal1Alliances.iterator().next();
+//                attReq.add(prefix + "attacker_aa = " + id);
+//            } else {
+//                attReq.add(prefix + "attacker_aa in " + StringMan.getString(coal1Alliances));
+//            }
+//        }
+//        if (!coal1Nations.isEmpty()) {
+//            if (coal1Nations.size() == 1) {
+//                Integer id = coal1Nations.iterator().next();
+//                attReq.add(prefix + "attacker_id = " + id);
+//            } else {
+//                attReq.add(prefix + "attacker_id in " + StringMan.getString(coal1Nations));
+//            }
+//        }
+//
+//        List<String> defReq = new ArrayList<>();
+//        if (!coal2Alliances.isEmpty()) {
+//            if (coal2Alliances.size() == 1) {
+//                Integer id = coal2Alliances.iterator().next();
+//                defReq.add(prefix + "defender_aa = " + id);
+//            } else {
+//                defReq.add(prefix + "defender_aa in " + StringMan.getString(coal2Alliances));
+//            }
+//        }
+//        if (!coal2Nations.isEmpty()) {
+//            if (coal2Nations.size() == 1) {
+//                Integer id = coal2Nations.iterator().next();
+//                defReq.add(prefix + "defender_id = " + id);
+//            } else {
+//                defReq.add(prefix + "defender_id in " + StringMan.getString(coal2Nations));
+//            }
+//        }
+//
+//        List<String> natOrAAReq = new ArrayList<>();
+//        if (!attReq.isEmpty()) natOrAAReq.add("(" + StringMan.join(attReq, " AND ") + ")");
+//        if (!defReq.isEmpty()) natOrAAReq.add("(" + StringMan.join(defReq, " AND ") + ")");
+//        String natOrAAReqStr = "(" + StringMan.join(natOrAAReq, union ? " AND " : " OR ") + ")";
+//        requirements.add(natOrAAReqStr);
+//
+//
+//        String query = "SELECT * from wars WHERE " + StringMan.join(requirements, " AND ");
+//        return query;
+//    }
 
     public void saveAttacks(Collection<DBAttack> values) {
         for (DBAttack attack : values) {
@@ -1932,44 +1920,56 @@ public class WarDB extends DBMainV2 {
     }
 
     public int countWarsByNation(int nation_id, long date) {
-        String query = "SELECT COUNT(*) from wars WHERE date > ? AND (attacker_id = ? OR defender_id = ?)";
-        int[] result = new int[1];
-        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, date);
-            stmt.setInt(2, nation_id);
-            stmt.setInt(3, nation_id);
-        }, (ThrowingConsumer<ResultSet>) elem -> result[0] = elem.getInt(1));
-        return result[0];
+        if (date == 0) {
+            return warsByNationId.getOrDefault(nation_id, Collections.emptyMap()).size();
+        }
+        synchronized (warsByNationId) {
+            Map<Integer, DBWar> wars = warsByNationId.get(nation_id);
+            if (wars == null) return 0;
+            int total = 0;
+            for (DBWar war : wars.values()) {
+                if (war.date > date) total++;
+            }
+            return total;
+        }
     }
 
     public int countOffWarsByNation(int nation_id, long date) {
-        String query = "SELECT COUNT(*) from wars WHERE attacker_id = ? AND date > ?";
-        int[] result = new int[1];
-        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, nation_id);
-            stmt.setLong(2, date);
-        }, (ThrowingConsumer<ResultSet>) elem -> result[0] = elem.getInt(1));
-        return result[0];
+        synchronized (warsByNationId) {
+            Map<Integer, DBWar> wars = warsByNationId.get(nation_id);
+            if (wars == null) return 0;
+            int total = 0;
+            for (DBWar war : wars.values()) {
+                if (war.attacker_id == nation_id && war.date > date) total++;
+            }
+            return total;
+        }
     }
 
     public int countDefWarsByNation(int nation_id, long date) {
-        String query = "SELECT COUNT(*) from wars WHERE defender_id = ? AND date > ?";
-        int[] result = new int[1];
-        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, nation_id);
-            stmt.setLong(2, date);
-        }, (ThrowingConsumer<ResultSet>) elem -> result[0] = elem.getInt(1));
-        return result[0];
+        synchronized (warsByNationId) {
+            Map<Integer, DBWar> wars = warsByNationId.get(nation_id);
+            if (wars == null) return 0;
+            int total = 0;
+            for (DBWar war : wars.values()) {
+                if (war.defender_id == nation_id && war.date > date) total++;
+            }
+            return total;
+        }
     }
 
     public int countWarsByAlliance(int alliance_id, long date) {
-        String query = "SELECT COUNT(*) from wars WHERE date > ? AND (attacker_aa = ? OR defender_a = ?)";
-        int[] result = new int[1];
-        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, date);
-            stmt.setInt(2, alliance_id);
-            stmt.setInt(3, alliance_id);
-        }, (ThrowingConsumer<ResultSet>) elem -> result[0] = elem.getInt(1));
-        return result[0];
+        if (date == 0) {
+            return warsByAllianceId.getOrDefault(alliance_id, Collections.emptyMap()).size();
+        }
+        synchronized (warsByAllianceId) {
+            Map<Integer, DBWar> wars = warsByAllianceId.get(alliance_id);
+            if (wars == null) return 0;
+            int total = 0;
+            for (DBWar war : wars.values()) {
+                if (war.date > date) total++;
+            }
+            return total;
+        }
     }
 }

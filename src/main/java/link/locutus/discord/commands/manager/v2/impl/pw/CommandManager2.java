@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.commands.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -35,6 +36,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.io.File;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -72,28 +74,35 @@ public class CommandManager2 {
 
         StockCommands stock = new StockCommands();
 
-        this.commands.registerSubCommands(stock, "stock");
-//        this.commands.registerCommands(stock);
-        this.commands.registerCommands(new UtilityCommands());
-        this.commands.registerCommands(new BankCommands());
-        this.commands.registerCommands(new StatCommands());
-        this.commands.registerCommands(new IACommands());
-        this.commands.registerCommands(new AttackCommands());
-        this.commands.registerCommands(new AdminCommands());
-        this.commands.registerCommands(new DiscordCommands());
-        this.commands.registerCommands(new FACommands());
-        this.commands.registerCommands(new FunCommands());
-        this.commands.registerCommands(new PlayerSettingCommands());
-//        this.commands.registerSubCommands(new ExchangeCommands(), "exchange", "corp", "corporation");
-        this.commands.registerCommands(new LoanCommands());
-        this.commands.registerCommands(new TradeCommands());
-        this.commands.registerCommands(new WarCommands());
-        this.commands.registerCommands(new GrantCommands());
+        CommandGroup legacy = CommandGroup.createRoot(store, validators);
+        //        this.commands.registerSubCommands(new ExchangeCommands(), "exchange", "corp", "corporation");
+        legacy.registerSubCommands(stock, "stock");
+        legacy.registerCommands(new UtilityCommands());
 
-        this.commands.registerCommands(new TestCommands());
-        this.commands.registerCommands(new UnsortedCommands());
+        legacy.registerCommands(new BankCommands());
+        legacy.registerCommands(new StatCommands());
+        legacy.registerCommands(new IACommands());
+        legacy.registerCommands(new AttackCommands());
+        legacy.registerCommands(new AdminCommands());
+        legacy.registerCommands(new DiscordCommands());
+        legacy.registerCommands(new FACommands());
+        legacy.registerCommands(new FunCommands());
+        legacy.registerCommands(new PlayerSettingCommands());
+        legacy.registerCommands(new LoanCommands());
+        legacy.registerCommands(new TradeCommands());
+        legacy.registerCommands(new WarCommands());
+        legacy.registerCommands(new GrantCommands());
+        legacy.registerCommands(new TestCommands());
+        legacy.registerCommands(new UnsortedCommands());
+        legacy.registerSubCommands(new ReportCommands(), "report");
+
+        this.commands.registerCommandsWithMapping(legacy, loadDefaultMapping(), 2, true);
 
         return this;
+    }
+
+    public YamlConfiguration loadDefaultMapping() {
+        return YamlConfiguration.loadConfiguration(new File("config" + File.separator + "commands.yaml"));
     }
 
     public ValueStore<Object> getStore() {

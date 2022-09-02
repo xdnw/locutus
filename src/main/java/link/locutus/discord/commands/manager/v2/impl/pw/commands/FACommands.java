@@ -114,7 +114,7 @@ public class FACommands {
 
     @Command(desc = "List the coalitions")
     @RolePermission(Roles.MEMBER)
-    public String listCoalition(@Me User user, @Me GuildDB db, @Default String filter, @Switch('i') boolean listIds, @Switch('d') boolean ignoreDeleted) {
+    public String listCoalition(@Me User user, @Me GuildDB db, @Default String filter, @Switch("i") boolean listIds, @Switch("d") boolean ignoreDeleted) {
         Map<String, Set<Long>> coalitions = db.getCoalitionsRaw();
         List<String> coalitionNames = new ArrayList<>(coalitions.keySet());
         Collections.sort(coalitionNames);
@@ -229,7 +229,7 @@ public class FACommands {
     }
 
     @Command
-    public String treaties(@Me MessageChannel channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch('f') boolean listExpired) {
+    public String treaties(@Me MessageChannel channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch("f") boolean listExpired) {
         StringBuilder response = new StringBuilder();
         if (alliances.size() == 1 && alliances.iterator().next().equals(db.getOrNull(GuildDB.Key.ALLIANCE_ID))) {
             Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);

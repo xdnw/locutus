@@ -122,12 +122,12 @@ public class DiscordCommands {
     @Command(desc = "Create a channel with name in a specified category and ping the specified roles upon creation")
     public String channel(@Me GuildDB db, @Me Message message, @Me User author, @Me Guild guild, @Me MessageChannel output, @Me DBNation nation,
                           String channelName, Category category, @Default String copypasta,
-                          @Switch('i') boolean addIA,
-                          @Switch('m') boolean addMilcom,
-                          @Switch('f') boolean addFa,
-                          @Switch('e') boolean addEa,
-                          @Switch('p') boolean pingRoles,
-                          @Switch('a') boolean pingAuthor
+                          @Switch("i") boolean addIA,
+                          @Switch("m") boolean addMilcom,
+                          @Switch("f") boolean addFa,
+                          @Switch("e") boolean addEa,
+                          @Switch("p") boolean pingRoles,
+                          @Switch("a") boolean pingAuthor
 
                           ) {
         channelName = DiscordUtil.format(guild, output, author, nation, channelName);
@@ -228,7 +228,7 @@ public class DiscordCommands {
 
     @Command
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String updateEmbed(@Me Guild guild, @Me User user, @Me Message message, @Switch('r') @RegisteredRole Roles requiredRole, @Switch('c') Color color, @Switch('t') String title, @Switch('d') String desc) {
+    public String updateEmbed(@Me Guild guild, @Me User user, @Me Message message, @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title, @Switch("d") String desc) {
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) return "This command can only be run when bound to a Locutus embed";
         if (requiredRole != null) {
             if (!requiredRole.has(user, guild)) {
@@ -277,7 +277,7 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Unregister a nation to a discord user")
-    public String unregister(@Me MessageChannel channel, @Me Message message, @Me User user, @Default("%user%") DBNation nation, @Switch('f') boolean force) {
+    public String unregister(@Me MessageChannel channel, @Me Message message, @Me User user, @Default("%user%") DBNation nation, @Switch("f") boolean force) {
         User nationUser = nation.getUser();
         if (nationUser == null) return "That nation is not registered";
         if (force && !Roles.ADMIN.hasOnRoot(user)) return "You do not have permission to force unregister";
@@ -387,7 +387,7 @@ public class DiscordCommands {
 
     @Command()
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public String interviewMessage(@Me GuildDB db, Set<DBNation> nations, String message, @Switch('p') boolean ping) {
+    public String interviewMessage(@Me GuildDB db, Set<DBNation> nations, String message, @Switch("p") boolean ping) {
         Map<DBNation, IAChannel> map = db.getIACategory().getChannelMap();
         int num = 0;
         for (DBNation nation : nations) {
@@ -426,7 +426,7 @@ public class DiscordCommands {
 
     @Command(desc = "Modify the permissions for a list of nations in a channel")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public static String channelPermissions(@Me Member author, @Me Guild guild, TextChannel channel, Set<DBNation> nations, Permission permission, @Switch('n') boolean negate, @Switch('r') boolean removeOthers, @Switch('l') boolean listChanges, @Switch('p') boolean pingAddedUsers) {
+    public static String channelPermissions(@Me Member author, @Me Guild guild, TextChannel channel, Set<DBNation> nations, Permission permission, @Switch("n") boolean negate, @Switch("r") boolean removeOthers, @Switch("l") boolean listChanges, @Switch("p") boolean pingAddedUsers) {
         if (!author.hasPermission(channel, Permission.MANAGE_PERMISSIONS)) throw new IllegalArgumentException("You do not have " + Permission.MANAGE_PERMISSIONS + " in " + channel.getAsMention());
 
         Set<Member> members = new HashSet<>();

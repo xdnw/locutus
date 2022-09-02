@@ -673,20 +673,6 @@ public class CommandManager {
         this.register(new Meta());
         this.register(new CheckMail());
 
-        // unfinished
-        this.register(new LoanCommand());
-        this.register(new Setup());
-
-        this.register(new AlertTrades());
-        this.register(new UnsubTrade());
-        this.register(new TradeSubscriptions());
-        this.register(new BankAlerts());
-        this.register(new BankSubscriptions());
-        this.register(new UnsubBank());
-
-        this.register(new Commend("commend", true));
-        this.register(new Commend("denounce", false));
-
         /// not useful
         this.register(new GuildInfo());
         this.register(new Kev());
@@ -821,19 +807,37 @@ public class CommandManager {
         this.register(new KeyStore());
         this.register(new AddBalance());
         this.register(new Deposits());
-        //
-        this.register(new GrantCmd(bankWith));
-        this.register(new HelpCommand(this));
-
         WarCostAB warCost = new WarCostAB();
         this.register(warCost);
-        this.register(new WarCostRanking());
-        this.register(new ROI());
         this.register(new MyLoot(warCost));
+
+        this.register(new WarCostRanking());
+        this.register(new AddBuild());
+        this.register(new AssignBuild());
+        this.register(new DeleteBuild());
+        this.register(new GetBuild());
+        //
+        this.register(new HelpCommand(this));
+        this.register(new GrantCmd(bankWith));
+
+
+        this.register(new ProlificOffshores());
+        this.register(new LargestBanks());
+        this.register(new InactiveAlliances());
+
+
+
+
+
+
         this.register(new WarCostByDay());
         this.register(new WarCostRankingByDay());
 
         this.register(new IASheet());
+        this.register(new NoteSheet());
+        this.register(new CoalitionSheet());
+        this.register(new InterviewSheet());
+        this.register(new FASheet());
 
         this.register(new MilitaryRanking());
         this.register(new AllianceLootRanking());
@@ -847,30 +851,23 @@ public class CommandManager {
         this.register(new WarsByTier());
         this.register(new AttackTypeBreakdownAB());
 
-        this.register(new ProlificOffshores());
-        this.register(new LargestBanks());
-
-        this.register(new InactiveAlliances());
-
-        this.register(new NoteSheet());
-        this.register(new CoalitionSheet());
-        this.register(new InterviewSheet());
-
-        this.register(new FASheet());
-//        this.register(new OptimalTrades());
-
-        //// later
-        this.register(new ListMultisByAlliance());
-
-        this.register(new AddBuild());
-        this.register(new DeleteBuild());
-        this.register(new GetBuild());
-        this.register(new AssignBuild());
+        this.register(new ROI());
 
         this.register(new Simulate());
 
-        // suggest tax bracket
+        // unfinished
+        this.register(new AlertTrades());
+        this.register(new Commend("commend", true));
+        this.register(new Commend("denounce", false));
 
+        this.register(new LoanCommand());
+        this.register(new Setup());
+
+        this.register(new UnsubTrade());
+        this.register(new TradeSubscriptions());
+        this.register(new BankAlerts());
+        this.register(new BankSubscriptions());
+        this.register(new UnsubBank());
     }
 
     public String getPrefix() {

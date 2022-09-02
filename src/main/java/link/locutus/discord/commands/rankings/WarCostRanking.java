@@ -67,7 +67,7 @@ public class WarCostRanking extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(MessageReceivedEvent event2, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         Iterator<String> iter = args.iterator();
         MilitaryUnit unitKill = null;
         MilitaryUnit unitLoss = null;
@@ -103,7 +103,7 @@ public class WarCostRanking extends Command {
             }
         }
 
-        if (args.size() == 0 || args.size() > 3) return usage(event);
+        if (args.size() == 0 || args.size() > 3) return usage(event2);
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
         Map<Integer, DBNation> nationMap = nations.stream().collect(Collectors.toMap(DBNation::getNation_id, e -> e));
@@ -248,15 +248,15 @@ public class WarCostRanking extends Command {
         }
 
         // Embed the rank list
-        ranks.build(event, title);
+        ranks.build(event2, title);
 
         if (ranks.get().size() > 25 && !flags.contains('f')) {
-            DiscordUtil.upload(event.getGuildChannel(), title, ranks.toString());
+            DiscordUtil.upload(event2.getChannel(), title, ranks.toString());
         }
         return null;
     }
 
-    private double scale(DBNation nation, double value, boolean enabled) {
+    public static double scale(DBNation nation, double value, boolean enabled) {
         if (enabled) {
             value /= nation.getCities();
         }

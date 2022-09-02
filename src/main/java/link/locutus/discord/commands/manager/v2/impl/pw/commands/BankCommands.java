@@ -95,6 +95,13 @@ import static link.locutus.discord.util.PnwUtil.resourcesToString;
 
 public class BankCommands {
 
+//    @Command(desc = "Find the ROI for various changes you can make to your nation, with a specified timeframe\n" +
+//            "(typically how long you expect the changes, or peacetime to last)\n" +
+//            "e.g. `{prefix}ROI @Borg 30`\n" +
+//            "Add `-r` to run it recursively for various infra levels")
+//    @RolePermission(Roles.MEMBER)
+//    public String roi()
+
     @Command(desc = "Queue a transfer offshore (with authorization)\n" +
             "`aa-warchest` is how much to leave in the AA bank - in the form `{money=1,food=2}`\n" +
             "`#note` is what note to use for the transfer (defaults to deposit)")
@@ -140,13 +147,6 @@ public class BankCommands {
         return "Sent " + PnwUtil.resourcesToString(amountSent) + " to " + to.getName();
     }
 
-    @Command(desc = "Transfer funds to yourself")
-    @RolePermission(Roles.ECON_WITHDRAW_SELF)
-    @HasOffshore
-    public String transferResources(@Me MessageChannel channel, @Me User author, @Me DBNation me, @Me GuildDB db, @Me Message message, Map<ResourceType, Double> amount, @Switch('f') boolean force) throws IOException {
-        return transfer(channel, message, author, me, db, me, amount, "#deposit", force, false, null, null, null, false);
-    }
-
     @Command(desc = "Generate csv of war cost by nation between alliances (for reimbursement)\n" +
             "Filters out wars where nations did not perform actions")
     @RolePermission(Roles.ADMIN)
@@ -159,9 +159,9 @@ public class BankCommands {
 
         Set<DBNation> nations = Locutus.imp().getNationDB().getNations(allyIds);
         nations.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= 1);
-        List<DBWar> wars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(null,
+        List<DBWar> wars = new ArrayList<>(Locutus.imp().getWarDb().getWarsForNationOrAlliance(null,
                 f -> (allyIds.contains(f) || enemyIds.contains(f)),
-                f -> (allyIds.contains(f.attacker_aa) || allyIds.contains(f.defender_aa)) && (enemyIds.contains(f.attacker_aa) || enemyIds.contains(f.defender_aa)) && f.date > cutoff)
+                f -> (allyIds.contains(f.attacker_aa) || allyIds.contains(f.defender_aa)) && (enemyIds.contains(f.attacker_aa) || enemyIds.contains(f.defender_aa)) && f.date > cutoff).values());
 
         Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
         List<DBAttack> allattacks = Locutus.imp().getWarDb().getAttacksByWarIds(warIds);
@@ -244,7 +244,7 @@ public class BankCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     @HasOffshore
-    public String escrow(@Me GuildDB db, @Me User author, @Me DBNation me, DBNation receiver, Map<ResourceType, Double> resources, @Timediff long expireAfter, @Switch('t') boolean topUp) throws IOException {
+    public String escrow(@Me GuildDB db, @Me User author, @Me DBNation me, DBNation receiver, Map<ResourceType, Double> resources, @Timediff long expireAfter, @Switch("t") boolean topUp) throws IOException {
         if (me.getNation_id() != receiver.getNation_id() && !Roles.ECON_LOW_GOV.has(author, db.getGuild())) {
             return "You do not have permisssion to send to other nations";
         }
@@ -276,7 +276,7 @@ public class BankCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     @HasOffshore
-    public String disburse(@Me User author, @Me GuildDB db, @Me Message message, @Me MessageChannel channel, NationList nationList, @Range(min=0, max=7) double daysDefault, @Default("#tax") String note, @Switch('d') boolean noDailyCash, @Switch('c') boolean noCash, @Switch('f') boolean force, @Switch('i') boolean ignoreInactives) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+    public String disburse(@Me User author, @Me GuildDB db, @Me Message message, @Me MessageChannel channel, NationList nationList, @Range(min=0, max=7) double daysDefault, @Default("#tax") String note, @Switch("d") boolean noDailyCash, @Switch("c") boolean noCash, @Switch("f") boolean force, @Switch("i") boolean ignoreInactives) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
 
         Collection<String> allowedLabels = Arrays.asList("#grant", "#deposit", "#trade", "#ignore", "#tax", "#warchest", "#account");
         if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
@@ -357,7 +357,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of members and their revenue (compared to optimal)")
     @RolePermission(value = {Roles.ECON_LOW_GOV, Roles.ECON})
     @IsAlliance
-    public String revenueSheet(@Me GuildDB db, Set<DBNation> nations, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+    public String revenueSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.REVENUE_SHEET);
         }
@@ -481,7 +481,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of members and their saved up warchest (can include deposits and potential revenue)")
     @RolePermission(value = {Roles.ECON_LOW_GOV, Roles.ECON, Roles.MILCOM, Roles.MILCOM_ADVISOR})
     @IsAlliance
-    public String warchestSheet(@Me GuildDB db, Set<DBNation> nations, @Switch('c') Map<ResourceType, Double> perCityWarchest, @Arg("Excess resources in AA bank that could be used to supplementWarchest") @Switch('b') Map<ResourceType, Double> allianceBankWarchest, @Switch('g') boolean includeGrants, @Switch('n') boolean doNotNormalizeDeposits, @Switch('d') boolean ignoreDeposits, @Switch('e') boolean ignoreStockpileInExcess, @Switch('r') Integer includeRevenueDays, @Switch('f') boolean forceUpdate) throws IOException, GeneralSecurityException {
+    public String warchestSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("c") Map<ResourceType, Double> perCityWarchest, @Arg("Excess resources in AA bank that could be used to supplementWarchest") @Switch("b") Map<ResourceType, Double> allianceBankWarchest, @Switch("g") boolean includeGrants, @Switch("n") boolean doNotNormalizeDeposits, @Switch("d") boolean ignoreDeposits, @Switch("e") boolean ignoreStockpileInExcess, @Switch("r") Integer includeRevenueDays, @Switch("f") boolean forceUpdate) throws IOException, GeneralSecurityException {
         int aaId = db.getAlliance_id();
         DBAlliance alliance = db.getAlliance();
         Map<DBNation, Map<ResourceType, Double>> stockpiles = alliance.getMemberStockpile();
@@ -659,11 +659,11 @@ public class BankCommands {
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, any=true)
     public String withdraw(@Me MessageChannel channel, @Me Message message,
                            @Me User author, @Me DBNation me, @Me GuildDB guildDb, @NationDepositLimit Map<ResourceType, Double> transfer, @Default("#deposit") String primaryNote,
-                           @Switch('f') boolean force, @Switch('o') boolean onlyMissingFunds,
-                           @Switch('e') @Timediff Long expire,
-                           @Switch('n') String secondaryNotes,
-                           @Switch('g') UUID token,
-                           @Switch('c') boolean convertCash) throws IOException {
+                           @Switch("f") boolean force, @Switch("o") boolean onlyMissingFunds,
+                           @Switch("e") @Timediff Long expire,
+                           @Switch("n") String secondaryNotes,
+                           @Switch("g") UUID token,
+                           @Switch("c") boolean convertCash) throws IOException {
         return transfer(channel, message, author, me, guildDb, me, transfer, primaryNote, force, onlyMissingFunds, expire, secondaryNotes, token, convertCash);
     }
 
@@ -703,7 +703,7 @@ public class BankCommands {
 
     @Command(desc = "Resets a nations deposits")
     @RolePermission(Roles.ECON)
-    public String resetDeposits(@Me GuildDB db, @Me DBNation me, DBNation nation, @Switch('g') boolean ignoreGrants, @Switch('l') boolean ignoreLoans, @Switch('t') boolean ignoreTaxes, @Switch('d') boolean ignoreBankDeposits) {
+    public String resetDeposits(@Me GuildDB db, @Me DBNation me, DBNation nation, @Switch("g") boolean ignoreGrants, @Switch("l") boolean ignoreLoans, @Switch("t") boolean ignoreTaxes, @Switch("d") boolean ignoreBankDeposits) {
         Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
 
         long now = System.currentTimeMillis();
@@ -753,11 +753,11 @@ public class BankCommands {
     @RolePermission(Roles.ECON)
     public String transfer(@Me MessageChannel channel, @Me Message message,
                            @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, String primaryNote,
-                           @Switch('f') boolean force, @Switch('o') boolean onlyMissingFunds,
-                           @Switch('e') @Timediff Long expire,
-                           @Switch('n') String secondaryNotes,
-                           @Switch('g') UUID token,
-                           @Switch('c') boolean convertCash) throws IOException {
+                           @Switch("f") boolean force, @Switch("o") boolean onlyMissingFunds,
+                           @Switch("e") @Timediff Long expire,
+                           @Switch("n") String secondaryNotes,
+                           @Switch("g") UUID token,
+                           @Switch("c") boolean convertCash) throws IOException {
         boolean isAdmin = Roles.ECON.hasOnRoot(author);
         OffshoreInstance offshore = guildDb.getOffshore();
 
@@ -1019,7 +1019,7 @@ public class BankCommands {
 
     @Command(desc = "Sheet of projects each nation has")
     @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
-    public String ProjectSheet(@Me GuildDB db, Set<DBNation> nations, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String ProjectSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.PROJECT_SHEET);
         }
@@ -1072,13 +1072,13 @@ public class BankCommands {
     @RolePermission(Roles.ECON)
     public String depositSheet(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db,
                                @Default Set<DBNation> nations, @Default Set<DBAlliance> offshores,
-                               @Switch('b') boolean ignoreTaxBase,
-                               @Switch('o') boolean ignoreOffsets,
-                               @Switch('t') boolean noTaxes,
-                               @Switch('l') boolean noLoans,
-                               @Switch('g') boolean noGrants,
-                               @Switch('d') boolean noDeposits,
-                               @Switch('f') boolean force
+                               @Switch("b") boolean ignoreTaxBase,
+                               @Switch("o") boolean ignoreOffsets,
+                               @Switch("t") boolean noTaxes,
+                               @Switch("l") boolean noLoans,
+                               @Switch("g") boolean noGrants,
+                               @Switch("d") boolean noDeposits,
+                               @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
         Message message = RateLimitUtil.complete(channel.sendMessage("Please wait..."));
@@ -1272,7 +1272,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of ingame transfers for nations")
     @RolePermission(value = Roles.ECON)
-    public String getIngameNationTransfers(@Me MessageChannel channel, @Me GuildDB db, Set<NationOrAlliance> senders, Set<NationOrAlliance> receivers, @Default("%epoch%") @Timestamp long timeframe, @Switch('s') SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String getIngameNationTransfers(@Me MessageChannel channel, @Me GuildDB db, Set<NationOrAlliance> senders, Set<NationOrAlliance> receivers, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
@@ -1287,7 +1287,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of ingame transfers for nations")
     @RolePermission(value = Roles.ECON)
-    public String IngameNationTransfersBySender(@Me MessageChannel channel, @Me GuildDB db, Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch('s') SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String IngameNationTransfersBySender(@Me MessageChannel channel, @Me GuildDB db, Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByBySender(senderIds, timeframe);
@@ -1297,7 +1297,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of ingame transfers for nations")
     @RolePermission(value = Roles.ECON)
-    public String IngameNationTransfersByReceiver(@Me MessageChannel channel, @Me GuildDB db, Set<NationOrAlliance> receivers, @Default("%epoch%") @Timestamp long timeframe, @Switch('s') SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String IngameNationTransfersByReceiver(@Me MessageChannel channel, @Me GuildDB db, Set<NationOrAlliance> receivers, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.BANK_TRANSACTION_SHEET);
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByByReceiver(receiverIds, timeframe);
@@ -1307,7 +1307,7 @@ public class BankCommands {
 
     @Command(desc = "Convert negative deposits to another resource")
     @RolePermission(value = Roles.ECON)
-    public String convertNegativeDeposits(@Me MessageChannel channel, @Me Message message, @Me GuildDB db, @Me User user, @Me DBNation me, Set<DBNation> nations, @Default("manu,raws,food") List<ResourceType> negativeResources, @Default("money") ResourceType convertTo, @Switch('g') boolean includeGrants, @Switch('t') DepositType depositType, @Switch('f') Double conversionFactor, @Switch('s') SpreadSheet sheet, @Default() @Switch('n') String note) throws IOException, GeneralSecurityException {
+    public String convertNegativeDeposits(@Me MessageChannel channel, @Me Message message, @Me GuildDB db, @Me User user, @Me DBNation me, Set<DBNation> nations, @Default("manu,raws,food") List<ResourceType> negativeResources, @Default("money") ResourceType convertTo, @Switch("g") boolean includeGrants, @Switch("t") DepositType depositType, @Switch("f") Double conversionFactor, @Switch("s") SpreadSheet sheet, @Default() @Switch("n") String note) throws IOException, GeneralSecurityException {
         if (nations.size() > 500) return "Too many nations > 500";
         // get deposits of nations
         // get negatives
@@ -1368,7 +1368,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of internal transfers for nations")
     @RolePermission(value = Roles.ECON)
-    public String getNationsInternalTransfers(@Me MessageChannel channel, @Me GuildDB db, Set<DBNation> nations, @Default("999d") @Timestamp long timeframe, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String getNationsInternalTransfers(@Me MessageChannel channel, @Me GuildDB db, Set<DBNation> nations, @Default("999d") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.BANK_TRANSACTION_SHEET);
         if (nations.size() > 1000) return "Too many nations >1000";
 
@@ -1384,7 +1384,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of transfers")
     @RolePermission(value = Roles.ECON, root = true)
-    public String getIngameTransactions(@Me MessageChannel channel, @Me GuildDB db, @Default NationOrAlliance sender, @Default NationOrAlliance receiver, @Default NationOrAlliance banker, @Default("%epoch%") @Timestamp long timeframe, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String getIngameTransactions(@Me MessageChannel channel, @Me GuildDB db, @Default NationOrAlliance sender, @Default NationOrAlliance receiver, @Default NationOrAlliance banker, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.BANK_TRANSACTION_SHEET);
         List<Transaction2> transactions = Locutus.imp().getBankDB().getAllTransactions(sender, receiver, banker, timeframe);
         if (transactions.size() > 10000) return "Timeframe is too large, please use a shorter period";
@@ -1394,8 +1394,8 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of a nation or alliances transactions (excluding taxes)")
     @RolePermission(value = Roles.ECON)
-    public String transactions(@Me MessageChannel channel, @Me GuildDB db, @Me User user, NationOrAllianceOrGuild nationOrAllianceOrGuild, @Default("%epoch%") @Timestamp long timeframe, @Default("false") boolean useTaxBase, @Default("true") boolean useOffset, @Switch('s') SpreadSheet sheet,
-                               @Switch('o') boolean onlyOffshoreTransfers) throws GeneralSecurityException, IOException {
+    public String transactions(@Me MessageChannel channel, @Me GuildDB db, @Me User user, NationOrAllianceOrGuild nationOrAllianceOrGuild, @Default("%epoch%") @Timestamp long timeframe, @Default("false") boolean useTaxBase, @Default("true") boolean useOffset, @Switch("s") SpreadSheet sheet,
+                               @Switch("o") boolean onlyOffshoreTransfers) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.BANK_TRANSACTION_SHEET);
 
         if (onlyOffshoreTransfers && nationOrAllianceOrGuild.isNation()) return "Only Alliance/Guilds can have an offshore account";
@@ -1449,7 +1449,7 @@ public class BankCommands {
             help = "The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url), " +
                     "and then there must be a column named for each resource type you wish to transfer")
     @RolePermission(value = Roles.ECON)
-    public String transferBulk(@Me MessageChannel channel, @Me Message message, @Me GuildDB db, @Me User user, @Me DBNation me, TransferSheet sheet, String note, @Switch('f') boolean force, @Switch('k') UUID key) {
+    public String transferBulk(@Me MessageChannel channel, @Me Message message, @Me GuildDB db, @Me User user, @Me DBNation me, TransferSheet sheet, String note, @Switch("f") boolean force, @Switch("k") UUID key) {
         double totalVal = 0;
 
         int nations = 0;
@@ -1574,7 +1574,7 @@ public class BankCommands {
     @Command
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
-    public String setNationInternalTaxRates(@Me MessageChannel channel, @Me GuildDB db, @Default() Set<DBNation> nations, @Switch('p') boolean ping) throws Exception {
+    public String setNationInternalTaxRates(@Me MessageChannel channel, @Me GuildDB db, @Default() Set<DBNation> nations, @Switch("p") boolean ping) throws Exception {
         if (nations == null) {
             nations = new LinkedHashSet<>(DiscordUtil.getNationsByAA(db.getAlliance_id()));
         }
@@ -1609,7 +1609,7 @@ public class BankCommands {
             "Note: this command does set nations brackets. See: `{prefix}setNationTaxBrackets` and `{prefix}setNationInternalTaxRates` ")
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
-    public String listRequiredTaxRates(@Me GuildDB db, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String listRequiredTaxRates(@Me GuildDB db, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -1664,7 +1664,7 @@ public class BankCommands {
     @Command
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
-    public String setNationTaxBrackets(@Me MessageChannel channel, @Me GuildDB db, @Default() Set<DBNation> nations, @Switch('p') boolean ping) throws Exception {
+    public String setNationTaxBrackets(@Me MessageChannel channel, @Me GuildDB db, @Default() Set<DBNation> nations, @Switch("p") boolean ping) throws Exception {
         if (nations == null) {
             nations = new LinkedHashSet<>(DiscordUtil.getNationsByAA(db.getAlliance_id()));
         }
@@ -1698,7 +1698,7 @@ public class BankCommands {
 
     @Command(aliases = {"acceptTrades", "acceptTrade"})
     @RolePermission(value = Roles.MEMBER)
-    public String acceptTrades(@Me GuildDB db, @Me DBNation me, DBNation receiver, @Switch('f') boolean force) throws Exception {
+    public String acceptTrades(@Me GuildDB db, @Me DBNation me, DBNation receiver, @Switch("f") boolean force) throws Exception {
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) return "No offshore is set in this guild: <https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/>";
 
@@ -1726,7 +1726,7 @@ public class BankCommands {
     // !taxdeposits <nations> [basetaxrate=0/0] [start-date=0] [end-date=infinity] -s [sheet]
     @Command(desc = "Get a sheet of a nation tax deposits over a period")
     @RolePermission(value = Roles.ECON)
-    public String taxDeposits(@Me GuildDB db, Set<DBNation> nations, @Default() TaxRate baseTaxRate, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String taxDeposits(@Me GuildDB db, Set<DBNation> nations, @Default() TaxRate baseTaxRate, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         if (startDate == null) startDate = 0L;
@@ -1771,7 +1771,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of a nation tax deposits over a period")
     @RolePermission(value = Roles.ECON)
-    public String taxRecords(@Me GuildDB db, DBNation nation, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String taxRecords(@Me GuildDB db, DBNation nation, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         if (startDate == null) startDate = 0L;
@@ -1804,9 +1804,9 @@ public class BankCommands {
         return "<" + sheet.getURL() + ">";
     }
 
-    @Command(desc = "Send for your alliance offshore account to another alliance's offshore account (internal transfer only)")
+    @Command(desc = "Send from your alliance offshore account to another account (internal transfer)")
     @RolePermission(value = Roles.ECON)
-    public String sendAA(@Me Message message, @Me OffshoreInstance offshore, @Me MessageChannel channel, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me, NationOrAllianceOrGuild receiver, @AllianceDepositLimit Map<ResourceType, Double> amount, @Switch('f') boolean confirm) {
+    public String sendAA(@Me Message message, @Me OffshoreInstance offshore, @Me MessageChannel channel, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me, NationOrAllianceOrGuild receiver, @AllianceDepositLimit Map<ResourceType, Double> amount, @Switch("f") boolean confirm) {
         if (!receiver.isAlliance()) return "Alliance -> Nation is not supported. Please use `" + Settings.commandPrefix(true) + "transfer` or `" + Settings.commandPrefix(true) + "addbalance`";
         for (Map.Entry<ResourceType, Double> entry : amount.entrySet()) {
             if (entry.getValue() <= 0 || entry.getValue().isNaN()) return "You cannot send negative amounts for " + entry.getKey();
@@ -1887,7 +1887,7 @@ public class BankCommands {
     @Command(desc = "Send from your nation deposits to another nation or alliance")
     @HasOffshore
     @RolePermission(any = true, value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON})
-    public String send(@Me Message message, @Me MessageChannel channel, @Me GuildDB db, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me, @Me Map<ResourceType, Double> deposits, NationOrAllianceOrGuild receiver, @NationDepositLimit Map<ResourceType, Double> amount, @Switch('f') boolean confirm) {
+    public String send(@Me Message message, @Me MessageChannel channel, @Me GuildDB db, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me, @Me Map<ResourceType, Double> deposits, NationOrAllianceOrGuild receiver, @NationDepositLimit Map<ResourceType, Double> amount, @Switch("f") boolean confirm) {
 //        if (!receiver.isNation()) return "Nation -> Alliance transfers are not implemented yet";
 
         GuildDB receiverDb = null;
@@ -2002,12 +2002,12 @@ public class BankCommands {
     @Command(desc="Calculate a nations deposits/loans/taxes")
     @RolePermission(Roles.MEMBER)
     public String deposits(@Me Guild guild, @Me GuildDB db, @Me MessageChannel channel, @Me DBNation me, @Me User author, @Me GuildHandler handler, NationOrAllianceOrGuild nationOrAllianceOrGuild,
-                           @Switch('o') Set<DBAlliance> offshores,
-                           @Switch('c') Long timeCutoff,
-                           @Switch('b') boolean includeBaseTaxes,
-                           @Switch('o') boolean ignoreInternalOffsets,
-                           @Switch('t') boolean showTaxesSeparately,
-                           @Switch('d') boolean replyInDMs) throws IOException {
+                           @Switch("o") Set<DBAlliance> offshores,
+                           @Switch("c") Long timeCutoff,
+                           @Switch("b") boolean includeBaseTaxes,
+                           @Switch("o") boolean ignoreInternalOffsets,
+                           @Switch("t") boolean showTaxesSeparately,
+                           @Switch("d") boolean replyInDMs) throws IOException {
         if (timeCutoff == null) timeCutoff = 0L;
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
         if (offshoreIds != null) offshoreIds = PnwUtil.expandCoalition(offshoreIds);
@@ -2245,7 +2245,7 @@ public class BankCommands {
             "Add `-n` to normalize it per city")
     @RolePermission(Roles.ECON)
     @IsAlliance
-    public String stockpileSheet(@Me GuildDB db, @Switch('n') boolean normalize, @Switch('e') boolean onlyShowExcess, @Switch('f') boolean forceUpdate, @Me MessageChannel channel) throws IOException, GeneralSecurityException {
+    public String stockpileSheet(@Me GuildDB db, @Switch("n") boolean normalize, @Switch("e") boolean onlyShowExcess, @Switch("f") boolean forceUpdate, @Me MessageChannel channel) throws IOException, GeneralSecurityException {
         DBAlliance alliance = db.getAlliance();
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
@@ -2319,7 +2319,7 @@ public class BankCommands {
             "Add `-f` to force an update of deposits\n" +
             "`note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`")
     @RolePermission(Roles.ECON)
-    public String taxBracketSheet(@Me GuildDB db, @Switch('f') boolean force, @Switch('a') boolean includeApplicants) throws Exception {
+    public String taxBracketSheet(@Me GuildDB db, @Switch("f") boolean force, @Switch("a") boolean includeApplicants) throws Exception {
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",

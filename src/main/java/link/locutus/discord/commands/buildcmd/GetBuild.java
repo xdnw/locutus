@@ -15,8 +15,10 @@ import com.google.api.client.util.Lists;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import rocker.grant.nation;
 
 import java.util.HashMap;
 import java.util.List;
@@ -57,6 +59,10 @@ public class GetBuild extends Command {
         if (nation == null) {
             return "Nation not found: `" + args.get(0) + "`";
         }
+        return onCommand(nation, event.getChannel());
+    }
+
+    public static String onCommand(DBNation nation, MessageChannel channel) throws Exception {
         Map<DBNation, Map<Integer, JavaCity>> builds = new GetCityBuilds(nation).adapt(i -> {});
         Map<DBNation, Map<CityBuild, List<String>>> uniqueBuilds = new HashMap<>();
         for (Map.Entry<DBNation, Map<Integer, JavaCity>> nationEntry : builds.entrySet()) {
@@ -71,7 +77,7 @@ public class GetBuild extends Command {
         }
 
         for (Map.Entry<DBNation, Map<CityBuild, List<String>>> entry : uniqueBuilds.entrySet()) {
-            event.getChannel().sendMessage(nation.getNation() + " has " + entry.getValue().size() + " unique builds in " + nation.getCities() + " cities:").complete();
+            channel.sendMessage(nation.getNation() + " has " + entry.getValue().size() + " unique builds in " + nation.getCities() + " cities:").complete();
 
             Map<CityBuild, List<String>> cityPair = entry.getValue();
             nation = entry.getKey();
@@ -84,7 +90,7 @@ public class GetBuild extends Command {
                         .append(cityEntry.getKey().toString())
                         .append("```");
 
-                DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString());
+                DiscordUtil.createEmbedCommand(channel, title, response.toString());
             }
         }
 

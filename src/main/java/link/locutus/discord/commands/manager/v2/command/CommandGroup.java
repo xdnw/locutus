@@ -3,8 +3,10 @@ package link.locutus.discord.commands.manager.v2.command;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
 
+import java.io.File;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -13,7 +15,7 @@ public class CommandGroup implements ICommandGroup {
     private final ValidatorStore validators;
     private final CommandCallable parent;
     private final List<String> aliases;
-    private Map<String, CommandCallable> subcommands = new HashMap<>();
+    private Map<String, CommandCallable> subcommands = new LinkedHashMap<>();
     private String help,desc;
 
     public CommandGroup(CommandCallable parent, String[] aliases, ValueStore store, ValidatorStore validators) {
@@ -21,6 +23,11 @@ public class CommandGroup implements ICommandGroup {
         this.validators = validators;
         this.parent = parent;
         this.aliases = Arrays.asList(aliases);
+    }
+
+    @Override
+    public CommandCallable clone(CommandCallable parent, List<String> aliases) {
+        return new CommandGroup(parent, aliases.toArray(new String[0]), store, validators);
     }
 
     public void setHelp(String help) {
@@ -77,6 +84,25 @@ public class CommandGroup implements ICommandGroup {
         register(cmd, aliases.toArray(new String[0]));
     }
 
+    private void registerWithPath(CommandCallable callable, List<String> path, String... aliases) {
+        if (path.isEmpty()) {
+            callable = callable.clone(this, Arrays.asList(aliases));
+            register(callable, aliases);
+            return;
+        }
+        String path0 = path.get(0);
+        CommandCallable existing = get(path0);
+        if (existing == null) {
+            existing = new CommandGroup(this, new String[]{path0}, store, validators);
+            subcommands.put(path0, existing);
+        }
+        if (existing instanceof CommandGroup group) {
+            group.registerWithPath(callable, path.subList(1, path.size()), aliases);
+        } else {
+            throw new IllegalArgumentException("Cannot register " + StringMan.getString(aliases) + " at " + getFullPath() + " " + StringMan.getString(path) + " because " + existing.getPrimaryCommandId() + " already exists there");
+        }
+    }
+
     public void registerCommands(Object object) {
         List<ParametricCallable> cmds = ParametricCallable.generateFromClass(this, object, store);
         for (ParametricCallable cmd : cmds) {
@@ -122,9 +148,11 @@ public class CommandGroup implements ICommandGroup {
 
     public Map<String, CommandCallable> getAllowedCommands(ValueStore store, PermissionHandler permHandler) {
         Map<String, CommandCallable> allowed = new LinkedHashMap<>();
-        for (CommandCallable cmd : subcommands.values()) {
+        for (Map.Entry<String, CommandCallable> entry : subcommands.entrySet()) {
+            String id = entry.getKey();
+            CommandCallable cmd = entry.getValue();
             if (cmd.hasPermission(store, permHandler)) {
-                allowed.put(cmd.getPrimaryAlias().toLowerCase(), cmd);
+                allowed.put(id.toLowerCase(), cmd);
             }
         }
         return allowed;
@@ -141,22 +169,33 @@ public class CommandGroup implements ICommandGroup {
         return subcommands.get(arg0.toLowerCase());
     }
 
+    public CommandCallable get(List<String> args) {
+        CommandCallable cmd = get(args.get(0));
+        if (args.size() > 1) {
+            if (cmd instanceof CommandGroup) {
+                return ((CommandGroup) cmd).get(args.subList(1, args.size()));
+            }
+            throw new IllegalArgumentException("Command " + StringMan.getString(args) + " is not a group in " + getFullPath());
+        }
+        return cmd;
+    }
+
     public String printCommandMap() {
         StringBuilder output = new StringBuilder();
-        printCommandMap(output, 0);
+        printCommandMap(output, getPrimaryCommandId(), 0);
         return output.toString();
     }
 
-    public void printCommandMap(StringBuilder output, int indent) {
+    public void printCommandMap(StringBuilder output, String id, int indent) {
         String prefix = "";
         if (indent > 0) prefix = StringMan.repeat(" --", indent);
-        output.append(prefix + getPrimaryAlias()).append("\n");
-        for (String id : primarySubCommandIds()) {
-            CommandCallable command = get(id);
+        output.append(prefix + id).append("\n");
+        for (String subId : primarySubCommandIds()) {
+            CommandCallable command = get(subId);
             if (command instanceof CommandGroup) {
-                ((CommandGroup) command).printCommandMap(output, indent + 1);
+                ((CommandGroup) command).printCommandMap(output, subId, indent + 1);
             } else {
-                output.append(prefix + " --<" + command.getPrimaryAlias() + ">").append("\n");
+                output.append(prefix + " --<" + subId + ">").append("\n");
             }
         }
     }
@@ -168,5 +207,35 @@ public class CommandGroup implements ICommandGroup {
             result.addAll(sub.getParametricCallables(returnIf));
         }
         return result;
+    }
+
+    public void registerCommandsWithMapping(CommandGroup commands, YamlConfiguration commandMapping, int maxDepth, boolean ignoreMissingMapping) {
+        for (String key : commandMapping.getKeys(true)) {
+            Object obj = commandMapping.get(key);
+            if (!(obj instanceof String)) continue;
+            String[] split = key.split("\\.");
+            String[] legacyPath = split[split.length - 1].replaceAll("[<>]", "").split(" ");
+            split[split.length - 1] = legacyPath[legacyPath.length - 1];
+            String newName = obj.toString();
+            if (!newName.isEmpty()) split[split.length - 1] = newName;
+
+            CommandCallable callable;
+            try {
+                callable = commands.get(Arrays.asList(legacyPath));
+                if (callable == null) {
+                    if (ignoreMissingMapping) continue;
+                    throw new IllegalArgumentException("Could not find root command with path " + StringMan.getString(legacyPath));
+                }
+            } catch (IllegalArgumentException e) {
+                if (!ignoreMissingMapping) throw e;
+                continue;
+            }
+
+            List<String> path = new ArrayList<>(Arrays.asList(split));
+            path.remove(path.size() - 1);
+            if (path.size() > maxDepth) throw new IllegalArgumentException("Path " + StringMan.getString(path) + " is too deep");
+
+            registerWithPath(callable, path, split[split.length - 1]);
+        }
     }
 }

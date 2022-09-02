@@ -11,7 +11,7 @@ import java.lang.reflect.Type;
 public class ParameterData {
     private Type type;
     private Annotation[] annotations;
-    private Character flag;
+    private String flag;
     private boolean optional;
     private String[] defaultValue;
     private String name;
@@ -32,7 +32,7 @@ public class ParameterData {
         return this;
     }
 
-    public ParameterData setFlag(char value) {
+    public ParameterData setFlag(String value) {
         this.flag = value;
         return this;
     }
@@ -72,7 +72,7 @@ public class ParameterData {
         return flag != null && type != boolean.class;
     }
 
-    public Character getFlag() {
+    public String getFlag() {
         return flag;
     }
 
@@ -99,33 +99,54 @@ public class ParameterData {
     }
 
     public String getExpandedDescription() {
+        return getExpandedDescription(true, true, true);
+    }
+
+    public String getSimpleTypeName() {
+        String[] split = getType().getTypeName().split("\\.");
+        return split[split.length - 1];
+    }
+
+    public String getExpandedDescription(boolean includeName, boolean includeExample, boolean includeDesc) {
+        String typeName = getType().getTypeName();
+        String[] split = typeName.split("\\.");
+        typeName = split[split.length - 1];
+
         StringBuilder expanded = new StringBuilder();
+
         String examplePrefix = "";
         if (isFlag()) {
             examplePrefix = "-" + getFlag() + " ";
-            expanded.append("`-").append(getFlag()).append("` - " + getName());
-            if (isConsumeFlag()) {
-                expanded.append(" (" + getType().getTypeName() + ")");
+            if (includeName) {
+                expanded.append("`-").append(getFlag()).append("` - " + getName());
+                if (isConsumeFlag()) {
+                    expanded.append(" (" + typeName + ")");
+                }
             }
-        } else {
-            String typeName = getType().getTypeName();
-            String[] split = typeName.split("\\.");
-            typeName = split[split.length - 1];
+        } else if (includeName) {
             expanded.append("`").append(getName()).append("` (" + typeName + ")");
         }
-        String paramDesc = getDescription();
-        if (paramDesc != null) {
-            expanded.append(" - " + paramDesc);
+        if (includeDesc) {
+            String paramDesc = getDescription();
+            if (paramDesc != null) {
+                if (expanded.length() > 0) {
+                    expanded.append(" - ");
+                }
+                expanded.append(paramDesc);
+            }
         }
         if (getDefaultValue() != null) {
-            expanded.append("\n - default: `" + StringMan.join(getDefaultValue(), " ") + "`");
+            if (expanded.length() > 0) expanded.append("\n - ");
+            expanded.append("default: `" + StringMan.join(getDefaultValue(), " ") + "`");
         }
-        Key key = getBinding().getKey();
-        Binding keyBinding = key.getBinding();
-        if (keyBinding != null && keyBinding.examples().length != 0) {
-            if (!isFlag() || isConsumeFlag()) {
-                String example = examplePrefix + StringMan.join(keyBinding.examples(), "`, `" + examplePrefix);
-                expanded.append("\n - e.g. `" + example + "`");
+        if (includeExample) {
+            Key key = getBinding().getKey();
+            Binding keyBinding = key.getBinding();
+            if (keyBinding != null && keyBinding.examples().length != 0) {
+                if (!isFlag() || isConsumeFlag()) {
+                    String example = examplePrefix + StringMan.join(keyBinding.examples(), "`, `" + examplePrefix);
+                    expanded.append("\n - e.g. `" + example + "`");
+                }
             }
         }
         return expanded.toString();

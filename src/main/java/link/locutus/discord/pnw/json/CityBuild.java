@@ -650,6 +650,10 @@ public class CityBuild {
         return new GsonBuilder().setPrettyPrinting().create().toJson(this);
     }
 
+    public String toCompressedString() {
+        return new Gson().toJson(this);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

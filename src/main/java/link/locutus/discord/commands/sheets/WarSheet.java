@@ -57,11 +57,9 @@ public class WarSheet extends Command {
         if (args.size() == 3) cutoff = now - (TimeUtil.timeToSec(args.get(2)) * 1000L);
 
         WarParser parser1 = WarParser.ofAANatobj(null, allies, null, enemies, cutoff, now);
-        WarParser parser2 = WarParser.ofAANatobj(null, enemies, null, allies, cutoff, now);
 
         Set<DBWar> allWars = new HashSet<>();
         allWars.addAll(parser1.getWars().values());
-        allWars.addAll(parser2.getWars().values());
 
         if (!flags.contains('i')) allWars.removeIf(f -> !f.isActive());
         allWars.removeIf(f -> {

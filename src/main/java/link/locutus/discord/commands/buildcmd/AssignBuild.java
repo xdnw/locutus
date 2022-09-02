@@ -52,8 +52,7 @@ public class AssignBuild extends Command {
             return usage(event);
         }
         GuildDB db = Locutus.imp().getGuildDB(event);
-        double[] resources = new double[ResourceType.values.length];
-        String result = build(db, me, args.get(0), resources);
+        String result = build(db, me, me.getCities(), args.get(0));
 
         return result;
     }
@@ -63,7 +62,7 @@ public class AssignBuild extends Command {
         return Roles.MEMBER.has(user, server);
     }
 
-    public String build(GuildDB db, DBNation me, String arg, double[] total) throws InterruptedException, ExecutionException, IOException {
+    public static String build(GuildDB db, DBNation me, int cities, String arg) throws InterruptedException, ExecutionException, IOException {
         JavaCity to = null;
 
         if (arg.contains("/city/")) {
@@ -85,7 +84,7 @@ public class AssignBuild extends Command {
 
             List<CityBuildRange> list = builds.get(category);
             for (CityBuildRange range : list) {
-                if (me.getCities() >= range.getMin() && me.getCities() <= range.getMax()) {
+                if (cities >= range.getMin() && cities <= range.getMax()) {
                     to = new JavaCity(range.getBuildGson());
                     break;
                 }
@@ -96,7 +95,7 @@ public class AssignBuild extends Command {
         }
 
         double[] totalArr = new double[ResourceType.values.length];
-        Map<Integer, JavaCity> from = new GetCityBuilds(me).adapt().get(me);
+        Map<Integer, JavaCity> from = me.getCityMap(true);
         return to.instructions(from, totalArr);
     }
 }

@@ -34,8 +34,8 @@ public class ParametricCallable implements ICommand {
     private final Object object;
     private final Method method;
     private final ParameterData[] parameters;
-    private final Set<Character> valueFlags;
-    private final Set<Character> provideFlags;
+    private final Set<String> valueFlags;
+    private final Set<String> provideFlags;
     private final ArrayList<ParameterData> userParameters;
     private final Map<String, ParameterData> paramaterMap;
     private final String desc;
@@ -86,7 +86,31 @@ public class ParametricCallable implements ICommand {
         return parent;
     }
 
+    @Override
+    public CommandCallable clone(CommandCallable parent, List<String> aliases) {
+         return new ParametricCallable(parent, this, aliases);
+    }
+
+    public ParametricCallable(CommandCallable parent, ParametricCallable clone, List<String> aliases) {
+        this.object = clone.object;
+        this.method = clone.method;
+        this.parameters = clone.parameters;
+        this.valueFlags = clone.valueFlags;
+        this.provideFlags = clone.provideFlags;
+        this.userParameters = clone.userParameters;
+        this.paramaterMap = clone.paramaterMap;
+        this.desc = clone.desc;
+        this.help = clone.help;
+        this.aliases = new ArrayList<>(aliases);
+        this.parent = parent;
+        this.annotations = clone.annotations;
+        this.returnType = clone.returnType;
+    }
+
+
     public ParametricCallable(CommandCallable parent, ValueStore store, Object object, Method method, Command definition) {
+
+
         this.parent = parent;
         this.object = object;
         this.method = method;
@@ -262,7 +286,7 @@ public class ParametricCallable implements ICommand {
         ValueStore locals = store;
         locals.addProvider(ParametricCallable.class, this);
 
-        Map<Character, String> flags = stack.consumeFlags(provideFlags, valueFlags);
+        Map<String, String> flags = stack.consumeFlags(provideFlags, valueFlags);
         Object[] paramVals = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
             ParameterData parameter = parameters[i];
@@ -408,7 +432,7 @@ public class ParametricCallable implements ICommand {
             paramsByNameLower.put(parameter.getName().toLowerCase(Locale.ROOT), parameter);
         }
 
-        Map<Character, String> flags = new HashMap<>();
+        Map<String, String> flags = new HashMap<>();
         for (Map.Entry<String, String> entry : combined.entrySet()) {
             ParameterData param = paramsByName.get(entry.getKey());
             if (param == null) param = paramsByNameLower.get(entry.getKey().toLowerCase(Locale.ROOT));
@@ -423,6 +447,7 @@ public class ParametricCallable implements ICommand {
             locals.addProvider(ParameterData.class, parameter);
 
             String arg = combined.get(parameter.getName());
+            if (arg == null) arg = combined.get(parameter.getName().toLowerCase(Locale.ROOT));
 
             Object value;
             // flags
@@ -450,14 +475,14 @@ public class ParametricCallable implements ICommand {
                 } else {
                     args = new ArrayList<>();
                 }
-                ArgumentStack stack = new ArgumentStack(args, stack2.getStore(), stack2.getValidators(), stack2.getPermissionHandler());
                 if (!parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
-                    if (parameter.getBinding().isConsumer(stack2.getStore()) && arg == null) {
+                    if (parameter.getBinding().isConsumer(stack2.getStore()) && args.isEmpty()) {
                         String name = parameter.getType().getTypeName();
                         String[] split = name.split("\\.");
                         name = split[split.length - 1];
                         throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name, help(locals), desc(locals));
                     }
+                    ArgumentStack stack = new ArgumentStack(args, stack2.getStore(), stack2.getValidators(), stack2.getPermissionHandler());
                     value = locals.get(parameter.getBinding().getKey()).apply(stack);
                 } else {
                     value = null;

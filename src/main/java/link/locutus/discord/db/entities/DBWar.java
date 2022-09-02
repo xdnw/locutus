@@ -415,7 +415,16 @@ public class DBWar {
         return MarkupUtil.htmlUrl(PnwUtil.getName(id, true), PnwUtil.getAllianceUrl(id));
     }
 
+    public int getNationId(int allianceId) {
+        if (attacker_aa == allianceId) return attacker_id;
+        if (defender_aa == allianceId) return defender_id;
+        return 0;
+    }
     public boolean isAttacker(int nation_id) {
         return this.attacker_id == nation_id;
+    }
+
+    public int getAllianceId(int attacker_nation_id) {
+        return attacker_nation_id == this.attacker_id ? this.attacker_aa : (attacker_nation_id == this.defender_id ? this.defender_aa : 0);
     }
 }

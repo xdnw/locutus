@@ -1,8 +1,10 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -160,9 +162,14 @@ public class PWCompleter extends BindingHelper {
     public final List<ResourceType> RESOURCE_LIST_KEY = null;
     public final Set<DBAlliance> ALLIANCES_KEY = null;
     public final Set<WarStatus> WARSTATUSES_KEY = null;
+    public final Set<WarType> WARTYPES_KEY = null;
+    public final Set<AttackType> ATTACKTYPES_KEY = null;
     public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
     public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
     public final Map<MilitaryUnit, Long> UNIT_MAP_KEY = null;
+
+
+
 
     public final Set<NationOrAllianceOrGuild> NATIONS_OR_ALLIANCE_OR_GUILD_KEY = null;
     public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
@@ -196,6 +203,24 @@ public class PWCompleter extends BindingHelper {
                 addBinding(store -> {
                     store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                         return StringMan.autocompleteCommaEnum(WarStatus.class, input.toString(), OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("WARTYPES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                        return StringMan.autocompleteCommaEnum(WarType.class, input.toString(), OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("ATTACKTYPES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                        return StringMan.autocompleteCommaEnum(AttackType.class, input.toString(), OptionData.MAX_CHOICES);
                     }));
                 });
             }

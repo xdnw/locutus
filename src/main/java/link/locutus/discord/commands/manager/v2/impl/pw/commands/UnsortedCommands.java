@@ -56,12 +56,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -107,7 +102,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "List the inflows of a nation or alliance over a period of time")
-    public String inflows(@Me MessageChannel channel, Set<NationOrAlliance> nationOrAlliances, @Timestamp long cutoffMs, @Switch('i') boolean hideInflows, @Switch('o') boolean hideOutflows) {
+    public String inflows(@Me MessageChannel channel, Set<NationOrAlliance> nationOrAlliances, @Timestamp long cutoffMs, @Switch("i") boolean hideInflows, @Switch("o") boolean hideOutflows) {
         List<Transaction2> allTransfers = new ArrayList<>();
 
         String selfName = StringMan.join(nationOrAlliances.stream().map(f -> f.getName()).collect(Collectors.toList()), ",");
@@ -452,7 +447,7 @@ public class UnsortedCommands {
             "Use `#expire=30d` to have the amount expire after X days")
     @RolePermission(Roles.ECON)
     public String addBalance(@Me Message message, @Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation nation,
-                             NationOrAllianceOrGuild nationOrAllianceOrGuild, Map<ResourceType, Double> amount, String note, @Switch('f') boolean force) throws Exception {
+                             NationOrAllianceOrGuild nationOrAllianceOrGuild, Map<ResourceType, Double> amount, String note, @Switch("f") boolean force) throws Exception {
         List<String> args = new ArrayList<>(Arrays.asList(
                 nationOrAllianceOrGuild.getTypePrefix() + ":" + nationOrAllianceOrGuild.getIdLong(),
                 PnwUtil.resourcesToString(amount),
@@ -466,7 +461,7 @@ public class UnsortedCommands {
     @Command(desc = "Modify a nation, alliance or guild's deposits")
     @RolePermission(Roles.ECON)
     public String addBalanceSheet(@Me Message message, @Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                                  SpreadSheet sheet, String note, @Switch('f') boolean force) throws Exception {
+                                  SpreadSheet sheet, String note, @Switch("f") boolean force) throws Exception {
         List<String> args = new ArrayList<>(Arrays.asList(
                 "sheet:" + sheet.getSpreadsheetId(),
                 note
@@ -478,7 +473,7 @@ public class UnsortedCommands {
 
     @Command
     public String revenue(@Me GuildDB db, @Me Guild guild, @Me MessageChannel channel, @Me User user, @Me DBNation me,
-                                NationList nations, @Switch('i') boolean includeInactive, @Switch('b') boolean excludeNationBonus) throws Exception {
+                                NationList nations, @Switch("i") boolean includeInactive, @Switch("b") boolean excludeNationBonus) throws Exception {
         if (!db.isWhitelisted() && nations.getNations().size() > 8000) return "This server is not permitted to check " + nations.getNations() + " nations (max: 8000). Consider using filters e.g. `#vm_turns=0,#position>1`";
         List<String> cmd = new ArrayList<>();
         cmd.add(nations.getFilter());
@@ -489,7 +484,7 @@ public class UnsortedCommands {
 
     @Command
     public String cityRevenue(@Me Guild guild, @Me MessageChannel channel, @Me User user, @Me DBNation me,
-                              CityBuild city, @Switch('b') boolean excludeNationBonus) throws Exception {
+                              CityBuild city, @Switch("b") boolean excludeNationBonus) throws Exception {
         List<String> cmd = new ArrayList<>(Arrays.asList(city.toString()));
         if (excludeNationBonus) cmd.add("-b");
         return new Revenue().onCommand(guild, channel, user, me, cmd);
@@ -500,21 +495,21 @@ public class UnsortedCommands {
     @WhitelistPermission
     public String optimalBuild(@Me Message message, @Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
             CityBuild build, @Default Integer days,
-                               @Switch('x') @Filter("[0-9]{4}") String buildMMR,
-                               @Switch('a') Integer age,
-                               @Switch('i') Integer infra,
-                               @Switch('b') Integer baseReducedInfra,
-                               @Switch('l') Integer land,
-                               @Switch('d') Double diseaseCap,
-                               @Switch('c') Double crimeCap,
-                               @Switch('p') Double minPopulation,
-                               @Switch('r') Double radiation,
-                               @Switch('t')TaxRate taxRate,
-                               @Switch('u') boolean useRawsForManu,
-                               @Switch('w') boolean writePlaintext,
-                               @Switch('n') Set<Project> nationalProjects,
-                               @Switch('m') boolean moneyPositive,
-                               @Switch('g') Continent geographicContinent
+                               @Switch("x") @Filter("[0-9]{4}") String buildMMR,
+                               @Switch("a") Integer age,
+                               @Switch("i") Integer infra,
+                               @Switch("b") Integer baseReducedInfra,
+                               @Switch("l") Integer land,
+                               @Switch("d") Double diseaseCap,
+                               @Switch("c") Double crimeCap,
+                               @Switch("p") Double minPopulation,
+                               @Switch("r") Double radiation,
+                               @Switch("t")TaxRate taxRate,
+                               @Switch("u") boolean useRawsForManu,
+                               @Switch("w") boolean writePlaintext,
+                               @Switch("n") Set<Project> nationalProjects,
+                               @Switch("m") boolean moneyPositive,
+                               @Switch("g") Continent geographicContinent
                                ) throws Exception {
         List<String> cmd = new ArrayList<>();
         if (days != null) cmd.add(days + " ");
@@ -567,7 +562,7 @@ public class UnsortedCommands {
     @WhitelistPermission
     @RolePermission(Roles.MEMBER)
     public String checkCities(@Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                              NationList nations, @Switch('p') boolean ping, @Switch('m') boolean mailResults, @Switch('c') boolean postInInterviewChannels) throws Exception {
+                              NationList nations, @Switch("p") boolean ping, @Switch("m") boolean mailResults, @Switch("c") boolean postInInterviewChannels) throws Exception {
         List<String> cmd = new ArrayList<>(Arrays.asList( nations.getFilter()));
         if (ping) cmd.add("-p");
         if (mailResults) cmd.add("-m");
@@ -584,7 +579,7 @@ public class UnsortedCommands {
 
     @Command
     public String unitHistory(@Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                              DBNation nation, MilitaryUnit unit, @Switch('p') Integer page) throws Exception {
+                              DBNation nation, MilitaryUnit unit, @Switch("p") Integer page) throws Exception {
         List<String> cmd = new ArrayList<>(Arrays.asList(nation.getNation_id() + "", "" + unit));
         if (page != null) cmd.add("page:" + page);
         return new UnitHistory().onCommand(guild, channel, author, me, cmd);
@@ -599,10 +594,10 @@ public class UnsortedCommands {
     @Command
     public String leftAA(@Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
             NationOrAlliance nationOrAlliance, @Default @Timestamp Long time, @Default NationList filter,
-                         @Switch('a') boolean ignoreInactives,
-                         @Switch('v') boolean ignoreVM,
-                         @Switch('m') boolean ignoreMembers,
-                         @Switch('i') boolean listIds) throws Exception {
+                         @Switch("a") boolean ignoreInactives,
+                         @Switch("v") boolean ignoreVM,
+                         @Switch("m") boolean ignoreMembers,
+                         @Switch("i") boolean listIds) throws Exception {
         List<String> cmd = new ArrayList<>();
         cmd.add(nationOrAlliance.getUrl());
         if (time != null) {
@@ -623,11 +618,11 @@ public class UnsortedCommands {
     @RolePermission(Roles.MEMBER)
     public String findProducer(@Me MessageChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
                                List<ResourceType> resources, @Default NationList nations,
-                               @Switch('m') boolean ignoreMilitaryUpkeep,
-                               @Switch('t') boolean ignoreTradeBonus,
-                               @Switch('n') boolean ignoreNationBonus,
-                               @Switch('a') boolean listByNation,
-                               @Switch('s') boolean listAverage) throws Exception {
+                               @Switch("m") boolean ignoreMilitaryUpkeep,
+                               @Switch("t") boolean ignoreTradeBonus,
+                               @Switch("n") boolean ignoreNationBonus,
+                               @Switch("a") boolean listByNation,
+                               @Switch("s") boolean listAverage) throws Exception {
         List<String> cmd = new ArrayList<>();
         cmd.add(StringMan.join(resources, ","));
         if (nations != null) cmd.add("" + nations.getFilter());

@@ -41,7 +41,7 @@ import java.util.Set;
 public class ExchangeCommands {
     @Command(desc = "Create an exchange")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String create(@Me Guild guild, @Me User user, @Me DBNation me, @Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation nation, ExchangeCategory category, String symbol, @Switch('f') boolean force) {
+    public String create(@Me Guild guild, @Me User user, @Me DBNation me, @Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation nation, ExchangeCategory category, String symbol, @Switch("f") boolean force) {
         if (!symbol.matches("[a-zA-Z0-9_]+")) return "`" + symbol + "` does not match (letters, numbers, underscores)";
         if (MathMan.isInteger(symbol)) return "The exchange symbol `" + symbol + "` must contain at least one letter";
         Exchange exchange = db.getExchange(symbol);
@@ -95,7 +95,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Destroy an exchange")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String drop(@Me Guild guild, @Me MessageChannel channel, @Me DBNation me, @Me Message message, StockDB db, @Me Exchange exchange, @Switch('f') boolean force) {
+    public String drop(@Me Guild guild, @Me MessageChannel channel, @Me DBNation me, @Me Message message, StockDB db, @Me Exchange exchange, @Switch("f") boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         if (!force) {
             DiscordUtil.pending(channel, message, "Delete: " + exchange.symbol, exchange.toString(), 'f');
@@ -109,7 +109,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Transfer funds from this corp to the accounts of a nation or another corp")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String transfer(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch('f') boolean force) {
+    public String transfer(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch("f") boolean force) {
         if (!force) {
             String title = "Confirm transfer: " + MathMan.format(amount) + "x" + resource.name;
             String body = "From `*" + exchange.getName() + "` to " + receiver.getUrlMarkup();
@@ -121,13 +121,13 @@ public class ExchangeCommands {
         return result.getValue();
     }
 
-    public String withdraw(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch('f') boolean force) {
+    public String withdraw(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch("f") boolean force) {
         return null; // TODO
     }
 
     @Command(desc = "Deposit your funds into an exchange")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String deposit(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, Exchange resource, double amount, @Switch('f') boolean force) {
+    public String deposit(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, Exchange resource, double amount, @Switch("f") boolean force) {
         NationOrExchange receiver = new NationOrExchange(exchange);
         if (!force) {
             String title = "Confirm transfer: " + MathMan.format(amount) + "x" + resource.name;
@@ -214,7 +214,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Transfer exchange ownership")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String owner(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation newOwner, @Switch('f') boolean force) {
+    public String owner(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation newOwner, @Switch("f") boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         User user = newOwner.getUser();
         if (user == null) return newOwner.getNation() + " has not used `" + Settings.commandPrefix(true) + "verify`";
