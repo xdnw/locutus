@@ -96,13 +96,19 @@ public class CommandManager2 {
         legacy.registerCommands(new UnsortedCommands());
         legacy.registerSubCommands(new ReportCommands(), "report");
 
-        this.commands.registerCommandsWithMapping(legacy, loadDefaultMapping(), 2, false);
+        YamlConfiguration commandRemapConfig = loadDefaultMapping();
+        if (commandRemapConfig != null) {
+            this.commands.registerCommandsWithMapping(legacy, commandRemapConfig, 2, false);
+        }
 
         return this;
     }
 
     public YamlConfiguration loadDefaultMapping() {
-        return YamlConfiguration.loadConfiguration(new File("config" + File.separator + "commands.yaml"));
+        File file = new File("config" + File.separator + "commands.yaml");
+        if (file.exists()) {
+            return YamlConfiguration.loadConfiguration(file);
+        } else return null;
     }
 
     public ValueStore<Object> getStore() {
