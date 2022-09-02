@@ -583,13 +583,13 @@ public class UtilityCommands {
     }
     @Command
     public String warRanking(@Me Message message, @Me MessageChannel channel, @Timestamp long time, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders,
-                             @Switch('o') boolean onlyOffensives,
-                             @Switch('d') boolean onlyDefensives,
-                             @Switch('n') boolean normalizePerMember,
-                             @Switch('i') boolean ignore2dInactives,
-                             @Switch('a') boolean rankByNation,
-                             @Switch('t') WarType warType,
-                             @Switch('s') Set<WarStatus> statuses) {
+                             @Switch("o") boolean onlyOffensives,
+                             @Switch("d") boolean onlyDefensives,
+                             @Switch("n") boolean normalizePerMember,
+                             @Switch("i") boolean ignore2dInactives,
+                             @Switch("a") boolean rankByNation,
+                             @Switch("t") WarType warType,
+                             @Switch("s") Set<WarStatus> statuses) {
         WarParser parser = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
         Map<Integer, DBWar> wars = parser.getWars();
 
@@ -648,7 +648,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing infra (from current to max)", aliases = {"InfraCost", "infrastructurecost", "infra", "infrastructure", "infracosts"})
-    public String InfraCost(@Range(min=0, max=40000) int currentInfra, @Range(min=0, max=40000) int maxInfra, @Default("false") boolean urbanization, @Default("false") boolean cce, @Default("false") boolean aec, @Switch('c') @Default("1") int cities) {
+    public String InfraCost(@Range(min=0, max=40000) int currentInfra, @Range(min=0, max=40000) int maxInfra, @Default("false") boolean urbanization, @Default("false") boolean cce, @Default("false") boolean aec, @Switch("c") @Default("1") int cities) {
         if (maxInfra > 40000) throw new IllegalArgumentException("Max infra 40000");
 
         double total = 0;
@@ -666,7 +666,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing land (from current to max)", aliases = {"LandCost", "land", "landcosts"})
-    public String LandCost(@Range(min=0, max=40000) int currentLand, @Range(min=0, max=40000) int maxLand, @Default("false") boolean rapidExpansion, @Default("false") boolean ala, @Default("false") boolean aec, @Switch('c') @Default("1") int cities) {
+    public String LandCost(@Range(min=0, max=40000) int currentLand, @Range(min=0, max=40000) int maxLand, @Default("false") boolean rapidExpansion, @Default("false") boolean ala, @Default("false") boolean aec, @Switch("c") @Default("1") int cities) {
         if (maxLand > 40000) throw new IllegalArgumentException("Max land 40000");
 
         double total = 0;
@@ -685,17 +685,17 @@ public class UtilityCommands {
 
     @Command(desc = "Calculate the score of various things. Each argument is option, and can go in any order")
     public String score(@Default DBNation nation,
-                        @Switch('c') Integer cities,
-                        @Switch('s') Integer soldiers,
-                        @Switch('t') Integer tanks,
-                        @Switch('a') Integer aircraft,
-                        @Switch('b') Integer boats,
-                        @Switch('m') Integer missiles,
-                        @Switch('n') Integer nukes,
-                        @Switch('p') Integer projects,
-                        @Switch('i') Integer avg_infra,
-                        @Switch('I') Integer infraTotal,
-                        @Switch('b') String builtMMR
+                        @Switch("c") Integer cities,
+                        @Switch("s") Integer soldiers,
+                        @Switch("t") Integer tanks,
+                        @Switch("a") Integer aircraft,
+                        @Switch("b") Integer boats,
+                        @Switch("m") Integer missiles,
+                        @Switch("n") Integer nukes,
+                        @Switch("p") Integer projects,
+                        @Switch("i") Integer avg_infra,
+                        @Switch("I") Integer infraTotal,
+                        @Switch("b") String builtMMR
                         ) {
         if (nation == null) {
             nation = new DBNation();
@@ -959,7 +959,7 @@ public class UtilityCommands {
             "See `{prefix}placeholders Alliance` for a list of placeholders")
     @WhitelistPermission
     public String AllianceSheet(@Me Guild guild, @Me MessageChannel channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
-                                @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException, IllegalAccessException {
+                                @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, IllegalAccessException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.ALLIANCES_SHEET);
         }
@@ -1027,8 +1027,8 @@ public class UtilityCommands {
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     @Command
     public String NationSheet(@Me MessageChannel channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
-                           @Switch('e') boolean updateSpies, @Switch('s') SpreadSheet sheet,
-                           @Switch('t') boolean updateTimer) throws GeneralSecurityException, IOException {
+                           @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet,
+                           @Switch("t") boolean updateTimer) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
         }
@@ -1091,7 +1091,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Return quickest attacks to beige an enemy", aliases = {"fastBeige", "quickestBeige", "quickBeige", "fastestBeige"})
-    public String quickestBeige(@Range(min=1, max=100) int resistance, @Switch('g') boolean noGround, @Switch('s') boolean noShip, @Switch('a') boolean noAir, @Switch('m') boolean noMissile, @Switch('n') boolean noNuke) {
+    public String quickestBeige(@Range(min=1, max=100) int resistance, @Switch("g") boolean noGround, @Switch("s") boolean noShip, @Switch("a") boolean noAir, @Switch("m") boolean noMissile, @Switch("n") boolean noNuke) {
         if (resistance > 1000 || resistance < 1) throw new IllegalArgumentException("Resistance must be between 1 and 100");
         List<AttackType> allowed = new ArrayList<>(List.of(AttackType.values));
         if (noGround) allowed.removeIf(f -> f == AttackType.GROUND);
@@ -1110,7 +1110,8 @@ public class UtilityCommands {
     }
 
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
-    desc = "Get detailed information about a nation. Nation argument can be nation name, id, link, or discord tag\n" +
+    desc = "Get detailed information about a nation\n" +
+            "Nation argument can be nation name, id, link, or discord tag\n" +
             "Use `-l` to list the nations instead of just providing a summary\n" +
             "Use `-r` to list discord tag (raw)\n" +
             "Use `-p` to list discord tag (ping)\n" +
@@ -1120,13 +1121,13 @@ public class UtilityCommands {
     public String who(@Me Message message, @Me Guild guild, @Me MessageChannel channel, @Me User author,
                       Set<NationOrAlliance> nationsOrAlliances,
                       @Default() NationPlaceholder sortBy,
-                      @Switch('l') boolean list,
-                      @Switch('a') boolean listAlliances,
-                      @Switch('r') boolean listRawUserIds,
-                      @Switch('m') boolean listMentions,
-                      @Switch('i') boolean listInfo,
-                      @Switch('c') boolean listChannels,
-                      @Switch('p') Integer page) throws IOException {
+                      @Switch("l") boolean list,
+                      @Switch("a") boolean listAlliances,
+                      @Switch("r") boolean listRawUserIds,
+                      @Switch("m") boolean listMentions,
+                      @Switch("i") boolean listInfo,
+                      @Switch("c") boolean listChannels,
+                      @Switch("p") Integer page) throws IOException {
 
         /*
         // TODO get commands that can run with
@@ -1535,7 +1536,7 @@ public Map<ParametricCallable, String> getEndpoints() {
     }
 
     @Command(aliases = {"alliancecost", "aacost"})
-    public String allianceCost(@Me MessageChannel channel, Set<DBNation> nations, @Switch('u') boolean update) {
+    public String allianceCost(@Me MessageChannel channel, Set<DBNation> nations, @Switch("u") boolean update) {
         double infraCost = 0;
         double landCost = 0;
         double cityCost = 0;

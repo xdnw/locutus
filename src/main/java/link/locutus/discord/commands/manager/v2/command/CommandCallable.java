@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.function.Predicate;
 
 public interface CommandCallable {
+    CommandCallable clone(CommandCallable parent, List<String> aliases);
     CommandCallable getParent();
 
     Object call(ArgumentStack stack);
@@ -21,11 +22,6 @@ public interface CommandCallable {
     String simpleHelp();
 
     List<String> aliases();
-
-    default String getPrimaryAlias() {
-        if (aliases().isEmpty()) return null;
-        return aliases().get(0);
-    }
 
     default void validatePermissions(ValueStore store, PermissionHandler permisser) throws IllegalArgumentException {
 
@@ -69,7 +65,7 @@ public interface CommandCallable {
         List<String> pathList = new ArrayList<>();
         CommandCallable root = this;
         while (root != null) {
-            if (!root.getPrimaryCommandId().isEmpty()) {
+            if (root.getPrimaryCommandId() != null && !root.getPrimaryCommandId().isEmpty()) {
                 pathList.add(root.getPrimaryCommandId());
             }
             root = root.getParent();
@@ -79,15 +75,8 @@ public interface CommandCallable {
     }
 
     default String getPrimaryCommandId() {
-        StringBuilder help = new StringBuilder();
-        CommandCallable tmp = this;
-        while (tmp != null) {
-            if (!tmp.aliases().isEmpty() && !tmp.aliases().get(0).isEmpty()) {
-                help.insert(0, tmp.aliases().get(0) + " ");
-            }
-            tmp = tmp.getParent();
-        }
-        return help.toString().trim();
+        if (aliases().isEmpty()) return "";
+        return aliases().get(0);
     }
 
     default Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {

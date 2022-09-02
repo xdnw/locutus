@@ -70,7 +70,7 @@ public class StatPages {
     }
 
     @Command()
-    public Object globalTierStats(Set<NationAttributeDouble> metrics, int topX, @Default("getCities") NationAttributeDouble groupBy, @Switch('t') boolean total) {
+    public Object globalTierStats(Set<NationAttributeDouble> metrics, int topX, @Default("getCities") NationAttributeDouble groupBy, @Switch("t") boolean total) {
         if (topX > 250) return "Treaty information is not available for those alliances (outside top 80)";
 
         boolean removeVM = true;
@@ -84,7 +84,7 @@ public class StatPages {
     }
 
     @Command()
-    public Object metricByGroup(Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('t') boolean total) {
+    public Object metricByGroup(Set<NationAttributeDouble> metrics, Set<NationOrAlliance> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("i") boolean includeApplicants, @Switch("t") boolean total) {
         Set<DBNation> coalitionNations = new HashSet<>();
         for (NationOrAlliance natOrAA : coalition) {
             coalitionNations.addAll(natOrAA.getDBNations());
@@ -152,8 +152,8 @@ public class StatPages {
                                    @Default Set<DBAlliance> coalition8,
                                    @Default Set<DBAlliance> coalition9,
                                    @Default Set<DBAlliance> coalition10,
-                                   @Switch('t') boolean total,
-                                   @Switch('b') boolean barGraph) {
+                                   @Switch("t") boolean total,
+                                   @Switch("b") boolean barGraph) {
 
         List<Set<DBAlliance>> coalitions = new ArrayList<>();
 

@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
@@ -85,6 +86,20 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "City ranges", examples = {"c1-10", "c11+"})
     public CityRanges CityRanges(String input) {
         return CityRanges.parse(input);
+    }
+
+    @Binding(value = "War", examples = {"https://politicsandwar.com/nation/war/timeline/war=1234"})
+    public DBWar war(String arg0) {
+        if (arg0.contains("/war=")) {
+            arg0 = arg0.split("=")[1];
+        }
+        if (!MathMan.isInteger(arg0)) {
+            throw new IllegalArgumentException("Not a valid war number: `" + arg0 + "`");
+        }
+        int warId = Integer.parseInt(arg0);
+        DBWar war = Locutus.imp().getWarDb().getWar(warId);
+        if (war == null) throw new IllegalArgumentException("No war founds for id: `" + warId + "`");
+        return war;
     }
 
     @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
@@ -347,6 +362,17 @@ public class PWBindings extends BindingHelper {
         return result;
     }
 
+    @Binding(examples = "ATTRITION,RAID")
+    public Set<WarType> WarType(String input) {
+        return emumSet(WarType.class, input);
+    }
+
+    @Binding(examples = "GROUND,VICTORY")
+    public Set<AttackType> AttackType(String input) {
+        return emumSet(AttackType.class, input);
+    }
+
+
     @Binding(examples = {"aluminum", "money", "*", "manu", "raws", "!food"})
     public static List<ResourceType> rssTypes(String input) {
         Set<ResourceType> types = new LinkedHashSet<>();
@@ -465,6 +491,11 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
+    public AttackType attackType(String input) {
+        return emum(AttackType.class, input);
+    }
+
+    @Binding
     public WarDB warDB() {
         return Locutus.imp().getWarDb();
     }
@@ -542,6 +573,11 @@ public class PWBindings extends BindingHelper {
     @Binding
     public NationLootType lootType(String input) {
         return emum(NationLootType.class, input);
+    }
+
+    @Binding
+    public ReportCommands.ReportType reportType(String input) {
+        return emum(ReportCommands.ReportType.class, input);
     }
 
     @Binding

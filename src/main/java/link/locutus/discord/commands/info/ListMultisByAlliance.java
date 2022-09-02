@@ -79,7 +79,7 @@ public class ListMultisByAlliance extends Command {
             }
         }
 
-        Map<Integer, List<DBWar>> allWars = Locutus.imp().getWarDb().getWars(multisByNation.keySet(), Collections.emptySet());
+        Map<Integer, DBWar> allWars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(multisByNation::containsKey, null, null);
         List<DBTrade> allOffers = Locutus.imp().getTradeManager().getTradeDb().getTrades(0);
         Map<Integer, List<DBTrade>> offersByNation = new RankBuilder<>(allOffers).group((BiConsumer<DBTrade, GroupedRankBuilder<Integer, DBTrade>>) (offer, builder) -> {
             builder.put(offer.getBuyer(), offer);
@@ -87,9 +87,6 @@ public class ListMultisByAlliance extends Command {
         }).get();
 
         Map<Integer, List<Transaction2>> allTransfers = Locutus.imp().getBankDB().getNationTransfersByNation(0, multisByNation.keySet());
-
-        Map<Integer, Collection<DBWar>> wars = new HashMap<>();
-        Map<Integer, Collection<DBTrade>> trades = new HashMap<>();
 
         StringBuilder response = new StringBuilder();
         int i = 0;
@@ -158,8 +155,8 @@ public class ListMultisByAlliance extends Command {
         return null;
     }
 
-    private Set<Integer> getDefenders(int nationId, Map<Integer, List<DBWar>> allWars) {
-        List<DBWar> myWars = allWars.getOrDefault(nationId, Collections.emptyList());
+    private Set<Integer> getDefenders(int nationId, Map<Integer, DBWar> allWars) {
+        List<DBWar> myWars = allWars.values().stream().filter(f -> f.attacker_id == nationId || f.defender_id == nationId).toList();
         Set<Integer> defenders = new HashSet<>();
         for (DBWar war : myWars) {
             if (war.defender_id != nationId) {

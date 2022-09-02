@@ -281,9 +281,10 @@ public class ROI extends Command {
                 header.add("" + nation.getOff());
                 header.add("" + nation.getDef());
 
-                List<DBWar> wars = Locutus.imp().getWarDb().getWars(Collections.emptySet(), Collections.singleton(nation.getNation_id())).get(nation.getNation_id());
+                List<DBWar> wars = new ArrayList<>(Locutus.imp().getWarDb().getWarsForNationOrAlliance(f -> f == nation.getNation_id(), null, f -> f.defender_id == nation.getNation_id()).values());
                 long lastWar = 0;
-                if (wars != null) {
+                if (!wars.isEmpty()) {
+                    wars.sort((o1, o2) -> Integer.compare(o2.warId, o1.warId));
                     for (DBWar war : wars) {
                         lastWar = Math.max(lastWar, war.getDate());
                     }

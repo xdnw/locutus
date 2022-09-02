@@ -329,7 +329,7 @@ public class StockCommands {
     }
 
     @Command(desc = "List any resources (and their margin) which are out of sync with ingame prices")
-    public String rssmargin(@Me MessageChannel channel, @Me Message message, StockDB db, @Switch('p') boolean usePercent) {
+    public String rssmargin(@Me MessageChannel channel, @Me Message message, StockDB db, @Switch("p") boolean usePercent) {
         StringBuilder response = new StringBuilder();
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS || type == ResourceType.MONEY) continue;
@@ -353,7 +353,7 @@ public class StockCommands {
     }
 
     @Command(desc = "List the buy/sell margin for exchanges")
-    public String margin(@Me MessageChannel channel, @Me Message message, StockDB db, List<Exchange> exchanges, @Switch('p') boolean usePercent) {
+    public String margin(@Me MessageChannel channel, @Me Message message, StockDB db, List<Exchange> exchanges, @Switch("p") boolean usePercent) {
         List<String> exchangeNames = exchanges.stream().map(f -> f.symbol).collect(Collectors.toList());
 
         List<String> margin = new ArrayList<>();
@@ -492,7 +492,7 @@ public class StockCommands {
     }
 
     @Command(desc = "List open offers for an exchange")
-    public String market(@Me MessageChannel channel, @Me Message message, @Me DBNation me, StockDB db, Exchange exchange, @Switch('b') boolean onlyBuyOffers, @Switch('s') boolean onlySellOffers, @Switch('p') int page) {
+    public String market(@Me MessageChannel channel, @Me Message message, @Me DBNation me, StockDB db, Exchange exchange, @Switch("b") boolean onlyBuyOffers, @Switch("s") boolean onlySellOffers, @Switch("p") int page) {
         if (!exchange.canView(me)) return exchange.name + " requires you to be " + exchange.requiredRank + " to view";
         Map.Entry<List<StockTrade>, List<StockTrade>> buySell = db.getBuySellOffersByCorp(exchange.id);
         List<StockTrade> buy = buySell.getKey();
@@ -535,7 +535,7 @@ public class StockCommands {
     }
 
     @Command(desc = "List your open offers")
-    public String mytrades(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation nation, @Switch('b') boolean onlyBuyOffers, @Switch('s') boolean onlySellOffers, @Switch('p') int page) {
+    public String mytrades(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation nation, @Switch("b") boolean onlyBuyOffers, @Switch("s") boolean onlySellOffers, @Switch("p") int page) {
         ArrayList<StockTrade> trades = new ArrayList<>(db.getOpenTrades(nation.getNation_id()).values());
         if (trades.isEmpty()) return "No open trades";
         Collections.sort(trades, (o1, o2) -> Double.compare(o2.date_offered, o1.date_offered));
@@ -585,7 +585,7 @@ public class StockCommands {
     }
 
     @Command(desc = "List a nations share transactions")
-    public String transactions(@Me MessageChannel channel, @Me Message message, @Me DBNation me, StockDB db, DBNation nation, @Switch('p') int page) {
+    public String transactions(@Me MessageChannel channel, @Me Message message, @Me DBNation me, StockDB db, DBNation nation, @Switch("p") int page) {
         int id = nation.getNation_id();
         List<StockTrade> trades = db.getClosedTradesByNation(id, 0);
         trades.removeIf(f -> (f.is_buying ? f.buyer : f.seller) != id);
@@ -612,7 +612,7 @@ public class StockCommands {
     }
 
     @Command(desc = "List exchange shareholders")
-    public String shareholders(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, Exchange exchange, @Switch('p') int page) {
+    public String shareholders(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, Exchange exchange, @Switch("p") int page) {
         if (!exchange.canView(me)) return exchange.name + " requires you to be " + exchange.requiredRank + " to view";
 
         Map<Integer, Long> shareholders = db.getShareholdersByCorp(exchange.id);
@@ -631,7 +631,7 @@ public class StockCommands {
     }
 
     @Command(desc = "List a nations shares")
-    public String shares(@Me MessageChannel channel, @Me Message message, StockDB db, NationOrExchange nation, @Switch('p') int page) {
+    public String shares(@Me MessageChannel channel, @Me Message message, StockDB db, NationOrExchange nation, @Switch("p") int page) {
         Map<Exchange, Long> shares = db.getSharesByNation(nation.getId());
         if (shares.isEmpty()) return "No shareholders";
 
@@ -652,13 +652,13 @@ public class StockCommands {
 
     @Command(desc = "Give some of your shares to another nation")
     @RolePermission(value={Roles.ECON}, root=true)
-    public String give(@Me MessageChannel channel, StockDB db, @Me DBNation me, NationOrExchange receiver, Exchange exchange, @Range(min=0.01) double amount, @Switch('f') boolean confirm, @Switch('a') boolean anonymous) {
+    public String give(@Me MessageChannel channel, StockDB db, @Me DBNation me, NationOrExchange receiver, Exchange exchange, @Range(min=0.01) double amount, @Switch("f") boolean confirm, @Switch("a") boolean anonymous) {
         Map.Entry<Boolean, String> result = new NationOrExchange(me).give(channel, me, receiver, exchange, amount, anonymous);
         return result.getValue();
     }
 
     @Command(desc = "Withdraw your cash/resources from the exchange")
-    public String withdraw(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, DBNation receiver, Map<ResourceType, Double> resources, @Switch('f') boolean force) throws IOException {
+    public String withdraw(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, DBNation receiver, Map<ResourceType, Double> resources, @Switch("f") boolean force) throws IOException {
         if (receiver.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
         if (receiver.getVm_turns() != 0) throw new IllegalArgumentException("Receiver is on vacation mode");
 
@@ -724,7 +724,7 @@ public class StockCommands {
     }
 
     @Command(desc = "Withdraw your cash/resources from the exchange")
-    public String withdrawAA(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, DBAlliance alliance, Map<ResourceType, Double> resources, @Switch('f') boolean force) {
+    public String withdrawAA(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, DBAlliance alliance, Map<ResourceType, Double> resources, @Switch("f") boolean force) {
         if (!force) {
             String title = "Confirm transfer worth: $" + MathMan.format(PnwUtil.convertedTotal(resources));
             String body = "Amount: " + PnwUtil.resourcesToString(resources) + "\nTo AA:" + alliance.getName() + "(" + alliance.getNations(true, 0, true).size() + " members)";

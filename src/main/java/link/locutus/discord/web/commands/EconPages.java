@@ -39,8 +39,8 @@ public class EconPages {
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
     @IsAuthenticated
-    public Object taxExpensesByTime(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Timestamp long start, @Timestamp long end, @Default Set<DBNation> nationFilter, @Switch('s') @Range(min=1) Integer movingAverageTurns, @Switch('c') boolean cumulative,
-                                    @Switch('t') boolean dontRequireTagged) throws Exception {
+    public Object taxExpensesByTime(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Timestamp long start, @Timestamp long end, @Default Set<DBNation> nationFilter, @Switch("s") @Range(min=1) Integer movingAverageTurns, @Switch("c") boolean cumulative,
+                                    @Switch("t") boolean dontRequireTagged) throws Exception {
 
         if (movingAverageTurns != null && cumulative) throw new IllegalArgumentException("Please pick either a moving average, or cumulative, not both");
 
@@ -117,9 +117,9 @@ public class EconPages {
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
     @IsAuthenticated
-    public Object taxExpensesIndex(@Me GuildDB db, @Timestamp long start, @Timestamp long end, @Switch('n') NationList nationList,
-                                   @Switch('g') boolean dontRequireGrant, @Switch('t') boolean dontRequireTagged, @Switch('e') boolean dontRequireExpiry,
-                                   @Switch('d') boolean includeDeposits) throws Exception {
+    public Object taxExpensesIndex(@Me GuildDB db, @Timestamp long start, @Timestamp long end, @Switch("n") NationList nationList,
+                                   @Switch("g") boolean dontRequireGrant, @Switch("t") boolean dontRequireTagged, @Switch("e") boolean dontRequireExpiry,
+                                   @Switch("d") boolean includeDeposits) throws Exception {
 
         List<String> errors = new ArrayList<>();
         Predicate<Integer> allowedNations;

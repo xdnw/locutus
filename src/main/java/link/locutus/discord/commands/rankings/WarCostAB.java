@@ -23,6 +23,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -77,11 +78,6 @@ public class WarCostAB extends Command {
         }
 
         AttackCost cost = parser.toWarCost();
-
-        String withPirateStr = DiscordUtil.parseArg(args, "w_pirate");
-        String withTypeStr = DiscordUtil.parseArg(args, "w_type");
-        Boolean withPirate = withPirateStr == null ? null : Boolean.parseBoolean(withPirateStr);
-        WarType withType = withTypeStr == null ? null : WarType.parse(withTypeStr);
 
         StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l')));
         if (flags.contains('w')) {
@@ -142,15 +138,13 @@ public class WarCostAB extends Command {
                 arg0 = arg0.split("war=")[1];
                 int warId = Integer.parseInt(arg0);
                 DBWar warUrl = Locutus.imp().getWarDb().getWar(warId);
-                reimburse(cost, warUrl, event);
+                reimburse(cost, warUrl, event.getGuild(), event.getChannel());
             }
         }
         return result.toString();
     }
 
-    private void reimburse(AttackCost cost, DBWar warUrl, MessageReceivedEvent event) {
-        Guild guild = event.isFromGuild() ? event.getGuild() : null;
-        if (guild == null) return;
+    public static void reimburse(AttackCost cost, DBWar warUrl, Guild guild, MessageChannel channel) {
         if (warUrl == null) {
             return;
         }
@@ -199,7 +193,6 @@ public class WarCostAB extends Command {
                 break;
         }
 
-        GuildMessageChannel channel = event.getGuildChannel();
         String totalStr = PnwUtil.resourcesToString(total);
 
         String note = "#counter=" + warUrl.warId;

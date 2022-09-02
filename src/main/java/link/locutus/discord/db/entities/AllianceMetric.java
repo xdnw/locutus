@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PnwUtil;
@@ -12,6 +13,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import rocker.grant.cities;
+import rocker.grant.city;
 
 import java.util.AbstractMap;
 import java.util.Arrays;
@@ -322,28 +324,78 @@ public enum AllianceMetric {
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.ALUMINUM.ordinal()] : 0d;
         }
     },
-    BARRACKS_PCT(false) {
+    BARRACKS_PCT(true) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMMRBuildingArr()[0] / Buildings.BARRACKS.cap(f -> false);
         }
     },
-    FACTORY_PCT(false) {
+    FACTORY_PCT(true) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMMRBuildingArr()[1] / Buildings.FACTORY.cap(f -> false);
         }
     },
-    HANGAR_PCT(false) {
+    HANGAR_PCT(true) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMMRBuildingArr()[2] / Buildings.HANGAR.cap(f -> false);
         }
     },
-    DRYDOCK_PCT(false) {
+    DRYDOCK_PCT(true) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMMRBuildingArr()[3] / Buildings.DRYDOCK.cap(f -> false);
+        }
+    },
+
+    INFRA_VALUE(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            double total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) {
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    total += nation.infraCost(0, city.infra);
+                }
+            }
+            return total;
+        }
+    },
+
+    LAND_VALUE(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            double total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) {
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    total += nation.landCost(0, city.land);
+                }
+            }
+            return total;
+        }
+    },
+
+    PROJECT_VALUE(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            double total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) {
+                for (Project project : nation.getProjects()) {
+                    total += PnwUtil.convertedTotal(project.cost());
+                }
+            }
+            return total;
+        }
+    },
+
+    CITY_VALUE(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            double total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) {
+                PnwUtil.cityCost(nation, 0, nation.getCities());
+            }
+            return total;
         }
     },
 

@@ -137,7 +137,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "Show resource value", aliases = {"resourcevalue", "convertedtotal"})
-    public String convertedTotal(Map<ResourceType, Double> resources, @Switch('n') boolean normalize, @Switch('b') boolean useBuyPrice, @Switch('s') boolean useSellPrice, @Switch('t') ResourceType convertType) {
+    public String convertedTotal(Map<ResourceType, Double> resources, @Switch("n") boolean normalize, @Switch("b") boolean useBuyPrice, @Switch("s") boolean useSellPrice, @Switch("t") ResourceType convertType) {
         if (normalize) {
             double total = PnwUtil.convertedTotal(resources);
             if (total <= 0) {
@@ -190,7 +190,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "Get the buy/sell margin for each resource")
-    public String tradeMargin(@Me Message message, @Me MessageChannel channel, TradeManager manager, @Switch('p') boolean usePercent) {
+    public String tradeMargin(@Me Message message, @Me MessageChannel channel, TradeManager manager, @Switch("p") boolean usePercent) {
         TradeManager trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "\uD83D\uDD04";
 
@@ -258,7 +258,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.", aliases = {"TradeRanking", "TradeProfitRanking"})
-    public String tradeRanking(@Me MessageChannel channel, @Me Message message, Set<DBNation> nations, @Timestamp long time, @Switch('a') boolean groupByAlliance) {
+    public String tradeRanking(@Me MessageChannel channel, @Me Message message, Set<DBNation> nations, @Timestamp long time, @Switch("a") boolean groupByAlliance) {
         Function<DBNation, Integer> groupBy = groupByAlliance ? groupBy = f -> f.getAlliance_id() : f -> f.getNation_id();
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
         Map<Integer, TradeRanking.TradeProfitContainer> tradeContainers = new HashMap<>();
@@ -545,7 +545,7 @@ public class TradeCommands {
 
 
     @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation.")
-    public String moneyTrades(TradeManager manager, DBNation nation, @Timestamp long time, @Switch('f') boolean forceUpdate, @Switch('a') boolean addBalance) throws IOException {
+    public String moneyTrades(TradeManager manager, DBNation nation, @Timestamp long time, @Switch("f") boolean forceUpdate, @Switch("a") boolean addBalance) throws IOException {
         if (forceUpdate) {
             manager.updateTradeList(Event::post);
         }
@@ -962,7 +962,7 @@ public class TradeCommands {
 
     @Command(desc = "List nations who have bought/sold the most of a resource over a period")
     @RolePermission(value = Roles.MEMBER)
-    public String findTrader(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch('a') boolean groupByAlliance) {
+    public String findTrader(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch("a") boolean groupByAlliance) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<DBTrade> offers = db.getTrades(cutoff);
         int findsign = isBuy ? 1 : -1;

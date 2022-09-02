@@ -40,7 +40,7 @@ public class BankPages {
 
     @Command
     @RolePermission(Roles.ECON)
-    public Object memberDeposits(@Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch('f') boolean force, @Switch('b') boolean noTaxBase, @Switch('o') boolean ignoreOffset) {
+    public Object memberDeposits(@Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch("f") boolean force, @Switch("b") boolean noTaxBase, @Switch("o") boolean ignoreOffset) {
         if (true) return nation2 + "<br><br>" + author + "<br><br>" + guild;
         Set<Long> tracked = db.getTrackedBanks();
 

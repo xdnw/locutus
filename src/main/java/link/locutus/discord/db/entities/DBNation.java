@@ -483,7 +483,7 @@ public class DBNation implements NationOrAlliance {
 
         if (getActive_m() < 12000) {
             diffMin /= 8;
-            DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(0, nation_id);
+            DBWar lastWar = Locutus.imp().getWarDb().getLastDefensiveWar(nation_id);
             if (lastWar != null) {
                 long warDiff = currentDate - TimeUnit.DAYS.toMillis(240);
                 if (lastWar.date > warDiff) {
@@ -498,9 +498,10 @@ public class DBNation implements NationOrAlliance {
         double value = getAvg_infra() * (diffMin + getActive_m()) * getCities();
 
         if (loot == null && cities < 12) {
-            List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(nation_id, nation_id, lastLootDate);
+            long finalLastLootDate = lastLootDate;
+            Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(f -> f == nation_id, null, f -> f.date > finalLastLootDate);
             if (!wars.isEmpty()) {
-                WarParser cost = WarParser.of(wars, f -> f.attacker_id == nation_id);
+                WarParser cost = WarParser.of(wars.values(), f -> f.attacker_id == nation_id);
                 double total = cost.toWarCost().convertedTotal(true);
                 value -= total;
             }
@@ -3139,7 +3140,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "If this nation is not daily active and lost their most recent war")
     public boolean lostInactiveWar() {
         if (getActive_m() < 2880) return false;
-        DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id, nation_id);
+        DBWar lastWar = Locutus.imp().getWarDb().getLastOffensiveWar(nation_id);
         if (lastWar != null && lastWar.defender_id == nation_id && lastWar.status == WarStatus.ATTACKER_VICTORY) {
             long lastActiveCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(Math.max(active_m() + 1220, 7200));
             if (lastWar.date > lastActiveCutoff) return true;

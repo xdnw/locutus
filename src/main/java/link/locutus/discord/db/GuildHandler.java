@@ -2347,6 +2347,7 @@ public class GuildHandler {
             members.removeIf(f -> f.getActive_m() > 2880);
             members.removeIf(f -> f.getVm_turns() > 0);
             members.removeIf(DBNation::isGray);
+
             if (members.isEmpty()) return;
             if (members.size() < 10 && !db.isWhitelisted()) {
                 Role iaRole = Roles.INTERNAL_AFFAIRS.toRole(db);

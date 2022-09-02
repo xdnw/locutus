@@ -5,6 +5,7 @@ import link.locutus.discord.db.entities.DBWar;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ActiveWarHandler {
@@ -62,6 +63,22 @@ public class ActiveWarHandler {
 
     public Map<Integer, DBWar> getActiveWarsById() {
         return getActiveWars().stream().collect(Collectors.toMap(DBWar::getWarId, Function.identity()));
+    }
+
+    public Map<Integer, DBWar> getActiveWars(Predicate<Integer> nationId, Predicate<DBWar> warPredicate) {
+        Map<Integer, DBWar> result = new Int2ObjectOpenHashMap<>();
+        synchronized (activeWars) {
+            for (Map.Entry<Integer, DBWar[]> entry : activeWars.entrySet()) {
+                if (nationId == null || nationId.test(entry.getKey())) {
+                    for (DBWar war : entry.getValue()) {
+                        if (warPredicate == null || warPredicate.test(war)) {
+                            result.put(war.warId, war);
+                        }
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     public Set<DBWar> getActiveWars() {

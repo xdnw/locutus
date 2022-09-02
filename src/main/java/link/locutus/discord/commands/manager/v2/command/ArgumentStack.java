@@ -87,27 +87,27 @@ public class ArgumentStack {
         return store;
     }
 
-    public Map<Character, String> consumeFlags(Set<Character> booleanFlags, Set<Character> valueFlags) {
-        Map<Character, String> map = new LinkedHashMap<>();
+    public Map<String, String> consumeFlags(Set<String> booleanFlags, Set<String> valueFlags) {
+        Map<String, String> map = new LinkedHashMap<>();
         for (int i = args.size() - 1; i >= 0; i--) {
             String arg = args.get(i);
-            if (arg.matches("^-[a-zA-Z?]+$")) {
-                char flagChar = arg.charAt(1);
-                if (booleanFlags.contains(flagChar)) {
+            if (arg.matches("^-[a-zA-Z_?]+$")) {
+                String flagStr = arg.substring(1);
+                if (booleanFlags.contains(flagStr)) {
                     args.remove(i);
-                    map.put(flagChar, "true");
-                } else if (valueFlags.contains(flagChar)) {
+                    map.put(flagStr, "true");
+                } else if (valueFlags.contains(flagStr)) {
                     args.remove(i);
                     String value = args.remove(i);
-                    map.put(flagChar, value);
+                    map.put(flagStr, value);
                 }
-            } else if (arg.matches("^-[a-zA-Z?][ ].*$")) {
-                char flagChar = arg.charAt(1);
+            } else if (arg.matches("^-[a-zA-Z_?]+[ ].*$")) {
                 String[] split = arg.split(" ", 2);
                 if (split.length == 2) {
+                    String flagStr = split[0].substring(1);
                     String value = split[1];
-                    if (valueFlags.contains(flagChar) || booleanFlags.contains(flagChar)) {
-                        map.put(flagChar, value);
+                    if (valueFlags.contains(flagStr) || booleanFlags.contains(flagStr)) {
+                        map.put(flagStr, value);
                         args.remove(i);
                     }
                 }

@@ -48,7 +48,6 @@ public class WarsByTier extends Command {
         if (flags.contains('a')) start = Math.max(start, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
 
         WarParser offensive = WarParser.of(guild, args.get(0), args.get(1), start, Long.MAX_VALUE);
-        WarParser defensive = WarParser.of(guild, args.get(1), args.get(0), start, Long.MAX_VALUE);
 
         Map<Integer, Integer> col1 = new HashMap<>();
         Map<Integer, Integer> col2 = new HashMap<>();
@@ -64,16 +63,6 @@ public class WarsByTier extends Command {
             if (!flags.contains('o')) map2.put(def.getCities(), map2.getOrDefault(def.getCities(), 0) + 1);
         }
 
-        for (DBWar war : defensive.getWars().values()) {
-            if (flags.contains('a') && !war.isActive()) continue;
-            DBNation att = war.getNation(true);
-            DBNation def = war.getNation(false);
-            if (att == null || def == null) continue;
-            Map<Integer, Integer> map1 = offensive.getIsPrimary().apply(war) ? col1 : col2;
-            Map<Integer, Integer> map2 = map1 == col1 ? col2 : col1;
-            if (!flags.contains('d')) map1.put(att.getCities(), map1.getOrDefault(att.getCities(), 0) + 1);
-            if (!flags.contains('o')) map2.put(def.getCities(), map2.getOrDefault(def.getCities(), 0) + 1);
-        }
         int min = 0;
         int max = 50;
 

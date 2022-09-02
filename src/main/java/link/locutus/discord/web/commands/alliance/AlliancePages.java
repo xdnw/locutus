@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 public class AlliancePages {
     @Command
-    public Object allianceLeaves(int allianceId, @Switch('a') boolean includeInactive, @Switch('v') boolean includeVM, @Switch('m') boolean include) {
+    public Object allianceLeaves(int allianceId, @Switch("a") boolean includeInactive, @Switch("v") boolean includeVM, @Switch("m") boolean include) {
         Map<Integer, Map.Entry<Long, Rank>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
 
         String title = "Rank changes for " + MarkupUtil.htmlUrl(PnwUtil.getName(allianceId, true), PnwUtil.getUrl(allianceId, true));
@@ -62,7 +62,7 @@ public class AlliancePages {
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public String announcements(@Me GuildDB db, @Me DBNation nation, @Switch('a') boolean showArchived) {
+    public String announcements(@Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), !showArchived);
 
         return rocker.alliance.playerannouncements.template(db, nation, announcements).render().toString();
@@ -70,7 +70,7 @@ public class AlliancePages {
 
     @Command
     @RolePermission(Roles.ADMIN)
-    public String manageAnnouncements(@Me GuildDB db, @Me DBNation nation, @Switch('a') boolean showArchived) {
+    public String manageAnnouncements(@Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
         List<Announcement> announcements = db.getAnnouncements();
         return rocker.alliance.manageannouncements.template(db, announcements).render().toString();
     }

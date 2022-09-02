@@ -42,6 +42,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -120,6 +121,18 @@ public class SpreadSheet {
             DiscordUtil.upload(channel, "transactions.csv", this.toCsv());
             return e.getMessage();
         }
+    }
+
+    public <T> T loadHeader(T instance, List<Object> headerStr) throws NoSuchFieldException, IllegalAccessException {
+        for (int i = 0; i < headerStr.size(); i++) {
+            Object columnObj = headerStr.get(i);
+            if (columnObj == null) continue;
+            String columnName = columnObj.toString().toLowerCase().replaceAll("[^a-z_]", "");
+            if (columnName.isEmpty()) continue;
+            Field field = instance.getClass().getDeclaredField(columnName);
+            field.set(instance, i);
+        }
+        return instance;
     }
 
     public static SpreadSheet create(GuildDB db, GuildDB.Key key) throws GeneralSecurityException, IOException {
@@ -461,6 +474,7 @@ public class SpreadSheet {
         request.setRequests(List.of(clearAllDataRequest));
 
         BatchUpdateSpreadsheetResponse response = service.spreadsheets().batchUpdate(spreadsheetId, request).execute();
+        values = null;
     }
 
     public void clear(String range) throws IOException {

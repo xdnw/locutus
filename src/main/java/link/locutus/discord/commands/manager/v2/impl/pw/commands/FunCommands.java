@@ -20,7 +20,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FunCommands {
     private Map<Integer, Boolean> received = new ConcurrentHashMap<>();
 
-    @Command(desc = "He's making a list, And checking it twice; Gonna find out Who's naughty and nice. Saint Borgolas is coming to town. **RESISTANCE IS FUTILE**")
+    @Command(desc = "Making a list, checking it twice; Gonna find out whos naughty or nice. St Borgolas is coming to town")
     public String borgmas(@Me DBNation me) throws IOException {
         if (me.getMeta(NationMeta.BORGMAS) != null || received.put(me.getNation_id(), true) != null) {
             return "You've already opened your presents this year. Merry Borgmas!";
@@ -62,7 +62,7 @@ public class FunCommands {
         return lines[ThreadLocalRandom.current().nextInt(lines.length)];
     }
 
-    @Command(desc = "The Borg are a friendly race sharing their appreciation for equality and cultural appropriation via their trademark Borg cubes. Their enemies, the human supremacists of the federation are all that stands in their way.")
+    @Command(desc = "We are the borg")
     public String borg(@Default String msg) {
         if (msg == null || msg.isEmpty()) {
             return Messages.SLOGAN;

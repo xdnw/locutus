@@ -43,7 +43,7 @@ public class Who extends Command {
 
     @Override
     public String desc() {
-        return "Get detailed information about a nation. Nation argument can be nation name, id, link, or discord tag\n" +
+        return "Get detailed information about a nation.\nNation argument can be nation name, id, link, or discord tag\n" +
                 "Use `-l` to list the nations instead of just providing a summary\n" +
                 "Use `-r` to list discord tag (raw)\n" +
                 "Use `-p` to list discord tag (ping)\n" +

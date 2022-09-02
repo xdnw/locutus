@@ -70,7 +70,7 @@ import java.util.stream.Collectors;
 public class AdminCommands {
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String deleteAllInaccessibleChannels(@Switch('f') boolean force) {
+    public String deleteAllInaccessibleChannels(@Switch("f") boolean force) {
         Map<GuildDB, List<GuildDB.Key>> toUnset = new LinkedHashMap<>();
 
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
@@ -127,7 +127,7 @@ public class AdminCommands {
     @Command(desc = "Send an announcement to multiple nations, with random variations for opsec")
     @RolePermission(Roles.ADMIN)
     @HasApi
-    public String announce(@Me GuildDB db, @Me Guild guild, @Me Message message, @Me MessageChannel currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch('v') @Default("0") Integer requiredVariation, @Switch('r') @Default("0") Integer requiredDepth, @Switch('s') Long seed, @Switch('m') boolean sendMail, @Switch('d') boolean sendDM, @Switch('f') boolean force) throws IOException {
+    public String announce(@Me GuildDB db, @Me Guild guild, @Me Message message, @Me MessageChannel currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch("v") @Default("0") Integer requiredVariation, @Switch("r") @Default("0") Integer requiredDepth, @Switch("s") Long seed, @Switch("m") boolean sendMail, @Switch("d") boolean sendDM, @Switch("f") boolean force) throws IOException {
         ApiKeyPool keys = db.getMailKey();
         if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
@@ -501,7 +501,7 @@ public class AdminCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Purge channels older than the time specified")
     @RolePermission(value = Roles.ADMIN)
     public String debugPurgeChannels(Category category, @Range(min=60) @Timestamp long cutoff) {
         long now = System.currentTimeMillis();

@@ -83,7 +83,7 @@ public class IACommands {
     }
     @Command
     @RolePermission(Roles.ADMIN)
-    public String msgInfo(@Me MessageChannel channel, Message message, @Switch('i') boolean useIds) {
+    public String msgInfo(@Me MessageChannel channel, Message message, @Switch("i") boolean useIds) {
         StringBuilder response = new StringBuilder();
 
         List<MessageReaction> reactions = message.getReactions();
@@ -125,7 +125,7 @@ public class IACommands {
             Roles.FOREIGN_AFFAIRS,
             Roles.FOREIGN_AFFAIRS_STAFF,
     }, any = true)
-    public String closeInactiveChannels(@Me GuildDB db, @Me MessageChannel outputChannel, Category category, @Timediff long age, @Switch('f') boolean force) {
+    public String closeInactiveChannels(@Me GuildDB db, @Me MessageChannel outputChannel, Category category, @Timediff long age, @Switch("f") boolean force) {
         long cutoff = System.currentTimeMillis() - age;
 
         for (GuildMessageChannel channel : category.getTextChannels()) {
@@ -184,7 +184,8 @@ public class IACommands {
                 " - To see a list of current mappings, use `" + Settings.commandPrefix(true) + "KeyStore ASSIGNABLE_ROLES`";
     }
 
-    @Command(desc = "Remove permission from a role to add/remove roles from users (having manage roles perm on discord overrides this)")
+    @Command(desc = "Remove a role from adding/removing specified roles\n" +
+            "(having manage roles perm on discord overrides this)")
     @RolePermission(Roles.ADMIN)
     public String removeAssignableRole(@Me GuildDB db, Role govRole, Set<Role> assignableRoles) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
@@ -366,7 +367,7 @@ public class IACommands {
 
     @Command(desc = "Assign a mentor to a mentee")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String mentor(@Me Message message, @Me MessageChannel channel, @Me GuildDB db, DBNation mentor, DBNation mentee, @Switch('f') boolean force) {
+    public String mentor(@Me Message message, @Me MessageChannel channel, @Me GuildDB db, DBNation mentor, DBNation mentee, @Switch("f") boolean force) {
         User menteeUser = mentee.getUser();
         if (menteeUser == null) return "Mentee is not registered";
 
@@ -397,7 +398,7 @@ public class IACommands {
 
     @Command(desc = "Assign yourself as someone's mentor")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
-    public String mentee(@Me Message message, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, DBNation mentee, @Switch('f') boolean force) {
+    public String mentee(@Me Message message, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, DBNation mentee, @Switch("f") boolean force) {
         return mentor(message, channel, db, me, mentee, force);
     }
 
@@ -409,7 +410,7 @@ public class IACommands {
 
     @Command(desc = "List mentors and their respective mentees", aliases = {"listMentors", "mentors", "mentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
-    public String listMentors(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees, @Default("2w") @Timediff long timediff, @Switch('a') boolean includeAudit, @Switch('u') boolean ignoreUnallocatedMembers, @Switch('i') boolean listIdleMentors) throws IOException, ExecutionException, InterruptedException {
+    public String listMentors(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees, @Default("2w") @Timediff long timediff, @Switch("a") boolean includeAudit, @Switch("u") boolean ignoreUnallocatedMembers, @Switch("i") boolean listIdleMentors) throws IOException, ExecutionException, InterruptedException {
         if (includeAudit && !db.isWhitelisted()) return "No permission to include audits";
 
         IACategory iaCat = db.getIACategory();
@@ -684,7 +685,7 @@ public class IACommands {
     @Command
     @RolePermission(Roles.MAIL)
     @IsAlliance
-    public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me MessageChannel channel, DBNation receiver, String url, String message, @Switch('s') DBNation sender) throws IOException {
+    public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me MessageChannel channel, DBNation receiver, String url, String message, @Switch("s") DBNation sender) throws IOException {
         if (!url.contains("message/id=")) return "URL must be a message url";
         int messageId = Integer.parseInt(url.split("=")[1]);
 
@@ -707,7 +708,7 @@ public class IACommands {
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
             "e.g. `{prefix}lootValueSheet #cities<10,#position>1,#active_m<2880,someAlliance`")
     @RolePermission(Roles.MILCOM)
-    public String lootValueSheet(@Me GuildDB db, Set<DBNation> attackers, @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String lootValueSheet(@Me GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         attackers.removeIf(f -> f.getActive_m() > 10000);
         attackers.removeIf(f -> f.getVm_turns() > 0);
         if (attackers.size() > 200) return "Too many nations";
@@ -770,7 +771,7 @@ public class IACommands {
     }
 
     @Command
-    public String mail(@Me DBNation me, @Me Message msgObj, @Me GuildDB db, @Me MessageChannel channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch('f') boolean confirm, @Switch('l') boolean notLocal) throws IOException {
+    public String mail(@Me DBNation me, @Me Message msgObj, @Me GuildDB db, @Me MessageChannel channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Switch("l") boolean notLocal) throws IOException {
         message = MarkupUtil.transformURLIntoLinks(message);
 
         ApiKeyPool.ApiKey myKey = me.getApiKey(false);
@@ -917,7 +918,7 @@ public class IACommands {
     @Command(desc = "Set the rank of a player in the alliance.", aliases = {"rank", "setrank", "rankup"})
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     @IsAlliance
-    public static String setRank(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, DBNation nation, DBAlliancePosition position, @Switch('f') boolean force, @Switch('d') boolean doNotUpdateDiscord) throws IOException {
+    public static String setRank(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, DBNation nation, DBAlliancePosition position, @Switch("f") boolean force, @Switch("d") boolean doNotUpdateDiscord) throws IOException {
         int allianceId = position.getAlliance_id();
         if (allianceId <= 0) allianceId = db.getAlliance_id();
 
@@ -1058,7 +1059,7 @@ public class IACommands {
 
 
     @Command(desc = "Get the top X inactive players. Use `-a` to include applicants")
-    public void inactive(@Me MessageChannel channel, @Me Message message, Set<DBNation> nations, @Default("7") int days, @Switch('a') boolean includeApplicants, @Switch('v') boolean includeVacationMode, @Switch('p') int page) {
+    public void inactive(@Me MessageChannel channel, @Me Message message, Set<DBNation> nations, @Default("7") int days, @Switch("a") boolean includeApplicants, @Switch("v") boolean includeVacationMode, @Switch("p") int page) {
         if (!includeApplicants) nations.removeIf(f -> f.getPosition() <= 1);
         if (!includeVacationMode) nations.removeIf(f -> f.getVm_turns() > 0);
 
@@ -1085,7 +1086,7 @@ public class IACommands {
 
     @Command(desc = "Bulk send the result of a Locutus command to a list of nations")
     @RolePermission(value=Roles.ADMIN)
-    public String mailCommandOutput(@Me GuildDB db, @Me Guild guild, @Me User author, @Me MessageChannel channel, Set<DBNation> nations, String subject, @TextArea String command, @TextArea String body, @Switch('s') SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String mailCommandOutput(@Me GuildDB db, @Me Guild guild, @Me User author, @Me MessageChannel channel, Set<DBNation> nations, String subject, @TextArea String command, @TextArea String body, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.MAIL_RESPONSES_SHEET);
         }
@@ -1175,7 +1176,7 @@ public class IACommands {
             "Columns: nation, subject, body")
     @HasApi
     @RolePermission(Roles.ADMIN)
-    public String mailSheet(@Me GuildDB db, @Me Message message, @Me MessageChannel channel, @Me User author, SpreadSheet sheet, @Switch('f') boolean confirm) {
+    public String mailSheet(@Me GuildDB db, @Me Message message, @Me MessageChannel channel, @Me User author, SpreadSheet sheet, @Switch("f") boolean confirm) {
         List<List<Object>> data = sheet.loadValues();
 
         List<Object> nationNames = sheet.findColumn(0, "nation", "id");
@@ -1369,7 +1370,7 @@ public class IACommands {
 
     @Command(desc = "Close a channel")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON, Roles.ECON_LOW_GOV}, any=true)
-    public String close(@Me GuildDB db, @Me MessageChannel channel, @Switch('f') boolean forceDelete) {
+    public String close(@Me GuildDB db, @Me MessageChannel channel, @Switch("f") boolean forceDelete) {
         if (!(channel instanceof TextChannel)) {
             return "Not a text channel";
         }

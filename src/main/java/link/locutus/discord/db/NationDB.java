@@ -816,6 +816,7 @@ public class NationDB extends DBMainV2 {
         if (pad != 500 && allowPadding) {
             ids.addAll(getNewNationIds(pad, new HashSet<>(ids)));
         }
+        Collections.sort(ids);
 
         for (int i = 0; i < ids.size(); i += 500) {
             int end = Math.min(i + 500, ids.size());
@@ -832,7 +833,7 @@ public class NationDB extends DBMainV2 {
             dirtyNations.clear();
         }
         System.out.println("Ids " + ids.size());
-        updateNationsById(ids, eventConsumer);
+        updateNations(ids, eventConsumer);
     }
 
     private Set<Integer> updateNationsById(List<Integer> ids, Consumer<Event> eventConsumer) {
@@ -2080,7 +2081,48 @@ public class NationDB extends DBMainV2 {
         executeStmt("CREATE TABLE IF NOT EXISTS ALLIANCE_METRICS (alliance_id INT NOT NULL, metric INT NOT NULL, turn BIGINT NOT NULL, value DOUBLE NOT NULL, PRIMARY KEY(alliance_id, metric, turn))");
         executeStmt("CREATE TABLE IF NOT EXISTS RADIATION_BY_TURN (continent INT NOT NULL, radiation INT NOT NULL, turn BIGINT NOT NULL, PRIMARY KEY(continent, turn))");
 
+        executeStmt("CREATE TABLE IF NOT EXISTS NATION_DESCRIPTIONS (id INT NOT NULL PRIMARY KEY, description TEXT NOT NULL)");
+
         purgeOldBeigeReminders();
+    }
+
+    public void addDescription(int id, String description) {
+        String query = "INSERT INTO NATION_DESCRIPTIONS (id, description) VALUES (?, ?)";
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            stmt.setInt(1, id);
+            stmt.setString(2, description);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Set<Integer> getDescriptionIds() {
+        Set<Integer> ids = new HashSet<>();
+        String query = "SELECT id FROM NATION_DESCRIPTIONS";
+        try (Statement stmt = getConnection().createStatement()) {
+            ResultSet rs = stmt.executeQuery(query);
+            while (rs.next()) {
+                ids.add(rs.getInt(1));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ids;
+    }
+
+    public Map<Integer, String> getDescriptions() {
+        Map<Integer, String> descriptions = new HashMap<>();
+        String query = "SELECT * FROM NATION_DESCRIPTIONS";
+        try (Statement stmt = getConnection().createStatement()) {
+            ResultSet rs = stmt.executeQuery(query);
+            while (rs.next()) {
+                descriptions.put(rs.getInt("id"), rs.getString("description"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public Map<Long, Map<Continent, Double>> getRadiationByDay() {

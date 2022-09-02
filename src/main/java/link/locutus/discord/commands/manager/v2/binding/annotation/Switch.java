@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER})
 public @interface Switch {
-    char value();
+    String value();
     double min() default Double.NEGATIVE_INFINITY;
     double max() default Double.POSITIVE_INFINITY;
 }

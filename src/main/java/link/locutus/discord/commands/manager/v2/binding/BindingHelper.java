@@ -49,6 +49,10 @@ public class BindingHelper {
         return true;
     }
 
+    public static <T extends Enum> Set<T> emumSet(Class<T> emum, String input) {
+        return new HashSet<>(emumList(emum, input));
+    }
+
     public static <T extends Enum> List<T> emumList(Class<T> emum, String input) {
         List<T> result = new ArrayList<>();
         for (String s : StringMan.split(input, ',')) {
