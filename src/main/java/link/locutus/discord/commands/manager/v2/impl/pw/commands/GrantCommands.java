@@ -1,17 +1,16 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.MMRDouble;
+import link.locutus.discord.db.entities.MMRMatcher;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.entities.DBNation;
@@ -29,19 +28,103 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class GrantCommands {
 
+    // Units
+    // mmr
+    // city
+    // build
+    // infra
+    // land
+    // project
+    // resources
+    // warchest
+
+    /*
+    "Add `-i` to build grants to exclude infra cost\n" +
+                "Add `-l` to build grants to exclude land cost\n" +
+                "Add `-e` or `#expire=60d` to have a grant's debt expire\n" +
+                "Add `-c` to have a grant count as cash value in `" + Settings.commandPrefix(true) + "deposits`\n" +
+                "Add `-o` to only send what funds they are missing for a grant\n" +
+                "Add `-m` to multiply the grant per city";
+     */
+
+    @Command(desc = "Calculate and send funds for military units")
+    @RolePermission(Roles.MEMBER)
+    public String unit(@Me GuildDB db, @Me User author, @Me DBNation me, Set<DBNation> nations, MilitaryUnit unit, @Switch("q") Integer quantity,
+                       @Switch("p") @Range(min =0, max=100) Double percent,
+                       @Switch("a") double sendAttackConsumption,
+                       @Switch("b") boolean capAtUnitLimit,
+                       @Switch("s") boolean capAtSingleCityLimit,
+                       @Switch("u") boolean capAtMMREquals5553,
+                       @Switch("c") boolean multiplyPerCity,
+                       @Switch("m") boolean onlySendMissingUnits,
+                       @Switch("o") boolean onlySendMissingFunds,
+                       @Switch("e") @Timestamp Long expire,
+                       @Switch("n") @Default("#grant") String note) {
+        if ((quantity == null) == (percent == null)) throw new IllegalArgumentException("Please specify `percent` OR `quantity`, not both");
+        Map<DBNation, double[]> amountsToSend = new HashMap<>();
+
+        for (DBNation nation : nations) {
+            Double natQuantity = (double) quantity;
+            if (percent != null) {
+                natQuantity = unit.getBuilding().max() * unit.getBuilding().cap(nation::hasProject) * percent / 100d;
+            }
+            if (multiplyPerCity) {
+                natQuantity *= nation.getCities();
+            }
+            if (capAtUnitLimit) {
+                int cap = unit.getCap(nation, false);
+                natQuantity = Math.min(natQuantity, cap);
+            }
+            if (capAtSingleCityLimit) {
+                int cap = unit.getBuilding().max() * unit.getBuilding().cap(nation::hasProject);
+                natQuantity = Math.min(natQuantity, cap);
+            }
+            if (capAtMMREquals5553) {
+                int cap = unit.getBuilding().max() * unit.getBuilding().cap(nation::hasProject) * nation.getCities();
+                natQuantity = Math.min(natQuantity, cap);
+            }
+
+            int unitsToSend = (int) (onlySendMissingUnits ? Math.max(natQuantity - nation.getUnits(unit), 0) : natQuantity);
+
+            double[] fundsToSend = unit.getCost(unitsToSend);
+            if (sendAttackConsumption > 0) {
+                fundsToSend = ResourceType.add(fundsToSend, PnwUtil.multiply(unit.getConsumption(), sendAttackConsumption));
+            }
+
+            if (ResourceType.isEmpty(fundsToSend)) continue;
+
+            amountsToSend.put(nation, fundsToSend);
+        }
+
+        return send(db, author, me, amountsToSend, onlySendMissingFunds, expire, note);
+    }
+
+    public String send(@Me GuildDB db, @Me User author, @Me DBNation me, Map<DBNation, double[]> fundsToSend, boolean onlyMissingFunds, Long expire, String note) {
+        // if no econ perms, only 1 nation, and has to be self
+        //
+        return "TODO";
+    }
+
 //    @Command
-//    @RolePermission(Roles.MEMBER)
-//    public String unit() {
+//    public String mmr(@Me GuildDB db, @Me User author, @Me DBNation me, Set<DBNation> nations,
+//                      MMRDouble grantMMR,
+//                      @Switch("r") MMRDouble rebuyMMR,
+//                      @Switch("b") boolean switchBuildFunds,
+//                      @Switch("a") Map<MilitaryUnit, Double> sendConsumptionForAttacks,
+//                      @Switch("o") boolean onlySendMissingFunds,
+//                      @Switch("e") @Timestamp Long expire,
+//                      @Switch("n") String note) {
+//        Map<DBNation, double[]> amountsToSend = new HashMap<>();
+//        for (DBNation nation : nations) {
+//            Map<MilitaryUnit, Integer> units = new HashMap<>();
+//
+//
+//        }
 //
 //    }
 //

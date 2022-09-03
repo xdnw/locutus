@@ -109,7 +109,17 @@ public class PWBindings extends BindingHelper {
         return nation;
     }
 
-    @Binding()
+    @Binding(value = "Four numbers representing barracks,factory,hangar,drydock", examples = {"5553", "0/2/5/0"})
+    public MMRInt mmrInt(String input) {
+        return MMRInt.fromString(input);
+    }
+
+    @Binding(value = "Four numbers representing barracks, factory, hangar, drydock", examples = {"0.0/2.0/5.0/0.0", "5553"})
+    public MMRDouble mmrDouble(String input) {
+        return MMRDouble.fromString(input);
+    }
+
+    @Binding
     public NationOrAlliance nationOrAlliance(String input) {
         String lower = input.toLowerCase();
         if (lower.startsWith("aa:")) {

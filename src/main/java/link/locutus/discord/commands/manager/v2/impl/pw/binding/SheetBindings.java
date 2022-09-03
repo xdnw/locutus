@@ -11,7 +11,7 @@ import java.security.GeneralSecurityException;
 import java.util.Set;
 
 public class SheetBindings extends BindingHelper {
-    @Binding()
+    @Binding
     public SpreadSheet sheet(String input) throws GeneralSecurityException, IOException {
         String spreadsheetId;
         if (input.startsWith("sheet:")) {
@@ -24,7 +24,7 @@ public class SheetBindings extends BindingHelper {
         return SpreadSheet.create(input);
     }
 
-    @Binding()
+    @Binding
     public TransferSheet transferSheet(String input) throws GeneralSecurityException, IOException {
         sheet(input); // validate
         TransferSheet sheet = new TransferSheet(input);

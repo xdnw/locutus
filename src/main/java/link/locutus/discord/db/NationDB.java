@@ -174,7 +174,7 @@ public class NationDB extends DBMainV2 {
                 nation.setLastActive(active);
 
                 // only call a new event if it's > 1 minute difference
-                if (nation.lastActiveMs() < active - TimeUnit.MINUTES.toMillis(1)) {
+                if (nation.lastActiveMs() < active - TimeUnit.MINUTES.toMillis(1) && active > System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(15)) {
                     if (eventConsumer != null) eventConsumer.accept(new NationChangeActiveEvent(previous, nation));
                 }
                 return true;
