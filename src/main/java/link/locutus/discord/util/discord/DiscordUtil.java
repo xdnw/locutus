@@ -86,7 +86,11 @@ public class DiscordUtil {
         if (content.charAt(0) == '<') {
             int end = content.indexOf('>');
             if (end != -1) {
+                String idStr = content.substring(1, end);
                 content = content.substring(end + 1).trim();
+                if (content.length() > 0 && Character.isAlphabetic(content.charAt(0)) && MathMan.isInteger(idStr) && Long.parseLong(idStr) == Settings.INSTANCE.APPLICATION_ID) {
+                    content = Settings.commandPrefix(true) + content;
+                }
             }
         }
         return content;
