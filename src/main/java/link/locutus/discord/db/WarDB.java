@@ -1147,7 +1147,7 @@ public class WarDB extends DBMainV2 {
             }
         };
 
-        return getWarsForNationOrAlliance(alliances.isEmpty() ? null : f -> alliances.contains(f), nations.isEmpty() ? null : f -> nations.contains(f), isAllowed);
+        return getWarsForNationOrAlliance(nations.isEmpty() ? null : f -> nations.contains(f), alliances.isEmpty() ? null : f -> alliances.contains(f), isAllowed);
     }
 //
 //    private String generateWarQuery(String prefix, Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {
