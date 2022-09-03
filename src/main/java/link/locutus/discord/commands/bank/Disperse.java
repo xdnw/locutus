@@ -225,13 +225,13 @@ public class Disperse extends Command {
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, fundsToSendAAs).build();
 
             String emoji = "\u2705";
-            String cmd = Settings.commandPrefix(false) + "transferBulk " + sheet.getURL() + " " + note;
+            String cmd = Settings.commandPrefix(false) + "transfer Bulk " + sheet.getURL() + " " + note;
 
             StringBuilder response = new StringBuilder();
             response.append("Transfer Sheet: <" + sheet.getURL() + ">").append("\n");
             response.append("Total: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ": `" + PnwUtil.resourcesToString(total)).append("`\n");
             response.append("Info: Use the extension to disburse from offshore or press " + emoji + " to run:\n" +
-                    "`" + Settings.commandPrefix(false) + "transferBulk <sheet> " + note + "`");
+                    "`" + Settings.commandPrefix(false) + "transfer Bulk <sheet> " + note + "`");
 
             DiscordUtil.createEmbedCommand(channel, "Disperse", response.toString(), emoji, cmd);
             return null;

@@ -99,14 +99,14 @@ public class MailCommand extends Command implements Noformat {
             ApiKeyPool key = null;
             if (flags.contains('l') || myKey == null) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see `" + Settings.commandPrefix(false) + "aliasRole` OR use`" + Settings.commandPrefix(false) + "addApiKey` to add your own key";
+                    return "You do not have the role `MAIL` (see `" + Settings.commandPrefix(false) + "setAlias` OR use`" + Settings.commandPrefix(false) + "credentials addApiKey` to add your own key";
                 }
                 key = db.getMailKey();
             } else {
                 key = ApiKeyPool.builder().addKey(myKey).build();
             }
             if (key == null){
-                return "No api key found. Please use`" + Settings.commandPrefix(false) + "addApiKey`";
+                return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey`";
             }
 
 

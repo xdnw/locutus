@@ -102,7 +102,7 @@ public class Offshore extends Command {
             Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
             if (auth == null) {
                 return "Please authenticate with locutus. Options:\n" +
-                        "Option 1: Provide a bot key via `" + Settings.commandPrefix(false) + "addApiKey`\n" +
+                        "Option 1: Provide a bot key via `" + Settings.commandPrefix(false) + "credentials addApiKey`\n" +
                         "Option 2: Provide P&W username/password via `" + Settings.commandPrefix(true) + "login`";
             }
             new BankWithTask(auth, from, to, resources -> {

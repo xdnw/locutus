@@ -545,7 +545,7 @@ public class SlashCommandManager extends ListenerAdapter {
         AutoCompleteQuery option = event.getFocusedOption();
         String optionName = option.getName();
 
-        List<String> pathArgs = StringMan.split(path, ' ');
+        List<String> pathArgs = StringMan.split(path, '/');
         Map.Entry<CommandCallable, String> cmdAndPath = commands.getCallableAndPath(pathArgs);
         CommandCallable cmd = cmdAndPath.getKey();
 

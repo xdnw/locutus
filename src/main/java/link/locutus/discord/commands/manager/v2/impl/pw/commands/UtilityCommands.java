@@ -592,6 +592,7 @@ public class UtilityCommands {
                              @Switch("s") Set<WarStatus> statuses) {
         WarParser parser = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
         Map<Integer, DBWar> wars = parser.getWars();
+        System.out.println("Remove:||Wars " + wars.size());
 
         SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars.values()).group(new BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>() {
             @Override
@@ -611,7 +612,7 @@ public class UtilityCommands {
             ranksUnsorted = ranksUnsorted.adapt((aaId, numWars) -> {
                 int num = DBAlliance.getOrCreate(aaId).getNations(true, ignore2dInactives ? 2440 : Integer.MAX_VALUE, true).size();
                 if (num == 0) return 0d;
-                return numWars.doubleValue() / (double) num;
+                return numWars / (double) num;
             });
         }
 

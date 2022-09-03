@@ -561,12 +561,12 @@ public enum InterviewQuestion implements Question {
             " - *If you don't get them on your first shot, try again later*\n" +
             " - *If you can't be active enough, just hit any gray nation during turn change*\n\n" +
             "See also:\n" +
-            " - `" + Settings.commandPrefix(false) + "removeBeigeReminder`\n" +
-            " - `" + Settings.commandPrefix(false) + "beigeReminders`\n" +
-            " - `" + Settings.commandPrefix(false) + "setBeigeAlertRequiredStatus`\n" +
-            " - `" + Settings.commandPrefix(false) + "setBeigeAlertMode`\n" +
-            " - `" + Settings.commandPrefix(false) + "setBeigeAlertRequiredLoot`\n" +
-            " - `" + Settings.commandPrefix(false) + "setBeigeAlertScoreLeeway`", true) {
+            " - `" + Settings.commandPrefix(false) + "alerts beige removeBeigeReminder`\n" +
+            " - `" + Settings.commandPrefix(false) + "alerts beige beigeReminders`\n" +
+            " - `" + Settings.commandPrefix(false) + "alerts beige setBeigeAlertRequiredStatus`\n" +
+            " - `" + Settings.commandPrefix(false) + "alerts beige setBeigeAlertMode`\n" +
+            " - `" + Settings.commandPrefix(false) + "alerts beige setBeigeAlertRequiredLoot`\n" +
+            " - `" + Settings.commandPrefix(false) + "alerts beige setBeigeAlertScoreLeeway`", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());

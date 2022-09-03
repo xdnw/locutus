@@ -46,10 +46,10 @@ public class WarParser {
     }
 
     public static WarParser of(Collection<NationOrAlliance> coal1, Collection<NationOrAlliance> coal2, long start, long end) {
-        Collection<Integer> coal1Alliances = coal1.stream().filter(f -> f.isAlliance()).map(f -> f.getId()).collect(Collectors.toSet());
-        Collection<Integer> coal1Nations = coal1.stream().filter(f -> f.isNation()).map(f -> f.getId()).collect(Collectors.toSet());
-        Collection<Integer> coal2Alliances = coal2.stream().filter(f -> f.isAlliance()).map(f -> f.getId()).collect(Collectors.toSet());
-        Collection<Integer> coal2Nations = coal2.stream().filter(f -> f.isNation()).map(f -> f.getId()).collect(Collectors.toSet());
+        Collection<Integer> coal1Alliances = coal1.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Collection<Integer> coal1Nations = coal1.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Collection<Integer> coal2Alliances = coal2.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Collection<Integer> coal2Nations = coal2.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
         return of(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations,  start, end);
     }
 
