@@ -40,6 +40,7 @@ import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -689,6 +690,45 @@ public class DiscordUtil {
             return nation.getUser();
         }
         return null;
+    }
+
+    public static void sendMessage(InteractionHook hook, String message) {
+        if (message.length() > 20000) {
+            if (message.length() < 200000) {
+                RateLimitUtil.complete(hook.sendFile(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt"));
+                return;
+            }
+            new Exception().printStackTrace();
+            System.out.println(message);
+            throw new IllegalArgumentException("Cannot send message of this length: " + message.length());
+        }
+        if (message.contains("@everyone")) {
+            message = message.replace("@everyone", "");
+        }
+        if (message.contains("@here")) {
+            message = message.replace("@here", "");
+        }
+        message = WordUtils.wrap(message, 2000, "\n", true, ",");
+        if (message.length() > 2000) {
+            String[] lines = message.split("\\r?\\n");
+            StringBuilder buffer = new StringBuilder();
+            for (String line : lines) {
+                if (buffer.length() + 1 + line.length() > 2000) {
+                    String str = buffer.toString().trim();
+                    if (!str.isEmpty()) {
+                        hook.sendMessage(str).complete();
+                    }
+                    buffer.setLength(0);
+                }
+                buffer.append('\n').append(line);
+            }
+            String finalMsg = buffer.toString().trim();
+            if (finalMsg.length() != 0) {
+                hook.sendMessage(finalMsg).complete();
+            }
+        } else if (!message.isEmpty()) {
+            hook.sendMessage(message).complete();
+        }
     }
 
     public static void sendMessage(MessageChannel channel, String message) {

@@ -380,6 +380,7 @@ public class Auth {
                 response.append('\n').append(element.text());
             }
             if (alerts == 0) {
+                System.out.println(dom);
                 response.append('\n').append("Set player rank ingame. Remember to also set the rank on discord.");
             }
 

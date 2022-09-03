@@ -192,6 +192,7 @@ public class CommandManager2 {
                     MessageChannel channel = event.getChannel();
 
                     try {
+                        System.out.println(event.getAuthor() + ": " + content);
                         Object result = commands.call(stack);
                         if (result != null) {
                             DiscordUtil.sendMessage(channel, result.toString());

@@ -102,7 +102,7 @@ public enum ResourceType {
 
     public static double[] add(double[] resources, double[] values) {
         for (int i = 0; i < values.length; i++) {
-            resources[i] -= values[i];
+            resources[i] += values[i];
         }
         return resources;
     }

@@ -2569,7 +2569,6 @@ public class NationDB extends DBMainV2 {
             }
         });
     }
-
     public Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> getMetrics(Set<Integer> allianceIds, AllianceMetric metric, long turn) {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         String allianceQueryStr = StringMan.getString(allianceIds);
@@ -3053,7 +3052,7 @@ public class NationDB extends DBMainV2 {
         }
         List<Map.Entry<Integer, List<DBNation>>> sorted = new ArrayList<>(nationsByAllianceFiltered.entrySet());
         sorted.sort((o1, o2) -> Double.compare(score.get(o2.getKey()), score.get(o1.getKey())));
-        nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
+        nationsByAllianceFiltered = new LinkedHashMap<>();
         for (Map.Entry<Integer, List<DBNation>> entry : sorted) {
             nationsByAllianceFiltered.put(entry.getKey(), entry.getValue());
         }

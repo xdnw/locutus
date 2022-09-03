@@ -70,7 +70,7 @@ public class FACommands {
             return "Admin is required to send a treaty with a message";
         }
         if (message == null) message = "";
-        return db.getAuth(AlliancePermission.MANAGE_TREATIES).sendTreaty(alliance.getAlliance_id(), type, message, days);
+        return db.getAuth(AlliancePermission.MANAGE_TREATIES).sendTreaty(alliance.getAlliance_id(), type, message, days) + "\nDone!";
     }
 
     @Command

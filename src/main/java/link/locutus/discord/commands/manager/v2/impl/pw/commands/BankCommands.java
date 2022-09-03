@@ -118,8 +118,8 @@ public class BankCommands {
         int from = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         if (to == null) {
-            if (to == null) throw new IllegalArgumentException("Please provide an offshore to send to");
             to = offshore.getAlliance();
+            if (to == null || to.getAlliance_id() == db.getAlliance_id()) throw new IllegalArgumentException("Please provide an offshore to send to");
         }
         int toId = to.getAlliance_id();
 
@@ -2407,7 +2407,8 @@ public class BankCommands {
 
         if (root.isOffshore()) {
             if (nation.getAlliance_id() != alliance.getAlliance_id()) {
-                throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore");
+                throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore\n" +
+                        "Note: If this is not a locutus managed offshore, please use `coalition add alliances:<alliance> coalition:offshore`");
             }
 
             Set<Long> announceChannels = new HashSet<>();

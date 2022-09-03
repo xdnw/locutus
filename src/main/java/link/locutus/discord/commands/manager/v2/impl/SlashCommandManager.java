@@ -26,6 +26,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autoparse;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.interactions.commands.Command.Choice;
 import net.dv8tion.jda.api.MessageBuilder;
@@ -64,6 +65,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandGroupData;
+import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
 import net.dv8tion.jda.api.utils.WidgetUtil;
 import net.dv8tion.jda.api.utils.data.SerializableData;
 
@@ -235,6 +237,9 @@ public class SlashCommandManager extends ListenerAdapter {
         Guild guild = root.getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER); // testing
         System.out.println("remove:||Guild " + guild + " | " + toRegister.size());
         if (!toRegister.isEmpty()) {
+            Map<String, ? extends Collection<CommandPrivilege>> map = new HashMap<>();
+//            CommandPrivilege.
+//            guild.updateCommandPrivileges(map);
             Locutus.imp().getDiscordApi(guild.getIdLong()).updateCommands().addCommands(toRegister).queue();
 //            guild.updateCommands().addCommands(toRegister).queue();
         }
@@ -673,18 +678,23 @@ public class SlashCommandManager extends ListenerAdapter {
             if (cmd instanceof ParametricCallable) {
                 ParametricCallable parametric = (ParametricCallable) cmd;
 
-                String cmdRaw = parametric.stringifyArgumentMap(combined, " ");
-                Message embedMessage = new MessageBuilder().setContent(cmdRaw).build();
+                String cmdRaw = (StringMan.join(pathArgs, " ") + " " + parametric.stringifyArgumentMap(combined, " ")).trim();
+                System.out.println("CMD " + cmdRaw);
+                Message embedMessage = new MessageBuilder().setContent(Settings.commandPrefix(false) + cmdRaw).build();
                 locals.addProvider(Key.of(Message.class, Me.class), embedMessage);
 
                 String formatted = null;
                 try {
                     Object[] parsed = parametric.parseArgumentMap(combined, stack);
+                    System.out.println("Combined " + StringMan.getString(combined) + " | " + StringMan.getString(parsed));
                     Object result = parametric.call(null, stack.getStore(), parsed);
                     if (result != null) {
                         formatted = (result + "").trim(); // MarkupUtil.markdownToHTML
                     }
                 } catch (Throwable e) {
+                    while (e.getCause() != null) {
+                        e = e.getCause();
+                    }
                     e.printStackTrace();
                     formatted = e.getClass().getSimpleName() + ": " + e.getMessage();
                 }
@@ -692,7 +702,7 @@ public class SlashCommandManager extends ListenerAdapter {
                     for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
                         formatted = formatted.replaceAll(key, "");
                     }
-                    RateLimitUtil.queue(hook.sendMessage(formatted));
+                    DiscordUtil.sendMessage(hook, formatted);
                 } else {
                     RateLimitUtil.queue(hook.sendMessage("(no output)"));
                 }

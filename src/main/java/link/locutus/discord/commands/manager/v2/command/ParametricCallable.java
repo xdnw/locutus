@@ -449,6 +449,8 @@ public class ParametricCallable implements ICommand {
             String arg = combined.get(parameter.getName());
             if (arg == null) arg = combined.get(parameter.getName().toLowerCase(Locale.ROOT));
 
+            System.out.println("Get for " + parameter.getName() + " | " + arg);
+
             Object value;
             // flags
             if (parameter.isFlag()) {
@@ -475,7 +477,7 @@ public class ParametricCallable implements ICommand {
                 } else {
                     args = new ArrayList<>();
                 }
-                if (!parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
+                if (!parameter.isOptional() || !args.isEmpty() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
                     if (parameter.getBinding().isConsumer(stack2.getStore()) && args.isEmpty()) {
                         String name = parameter.getType().getTypeName();
                         String[] split = name.split("\\.");

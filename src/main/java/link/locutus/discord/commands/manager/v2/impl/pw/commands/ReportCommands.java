@@ -43,7 +43,7 @@ public class ReportCommands {
     public String create(@Me DBNation me, @Me User author, @Me GuildDB db, ReportType type, DBNation target, @TextArea String message, @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl, @Switch("u") User user, @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost, @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
         if (sheet == null) sheet = SpreadSheet.create(REPORT_SHEET);
         if (message.charAt(0) == '=') return "Invalid message";
-        if (message.length() < 25) return "Message is too short";
+        if (message.length() < 25) return "Message is too short (25 characters minimum)";
         if (forumPost != null && !forumPost.toLowerCase().contains("forums.politicsandwar.com/")) throw new IllegalArgumentException("`forumPost` must be a valid forum post URL. Provided: `" + forumPost + "`");
         if (newsReport != null && !newsReport.toLowerCase().contains("https://discord.com/channels/")) throw new IllegalArgumentException("`newsReport` must be a valid discord message URL. Provided: `" + newsReport + "`");
 

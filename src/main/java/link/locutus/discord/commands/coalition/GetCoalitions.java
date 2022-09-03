@@ -43,7 +43,7 @@ public class GetCoalitions extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        boolean isAdmin = Roles.ADMIN.hasOnRoot(event.getAuthor());
+        boolean isAdmin = Roles.ADMIN.has(event.getAuthor(), guild);
         if (args.size() > 1) return usage(event);
 
         Map<String, Set<Long>> coalitions = Locutus.imp().getGuildDB(event).getCoalitionsRaw();

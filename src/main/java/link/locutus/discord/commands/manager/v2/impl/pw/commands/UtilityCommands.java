@@ -1119,7 +1119,7 @@ public class UtilityCommands {
             "Use `-c` to list individual nation channels" +
             "e.g. `{prefix}who @borg`")
     public String who(@Me Message message, @Me Guild guild, @Me MessageChannel channel, @Me User author,
-                      Set<NationOrAlliance> nationsOrAlliances,
+                      Set<DBNation> nations,
                       @Default() NationPlaceholder sortBy,
                       @Switch("l") boolean list,
                       @Switch("a") boolean listAlliances,
@@ -1156,167 +1156,167 @@ public Map<ParametricCallable, String> getEndpoints() {
 
         boolean isAdmin = Roles.ADMIN.hasOnRoot(author);
 
-        if (nationsOrAlliances.isEmpty()) {
-            return "Not found: `" + Settings.commandPrefix(false) + "who <user>`";
-        }
-        if (nationsOrAlliances.size() == 1) {
-            NationOrAlliance nationOrAlliance = nationsOrAlliances.iterator().next();
-            if (nationOrAlliance.isNation()) {
-                // nation card
-                // -
-
-            } else {
-                // alliance card
-                // - Tiering
-                // - Militarization
-                // - Active conflicts
-                // - Offshores
-                // - List of alliance commands
-
-            }
-        } else {
-
-        }
-
-
-//        String arg0;
-//        String title;
-//        if (nations.size() == 1) {
-//            DBNation nation = nations.iterator().next();
-//            title = nation.getNation();
-//            boolean showMoney = false;
-//            Message msg = nation.toCard(channel, false, showMoney);
+//        if (nationsOrAlliances.isEmpty()) {
+//            return "Not found: `" + Settings.commandPrefix(false) + "who <user>`";
+//        }
+//        if (nationsOrAlliances.size() == 1) {
+//            NationOrAlliance nationOrAlliance = nationsOrAlliances.iterator().next();
+//            if (nationOrAlliance.isNation()) {
+//                // nation card
+//                // -
 //
-//            List<String> commands = new ArrayList<>();
-//            commands.add(Settings.commandPrefix(true) + "multi " + nation.getNation_id());
-//            commands.add(Settings.commandPrefix(true) + "wars " + nation.getNation_id());
-//            commands.add(Settings.commandPrefix(true) + "revenue " + nation.getNation_id());
-//            commands.add(Settings.commandPrefix(true) + "unithistory " + nation.getNation_id() + " <unit>");
+//            } else {
+//                // alliance card
+//                // - Tiering
+//                // - Militarization
+//                // - Active conflicts
+//                // - Offshores
+//                // - List of alliance commands
+//
+//            }
 //        } else {
-//            int allianceId = -1;
-//            for (DBNation nation : nations) {
-//                if (allianceId == -1 || allianceId == nation.getAlliance_id()) {
-//                    allianceId = nation.getAlliance_id();
-//                } else {
-//                    allianceId = -2;
-//                }
-//            }
-//            if (allianceId != -2) {
-//                String name = PnwUtil.getName(allianceId, true);
-//                String url = PnwUtil.getUrl(allianceId, true);
-//                title = "AA: " + name;
-//                arg0 = MarkupUtil.markdownUrl(name, url);
-//            } else {
-//                arg0 = "coalition";
-//                title = "`" + arg0 + "`";
-//            }
-//            title = "(" + nations.size() + " nations) " + title;
 //
-//            DBNation total = new DBNation(arg0, nations, false);
-//            DBNation average = new DBNation(arg0, nations, true);
-//
-//            response.append("Total for " + arg0 + ":").append('\n');
-//
-//            printAA(response, total, isAdmin);
-//
-//            response.append("Average for " + arg0 + ":").append('\n');
-//
-//            printAA(response, average, isAdmin);
-//
-//            // min score
-//            // max score
-//            // Num members
-//            // averages
 //        }
-//        if (!listInfo && page == null && nations.size() > 1) {
-//            DiscordUtil.createEmbedCommand(channel, title, response.toString());
-//        }
-//
-//        if (list || listMentions || listRawUserIds || listChannels || listAlliances) {
-////            if (perpage == null) perpage = 15;
-//            if (page == null) page = 0;
-//            List<String> nationList = new ArrayList<>();
-//
-//            if (listAlliances) {
-//                // alliances
-//                Set<Integer> alliances = new HashSet<>();
-//                for (DBNation nation : nations) {
-//                    if (!alliances.contains(nation.getAlliance_id())) {
-//                        alliances.add(nation.getAlliance_id());
-//                        nationList.add(nation.getAllianceUrlMarkup(true));
-//                    }
-//                }
-//            } else {
-//                GuildDB db = Locutus.imp().getGuildDB(guild);
-//                IACategory iaCat = listChannels ? db.getIACategory() : null;
-//                for (DBNation nation : nations) {
-//                    String nationStr = list ? nation.getNationUrlMarkup(true) : "";
-//                    if (listMentions) {
-//                        PNWUser user = nation.getDBUser();
-//                        if (user != null) {
-//                            nationStr += (" <@" + user.getDiscordId() + ">");
-//                        }
-//                    }
-//                    if (listRawUserIds) {
-//                        PNWUser user = nation.getDBUser();
-//                        if (user != null) {
-//                            nationStr += (" `<@" + user.getDiscordId() + ">`");
-//                        }
-//                    }
-//                    if (iaCat != null) {
-//                        IAChannel iaChan = iaCat.get(nation);
-//                        if (channel != null) {
-//                            if (listRawUserIds) {
-//                                nationStr += " `" + iaChan.getChannel().getAsMention() + "`";
-//                            } else {
-//                                nationStr += " " + iaChan.getChannel().getAsMention();
-//                            }
-//                        }
-//                    }
-//                    nationList.add(nationStr);
-//                }
-//            }
-//            int pages = (nations.size() + perpage - 1) / perpage;
-//            title += "(" + (page + 1) + "/" + pages + ")";
-//            DiscordUtil.paginate(channel, title, DiscordUtil.trimContent(message.getContentRaw()), page, perpage, nationList);
-//        }
-//        if (listInfo) {
-////            if (perpage == null) perpage = 5;
-//            perpage = 5;
-//            ArrayList<DBNation> sorted = new ArrayList<>(nations);
-//
-//            if (sortBy != null) {
-//                Collections.sort(sorted, (o1, o2) -> Double.compare(((Number)sortBy.apply(o2)).doubleValue(), ((Number) sortBy.apply(o1)).doubleValue()));
-//            }
-//
-//            List<String> results = new ArrayList<>();
-//
-//            for (DBNation nation : sorted) {
-//                StringBuilder entry = new StringBuilder();
-//                entry.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
-//                        .append(" | " + String.format("%16s", nation.getNation()))
-//                        .append(" | " + String.format("%16s", nation.getAllianceName()))
-//                        .append("\n```")
-////                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
-//                        .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-//                        .append(String.format("%5s", nation.getAvg_infra())).append(" \uD83C\uDFD7").append(" | ")
-//                        .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-//                        .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-//                        .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-//                        .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-//                        .append(String.format("%1s", nation.getOff())).append(" \uD83D\uDDE1").append(" | ")
-//                        .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1").append(" | ")
-//                        .append(String.format("%2s", nation.getSpies())).append(" \uD83D\uDD0D").append(" | ");
-////                Activity activity = nation.getActivity(14 * 12);
-////                double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
-////                int loginPct = (int) (loginChance * 100);
-////                response.append("login=" + loginPct + "%").append(" | ");
-//                entry.append("```");
-//
-//                results.add(entry.toString());
-//            }
-//            DiscordUtil.paginate(channel, "Nations", DiscordUtil.trimContent(message.getContentRaw()), page, perpage, results);
-//        }
+
+
+        String arg0;
+        String title;
+        if (nations.size() == 1) {
+            DBNation nation = nations.iterator().next();
+            title = nation.getNation();
+            boolean showMoney = false;
+            Message msg = nation.toCard(channel, false, showMoney);
+
+            List<String> commands = new ArrayList<>();
+            commands.add(Settings.commandPrefix(true) + "multi " + nation.getNation_id());
+            commands.add(Settings.commandPrefix(true) + "wars " + nation.getNation_id());
+            commands.add(Settings.commandPrefix(true) + "revenue " + nation.getNation_id());
+            commands.add(Settings.commandPrefix(true) + "unithistory " + nation.getNation_id() + " <unit>");
+        } else {
+            int allianceId = -1;
+            for (DBNation nation : nations) {
+                if (allianceId == -1 || allianceId == nation.getAlliance_id()) {
+                    allianceId = nation.getAlliance_id();
+                } else {
+                    allianceId = -2;
+                }
+            }
+            if (allianceId != -2) {
+                String name = PnwUtil.getName(allianceId, true);
+                String url = PnwUtil.getUrl(allianceId, true);
+                title = "AA: " + name;
+                arg0 = MarkupUtil.markdownUrl(name, url);
+            } else {
+                arg0 = "coalition";
+                title = "`" + arg0 + "`";
+            }
+            title = "(" + nations.size() + " nations) " + title;
+
+            DBNation total = new DBNation(arg0, nations, false);
+            DBNation average = new DBNation(arg0, nations, true);
+
+            response.append("Total for " + arg0 + ":").append('\n');
+
+            printAA(response, total, isAdmin);
+
+            response.append("Average for " + arg0 + ":").append('\n');
+
+            printAA(response, average, isAdmin);
+
+            // min score
+            // max score
+            // Num members
+            // averages
+        }
+        if (!listInfo && page == null && nations.size() > 1) {
+            DiscordUtil.createEmbedCommand(channel, title, response.toString());
+        }
+
+        if (list || listMentions || listRawUserIds || listChannels || listAlliances) {
+//            if (perpage == null) perpage = 15;
+            if (page == null) page = 0;
+            List<String> nationList = new ArrayList<>();
+
+            if (listAlliances) {
+                // alliances
+                Set<Integer> alliances = new HashSet<>();
+                for (DBNation nation : nations) {
+                    if (!alliances.contains(nation.getAlliance_id())) {
+                        alliances.add(nation.getAlliance_id());
+                        nationList.add(nation.getAllianceUrlMarkup(true));
+                    }
+                }
+            } else {
+                GuildDB db = Locutus.imp().getGuildDB(guild);
+                IACategory iaCat = listChannels ? db.getIACategory() : null;
+                for (DBNation nation : nations) {
+                    String nationStr = list ? nation.getNationUrlMarkup(true) : "";
+                    if (listMentions) {
+                        PNWUser user = nation.getDBUser();
+                        if (user != null) {
+                            nationStr += (" <@" + user.getDiscordId() + ">");
+                        }
+                    }
+                    if (listRawUserIds) {
+                        PNWUser user = nation.getDBUser();
+                        if (user != null) {
+                            nationStr += (" `<@" + user.getDiscordId() + ">`");
+                        }
+                    }
+                    if (iaCat != null) {
+                        IAChannel iaChan = iaCat.get(nation);
+                        if (channel != null) {
+                            if (listRawUserIds) {
+                                nationStr += " `" + iaChan.getChannel().getAsMention() + "`";
+                            } else {
+                                nationStr += " " + iaChan.getChannel().getAsMention();
+                            }
+                        }
+                    }
+                    nationList.add(nationStr);
+                }
+            }
+            int pages = (nations.size() + perpage - 1) / perpage;
+            title += "(" + (page + 1) + "/" + pages + ")";
+            DiscordUtil.paginate(channel, title, DiscordUtil.trimContent(message.getContentRaw()), page, perpage, nationList);
+        }
+        if (listInfo) {
+//            if (perpage == null) perpage = 5;
+            perpage = 5;
+            ArrayList<DBNation> sorted = new ArrayList<>(nations);
+
+            if (sortBy != null) {
+                Collections.sort(sorted, (o1, o2) -> Double.compare(((Number)sortBy.apply(o2)).doubleValue(), ((Number) sortBy.apply(o1)).doubleValue()));
+            }
+
+            List<String> results = new ArrayList<>();
+
+            for (DBNation nation : sorted) {
+                StringBuilder entry = new StringBuilder();
+                entry.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
+                        .append(" | " + String.format("%16s", nation.getNation()))
+                        .append(" | " + String.format("%16s", nation.getAllianceName()))
+                        .append("\n```")
+//                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
+                        .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
+                        .append(String.format("%5s", nation.getAvg_infra())).append(" \uD83C\uDFD7").append(" | ")
+                        .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
+                        .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
+                        .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
+                        .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
+                        .append(String.format("%1s", nation.getOff())).append(" \uD83D\uDDE1").append(" | ")
+                        .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1").append(" | ")
+                        .append(String.format("%2s", nation.getSpies())).append(" \uD83D\uDD0D").append(" | ");
+//                Activity activity = nation.getActivity(14 * 12);
+//                double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
+//                int loginPct = (int) (loginChance * 100);
+//                response.append("login=" + loginPct + "%").append(" | ");
+                entry.append("```");
+
+                results.add(entry.toString());
+            }
+            DiscordUtil.paginate(channel, "Nations", DiscordUtil.trimContent(message.getContentRaw()), page, perpage, results);
+        }
 
         return null;
     }

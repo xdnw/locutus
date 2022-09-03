@@ -600,7 +600,7 @@ public class CommandManager {
                         long now = System.currentTimeMillis();
                         Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), now, entry.getValue(), NationLootType.ESPIONAGE);
                         GuildDB db = Locutus.imp().getGuildDB(event.getGuild());
-                        if (db != null && db.isWhitelisted()) {
+                        if (db != null) {
                             RateLimitUtil.queue(event.getMessage().addReaction("\u2705"));
                             double converted = PnwUtil.convertedTotal(value.getValue());
                             double pct = attacker == null ? 0.10 : attacker.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
