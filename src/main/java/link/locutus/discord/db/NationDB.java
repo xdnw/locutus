@@ -7,9 +7,6 @@ import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.*;
-import it.unimi.dsi.fastutil.longs.Long2DoubleLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
@@ -50,8 +47,6 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import rocker.grant.city;
-import rocker.grant.nation;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -2125,7 +2120,7 @@ public class NationDB extends DBMainV2 {
         return null;
     }
 
-    public Map<Long, Map<Continent, Double>> getRadiationByDay() {
+    public Map<Long, Map<Continent, Double>> getRadiationByTurns() {
         Map<Long, Map<Continent, Double>> result = new Long2ObjectOpenHashMap<>();
         try (PreparedStatement stmt = getConnection().prepareStatement("SELECT continent, radiation, turn FROM RADIATION_BY_TURN")) {
             try (ResultSet rs = stmt.executeQuery()) {
@@ -2141,8 +2136,23 @@ public class NationDB extends DBMainV2 {
         }
         return result;
     }
-
-    public void addRadiationByDay(Continent continent, long turn, double radiation) {
+    public Map<Continent, Double> getRadiationByTurn(long turn) {
+        Map<Continent, Double> result = new Object2ObjectOpenHashMap<>();
+        try (PreparedStatement stmt = getConnection().prepareStatement("SELECT continent, radiation FROM RADIATION_BY_TURN where turn = ?")) {
+            stmt.setLong(1,turn);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Continent continent = Continent.values[(rs.getInt(1))];
+                    double radiation = rs.getInt(2) / 100d;
+                    result.put(continent, radiation);
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public void addRadiationByTurn(Continent continent, long turn, double radiation) {
         try (PreparedStatement stmt = getConnection().prepareStatement("INSERT OR IGNORE INTO RADIATION_BY_TURN (continent, radiation, turn) VALUES (?, ?, ?)")) {
             stmt.setInt(1, continent.ordinal());
             stmt.setInt(2, (int) (radiation * 100));
@@ -3261,10 +3271,10 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public long getAllianceMemberSeniorityTimestamp(DBNation nation) {
+    public long getAllianceMemberSeniorityTimestamp(DBNation nation, Long snapshotDate) {
         long now = System.currentTimeMillis();
         if (nation.getPosition() < Rank.MEMBER.id) return Long.MAX_VALUE;
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? ORDER BY date DESC LIMIT 1")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " ORDER BY date DESC LIMIT 1")) {
             stmt.setInt(1, nation.getNation_id());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

@@ -28,8 +28,6 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
-import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.update.LootEstimateTracker;
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
@@ -40,7 +38,6 @@ import javax.security.auth.login.LoginException;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
@@ -261,7 +258,7 @@ public class DataDumpParser {
             Map<Continent, Double> radMap = getRadsAt(turn, attacks, continentInfo);
             System.out.println("Rads " + StringMan.getString(radMap));
             for (Map.Entry<Continent, Double> entry : radMap.entrySet()) {
-                Locutus.imp().getNationDB().addRadiationByDay(entry.getKey(), turn, entry.getValue());
+                Locutus.imp().getNationDB().addRadiationByTurn(entry.getKey(), turn, entry.getValue());
             }
         }
         long diff = System.currentTimeMillis() - start;
@@ -392,7 +389,7 @@ public class DataDumpParser {
 
         double[] EMPTY = ResourceType.getBuffer();
 
-        Map<Long, Map<Continent, Double>> radsByDay = Locutus.imp().getNationDB().getRadiationByDay();
+        Map<Long, Map<Continent, Double>> radsByDay = Locutus.imp().getNationDB().getRadiationByTurns();
 
         long previousTurn = 0L;
         Map<Integer, DBNation> previousNationsMap = null;

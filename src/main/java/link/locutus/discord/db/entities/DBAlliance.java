@@ -305,8 +305,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return nations;
     }
 
-    private Set<DBNation> getNationsCache = null;
-
     public Set<DBNation> getNations() {
         return Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
     }
