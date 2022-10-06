@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -70,7 +71,7 @@ public class WarRoom extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory warCat = db.getWarChannel(true);
         if (warCat == null) {
-            return "War categories are not enabled. See `" + Settings.commandPrefix(true) + "KeyStore ENABLE_WAR_ROOMS true`";
+            return "War categories are not enabled. See " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true").toSlashMention() + "";
         }
         String filterArg = DiscordUtil.parseArg(args, "filter");
 
@@ -191,7 +192,7 @@ public class WarRoom extends Command {
         for (DBNation attacker : attackers) {
             User user = attacker.getUser();
             if (user == null) {
-                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used `" + Settings.commandPrefix(true) + "verify` ?");
+                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used " + CM.register.cmd.toSlashMention() + " ?");
                 continue;
             }
 

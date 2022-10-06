@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -147,13 +148,13 @@ public class ROI extends Command {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
         if (guildDb == null || guildDb.getInfo(GuildDB.Key.ALLIANCE_ID) == null) {
-            return "Invalid guild. Please register your alliance id with: `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID <value>`";
+            return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<value>") + "";
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
 
         String allianceStr = guildDb.getInfo(GuildDB.Key.ALLIANCE_ID);
-        if (allianceStr == null) return "Please use `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID <alliance-id>`";
+        if (allianceStr == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>") + "";
         int allianceId = Integer.parseInt(allianceStr);
 
         List<ROIResult> roiMap = new ArrayList<>();
@@ -459,8 +460,9 @@ public class ROI extends Command {
             boolean getCityPlanning = numCities >= Projects.URBAN_PLANNING.requiredCities() && !cityPlanning;
             boolean getAdvCityPlanning = numCities >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !advCityPlanning;
             boolean getMetroPlanning = numCities >= Projects.METROPOLITAN_PLANNING.requiredCities() && !advCityPlanning;
+            boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
 
-            double cityCost = PnwUtil.nextCityCost(numCities, manifest || true, cityPlanning || getCityPlanning, advCityPlanning || getAdvCityPlanning, metroPlanning || getMetroPlanning);
+            double cityCost = PnwUtil.nextCityCost(numCities, manifest || true, cityPlanning || getCityPlanning, advCityPlanning || getAdvCityPlanning, metroPlanning || getMetroPlanning, gsa);
             double[] buildCost = existingCity.calculateCost(new JavaCity());
             double[] totalCost = buildCost.clone();
 

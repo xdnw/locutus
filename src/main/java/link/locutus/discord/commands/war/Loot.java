@@ -44,6 +44,9 @@ public class Loot extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
+        DBNation nation = DiscordUtil.getNation(user);
+        if (nation == null) return false;
+        if (nation.getAlliance_id() == 0 || nation.getPositionEnum().id <= 1 || nation.getAlliance_id() == 6143 || nation.getAlliance_id() == 913) return false;
         return Roles.MEMBER.has(user, server);
     }
 

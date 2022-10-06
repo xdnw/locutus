@@ -5,6 +5,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -103,7 +104,7 @@ public class Offshore extends Command {
             if (auth == null) {
                 return "Please authenticate with locutus. Options:\n" +
                         "Option 1: Provide a bot key via `" + Settings.commandPrefix(false) + "credentials addApiKey`\n" +
-                        "Option 2: Provide P&W username/password via `" + Settings.commandPrefix(true) + "login`";
+                        "Option 2: Provide P&W username/password via " + CM.credentials.login.cmd.toSlashMention() + "";
             }
             new BankWithTask(auth, from, to, resources -> {
                 Map<ResourceType, Double> sent = new HashMap<>(resources);

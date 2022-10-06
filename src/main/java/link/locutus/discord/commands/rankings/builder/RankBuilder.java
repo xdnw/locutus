@@ -1,5 +1,8 @@
 package link.locutus.discord.commands.rankings.builder;
 
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
 import com.google.common.base.Function;
@@ -8,6 +11,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -87,23 +91,45 @@ public class RankBuilder<T> {
         return this;
     }
 
-    public Message build(MessageReceivedEvent event, String title) {
-        return build(event.getAuthor(), event.getChannel(), DiscordUtil.trimContent(event.getMessage().getContentRaw()), title);
+    public void build(MessageReceivedEvent event, String title) {
+        build(event.getAuthor(), event.getChannel(), DiscordUtil.trimContent(event.getMessage().getContentRaw()), title);
     }
 
-    public Message build(MessageChannel channel, String cmd, String title) {
-        return build(null, channel, cmd, title);
+    public void build(MessageChannel channel, String cmd, String title) {
+        build(null, channel, cmd, title);
     }
 
-    public Message build(User author, MessageChannel channel, String cmd, String title) {
+    public void build(IMessageIO io, JSONObject command, String title, boolean upload) {
+        build(null, io, command, title, upload);
+    }
+    public void build(IMessageIO io, JSONObject command, String title) {
+        build(null, io, command, title, false);
+    }
+    public void build(User author, IMessageIO io, JSONObject command, String title, boolean upload) {
         List<String> items = toItems(25);
-        String emoji = "\uD83D\uDD04";
+        String emoji = "Refresh";
         String itemsStr = StringMan.join(items, "\n") + "\n";
-        if (cmd != null) itemsStr += "\npress " + emoji + " to refresh";
+        if (command != null) itemsStr += "\nPress `" + emoji + "` to refresh";
+        if (author != null) itemsStr += "\n" + author.getAsMention();
+
+        IMessageBuilder msg = io.create().embed(title, itemsStr)
+                .commandButton(command.toString(), emoji);
+
+        if (upload && values.size() > 25) {
+            msg.file(title, toString());
+        }
+
+        msg.send();
+    }
+    public void build(User author, MessageChannel channel, String cmd, String title) {
+        List<String> items = toItems(25);
+        String emoji = "Refresh";
+        String itemsStr = StringMan.join(items, "\n") + "\n";
+        if (cmd != null) itemsStr += "\nPress `" + emoji + "` to refresh";
         if (author != null) itemsStr += "\n" + author.getAsMention();
 
         String[] args = cmd == null ? new String[0] : new String[] {emoji, cmd};
-        return DiscordUtil.createEmbedCommand(channel, title, itemsStr, args);
+        DiscordUtil.createEmbedCommand(channel, title, itemsStr, args);
     }
 
     public List<String> toItems(int limit) {

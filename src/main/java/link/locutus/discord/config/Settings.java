@@ -105,7 +105,7 @@ public class Settings extends Config {
         @Comment("If message commands e.g. `!who` is enabled")
         public boolean MESSAGE_COMMANDS = true;
         @Comment("If slash `/` commands are enabled (WIP)")
-        public boolean SLASH_COMMANDS = false;
+        public boolean SLASH_COMMANDS = true;
         @Comment("If the web interface is enabled")
         public boolean WEB = false;
 

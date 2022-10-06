@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.user.Roles;
 import net.dv8tion.jda.api.entities.Guild;
@@ -55,7 +56,7 @@ public enum Coalition {
         }
     },
     ALLIES("Allies"),
-    MASKEDALLIANCES("Additional alliances to mask with `" + Settings.commandPrefix(true) + "autoRole` (if alliance masking is enabled)") {
+    MASKEDALLIANCES("Additional alliances to mask with " + CM.role.autoassign.cmd.create().toSlashCommand() + " (if alliance masking is enabled)") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
             return Roles.hasAny(user, guild, Roles.ADMIN, Roles.INTERNAL_AFFAIRS);

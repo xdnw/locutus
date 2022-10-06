@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -10,6 +12,10 @@ import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.User;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -110,5 +116,16 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             }
         }
         return result;
+    }
+
+    public String format(ValueStore<?> store, String arg) {
+        Guild guild = store.getProvided(Key.of(Me.class, Guild.class));
+        MessageChannel channel = store.getProvided(Key.of(Me.class, MessageChannel.class));
+        User author = store.getProvided(Key.of(Me.class, User.class));
+        DBNation me = store.getProvided(Key.of(Me.class, DBNation.class));
+
+        // todo
+
+        return DiscordUtil.format( guild, channel, author, me, arg);
     }
 }

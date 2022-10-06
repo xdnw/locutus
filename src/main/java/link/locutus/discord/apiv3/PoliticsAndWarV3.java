@@ -114,6 +114,7 @@ public class PoliticsAndWarV3 {
                     long sleepMs = rateLimitGlobal.resetMs - now;
                     if (sleepMs > 0) {
                         try {
+                            System.out.println("Hit rate limit ( " + rateLimitGlobal.limit + " | " + sleepMs + " )");
                             Thread.sleep(sleepMs + 1000);
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
@@ -206,6 +207,7 @@ public class PoliticsAndWarV3 {
                     if (remove) pool.removeKey(pair);
                     continue;
                 }
+                System.out.println("Error " + graphQLRequest.toHttpJsonBody() + "\n - " + e.getMessage());
                 rethrow(e, pair,false);
                 throw e;
             }
@@ -258,7 +260,7 @@ public class PoliticsAndWarV3 {
                     break pageLoop;
                 }
                 if (result.hasErrors()) {
-                    System.out.println("Has error");
+                    System.out.println("Has error ");
                     int maxBehavior = 0;
                     List<GraphQLError> errors = result.getErrors();
                     for (GraphQLError error : errors) {
@@ -272,7 +274,7 @@ public class PoliticsAndWarV3 {
                             continue pageLoop;
                         case RETRY:
                             try {
-                                Thread.sleep((long) (1000 + Math.pow(i * 1000, 2)));
+                                Thread.sleep(Math.min(60000, (long) (1000 + Math.pow(i * 1000, 2))));
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -643,6 +645,25 @@ public class PoliticsAndWarV3 {
 
     public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Predicate<Bankrec> recResults) {
         return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, recResults);
+    }
+
+    public List<Bankrec> fetchAllianceBankRecs(int allianceId, Consumer<AllianceBankrecsParametrizedInput> filter) {
+        List<Alliance> alliance = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+            @Override
+            public void accept(AllianceResponseProjection proj) {
+                BankrecResponseProjection bankProj = new BankrecResponseProjection();
+                createBankRecProjection().accept(bankProj);
+                AllianceBankrecsParametrizedInput input = new AllianceBankrecsParametrizedInput();
+                filter.accept(input);
+                proj.id();
+                proj.bankrecs(input, bankProj);
+            }
+        });
+        if (alliance == null || alliance.size() == 0) {
+            System.out.println("No results");
+            return null;
+        }
+        return alliance.get(0).getBankrecs();
     }
 
     public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
@@ -1302,11 +1323,15 @@ public class PoliticsAndWarV3 {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        if (bot != null && !bot.isEmpty()) {
-//            headers.set("X-Bot-Key", bot);
-//            headers.set("X-Api-Key", api);
-            headers.set("X-Bot-Key", Settings.INSTANCE.ACCESS_KEY);
+        if (api != null) {
+            headers.set("X-Api-Key", api);
+        } else {
             headers.set("X-Api-Key", Settings.INSTANCE.API_KEY_PRIMARY);
+        }
+        if (bot != null && !bot.isEmpty()) {
+            headers.set("X-Bot-Key", bot);
+        } else {
+            headers.set("X-Bot-Key", Settings.INSTANCE.ACCESS_KEY);
         }
         return headers;
     }

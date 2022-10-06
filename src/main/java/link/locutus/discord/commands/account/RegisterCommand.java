@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
@@ -150,7 +151,7 @@ public class RegisterCommand extends Command {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command `" + Settings.commandPrefix(true) + "validate " + nationId + "` again";
+                "5. Run the command " + CM.register.cmd.create(nationId + "").toSlashCommand() + " again";
 
         long id = user.getIdLong();
         boolean checkId = false;
@@ -163,7 +164,7 @@ public class RegisterCommand extends Command {
                         "2. Scroll down to where it says Discord Username:\n" +
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
-                        "5. Run the command `" + Settings.commandPrefix(true) + "validate " + nationId + "` again";
+                        "5. Run the command " + CM.register.cmd.create(nationId + "").toSlashCommand() + " again";
                 checkId = true;
             }
         }
@@ -218,7 +219,7 @@ public class RegisterCommand extends Command {
                 return e.getMessage();
             } catch (Throwable e) {
                 e.printStackTrace();
-                return "Error (see console) <@" + Settings.INSTANCE.ADMIN_USER_ID + ">";
+                return "Error: " + e.getMessage();
             }
         }
 

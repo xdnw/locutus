@@ -2,6 +2,7 @@ package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
@@ -81,7 +82,7 @@ public class WarsByTier extends Command {
             table.add(cities, (Void) null);
         }
 
-        table.write(event.getGuildChannel());
+        table.write(new DiscordChannelIO(event));
         return null;
     }
 }

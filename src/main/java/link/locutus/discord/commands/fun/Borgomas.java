@@ -3,6 +3,7 @@ package link.locutus.discord.commands.fun;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -43,7 +44,7 @@ public class Borgomas extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
 
         if (me.getMeta(NationMeta.BORGMAS) != null || received.put(me.getNation_id(), true) != null) {
             return "You've already opened your presents this year. Merry Borgmas!";

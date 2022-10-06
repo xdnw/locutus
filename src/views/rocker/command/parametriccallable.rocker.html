@@ -14,9 +14,9 @@
 <h2>Help</h2>
 <p>@raw(MarkupUtil.markdownToHTML(command.help(store)))</p>
 }
-@if(command.getSimpleDesc() != null && !command.getSimpleDesc().isEmpty()) {
+@if(command.simpleDesc() != null && !command.simpleDesc().isEmpty()) {
 <h2>Description</h2>
-<p>@raw(MarkupUtil.markdownToHTML(command.getSimpleDesc()))</p>
+<p>@raw(MarkupUtil.markdownToHTML(command.simpleDesc()))</p>
 }
 <h2>Execute</h2>
 @raw(form)

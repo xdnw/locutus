@@ -4,6 +4,10 @@ import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbed;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
@@ -45,7 +49,9 @@ import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONObject;
 import org.jsoup.internal.StringUtil;
+import rocker.guild.ia.message;
 
 import java.awt.Color;
 import java.io.IOException;
@@ -69,7 +75,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -96,9 +104,9 @@ public class DiscordUtil {
         return content;
     }
 
-    public static Message upload(MessageChannel channel, String title, String body) {
+    public static CompletableFuture<Message> upload(MessageChannel channel, String title, String body) {
         if (!title.contains(".")) title += ".txt";
-         return RateLimitUtil.complete(channel.sendFile(body.getBytes(StandardCharsets.ISO_8859_1), title));
+         return RateLimitUtil.queue(channel.sendFile(body.getBytes(StandardCharsets.ISO_8859_1), title));
     }
 
     public static void sortInterviewChannels(List<? extends GuildMessageChannel> channels, Map<Long, List<InterviewMessage>> messages, Map<? extends GuildMessageChannel, User> interviewUsers) {
@@ -224,7 +232,15 @@ public class DiscordUtil {
     }
 
     public static void paginate(MessageChannel channel, Message message, String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
-        if (results.isEmpty()) return;
+        DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
+        paginate(io, title, command, page, perPage, results, footer, inline);
+    }
+
+    public static void paginate(IMessageIO io, String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+        if (results.isEmpty()) {
+            System.out.println("Results are empty");
+            return;
+        }
 
         int numResults = results.size();
         int maxPage = (numResults - 1) / perPage;
@@ -242,72 +258,93 @@ public class DiscordUtil {
         boolean hasPrev = page > 0;
         boolean hasNext = page < maxPage;
 
-        String identifier = command.charAt(0) == Settings.commandPrefix(true).charAt(0) ? "page:" : "-p ";
+        String previousPageCmd;
+        String nextPageCmd;
 
-        String cmdCleared = command.replaceAll(identifier + "[0-9]+", "");
-        if (inline) cmdCleared = "~" + cmdCleared;
+        if (command.charAt(0) == Settings.commandPrefix(true).charAt(0)) {
+            String cmdCleared = command.replaceAll("page:" + "[0-9]+", "");
+            previousPageCmd = cmdCleared + " page:" + (page - 1);
+            nextPageCmd = cmdCleared + " page:" + (page + 1);
+        } else if (command.charAt(0) == '{') {
+            JSONObject json = new JSONObject(command);
+            Map<String, Object> arguments = json.toMap();
+
+            previousPageCmd = new JSONObject(arguments).put("page", page - 1).toString();
+            nextPageCmd = new JSONObject(arguments).put("page", page + 1).toString();
+        } else {
+            String cmdCleared = command.replaceAll("-p " + "[0-9]+", "");
+            if (!cmdCleared.startsWith(Settings.commandPrefix(false))) {
+                cmdCleared = Settings.commandPrefix(false) + cmdCleared;
+            }
+            previousPageCmd = cmdCleared + " -p " + (page - 1);
+            nextPageCmd = cmdCleared + " -p " + (page + 1);
+        }
+
+        String prefix = inline ? "~" : "";
         if (hasPrev) {
-            reactions.put("\u2B05\uFE0F", cmdCleared + " " + identifier + (page-1));
+            reactions.put("\u2B05\uFE0F Previous", prefix + previousPageCmd);
         }
         if (hasNext) {
-            reactions.put("\u27A1\uFE0F", cmdCleared + " " + identifier + (page+1));
+            reactions.put("Next \u27A1\uFE0F", prefix + nextPageCmd);
         }
 
-        if (message != null && message.getAuthor().getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
-            EmbedBuilder builder = new EmbedBuilder();
-            builder.setTitle(title);
-            builder.setDescription(body.toString());
-            if (footer != null) builder.setFooter(footer);
-            updateEmbed(builder, reactions, b -> updateMessage(channel, message, b.build()));
+        IMessageBuilder message = io.getMessage();
+        if (message == null || message.getAuthor() == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            System.out.println("remove:||Create new");
+            message = io.create();
         } else {
-            List<String> reactionsList = new ArrayList<>();
-            for (Map.Entry<String, String> entry : reactions.entrySet()) {
-                reactionsList.add(entry.getKey());
-                reactionsList.add(entry.getValue());
-            }
-            createEmbedCommandWithFooter(channel, title, body.toString(), footer, reactionsList.toArray(new String[0]));
+            System.out.println("remove:||Reuse old");
         }
+
+        EmbedBuilder builder = new EmbedBuilder();
+        builder.setTitle(title);
+        builder.setDescription(body.toString());
+        if (footer != null) builder.setFooter(footer);
+
+        message.clearEmbeds();
+        message.embed(builder.build());
+        message.clearButtons();
+        message.addCommands(reactions);
+
+        System.out.println("remove:||Sending message");
+
+        message.send();
     }
 
-    public static Message createEmbedCommand(long chanelId, String title, String message, String... reactionArguments) {
+    public static void createEmbedCommand(long chanelId, String title, String message, String... reactionArguments) {
         MessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(chanelId);
         if (channel == null) {
-//            channel = Locutus.imp().getDiscordApi().getPrivateChannelById(chanelId);
-//            if (channel == null) {
-                throw new IllegalArgumentException("Invalid channel " + chanelId);
-//            }
+            throw new IllegalArgumentException("Invalid channel " + chanelId);
         }
-        return createEmbedCommand(channel, title, message, reactionArguments);
+        createEmbedCommand(channel, title, message, reactionArguments);
     }
 
-    public static Message createEmbedCommand(MessageChannel channel, String title, String message, String... reactionArguments) {
-        return createEmbedCommandWithFooter(channel, title, message, null, reactionArguments);
+    public static void createEmbedCommand(MessageChannel channel, String title, String message, String... reactionArguments) {
+        createEmbedCommandWithFooter(channel, title, message, null, reactionArguments);
     }
 
-    public static Message createEmbedCommandWithFooter(MessageChannel channel, String title, String message, String footer, String... reactionArguments) {
+    public static void createEmbedCommandWithFooter(MessageChannel channel, String title, String message, String footer, String... reactionArguments) {
         if (message.length() > 2000 && reactionArguments.length == 0) {
-            return DiscordUtil.upload(channel, title, message);
+            if (title.length() >= 1024) title = title.substring(0, 1020) + "...";
+            DiscordUtil.upload(channel, title, message);
+            return;
         }
-        return createEmbedCommand(channel, new Consumer<EmbedBuilder>() {
+        String finalTitle = title;
+        createEmbedCommand(channel, new Consumer<EmbedBuilder>() {
             @Override
             public void accept(EmbedBuilder builder) {
-                String titleFinal = title;
+                String titleFinal = finalTitle;
                 if (titleFinal.length() >= 200) {
                     titleFinal = titleFinal.substring(0, 197) + "..";
                 }
                 builder.setTitle(titleFinal);
-                String tmp = message;
-                if (tmp.length() > 2000) {
-                    Message msg = DiscordUtil.upload(channel, titleFinal, message);
-                    tmp = "(see attachment)";
-                }
-                builder.setDescription(tmp);
+                builder.setDescription(message);
                 if (footer != null) builder.setFooter(footer);
             }
         }, reactionArguments);
     }
 
-    public static Message createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, String... reactionArguments) {
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, String... reactionArguments) {
         if (reactionArguments.length % 2 != 0) {
             throw new IllegalArgumentException("invalid pairs: " + StringMan.getString(reactionArguments));
         }
@@ -315,7 +352,7 @@ public class DiscordUtil {
         for (int i = 0; i < reactionArguments.length; i+=2) {
             map.put(reactionArguments[i], reactionArguments[i + 1]);
         }
-        return createEmbedCommand(channel, builder, map);
+        createEmbedCommand(channel, builder, map);
     }
 
     public static Message getMessage(String url) {
@@ -337,58 +374,12 @@ public class DiscordUtil {
     }
 
 
-    public static Message createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, Map<String, String> reactionArguments) {
-        EmbedBuilder embed = new EmbedBuilder();
-        builder.accept(embed);
-        return updateEmbed(embed, reactionArguments, builder1 -> channel.sendMessageEmbeds(builder1.build()).complete());
-    }
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> consumer, Map<String, String> reactionArguments) {
+        EmbedBuilder builder = new EmbedBuilder();
+        consumer.accept(builder);
+        MessageEmbed embed = builder.build();
 
-    public static Message updateMessage(MessageChannel channel, Message message, MessageEmbed embed) {
-        try {
-            if (message != null && message.getChannel().getIdLong() == channel.getIdLong()) {
-                 return RateLimitUtil.complete(channel.editMessageEmbedsById(message.getIdLong(), embed));
-            }
-        } catch (ErrorResponseException ignore) {}
-         return RateLimitUtil.complete(channel.sendMessageEmbeds(embed));
-    }
-
-    public static Message appendDescription(Message message, String append) {
-        List<MessageEmbed> embeds = message.getEmbeds();
-        if (embeds.size() != 1) return null;
-        MessageEmbed embed = embeds.get(0);
-        EmbedBuilder builder = new EmbedBuilder(embed);
-        builder.setDescription(embed.getDescription() + append);
-        return DiscordUtil.updateEmbed(builder, null, new Function<EmbedBuilder, Message>() {
-            @Override
-            public Message apply(EmbedBuilder builder) {
-                 return RateLimitUtil.complete(message.getChannel().editMessageEmbedsById(message.getIdLong(), builder.build()));
-            }
-        });
-    }
-
-    public static Message updateEmbed(EmbedBuilder embed, Map<String, String> reactionArguments, Function<EmbedBuilder, Message> createMsg) {
-        if (reactionArguments != null && !reactionArguments.isEmpty()) {
-            List<NameValuePair> pairs = reactionArguments.entrySet().stream()
-                    .map((Function<Map.Entry<String, String>, NameValuePair>)
-                            e -> new BasicNameValuePair(e.getKey(), e.getValue()))
-                    .collect(Collectors.toList());
-            String query = URLEncodedUtils.format(pairs, "UTF-8");
-
-            embed.setThumbnail("https://example.com?" + query);
-//            embed.setImage("https://example.com?" + query);
-        }
-        Message msg = createMsg.apply(embed);
-
-        if (reactionArguments != null && msg != null) {
-            List<MessageReaction> existing = msg.getReactions();
-            if (!existing.isEmpty()) {
-                RateLimitUtil.complete(msg.clearReactions());
-            }
-            for (String emoji : reactionArguments.keySet()) {
-                RateLimitUtil.queue(msg.addReaction(emoji));
-            }
-        }
-        return msg;
+        new DiscordChannelIO(channel, null).create().embed(embed).addCommands(reactionArguments).send();
     }
 
     private static final ArgParser parser = new ArgParser();
@@ -628,6 +619,7 @@ public class DiscordUtil {
         if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
             arg = arg.substring(1, arg.length() - 1);
         }
+        if (arg.toLowerCase().startsWith("nation:")) arg = arg.substring(7);
         if (arg.contains("politicsandwar.com/nation/id=") || arg.contains("politicsandwar.com/nation/war/declare/id=")) {
             String[] split = arg.split("=");
             if (split.length == 2) {
@@ -696,11 +688,10 @@ public class DiscordUtil {
         return null;
     }
 
-    public static void sendMessage(InteractionHook hook, String message) {
+    public static CompletableFuture<Message> sendMessage(InteractionHook hook, String message) {
         if (message.length() > 20000) {
             if (message.length() < 200000) {
-                RateLimitUtil.complete(hook.sendFile(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt"));
-                return;
+                return RateLimitUtil.queue(hook.sendFile(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt"));
             }
             new Exception().printStackTrace();
             System.out.println(message);
@@ -728,18 +719,18 @@ public class DiscordUtil {
             }
             String finalMsg = buffer.toString().trim();
             if (finalMsg.length() != 0) {
-                hook.sendMessage(finalMsg).complete();
+                return hook.sendMessage(finalMsg).submit();
             }
         } else if (!message.isEmpty()) {
-            hook.sendMessage(message).complete();
+            return hook.sendMessage(message).submit();
         }
+        return null;
     }
 
-    public static void sendMessage(MessageChannel channel, String message) {
+    public static CompletableFuture<Message> sendMessage(MessageChannel channel, String message) {
         if (message.length() > 20000) {
             if (message.length() < 200000) {
-                DiscordUtil.upload(channel, "message.txt", message);
-                return;
+                return DiscordUtil.upload(channel, "message.txt", message);
             }
             new Exception().printStackTrace();
             throw new IllegalArgumentException("Cannot send message of this length: " + message.length());
@@ -765,11 +756,12 @@ public class DiscordUtil {
                 buffer.append('\n').append(line);
             }
             if (buffer.length() != 0) {
-                channel.sendMessage(buffer).complete();
+                return channel.sendMessage(buffer).submit();
             }
         } else if (!message.isEmpty()) {
-            channel.sendMessage(message).complete();
+            return channel.sendMessage(message).submit();
         }
+        return null;
     }
 
     public static Guild getDefaultGuild(MessageReceivedEvent event) {
@@ -1418,6 +1410,16 @@ public class DiscordUtil {
             }
         }
     }
+    public static void pending(IMessageIO output, JSONObject command, String title, String desc) {
+        pending(output, command, title, desc, "force");
+    }
+    public static void pending(IMessageIO output, JSONObject command, String title, String desc, String forceFlag) {
+        String forceCmd = command.put(forceFlag, "true").toString();
+        output.create()
+                .embed("Confirm: " + title, desc)
+                .commandButton(CommandBehavior.DELETE_MESSAGE, forceCmd, "Confirm")
+                .send();
+    }
 
     public static void pending(MessageChannel channel, Message message, String title, String desc, char f) {
         pending(channel, message, title, desc, f, "");
@@ -1425,7 +1427,7 @@ public class DiscordUtil {
 
     public static void pending(MessageChannel channel, Message message, String title, String desc, char f, String cmdAppend) {
         String cmd = DiscordUtil.trimContent(message.getContentRaw()) + " -" + f + cmdAppend;
-        DiscordUtil.createEmbedCommand(channel, "Confirm: " + title, desc, "\u2705", cmd);
+        DiscordUtil.createEmbedCommand(channel, "Confirm: " + title, desc, "Confirm", cmd);
     }
 
     public static String getChannelUrl(GuildMessageChannel channel) {

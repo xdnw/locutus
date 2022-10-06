@@ -5,7 +5,9 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -24,6 +26,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -180,14 +183,14 @@ public class DiscordBindings extends BindingHelper {
 
     @Binding
     @Me
-    public GuildMessageChannel guildChannel(@Me MessageChannel channel) {
+    public GuildMessageChannel guildChannel(@Me TextChannel channel) {
         if (!(channel instanceof GuildMessageChannel)) throw new IllegalArgumentException("This command can only be used in a guild channel");
         return (GuildMessageChannel) channel;
     }
 
     @Binding
     @Me
-    public ICategorizableChannel categorizableChannel(@Me MessageChannel channel) {
+    public ICategorizableChannel categorizableChannel(@Me TextChannel channel) {
         if (!(channel instanceof ICategorizableChannel)) throw new IllegalArgumentException("This command can only be used in a categorizable channel");
         return (ICategorizableChannel) channel;
     }
@@ -195,6 +198,10 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     @Me
     public TextChannel textChannel(@Me MessageChannel channel) {
+        if (channel instanceof HookMessageChannel hook) {
+            MessageChannel parent = hook.getParent();
+            if (parent != null) channel = parent;
+        }
         if (!(channel instanceof TextChannel)) throw new IllegalArgumentException("This command can only be used in a guild text channel");
         return (TextChannel) channel;
     }
@@ -225,5 +232,17 @@ public class DiscordBindings extends BindingHelper {
     @Me
     public Message message() {
         throw new IllegalStateException("No message set in command locals");
+    }
+
+    @Binding
+    @Me
+    public JSONObject command() {
+        throw new IllegalArgumentException("No command binding found");
+    }
+
+    @Binding
+    @Me
+    public IMessageIO channelIO() {
+        throw new IllegalArgumentException("No channel binding found");
     }
 }

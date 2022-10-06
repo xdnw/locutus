@@ -6,6 +6,7 @@ import link.locutus.discord.commands.buildcmd.GetBuild;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -86,7 +87,7 @@ public class BuildCommands {
 
     @Command(desc = "Print the current build being used by a nation")
     @RolePermission(Roles.MEMBER)
-    public String get(DBNation nation, @Me MessageChannel channel) throws Exception {
+    public String get(DBNation nation, @Me IMessageIO channel) throws Exception {
         return GetBuild.onCommand(nation, channel);
     }
 }

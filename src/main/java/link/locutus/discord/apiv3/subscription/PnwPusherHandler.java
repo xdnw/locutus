@@ -46,6 +46,12 @@ public class PnwPusherHandler {
     private final String key;
     private Pusher pusher;
     private final ObjectMapper objectMapper;
+
+    public static void main(String[] args) {
+        String i = "2022-03-06T22:21:25.000+00:00";
+        Instant t = Instant.parse(i);
+        System.out.println(t);
+    }
     public PnwPusherHandler(String key) {
         this.key = key;
 
@@ -56,10 +62,11 @@ public class PnwPusherHandler {
         module.addDeserializer(Instant.class, new JsonDeserializer<Instant>() {
             @Override
             public Instant deserialize(com.fasterxml.jackson.core.JsonParser p, DeserializationContext ctxt) throws IOException, JacksonException {
+                String text = p.getText();
                 try {
-                    return df.parse(p.getText()).toInstant();
+                    return df.parse(text).toInstant();
                 } catch (ParseException e) {
-                    throw new RuntimeException(e);
+                    return Instant.parse(text);
                 }
             }
         });
@@ -194,7 +201,7 @@ public class PnwPusherHandler {
             handler.bind(channelName, model, event, bulk, event -> {
                 String data = event.getData();
                 if (data.isEmpty()) return;
-                System.out.println("Received on " + channelName + ": " + data);
+//                System.out.println("Received on " + channelName + ": " + data);
                 try {
                     if (data.charAt(0) == '[') {
                         CollectionType listTypeRef = objectMapper.getTypeFactory().constructCollectionType(List.class, type);

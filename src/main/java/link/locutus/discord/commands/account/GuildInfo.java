@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -31,7 +32,7 @@ public class GuildInfo extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+        if (args.size() != 1) args = List.of(guild.getId());
         long id = Long.parseLong(args.get(0));
 
         guild = Locutus.imp().getDiscordApi().getGuildById(id);

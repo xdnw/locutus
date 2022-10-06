@@ -100,7 +100,7 @@ public class TradeListener {
 
                 List<String> pings = new ArrayList<>();
                 for (TradeSubscription sub : rssSubs) {
-                    String ping = sub.getPing(db) + " " + sub.getType() + " " + (sub.isBuy() ? "buying" : "selling") + " " + (sub.isAbove() ? "above" : "below") + " $" + sub.getPpu() + " (expires: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, sub.getDate() - System.currentTimeMillis()) + ")";
+                    String ping = sub.getPing(db) + " " + sub.getType() + " " + (sub.isBuy() ? "buying" : "selling") + " " + (sub.isAbove() ? "above" : "below") + " $" + sub.getPpu() + (sub.getDate() != Long.MAX_VALUE ? " (expires: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, sub.getDate() - System.currentTimeMillis()) + ")" : "");
                     pings.add(ping);
                 }
 

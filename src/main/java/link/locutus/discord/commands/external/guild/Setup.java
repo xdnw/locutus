@@ -3,8 +3,10 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.user.Roles;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -71,7 +73,7 @@ public class Setup extends Command {
                 if (name != null) hasValidOffshore = true;
             }
             if (!hasValidOffshore) {
-                return "Please set an offshore using " + Settings.commandPrefix(false) + "setcoalition <alliance> offshore";
+                return "Please set an offshore using " + CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toSlashCommand() + "";
             }
 
             if (coalitions.getOrDefault("allies", new LinkedHashSet<>()).isEmpty()) {

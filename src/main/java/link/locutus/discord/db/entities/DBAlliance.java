@@ -10,6 +10,7 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
@@ -31,6 +32,7 @@ import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -305,8 +307,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return nations;
     }
 
-    private Set<DBNation> getNationsCache = null;
-
     public Set<DBNation> getNations() {
         return Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
     }
@@ -364,13 +364,22 @@ public class DBAlliance implements NationList, NationOrAlliance {
         result.setAlliance_id(allianceId);
         return result;
     }
-
     public Set<DBAlliance> getTreatiedAllies() {
+        return getTreatiedAllies(true);
+    }
+    public Set<DBAlliance> getTreatiedAllies(boolean checkOffshore) {
         Set<DBAlliance> allies = new HashSet<>();
         for (Map.Entry<Integer, Treaty> treatyEntry : getDefenseTreaties().entrySet()) {
             Treaty treaty = treatyEntry.getValue();
             int other = treaty.getFromId() == allianceId ? treaty.getToId() : treaty.getFromId();
             allies.add(DBAlliance.getOrCreate(other));
+        }
+        if (checkOffshore) {
+            DBAlliance parent = getCachedParentOfThisOffshore();
+            if (parent != null) {
+                allies.add(parent);
+                allies.addAll(parent.getTreatiedAllies(false));
+            }
         }
         return allies;
     }
@@ -427,7 +436,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     @Command(desc = "Rank by score")
     public int getRank() {
         if (rank == null) {
-            Map<Integer, List<DBNation>> byScore = Locutus.imp().getNationDB().getNationsByAlliance(true, true, true, true);
+            Map<Integer, List<DBNation>> byScore = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true);
             rank = 0;
             for (Map.Entry<Integer, List<DBNation>> entry : byScore.entrySet()) {
                 rank++;
@@ -595,11 +604,19 @@ public class DBAlliance implements NationList, NationOrAlliance {
             String[] apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
 
             if (apiKeys != null) {
+                List<String> newKeys = new ArrayList<>(Arrays.asList(apiKeys));
                 for (String key : apiKeys) {
                     try {
                         ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
                         Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
 //                    deleteInfo(Key.API_KEY);
+                    } catch (HttpClientErrorException.Unauthorized e) {
+                        newKeys.remove(key);
+                        if (newKeys.isEmpty()) {
+                            db.deleteInfo(GuildDB.Key.API_KEY);
+                        } else {
+                            db.setInfo(GuildDB.Key.API_KEY, StringMan.join(newKeys, ","));
+                        }
                     } catch (Throwable e) {
                         throw e;
                     }
@@ -611,7 +628,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         Set<DBNation> nations = getNations();
         for (DBNation gov : nations) {
-            if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id) continue;
+            if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id || gov.getAlliance_id() != allianceId) continue;
             DBAlliancePosition position = gov.getAlliancePosition();
             if (permissions != null && permissions.length > 0 && (position == null || (!position.hasAllPermission(permissions)))) {
                 continue;
@@ -633,7 +650,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
         PoliticsAndWarV3 api = getApi(false, AlliancePermission.SEE_SPIES);
         if (api == null) {
-            throw new IllegalArgumentException("No api key found. Please use`" + Settings.commandPrefix(false) + "addApiKey`");
+            throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
         }
         List<Integer> ids = getNations().stream()
                 .filter(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.APPLICANT.id)
@@ -657,7 +674,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public Map<ResourceType, Double> getStockpile() throws IOException {
         PoliticsAndWarV3 api = getApi(false, AlliancePermission.VIEW_BANK);
         if (api == null) {
-            throw new IllegalArgumentException("No api key found. Please use`" + Settings.commandPrefix(false) + "addApiKey`");
+            throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
         }
         double[] stockpile = api.getAllianceStockpile(allianceId);
         return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
@@ -729,7 +746,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
 
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war.warId);
+            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
             attacks.removeIf(f -> f.attack_type != AttackType.A_LOOT);
             if (attacks.size() != 1) continue;
 
@@ -822,12 +839,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Set<DBAlliancePosition> getPositions() {
-        Set<DBAlliancePosition> positions = new HashSet<>();
-        for (DBNation nation : getNations()) {
-            DBAlliancePosition position = Locutus.imp().getNationDB().getPosition(nation.getAlliancePositionId(), allianceId, false);
-            if (position != null) positions.add(position);
-        }
-        return positions;
+        return new HashSet<>(Locutus.imp().getNationDB().getPositions(allianceId));
     }
 
     public LootEntry getLoot() {

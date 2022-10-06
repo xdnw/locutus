@@ -2,6 +2,7 @@ package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -39,7 +40,7 @@ public class TransferResources extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         if (args.isEmpty()) return usage();
         DBNation me = DiscordUtil.getNation(event);
-        if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         if (me.isGray()) {
             return "Please set your color off gray: <https://politicsandwar.com/nation/edit/>";
         }

@@ -248,10 +248,8 @@ public class DataDumpParser {
         Map<Long, Map<Integer, Continent>> continentInfo = getContinentByNationByDay();
         long diff1 = System.currentTimeMillis() - start2;
 
-
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(f -> f.attack_type == AttackType.NUKE && f.epoch > minDate - TimeUnit.DAYS.toMillis(20)
-                && f.success > 0
-        );
+        long cutoff = minDate - TimeUnit.DAYS.toMillis(20);
+        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> f.attack_type == AttackType.NUKE && f.success > 0);
         Collections.sort(attacks, Comparator.comparingLong(o -> o.epoch));
 
         long currTurn = TimeUtil.getTurn();
@@ -322,7 +320,7 @@ public class DataDumpParser {
         Locutus.imp().runEventsAsync(Locutus.imp().getWarDb()::updateAttacks);
 
         Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(minDate - TimeUnit.DAYS.toMillis(5));
-        Collection<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(f -> f.epoch >= minDate - TimeUnit.DAYS.toMillis(20));
+        Collection<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(minDate - TimeUnit.DAYS.toMillis(20));
 
         Map<DBWar, Long> warEndDates = getWarEndDates(wars, attacks);
 
@@ -578,7 +576,7 @@ public class DataDumpParser {
     public void backCalculateBeigeDamage() throws IOException, ParseException, NoSuchFieldException, IllegalAccessException {
         load();
         long min = getMinDate();
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(f -> f.attack_type == AttackType.VICTORY && f.infra_destroyed_value <= 0 && f.epoch >= min);
+        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(min, f -> f.attack_type == AttackType.VICTORY && f.infra_destroyed_value <= 0);
         Map<Long, Set<Integer>> nationsByDay = new HashMap<>();
         for (DBAttack attack : attacks) {
             long day = TimeUtil.getDay(attack.epoch);

@@ -2,10 +2,15 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.config.yaml.ConfigurationSection;
 import link.locutus.discord.util.StringMan;
 
+import java.lang.reflect.Method;
+import java.text.MessageFormat;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public interface CommandCallable {
     CommandCallable clone(CommandCallable parent, List<String> aliases);
@@ -43,11 +48,17 @@ public interface CommandCallable {
     String toHtml(ValueStore store, PermissionHandler permisser, String endpoint);
 
     default CommandCallable getCallable(List<String> args) {
+        return getCallable(new ArrayList<>(args), false);
+    }
+    default CommandCallable getCallable(List<String> args, boolean allowRemainder) {
         CommandCallable root = this;
 
-        ArrayDeque<String> stack = new ArrayDeque<>(args);
-        while (!stack.isEmpty()) {
-            String arg = stack.poll();
+        while (!args.isEmpty()) {
+            if (root instanceof ParametricCallable) {
+                if (!allowRemainder) throw new IllegalArgumentException("Parametric command: " + root.getFullPath() + " has no sub command: " + StringMan.getString(args));
+                return root;
+            }
+            String arg = args.remove(0);
             if (root instanceof CommandGroup) {
                 root = ((CommandGroup) root).get(arg);
             } else {
@@ -81,5 +92,37 @@ public interface CommandCallable {
 
     default Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {
         return Collections.emptySet();
+    }
+
+    default void generatePojo(String parentPath, StringBuilder output, int indent) {
+        String indentStr = StringMan.repeat(" ", indent);
+        String name = getPrimaryCommandId();
+        String path = (parentPath + " " + name).trim();
+        if (this instanceof CommandGroup group) {
+            if (!name.isEmpty()) output.append(indentStr).append("public static class ").append(name).append("{\n");
+            for (CommandCallable callable : new HashSet<>(group.getSubcommands().values())) {
+                callable.generatePojo(path, output, indent + 4);
+            }
+            if (!name.isEmpty()) output.append(indentStr).append("}\n");
+        } else if (this instanceof ParametricCallable callable) {
+            Method method = callable.getMethod();
+            List<String> params = callable.getUserParameterMap().values().stream().map(ParameterData::getName).collect(Collectors.toList());
+            // join with comma
+            String typeArgs = params.stream().map(f -> "String " + f).collect(Collectors.joining(", "));
+            String args = params.stream().map(f -> "\"" + f + "\", " + f).collect(Collectors.joining(", "));
+
+            output.append(String.format("""
+               %1$s@AutoRegister(clazz=%2$s.class,method="%3$s")
+               %1$spublic static class %4$s extends CommandRef {
+               %1$s    public static final %4$s cmd = new %4$s();
+               %1$s    public %4$s create(%5$s) {
+               %1$s        return createArgs(%6$s);
+               %1$s    }
+               %1$s}
+               """,
+            indentStr, method.getDeclaringClass().getName(), method.getName(), name, typeArgs, args));
+        } else {
+            throw new IllegalArgumentException("Unknown callable type: " + this.getClass().getSimpleName());
+        }
     }
 }

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -34,12 +35,12 @@ public class Embassy extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Please use `" + Settings.commandPrefix(true) + "validate`";
+            return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
         GuildDB db = Locutus.imp().getGuildDB(event);
         Category category = db.getOrThrow(GuildDB.Key.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use `" + Settings.commandPrefix(true) + "KeyStore " + GuildDB.Key.EMBASSY_CATEGORY + " <category>`";
+            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "").toSlashCommand() + "";
         }
         if (args.size() == 1 && args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.ADMIN.has(event.getAuthor(), event.getGuild())) return "No permission";
@@ -69,7 +70,7 @@ public class Embassy extends Command {
 
         Role role = DiscordUtil.getAARoles(event.getGuild().getRoles()).get(aa);
         if (role == null) {
-            return "No role found (try using `" + Settings.commandPrefix(true) + "autorole` ?)";
+            return "No role found (try using " + CM.role.autoassign.cmd.create().toSlashCommand() + " ?)";
         }
 
         for (TextChannel channel : category.getTextChannels()) {

@@ -4,8 +4,18 @@ package link.locutus.discord.db;
 import com.ptsmods.mysqlw.Database;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.AlertUtil;
+import org.jetbrains.annotations.NotNull;
+import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Record;
+import org.jooq.Result;
 import org.jooq.SQLDialect;
+import org.jooq.SelectConnectByStep;
+import org.jooq.SelectForUpdateStep;
+import org.jooq.SelectJoinStep;
+import org.jooq.SelectLimitStep;
+import org.jooq.SortField;
+import org.jooq.TableLike;
 import org.jooq.impl.DSL;
 
 import java.io.Closeable;
@@ -45,6 +55,25 @@ public abstract class DBMainV3 implements Closeable {
         init();
     }
 
+    public boolean tableExists(String tableName) throws SQLException {
+        DatabaseMetaData meta = getConnection().getMetaData();
+        try (ResultSet resultSet = meta.getTables(null, null, tableName, new String[] {"TABLE"})) {
+
+            return resultSet.next();
+        }
+    }
+
+    public Condition and(Condition a, Condition b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        return a.and(b);
+    }
+    public Condition or(Condition a, Condition b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        return a.or(b);
+    }
+
 
     public DSLContext ctx() {
         return ctx;
@@ -53,6 +82,56 @@ public abstract class DBMainV3 implements Closeable {
     public DBMainV3 init() {
         createTables();
         return this;
+    }
+
+    protected int updateLegacy(String sql, Consumer<PreparedStatement> withStmt) {
+        synchronized (this) {
+            try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+                withStmt.accept(stmt);
+                return stmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    protected boolean queryLegacy(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
+        {
+            try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+                stmt.setFetchSize(10000);
+                withStmt.accept(stmt);
+                ResultSet rs = stmt.executeQuery();
+                rsq.accept(rs);
+                return rs != null;
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public Result<Record> query(TableLike<?> table, Condition condition, SortField<?> orderBy, Integer limit) {
+        @NotNull SelectJoinStep<Record> select = ctx().select().from(table);
+        SelectConnectByStep<Record> where;
+        if (condition != null) {
+            where = select.where(condition);
+        } else {
+            where = select;
+        }
+        SelectLimitStep<Record> orderStep;
+        if (orderBy != null) {
+            orderStep = where.orderBy(orderBy);
+        } else {
+            orderStep = where;
+        }
+        SelectForUpdateStep<Record> limitStep;
+        if (limit != null) {
+            limitStep = orderStep.limit(limit);
+        } else {
+            limitStep = orderStep;
+        }
+        return limitStep.fetch();
     }
 
     private Connection forceConnection() throws SQLException, ClassNotFoundException {

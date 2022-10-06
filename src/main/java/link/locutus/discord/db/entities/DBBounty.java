@@ -103,9 +103,9 @@ public class DBBounty {
                 '}';
     }
 
-    public Message toCard(MessageChannel channel, boolean deanonymize) {
+    public void toCard(MessageChannel channel, boolean deanonymize) {
         DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
-        if (nation == null) return null;
+        if (nation == null) return;
 
         Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(nationId);
 
@@ -118,7 +118,7 @@ public class DBBounty {
         String title = nation.getNation() + " | " + type + " | $" + MathMan.format(total);
         String embed = nation.toEmbedString(true);
         if (deanonymize && postedBy > 0) embed += "\nPosted by: " + PnwUtil.getName(postedBy, false);
-        return DiscordUtil.createEmbedCommand(channel.getIdLong(), title, embed);
+        DiscordUtil.createEmbedCommand(channel.getIdLong(), title, embed);
     }
 
     public int getId() {

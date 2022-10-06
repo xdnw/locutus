@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.rankings.table;
 
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -360,7 +361,7 @@ public abstract class TimeNumericTable<T> {
         return baos.toByteArray();
     }
 
-    public void write(MessageChannel channel) throws IOException {
-        RateLimitUtil.queue(channel.sendFile(write(), ("img.png")));
+    public void write(IMessageIO channel) throws IOException {
+        channel.create().file("img.png", write()).send();
     }
 }

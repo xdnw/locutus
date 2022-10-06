@@ -84,10 +84,10 @@ public class NAPDown extends Command {
             response.append("\n" + napLink);
         }
 
-        String emoji = "\uD83D\uDD04";
-        response.append("\n\npress " + emoji + " to refresh");
+        String emoji = "Refresh";
+        response.append("\n\nPress `" + emoji + "` to refresh");
 
-        Message msg = DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
         return null;
     }
 }

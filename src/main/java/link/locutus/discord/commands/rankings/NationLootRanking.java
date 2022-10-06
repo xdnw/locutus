@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
@@ -19,6 +20,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.format;
@@ -48,11 +50,9 @@ public class NationLootRanking extends Command {
         }
         Map<Integer, DBNation> nationMap = nations.stream().collect(Collectors.toMap(DBNation::getNation_id, n -> n));
 
-        Integer days = MathMan.parseInt(args.get(1));
-        if (days == null) {
-            return "Invalid number of days: `" + args.get(1) + "`";
-        }
-        long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
+        long diff = TimeUtil.timeToSec(args.get(1)) * 1000L;
+        long cutoffMs = System.currentTimeMillis() - diff;
+        String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
 
         Map<Integer, Double> totals = new HashMap<>();
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
@@ -66,7 +66,7 @@ public class NationLootRanking extends Command {
 
         List<Map.Entry<Integer, Double>> sorted = totals.entrySet().stream().sorted((o1, o2) -> -Double.compare(o1.getValue(), o2.getValue())).collect(Collectors.toList());
 
-        String title = args.get(0) + " Looted from nations (" + days + " days):";
+        String title = args.get(0) + " Looted from nations (" + diffStr + "):";
         StringBuilder response = new StringBuilder();
 
         for (int i = 0; i < Math.min(20, sorted.size()); i++) {
@@ -81,9 +81,9 @@ public class NationLootRanking extends Command {
             response.append('\n').append(String.format("%4s", i + 1) + ". ").append(String.format("%32s", name)).append(": $").append(format(value));
         }
 
-        String emoji = "\uD83D\uDD04";
-        response.append("\n\npress " + emoji + " to refresh");
-        Message msg = DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        String emoji = "Refresh";
+        response.append("\n\nPress `" + emoji + "` to refresh");
+        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
 
         return null;
     }

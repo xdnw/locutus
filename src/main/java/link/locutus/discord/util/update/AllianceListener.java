@@ -35,7 +35,11 @@ public class AllianceListener {
             for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
                 // Only update taxes if alliance has locutus taxable nations
                 if (alliance.getNations(DBNation::isTaxable).isEmpty()) continue;
-                alliance.updateTaxes();
+                try {
+                    alliance.updateTaxes();
+                } catch (Throwable ignore) {
+
+                }
             }
         }
     }

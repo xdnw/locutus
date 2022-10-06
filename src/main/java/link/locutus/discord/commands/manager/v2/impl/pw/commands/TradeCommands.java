@@ -7,8 +7,11 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
@@ -33,8 +36,12 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -58,80 +65,83 @@ import java.util.stream.Collectors;
 
 public class TradeCommands {
     @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"})
-    public String GlobalTradeAverage(@Me Message message, @Me MessageChannel channel, TradeManager manager, @Timestamp long time) {
+    public String GlobalTradeAverage(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager, @Timestamp long time) {
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = Locutus.imp().getTradeManager().getAverage(time);
 
         Map<ResourceType, Double> lowMap = averages.getKey();
         Map<ResourceType, Double> highMap = averages.getValue();
 
+        List<String> resourceNames = new ArrayList<>();
+        List<String> low = new ArrayList<>();
+        List<String> high = new ArrayList<>();
 
-        DiscordUtil.createEmbedCommand(channel, b -> {
-            List<String> resourceNames = new ArrayList<>();
-            List<String> low = new ArrayList<>();
-            List<String> high = new ArrayList<>();
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.MONEY) continue;
 
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.MONEY) continue;
+            resourceNames.add(MarkupUtil.markdownUrl(type.name().toLowerCase(), type.url(true, true)));
 
-                resourceNames.add(MarkupUtil.markdownUrl(type.name().toLowerCase(), type.url(true, true)));
+            int i = type.ordinal();
 
-                int i = type.ordinal();
+            double avgLow = lowMap.getOrDefault(type, 0d);
+            low.add(MathMan.format(avgLow));
 
-                double avgLow = lowMap.getOrDefault(type, 0d);
-                low.add(MathMan.format(avgLow));
+            double avgHigh = highMap.getOrDefault(type, 0d);
+            high.add(MathMan.format(avgHigh));
+        }
 
-                double avgHigh = highMap.getOrDefault(type, 0d);
-                high.add(MathMan.format(avgHigh));
-            }
-
-            b.addField("Resource", StringMan.join(resourceNames, "\n"), true);
-            b.addField("Low", StringMan.join(low, "\n"), true);
-            b.addField("High", StringMan.join(high, "\n"), true);
-
-
-        }, "\uD83D\uDD04", DiscordUtil.trimContent(message.getContentRaw()));
-
+        String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
+        MessageEmbed embed = new EmbedBuilder()
+                .setTitle("Global Trade Average " + timeStr)
+                .addField("Resource", StringMan.join(resourceNames, "\n"), true)
+                .addField("Low", StringMan.join(low, "\n"), true)
+                .addField("High", StringMan.join(high, "\n"), true).build();
+        channel.create()
+                        .embed(embed)
+                        .commandButton(command, "Refresh")
+                                .send();
         return null;
     }
 
     @Command(aliases = {"GlobalTradeVolume", "gtv", "tradevolume"})
-    public String GlobalTradeVolume(@Me Message message, @Me MessageChannel channel, TradeManager manager) {
+    public String GlobalTradeVolume(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager) {
         TradeManager trader = Locutus.imp().getTradeManager();
-        String refreshEmoji = "\uD83D\uDD04";
+        String refreshEmoji = "Refresh";
 
-        DiscordUtil.createEmbedCommand(channel, b -> {
-            List<String> resourceNames = new ArrayList<>();
-            List<String> daily = new ArrayList<>();
-            List<String> weekly = new ArrayList<>();
+        List<String> resourceNames = new ArrayList<>();
+        List<String> daily = new ArrayList<>();
+        List<String> weekly = new ArrayList<>();
 
-            for (ResourceType type : ResourceType.values()) {
-                if (type.getGraphId() <= 0) continue;
-                long[] volume = trader.getVolumeHistory(type);
+        for (ResourceType type : ResourceType.values()) {
+            if (type.getGraphId() <= 0) continue;
+            long[] volume = trader.getVolumeHistory(type);
 
-                int i = volume.length - 1;
-                double dailyChangePct = 100 * (volume[i] - volume[i - 2]) / (double) volume[i];
+            int i = volume.length - 1;
+            double dailyChangePct = 100 * (volume[i] - volume[i - 2]) / (double) volume[i];
 
-                long weeklyTotalChange = 0;
-                for (int j = 0; j < 7; j++) {
-                    weeklyTotalChange += volume[i - j] - volume[i - j - 1];
-                }
-                long averageWeeklyChange = weeklyTotalChange / 7;
-                double weeklyChangePct = 100 * (averageWeeklyChange / (double) volume[i]);
-
-                String name = type.name().toLowerCase();
-                if (type == ResourceType.MUNITIONS) name = "\n" + name;
-                resourceNames.add("[" + name + "](" + type.url(weeklyChangePct <= 0, true) + ")\n");
-
-                String dayPrefix = (int) (dailyChangePct * 100) > 0 ? "+" : "";
-                String weekPrefix = (int) (weeklyChangePct * 100) > 0 ? "+" : "";
-                daily.add("```diff\n" + dayPrefix + MathMan.format(dailyChangePct) + "%```");
-                weekly.add("```diff\n" + weekPrefix + MathMan.format(weeklyChangePct) + "%```");
+            long weeklyTotalChange = 0;
+            for (int j = 0; j < 7; j++) {
+                weeklyTotalChange += volume[i - j] - volume[i - j - 1];
             }
+            long averageWeeklyChange = weeklyTotalChange / 7;
+            double weeklyChangePct = 100 * (averageWeeklyChange / (double) volume[i]);
 
-            b.addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true);
-            b.addField("Daily", StringMan.join(daily, " "), true);
-            b.addField("Weekly", StringMan.join(weekly, " "), true);
-        }, refreshEmoji, DiscordUtil.trimContent(message.getContentRaw()));
+            String name = type.name().toLowerCase();
+            if (type == ResourceType.MUNITIONS) name = "\n" + name;
+            resourceNames.add("[" + name + "](" + type.url(weeklyChangePct <= 0, true) + ")\n");
+
+            String dayPrefix = (int) (dailyChangePct * 100) > 0 ? "+" : "";
+            String weekPrefix = (int) (weeklyChangePct * 100) > 0 ? "+" : "";
+            daily.add("```diff\n" + dayPrefix + MathMan.format(dailyChangePct) + "%```");
+            weekly.add("```diff\n" + weekPrefix + MathMan.format(weeklyChangePct) + "%```");
+        }
+
+        channel.create().embed(new EmbedBuilder()
+                .setTitle("Global Trade Volume")
+                .addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true)
+        .addField("Daily", StringMan.join(daily, " "), true)
+        .addField("Weekly", StringMan.join(weekly, " "), true)
+        .build()
+        ).commandButton(command, "Refresh").send();
 
         return null;
     }
@@ -190,75 +200,80 @@ public class TradeCommands {
     }
 
     @Command(desc = "Get the buy/sell margin for each resource")
-    public String tradeMargin(@Me Message message, @Me MessageChannel channel, TradeManager manager, @Switch("p") boolean usePercent) {
+    public String tradeMargin(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager, @Switch("p") boolean usePercent) {
         TradeManager trader = Locutus.imp().getTradeManager();
-        String refreshEmoji = "\uD83D\uDD04";
+        String refreshEmoji = "Refresh";
 
         Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
         Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
+        List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
+        resources.remove(ResourceType.MONEY);
 
-        DiscordUtil.createEmbedCommand(channel, b -> {
-            List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
-            resources.remove(ResourceType.MONEY);
+        List<String> resourceNames = resources.stream().map(r -> r.name().toLowerCase()).collect(Collectors.toList());
 
-            List<String> resourceNames = resources.stream().map(r -> r.name().toLowerCase()).collect(Collectors.toList());
+        ArrayList<String> diffList = new ArrayList<>();
 
-            ArrayList<String> diffList = new ArrayList<>();
+        for (ResourceType type : resources) {
+            Double o1 = low.get(type);
+            Double o2 = high.get(type);
 
-            for (ResourceType type : resources) {
-                Double o1 = low.get(type);
-                Double o2 = high.get(type);
+            double diff = o1 == null || o2 == null || !Double.isFinite(o1) || !Double.isFinite(o2) ? Double.NaN : (o2 - o1);
 
-                double diff = o1 == null || o2 == null || !Double.isFinite(o1) || !Double.isFinite(o2) ? Double.NaN : (o2 - o1);
-
-                if (usePercent) {
-                    diff = 100 * diff / o2;
-                }
-
-                diffList.add(o1 == null ? "" : (MathMan.format(diff) + (usePercent ? "%" : "")));
+            if (usePercent) {
+                diff = 100 * diff / o2;
             }
 
-            b.addField("Resource", StringMan.join(resourceNames, "\n"), true);
-            b.addField("margin", StringMan.join(diffList, "\n"), true);
-        }, refreshEmoji, DiscordUtil.trimContent(message.getContentRaw()));
+            diffList.add(o1 == null ? "" : (MathMan.format(diff) + (usePercent ? "%" : "")));
+        }
+
+        channel.create().embed(new EmbedBuilder()
+                .setTitle("Trade Margin")
+                .addField("Resource", StringMan.join(resourceNames, "\n"), true)
+        .addField("margin", StringMan.join(diffList, "\n"), true)
+                .build()
+        ).commandButton(command, "Refresh").send();
+
         return null;
     }
 
     @Command
-    public String tradePrice(@Me Message message, @Me MessageChannel channel, TradeManager manager) {
-        String refreshEmoji = "\uD83D\uDD04";
+    public String tradePrice(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager) {
+        String refreshEmoji = "Refresh";
 
         Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
         Map<ResourceType, Double> high = manager.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
 
         String lowKey = "Low";
         String highKey = "High";
-        DiscordUtil.createEmbedCommand(channel, b -> {
-            List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
-            resources.remove(ResourceType.MONEY);
 
-            List<String> resourceNames = resources.stream().map(r -> r.name().toLowerCase()).collect(Collectors.toList());
+        List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
+        resources.remove(ResourceType.MONEY);
 
-            ArrayList<String> lowList = new ArrayList<>();
-            ArrayList<String> highList = new ArrayList<>();
+        List<String> resourceNames = resources.stream().map(r -> r.name().toLowerCase()).collect(Collectors.toList());
 
-            for (ResourceType type : resources) {
-                Double o1 = low.get(type);
-                Double o2 = high.get(type);
+        ArrayList<String> lowList = new ArrayList<>();
+        ArrayList<String> highList = new ArrayList<>();
 
-                lowList.add(o1 == null ? "" : MathMan.format(o1));
-                highList.add(o2 == null ? "" : MathMan.format(o2));
-            }
+        for (ResourceType type : resources) {
+            Double o1 = low.get(type);
+            Double o2 = high.get(type);
 
-            b.addField("Resource", StringMan.join(resourceNames, "\n"), true);
-            b.addField(lowKey, StringMan.join(lowList, "\n"), true);
-            b.addField(highKey, StringMan.join(highList, "\n"), true);
-        }, refreshEmoji, DiscordUtil.trimContent(message.getContentRaw()));
+            lowList.add(o1 == null ? "" : MathMan.format(o1));
+            highList.add(o2 == null ? "" : MathMan.format(o2));
+        }
+
+        channel.create().embed(new EmbedBuilder()
+                .setTitle("Trade Price")
+               .addField("Resource", StringMan.join(resourceNames, "\n"), true)
+        .addField(lowKey, StringMan.join(lowList, "\n"), true)
+        .addField(highKey, StringMan.join(highList, "\n"), true)
+                .build()
+        ).commandButton(command, "Refresh").send();
         return null;
     }
 
     @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.", aliases = {"TradeRanking", "TradeProfitRanking"})
-    public String tradeRanking(@Me MessageChannel channel, @Me Message message, Set<DBNation> nations, @Timestamp long time, @Switch("a") boolean groupByAlliance) {
+    public String tradeRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Timestamp long time, @Switch("a") boolean groupByAlliance, @Switch("u") boolean uploadFile) {
         Function<DBNation, Integer> groupBy = groupByAlliance ? groupBy = f -> f.getAlliance_id() : f -> f.getNation_id();
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
         Map<Integer, TradeRanking.TradeProfitContainer> tradeContainers = new HashMap<>();
@@ -334,7 +349,7 @@ public class TradeCommands {
 
 
         String title = (groupByAlliance ? "Alliance" : "") + "trade profit (" + profitByGroup.size() + ")";
-        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PnwUtil.getName(id, groupByAlliance)).build(channel, DiscordUtil.trimContent(message.getContentRaw()), title);
+        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PnwUtil.getName(id, groupByAlliance)).build(channel, command, title, uploadFile);
         return null;
     }
 
@@ -600,11 +615,11 @@ public class TradeCommands {
 
     @Command
     @RolePermission(Roles.ECON)
-    public String compareOffshoreStockpile(@Me MessageChannel channel, @Me GuildDB db) throws IOException {
+    public String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db) throws IOException {
         GuildDB offshoreDb = db.getOffshoreDB();
         if (offshoreDb != db) throw new IllegalArgumentException("This command must be run in the offshore server");
 
-        RateLimitUtil.queue(channel.sendMessage("Please wait..."));
+        channel.send("Please wait...");
 
         OffshoreInstance offshore = db.getOffshore();
         Map<ResourceType, Double> stockpile = db.getAlliance().getStockpile();
@@ -639,19 +654,25 @@ public class TradeCommands {
         body.append("Offshored Deposits: `" + PnwUtil.resourcesToString(allDeposits) + "`\n");
         body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(allDeposits))).append("\n");
 
-        String emoji = "\u27A1\uFE0F";
+        String emoji = "Show Day Graph";
 
-        body.append("\nPress " + emoji + " to compare by day (200 days)");
+        body.append("\nPress `" + emoji + "` to compare by day (200 days)");
 
 
-        String cmd = "_" + Settings.commandPrefix(false) + "compareStockpileValueByDay " + PnwUtil.resourcesToString(stockpile) + " " + PnwUtil.resourcesToString(allDeposits) + " 200";
-        DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, cmd);
-        return "Done!";
+//        String cmd = "_" + Settings.commandPrefix(false) + "compareStockpileValueByDay " + PnwUtil.resourcesToString(stockpile) + " " + PnwUtil.resourcesToString(allDeposits) + " 200";
+
+        CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.create(PnwUtil.resourcesToString(stockpile), PnwUtil.resourcesToString(allDeposits), "200");
+
+        channel.create().embed(title, body.toString())
+                        .commandButton(cmd, "Show Graph (200d)")
+                .append("Done!")
+                                .send();
+        return null;
     }
 
     @Command(desc = "Generate a graph comparing two resource stockpiles by day")
     @RolePermission(value = Roles.MEMBER)
-    public String compareStockpileValueByDay(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int days) throws IOException, GeneralSecurityException {
+    public String compareStockpileValueByDay(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int days) throws IOException, GeneralSecurityException {
         Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
@@ -726,7 +747,7 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade price (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradepricebyday(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int days) throws IOException, GeneralSecurityException {
+    public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int days) throws IOException, GeneralSecurityException {
         if (days <= 1) return "Invalid number of days";
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
@@ -781,7 +802,7 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade margin (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String trademarginbyday(@Me MessageChannel channel, TradeManager manager, @Range(min=1, max=300) int days, @Default("true") boolean percent) throws IOException, GeneralSecurityException {
+    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min=1, max=300) int days, @Default("true") boolean percent) throws IOException, GeneralSecurityException {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(days + 1);
 
@@ -872,7 +893,7 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade volume (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradevolumebyday(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
+    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
         String title = "volume by day";
         rssTradeByDay(title, channel, days, offers -> manager.volumeByResource(offers));
         return null;
@@ -880,13 +901,13 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade total (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradetotalbyday(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
+    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
         String title = "total by day";
         rssTradeByDay(title, channel, days, offers -> manager.totalByResource(offers));
         return null;
     }
 
-    public void rssTradeByDay(String title, MessageChannel channel, int days, Function<Collection<DBTrade>, long[]> rssFunction) throws IOException {
+    public void rssTradeByDay(String title, IMessageIO channel, int days, Function<Collection<DBTrade>, long[]> rssFunction) throws IOException {
         TradeManager manager = Locutus.imp().getTradeManager();
         link.locutus.discord.db.TradeDB tradeDb = manager.getTradeDb();
 
@@ -962,7 +983,7 @@ public class TradeCommands {
 
     @Command(desc = "List nations who have bought/sold the most of a resource over a period")
     @RolePermission(value = Roles.MEMBER)
-    public String findTrader(@Me MessageChannel channel, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch("a") boolean groupByAlliance) {
+    public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch("a") boolean groupByAlliance) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<DBTrade> offers = db.getTrades(cutoff);
         int findsign = isBuy ? 1 : -1;
@@ -983,26 +1004,29 @@ public class TradeCommands {
         SummedMapRankBuilder<Integer, Double> builder = new SummedMapRankBuilder<>(newMap);
         Map<Integer, Double> sorted = (findsign == 1 ? builder.sort() : builder.sortAsc()).get();
 
-        DiscordUtil.createEmbedCommand(channel, b -> {
-            List<String> nationName = new ArrayList<>();
-            List<String> amtList = new ArrayList<>();
-            List<String> ppuList = new ArrayList<>();
+        List<String> nationName = new ArrayList<>();
+        List<String> amtList = new ArrayList<>();
+        List<String> ppuList = new ArrayList<>();
 
-            int i = 0;
-            for (Map.Entry<Integer, Double> entry : sorted.entrySet()) {
-                if (i++ >= 25) break;
-                int nationId = entry.getKey();
-                double amount = entry.getValue();
-                double myPpu = ppu.get(nationId)[type.ordinal()];
+        int i = 0;
+        for (Map.Entry<Integer, Double> entry : sorted.entrySet()) {
+            if (i++ >= 25) break;
+            int nationId = entry.getKey();
+            double amount = entry.getValue();
+            double myPpu = ppu.get(nationId)[type.ordinal()];
 //                nationName.add(MarkupUtil.markdownUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
-                nationName.add(PnwUtil.getName(nationId, groupByAlliance));
-                amtList.add(MathMan.format(amount));
-                ppuList.add("$" + MathMan.format(myPpu));
-            }
-            b.addField("Nation", StringMan.join(nationName, "\n"), true);
-            b.addField("Amt", StringMan.join(amtList, "\n"), true);
-            b.addField("Ppu", StringMan.join(ppuList, "\n"), true);
-        });
+            nationName.add(PnwUtil.getName(nationId, groupByAlliance));
+            amtList.add(MathMan.format(amount));
+            ppuList.add("$" + MathMan.format(myPpu));
+        }
+
+        channel.create().embed(new EmbedBuilder()
+                .setTitle("Trade Price")
+                .addField("Nation", StringMan.join(nationName, "\n"), true)
+        .addField("Amt", StringMan.join(amtList, "\n"), true)
+        .addField("Ppu", StringMan.join(ppuList, "\n"), true)
+                .build()
+        ).commandButton(command, "Refresh").send();
         return null;
     }
 }

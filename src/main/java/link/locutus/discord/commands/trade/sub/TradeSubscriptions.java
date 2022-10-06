@@ -51,10 +51,10 @@ public class TradeSubscriptions extends Command {
             }
             if (body.length() == 0) continue;
 
-            String emoji = "\u274c";
+            String emoji = "Unsubscribe";
             String unsubCommand = Settings.commandPrefix(true) + "unsub-trade " + type.name();
 
-            body.append("\n\n").append("*Press " + emoji + " to unsubscribe*");
+            body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
 
             DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString(), emoji, unsubCommand);
         }

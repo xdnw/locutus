@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -93,13 +94,13 @@ public class MailTargets extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
 
         String header = "";
         if (args.size() >= 4) {
             header = args.get(3);
 
-            if (!Roles.MAIL.has(author, guild)) return "You need the MAIL role on discord (see `" + Settings.commandPrefix(true) + "aliasRole`) to add the custom message: `" + header + "`";
+            if (!Roles.MAIL.has(author, guild)) return "You need the MAIL role on discord (see " + CM.role.setAlias.cmd.toSlashMention() + ") to add the custom message: `" + header + "`";
         }
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
@@ -245,7 +246,7 @@ public class MailTargets extends Command {
             StringBuilder body = new StringBuilder();
             body.append("subject: " + subject + "\n");
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "\u2705", pending);
+            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "Next", pending);
             return event.getAuthor().getAsMention();
         }
 

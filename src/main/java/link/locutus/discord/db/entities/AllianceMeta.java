@@ -13,6 +13,8 @@ public enum AllianceMeta {
 
     OFFSHORE_PARENT,
 
+    BANK_UPDATE_INDEX,
+
     ;
 
     public static AllianceMeta[] values = values();

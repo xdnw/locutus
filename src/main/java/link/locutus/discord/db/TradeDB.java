@@ -240,6 +240,8 @@ public class TradeDB extends DBMainV2 {
         executeStmt("DELETE FROM TRADES WHERE tradeId in " + StringMan.getString(ids));
     }
     public void saveTrades(Collection<DBTrade> trades) {
+        if (trades.isEmpty()) return;
+        if (trades.size() > 10) System.out.println("remove:|| save trades " + trades.size());
         executeBatch(trades, "INSERT OR REPLACE INTO `TRADES`(`tradeId`, `date`, `seller`, `buyer`, `resource`, `isBuy`, `quantity`, `ppu`, `type`,  `date_accepted`, `parent_id`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<DBTrade, PreparedStatement>() {
             @Override
             public void acceptThrows(DBTrade trade, PreparedStatement stmt) throws Exception {

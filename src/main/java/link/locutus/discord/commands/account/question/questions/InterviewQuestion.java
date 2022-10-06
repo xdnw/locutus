@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account.question.questions;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.account.question.Question;
 import link.locutus.discord.commands.alliance.SetRank;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
@@ -48,7 +49,7 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    VERIFY("please use `" + Settings.commandPrefix(true) + "verify <nation>` or tell us what your nation is so we can register you.", true) {
+    VERIFY("please use " + CM.register.cmd.toSlashMention() + " or tell us what your nation is so we can register you.", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) {
             return me != null;
@@ -106,7 +107,7 @@ public enum InterviewQuestion implements Question {
 //        }
 //    },
 
-    TAXES("A portion of your city income will be deposited into the alliance bank via taxes, and included in your personal `" + Settings.commandPrefix(true) + "deposits` (updated weekly)\n" +
+    TAXES("A portion of your city income will be deposited into the alliance bank via taxes, and included in your personal " + CM.deposits.check.cmd.toSlashMention() + " (updated weekly)\n" +
             "We want to provide an efficient centralized economy and can send you resources to run/grow your nation.\n" +
             "Note: your profit from raiding or trading is never taxed.\n\n" +
             "Are you fine with with the default rate of 50%? (Note: You can change it at any time using `" + Settings.commandPrefix(true) + "SetTaxRate`)", false, "Y", "N") {
@@ -555,18 +556,19 @@ public enum InterviewQuestion implements Question {
 
     RAID_TURN_CHANGE("Let's declare on a target as they come off beige:\n" +
             "1. Use e.g. `" + Settings.commandPrefix(true) + "raid * 15 -beige<12` to find a target that ends beige in the next 12 turns\n" +
-            "2. Set a reminder on your phone, or on discord using `" + Settings.commandPrefix(false) + "beigeReminder`\n" +
+            "2. Set a reminder on your phone, or on discord using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
             "3. Get the war declaration page ready, and declare DURING turn change\n\n" +
             "*Note:*\n" +
             " - *If you don't get them on your first shot, try again later*\n" +
             " - *If you can't be active enough, just hit any gray nation during turn change*\n\n" +
             "See also:\n" +
-            " - `" + Settings.commandPrefix(false) + "alerts beige removeBeigeReminder`\n" +
-            " - `" + Settings.commandPrefix(false) + "alerts beige beigeReminders`\n" +
-            " - `" + Settings.commandPrefix(false) + "alerts beige setBeigeAlertRequiredStatus`\n" +
-            " - `" + Settings.commandPrefix(false) + "alerts beige setBeigeAlertMode`\n" +
-            " - `" + Settings.commandPrefix(false) + "alerts beige setBeigeAlertRequiredLoot`\n" +
-            " - `" + Settings.commandPrefix(false) + "alerts beige setBeigeAlertScoreLeeway`", true) {
+            " - " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
+            " - " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
+            " - " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "\n" +
+            " - " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
+            " - " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
+            " - " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
+            " - " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());

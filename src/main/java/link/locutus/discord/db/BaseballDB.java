@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 
 public class BaseballDB extends DBMainV2{
     public BaseballDB(Settings.DATABASE config) throws SQLException {
-        super(config, "baseball", true);
+        super(config, "baseball");
     }
 
     @Override

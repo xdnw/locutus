@@ -53,7 +53,7 @@ public class WarAttackParser {
                 warUrl = Locutus.imp().getWarDb().getWar(warId);
                 if (warUrl == null) throw new IllegalArgumentException("War not found (out of sync?)");
 
-                attacks = Locutus.imp().getWarDb().getAttacksByWarId(warId);
+                attacks = Locutus.imp().getWarDb().getAttacksByWar(warUrl);
 
                 nameA = PnwUtil.getName(warUrl.attacker_id, false);
                 nameB = PnwUtil.getName(warUrl.defender_id, false);
@@ -131,15 +131,14 @@ public class WarAttackParser {
                     throw new IllegalArgumentException("Invalid alliance: `" + args.get(1) + "`");
                 }
 
-
                 if (alliances1.size() == 1) {
                     attacks = Locutus.imp().getWarDb().getAttacks(alliances1.iterator().next().getNation_id(), start, end);
                 } else if (alliances2.size() == 1) {
                     attacks = Locutus.imp().getWarDb().getAttacks(alliances2.iterator().next().getNation_id(), start, end);
                 } else if (args.get(0).equalsIgnoreCase("*")) {
-                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances2.stream().map(f -> f.getNation_id()).collect(Collectors.toSet()), start, end);
+                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances2.stream().map(DBNation::getNation_id).collect(Collectors.toSet()), start, end);
                 } else if (args.get(1).equalsIgnoreCase("*")) {
-                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances1.stream().map(f -> f.getNation_id()).collect(Collectors.toSet()), start, end);
+                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances1.stream().map(DBNation::getNation_id).collect(Collectors.toSet()), start, end);
                 } else {
                     attacks = Locutus.imp().getWarDb().getAttacks(allIds, start, end);
                 }

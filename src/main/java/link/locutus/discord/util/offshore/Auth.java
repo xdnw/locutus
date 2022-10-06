@@ -75,8 +75,13 @@ public class Auth {
             login(false);
             String result = FileUtil.readStringFromURL(urlStr, arguments, msCookieManager);
             if (result.contains("<!--Logged Out-->")) {
+                logout();
+                msCookieManager = new CookieManager();
                 login(true);
                 result = FileUtil.readStringFromURL(urlStr, arguments, msCookieManager);
+                if (result.contains("<!--Logged Out-->")) {
+                    throw new IllegalArgumentException("Failed to login to PNW");
+                }
             }
             if (result.toLowerCase().contains("authenticate your request")) {
                 new Exception().printStackTrace();
@@ -108,6 +113,7 @@ public class Auth {
     public String logout() throws IOException {
         String logout = FileUtil.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/logout/");
         Document dom = Jsoup.parse(logout);
+        clearCookies();
         return PnwUtil.getAlert(dom);
     }
 
@@ -355,9 +361,37 @@ public class Auth {
     public String setRank(DBNation nation, DBAlliancePosition position) {
         return PnwUtil.withLogin(() -> {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAllianceId() + "&display=acp";
-
             String result = readStringFromURL(url, Collections.emptyMap());
-            String token = Jsoup.parse(result).select("input[name=validation_token]").attr("value");
+
+
+            Document dom = Jsoup.parse(result);
+            // https://politicsandwar.com/alliance/id=7452&display=acp&appID=1233&action=1&auth=eb9d09acc1a3c686ff070e68440ab8a7
+
+            StringBuilder response = new StringBuilder();
+
+            if (nation.getPositionEnum() == Rank.APPLICANT && position != DBAlliancePosition.APPLICANT) {
+                String title = position == DBAlliancePosition.REMOVE ? "Remove" : "Make Member";
+                Elements elems = dom.select("img[title=" + title + "]");
+                for (Element elem : elems) {
+                    if (elem.parent().parent().nextElementSibling().nextElementSibling().html().contains(nation.getNationUrl())) {
+                        String acceptUrl = elem.parent().attr("href");
+
+                        result = readStringFromURL(acceptUrl, Collections.emptyMap());
+                        response.append(PnwUtil.getAlert(Jsoup.parse(result)));
+
+                        if (position == DBAlliancePosition.REMOVE) {
+                            nation.update(false);
+                            return response.toString();
+                        }
+                    }
+                }
+                System.out.println(result);
+                new Exception().printStackTrace();
+            }
+            result = readStringFromURL(url, Collections.emptyMap());
+            dom = Jsoup.parse(result);
+
+            String token = dom.select("input[name=validation_token]").attr("value");
 
             Map<String, String> post = new HashMap<>();
             post.put("alliance_positions_member", nation.getNation_id() + "");
@@ -366,10 +400,8 @@ public class Auth {
             post.put("validation_token", token);
             post.put("alliance_positions_assign_submit", "Save Position Assignment");
 
-            StringBuilder response = new StringBuilder();
-
             result = readStringFromURL(url, post);
-            Document dom = Jsoup.parse(result);
+            dom = Jsoup.parse(result);
             int alerts = 0;
             for (Element element : dom.getElementsByClass("alert")) {
                 String text = element.text();
@@ -383,6 +415,8 @@ public class Auth {
                 System.out.println(dom);
                 response.append('\n').append("Set player rank ingame. Remember to also set the rank on discord.");
             }
+
+            nation.update(false);
 
             return response.toString().trim();
         }, this);

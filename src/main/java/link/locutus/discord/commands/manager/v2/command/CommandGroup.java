@@ -140,7 +140,7 @@ public class CommandGroup implements ICommandGroup {
 
     @Override
     public String help(ValueStore store) {
-        return getPrimaryCommandId() + " <subcommand>";
+        return getFullPath() + " <subcommand>";
     }
 
     @Override
@@ -246,7 +246,7 @@ public class CommandGroup implements ICommandGroup {
             Set<Method> currentMethods = getParametricCallables(f -> true).stream().map(f -> f.getMethod()).collect(Collectors.toSet());
             for (Method method : legacyMethod) {
                 if (!currentMethods.contains(method)) {
-                    throw new IllegalArgumentException("Could not find mapping for method " + method.getName() + " | " + StringMan.getString(method.getGenericParameterTypes()));
+                    throw new IllegalArgumentException("Could not find mapping for method " + method.getName() + " | " + StringMan.getString(method.getGenericParameterTypes()) + " please add it to the commands.yml file or register it after legacy remapping");
                 }
             }
         }

@@ -95,62 +95,62 @@ public class Transactions_2 extends TableImpl<Transactions_2Record> {
     /**
      * The column <code>TRANSACTIONS_2.MONEY</code>.
      */
-    public final TableField<Transactions_2Record, Integer> MONEY = createField(DSL.name("MONEY"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> MONEY = createField(DSL.name("MONEY"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.FOOD</code>.
      */
-    public final TableField<Transactions_2Record, Integer> FOOD = createField(DSL.name("FOOD"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> FOOD = createField(DSL.name("FOOD"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.COAL</code>.
      */
-    public final TableField<Transactions_2Record, Integer> COAL = createField(DSL.name("COAL"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> COAL = createField(DSL.name("COAL"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.OIL</code>.
      */
-    public final TableField<Transactions_2Record, Integer> OIL = createField(DSL.name("OIL"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> OIL = createField(DSL.name("OIL"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.URANIUM</code>.
      */
-    public final TableField<Transactions_2Record, Integer> URANIUM = createField(DSL.name("URANIUM"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> URANIUM = createField(DSL.name("URANIUM"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.LEAD</code>.
      */
-    public final TableField<Transactions_2Record, Integer> LEAD = createField(DSL.name("LEAD"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> LEAD = createField(DSL.name("LEAD"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.IRON</code>.
      */
-    public final TableField<Transactions_2Record, Integer> IRON = createField(DSL.name("IRON"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> IRON = createField(DSL.name("IRON"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.BAUXITE</code>.
      */
-    public final TableField<Transactions_2Record, Integer> BAUXITE = createField(DSL.name("BAUXITE"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> BAUXITE = createField(DSL.name("BAUXITE"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.GASOLINE</code>.
      */
-    public final TableField<Transactions_2Record, Integer> GASOLINE = createField(DSL.name("GASOLINE"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> GASOLINE = createField(DSL.name("GASOLINE"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.MUNITIONS</code>.
      */
-    public final TableField<Transactions_2Record, Integer> MUNITIONS = createField(DSL.name("MUNITIONS"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> MUNITIONS = createField(DSL.name("MUNITIONS"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.STEEL</code>.
      */
-    public final TableField<Transactions_2Record, Integer> STEEL = createField(DSL.name("STEEL"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> STEEL = createField(DSL.name("STEEL"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>TRANSACTIONS_2.ALUMINUM</code>.
      */
-    public final TableField<Transactions_2Record, Integer> ALUMINUM = createField(DSL.name("ALUMINUM"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<Transactions_2Record, Long> ALUMINUM = createField(DSL.name("ALUMINUM"), SQLDataType.BIGINT.nullable(false), this, "");
 
     private Transactions_2(Name alias, Table<Transactions_2Record> aliased) {
         this(alias, aliased, null);
@@ -244,14 +244,14 @@ public class Transactions_2 extends TableImpl<Transactions_2Record> {
     // -------------------------------------------------------------------------
 
     @Override
-    public Row20<Integer, Long, Long, Integer, Long, Integer, Integer, String, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer, Integer> fieldsRow() {
+    public Row20<Integer, Long, Long, Integer, Long, Integer, Integer, String, Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, Long> fieldsRow() {
         return (Row20) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function20<? super Integer, ? super Long, ? super Long, ? super Integer, ? super Long, ? super Integer, ? super Integer, ? super String, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function20<? super Integer, ? super Long, ? super Long, ? super Integer, ? super Long, ? super Integer, ? super Integer, ? super String, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -259,7 +259,7 @@ public class Transactions_2 extends TableImpl<Transactions_2Record> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function20<? super Integer, ? super Long, ? super Long, ? super Integer, ? super Long, ? super Integer, ? super Integer, ? super String, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? super Integer, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function20<? super Integer, ? super Long, ? super Long, ? super Integer, ? super Long, ? super Integer, ? super Integer, ? super String, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? super Long, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

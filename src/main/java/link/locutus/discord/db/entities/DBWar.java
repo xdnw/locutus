@@ -100,7 +100,7 @@ public class DBWar {
     }
 
     public List<DBAttack> getAttacks() {
-        return Locutus.imp().getWarDb().getAttacksByWarId(warId);
+        return Locutus.imp().getWarDb().getAttacksByWar(this);
     }
 
     public List<DBAttack> getAttacks(Collection<DBAttack> attacks) {
@@ -344,7 +344,6 @@ public class DBWar {
         if (defender_id != dbWar.defender_id) return false;
         if (attacker_aa != dbWar.attacker_aa) return false;
         if (defender_aa != dbWar.defender_aa) return false;
-        if (date != dbWar.date) return false;
         if (warType != dbWar.warType) return false;
         return status == dbWar.status;
     }
@@ -426,5 +425,9 @@ public class DBWar {
 
     public int getAllianceId(int attacker_nation_id) {
         return attacker_nation_id == this.attacker_id ? this.attacker_aa : (attacker_nation_id == this.defender_id ? this.defender_aa : 0);
+    }
+
+    public long possibleEndDate() {
+        return TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date) + 60);
     }
 }

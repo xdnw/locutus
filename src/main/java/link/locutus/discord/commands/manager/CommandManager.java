@@ -19,7 +19,6 @@ import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.account.Embassy;
 import link.locutus.discord.commands.account.GuildInfo;
 import link.locutus.discord.commands.account.HasRole;
-import link.locutus.discord.commands.account.question.Interview;
 import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
 import link.locutus.discord.commands.alliance.Dm;
@@ -27,6 +26,7 @@ import link.locutus.discord.commands.alliance.LeftAA;
 import link.locutus.discord.commands.alliance.ModifyTreaty;
 import link.locutus.discord.commands.alliance.SendTreaty;
 import link.locutus.discord.commands.alliance.SetBracket;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.sync.SyncTreaties;
 import link.locutus.discord.commands.alliance.Unregister;
 import link.locutus.discord.commands.bank.AddBalance;
@@ -202,7 +202,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.task.balance.loan.LoanCommand;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
 import link.locutus.discord.commands.bank.GrantCmd;
@@ -294,8 +293,9 @@ public class CommandManager {
             return false;
         }
 
+        boolean jsonCommand = (content.startsWith("{") && content.endsWith("}"));
         char char0 = content.charAt(0);
-        if (char0 != (prefix1) && char0 != prefix2) {
+        if (char0 != (prefix1) && char0 != prefix2 && !jsonCommand) {
             handleWarRoomSync(event);
 
             if (content.contains("You successfully gathered intelligence about")) {
@@ -325,18 +325,22 @@ public class CommandManager {
                 Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
                 Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
                 if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.commandPrefix(true) + "KeyStore CHANNEL_BLACKLIST`)"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_BLACKLIST.name(), null) + ")"));
                     return false;
                 }
                 if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.commandPrefix(true) + "KeyStore CHANNEL_WHITELIST`)"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_WHITELIST.name(), null) + ")"));
                     return false;
                 }
             }
         }
 
-        if (char0 == prefix2) {
-            modernized.run(event, async);
+        if (char0 == prefix2 || jsonCommand) {
+            try {
+                modernized.run(event, async);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
             return false;
         }
 
@@ -361,7 +365,7 @@ public class CommandManager {
                         if (noPermMsg) {
                             DBNation nation = DiscordUtil.getNation(msgUser);
                             if (nation == null) {
-                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.commandPrefix(true) + "verify <nation-id>`"));
+                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + ""));
                                 return;
                             }
                             if (msgGuild != null) {
@@ -485,10 +489,10 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole REGISTERED @someRole`"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + ""));
                 return true;
             } else if (!member.getRoles().contains(registeredRole)) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.commandPrefix(true) + "verify` to get masked with the role: " + registeredRole.getName()));
+                RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName()));
                 return true;
             }
         }
@@ -688,7 +692,7 @@ public class CommandManager {
         ///////// Added
         this.register(new WeeklyInterest()); //
         this.register(new ImportEmoji());
-        this.register(new Interview());
+//        this.register(new Interview());
         this.register(new DummyCommand());
         this.register(new HasRole());
         this.register(new FindTrader());
@@ -860,8 +864,7 @@ public class CommandManager {
         this.register(new Commend("commend", true));
         this.register(new Commend("denounce", false));
 
-        this.register(new LoanCommand());
-        this.register(new Setup());
+//        this.register(new Setup());
 
         this.register(new UnsubTrade());
         this.register(new TradeSubscriptions());

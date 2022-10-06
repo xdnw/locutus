@@ -10,8 +10,12 @@ import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
@@ -339,7 +343,7 @@ public class DBNation implements NationOrAlliance {
             } else {
                 if (Roles.ADMIN.has(user, db.getGuild())) {
                     output.append("No role mapping found.");
-                    output.append("\nCreate a role mapping with `" + Settings.commandPrefix(true) + "aliasrole`");
+                    output.append("\nCreate a role mapping with " + CM.role.setAlias.cmd.toSlashMention() + "");
                 }
             }
         }
@@ -472,7 +476,7 @@ public class DBNation implements NationOrAlliance {
                 lastLootDate = Math.max(lastLootDate, recent);
             }
         }
-        double cityCost = PnwUtil.nextCityCost(cities, true, hasProject(Projects.URBAN_PLANNING), hasProject(Projects.ADVANCED_URBAN_PLANNING), hasProject(Projects.METROPOLITAN_PLANNING));
+        double cityCost = PnwUtil.nextCityCost(cities, true, hasProject(Projects.URBAN_PLANNING), hasProject(Projects.ADVANCED_URBAN_PLANNING), hasProject(Projects.METROPOLITAN_PLANNING), hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
         double maxStockpile = cityCost * 2;
         double daysToMax = maxStockpile / (getInfra() * 300);
         if (lastLootDate == 0) {
@@ -723,7 +727,7 @@ public class DBNation implements NationOrAlliance {
             }
         }
         if (auth == null) {
-            throw new IllegalArgumentException("Please authenticate using `" + Settings.commandPrefix(true) + "login`");
+            throw new IllegalArgumentException("Please authenticate using " + CM.credentials.login.cmd.toSlashMention() + "");
         }
         return auth;
     }
@@ -1371,8 +1375,10 @@ public class DBNation implements NationOrAlliance {
     public List<Transaction2> updateTransactions() {
         BankDB bankDb = Locutus.imp().getBankDB();
         if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
+            System.out.println("Update bank recs 0");
             Locutus.imp().runEventsAsync(bankDb::updateBankRecs);
         } else {
+            System.out.println("Update bank recs 1");
             Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, events));
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
@@ -1452,6 +1458,7 @@ public class DBNation implements NationOrAlliance {
             else if (System.currentTimeMillis() - tx.tx_datetime > updateThreshold) update = true;
         }
         if (update) {
+            System.out.println("Update transactions");
             return updateTransactions();
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
@@ -1600,7 +1607,7 @@ public class DBNation implements NationOrAlliance {
             System.out.println("remove:||Create with alliance key");
             pool = alliance.getApiKeys(false, AlliancePermission.SEE_SPIES);
             if (pool == null) {
-                throw new IllegalArgumentException("No api key found. Please use`" + Settings.commandPrefix(false) + "addApiKey`");
+                throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
             }
         }
 
@@ -2336,7 +2343,7 @@ public class DBNation implements NationOrAlliance {
                 .append(String.format("%5s", (int) getScore())).append(" ns").append(" | ")
                 .append(String.format("%10s", TimeUtil.secToTime(TimeUnit.MINUTES, getActive_m()))).append(" \uD83D\uDD52").append(" | ")
                 .append(String.format("%2s", getCities())).append(" \uD83C\uDFD9").append(" | ");
-                if (showInfra) response.append(String.format("%5s", getAvg_infra())).append(" \uD83C\uDFD7").append(" | ");
+                if (showInfra) response.append(String.format("%5s", (int) getAvg_infra())).append(" \uD83C\uDFD7").append(" | ");
                 response.append(String.format("%6s", getSoldiers())).append(" \uD83D\uDC82").append(" | ")
                 .append(String.format("%5s", getTanks())).append(" \u2699").append(" | ")
                 .append(String.format("%5s", getAircraft())).append(" \u2708").append(" | ")
@@ -2444,7 +2451,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double equilibriumTaxRate(boolean updateNewCities, boolean force) {
-        double[] revenue = getRevenue(12, false, true, updateNewCities, false, force);
+        double[] revenue = getRevenue(12, true, false, true, updateNewCities, false, force);
         double consumeCost = 0;
         double taxable = 0;
         for (ResourceType type : ResourceType.values) {
@@ -2466,11 +2473,11 @@ public class DBNation implements NationOrAlliance {
     }
     @Command
     public double[] getRevenue(int turns) {
-        return getRevenue(turns, true, true, true, false, false);
+        return getRevenue(turns, true, true, true, true, false, false);
     }
 
-    public double[] getRevenue(int turns, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean force) {
-        Map<Integer, JavaCity> cityMap = getCityMap(force, false);
+    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean force) {
+        Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, false) : new HashMap<>();
         double[] revenue = PnwUtil.getRevenue(null, turns, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, true, noFood);
         return revenue;
     }
@@ -2734,26 +2741,22 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getBlockadedByNation(false).getOrDefault(nation_id, empty);
     }
 
-    public Message toCard(MessageChannel channel, boolean spies, boolean money) {
-        return toCard(channel, spies, money, false);
-    }
-
-    public Message toCard(MessageChannel channel, boolean spies, boolean money, boolean refresh) {
+    public void toCard(IMessageIO channel, boolean spies, boolean refresh) {
         String title = nation;
-        String counterEmoji = "\uD83C\uDD98";
+        String counterEmoji = "Counter";
         String counterCmd = Settings.commandPrefix(true) + "counter " + getNationUrl();
-        String simEmoji = "\uD83E\uDD16";
-        String simCommand = Settings.commandPrefix(true) + "simulate " + getNationUrl();
-        String refreshEmoji = "\uD83D\uDD04";
+//        String simEmoji = "Simulate";
+//        String simCommand = Settings.commandPrefix(true) + "simulate " + getNationUrl();
+        String refreshEmoji = "Refresh";
         String refreshCmd = Settings.commandPrefix(true) + "who " + getNationUrl();
 
         String response = toEmbedString(spies);
-
+        IMessageBuilder msg = channel.create().embed(title, response)
+                .commandButton(CommandBehavior.UNDO_REACTION, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null), "Counter");
         if (refresh) {
-            return DiscordUtil.createEmbedCommand(channel, title, response, counterEmoji, counterCmd, simEmoji, simCommand, refreshEmoji, refreshCmd);
-        } else {
-            return DiscordUtil.createEmbedCommand(channel, title, response, counterEmoji, counterCmd, simEmoji, simCommand);
+            msg = msg.commandButton(CM.who.cmd.create(getId() + "", null, null, null, null, null, null, null, null), "Refresh");
         }
+        msg.send();
     }
     public String toEmbedString(boolean spies) {
         StringBuilder response = new StringBuilder();
@@ -3326,14 +3329,11 @@ public class DBNation implements NationOrAlliance {
 
 
     public double infraCost(double from, double to) {
-        double factor = 1;
-        if (hasProject(Projects.ADVANCED_ENGINEERING_CORPS)) factor -= 0.05;
-        if (hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING)) factor -= 0.05;
-        if (getDomesticPolicy() == DomesticPolicy.URBANIZATION) {
-            factor -= 0.05;
-            if (hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) factor -= 0.025;
-        }
-        return PnwUtil.calculateInfra(from, to) * (to > from ? factor : 1);
+        return PnwUtil.calculateInfra(from, to,
+                hasProject(Projects.ADVANCED_ENGINEERING_CORPS),
+                hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING),
+                getDomesticPolicy() == DomesticPolicy.URBANIZATION,
+                hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
     }
 
     public double landCost(double from, double to) {
@@ -4196,11 +4196,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double[] projectCost(Project project) {
-        double[] cost = PnwUtil.resourcesToArray(project.cost());
-        if (getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
-            cost = PnwUtil.multiply(cost, 0.95);
-        }
-        return cost;
+        return project.cost(getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT);
     }
 
     public double getGrossModifier() {

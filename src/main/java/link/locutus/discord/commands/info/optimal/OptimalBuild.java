@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info.optimal;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -122,7 +123,7 @@ public class OptimalBuild extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use `" + Settings.commandPrefix(true) + "validate`";
+            return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
         if (me.getAlliance_id() == 4648) return "No permission for this command";
         Integer days = null;
@@ -565,7 +566,7 @@ public class OptimalBuild extends Command {
         }
         json = json.replaceAll(" ", "");
 
-        String emoji = "\uD83D\uDCB8";
+        String emoji = "Grant";
         String command = Settings.commandPrefix(true) + "grant %user% " + json;
 
         if (true) {

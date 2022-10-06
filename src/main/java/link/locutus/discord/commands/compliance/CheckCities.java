@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
@@ -81,7 +82,7 @@ public class CheckCities extends Command {
         }
 
         if (nations.isEmpty()) {
-            return "No nations found for: `" + args.get(0) + "`" + ". Have they used `" + Settings.commandPrefix(true) + "register` ?";
+            return "No nations found for: `" + args.get(0) + "`" + ". Have they used " + CM.register.cmd.toSlashMention() + " ?";
         }
 
         int allianceId = -1;
@@ -94,9 +95,11 @@ public class CheckCities extends Command {
 
         if (nations.size() > 1) {
             IACategory category = db.getIACategory();
-            category.load();
-            category.purgeUnusedChannels(event.getChannel());
-            category.alertInvalidChannels(event.getChannel());
+            if (category != null) {
+                category.load();
+                category.purgeUnusedChannels(event.getChannel());
+                category.alertInvalidChannels(event.getChannel());
+            }
         }
 
         me.setMeta(NationMeta.INTERVIEW_CHECKUP, (byte) 1);
@@ -108,7 +111,7 @@ public class CheckCities extends Command {
 
         boolean mail = flags.contains('m');
         ApiKeyPool keys = mail ? db.getMailKey() : null;
-        if (mail && keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
+        if (mail && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
 
         for (DBNation nation : nations) {
             int failed = 0;
@@ -120,7 +123,6 @@ public class CheckCities extends Command {
             }
             if (auditResult == null) {
                 CompletableFuture<Message> messageFuture = event.getChannel().sendMessage("Fetching city info: (this will take a minute)").submit();
-                page = 0;
                 auditResult = checkup.checkup(nation, individual, false);
                 auditResults.put(nation, auditResult);
                 RateLimitUtil.queue(messageFuture.get().delete());

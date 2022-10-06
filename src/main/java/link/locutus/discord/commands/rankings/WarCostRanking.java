@@ -54,7 +54,7 @@ public class WarCostRanking extends Command {
                 "Add -c to exclude consumption\n" +
                 "Add -l to exclude loot\n" +
                 "Add -t to rank total instead of average per war\n" +
-                "Add -p to do net instead of profit\n" +
+                "Add -p to do loss instead of profit\n" +
                 "Add -d to do damage dealt instead of cost\n" +
                 "Add -n to do net instead of total/average\n" +
                 "Add -a to group by alliance instead of nation\n" +

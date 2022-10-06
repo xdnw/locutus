@@ -166,7 +166,7 @@ public class Placeholders<T> {
         locals.addProvider(Key.of(instanceType, Me.class), nullInstance);
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
 
-        Object[] arguments = cmdObj.parseArguments(nullInstance, stack);
+        Object[] arguments = cmdObj.parseArguments(stack);
         int replacement = -1;
         for (int i = 0; i < arguments.length; i++) {
             if (arguments[i] == nullInstance) replacement = i;

@@ -142,7 +142,7 @@ public class WarParser {
     public List<DBAttack> getAttacks() {
         if (this.attacks == null) {
 //            this.attacks = Locutus.imp().getWarDb().getAttacks(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end, true);
-            this.attacks = Locutus.imp().getWarDb().getAttacksByWarIds(getWars().keySet(), start, end);
+            this.attacks = Locutus.imp().getWarDb().getAttacksByWars(getWars().values(), start, end);
         }
         return this.attacks;
     }

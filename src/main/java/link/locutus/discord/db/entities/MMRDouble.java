@@ -1,5 +1,9 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+
 public class MMRDouble {
     public final double[] mmr;
 
@@ -26,5 +30,21 @@ public class MMRDouble {
         return new MMRDouble(mmr);
     }
 
+    public double get(MilitaryUnit unit) {
+        MilitaryBuilding building = unit.getBuilding();
+        if (building == null) return 0;
+        return mmr[building.ordinal() - Buildings.BARRACKS.ordinal()];
+    }
 
+    /**
+     * Value between 0 and 1
+     * @param unit
+     * @return
+     */
+    public double getPercent(MilitaryUnit unit) {
+        MilitaryBuilding building = unit.getBuilding();
+        if (building == null) return 0;
+        return mmr[building.ordinal() - Buildings.BARRACKS.ordinal()] / building.cap(null);
+
+    }
 }

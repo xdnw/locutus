@@ -62,7 +62,7 @@ public class BankSubscriptions extends Command {
             StringBuilder body = new StringBuilder();
             body.append("Expires " + dateStr);
 
-            String emoji = "\u274c";
+            String emoji = "Unsubscribe";
             String unsubCommand = Settings.commandPrefix(true) + "UnsubBank " + url;
 
             DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString(), emoji, unsubCommand);

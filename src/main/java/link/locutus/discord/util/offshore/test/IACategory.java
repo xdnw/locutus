@@ -30,6 +30,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -190,8 +191,16 @@ public class IACategory {
     public GuildMessageChannel getOrCreate(User user, boolean throwError) {
         Member member = guild.getMember(user);
         if (member == null) {
-            if (throwError) throw new IllegalArgumentException("Member is null");
-            return null;
+            try {
+                member = guild.retrieveMemberById(user.getIdLong(), true).complete();
+                if (member == null) {
+                    if (throwError) throw new IllegalArgumentException("Member is null");
+                    return null;
+                }
+            } catch (ErrorResponseException e) {
+                if (throwError) throw new IllegalArgumentException("Member is null: " + e.getMessage());
+                return null;
+            }
         }
 
         DBNation nation = DiscordUtil.getNation(user);
@@ -408,10 +417,10 @@ public class IACategory {
                         }
                     }
 
-                    String emoji = "\uD83D\uDC80";
+                    String emoji = "Delete Channel";
                     String cmd = Settings.commandPrefix(false) + "deleteChannel <#" + channel.getIdLong() + ">";
 
-                    body.append("\n\nPress " + emoji + " to delete");
+                    body.append("\n\nPress `" + emoji + "` to delete");
                     DiscordUtil.createEmbedCommand(output, "Interview not assigned to a member", body.toString(), emoji, cmd);
 
                     if (nation != null && ((nation.getActive_m() > 7200) || (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || nation.getAlliance_id() != alliance.getAlliance_id())))) {

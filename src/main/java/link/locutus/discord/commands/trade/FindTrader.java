@@ -105,7 +105,7 @@ public class FindTrader extends Command {
             b.addField("Nation", StringMan.join(nationName, "\n"), true);
             b.addField("Amt", StringMan.join(amtList, "\n"), true);
             b.addField("Ppu", StringMan.join(ppuList, "\n"), true);
-        }, "\uD83D\uDD04", DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        }, "Refresh", DiscordUtil.trimContent(event.getMessage().getContentRaw()));
         return null;
     }
 }

@@ -37,10 +37,11 @@ public class PendingCommand extends Command {
         String raw = DiscordUtil.trimContent(event.getMessage().getContentRaw());
         String cmd = raw.substring(raw.indexOf(' ', raw.indexOf(title) + title.length()) + 1);
 
+        String emoji = "Approve";
         DiscordUtil.createEmbedCommand(event.getChannel(), embed -> {
             embed.setTitle(title);
-            embed.setDescription(cmd + "\n\nPlease Click \u2705 after you have fullfilled this request.");
-        }, "\u2705", cmd);
+            embed.setDescription(cmd + "\n\nPlease Click " + emoji + " after you have fullfilled this request.");
+        }, emoji, cmd);
 
         return null;
     }

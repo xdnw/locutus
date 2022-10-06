@@ -345,8 +345,8 @@ public class Exchange {
         return Locutus.imp().getDiscordApi().getGuildById(StockDB.ROOT_GUILD);
     }
 
-    public Message alert(String title, String message) {
-        return DiscordUtil.createEmbedCommand(getChannel(), title, message);
+    public void alert(String title, String message) {
+        DiscordUtil.createEmbedCommand(getChannel(), title, message);
     }
 
     public String alert(String message) {

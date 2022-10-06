@@ -102,7 +102,9 @@ public enum NationMeta {
 
     LAST_LOGIN_COUNT,
 
-    RECRUIT_AD_COUNT
+    RECRUIT_AD_COUNT,
+
+    RECRUIT_GOV_MESSAGE,
 
     ;
 

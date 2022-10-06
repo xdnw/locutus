@@ -22,9 +22,11 @@ import rocker.grant.nation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -37,17 +39,13 @@ public class CityUpdateProcessor {
 //    private final ConcurrentLinkedQueue<MMRChange> changes;
 
     public CityUpdateProcessor() {
-        if (Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_TOP_X > 0) {
-            changes2 = new ConcurrentHashMap<>();
-            Locutus.imp().addTaskSeconds(new CaughtTask() {
-                @Override
-                public void runUnsafe() throws Exception {
-                    runOfficerMMRTask();
-                }
-            }, 60);
-        } else {
-            changes2 = null;
-        }
+        changes2 = new ConcurrentHashMap<>();
+        Locutus.imp().addTaskSeconds(new CaughtTask() {
+            @Override
+            public void runUnsafe() throws Exception {
+                runOfficerMMRTask();
+            }
+        }, 60);
     }
 
     @Subscribe
@@ -71,7 +69,6 @@ public class CityUpdateProcessor {
     }
 
     private synchronized void runOfficerMMRTask() {
-        System.out.println("Run officer MMR tasks");
         long cutoff = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(60 * 2);
         if (changes2.isEmpty()) return;
 
@@ -126,12 +123,25 @@ public class CityUpdateProcessor {
                 afterAvg[i] /= beforeByCity.size();
             }
 
+            boolean isGov = nation.getPositionEnum().id > Rank.MEMBER.id;
+            int reqRank = Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_TOP_X;
+
+            DBAlliance alliance = nation.getAlliance();
+            if (isGov) {
+                if (alliance == null) isGov = false;
+                else if (alliance.getRank() > reqRank) {
+                    DBAlliance parent = alliance.getCachedParentOfThisOffshore();
+                    if (parent == null || parent.getRank() > reqRank) {
+                        isGov = false;
+                    }
+                }
+            }
+
 
             String title = "MMR: " + nation.getNation() + " | " + nation.getAllianceName();
             StringBuilder body = new StringBuilder();
             body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true) + "\n");
 
-            DBAlliance alliance = nation.getAlliance();
             if (alliance != null) {
                 DBAlliance parent = alliance.getCachedParentOfThisOffshore();
                 if (parent != null) {
@@ -145,19 +155,32 @@ public class CityUpdateProcessor {
                 Building building = Buildings.get(i + building0.ordinal());
                 String fromStr = MathMan.format(beforeAvg[i]);
                 String toStr = MathMan.format(afterAvg[i]);
-                body.append("**" + building.nameSnakeCase() + "**: "  + fromStr + "->" + toStr + "\n");
+                body.append("**" + building.nameSnakeCase() + "**: " + fromStr + "->" + toStr + "\n");
             }
 
             if (nation.getNumWars() > 0) {
                 String warUrl = nation.getNationUrl() + "&display=war";
                 body.append("\n\nOff/Def wars: " + MarkupUtil.markdownUrl(nation.getOff() + "/" + nation.getDef(), warUrl));
             }
-            AlertUtil.forEachChannel(f -> true, GuildDB.Key.ORBIS_OFFICER_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
-                @Override
-                public void accept(MessageChannel channel, GuildDB guildDB) {
-                    DiscordUtil.createEmbedCommand(channel, title, body.toString());
-                }
-            });
+
+            Set<MessageChannel> channels = new HashSet<>();
+            if (isGov) {
+                AlertUtil.forEachChannel(f -> true, GuildDB.Key.ORBIS_OFFICER_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                    @Override
+                    public void accept(MessageChannel channel, GuildDB guildDB) {
+                        DiscordUtil.createEmbedCommand(channel, title, body.toString());
+                    }
+                });
+            }
+
+            if (nation.getAlliance_id() != 0 && nation.getPositionEnum().id > Rank.APPLICANT.id) {
+                AlertUtil.forEachChannel(f -> f.isValidAlliance() && f.isEnemyAlliance(nation.getAlliance_id()), GuildDB.Key.ENEMY_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                    @Override
+                    public void accept(MessageChannel channel, GuildDB guildDB) {
+                        DiscordUtil.createEmbedCommand(channel, title, body.toString());
+                    }
+                });
+            }
         }
     }
 
@@ -190,17 +213,9 @@ public class CityUpdateProcessor {
 
         DBAlliance alliance = nation.getAlliance();
         if (alliance == null) return;
-        DBAlliancePosition position = nation.getAlliancePosition();
-        if (position == null && nation.getPositionEnum().id <= Rank.APPLICANT.id) return;
+        if (nation.getPositionEnum().id <= Rank.APPLICANT.id) return;
         if (nation.getCities() < 10) return;
 
-        boolean officer = nation.getPositionEnum().id >= Rank.OFFICER.id || (position != null && position.hasAnyOfficerPermissions());
-        if (!officer) return;
-        int reqRank = Settings.INSTANCE.TASKS.OFFICER_MMR_ALERT_TOP_X;
-        if (alliance.getRank() > reqRank) {
-            DBAlliance parent = alliance.getCachedParentOfThisOffshore();
-            if (parent == null || parent.getRank() > reqRank) return;
-        }
         int[] mmrFrom = cityFrom.getMMRArray();
         int[] mmrTo = cityTo.getMMRArray();
         int increase = 0;

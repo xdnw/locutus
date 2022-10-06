@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.NotGuild
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -42,7 +43,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding
     @IsAlliance
     public boolean checkAlliance(@Me GuildDB db, IsAlliance perm) {
-        if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID`");
+        if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "");
         return true;
     }
 
@@ -50,14 +51,14 @@ public class PermissionBinding extends BindingHelper {
     @IsAuthenticated
     public boolean isAuthenticated(@Me GuildDB db, IsAuthenticated perm) {
         Auth auth = perm.value().length > 0 ? db.getAuth(perm.value()) : db.getAuth();
-        if (auth == null || !auth.isValid()) throw new IllegalArgumentException(db.getGuild() + " is not authenticaed. See: `" + Settings.commandPrefix(true) + "login`");
+        if (auth == null || !auth.isValid()) throw new IllegalArgumentException(db.getGuild() + " is not authenticaed. See: " + CM.credentials.login.cmd.toSlashMention() + "");
         return true;
     }
 
     @Binding
     @HasApi
     public boolean hasApi(@Me GuildDB db, HasApi perm) {
-        if (db.getApi() == null) throw new IllegalArgumentException("No api key set: `" + Settings.commandPrefix(true) + "KeyStore API_KEY`");
+        if (db.getApi() == null) throw new IllegalArgumentException("No api key set: " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + "");
         return true;
     }
 

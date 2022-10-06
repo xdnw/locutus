@@ -257,6 +257,7 @@ public class Projects {
             .image("resource_production_center.jpg")
             .cost(FOOD, 1000)
             .cost(MONEY, 500000)
+            .maxCities(15)
             .build();
 
     public static final Project GOVERNMENT_SUPPORT_AGENCY = new Builder("government_support_agency", 27)
@@ -333,7 +334,7 @@ public class Projects {
         private ResourceType output;
         private Supplier<Project[]> requiredProjects;
 
-        private int requiredCities;
+        private int requiredCities, maxCities;
         private Predicate<DBNation> otherRequirements;
 
         public Builder(String apiName, int id) {
@@ -358,7 +359,7 @@ public class Projects {
         }
 
         public Project build() {
-            return new AProject(id, apiName, imageName, resources, output, requiredCities, requiredProjects, otherRequirements);
+            return new AProject(id, apiName, imageName, resources, output, requiredCities, maxCities, requiredProjects, otherRequirements);
         }
 
         public Builder requiredProjects(Supplier<Project[]> projects) {
@@ -368,6 +369,11 @@ public class Projects {
 
         public Builder requiredCities(int cities) {
             this.requiredCities = cities;
+            return this;
+        }
+
+        public Builder maxCities(int cities) {
+            this.maxCities = cities;
             return this;
         }
 

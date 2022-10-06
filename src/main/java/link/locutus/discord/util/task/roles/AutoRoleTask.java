@@ -85,10 +85,10 @@ public class AutoRoleTask implements IAutoRoleTask {
             } catch (IllegalArgumentException e) {}
         }
 
-        String roleOptStr = db.getInfo(GuildDB.Key.AUTOROLE);
-        if (roleOptStr != null) {
+        GuildDB.AutoRoleOption roleOpt = db.getOrNull(GuildDB.Key.AUTOROLE);
+        if (roleOpt != null) {
             try {
-                setAllianceMask(GuildDB.AutoRoleOption.valueOf(roleOptStr.toUpperCase()));
+                setAllianceMask(roleOpt);
             } catch (IllegalArgumentException e) {}
         }
         initRegisteredRole = false;
@@ -285,6 +285,8 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         List<Member> members = guild.getMembers();
 
+        Map<Integer, Role> existantAllianceRoles = new HashMap<>(allianceRoles);
+
         for (int i = 0; i < members.size(); i++) {
             Member member = members.get(i);
             try {
@@ -308,12 +310,12 @@ public class AutoRoleTask implements IAutoRoleTask {
                 throw e;
             }
         }
-        Iterator<Map.Entry<Integer, Role>> iter = allianceRoles.entrySet().iterator();
-        while (iter.hasNext()) {
-            Role role = iter.next().getValue();
+
+        for (Map.Entry<Integer, Role> entry : existantAllianceRoles.entrySet()) {
+            Role role = entry.getValue();
             List<Member> withRole = guild.getMembersWithRoles(role);
             if (withRole.isEmpty()) {
-                iter.remove();
+                allianceRoles.remove(entry.getKey());
                 tasks.add(role.delete().submit());
             }
         }

@@ -502,7 +502,7 @@ public class LootEstimateTracker {
             int turnDiff = (int) (turn - estimate.lastTurnRevenue);
             boolean noFood = estimate.max[ResourceType.FOOD.ordinal()] <= 0;
 
-            double[] revenue = nation.getRevenue(turnDiff, true, true, true, noFood, false);
+            double[] revenue = nation.getRevenue(turnDiff, true, true, true, true, noFood, false);
             for (ResourceType type : ResourceType.values) {
                 if (type.isManufactured()) {
                     double min = 0;

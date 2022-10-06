@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -118,7 +119,7 @@ public class TaxBracketSheet extends Command {
         sheet.set(0, 0);
 
         StringBuilder response = new StringBuilder("<" + sheet.getURL() + ">");
-        if (failedFetch) response.append("\nnote: Please set an api key with `" + Settings.commandPrefix(false) + "addApiKey` to view updated tax brackets");
+        if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
         return response.toString();
     }
 }

@@ -2,6 +2,10 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.external.guild.WarRoom;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -47,6 +51,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static link.locutus.discord.util.MathMan.max;
@@ -296,11 +301,13 @@ public class WarCategory {
                                 showSuccess = true;
                                 break;
                             case GROUND:
+                                showCasualties = true;
                                 showLoot = true;
                             case NAVAL:
                                 message = name1 + " issued a " + attack.attack_type + " attack against " + name2;
                                 showInfra = true;
                                 showSuccess = true;
+                                showCasualties = true;
                                 break;
                             case MISSILE:
                             case NUKE:
@@ -363,9 +370,9 @@ public class WarCategory {
                             if (RateLimitUtil.getCurrentUsed() > 25) {
                                 DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message);
                             } else {
-                                String emoji = "\u2139";
+                                String emoji = "War Info";
                                 String cmd = "_" + Settings.commandPrefix(true) + "WarInfo " + attack.war_id;
-                                message += "\n\nPress " + emoji + " to view the war card";
+                                message += "\n\nPress `" + emoji + "` to view the war card";
                                 DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message, emoji, cmd);
                             }
                         }
@@ -485,7 +492,7 @@ public class WarCategory {
         for (DBNation attacker : attackers) {
             User user = attacker.getUser();
             if (user == null) {
-                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used `" + Settings.commandPrefix(true) + "verify` ?");
+                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used " + CM.register.cmd.toSlashMention() + " ?");
                 continue;
             }
 
@@ -648,8 +655,14 @@ public class WarCategory {
         }
 
         private Message getMessage(String topic) {
+            if (topic == null || topic.isEmpty()) return null;
             try {
-                 return RateLimitUtil.complete(channel.retrieveMessageById(topic));
+                topic = topic.split(" ")[0];
+                if (topic.contains("/")) {
+                    String[] split = topic.split("/");
+                    topic = split[split.length - 1];
+                }
+                return RateLimitUtil.complete(channel.retrieveMessageById(topic));
             } catch (Exception e) {
                 return null;
             }
@@ -660,25 +673,20 @@ public class WarCategory {
             return "https://discord.com/channels/" + guild.getIdLong() + "/" + channel.getIdLong();
         }
 
-        public Message updatePin(boolean update) {
-            if (channel == null) return null;
+        public IMessageBuilder updatePin(boolean update) {
+            if (channel == null) {
+                return null;
+            }
 
-            Message msg = null;
             String topic = channel.getTopic();
-            if (topic == null || topic.isEmpty() || !MathMan.isInteger(topic) || (msg = getMessage(topic)) == null) {
+
+            boolean updatePin = false;
+            DiscordChannelIO io = new DiscordChannelIO(channel, () -> getMessage(topic));
+            IMessageBuilder msg = io.getMessage();
+            if (msg == null) {
+                msg = io.create();
+                updatePin = true;
                 update = true;
-                try {
-                    CompletableFuture<Void> t1 = channel.getManager().setPosition(0).submit();
-                    msg = RateLimitUtil.complete(channel.sendMessage("Creating embed..."));
-                    CompletableFuture<Void> t2 = channel.getManager().setTopic(msg.getId()).submit();
-                    CompletableFuture<Void> t3 = channel.pinMessageById(msg.getIdLong()).submit();
-                    t1.get();
-                    t2.get();
-                    t3.get();
-                } catch (InterruptedException | ExecutionException | InsufficientPermissionException e) {
-                    e.printStackTrace();
-                    return msg;
-                }
             }
 
             if (update) {
@@ -714,13 +722,28 @@ public class WarCategory {
 
                 builder.setDescription(body.toString().replaceAll(" \\| ", "|"));
 
-                Map<String, String> reactions = new HashMap<>();
-                Message finalCard = msg;
-                DiscordUtil.updateEmbed(builder, reactions, embedBuilder -> {
-                     RateLimitUtil.queueWhenFree(channel.editMessageEmbedsById(finalCard.getIdLong(), embedBuilder.build()));
-                     return null;
-                });
+
+                msg.clearEmbeds();
+                msg.clearButtons();
+                msg.embed(builder.build());
+                msg.commandButton(CommandBehavior.UNDO_REACTION, CM.war.room.pin.cmd, "Update");
+                try {
+                    msg = msg.send().get();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
             }
+
+            if (updatePin) {
+                String newTopic = DiscordUtil.getChannelUrl(channel) + "/" + msg.getId() + " " + CM.war.room.pin.cmd.toSlashMention();
+                System.out.println("remove:|| Update the pin " + channel + " | " + newTopic);
+                RateLimitUtil.queue(channel.getManager().setTopic(newTopic));
+                RateLimitUtil.queue(channel.pinMessageById(msg.getId()));
+                System.out.println("remove:|| Update the pin 2 " + channel + " | " + newTopic);
+            } else {
+                System.out.println("Topic is valid message " + topic + " | " + msg);
+            }
+
             return msg;
         }
 
@@ -839,8 +862,13 @@ public class WarCategory {
 
         public TextChannel getChannel(boolean create, boolean planning) {
             if (channel != null) {
-                if (guild.getTextChannelById(channel.getIdLong()) == null) channel = null;
-                else return channel;
+                long dateCreated = channel.getTimeCreated().toEpochSecond() * 1000L;
+                if (System.currentTimeMillis() - dateCreated > TimeUnit.MINUTES.toMillis(1)) {
+                    if (guild.getTextChannelById(channel.getIdLong()) == null) {
+                        channel = null;
+                    }
+                }
+                if (channel != null) return channel;
             }
 
             synchronized (target.getName()) {
@@ -910,7 +938,8 @@ public class WarCategory {
                             }
                         }
                     }
-                    String name = "-" + target.getNation() + "-" + target.getNation_id();
+                    String name = target.getNation() + "-" + target.getNation_id();
+                    if (planning) name = "\uD83D\uDCC5" + name;
                     channel = RateLimitUtil.complete(useCat.createTextChannel(name));
                     processChannelCreation(this, channel, planning);
                 }
@@ -1044,7 +1073,6 @@ public class WarCategory {
             boolean planned = planning || isPlanning();
             if (!planned && wars.isEmpty()) {
                 if (channel != null) {
-                    new Exception().printStackTrace();
                     System.out.println("Delete " + target.getNation_id() + " (no wars)");
                     delete();
                 }
@@ -1106,7 +1134,7 @@ public class WarCategory {
         if (allianceId != null) {
             allianceIds.add(allianceId);
         } else {
-            allianceIds.addAll(db.getAllies(true));
+            allianceIds.addAll(db.getAllies(false));
         }
         for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
             Integer aaId = otherDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
@@ -1193,7 +1221,6 @@ public class WarCategory {
                 if (room != null && room.channel != null) {
 
                     if (!room.isPlanning()) {
-                        new Exception().printStackTrace();
                         System.out.println("Delete " + room.target.getNation_id() + " (target is not active)");
                         room.delete();
                     }

@@ -6,6 +6,10 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
@@ -91,7 +95,7 @@ public class GuildHandler {
     private final Set<Long> ignorePermanentInvitesFrom = new HashSet<>();
     private final Set<Integer> ignoreIncentivesForNations = new HashSet<>();
 
-    private OffshoreInstance bank;
+    protected OffshoreInstance bank;
     private boolean bankInit = false;
 
     public GuildHandler(Guild guild, GuildDB db) {
@@ -123,14 +127,19 @@ public class GuildHandler {
     }
 
     public synchronized OffshoreInstance getBank() {
-        if (!bankInit && db.getOrNull(GuildDB.Key.API_KEY) != null) {
-            bankInit = true;
+        if (!bankInit && db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
             Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
-            if (auth != null) {
+            bankInit = true;
+            {
                 bank = new OffshoreInstance(auth, db, db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
             }
         }
         return bank;
+    }
+
+    @Subscribe
+    public void testEvent(String evnet) {
+        System.out.println("Guild " + guild + " received " + evnet);
     }
 
     public void onGuildInviteCreate(GuildInviteCreateEvent event) {
@@ -293,7 +302,7 @@ public class GuildHandler {
         boolean mentionInterviewer = true;
 
         String title = "New applicant";
-        String emoji = "\u2705";
+        String emoji = "Claim";
 
         StringBuilder body = new StringBuilder();
         body.append("User: " + author.getAsMention() + "\n");
@@ -324,7 +333,7 @@ public class GuildHandler {
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'\n" +
-                Settings.commandPrefix(true) + "interview " + author.getAsMention();
+                CM.interview.create.cmd.create(author.getAsMention()).toCommandArgs();
 
         DiscordUtil.createEmbedCommand(alertChannel, title, body.toString(), emoji, pending);
         if (mentionInterviewer) {
@@ -572,7 +581,7 @@ public class GuildHandler {
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-                        String emoji = "\u2705";
+                        String emoji = "Claim";
                         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                                 "\n" +
                                 "Assigned to %user% in {timediff}'";
@@ -732,7 +741,7 @@ public class GuildHandler {
         Set<Grant> grants = new HashSet<>();
 
         User user = nation.getUser();
-        if (user == null) throw new IllegalArgumentException("Nation is not verified: `" + Settings.commandPrefix(true) + "verify`");
+        if (user == null) throw new IllegalArgumentException("Nation is not verified: " + CM.register.cmd.toSlashMention() + "");
         Member member = getGuild().getMember(user);
         if (member == null) throw new IllegalArgumentException("There was an error verifying the nation");
 
@@ -941,7 +950,7 @@ public class GuildHandler {
                         case 1700:
                         case 1500:
                             localRequirement.add(seniority);
-                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
+                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ (or remove the `enemies` coalition)", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
                             localRequirement.add(noWarRequirement);
                             break;
                         case 2000:
@@ -950,7 +959,7 @@ public class GuildHandler {
                             localRequirement.add(new Grant.Requirement("Nation does not have 10 cities", overrideSafe, f -> f.getCities() >= 10));
                             localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
                             localRequirement.add(new Grant.Requirement("Domestic policy must be set to URBANIZATION for infra grants above 1700: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.URBANIZATION));
-                            localRequirement.add(new Grant.Requirement("Infra grants above 1700 whilst raiding/warring required econ approval", overrideSafe, f -> {
+                            localRequirement.add(new Grant.Requirement("Infra grants above 1700 whilst raiding/warring require econ approval", overrideSafe, f -> {
                                 if (f.getDef() > 0) return false;
                                 if (f.getOff() > 0) {
                                     for (DBWar war : f.getActiveWars()) {
@@ -991,9 +1000,9 @@ public class GuildHandler {
                                 public double[] apply(DBNation nation) {
                                     double cost = 0;
                                     List<Transaction2> transactions = nation.getTransactions(-1L);
-                                    Map<Integer, Double> byCity = Grant.getInfraGrantsByCity(nation, transactions);
+//                                    Map<Integer, Double> byCity = Grant.getInfraGrantsByCity(nation, transactions);
                                     for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-                                        double currentInfra = byCity.getOrDefault(entry.getKey(), 0d);
+                                        double currentInfra = Grant.getCityInfraGranted(nation, entry.getKey(), transactions);
                                         JavaCity city = entry.getValue();
                                         currentInfra = Math.max(currentInfra, Math.max(city.getRequiredInfra(), city.getInfra()));
                                         if (currentInfra < infraLevel) {
@@ -1195,10 +1204,10 @@ public class GuildHandler {
                 break;
             case RESOURCES:
                 // disburse up to 5 days?
-                GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-                if (channel != null) {
-                    throw new IllegalArgumentException("Please use `" + Settings.commandPrefix(true) + "tr` or `" + Settings.commandPrefix(true) + "disburse` in " + channel.getAsMention() + " to request funds from your deposits");
-                }
+                    GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    if (channel != null) {
+                        throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or `" + Settings.commandPrefix(true) + "disburse` in " + channel.getAsMention() + " to request funds from your deposits");
+                    }
                 throw new IllegalArgumentException("Please request resources in the resource request channel");
         }
         for (Grant grant : grants) {
@@ -1402,18 +1411,18 @@ public class GuildHandler {
         WarAttackParser parser = war.toParser(isAttacker);
         AttackTypeBreakdown breakdown = parser.toBreakdown();
 
-        String infoEmoji = "\uD83D\uDCC8";
+        String infoEmoji = "War Info";
         String infoCommand = "." + Settings.commandPrefix(true) + "warinfo " + war.toUrl();
 
-        String costEmoji = "\uD83D\uDCB8";
+        String costEmoji = "War Cost";
         String costCommand = "." + Settings.commandPrefix(true) + "WarCost " + war.toUrl();
 
-        String assignEmoji = "\u2705";
+        String assignEmoji = "Claim";
         String assignCmd = "." + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'";
 
-        String dismissEmoji = "\uD83D\uDEAB";
+        String dismissEmoji = "Dismiss";
 
         DiscordUtil.createEmbedCommand(channel, new Consumer<EmbedBuilder>() {
             @Override
@@ -1441,7 +1450,7 @@ public class GuildHandler {
                 builder.addField(costEmoji, "For war cost", false);
                 builder.addField(assignEmoji, "To assign", false);
             }
-        }, infoEmoji, infoCommand, costEmoji, costCommand, assignEmoji, assignCmd, dismissEmoji, "");
+        }, infoEmoji, infoCommand, costEmoji, costCommand, assignEmoji, assignCmd, dismissEmoji, " ");
     }
 
     public void onDefensiveWarAlert(List<Map.Entry<DBWar, DBWar>> wars, boolean rateLimit) {
@@ -1724,7 +1733,7 @@ public class GuildHandler {
                             DBWar war = entry.getValue();
                             WarCard card = new WarCard(war.warId);
                             CounterStat stat = card.getCounterStat();
-                            card.embed(channel, false);
+                            card.embed(new DiscordChannelIO(channel, null), false);
 
 
                             StringBuilder footer = new StringBuilder();
@@ -1864,7 +1873,7 @@ public class GuildHandler {
     }
 
     public Set<Project> getAllowedProjectGrantSet(DBNation nation) {
-        Map<Project, Set<Grant.Requirement>> projects = getAllowedProjectGrants(nation, false, false);
+        Map<Project, Set<Grant.Requirement>> projects = getAllowedProjectGrants(nation, false);
         Set<Project> allowed = new HashSet<>();
         outer:
         for (Map.Entry<Project, Set<Grant.Requirement>> entry : projects.entrySet()) {
@@ -1934,54 +1943,57 @@ public class GuildHandler {
     /*
     List of projects the alliance grants (does not check free slots)
      */
-    public Map<Project, Set<Grant.Requirement>> getAllowedProjectGrants(DBNation nation, boolean overrideSafe, boolean overrideUnsafe) {
+    public Map<Project, Set<Grant.Requirement>> getAllowedProjectGrants(DBNation nation, boolean overrideSafe) {
         Set<Project> projects = nation.getProjects();
         Map<Project, Set<Grant.Requirement>> allowed = new HashMap<>();
 
-        allowed.put(Projects.URANIUM_ENRICHMENT_PROGRAM, new Grant.Requirement("must be on a continent with uranium", overrideSafe, f -> Buildings.URANIUM_MINE.canBuild(f.getContinent())).toSet());
-        allowed.put(Projects.ARMS_STOCKPILE, Collections.EMPTY_SET);
-        allowed.put(Projects.BAUXITEWORKS, Collections.EMPTY_SET);
-        allowed.put(Projects.IRON_WORKS, Collections.EMPTY_SET);
-        allowed.put(Projects.EMERGENCY_GASOLINE_RESERVE, Collections.EMPTY_SET);
-        allowed.put(Projects.PROPAGANDA_BUREAU, Collections.EMPTY_SET);
-        allowed.put(Projects.INTELLIGENCE_AGENCY, Collections.EMPTY_SET);
+        if (nation.getCities() <= Projects.RESOURCE_PRODUCTION_CENTER.maxCities()) allowed.put(Projects.RESOURCE_PRODUCTION_CENTER, Collections.EMPTY_SET);
 
-        if (projects.contains(Projects.ARMS_STOCKPILE) &&
-                projects.contains(Projects.BAUXITEWORKS) &&
-                projects.contains(Projects.IRON_WORKS) &&
-                projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE) &&
-                projects.contains(Projects.PROPAGANDA_BUREAU) &&
-                projects.contains(Projects.INTELLIGENCE_AGENCY)) {
-        }
+        if (nation.getCities() >= Projects.RESOURCE_PRODUCTION_CENTER.maxCities() || nation.hasProject(Projects.RESOURCE_PRODUCTION_CENTER)) {
+            allowed.put(Projects.URANIUM_ENRICHMENT_PROGRAM, new Grant.Requirement("must be on a continent with uranium", overrideSafe, f -> Buildings.URANIUM_MINE.canBuild(f.getContinent())).toSet());
+            allowed.put(Projects.ARMS_STOCKPILE, Collections.EMPTY_SET);
+            allowed.put(Projects.BAUXITEWORKS, Collections.EMPTY_SET);
+            allowed.put(Projects.IRON_WORKS, Collections.EMPTY_SET);
+            allowed.put(Projects.EMERGENCY_GASOLINE_RESERVE, Collections.EMPTY_SET);
+            allowed.put(Projects.PROPAGANDA_BUREAU, Collections.EMPTY_SET);
+            allowed.put(Projects.INTELLIGENCE_AGENCY, Collections.EMPTY_SET);
 
-        allowed.put(Projects.MISSILE_LAUNCH_PAD, new Grant.Requirement("Please get get the following projects first:\n" +
-                " - ARMS_STOCKPILE\n" +
-                " - BAUXITEWORKS\n" +
-                " - IRON_WORKS\n" +
-                " - EMERGENCY_GASOLINE_RESERVE\n" +
-                " - PROPAGANDA_BUREAU\n" +
-                " - INTELLIGENCE_AGENCY", overrideSafe, f -> (projects.contains(Projects.ARMS_STOCKPILE) &&
-                projects.contains(Projects.BAUXITEWORKS) &&
-                projects.contains(Projects.IRON_WORKS) &&
-                projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE) &&
-                projects.contains(Projects.PROPAGANDA_BUREAU) &&
-                projects.contains(Projects.INTELLIGENCE_AGENCY))).toSet());
+            if (projects.contains(Projects.ARMS_STOCKPILE) &&
+                    projects.contains(Projects.BAUXITEWORKS) &&
+                    projects.contains(Projects.IRON_WORKS) &&
+                    projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE) &&
+                    projects.contains(Projects.PROPAGANDA_BUREAU) &&
+                    projects.contains(Projects.INTELLIGENCE_AGENCY)) {
+            }
 
-        Grant.Requirement cityReq = new Grant.Requirement("Must have more than 16 cities", overrideSafe, f -> f.getCities() > 16);
+            allowed.put(Projects.MISSILE_LAUNCH_PAD, new Grant.Requirement("Please get the following projects first:\n" +
+                    " - ARMS_STOCKPILE\n" +
+                    " - BAUXITEWORKS\n" +
+                    " - IRON_WORKS\n" +
+                    " - EMERGENCY_GASOLINE_RESERVE\n" +
+                    " - PROPAGANDA_BUREAU\n" +
+                    " - INTELLIGENCE_AGENCY", overrideSafe, f -> (projects.contains(Projects.ARMS_STOCKPILE) &&
+                    projects.contains(Projects.BAUXITEWORKS) &&
+                    projects.contains(Projects.IRON_WORKS) &&
+                    projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE) &&
+                    projects.contains(Projects.PROPAGANDA_BUREAU) &&
+                    projects.contains(Projects.INTELLIGENCE_AGENCY))).toSet());
 
-        {
+            Grant.Requirement cityReq = new Grant.Requirement("Must have more than 16 cities", overrideSafe, f -> f.getCities() > 16);
+            {
 
-            // c16+, 2 rss projects, mlp, iron dome
-            allowed.put(Projects.ARABLE_LAND_AGENCY, cityReq.toSet());
-            allowed.put(Projects.CLINICAL_RESEARCH_CENTER, cityReq.toSet());
-            allowed.put(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM, cityReq.toSet());
-            allowed.put(Projects.CENTER_FOR_CIVIL_ENGINEERING, cityReq.toSet());
+                // c16+, 2 rss projects, mlp, iron dome
+                allowed.put(Projects.ARABLE_LAND_AGENCY, cityReq.toSet());
+                allowed.put(Projects.CLINICAL_RESEARCH_CENTER, cityReq.toSet());
+                allowed.put(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM, cityReq.toSet());
+                allowed.put(Projects.CENTER_FOR_CIVIL_ENGINEERING, cityReq.toSet());
 
-            Grant.Requirement infraReq = new Grant.Requirement("Must have 2k infra and 2k land", false, f -> f.getAvg_infra() >= 2000);
-            allowed.put(Projects.MASS_IRRIGATION, infraReq.toSet(cityReq));
+                Grant.Requirement infraReq = new Grant.Requirement("Must have 2k infra and 2k land", false, f -> f.getAvg_infra() >= 2000);
+                allowed.put(Projects.MASS_IRRIGATION, infraReq.toSet(cityReq));
 
-            allowed.put(Projects.RECYCLING_INITIATIVE,
-                    new Grant.Requirement("Must have CFCE", false, f -> projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING)).toSet(cityReq, infraReq));
+                allowed.put(Projects.RECYCLING_INITIATIVE,
+                        new Grant.Requirement("Must have CFCE", false, f -> projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING)).toSet(cityReq, infraReq));
+            }
         }
 
         return allowed;
@@ -2120,16 +2132,16 @@ public class GuildHandler {
         body.append("\n\nPress 0 for war info, 1 for defender info");
 
         //
-        String warInfoEmoji = 0 + "\ufe0f\u20e3";
+        String warInfoEmoji = 0 + "War Info";
         String warInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + root.war_id;
-        String defInfoEmoji = 1 + "\ufe0f\u20e3";
+        String defInfoEmoji = 1 + "Defender Info";
         String defInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + defender.getNationUrl();
 
-        String emoji = "\u2705";
+        String emoji = "Claim";
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'";
-        body.append("\npress " + emoji + " to assign yourself");
+        body.append("\nPress `" + emoji + "` to assign yourself");
 
         DiscordUtil.createEmbedCommand(channel, title, body.toString(), warInfoEmoji, warInfoCmd, defInfoEmoji, defInfoCmd, emoji, pending);
 
@@ -2394,7 +2406,7 @@ public class GuildHandler {
                 @Override
                 public void runUnsafe() {
                     try {
-                        System.out.println("remove:||Send mail 3" + getGuild());
+                        System.out.println("remove:||Send mail 5" + getGuild());
                         JsonObject response = db.sendRecruitMessage(current);
                         RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true);
                     } catch (Throwable e) {
@@ -2549,7 +2561,7 @@ public class GuildHandler {
         }
     }
 
-    public void onSetRank(User author, MessageChannel channel, DBNation nation, DBAlliancePosition rank) {
+    public void onSetRank(User author, IMessageIO channel, DBNation nation, DBAlliancePosition rank) {
 
     }
 

@@ -42,7 +42,7 @@ public class TradePriceCmd extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         TradeManager trader = Locutus.imp().getTradeManager();
-        String refreshEmoji = "\uD83D\uDD04";
+        String refreshEmoji = "Refresh";
 
         Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
         Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));

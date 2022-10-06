@@ -6,6 +6,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -99,7 +100,7 @@ public class MailCommand extends Command implements Noformat {
             ApiKeyPool key = null;
             if (flags.contains('l') || myKey == null) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see `" + Settings.commandPrefix(false) + "setAlias` OR use`" + Settings.commandPrefix(false) + "credentials addApiKey` to add your own key";
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use`" + Settings.commandPrefix(false) + "credentials addApiKey` to add your own key";
                 }
                 key = db.getMailKey();
             } else {
@@ -129,7 +130,7 @@ public class MailCommand extends Command implements Noformat {
                 body.append("subject: " + subject + "\n");
                 body.append("body: ```" + message + "```");
 
-                DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "\u2705", pending);
+                DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "Next", pending);
                 return null;
             }
 

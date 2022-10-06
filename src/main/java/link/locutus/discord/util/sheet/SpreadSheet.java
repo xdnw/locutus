@@ -2,10 +2,15 @@ package link.locutus.discord.util.sheet;
 
 import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -50,10 +55,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -63,7 +70,7 @@ import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
 public class SpreadSheet {
     private static final PassiveExpiringMap<String, SpreadSheet> CACHE = new PassiveExpiringMap<String, SpreadSheet>(5, TimeUnit.MINUTES);
 
-    public String addTransactionsList(MessageChannel channel, List<Transaction2> transactions, boolean includeHeader) throws IOException {
+    public CompletableFuture<IMessageBuilder> addTransactionsList(IMessageIO channel, List<Transaction2> transactions, boolean includeHeader) throws IOException {
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "id",
                 "type",
@@ -115,11 +122,12 @@ public class SpreadSheet {
         this.clear("A:Z");
         try {
             this.set(0, 0);
-            return "<" + this.getURL() + ">";
+            return channel.send("<" + this.getURL() + ">");
         } catch (Throwable e) {
             e.printStackTrace();
-            DiscordUtil.upload(channel, "transactions.csv", this.toCsv());
-            return e.getMessage();
+            return channel.create().file("transactions.csv", this.toCsv())
+                            .append(e.getMessage())
+                                    .send();
         }
     }
 
@@ -261,10 +269,16 @@ public class SpreadSheet {
         }
     }
 
-    public Map<String, Boolean> parseTransfers(Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs) {
+    public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative, String defaultNote) {
         Map<String, Boolean> result = new LinkedHashMap<String, Boolean>();
         List<List<Object>> rows = get("A:Z");
         List<Object> header = rows.get(0);
+
+        Integer noteI = null;
+        for (int i = 0; i < header.size(); i++) {
+            Object col = header.get(i);
+            if (col != null && col.toString().equalsIgnoreCase("note")) noteI = i;
+        }
 
         for (int i = 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
@@ -278,7 +292,7 @@ public class SpreadSheet {
             Map<ResourceType, Double> transfer = new LinkedHashMap<>();
             for (int j = 1; j < row.size(); j++) {
                 Object rssName = header.size() > j ? header.get(j) : null;
-                if (rssName == null || rssName.toString().isEmpty()) continue;
+                if (rssName == null || rssName.toString().isEmpty() || (noteI != null && i == noteI)) continue;
                 Object amtStr = row.get(j);
                 if (amtStr == null || amtStr.toString().isEmpty()) continue;
                 try {
@@ -298,25 +312,17 @@ public class SpreadSheet {
                 }
             }
             if (transfer.isEmpty()) continue;
+            if (negative) transfer = PnwUtil.subResourcesToA(new LinkedHashMap<>(), transfer);
 
-            if (nameStr.contains("/alliance/")) {
-                Integer allianceId = PnwUtil.parseAllianceId(nameStr);
-                if (allianceId == null) result.put(nameStr, false);
-                else {
-                    result.put(nameStr, true);
-                    DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
-                    Map<ResourceType, Double> existing = fundsToSendAAs.computeIfAbsent(alliance, f -> new EnumMap<>(ResourceType.class));
-                    fundsToSendAAs.put(alliance, PnwUtil.add(existing, transfer));
-                }
-            } else {
-                DBNation nation = DiscordUtil.parseNation(nameStr);
-                if (nation == null) result.put(nameStr, false);
-                else {
-                    result.put(nameStr, true);
-                    Map<ResourceType, Double> existing = fundsToSendNations.computeIfAbsent(nation, f -> new EnumMap<>(ResourceType.class));
-                    fundsToSendNations.put(nation, PnwUtil.add(existing, transfer));
-                }
+
+            NationOrAllianceOrGuild account = PWBindings.nationOrAllianceOrGuild(nameStr);
+            if (account == null) {
+                throw new IllegalArgumentException("Invalid nation/alliance/guild: `" + nameStr + "`");
             }
+            Object noteObj = null;
+            if (row.size() > noteI) noteObj = row.get(noteI);
+            if (noteObj == null) noteObj = defaultNote;
+            builder.add(account, transfer, noteObj.toString());
         }
         return result;
     }
@@ -474,7 +480,6 @@ public class SpreadSheet {
         request.setRequests(List.of(clearAllDataRequest));
 
         BatchUpdateSpreadsheetResponse response = service.spreadsheets().batchUpdate(spreadsheetId, request).execute();
-        values = null;
     }
 
     public void clear(String range) throws IOException {

@@ -1,10 +1,13 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -149,7 +152,7 @@ public class Deposits extends Command {
                 GuildDB otherDb = Locutus.imp().getGuildDB(Long.parseLong(arg));
                 if (otherDb == null) return "Unknown guild: " + arg;
                 OffshoreInstance offshore = otherDb.getOffshore();
-                if (offshore == null) return "No offshore is set. In this server, use `" + Settings.commandPrefix(true) + "setcoalition <alliance|guild> offshore` and from the offshore server use `" + Settings.commandPrefix(true) + "setcoalition <alliance|guild> offshoring`";
+                if (offshore == null) return "No offshore is set. In this server, use " + CM.coalition.add.cmd.create(otherDb.getIdLong() + "", Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create(otherDb.getIdLong() + "", Coalition.OFFSHORING.name()) + "";
                 if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild()))
                     return "You do not have permission to check another guild's deposits";
 
@@ -283,7 +286,7 @@ public class Deposits extends Command {
             if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {
                 Role role = Roles.ECON_WITHDRAW_SELF.toRole(guild);
                 if (guild.getMember(author).getRoles().contains(role)) {
-                    footers.add("To withdraw, use: " + Settings.commandPrefix(true) + "tr");
+                    footers.add("To withdraw, use: `" + CM.transfer.self.cmd.toSlashMention() + "` ");
                 }
             }
         }
@@ -295,10 +298,10 @@ public class Deposits extends Command {
             }
         }
 
-        MessageChannel output = flags.contains('d') ? author.openPrivateChannel().complete() : event.getChannel();
+        MessageChannel output = flags.contains('d') ? RateLimitUtil.complete(author.openPrivateChannel()) : event.getChannel();
         Message message = RateLimitUtil.complete(output.sendMessage(response.toString()));
 
-        if (requiredUser != null && requiredUser.getPosition() > 1 && guildDb.isWhitelisted() && guildDb.getOrNull(GuildDB.Key.API_KEY) != null && guildDb.getAllianceIds(true).contains(requiredUser.getAlliance_id())) {
+        if (requiredUser != null && requiredUser.getPosition() > 1 && guildDb.isValidAlliance() && guildDb.getAllianceIds(true).contains(requiredUser.getAlliance_id())) {
             DBNation finalNation = requiredUser;
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override

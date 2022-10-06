@@ -21,13 +21,10 @@ public class DBMainV2 implements Closeable {
     private boolean isDelegate;
     private final Database db;
     public DBMainV2(String name) throws SQLException {
-        this(name, true);
-    }
-    public DBMainV2(String name, boolean init) throws SQLException {
-        this(Settings.INSTANCE.DATABASE, name, init);
+        this(Settings.INSTANCE.DATABASE, name);
     }
 
-    public DBMainV2(Settings.DATABASE config, String name, boolean init) throws SQLException {
+    public DBMainV2(Settings.DATABASE config, String name) throws SQLException {
         if (config.SQLITE.USE) {
             File file = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
             // create file directory if not exist

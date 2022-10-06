@@ -13,10 +13,12 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
@@ -40,6 +42,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -47,6 +50,7 @@ import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -127,9 +131,9 @@ public class AdminCommands {
     @Command(desc = "Send an announcement to multiple nations, with random variations for opsec")
     @RolePermission(Roles.ADMIN)
     @HasApi
-    public String announce(@Me GuildDB db, @Me Guild guild, @Me Message message, @Me MessageChannel currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch("v") @Default("0") Integer requiredVariation, @Switch("r") @Default("0") Integer requiredDepth, @Switch("s") Long seed, @Switch("m") boolean sendMail, @Switch("d") boolean sendDM, @Switch("f") boolean force) throws IOException {
+    public String announce(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch("v") @Default("0") Integer requiredVariation, @Switch("r") @Default("0") Integer requiredDepth, @Switch("s") Long seed, @Switch("m") boolean sendMail, @Switch("d") boolean sendDM, @Switch("f") boolean force) throws IOException {
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
         List<String> errors = new ArrayList<>();
@@ -173,11 +177,12 @@ public class AdminCommands {
             if (!errors.isEmpty()) {
                 confirmBody.append("\n**Errors**:\n - " + StringMan.join(errors, "\n - ")).append("\n");
             }
-            DiscordUtil.pending(currentChannel, message, "Send to " + nations.size() + " nations", confirmBody + "\nPress to confirm", 'f');
+//            DiscordUtil.createEmbedCommand(currentChannel, "Send to " + nations.size() + " nations", confirmBody + "\nPress to confirm", );
+            DiscordUtil.pending(currentChannel, command, "Send to " + nations.size() + " nations", confirmBody + "\nPress to confirm");
             return null;
         }
 
-        RateLimitUtil.queue(currentChannel.sendMessage("Please wait..."));
+        currentChannel.send("Please wait...");
 
         List<String> resultsArray = new ArrayList<>(results);
         Collections.shuffle(resultsArray, random);
@@ -383,7 +388,7 @@ public class AdminCommands {
                 response.append('\n');
             }
             response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Usage: `" + Settings.commandPrefix(false) + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
+            response.append("Please provide `locutusRole` and `discordRole` to set an alias");
             return response.toString().trim();
         }
 
@@ -391,7 +396,7 @@ public class AdminCommands {
 
         db.addRole(locutusRole, discordRole.getIdLong());
         return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + "\n" +
-                "To unregister, use `" + Settings.commandPrefix(false) + "unregisterRole <locutusRole>`";
+                "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name()).toSlashCommand() + "";
     }
 
     public String apiUsageStats(PoliticsAndWarV2 api) {
@@ -510,8 +515,7 @@ public class AdminCommands {
             if (GuildMessageChannel.hasLatestMessage()) {
                 long message = GuildMessageChannel.getLatestMessageIdLong();
                 try {
-                    Message msg = RateLimitUtil.complete(GuildMessageChannel.retrieveMessageById(message));
-                    long created = msg.getTimeCreated().toEpochSecond() * 1000L;
+                    long created = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(message).toEpochSecond() * 1000L;
                     if (created > cutoff) {
                         continue;
                     }
@@ -735,25 +739,30 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncNations(NationDB db) throws IOException, ParseException {
+    public String syncNations(NationDB db, @Default Set<DBNation> nations) throws IOException, ParseException {
         List<Event> events = new ArrayList<>();
-        Set<Integer> nations = db.updateAllNations(events::add);
+        Set<Integer> updatedIds;
+        if (nations != null && !nations.isEmpty()) {
+            updatedIds = db.updateNations(nations.stream().map(DBNation::getId).toList(), events::add);
+        } else {
+            updatedIds = db.updateAllNations(events::add);
+        }
         if (events.size() > 0) {
             Locutus.imp().getExecutor().submit(() -> {
                 for (Event event : events) event.post();;
             });
         }
-        return "Updated " + nations.size() + " nations. " + events.size() + " changes detected";
+        return "Updated " + updatedIds.size() + " nations. " + events.size() + " changes detected";
     }
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncBanks(@Me GuildDB db, @Me MessageChannel channel, @Default DBAlliance alliance, @Default @Timestamp Long timestamp) throws IOException, ParseException {
+    public String syncBanks(@Me GuildDB db, @Me IMessageIO channel, @Default DBAlliance alliance, @Default @Timestamp Long timestamp) throws IOException, ParseException {
         if (alliance != null) {
             db = alliance.getGuildDB();
             if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);
         }
-        channel.sendMessage("Syncing bank for " + db.getGuild()).queue();
+        channel.send("Syncing banks for " + db.getGuild() + "...");
         OffshoreInstance bank = db.getHandler().getBank();
         bank.sync(timestamp, false);
 
@@ -763,14 +772,14 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncBlockades(@Me MessageChannel channel) throws IOException, ParseException {
+    public String syncBlockades(@Me IMessageIO channel) throws IOException, ParseException {
         NationUpdateProcessor.updateBlockades();;
         return "Done!";
     }
 
     @Command(aliases = {"syncforum", "syncforums"})
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncForum(@Me MessageChannel channel) throws IOException, ParseException {
+    public String syncForum(@Me IMessageIO channel) throws IOException, ParseException {
         Locutus.imp().getForumDb().update();
         return "Done!";
     }

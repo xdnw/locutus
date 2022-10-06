@@ -72,6 +72,7 @@ public class IACheckup {
         Map<AuditType, Map.Entry<Object, String>> audit = simplify(auditFinal);
         int failed = audit.size();
 
+        boolean newPage = page == null;
         if (page == null) page = 0;
         String title = (page + 1) + "/" + failed + " tips for " + nation.getNation();
 
@@ -87,7 +88,7 @@ public class IACheckup {
             body.append(info.getValue());
             pages.add(body.toString());
         }
-        DiscordUtil.paginate(channel, message, title, command, page, 1, pages, "", true);
+        DiscordUtil.paginate(channel, newPage ? null : message, title, command, page, 1, pages, "", true);
     }
 
     private Map<DBNation, Map<ResourceType, Double>> memberStockpile;
@@ -272,6 +273,7 @@ public class IACheckup {
         OBTAIN_WARCHEST(OBTAIN_RESOURCES, "\uD83C\uDFE7", AuditSeverity.INFO),
         BUY_CITY(FINISH_OBJECTIVES, "\uD83C\uDFD9", AuditSeverity.INFO),
         BUY_PROJECT(FINISH_OBJECTIVES, "\uD83D\uDE80", AuditSeverity.INFO),
+        BUY_RESOURCE_PRODUCTION_CENTER(BUY_PROJECT, "\uD83D\uDE80", AuditSeverity.INFO),
         BUY_INFRA(FINISH_OBJECTIVES, "\uD83C\uDFD7", AuditSeverity.INFO),
         BUY_LAND(FINISH_OBJECTIVES, "\uD83C\uDFDE", AuditSeverity.INFO),
         UNPOWERED(FINISH_OBJECTIVES, "\uD83D\uDD0C", AuditSeverity.DANGER),
@@ -420,6 +422,8 @@ public class IACheckup {
 //                    }
 //                }
 //                return null;
+            case BUY_RESOURCE_PRODUCTION_CENTER:
+                return checkBuyRpc(db, nation, cities);
             case BUY_INFRA:
                 return checkBuyInfra(nation, cities, db);
 //                roi = roiMap.get(ROI.Investment.INFRA);
@@ -841,6 +845,12 @@ public class IACheckup {
         return null;
     }
 
+    private Map.Entry<Object, String> checkBuyRpc(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
+        if (nation.getCities() > Projects.RESOURCE_PRODUCTION_CENTER.maxCities()) return null;
+        if (nation.getProjectTurns() > 0 || nation.getFreeProjectSlots() <= 0) return null;
+        return new AbstractMap.SimpleEntry<>("1", "Go to the projects tab and buy the resource production center");
+    }
+
     private Map.Entry<Object, String> checkBuyProject(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
         int freeProjects = nation.projectSlots() - nation.getNumProjects();
         if (freeProjects <= 0) return null;
@@ -853,7 +863,7 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkRevenue(DBNation nation) {
-        double[] revenue = nation.getRevenue(12, true, false, false, false, false);
+        double[] revenue = nation.getRevenue(12, true, true, false, false, false, false);
 
         double total = PnwUtil.convertedTotal(revenue, false);
         if (total < 0) {
@@ -940,7 +950,7 @@ public class IACheckup {
         if (nation.getCityTurns() <= 0 && nation.getCities() < 20) {
             if (nation.isBlockaded()) return null;
 
-            double cost = PnwUtil.nextCityCost(nation.getCities(), true, nation.hasProject(Projects.URBAN_PLANNING), nation.hasProject(Projects.ADVANCED_URBAN_PLANNING), nation.hasProject(Projects.METROPOLITAN_PLANNING));
+            double cost = PnwUtil.nextCityCost(nation.getCities(), true, nation.hasProject(Projects.URBAN_PLANNING), nation.hasProject(Projects.ADVANCED_URBAN_PLANNING), nation.hasProject(Projects.METROPOLITAN_PLANNING), nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
             Map<ResourceType, Double> resources = Collections.singletonMap(ResourceType.MONEY, cost);
             return new AbstractMap.SimpleEntry<>(nation.getCities(), "Your city timer is up. Use the #resource-request channel to request funds for a city");
         }

@@ -17,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
@@ -119,7 +120,6 @@ public class PageHandler implements Handler {
 
         this.commands.registerCommands(new TestPages());
 
-
         this.commands.registerCommands(this);
     }
 
@@ -208,6 +208,8 @@ public class PageHandler implements Handler {
             action.load(sseMessage);
 
             MessageReceivedEvent finalEvent = new DelegateMessageEvent(guildDb.getGuild(), -1, sseMessage);
+
+
             Locutus.imp().getCommandManager().run(finalEvent, false, true);
 
         } catch (Throwable e) {
@@ -489,7 +491,7 @@ public class PageHandler implements Handler {
             }
             DBNation nation = DiscordUtil.getNation(id);
             if (nation == null) {
-                ctx.result("Please use <b>" + Settings.commandPrefix(true) + "verify</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
+                ctx.result("Please use <b>" + CM.register.cmd.toSlashMention() + "</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
                         "You are currently signed in as " + user.getName() + "#" + user.getDiscriminator() + ": " + MarkupUtil.htmlUrl("Logout", WebRoot.REDIRECT + "/logout"));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;

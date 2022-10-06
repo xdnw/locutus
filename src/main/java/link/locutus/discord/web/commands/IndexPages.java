@@ -236,9 +236,8 @@ public class IndexPages {
 
         Collections.sort(myWars, Comparator.comparingLong(o -> o.date));
         Collections.reverse(myWars);
-        List<Integer> warIds = myWars.stream().map(f -> f.warId).collect(Collectors.toList());
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (2)");
-        List<DBAttack> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWarIds(warIds);
+        List<DBAttack> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (3)");
         boolean isFightingActives = false;
 

@@ -1,10 +1,16 @@
 package link.locutus.discord.util.offshore;
 
+import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AllianceMeta;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -26,6 +32,7 @@ import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class OffshoreInstance {
     public static final Object BANK_LOCK = new Object();
@@ -73,7 +81,7 @@ public class OffshoreInstance {
     }
 
     private final AtomicBoolean outOfSync = new AtomicBoolean(false);
-    private Map<ResourceType, Double> lastFunds = null;
+    private double[] lastFunds = null;
 
     public synchronized boolean sync(boolean force) {
         if (force || !outOfSync.get()) return sync();
@@ -89,54 +97,64 @@ public class OffshoreInstance {
     }
 
     public synchronized boolean sync(Long latest, boolean checkLast) {
-        try {
-            AllianceBankContainer funds = getApi().getBank(allianceId).getAllianceBanks().get(0);
-            Map<ResourceType, Double> totals = PnwUtil.adapt(funds);
-            if (lastFunds != null && checkLast) {
-                if (lastFunds.equals(totals)) return true;
+        PoliticsAndWarV3 api = getGuildDB().getApi(allianceId, false, AlliancePermission.VIEW_BANK);
+        double[] stockpile = api.getAllianceStockpile(allianceId);
+
+        if (lastFunds != null && checkLast) {
+            if (Arrays.equals(lastFunds, stockpile)) {
+                System.out.println("Funds are the same");
+                return true;
             }
-            lastFunds = totals;
-
-            List<Transaction2> existing = Locutus.imp().getBankDB().getBankTransactions(allianceId, 2);
-            if (latest == null) {
-                latest = 0L;
-                for (Transaction2 transfer : existing) {
-                    latest = Math.max(transfer.getDate(), latest);
-                }
-            }
-
-            long now = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(60);
-
-            if (latest > System.currentTimeMillis() + 1000L) {
-                if (true) throw new IllegalArgumentException("Transaction date is > now: " + latest + " | " + allianceId);
-
-
-
-                List<Transaction2> transfers = new GetDepositTask(auth, allianceId, 0).call();
-                for (Transaction2 transaction : transfers) {
-                    if (transaction.tx_datetime > now) throw new IllegalArgumentException("Transaction date is > now: " + transaction.tx_datetime);
-                }
-//                transfers.removeIf(transfer -> !transfer.isSenderAA() || !transfer.isReceiverAA());
-                if (!transfers.isEmpty()) {
-                    Locutus.imp().getBankDB().removeAllianceTransactions(allianceId);
-                    Locutus.imp().getBankDB().addAllianceTransactionsLegacy2(transfers);
-                }
-            } else {
-                long fetchTo = latest - 60000;
-                List<Transaction2> transfers = new GetDepositTask(auth, allianceId, fetchTo).call();
-                for (Transaction2 transaction : transfers) {
-                    if (transaction.tx_datetime > now) throw new IllegalArgumentException("Transaction date is > now: " + transaction.tx_datetime);
-                }
-                if (!transfers.isEmpty()) {
-                    Locutus.imp().getBankDB().removeAllianceTransactions(allianceId, auth.getAllianceId(), fetchTo);
-//                    Locutus.imp().getBankDB().removeAllianceTransactions(allianceId, fetchTo);
-                    Locutus.imp().getBankDB().addAllianceTransactionsLegacy2(transfers);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
-        return  false;
+        lastFunds = stockpile;
+
+        DBAlliance alliance = getAlliance();
+        ByteBuffer bankMeta = alliance.getMeta(AllianceMeta.BANK_UPDATE_INDEX);
+        int bankMetaI = bankMeta == null ? 0 : bankMeta.getInt();
+        Transaction2 latestTx = Locutus.imp().getBankDB().getLatestTransaction();
+        if (latestTx != null && latestTx.tx_id < bankMetaI) {
+            bankMetaI = 0;
+        }
+
+        int finalBankMetaI = bankMetaI;
+        List<Bankrec> bankRecs = api.fetchAllianceBankRecs(allianceId, f -> {
+            f.or_id(List.of(allianceId));
+            f.rtype(List.of(2));
+            f.stype(List.of(2));
+            if (finalBankMetaI > 0) f.min_id(finalBankMetaI);
+        });
+        System.out.println("API " + api.getApiKeyStats() + " | " + finalBankMetaI);
+
+        if (bankRecs.isEmpty()) {
+            if (ResourceType.isEmpty(stockpile)) {
+                throw new IllegalArgumentException("No bank records & stockpile found for " + allianceId);
+            }
+            throw new IllegalArgumentException("No bank records found for " + allianceId + " | " + alliance.getId() + " | " + PnwUtil.resourcesToString(stockpile));
+        }
+
+        int minId = Integer.MAX_VALUE;
+        int maxId = Integer.MIN_VALUE;
+        long minDate = 0;
+        for (Bankrec bankRec : bankRecs) {
+            Transaction2 tx = Transaction2.fromApiV3(bankRec);
+            minId = Math.min(minId, tx.tx_id);
+            maxId = Math.max(maxId, tx.tx_id);
+            minDate = Math.min(minDate, tx.tx_datetime);
+        }
+
+        // add transactions
+        System.out.println("Add " + bankRecs.size());
+        Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(bankRecs, events));
+
+        if (bankRecs.size() > 0) {
+            // delete legacy transactions for alliance id after date
+            Locutus.imp().getBankDB().deleteLegacyAllianceTransactions(allianceId, minDate - 1000);
+
+            // set bank update timestamp
+            alliance.setMeta(AllianceMeta.BANK_UPDATE_INDEX, minDate);
+        }
+
+        return false;
     }
 
     public synchronized Map<ResourceType, Double> getDeposits(int allianceId) {
@@ -388,6 +406,8 @@ public class OffshoreInstance {
 //    }
 
     public boolean isDisabled(long guild) {
+        // dont disable self
+        if (guild == this.getGuildDB().getGuild().getIdLong()) return false;
         if (disabledGuilds.contains(guild)) {
             return true;
         }
@@ -439,7 +459,7 @@ public class OffshoreInstance {
                         cutoff -= TimeUnit.DAYS.toMillis(1);
                     }
 
-                    List<Transaction2> transactions = Locutus.imp().getBankDB().getBankTransactionsWithNote(append, cutoff);
+                    List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByNote(append, cutoff);
                     double total = 0;
                     for (Transaction2 transaction : transactions) {
                         total += transaction.convertedTotal();
@@ -452,14 +472,14 @@ public class OffshoreInstance {
                             body.append("Transfer: " + PnwUtil.resourcesToString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
                             body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
                             body.append("To set the limit for a user: `" + Settings.commandPrefix(false) + "setTransferLimit <nation> <value>`\n");
-                            body.append("To set the default `" + Settings.commandPrefix(true) + "KeyStore BANKER_WITHDRAW_LIMIT <amount>`");
+                            body.append("To set the default " + CM.settings.cmd.create(GuildDB.Key.BANKER_WITHDRAW_LIMIT.name(), "<amount>") + "");
                             DiscordUtil.createEmbedCommand(alertChannel, "Banker withdraw limit exceeded", body.toString());
                             Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
                             if (adminRole != null) {
                                 RateLimitUtil.queue(alertChannel.sendMessage("^ " + adminRole.getAsMention()));
                             }
                         }
-                        return new AbstractMap.SimpleEntry<>(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit");
+                        return new AbstractMap.SimpleEntry<>(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit ($" + MathMan.format(withdrawLimit) + ")");
                     }
                 }
             }
@@ -478,7 +498,7 @@ public class OffshoreInstance {
             if (offshoreDB == null) throw new IllegalArgumentException("No guild is registered with this offshore");
 
             if (isDisabled(senderDB.getGuild().getIdLong())) {
-                throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use `" + Settings.commandPrefix(false) + "unlocktransfers <alliance>` in the offshore server");
+                throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.toSlashMention() + " in the offshore server");
             }
 
             boolean hasAdmin = false;
@@ -591,32 +611,33 @@ public class OffshoreInstance {
                 if (db != null) {
                     OffshoreInstance bank = db.getHandler().getBank();
                     StringBuilder response = new StringBuilder();
-                    if (bank.getGuildDB() != db) {
+                    if (bank.getGuildDB() != getGuildDB()) {
                         result = transfer(alliance, transfer, "#ignore");
 
                         response.append("\nSent to AA:" + alliance.getName() + "/" + alliance.getAlliance_id());
                         response.append("\n" + result.getValue());
                     } else {
                         result = Map.entry(TransferStatus.SUCCESS, "Withdrawing funds using local account");
+                        response.append("\n" + result.getValue());
+                        System.out.println("Different DB " + bank.getGuildDB().getGuild() + " | " + db.getGuild());
                     }
                     if (result.getKey() == TransferStatus.SUCCESS) {
-                        if (bank != null) {
-                            response.append("\nTransferring to nation...");
-                            Auth auth = OffshoreInstance.this.auth;
-                            if (nation.getPosition() > Rank.MEMBER.id) {
-                                Auth nationAuth = nation.getAuth(null);
-                                if (nationAuth != null) auth = nationAuth;
-                            }
-                            try {
-                                result = bank.transfer(auth, nation, transfer, note);
-                            } catch (Throwable e) {
-
-                            }
-                            if (result.getKey() != TransferStatus.SUCCESS) {
-                                result = new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, result.getValue());
-                            }
-                            response.append("\n" + result.getValue());
+                        response.append("\nTransferring to nation...");
+                        Auth auth = OffshoreInstance.this.auth;
+                        DBAlliancePosition position = nation.getAlliancePosition();
+                        if (nation.getPosition() > Rank.MEMBER.id || position.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
+                            Auth nationAuth = nation.getAuth(null);
+                            if (nationAuth != null) auth = nationAuth;
                         }
+                        try {
+                            result = bank.transfer(auth, nation, transfer, note);
+                        } catch (Throwable e) {
+
+                        }
+                        if (result.getKey() != TransferStatus.SUCCESS) {
+                            result = new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, result.getValue());
+                        }
+                        response.append("\n" + result.getValue());
                     }
                     result.setValue(response.toString());
                 }
@@ -771,7 +792,7 @@ public class OffshoreInstance {
         if (msg.contains("You did not withdraw anything.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.NOTHING_WITHDRAWN, msg);
         }
+        if (msg.isEmpty()) msg = "Unknown Error (Captcha?)";
         return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, msg);
-        //
     }
 }

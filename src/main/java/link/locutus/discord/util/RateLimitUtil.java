@@ -6,21 +6,14 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
 import link.locutus.discord.web.jooby.adapter.JoobyMessageAction;
 import link.locutus.discord.web.jooby.adapter.JoobyRestAction;
-import net.dv8tion.jda.api.entities.Channel;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import net.dv8tion.jda.api.exceptions.MissingAccessException;
 import net.dv8tion.jda.api.requests.RestAction;
-import net.dv8tion.jda.api.requests.restaction.MessageAction;
 
 import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class RateLimitUtil {
@@ -46,7 +39,7 @@ public class RateLimitUtil {
         return 50;
     }
 
-    private static RestAction addRequest(RestAction action) {
+    private static <T> RestAction<T> addRequest(RestAction<T> action) {
         if (action instanceof JoobyMessageAction || action instanceof JoobyRestAction) {
             return action;
         }
@@ -82,10 +75,10 @@ public class RateLimitUtil {
                             for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
                                 response.append("\n - " + entry2.getValue() + ": " + entry2.getKey());
                             }
-
                         }
                     }
                 }
+                System.out.println(response);
             }
         } else {
             lastLimitTotal = 0;
@@ -197,8 +190,8 @@ public class RateLimitUtil {
         return (T) addRequest(action).complete();
     }
 
-    public static <T> void queue(RestAction<T> action) {
-        if (action == null) return;
-        addRequest(action).queue();
+    public static <T> CompletableFuture<T> queue(RestAction<T> action) {
+        if (action == null) return null;
+        return addRequest(action).submit();
     }
 }

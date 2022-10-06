@@ -1,5 +1,7 @@
 package link.locutus.discord.util.math;
 
+import it.unimi.dsi.fastutil.objects.Object2IntFunction;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -8,6 +10,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
@@ -269,6 +273,57 @@ public class ArrayUtil {
         outputStream.close();
         byte[] output = outputStream.toByteArray();
         return output;
+    }
+
+    public static <T> int binarySearchGreater(List<T> list, Predicate<T> isValid) {
+        return binarySearchGreater(list, isValid, 0, list.size() - 1);
+    }
+
+    public static <T> int binarySearchFirst(List<T> list, Object2IntFunction<T> isValid) {
+        return binarySearchFirst(list, isValid, 0, list.size() - 1);
+    }
+
+    public static <T> int binarySearchFirst(List<T> list, Object2IntFunction<T> isValid, int start, int end) {
+        if (start > end) return -1;
+        int mid = (start + end) / 2;
+        int value = isValid.applyAsInt(list.get(mid));
+        if (value == 1) return binarySearchFirst(list, isValid, mid + 1, end);
+        if (value == -1) return binarySearchFirst(list, isValid, start, mid - 1);
+        return mid;
+    }
+
+    public static <T> int binarySearchLess(List<T> list, Predicate<T> isValid) {
+        return binarySearchLess(list, isValid, 0, list.size() - 1);
+    }
+
+    /**
+     * Returns index of first element greater than isValid
+     */
+    public static <T> int binarySearchGreater(List<T> list, Predicate<T> isValid, int start, int end) {
+        if (start > end) return -1;
+        int mid = (start + end) / 2;
+        if (isValid.test(list.get(mid))) {
+            int result = binarySearchGreater(list, isValid, start, mid - 1);
+            if (result == -1) return mid;
+            return result;
+        } else {
+            return binarySearchGreater(list, isValid, mid + 1, end);
+        }
+    }
+
+    /**
+     * Returns index of first element less than isValid
+     */
+    public static <T> int binarySearchLess(List<T> list, Predicate<T> isValid, int start, int end) {
+        if (start > end) return -1;
+        int mid = (start + end) / 2;
+        if (isValid.test(list.get(mid))) {
+            int result = binarySearchLess(list, isValid, mid + 1, end);
+            if (result == -1) return mid;
+            return result;
+        } else {
+            return binarySearchLess(list, isValid, start, mid - 1);
+        }
     }
 
     public static int binarySearch(int min, int max, Function<Integer, Integer> valueFunc, int goal) {

@@ -3,6 +3,7 @@ package link.locutus.discord.util;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.util.UrlEncoded;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -134,17 +135,29 @@ public final class FileUtil {
         HttpURLConnection http = (HttpURLConnection) con;
 
         if (msCookieManager != null && msCookieManager.getCookieStore().getCookies().size() > 0) {
+            for (HttpCookie cookie : msCookieManager.getCookieStore().getCookies()) {
+                http.addRequestProperty("Cookie", cookie.toString());
+            }
             // While joining the Cookies, use ',' or ';' as needed. Most of the servers are using ';'
-            http.setRequestProperty("cookie",
-                    StringMan.join(msCookieManager.getCookieStore().getCookies(), ";"));
+//            http.setRequestProperty("Cookie",
+//                    StringMan.join(msCookieManager.getCookieStore().getCookies(), ";"));
         }
 
+        http.setUseCaches(false);
+        http.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
+        http.setRequestProperty("dnt", "1");
+        http.setRequestProperty("Connection", "keep-alive");
+        http.setRequestProperty("Referer", urlStr);
+        http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+        http.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.33");
         if (dataBinary != null && dataBinary.length != 0 && post) {
-            http.setRequestMethod("POST"); // PUT is another valid option
+            http.setRequestMethod("POST");
+        } else if (!post && dataBinary == null) {
+            http.setRequestMethod("GET");
         }
         http.setDoOutput(true);
-        http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
-
+        http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 
         int length = dataBinary != null ? dataBinary.length : 0;
         http.setFixedLengthStreamingMode(length);

@@ -177,7 +177,7 @@ public class DBCity {
 
         if (this.infra != previous.infra) {
             if (this.infra > previous.infra + 0.01) {
-                if (eventConsumer != null) {
+                if (eventConsumer != null && (previous.infra != 0 || this.infra != 10)) {
                     if (previousClone == null) previousClone = new DBCity(previous);
                     eventConsumer.accept(new CityInfraBuyEvent(nationId, previousClone, this));
                 }

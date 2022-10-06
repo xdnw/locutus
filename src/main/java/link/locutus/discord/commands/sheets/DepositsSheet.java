@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
@@ -102,7 +103,7 @@ public class DepositsSheet extends Command {
                 nations.removeIf(n -> n.getPosition() <= 1);
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID` set, or `" + Settings.commandPrefix(true) + "aliasRole MEMBER` set");
+                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "") + " set");
                 nations = new HashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -197,18 +198,26 @@ public class DepositsSheet extends Command {
         StringBuilder footer = new StringBuilder();
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
 
+        String type = "";
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore != null) {
-            double[] aaDeposits = offshore.getDeposits(db);
+        double[] aaDeposits;
+        if (offshore != null && offshore.getGuildDB() != db) {
+            type = "offshored";
+            aaDeposits = offshore.getDeposits(db);
+        } else if (db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null){
+            type = "bank";
+            aaDeposits = PnwUtil.resourcesToArray(db.getAlliance().getStockpile());
+        } else aaDeposits = null;
+        if (aaDeposits != null) {
             if (PnwUtil.convertedTotal(aaDeposits) > 0) {
                 for (int i = 0; i < aaDeposits.length; i++) {
                     aaTotalNet[i] = aaDeposits[i] - aaTotalNet[i];
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
 
                 }
-                footer.append("\n**Net offshored (normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-                footer.append("\n**Net offshored**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
             }
+            footer.append("\n**Net " + type + " (normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+            footer.append("\n**Net " + type + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
 
         DiscordUtil.createEmbedCommand(event.getChannel(), "AA Total", footer.toString());

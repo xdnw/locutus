@@ -4,6 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.offshore.Grant;
@@ -60,7 +62,7 @@ public class GrantCmd extends Command {
                 "Add `-i` to build grants to exclude infra cost\n" +
                 "Add `-l` to build grants to exclude land cost\n" +
                 "Add `-e` or `#expire=60d` to have a grant's debt expire\n" +
-                "Add `-c` to have a grant count as cash value in `" + Settings.commandPrefix(true) + "deposits`\n" +
+                "Add `-c` to have a grant count as cash value in " + CM.deposits.check.cmd.toSlashMention() + "\n" +
                 "Add `-o` to only send what funds they are missing for a grant\n" +
                 "Add `-m` to multiply the grant per city";
     }
@@ -211,7 +213,7 @@ public class GrantCmd extends Command {
 
         msg.append("\n**INSTRUCTIONS:** ").append(grant.getInstructions());
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), grant.title(), msg.toString(), "\u2705", command, "\uD83D\uDEAB", "");
+        DiscordUtil.createEmbedCommand(event.getChannel(), grant.title(), msg.toString(), "Confirm", command, "Cancel", " ");
 
         return null;
     }
@@ -354,7 +356,7 @@ public class GrantCmd extends Command {
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {
                 if (me.projectSlots() <= me.getNumProjects() && !flags.contains('f')) {
-                    throw new IllegalArgumentException("Error: " + me.getNationUrl() + " has full project slots");
+                    throw new IllegalArgumentException("Error: " + me.getNationUrl() + " has full project slots " + (me.projectSlots() + "<=" + me.getNumProjects()));
                 }
                 resources = project.cost();
                 if (!force && PnwUtil.convertedTotal(resources) > 2000000 && me.getDomesticPolicy() != DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
@@ -534,10 +536,11 @@ public class GrantCmd extends Command {
         boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
         boolean mp = me.hasProject(Projects.METROPOLITAN_PLANNING);
         boolean manifest = me.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
+        boolean gsa = me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
 
         double cost = 0;
         for (int i = currentCity; i < currentCity + numBuy; i++) {
-            cost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp);
+            cost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp, gsa);
         }
 
         StringBuilder result = new StringBuilder();

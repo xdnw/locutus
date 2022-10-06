@@ -2,6 +2,10 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -61,6 +65,8 @@ import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -161,7 +167,7 @@ public class WarCommands {
             if (reminders.contains(nation)) toRemove.add(nation);
         }
 
-        if (toRemove.isEmpty()) return "No nations selected for removal. For a list of your current reminders, use `" + Settings.commandPrefix(false) + "beigeReminders`";
+        if (toRemove.isEmpty()) return "No nations selected for removal. For a list of your current reminders, use " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "";
 
         StringBuilder response = new StringBuilder();
         for (DBNation nation : toRemove) {
@@ -216,12 +222,12 @@ public class WarCommands {
             response.append("Added beige reminder for " + target.getNationUrl() + " (in " + diffStr + " OR " + turns + " turns)\n");
         }
         response.append("\nSee also:\n" +
-                " - `" + Settings.commandPrefix(false) + "listBeigeReminders`\n" +
+                " - " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "\n" +
                 " - `" + Settings.commandPrefix(false) + "removeBeigeReminder <nation>`\n" +
-                " - `" + Settings.commandPrefix(false) + "setBeigeAlertRequiredStatus`\n" +
-                " - `" + Settings.commandPrefix(false) + "setBeigeAlertMode`\n" +
-                " - `" + Settings.commandPrefix(false) + "setBeigeAlertRequiredLoot`\n" +
-                " - `" + Settings.commandPrefix(false) + "setBeigeAlertScoreLeeway`");
+                " - " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
+                " - " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
+                " - " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
+                " - " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "");
 
         return response.toString();
     }
@@ -289,7 +295,7 @@ public class WarCommands {
 
     @Command(desc = "List your wars you can possible beige")
     @RolePermission(Roles.MEMBER)
-    public String canIBeige(@Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, @Default DBNation nation) {
+    public String canIBeige(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default DBNation nation) {
         if (nation == null) nation = me;
         if (nation.getNumWars() == 0) return nation.getNation() + " is not in any wars";
         if (db.getCoalition(Coalition.ENEMIES).contains(nation.getAlliance_id())) return "This command takes your own nation as the argument, not the enemy";
@@ -299,7 +305,7 @@ public class WarCommands {
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
         String explanation = db.getHandler().getBeigeCyclingInfo(Collections.singleton(BeigeReason.BEIGE_CYCLE), false);
-        RateLimitUtil.complete(channel.sendMessage(explanation));
+        channel.send(explanation);
 
         List<DBWar> wars = nation.getActiveWars();
         for (DBWar war : wars) {
@@ -336,7 +342,7 @@ public class WarCommands {
                 }
             }
 
-            DiscordUtil.createEmbedCommand(channel, title, body.toString());
+            channel.create().embed(title, body.toString()).send();
 
         }
         return "Notes:\n" +
@@ -347,7 +353,7 @@ public class WarCommands {
     private static Map<Integer, Long> alreadySpied = new ConcurrentHashMap<>();
     @Command(desc = "Find nations to gather intel on (sorted by infra * days since last intel)")
     @RolePermission(Roles.MEMBER)
-    public String intel(@Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, @Default Integer dnrTopX, @Switch("d") boolean useDNR) {
+    public String intel(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default Integer dnrTopX, @Switch("d") boolean useDNR) {
         if (dnrTopX == null) {
             dnrTopX = db.getOrNull(GuildDB.Key.DO_NOT_RAID_TOP_X);
             if (dnrTopX == null) dnrTopX = 0;
@@ -418,7 +424,7 @@ public class WarCommands {
             response += "\n1 spy on extremely covert: ";
             response += "\n*Please post the result of your spy report here*";
             response += "\nMore info: https://docs.google.com/document/d/1gEeSOjjSDNBpKhrU9dhO_DN-YM3nYcklYzSYzSqq8k0";
-            DiscordUtil.createEmbedCommand(channel, title, response);
+            channel.create().embed(title, response).send();
             return null;
         }
         return "No results found";
@@ -459,12 +465,12 @@ public class WarCommands {
                     "\nAdd `-f` to ignore this check";
         }
 
-        return "Added blockade request. See also `" + Settings.commandPrefix(false) + "cancelUnblockadeRequest`\n> " + Messages.BLOCKADE_HELP;
+        return "Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP;
     }
 
     @Command(desc = "Find blockade targets")
     @RolePermission(Roles.MEMBER)
-    public String unblockade(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me MessageChannel channel,
+    public String unblockade(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me IMessageIO channel,
                              Set<DBNation> allies,
                              @Default("*") Set<DBNation> targets,
                              @Switch("s") Integer myShips,
@@ -671,22 +677,35 @@ public class WarCommands {
     @Command(desc = "Find nations who aren't protected, or are in an alliance unable to provide suitable counters")
     @RolePermission(Roles.MEMBER)
 //    @CoalitionPermission(Coalition.RAIDPERMS)
-    public String unprotected(@Me MessageChannel channel, @Me GuildDB db, Set<DBNation> targets, @Me DBNation me, @Switch("r") @Default("10") @Range(min=1, max=25) Integer numResults, @Switch("d") boolean ignoreDNR, @Switch("a") boolean includeAllies,
+    public String unprotected(@Me IMessageIO channel, @Me GuildDB db, Set<DBNation> targets, @Me DBNation me,
+                              @Switch("r") @Default("10") @Range(min=1, max=25) Integer numResults,
+                              @Switch("d") boolean ignoreDNR,
+                              @Switch("a") boolean includeAllies,
+                              @Switch("n") Set<DBNation> nationsToBlitzWith,
                               @Switch("s") @Default("1.2") Double maxRelativeTargetStrength,
-                              @Switch("c") @Default("1.2") Double maxRelativeCounterStrength) {
-        double minScore = me.getScore() * 0.75;
-        double maxScore = me.getScore() * 1.75;
+                              @Switch("c") @Default("1.2") Double maxRelativeCounterStrength,
+                              @Switch("f") boolean force
+    ) {
+
+        if (nationsToBlitzWith == null) nationsToBlitzWith = Collections.singleton(me);
+        if (nationsToBlitzWith.stream().anyMatch(f -> f.active_m() > 7200 || f.getVm_turns() > 0) && !force) {
+            return "You can't blitz with nations that are inactive or VM. Add `force: True` to bypass";
+        }
+        BiFunction<Double, Double, Integer> attScores = PnwUtil.getIsNationsInScoreRange(nationsToBlitzWith);
+
+//        double minScore = me.getScore() * 0.75;
+//        double maxScore = me.getScore() * 1.75;
         List<DBNation> nations = new ArrayList<>(targets);
         nations.removeIf(f -> f.getVm_turns() != 0);
         nations.removeIf(f -> f.getDef() >= 3);
-        nations.removeIf(f -> f.getScore() < minScore || f.getScore() > maxScore);
+        nations.removeIf(f -> attScores.apply(f.getScore() / 1.75, f.getScore() * 1.25) <= 0);
         nations.removeIf(f -> f.isBeige());
 
         if (!ignoreDNR) {
             Function<DBNation, Boolean> dnr = db.getCanRaid();
             nations.removeIf(f -> !dnr.apply(f));
         } else {
-            RateLimitUtil.queue(channel.sendMessage("**WARNING: VIOLATING THE DO NOT RAID LIST IS PROHIBITED**"));
+            channel.send("**WARNING: VIOLATING THE DO NOT RAID LIST IS PROHIBITED**");
         }
 
         Set<Integer> aaIds = new HashSet<>();
@@ -698,6 +717,7 @@ public class WarCommands {
 
         Map<Integer, List<DBNation>> countersByAlliance = new HashMap<>();
 
+        int maxCounterSize = nationsToBlitzWith.size() * 3;
         for (Integer aaId : aaIds) {
             List<DBNation> canCounter = new ArrayList<>();
             DBAlliance alliance = DBAlliance.getOrCreate(aaId);
@@ -705,6 +725,7 @@ public class WarCommands {
             if (includeAllies) {
                 alliances.addAll(alliance.getTreatiedAllies());
             }
+            System.out.println(aaId + " | allies=" + includeAllies + " | " + StringMan.getString(alliances));
             for (DBAlliance ally : alliances) {
                 canCounter.addAll(ally.getNations(true, 10000, true));
             }
@@ -712,9 +733,9 @@ public class WarCommands {
             canCounter.removeIf(f -> f.getVm_turns() > 0);
             canCounter.removeIf(f -> f.getCities() < 10 && f.getActive_m() > 2880);
             canCounter.removeIf(f -> f.getCities() == 10 && f.getActive_m() > 3000);
-            canCounter.removeIf(f -> f.getScore() > me.getScore() / 0.75 || f.getScore() < me.getScore() / 1.75);
+            canCounter.removeIf(f -> attScores.apply(f.getScore() * 0.75, f.getScore() * 1.75) <= 0);
             canCounter.removeIf(f -> f.getOff() >= 5);
-            canCounter.removeIf(f -> f.getAircraft() < me.getAircraft() * 0.6);
+//            canCounter.removeIf(f -> f.getAircraft() < me.getAircraft() * 0.6);
             canCounter.removeIf(f -> f.getNumWars() > 0 && f.getRelativeStrength() < 1);
             canCounter.removeIf(f -> f.getAircraftPct() < 0.5 && f.getTankPct() < 0.5);
 
@@ -724,7 +745,7 @@ public class WarCommands {
                     return Double.compare(o2.getStrength(), o1.getStrength());
                 }
             });
-            if (canCounter.size() > 4) canCounter = canCounter.subList(0, 4);
+            if (canCounter.size() > maxCounterSize) canCounter = canCounter.subList(0, maxCounterSize);
             countersByAlliance.put(aaId, canCounter);
         }
 
@@ -743,9 +764,9 @@ public class WarCommands {
                     int numWars = 0;
                     for (DBNation other : counters) {
                         if (other == nation) continue;
-                        if (i++ >= 3) break;
+                        if (i++ >= maxCounterSize) break;
                         numWars++;
-                        totalStr += Math.pow(BlitzGenerator.getAirStrength(other, true), 3);
+                        totalStr += Math.pow(other.getStrength(), 3);
                     }
                     if (numWars > 0) {
                         counterStrength = Math.pow(totalStr / numWars, 1 / 3d);
@@ -779,8 +800,10 @@ public class WarCommands {
         }
 
         double myStrenth = me.getStrength();
-        counterChance.removeIf(f -> f.getKey().getStrength() > myStrenth * maxRelativeCounterStrength);
-        counterChance.removeIf(f -> strength.getOrDefault(f.getKey(), 0d) > myStrenth * maxRelativeTargetStrength);
+        if (maxRelativeCounterStrength != null) {
+            counterChance.removeIf(f -> f.getKey().getStrength() > myStrenth * maxRelativeCounterStrength);
+            counterChance.removeIf(f -> strength.getOrDefault(f.getKey(), 0d) > myStrenth * maxRelativeTargetStrength);
+        }
 
         if (counterChance.isEmpty()) {
             return "No results found";
@@ -867,7 +890,7 @@ public class WarCommands {
             "Add `-w` to only list weak enemies\n" +
             "Add `-c` to only list enemies with less cities")
     @RolePermission(Roles.MEMBER)
-    public String war(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
+    public String war(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
                       @Switch("i") boolean includeInactives,
                       @Switch("a") boolean includeApplicants,
                       @Switch("p") boolean onlyPriority,
@@ -876,7 +899,8 @@ public class WarCommands {
                       @Switch("d") boolean resultsInDm,
                       @Switch("s") boolean includeStrong) throws IOException, ExecutionException, InterruptedException {
         if (resultsInDm) {
-            channel = RateLimitUtil.complete(author.openPrivateChannel());
+            IMessageIO parent = channel;
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
 
         String aa = null;
@@ -922,118 +946,111 @@ public class WarCommands {
             targetsStorted.remove(war.getNation(false));
         }
 
-        CompletableFuture<Message> msg = channel.sendMessage("Please wait... ").submit();
+        CompletableFuture<IMessageBuilder> msg = channel.send("Please wait... ");
 
-        try {
-            int mySoldierRebuy = me.getCities() * Buildings.BARRACKS.max() * 5 * 2;
+        int mySoldierRebuy = me.getCities() * Buildings.BARRACKS.max() * 5 * 2;
 
-            long currentTurn = TimeUtil.getTurn();
+        long currentTurn = TimeUtil.getTurn();
 
-            List<Map.Entry<DBNation, Double>> nationNetValues = new ArrayList<>();
+        List<Map.Entry<DBNation, Double>> nationNetValues = new ArrayList<>();
 
-            for (DBNation nation : targetsStorted) {
-                if (nation.isBeige()) continue;
+        for (DBNation nation : targetsStorted) {
+            if (nation.isBeige()) continue;
 //                        SimulatedWarNode origin = SimulatedWarNode.of(nation, me.getNation_id() + "", nation.getNation_id() + "", "raid");
 
-                double value = BlitzGenerator.getAirStrength(nation, true);
-                value *= 2 * (nation.getCities() / (double) me.getCities());
-                if (nation.getOff() > 0) value /= 4;
-                if (nation.getShips() > 1 && nation.getOff() > 0 && nation.isBlockader()) value /= 2;
-                if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
-                if (nation.getActive_m() > 1440) value *= 1 + Math.sqrt(nation.getActive_m() - 1440) / 250;
-                value /= (1 + nation.getOff() * 0.1);
-                if (nation.getScore() > me.getScore() * 1.25) value /= 2;
-                if (nation.getOff() > 0) value /= nation.getRelativeStrength();
+            double value = BlitzGenerator.getAirStrength(nation, true);
+            value *= 2 * (nation.getCities() / (double) me.getCities());
+            if (nation.getOff() > 0) value /= 4;
+            if (nation.getShips() > 1 && nation.getOff() > 0 && nation.isBlockader()) value /= 2;
+            if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
+            if (nation.getActive_m() > 1440) value *= 1 + Math.sqrt(nation.getActive_m() - 1440) / 250;
+            value /= (1 + nation.getOff() * 0.1);
+            if (nation.getScore() > me.getScore() * 1.25) value /= 2;
+            if (nation.getOff() > 0) value /= nation.getRelativeStrength();
 
-                nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, value));
-            }
+            nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, value));
+        }
 
-            Map<DBNation, Integer> beigeTurns = new HashMap<>();
+        Map<DBNation, Integer> beigeTurns = new HashMap<>();
 
-            if (nationNetValues.isEmpty()) {
-                for (DBNation nation : targetsStorted) {
-                    if (nation.isBeige()) {
-                        int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
-                        nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, (double) turns));
-                    }
-                }
-                if (nationNetValues.isEmpty()) {
-                    String message;
-                    if (onlyPriority) {
-                        message = "No targets found. Try `" + Settings.commandPrefix(true) + "war`";
-                    } else {
-                        message = "No targets found:\n" +
-                                " - Add `-i` to include inactives\n" +
-                                " - Add `-a` to include applicants";
-                    }
-                    RateLimitUtil.queue(channel.sendMessage(message));
-                    return null;
-                }
-            }
-
-            nationNetValues.sort(Comparator.comparingDouble(Map.Entry::getValue));
-
-            StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
-
-            int count = 0;
-
-            boolean whitelisted = db.isWhitelisted();
-
-            for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
-                if (count++ == numResults) break;
-
-                DBNation nation = nationNetValue.getKey();
-
-                response.append('\n')
-                        .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
-                        .append(" | " + String.format("%16s", nation.getNation()))
-                        .append(" | " + String.format("%16s", nation.getAllianceName()));
-
-                if (whitelisted) {
-                    double total = nation.lootTotal();
-                    if (total != 0) {
-                        response.append(": $" + MathMan.format(total));
-                    }
-                }
-
-                response.append("\n```")
-//                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
-                        .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-//                                .append(String.format("%5s", nation.getAvg_infra())).append(" \uD83C\uDFD7").append(" | ")
-                        .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                        .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-                        .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-                        .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-//                            .append(String.format("%1s", nation.getOff())).append(" \uD83D\uDDE1").append(" | ")
-                        .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
-//                                .append(String.format("%2s", nation.getSpies())).append(" \uD83D\uDD0D");
-
+        if (nationNetValues.isEmpty()) {
+            for (DBNation nation : targetsStorted) {
                 if (nation.isBeige()) {
                     int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
-                    if (turns > 0) {
-                        response.append(" | ").append("beige=" + turns);
-                    }
+                    nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, (double) turns));
                 }
-
-                Activity activity = nation.getActivity(14 * 12);
-                double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
-                int loginPct = (int) (loginChance * 100);
-
-                response.append(" | login=" + loginPct + "%");
-                response.append("```");
             }
-
-            if (count == 0) {
-                RateLimitUtil.queue(channel.sendMessage("No results. Please ping a target (advisor"));
+            if (nationNetValues.isEmpty()) {
+                String message;
+                if (onlyPriority) {
+                    message = "No targets found. Try `" + Settings.commandPrefix(true) + "war`";
+                } else {
+                    message = "No targets found:\n" +
+                            " - Add `-i` to include inactives\n" +
+                            " - Add `-a` to include applicants";
+                }
+                channel.send(message);
                 return null;
             }
-
-            DiscordUtil.sendMessage(channel, response.toString().trim());
-            return null;
-        } finally {
-            Message msgObj = msg.get();
-            RateLimitUtil.queue(channel.deleteMessageById(msgObj.getIdLong()));
         }
+
+        nationNetValues.sort(Comparator.comparingDouble(Map.Entry::getValue));
+
+        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+
+        int count = 0;
+
+        boolean whitelisted = db.isWhitelisted();
+
+        for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
+            if (count++ == numResults) break;
+
+            DBNation nation = nationNetValue.getKey();
+
+            response.append('\n')
+                    .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
+                    .append(" | " + String.format("%16s", nation.getNation()))
+                    .append(" | " + String.format("%16s", nation.getAllianceName()));
+
+            if (whitelisted) {
+                double total = nation.lootTotal();
+                if (total != 0) {
+                    response.append(": $" + MathMan.format(total));
+                }
+            }
+
+            response.append("\n```")
+//                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
+                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
+//                                .append(String.format("%5s", nation.getAvg_infra())).append(" \uD83C\uDFD7").append(" | ")
+                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
+                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
+                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
+                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
+//                            .append(String.format("%1s", nation.getOff())).append(" \uD83D\uDDE1").append(" | ")
+                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
+//                                .append(String.format("%2s", nation.getSpies())).append(" \uD83D\uDD0D");
+
+            if (nation.isBeige()) {
+                int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
+                if (turns > 0) {
+                    response.append(" | ").append("beige=" + turns);
+                }
+            }
+
+            Activity activity = nation.getActivity(14 * 12);
+            double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
+            int loginPct = (int) (loginChance * 100);
+
+            response.append(" | login=" + loginPct + "%");
+            response.append("```");
+        }
+
+        if (count == 0) {
+            return "No results. Please ping a target (advisor";
+        }
+
+        return response.toString();
     }
 
 
@@ -1049,7 +1066,7 @@ public class WarCommands {
             "Add `-b` to include beige targets" +
             "Add `-s 1234` to filter by war range (score)")
     @RolePermission(Roles.MEMBER)
-    public String damage(@Me MessageChannel channel, @Me DBNation me, @Me User author, Set<DBNation> nations, @Switch("a") boolean includeApps,
+    public String damage(@Me IMessageIO channel, @Me DBNation me, @Me User author, Set<DBNation> nations, @Switch("a") boolean includeApps,
                          @Switch("i") boolean includeInactives, @Switch("w") boolean filterWeak, @Switch("n") boolean noNavy,
                          @Switch("m") boolean targetMeanInfra, @Switch("c") boolean targetCityMax, @Switch("b") boolean includeBeige,
                          @Switch("d") boolean resultsInDm,
@@ -1060,6 +1077,8 @@ public class WarCommands {
         if (!includeApps) nations.removeIf(f -> f.getPosition() <= 1);
         if (!includeInactives) nations.removeIf(f -> f.getActive_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
         if (noNavy) nations.removeIf(f -> f.getShips() > 2);
+        DBNation finalMe = me;
+        if (relativeNavalStrength != null) nations.removeIf(f -> f.getShips() > finalMe.getShips() * relativeNavalStrength);
         if (!includeBeige) nations.removeIf(f -> f.isBeige());
 
         if (warRange == null || warRange == 0) warRange = me.getScore();
@@ -1069,7 +1088,7 @@ public class WarCommands {
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
         me = DiscordUtil.getNation(author);
-        if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
         if (filterWeak) {
@@ -1111,12 +1130,11 @@ public class WarCommands {
         else valueFunction = damageEstByNation;
 
         if (resultsInDm) {
-            channel = RateLimitUtil.complete(author.openPrivateChannel());
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
 
         if (valueFunction.isEmpty()) {
-            RateLimitUtil.queue(channel.sendMessage("No results (found"));
-            return null;
+            return ("No results found");
         }
 
         List<Map.Entry<DBNation, Double>>  maxInfraSorted = new ArrayList<>();
@@ -1148,8 +1166,7 @@ public class WarCommands {
             String moneyStr = "$" + MathMan.format(cost);
             response.append(moneyStr + " | " + nation.toMarkdown(true));
         }
-        DiscordUtil.sendMessage(channel, response.toString().trim());
-        return null;
+        return response.toString();
     }
 
     public double damageEstimate(DBNation me, int nationId, List<Double> cityInfra) {
@@ -1198,7 +1215,7 @@ public class WarCommands {
                     "The alliance argument is optional\n" +
                     "Use `success>80` to specify a cutoff for spyop success")
     @RolePermission(Roles.MEMBER)
-    public String Counterspy(@Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch("s") @Range(min=0, max=100) int minSuccess) throws ExecutionException, InterruptedException, IOException {
+    public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch("s") @Range(min=0, max=100) int minSuccess) throws ExecutionException, InterruptedException, IOException {
         if (operations.isEmpty()) throw new IllegalArgumentException("Valid operations: " + StringMan.getString(SpyCount.Operation.values()));
         if (counterWith == null) {
             counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(Collections.singleton(db.getAlliance_id())));
@@ -1207,97 +1224,93 @@ public class WarCommands {
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
-        Message msg = RateLimitUtil.complete(channel.sendMessage("Please wait..."));
 
-        try {
-            Integer enemySpies = enemy.updateSpies();
-            if (enemySpies == null) {
-                enemySpies = SpyCount.guessSpyCount(enemy);
-            }
+        channel.send("Please wait...");
 
-            SpyCount.Operation[] opTypes = operations.toArray(new SpyCount.Operation[0]);
-            for (DBNation nation : counterWith) {
-                Integer mySpies = nation.updateSpies();
-                if (mySpies == null) {
-                    mySpies = SpyCount.guessSpyCount(nation);
-                }
-
-                if (enemySpies == -1) {
-                    return "Unknown enemy spies";
-                }
-                if (opTypes.length == 1 && opTypes[0] == SpyCount.Operation.SPIES && enemySpies == 0) {
-                    return "Enemy has no spies";
-                }
-
-                Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, opTypes);
-                if (best != null) {
-                    netDamage.add(new AbstractMap.SimpleEntry<>(nation, best));
-                }
-            }
-
-            Collections.sort(netDamage, (o1, o2) -> Double.compare(o2.getValue().getValue().getValue(), o1.getValue().getValue().getValue()));
-
-            if (netDamage.isEmpty()) {
-                return "No nations found";
-            }
-
-            String title = "Recommended ops";
-            StringBuilder body = new StringBuilder();
-
-            int nationCount = 0;
-            for (int i = 0; i < netDamage.size(); i++) {
-                Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry = netDamage.get(i);
-
-                Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
-                SpyCount.Operation op = opinfo.getKey();
-                Map.Entry<Integer, Double> safetyDamage = opinfo.getValue();
-
-                DBNation nation = entry.getKey();
-                Integer safety = safetyDamage.getKey();
-                Double damage = safetyDamage.getValue();
-
-                int attacking = entry.getKey().getSpies();
-                int spiesUsed = attacking;
-                if (op != SpyCount.Operation.SPIES) {
-                    spiesUsed = SpyCount.getRecommendedSpies(attacking, enemy.getSpies(), safety, op, enemy);
-                }
-
-                double odds = SpyCount.getOdds(spiesUsed, enemySpies, safety, op, enemy);
-                if (odds <= minSuccess) continue;
-                if (++nationCount >= 10) break;
-
-                double kills = SpyCount.getKills(spiesUsed, enemy, op, safety);
-
-                String nationUrl = PnwUtil.getBBUrl(nation.getNation_id(), false);
-                String allianceUrl = PnwUtil.getBBUrl(nation.getAlliance_id(), true);
-                body.append(nationUrl).append(" | ")
-                        .append(allianceUrl).append("\n");
-
-                String safetyStr = safety == 3 ? "covert" : safety == 2 ? "normal" : "quick";
-
-                body.append(op.name())
-                        .append(" (" + safetyStr + ") with ")
-                        .append(nation.updateSpies() + " spies (")
-                        .append(MathMan.format(odds) + "% for $")
-                        .append(MathMan.format(damage) + "net damage)")
-                        .append("\n")
-                ;
-            }
-
-            body.append("**Enemy:** ")
-                    .append(PnwUtil.getBBUrl(enemy.getNation_id(), false))
-                    .append(" | ")
-                    .append(PnwUtil.getBBUrl(enemy.getAlliance_id(), true))
-                    .append("\n**Spies: **").append(enemySpies).append("\n")
-                    .append(enemy.toMarkdown(true, false, true, false, false))
-                    .append(enemy.toMarkdown(true, false, false, true, true))
-            ;
-
-
-            DiscordUtil.createEmbedCommand(channel, title, body.toString());
-        } finally {
-            RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
+        Integer enemySpies = enemy.updateSpies();
+        if (enemySpies == null) {
+            enemySpies = SpyCount.guessSpyCount(enemy);
         }
+
+        SpyCount.Operation[] opTypes = operations.toArray(new SpyCount.Operation[0]);
+        for (DBNation nation : counterWith) {
+            Integer mySpies = nation.updateSpies();
+            if (mySpies == null) {
+                mySpies = SpyCount.guessSpyCount(nation);
+            }
+
+            if (enemySpies == -1) {
+                return "Unknown enemy spies";
+            }
+            if (opTypes.length == 1 && opTypes[0] == SpyCount.Operation.SPIES && enemySpies == 0) {
+                return "Enemy has no spies";
+            }
+
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, opTypes);
+            if (best != null) {
+                netDamage.add(new AbstractMap.SimpleEntry<>(nation, best));
+            }
+        }
+
+        Collections.sort(netDamage, (o1, o2) -> Double.compare(o2.getValue().getValue().getValue(), o1.getValue().getValue().getValue()));
+
+        if (netDamage.isEmpty()) {
+            return "No nations found";
+        }
+
+        String title = "Recommended ops";
+        StringBuilder body = new StringBuilder();
+
+        int nationCount = 0;
+        for (int i = 0; i < netDamage.size(); i++) {
+            Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry = netDamage.get(i);
+
+            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
+            SpyCount.Operation op = opinfo.getKey();
+            Map.Entry<Integer, Double> safetyDamage = opinfo.getValue();
+
+            DBNation nation = entry.getKey();
+            Integer safety = safetyDamage.getKey();
+            Double damage = safetyDamage.getValue();
+
+            int attacking = entry.getKey().getSpies();
+            int spiesUsed = attacking;
+            if (op != SpyCount.Operation.SPIES) {
+                spiesUsed = SpyCount.getRecommendedSpies(attacking, enemy.getSpies(), safety, op, enemy);
+            }
+
+            double odds = SpyCount.getOdds(spiesUsed, enemySpies, safety, op, enemy);
+            if (odds <= minSuccess) continue;
+            if (++nationCount >= 10) break;
+
+            double kills = SpyCount.getKills(spiesUsed, enemy, op, safety);
+
+            String nationUrl = PnwUtil.getBBUrl(nation.getNation_id(), false);
+            String allianceUrl = PnwUtil.getBBUrl(nation.getAlliance_id(), true);
+            body.append(nationUrl).append(" | ")
+                    .append(allianceUrl).append("\n");
+
+            String safetyStr = safety == 3 ? "covert" : safety == 2 ? "normal" : "quick";
+
+            body.append(op.name())
+                    .append(" (" + safetyStr + ") with ")
+                    .append(nation.updateSpies() + " spies (")
+                    .append(MathMan.format(odds) + "% for $")
+                    .append(MathMan.format(damage) + "net damage)")
+                    .append("\n")
+            ;
+        }
+
+        body.append("**Enemy:** ")
+                .append(PnwUtil.getBBUrl(enemy.getNation_id(), false))
+                .append(" | ")
+                .append(PnwUtil.getBBUrl(enemy.getAlliance_id(), true))
+                .append("\n**Spies: **").append(enemySpies).append("\n")
+                .append(enemy.toMarkdown(true, false, true, false, false))
+                .append(enemy.toMarkdown(true, false, false, true, true))
+        ;
+
+        channel.create().embed(title, body.toString()).send();
         return null;
     }
 
@@ -1308,36 +1321,28 @@ public class WarCommands {
             "Use `success>80` to specify a cutoff for spyop success\n\n" +
             "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
     @RolePermission(Roles.MEMBER)
-    public String Spyops(@Me User author, @Me MessageChannel channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch("d") boolean directMesssage, @Switch("k") boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
-        CompletableFuture<Message> msg = channel.sendMessage("Please wait... ").submit();
+    public String Spyops(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch("d") boolean directMesssage, @Switch("k") boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
         targets.removeIf(f -> f.getActive_m() > 2880);
         targets.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
-        try {
-            String title = "Recommended ops";
-            String body = runSpyOps(me, db, targets, operations, requiredSuccess, prioritizeKills);
+        String title = "Recommended ops";
+        String body = runSpyOps(me, db, targets, operations, requiredSuccess, prioritizeKills);
 
-            DiscordUtil.createEmbedCommand(channel, title, body.toString());
-
-            if (true) {
-                String response = ("Use `" + Settings.commandPrefix(true) + "spies <enemy>` first to ensure the results are up to date");
-                if (directMesssage) {
-                    RateLimitUtil.queue(author.openPrivateChannel().complete().sendMessage(response.toString()));
-                } else {
-                    RateLimitUtil.queue(channel.sendMessage(response.toString()));
-                }
-            }
-            return null;
-        } finally {
-            Message msgObj = msg.get();
-            RateLimitUtil.queue(channel.deleteMessageById(msgObj.getIdLong()));
+        if (directMesssage) {
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
+
+        IMessageBuilder msg = channel.create().embed(title, body);
+
+        String response = ("Use `" + Settings.commandPrefix(true) + "spies <enemy>` first to ensure the results are up to date");
+        msg.append(response.toString()).send();
+        return null;
     }
 
     public String runSpyOps(DBNation me, GuildDB db, Set<DBNation> enemies, Set<SpyCount.Operation> operations, int requiredSuccess, boolean prioritizeKills) throws IOException {
         double minSuccess = requiredSuccess > 0 ? requiredSuccess : 50;
 
         if (me == null) {
-            return "Please use `" + Settings.commandPrefix(true) + "validate`";
+            return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
 
         boolean findOptimal = true;
@@ -1839,9 +1844,11 @@ public class WarCommands {
 
             Activity activity;
             if (trackTime == 0) {
+                System.out.println("Track time = 0");
                 activity = nation.getActivity();
             } else {
                 long diff = System.currentTimeMillis() - trackTime;
+                System.out.println("Check turns " + diff + " | " + TimeUnit.MILLISECONDS.toHours(diff) / 2 + " | " + trackTime);
                 activity = nation.getActivity(TimeUnit.MILLISECONDS.toHours(diff) / 2);
             }
             double[] byDay = activity.getByDay();
@@ -2371,14 +2378,14 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command
-    public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me Message message, @Me User author, @Me MessageChannel channel,
+    public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me IMessageIO channel,
                               String warsheet, String spysheet,
                               @Default("*") Set<DBNation> allowedNations, @Default("") String header,
                               @Switch("l") boolean sendFromLocalAccount,
                               @Switch("f") boolean force,
                               @Switch("d") boolean dm) throws IOException, GeneralSecurityException {
         if (!Roles.MAIL.has(author, guild)) {
-            return "You need the MAIL role on discord (see `" + Settings.commandPrefix(true) + "aliasRole`) to add the custom message: `" + header + "`";
+            return "You need the MAIL role on discord (see " + CM.role.setAlias.cmd.toSlashMention() + ") to add the custom message: `" + header + "`";
         }
         Map<DBNation, Set<DBNation>> warDefAttMap = new HashMap<>();
         Map<DBNation, Set<DBNation>> spyDefAttMap = new HashMap<>();
@@ -2403,7 +2410,7 @@ public class WarCommands {
         }
 
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use `" + Settings.commandPrefix(false) + "addApiKey`");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
         Map<DBNation, Set<DBNation>> spyAttDefMap = BlitzGenerator.reverse(spyDefAttMap);
@@ -2535,7 +2542,6 @@ public class WarCommands {
 
         if (!force) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
-            String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(message.getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : mailTargets.keySet()) alliances.add(nation.getAlliance_id());
@@ -2545,11 +2551,15 @@ public class WarCommands {
             StringBuilder body = new StringBuilder();
             body.append("subject: " + subject + "\n");
 
-            DiscordUtil.createEmbedCommand(channel, embedTitle, body.toString(), "\u2705", pending);
-            return author.getAsMention();
+            String confirmCommand = command.put("force", "true").toString();
+
+            channel.create().confirmation(embedTitle, body.toString(), command)
+                            .append(author.getAsMention())
+                                    .send();
+            return null;
         }
 
-        Message msg = RateLimitUtil.complete(channel.sendMessage("Sending messages..."));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Sending messages...");
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
             DBNation attacker = entry.getKey();
             subject = entry.getValue().getKey();
@@ -2568,12 +2578,10 @@ public class WarCommands {
 
             if (System.currentTimeMillis() - start > 10000) {
                 start = System.currentTimeMillis();
-                RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Sending to " + attacker.getNation()));
+                IMessageBuilder tmp = msgFuture.getNow(null);
+                if (tmp != null) msgFuture = tmp.clear().append("Sending to " + attacker.getNation()).send();
             }
         }
-
-
-        RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
 
         return "Done, sent " + sent + " messages";
     }
@@ -3087,17 +3095,17 @@ public class WarCommands {
     }
 
     @Command(desc = "Show the war card for a war by id")
-    public String warcard(@Me MessageChannel channel, int warId) throws IOException {
+    public String warcard(@Me IMessageIO channel, int warId) throws IOException {
         new WarCard(warId).embed(channel, false);
         return null;
     }
 
     @Command(desc="Show war info for a nation", aliases = {"wars", "warinfo"})
-    public String wars(@Me MessageChannel channel, DBNation nation) {
+    public String wars(@Me IMessageIO channel, DBNation nation) {
         List<DBWar> wars = nation.getActiveWars();
         String title = wars.size() + " wars";
         String body = nation.getWarInfoEmbed();
-        DiscordUtil.createEmbedCommand(channel, title, body);
+        channel.create().embed(title, body).send();
         return null;
     }
 
@@ -3163,12 +3171,12 @@ public class WarCommands {
             "Add `-w` to filter out weak attackers\n" +
             "Add `-a` to only list active nations (past hour)")
     public String counterWar(@Me DBNation me, @Me GuildDB db, DBWar war, @Default Set<DBNation> counterWith, @Switch("o")
-    boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping) {
+    boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping, @Switch("s") boolean allowSameAlliance) {
         Set<Integer> allies = db.getAllies(true);
         int enemyId = allies.contains(war.attacker_aa) ? war.defender_id : war.attacker_id;
         DBNation enemy = DBNation.byId(enemyId);
         if (enemy == null) throw new IllegalArgumentException("No nation found for id `" + enemyId + "`");
-        return counter(me, db, enemy, counterWith, allowAttackersWithMaxOffensives, filterWeak, onlyActive, requireDiscord, ping);
+        return counter(me, db, enemy, counterWith, allowAttackersWithMaxOffensives, filterWeak, onlyActive, requireDiscord, ping, allowSameAlliance);
     }
 
     @RolePermission(value = Roles.MILCOM)
@@ -3177,14 +3185,14 @@ public class WarCommands {
             "Add `-w` to filter out weak attackers\n" +
             "Add `-a` to only list active nations (past hour)")
     public String counter(@Me DBNation me, @Me GuildDB db, DBNation target, @Default Set<DBNation> counterWith, @Switch("o")
-            boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping) {
+            boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping, @Switch("s") boolean allowSameAlliance) {
         if (counterWith == null) {
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             if (aaId == null) {
                 Set<Integer> allies = db.getAllies(true);
                 if (allies.isEmpty()) {
                     aaId = me.getAlliance_id();
-                    if (aaId == 0) return "No alliance or allies are set.\n`" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID <alliance>`\nOR\n`" + Settings.commandPrefix(true) + "setcoalition <alliance> allies`";
+                    if (aaId == 0) return "No alliance or allies are set.\n" + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance>") + "\nOR\n`" + Settings.commandPrefix(true) + "setcoalition <alliance> allies`";
                     counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));
@@ -3207,14 +3215,16 @@ public class WarCommands {
         if (onlyActive) counterWith.removeIf(f -> !f.isOnline());
         counterWith.removeIf(nation -> nation.getScore() < scoreMin || nation.getScore() > scoreMax);
         if (!allowAttackersWithMaxOffensives) counterWith.removeIf(nation -> nation.getOff() >= (nation.hasProject(Projects.PIRATE_ECONOMY) ? 6 : 5));
-        counterWith.removeIf(nation -> nation.getAlliance_id() == target.getAlliance_id());
         counterWith.removeIf(nation -> nation.getAlliance_id() == 0);
         counterWith.removeIf(nation -> nation.getActive_m() > TimeUnit.DAYS.toMinutes(2));
         counterWith.removeIf(nation -> nation.getVm_turns() != 0);
         counterWith.removeIf(f -> f.getAircraft() < target.getAircraft() * 0.6 && target.getAircraft() > 100);
         if (filterWeak) counterWith.removeIf(nation -> nation.getStrength() < target.getStrength());
-
-
+        Set<Integer> counterWithAlliances = counterWith.stream().map(DBNation::getAlliance_id).collect(Collectors.toSet());
+        if (counterWithAlliances.size() == 1 && !allowSameAlliance && counterWithAlliances.contains(target.getAlliance_id())) {
+            return "Please enable `-s allowSameAlliance` to counter with the same alliance";
+        }
+        if (!allowSameAlliance) counterWith.removeIf(nation -> nation.getAlliance_id() == target.getAlliance_id());
 
         List<DBNation> attackersSorted = new ArrayList<>(counterWith);
         if (filterWeak) {
@@ -3268,7 +3278,7 @@ public class WarCommands {
             "Add `-p` to ping users that are added\n" +
             "Add `-a` to skip adding users\n" +
             "Add `-m` to send standard counter messages")
-    public String autocounter(@Me MessageChannel channel, @Me Message message, @Me WarCategory warCat, @Me DBNation me, @Me User author, @Me GuildDB db,
+    public String autocounter(@Me IMessageIO channel, @Me JSONObject command, @Me WarCategory warCat, @Me DBNation me, @Me User author, @Me GuildDB db,
                               DBNation enemy, @Default Set<DBNation> attackers, @Default("3") @Range(min=0) int max
             , @Switch("p") boolean pingMembers, @Switch("a") boolean skipAddMembers, @Switch("m") boolean sendMail) {
         if (attackers == null) {
@@ -3281,7 +3291,7 @@ public class WarCommands {
         }
         attackers.removeIf(f -> enemy.getCities() >= f.getCities() * 2);
         attackers.removeIf(f -> f.getUser() == null || db.getGuild().getMember(f.getUser()) == null);
-        return warroom(channel, message, warCat, me, author, db, enemy, attackers, max, false, true, false, true, pingMembers, skipAddMembers, sendMail);
+        return warroom(channel, command, warCat, me, author, db, enemy, attackers, max, false, true, false, true, pingMembers, skipAddMembers, sendMail);
     }
 
     @RolePermission(value = Roles.MILCOM)
@@ -3299,7 +3309,7 @@ public class WarCommands {
             "Add `-a` to skip adding users\n" +
             "Add `-f` to force create channels (if checks fail)\n" +
             "Add `-m` to send standard counter messages")
-    public String warroom(@Me MessageChannel channel, @Me Message message, @Me WarCategory warCat, @Me DBNation me, @Me User author, @Me GuildDB db,
+    public String warroom(@Me IMessageIO channel, @Me JSONObject command, @Me WarCategory warCat, @Me DBNation me, @Me User author, @Me GuildDB db,
                           DBNation enemy, Set<DBNation> attackers, @Default("3") @Range(min=0) int max,
                           @Switch("f") boolean force, @Switch("w") boolean excludeWeakAttackers, @Switch("d") boolean requireDiscord, @Switch("o") boolean allowAttackersWithMaxOffensives, @Switch("p") boolean pingMembers, @Switch("a") boolean skipAddMembers, @Switch("m") boolean sendMail) {
         List<DBNation> attackersSorted = new ArrayList<>(attackers);
@@ -3316,27 +3326,28 @@ public class WarCommands {
         if (!force) {
             for (DBNation attacker : attackersSorted) {
                 if (!tracked.contains(attacker.getAlliance_id())) {
-                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is not an ally.", 'f');
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is not an ally.", command).send();
                     return null;
                 }
                 if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * 1.75) {
-                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see `" + Settings.commandPrefix(false) + "score`). ", 'f');
+//                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", 'f');
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", command).send();
                     return null;
                 }
                 if (attacker.getOff() >= attacker.getMaxOff() && !allowAttackersWithMaxOffensives) {
-                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) +  " already has max offensives. ", 'f');
+                    channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) +  " already has max offensives. ", command).send();
                     return null;
                 }
                 if (attacker.getVm_turns() > 0) {
-                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is in VM. ", 'f');
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is in VM. ", command).send();
                     return null;
                 }
                 if (attacker.isGray() && attacker.getActive_m() > 1440 || attacker.getCities() < 10 && attacker.getActive_m() > 2000) {
-                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is gray/inactive. ", 'f');
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is gray/inactive. ", command).send();
                     return null;
                 }
                 if (attacker.getNumWars() > 0 && attacker.getRelativeStrength() < 1) {
-                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is already involved in heavy conflict.", 'f');
+                    channel.create().confirmation( "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is already involved in heavy conflict.", command).send();
                     return null;
                 }
             }
@@ -3374,9 +3385,9 @@ public class WarCommands {
 
     @RolePermission(value = Roles.MEMBER)
     @Command(desc = "Update the pin in the war room")
-    public String warpin(@Me WarCategory.WarRoom waRoom) {
-        Message message = waRoom.updatePin(true);
-        return "Updated: " + message.getJumpUrl();
+    public String warpin(@Me WarCategory.WarRoom warRoom) {
+        IMessageBuilder message = warRoom.updatePin(true);
+        return "Updated: " + DiscordUtil.getChannelUrl(warRoom.channel) + "/" + message.getId();
     }
 
     @RolePermission(value = Roles.MILCOM)
@@ -3396,7 +3407,7 @@ public class WarCommands {
 
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Generate a list of possible blitz targets (for practice)", aliases = {"blitzpractice","blitztargets"})
-    public String BlitzPractice(@Me GuildDB db, int topX, @Me MessageChannel channel, @Me Message message, @Switch("p") Integer page) {
+    public String BlitzPractice(@Me GuildDB db, int topX, @Me IMessageIO channel, @Me JSONObject command, @Switch("p") Integer page) {
         Set<Integer> dnr = db.getCoalition("allies");
 
         List<String> results = blitzTargetCache.getOrDefault(db.getGuild().getIdLong() + topX, new ArrayList<>());
@@ -3443,13 +3454,9 @@ public class WarCommands {
         }
 
         int perPage = 10;
-        String cmdBase = DiscordUtil.trimContent(message.getContentRaw());
         String title = "Blitz targets";
-        try {
-            DiscordUtil.paginate(channel, message, title, cmdBase, page, perPage, results, null, true);
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
+
+        channel.create().paginate(title, command, page, perPage, results).send();
 
         return null;
     }

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
@@ -48,9 +49,6 @@ public class WarInfo extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (flags.contains('l') && !Locutus.imp().getGuildDB(guild).isWhitelisted()) {
-            return "No permission for `-l`";
-        }
         if (args.size() != 1) {
             return usage(event);
         }
@@ -67,7 +65,7 @@ public class WarInfo extends Command {
             String body = nation.getWarInfoEmbed(flags.contains('l'));
             DiscordUtil.createEmbedCommand(event.getChannel(), title, body);
         } else {
-            new WarCard(warId).embed(event.getChannel(), true);
+            new WarCard(warId).embed(new DiscordChannelIO(event), true);
         }
         return null;
     }

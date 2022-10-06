@@ -93,11 +93,11 @@ public class QuestionCommand<T extends Question> extends Command { private final
 
         if (options.length == 0) {
             cmdBase += " Y";
-            String emoji = "\u27A1\uFE0F";
+            String emoji = "Next";
             reactions.add(emoji);
             reactions.add(cmdBase);
 
-            body += "\n\nPress " + emoji + " to continue";
+            body += "\n\nPress `" + emoji + "` to continue";
         } else {
             for (String option : options) {
                 String emojo = option.toLowerCase();

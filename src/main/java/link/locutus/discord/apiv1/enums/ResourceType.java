@@ -8,6 +8,8 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -120,6 +122,24 @@ public enum ResourceType {
         return result;
     }
 
+    public static double getEquilibrium(double[] total) {
+        double consumeCost = 0;
+        double taxable = 0;
+        for (ResourceType type : values) {
+            double amt = total[type.ordinal()];
+            if (amt < 0) {
+                consumeCost += Math.abs(PnwUtil.convertedTotal(type, -amt));
+            } else if (amt > 0){
+                taxable += Math.abs(PnwUtil.convertedTotal(type, amt));
+            }
+        }
+        if (taxable > consumeCost) {
+            double requiredTax = consumeCost / taxable;
+            return requiredTax;
+        }
+        return -1;
+    }
+
     public Building getBuilding() {
         return Buildings.RESOURCE_BUILDING.get(this);
     }
@@ -137,8 +157,12 @@ public enum ResourceType {
         return new double[ResourceType.values.length];
     }
 
+    public static ResourcesBuilder builder() {
+        return new ResourcesBuilder();
+    }
+
     public ResourcesBuilder builder(double amt) {
-        return new ResourcesBuilder().add(this, amt);
+        return builder().add(this, amt);
     }
 
     public static class ResourcesBuilder {

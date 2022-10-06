@@ -131,12 +131,7 @@ public class NationDB extends DBMainV2 {
         }
 
         if (!expiredTreaties.isEmpty()) {
-            for (Treaty treaty : expiredTreaties) {
-                if (eventConsumer != null) {
-                    eventConsumer.accept(new TreatyExpireEvent(treaty));
-                }
-            }
-            deleteTreaties(expiredTreaties);
+            deleteTreaties(expiredTreaties, eventConsumer);
         }
     }
 
@@ -405,17 +400,26 @@ public class NationDB extends DBMainV2 {
         }
 
         if (!positionsToDelete.isEmpty()) deletePositions(positionsToDelete, null);
-        if (!treatiesToDelete.isEmpty()) deleteTreaties(treatiesToDelete);
+        if (!treatiesToDelete.isEmpty()) deleteTreaties(treatiesToDelete, eventConsumer);
         if (!dirtyNations.isEmpty()) saveNations(dirtyNations);
 
         deleteAlliancesInDB(ids);
     }
 
-    public void deleteTreaties(Set<Treaty> treaties) {
+    public void deleteTreaties(Set<Treaty> treaties, Consumer<Event> eventConsumer) {
+        long turn = TimeUtil.getTurn();
         for (Treaty treaty : treaties) {
+            boolean removed = false;
             synchronized (treatiesByAlliance) {
-                treatiesByAlliance.getOrDefault(treaty.getFromId(), Collections.EMPTY_MAP).remove(treaty.getToId());
-                treatiesByAlliance.getOrDefault(treaty.getToId(), Collections.EMPTY_MAP).remove(treaty.getFromId());
+                removed |= treatiesByAlliance.getOrDefault(treaty.getFromId(), Collections.EMPTY_MAP).remove(treaty.getToId()) != null;
+                removed |= treatiesByAlliance.getOrDefault(treaty.getToId(), Collections.EMPTY_MAP).remove(treaty.getFromId()) != null;
+            }
+            if (removed && eventConsumer != null) {
+                if (treaty.getTurnEnds() <= turn + 1) {
+                    eventConsumer.accept(new TreatyExpireEvent(treaty));
+                } else {
+                    eventConsumer.accept(new TreatyCancelEvent(treaty));
+                }
             }
         }
         Set<Integer> ids = treaties.stream().map(f -> f.getId()).collect(Collectors.toSet());
@@ -517,8 +521,6 @@ public class NationDB extends DBMainV2 {
         }
 
         if (!createdAlliances.isEmpty() && eventConsumer != null) {
-            List<Integer> createdAllianceIds = createdAlliances.stream().map(DBAlliance::getId).collect(Collectors.toList());
-            updateAlliances(f -> f.setId(createdAllianceIds), eventConsumer);
             for (DBAlliance alliance : createdAlliances) {
                 eventConsumer.accept(new AllianceCreateEvent(alliance));
             }
@@ -532,10 +534,12 @@ public class NationDB extends DBMainV2 {
         }
         if (!saveNations.isEmpty()) saveNations(saveNations);
 
-        return alliances.stream().map(f -> f.getId()).collect(Collectors.toSet());
+        return alliances.stream().map(Alliance::getId).collect(Collectors.toSet());
     }
 
     public void saveAlliances(List<DBAlliance> alliances) {
+        if (alliances.isEmpty()) return;
+        if (alliances.size() > 10) System.out.println("remove:|| save alliances " + alliances.size());
         executeBatch(alliances, "INSERT OR REPLACE INTO `ALLIANCES`(`id`, `name`, `acronym`, `flag`, `forum_link`, `discord_link`, `wiki_link`, `dateCreated`, `color`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (ThrowingBiConsumer<DBAlliance, PreparedStatement>) (alliance, stmt) -> {
             stmt.setInt(1, alliance.getId());
@@ -551,6 +555,8 @@ public class NationDB extends DBMainV2 {
     }
 
     public void savePositions(List<DBAlliancePosition> positions) {
+        if (positions.isEmpty()) return;
+        if (positions.size() > 10) System.out.println("remove:|| save positions " + positions.size());
         executeBatch(positions, "INSERT OR REPLACE INTO `POSITIONS`(`id`, `alliance_id`, `name`, `date_created`, `position_level`, `rank`, `permission_bits`) VALUES(?, ?, ?, ?, ?, ?, ?)",
                 (ThrowingBiConsumer<DBAlliancePosition, PreparedStatement>) (position, stmt) -> {
             stmt.setInt(1, position.getId());
@@ -564,6 +570,8 @@ public class NationDB extends DBMainV2 {
     }
 
     public void saveTreaties(Collection<Treaty> treaties) {
+        if (treaties.isEmpty()) return;
+        if (treaties.size() > 10) System.out.println("remove:|| save treaties " + treaties.size());
         executeBatch(treaties, "INSERT OR REPLACE INTO `TREATIES2`(`id`, `date`, `type`, `from_id`, `to_id`, `turn_ends`) VALUES(?, ?, ?, ?, ?, ?)",
                 (ThrowingBiConsumer<Treaty, PreparedStatement>) (treaty, stmt) -> {
                     stmt.setInt(1, treaty.getId());
@@ -635,10 +643,10 @@ public class NationDB extends DBMainV2 {
         // Don't call events if first time
         if (treatiesByAlliance.isEmpty()) eventConsumer = f -> {};
 
-        updateTreaties(treatiesV3, eventConsumer);
+        updateTreaties(treatiesV3, eventConsumer, true);
     }
 
-    public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer) {
+    public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, boolean deleteMissing) {
         Map<Integer, Map<Integer, Treaty>> treatiesByAACopy = new HashMap<>();
         long turn = TimeUtil.getTurn();
         for (com.politicsandwar.graphql.model.Treaty treaty : treatiesV3) {
@@ -670,14 +678,7 @@ public class NationDB extends DBMainV2 {
                 int otherId = previous.getFromId() == aaId ? previous.getToId() : previous.getFromId();
 
                 if (current == null) {
-                    toDelete.add(previous);
-                    if (eventConsumer != null && previous.getFromId() == aaId) {
-                        if (previous.getTurnEnds() <= turn + 1) {
-                            eventConsumer.accept(new TreatyExpireEvent(previous));
-                        } else {
-                            eventConsumer.accept(new TreatyCancelEvent(previous));
-                        }
-                    }
+                    if (deleteMissing) toDelete.add(previous);
                 } else {
                     synchronized (treatiesByAlliance) {
                         treatiesByAlliance.computeIfAbsent(aaId, f -> new Int2ObjectOpenHashMap<>()).put(otherId, current);
@@ -718,7 +719,7 @@ public class NationDB extends DBMainV2 {
 
         saveTreaties(dirtyTreaties);
 
-        if (!toDelete.isEmpty()) deleteTreaties(toDelete);
+        if (!toDelete.isEmpty()) deleteTreaties(toDelete, eventConsumer);
     }
 
 
@@ -839,7 +840,7 @@ public class NationDB extends DBMainV2 {
     private Set<Integer> updateNationsById(List<Integer> ids, Consumer<Event> eventConsumer) {
         List<Integer> idsFinal = new ArrayList<>(ids);
         Collections.sort(idsFinal);
-        Set<Integer> fetched = updateNations(r -> r.setId(idsFinal), true, true, true, true, true, eventConsumer);
+        Set<Integer> fetched = updateNations(r -> r.setId(idsFinal), eventConsumer);
         if (fetched.isEmpty()) {
             System.out.println("No nations fetched");
             return fetched;
@@ -1181,50 +1182,96 @@ public class NationDB extends DBMainV2 {
             deleteCitiesInDB(citiesToDelete);
         }
         if (!dirtyCities.isEmpty()) {
-            System.out.println("Save cities");
             saveCities(dirtyCities);
         }
     }
 
     public void subscribeCities(PnwPusherHandler pusher) {
-        pusher.connect().subscribeBuilder(City.class, PnwPusherEvent.CREATE)
-        .build(cities -> {
-            Locutus.imp().runEventsAsync(events -> updateCities(cities, events));
-        });
-        pusher.connect()
-        .subscribeBuilder(City.class, PnwPusherEvent.UPDATE)
-        .build(cities -> {
-            Locutus.imp().runEventsAsync(events -> updateCities(cities, events));
-        });
-        pusher.connect().subscribeBuilder(City.class, PnwPusherEvent.DELETE)
-        .build(cities -> {
-            Map<Integer, Integer> nationIdCityId = new HashMap<>();
-            for (City city : cities) {
-                nationIdCityId.put(city.getNation_id(), city.getId());
-            }
-            Locutus.imp().runEventsAsync(events -> deleteCities(nationIdCityId, events));
-        });
+        PnwPusherHandler connection = pusher.connect();
+        { // cities
+            connection.subscribeBuilder(City.class, PnwPusherEvent.CREATE).build(cities ->
+                    Locutus.imp().runEventsAsync(events -> updateCities(cities, events)));
+            connection.subscribeBuilder(City.class, PnwPusherEvent.UPDATE).build(cities ->
+                    Locutus.imp().runEventsAsync(events -> updateCities(cities, events)));
+            connection.subscribeBuilder(City.class, PnwPusherEvent.DELETE).build(cities ->
+                    Locutus.imp().runEventsAsync(events -> deleteCities(cities, events)));
+        }
+        { // nations
+            connection.subscribeBuilder(Nation.class, PnwPusherEvent.CREATE).build(nations -> {
+                for (Nation nation : nations) markNationDirty(nation.getId());
+//                Locutus.imp().runEventsAsync(events -> updateNations(nations, events));
+            });
+            connection.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
+                for (Nation nation : nations) markNationDirty(nation.getId());
+//                Locutus.imp().runEventsAsync(events -> updateNations(nations, events));
+            });
+            connection.subscribeBuilder(Nation.class, PnwPusherEvent.DELETE).build(nations -> {
+                Locutus.imp().runEventsAsync(events -> deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
+            });
+        }
+//        { // nations
+//            connection.subscribeBuilder(Nation.class, PnwPusherEvent.CREATE).build(nations -> {
+//                for (Nation nation : nations) markNationDirty(nation.getId());
+//                Locutus.imp().runEventsAsync(events -> updateNations(nations, events));
+//            });
+//            connection.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
+//                for (Nation nation : nations) markNationDirty(nation.getId());
+//                Locutus.imp().runEventsAsync(events -> updateNations(nations, events));
+//            });
+//            connection.subscribeBuilder(Nation.class, PnwPusherEvent.DELETE).build(nations -> {
+//                Locutus.imp().runEventsAsync(events -> deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
+//            });
+//        }
+        { // alliance
+            connection.subscribeBuilder(Alliance.class, PnwPusherEvent.CREATE).build(alliances -> {
+                Locutus.imp().runEventsAsync(events -> processUpdatedAlliances(alliances, events));
+            });
+            connection.subscribeBuilder(Alliance.class, PnwPusherEvent.UPDATE).build(alliances -> {
+                Locutus.imp().runEventsAsync(events -> processUpdatedAlliances(alliances, events));
+            });
+            connection.subscribeBuilder(Alliance.class, PnwPusherEvent.DELETE).build(alliances -> {
+                Locutus.imp().runEventsAsync(events -> deleteAlliances(alliances.stream().map(Alliance::getId).collect(Collectors.toSet()), events));
+            });
+        }
+//        { // treaty
+//            connection.subscribeBuilder(com.politicsandwar.graphql.model.Treaty.class, PnwPusherEvent.CREATE).build(treaties -> {
+//                Locutus.imp().runEventsAsync(events -> updateTreaties(treaties, events, false));
+//            });
+//            connection.subscribeBuilder(com.politicsandwar.graphql.model.Treaty.class, PnwPusherEvent.UPDATE).build(treaties -> {
+//                Locutus.imp().runEventsAsync(events -> updateTreaties(treaties, events, false));
+//            });
+//            connection.subscribeBuilder(com.politicsandwar.graphql.model.Treaty.class, PnwPusherEvent.DELETE).build(treaties -> {
+//                Locutus.imp().runEventsAsync(events -> deleteTreaties(treaties.stream().map(Treaty::new).collect(Collectors.toSet()), events));
+//            });
+//        }
     }
 
     public boolean deleteCities(Set<Integer> cityIds, Consumer<Event> eventConsumer) {
-        Map<Integer, Integer> nationIdCityId = new HashMap<>();
+        Map<Integer, Integer> cityIdNationId = new HashMap<>();
         for (Map.Entry<Integer, Map<Integer, DBCity>> entry : citiesByNation.entrySet()) {
             Map<Integer, DBCity> nationCities = entry.getValue();
             for (Map.Entry<Integer, DBCity> cityEntry : nationCities.entrySet()) {
                 if (cityIds.contains(cityEntry.getKey())) {
-                    nationIdCityId.put(entry.getKey(), cityEntry.getKey());
+                    cityIdNationId.put(cityEntry.getKey(), entry.getKey());
                 }
             }
         }
-        return deleteCities(nationIdCityId, eventConsumer);
+        return deleteCities2(cityIdNationId, eventConsumer);
     }
 
-    public boolean deleteCities(Map<Integer, Integer> nationIdCityId, Consumer<Event> eventConsumer) {
-        if (nationIdCityId.isEmpty()) return true;
+    public boolean deleteCities(Collection<City> cities, Consumer<Event> eventConsumer) {
+        Map<Integer, Integer> cityIdNationId = new HashMap<>();
+        for (City city : cities) {
+            cityIdNationId.put(city.getId(), city.getNation_id());
+        }
+        return deleteCities2(cityIdNationId, eventConsumer);
+    }
+    public boolean deleteCities2(Map<Integer, Integer> cityIdNationId, Consumer<Event> eventConsumer) {
+        if (cityIdNationId.isEmpty()) return true;
         boolean success = true;
-        for (Map.Entry<Integer, Integer> entry : nationIdCityId.entrySet()) {
-            int nationId = entry.getKey();
-            int cityId = entry.getValue();
+        for (Map.Entry<Integer, Integer> entry : cityIdNationId.entrySet()) {
+            int nationId = entry.getValue();
+            int cityId = entry.getKey();
             DBCity existing;
             synchronized (citiesByNation) {
                 existing = ((Map<Integer, DBCity>) citiesByNation.getOrDefault(nationId, Collections.EMPTY_MAP)).remove(cityId);
@@ -1233,7 +1280,7 @@ public class NationDB extends DBMainV2 {
                 eventConsumer.accept(new CityDeleteEvent(nationId, existing));
             }
         }
-        deleteCitiesInDB(nationIdCityId.values());
+        deleteCitiesInDB(cityIdNationId.keySet());
         return success;
     }
 
@@ -1266,6 +1313,17 @@ public class NationDB extends DBMainV2 {
         }
 
         deletePositionsInDB(ids);;
+    }
+
+    public Set<DBAlliancePosition> getPositions(int allianceId) {
+        if (allianceId == 0) return Collections.emptySet();
+        synchronized (positionsByAllianceId) {
+            Map<Integer, DBAlliancePosition> positions = positionsByAllianceId.get(allianceId);
+            if (positions != null) {
+                return new HashSet<>(positions.values());
+            }
+            return Collections.emptySet();
+        }
     }
 
     private void deletePositionsInDB(Set<Integer> ids) {
@@ -1571,7 +1629,11 @@ public class NationDB extends DBMainV2 {
                     dirtyNations.add(nation.getNationid());
                 } else {
                     expected.remove(existing.getNation_id());
+                    int oldAAId = existing.getAlliance_id();
                     if (existing.updateNationInfo(nation, eventConsumer)) {
+                        if (oldAAId != existing.getAlliance_id()) {
+                            processNationAllianceChange(oldAAId, existing);
+                        }
                         dirtyNations.add(existing.getNation_id());
                         toSave.add(existing);
                     }
@@ -1659,7 +1721,7 @@ public class NationDB extends DBMainV2 {
     public Set<Integer> updateNewNationsById(Consumer<Event> eventConsumer) {
         List<Integer> newIds = getNewNationIds(500, new HashSet<>());
         Collections.sort(newIds);
-        Set<Integer> fetched = updateNations(r -> r.setId(newIds), true, true, true, true, true, eventConsumer);
+        Set<Integer> fetched = updateNations(r -> r.setId(newIds), eventConsumer);
         Set<Integer> deleted = new HashSet<>();
         for (int id : newIds) {
             if (!fetched.contains(id) && getNation(id) != null) deleted.add(id);
@@ -1677,7 +1739,7 @@ public class NationDB extends DBMainV2 {
                 }
             }
         }
-        Set<Integer> fetched = updateNations(r -> r.setCreated_after(new Date(minDate)), true, true, true, true, true, eventConsumer);
+        Set<Integer> fetched = updateNations(r -> r.setCreated_after(new Date(minDate)), eventConsumer);
         expected.removeAll(fetched);
         dirtyNations.addAll(expected);
         return fetched;
@@ -1701,10 +1763,6 @@ public class NationDB extends DBMainV2 {
         return fetched;
     }
 
-    public Set<Integer> updateNations(Consumer<NationsQueryRequest> filter, Consumer<Event> eventConsumer) {
-        return updateNations(filter, true, true, true, true, true, eventConsumer);
-    }
-
     public void markDirtyIncorrectNations(boolean score, boolean cities) {
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
             if (score && Math.abs(nation.estimateScore() - nation.getScore()) > 0.01) {
@@ -1715,17 +1773,27 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public Set<Integer> updateNations(Consumer<NationsQueryRequest> filter,
-                              boolean fetchCitiesIfNew,
-                              boolean fetchCitiesIfOutdated,
-                              boolean fetchAlliancesIfOutdated,
-                              boolean fetchPositionsIfOutdated,
-                              boolean fetchMostActiveIfNoneOutdated,
-                                      Consumer<Event> eventConsumer) {
+    public Set<Integer> updateNations(Set<Nation> nations, Consumer<Event> eventConsumer) {
+        Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
         Set<Integer> nationsFetched = new HashSet<>();
-        Map<DBNation, DBNation> dirtyNations = new LinkedHashMap<>(); // Map<current, previous>
+        for (Nation nation : nations) {
+            if (nation.getId() != null) {
+                nationsFetched.add(nation.getId());
+                if (!NationDB.this.dirtyNations.isEmpty()) {
+                    NationDB.this.dirtyNations.remove(nation.getId());
+                }
+            }
+            updateNation(nation, eventConsumer, nationChanges::put);
+        }
+        updateNationCitiesAndPositions(nationChanges, eventConsumer);
+        return nationsFetched;
 
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+    }
+
+    public Set<Integer> updateNations(Consumer<NationsQueryRequest> filter, Consumer<Event> eventConsumer) {
+
+        Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
+        Set<Integer> nationsFetched = new HashSet<>();
 
         Predicate<Nation> onEachNation = nation -> {
             if (nation.getId() != null) {
@@ -1734,19 +1802,33 @@ public class NationDB extends DBMainV2 {
                     NationDB.this.dirtyNations.remove(nation.getId());
                 }
             }
-            updateNation(nation, eventConsumer, (prev, curr) -> dirtyNations.put(curr, prev));
+            updateNation(nation, eventConsumer, (prev, curr) -> nationChanges.put(curr, prev));
             return false;
         };
-
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         v3.fetchNationsWithInfo(filter, onEachNation);
 
-        saveNations(dirtyNations.keySet());
+        updateNationCitiesAndPositions(nationChanges, eventConsumer);
+        return nationsFetched;
+    }
+
+    public void updateNationCitiesAndPositions(Map<DBNation, DBNation> nationChanges,
+                                      Consumer<Event> eventConsumer) {
+        if (nationChanges.isEmpty()) return;
+
+        boolean fetchCitiesIfNew = true;
+        boolean fetchCitiesIfOutdated = true;
+        boolean fetchAlliancesIfOutdated = true;
+        boolean fetchPositionsIfOutdated = true;
+        boolean fetchMostActiveIfNoneOutdated = true;
+
+        saveNations(nationChanges.keySet());
 
         Set<Integer> fetchCitiesOfNations = new HashSet<>();
 
         if (fetchCitiesIfNew) {
             // num cities has changed
-            for (Map.Entry<DBNation, DBNation> entry : dirtyNations.entrySet()) {
+            for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
                 DBNation prev = entry.getValue();
                 DBNation curr = entry.getKey();
                 if (prev == null || curr.getCities() != prev.getCities()) {
@@ -1755,7 +1837,7 @@ public class NationDB extends DBMainV2 {
             }
         }
         if (fetchCitiesIfOutdated) {
-            for (Map.Entry<DBNation, DBNation> entry : dirtyNations.entrySet()) {
+            for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
                 DBNation prev = entry.getValue();
                 DBNation curr = entry.getKey();
                 if (prev == null || (Math.abs(curr.getScore() - prev.getScore()) >= 0.01 && Math.abs(curr.estimateScore() - curr.getScore()) >= 0.01)) {
@@ -1765,8 +1847,7 @@ public class NationDB extends DBMainV2 {
         }
 
         System.out.println("Updated nations.\n" +
-                "Fetched: " + nationsFetched.size() + "\n" +
-                "Changes: " + dirtyNations.size() + "\n" +
+                "Changes: " + nationChanges.size() + "\n" +
                 "Cities: " + fetchCitiesOfNations.size());
 
 
@@ -1778,14 +1859,11 @@ public class NationDB extends DBMainV2 {
         if (fetchAlliancesIfOutdated || fetchPositionsIfOutdated) {
             updateOutdatedAlliances(fetchPositionsIfOutdated, eventConsumer);
         }
-
-        return nationsFetched;
     }
 
     /**
      *
      * @param nation the nation
-     * @param nationInfo if nation info should be checked and updated
      * @param eventConsumer any nation events to call
      * @param nationsToSave (previous, current)
      */
@@ -1818,7 +1896,10 @@ public class NationDB extends DBMainV2 {
     }
 
     private void processNationAllianceChange(DBNation previous, DBNation current) {
-        if (previous == null) {
+        processNationAllianceChange(previous != null ? previous.getAlliance_id() : null, current);
+    }
+    private void processNationAllianceChange(Integer previousAA, DBNation current) {
+        if (previousAA == null) {
             synchronized (nationsById) {
                 nationsById.put(current.getNation_id(), current);
             }
@@ -1828,11 +1909,11 @@ public class NationDB extends DBMainV2 {
                             f -> new Int2ObjectOpenHashMap<>()).put(current.getNation_id(), current);
                 }
             }
-        } else if (previous.getAlliance_id() != current.getAlliance_id()) {
+        } else if (previousAA != current.getAlliance_id()) {
             synchronized (nationsByAlliance) {
-                if (previous.getAlliance_id() != 0) {
-                    nationsByAlliance.getOrDefault(previous.getAlliance_id(), Collections.EMPTY_MAP)
-                            .remove(previous.getAlliance_id());
+                if (previousAA != 0) {
+                    nationsByAlliance.getOrDefault(previousAA, Collections.EMPTY_MAP)
+                            .remove(previousAA);
                 }
                 if (current.getAlliance_id() != 0) {
                     nationsByAlliance.computeIfAbsent(current.getAlliance_id(),
@@ -2470,8 +2551,17 @@ public class NationDB extends DBMainV2 {
     }
 
 
+    public void deleteMeta(AllianceMeta key) {
+        update("DELETE FROM NATION_META where key = ? AND id < 0", new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws Exception {
+                stmt.setInt(1, key.ordinal());
+            }
+        });
+    }
+
     public void deleteMeta(NationMeta key) {
-        update("DELETE FROM NATION_META where key = ?", new ThrowingConsumer<PreparedStatement>() {
+        update("DELETE FROM NATION_META where key = ? AND id > 0", new ThrowingConsumer<PreparedStatement>() {
             @Override
             public void acceptThrows(PreparedStatement stmt) throws Exception {
                 stmt.setInt(1, key.ordinal());
@@ -3033,7 +3123,7 @@ public class NationDB extends DBMainV2 {
         return byAlliance;
     }
 
-    public Map<Integer, List<DBNation>> getNationsByAlliance(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean sorttByScore) {
+    public Map<Integer, List<DBNation>> getNationsByAlliance(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean sortByScore) {
         final Map<Integer, Double> score = new Int2ObjectOpenHashMap<>();
         Map<Integer, List<DBNation>> nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
         synchronized (nationsByAlliance) {
@@ -3458,6 +3548,8 @@ public class NationDB extends DBMainV2 {
     }
 
     public void saveCities(List<Map.Entry<Integer, DBCity>> cities) {
+        if (cities.isEmpty()) return;
+        if (cities.size() > 10) System.out.println("Remove:|| Save cities " + cities.size());
         executeBatch(cities, "INSERT OR REPLACE INTO `CITY_BUILDS`(`id`, `nation`, `created`, `infra`, `land`, `powered`, `improvements`, `update_flag`, `nuke_date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<Map.Entry<Integer, DBCity>, PreparedStatement>() {
             @Override
             public void acceptThrows(Map.Entry<Integer, DBCity> entry, PreparedStatement stmt) throws Exception {
@@ -3540,6 +3632,7 @@ public class NationDB extends DBMainV2 {
 
     public int[] saveNations(Collection<DBNation> nations) {
         if (nations.isEmpty()) return new int[0];
+        if (nations.size() > 10) System.out.println("remove:|| Save nations " + nations.size());
         String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
         if (nations.size() == 1) {
@@ -3588,7 +3681,6 @@ public class NationDB extends DBMainV2 {
             System.out.println("Delete cities 3 " + citiesToDelete.size());
             deleteCitiesInDB(citiesToDelete);
         }
-        new Exception().printStackTrace();
         System.out.println("Delete nations " + StringMan.getString(ids));
         deleteNationsInDB(ids);
     }

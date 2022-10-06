@@ -3,12 +3,14 @@ package link.locutus.discord.commands.manager.v2.binding.bindings;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
+import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.ScriptUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 
 import java.awt.Color;
@@ -35,13 +37,14 @@ public class PrimitiveBindings extends BindingHelper {
     }
 
     @Binding
-    public List<String> all(String string, ArgumentStack stack) {
-        List<String> result = new ArrayList<>();
-        result.add(string);
-        while (stack.hasNext()) {
-            result.add(stack.consumeNext());
-        }
-        return result;
+    public List<String> all(@TextArea String string) {
+        return StringMan.split(string, ' ');
+//        List<String> result = new ArrayList<>();
+//        result.add(string);
+//        while (stack.hasNext()) {
+//            result.add(stack.consumeNext());
+//        }
+//        return result;
     }
 
     /**
@@ -127,7 +130,9 @@ public class PrimitiveBindings extends BindingHelper {
             if (parsed != null) return parsed;
         } catch (NumberFormatException e1) {}
         try {
-            return (Number) ScriptUtil.getEngine().eval(input);
+            Object result = ScriptUtil.getEngine().eval(input);
+            if (result instanceof  Boolean) return ((Boolean) result) ? 1 : 0;
+            return (Number) result;
         } catch (Throwable e) {
             throw new IllegalArgumentException(String.format(
                     "Expected '%s' to be a number or valid math expression (error: %s)", input, e.getMessage()));

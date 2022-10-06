@@ -23,18 +23,18 @@ public class Transactions_2 implements Serializable {
     private final Integer receiverType;
     private final Integer bankerNationId;
     private final String note;
-    private final Integer money;
-    private final Integer food;
-    private final Integer coal;
-    private final Integer oil;
-    private final Integer uranium;
-    private final Integer lead;
-    private final Integer iron;
-    private final Integer bauxite;
-    private final Integer gasoline;
-    private final Integer munitions;
-    private final Integer steel;
-    private final Integer aluminum;
+    private final Long money;
+    private final Long food;
+    private final Long coal;
+    private final Long oil;
+    private final Long uranium;
+    private final Long lead;
+    private final Long iron;
+    private final Long bauxite;
+    private final Long gasoline;
+    private final Long munitions;
+    private final Long steel;
+    private final Long aluminum;
 
     public Transactions_2(Transactions_2 value) {
         this.txId = value.txId;
@@ -68,18 +68,18 @@ public class Transactions_2 implements Serializable {
         Integer receiverType,
         Integer bankerNationId,
         String note,
-        Integer money,
-        Integer food,
-        Integer coal,
-        Integer oil,
-        Integer uranium,
-        Integer lead,
-        Integer iron,
-        Integer bauxite,
-        Integer gasoline,
-        Integer munitions,
-        Integer steel,
-        Integer aluminum
+        Long money,
+        Long food,
+        Long coal,
+        Long oil,
+        Long uranium,
+        Long lead,
+        Long iron,
+        Long bauxite,
+        Long gasoline,
+        Long munitions,
+        Long steel,
+        Long aluminum
     ) {
         this.txId = txId;
         this.txDatetime = txDatetime;
@@ -162,84 +162,84 @@ public class Transactions_2 implements Serializable {
     /**
      * Getter for <code>TRANSACTIONS_2.MONEY</code>.
      */
-    public Integer getMoney() {
+    public Long getMoney() {
         return this.money;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.FOOD</code>.
      */
-    public Integer getFood() {
+    public Long getFood() {
         return this.food;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.COAL</code>.
      */
-    public Integer getCoal() {
+    public Long getCoal() {
         return this.coal;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.OIL</code>.
      */
-    public Integer getOil() {
+    public Long getOil() {
         return this.oil;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.URANIUM</code>.
      */
-    public Integer getUranium() {
+    public Long getUranium() {
         return this.uranium;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.LEAD</code>.
      */
-    public Integer getLead() {
+    public Long getLead() {
         return this.lead;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.IRON</code>.
      */
-    public Integer getIron() {
+    public Long getIron() {
         return this.iron;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.BAUXITE</code>.
      */
-    public Integer getBauxite() {
+    public Long getBauxite() {
         return this.bauxite;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.GASOLINE</code>.
      */
-    public Integer getGasoline() {
+    public Long getGasoline() {
         return this.gasoline;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.MUNITIONS</code>.
      */
-    public Integer getMunitions() {
+    public Long getMunitions() {
         return this.munitions;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.STEEL</code>.
      */
-    public Integer getSteel() {
+    public Long getSteel() {
         return this.steel;
     }
 
     /**
      * Getter for <code>TRANSACTIONS_2.ALUMINUM</code>.
      */
-    public Integer getAluminum() {
+    public Long getAluminum() {
         return this.aluminum;
     }
 

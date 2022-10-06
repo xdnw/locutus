@@ -76,7 +76,7 @@ public class Dm extends Command {
             StringBuilder dmMsg = new StringBuilder();
             dmMsg.append("content: ```" + body + "```");
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, dmMsg.toString(), "\u2705", pending);
+            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, dmMsg.toString(), "Next", pending);
             return null;
         }
 

@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import com.google.gson.stream.MalformedJsonException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.stock.Exchange;
@@ -19,8 +20,10 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
+import org.json.JSONObject;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import rocker.grant.nation;
 
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -456,6 +459,8 @@ public class PnwUtil {
                 return result;
             }
         }
+        arg = arg.trim();
+        if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
         arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         double sign = 1;
         if (arg.charAt(0) == '-') {
@@ -467,6 +472,7 @@ public class PnwUtil {
             result.put(ResourceType.MONEY, MathMan.parseDouble(arg) * sign);
             return result;
         }
+
 
         arg = arg.replace("GAS:", "GASOLINE:");
         arg = arg.replace("URA:", "URANIUM:");
@@ -494,8 +500,17 @@ public class PnwUtil {
             sign *= MathMan.parseDouble(split[1]);
         }
 
-
-        Map<ResourceType, Double> transfer = new Gson().fromJson(arg, type);
+        Map<ResourceType, Double> transfer;
+        try {
+            JSONObject json = new JSONObject(arg);
+            json.remove("TRANSACTION_COUNT");
+            for (String rssType : json.keySet()) {
+                ResourceType.parse(rssType);
+            }
+            transfer = new Gson().fromJson(json.toString(), type);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid resource json: `" + arg + "` (" + e.getMessage() + ")");
+        }
         if (transfer.containsKey(null)) {
             throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
         }
@@ -604,7 +619,7 @@ public class PnwUtil {
     public static double calculateLand(double from, double to) {
         if (from < 0 || from == to) return 0;
         if (to <= from) return (from - to) * -50;
-        if (to > 10000) throw new IllegalArgumentException("Land cannot exceed 10,000");
+        if (to > 20000) throw new IllegalArgumentException("Land cannot exceed 10,000");
         double[] tmp = LAND_COST_CACHE;
         if (tmp != null && from == tmp[0] && to == tmp[1]) {
             return tmp[2];
@@ -627,18 +642,27 @@ public class PnwUtil {
     }
 
     public static double cityCost(DBNation nation, int from, int to) {
+        return cityCost(from, to,
+                nation != null && nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
+                nation != null && nation.hasProject(Projects.URBAN_PLANNING),
+                nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+                nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
+                nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+    }
+
+    public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
         double total = 0;
         for (int city = Math.max(1, from); city < to; city++) {
             total += nextCityCost(city,
-                    nation != null && nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
-                    nation != null && nation.hasProject(Projects.URBAN_PLANNING),
-                    nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
-                    nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING));
+                    manifestDestiny,
+                    cityPlanning,
+                    advCityPlanning,
+                    metPlanning, govSupportAgency);
         }
         return total;
     }
 
-    public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning) {
+    public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
         double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
         if (cityPlanning) {
             cost -= 50000000;
@@ -650,7 +674,9 @@ public class PnwUtil {
             cost -= 150_000_000;
         }
         if (manifestDestiny) {
-            cost *= 0.95;
+            double factor = 0.05;
+            if (govSupportAgency) factor += 0.025;
+            cost *= (1 - factor);
         }
         return Math.max(0, cost);
     }
@@ -670,6 +696,17 @@ public class PnwUtil {
 
     private static double[] INFRA_COST_CACHE = null;
 
+
+    public static double calculateInfra(double from, double to, boolean aec, boolean cfce, boolean urbanization, boolean gsa) {
+        double factor = 1;
+        if (aec) factor -= 0.05;
+        if (cfce) factor -= 0.05;
+        if (urbanization) {
+            factor -= 0.05;
+            if (gsa) factor -= 0.025;
+        }
+        return PnwUtil.calculateInfra(from, to) * (to > from ? factor : 1);
+    }
     public static double calculateInfra(double from, double to) {
         if (from < 0) return 0;
         if (to <= from) return (from - to) * -150;
@@ -970,7 +1007,7 @@ public class PnwUtil {
         System.out.println("Gross modifier " + MathMan.format(grossModifier) + " | " + MathMan.format(rads));
 
         // Add military upkeep
-        if (!nation.hasUnsetMil() && militaryUpkeep) {
+        if (militaryUpkeep && !nation.hasUnsetMil()) {
             double factor = nation.getMilitaryUpkeepFactor();
 
             for (MilitaryUnit unit : MilitaryUnit.values) {

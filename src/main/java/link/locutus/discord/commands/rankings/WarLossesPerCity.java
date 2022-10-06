@@ -100,9 +100,9 @@ public class WarLossesPerCity extends Command {
             response.append('\n').append(String.format("%4s", i + 1) + ". ").append(String.format("%32s", name)).append(": $").append(format(value));
         }
 
-        String emoji = "\uD83D\uDD04";
-        response.append("\n\npress " + emoji + " to refresh");
-        Message msg = DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        String emoji = "Refresh";
+        response.append("\n\nPress `" + emoji + "` to refresh");
+        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
 
         return null;
     }

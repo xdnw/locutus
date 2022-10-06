@@ -3,6 +3,7 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -112,7 +113,7 @@ public class Warchest extends Command {
             }
         }
 
-        String result = Disperse.disperse(guildDb, fundsToSendNations, Collections.emptyMap(), note, event.getGuildChannel(), "Send Warchest");
+        String result = Disperse.disperse(guildDb, fundsToSendNations, Collections.emptyMap(), note, new DiscordChannelIO(event), "Send Warchest");
         if (fundsToSendNations.size() > 1) {
             RateLimitUtil.queue(event.getGuildChannel().sendMessage(author.getAsMention()));
         }

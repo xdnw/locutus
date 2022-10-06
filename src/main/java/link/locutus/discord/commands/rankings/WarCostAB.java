@@ -5,6 +5,8 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CoalitionWarStatus;
@@ -129,22 +131,18 @@ public class WarCostAB extends Command {
             DiscordUtil.createEmbedCommand(event.getChannel(), "War Status", response.toString());
         }
 
-        if (flags.contains('l')) {
-            Set<Integer> wars = cost.getWarIds();
-        }
-
         if (Roles.ECON.has(author, guild)) {
             if (arg0.contains("/war=")) {
                 arg0 = arg0.split("war=")[1];
                 int warId = Integer.parseInt(arg0);
                 DBWar warUrl = Locutus.imp().getWarDb().getWar(warId);
-                reimburse(cost, warUrl, event.getGuild(), event.getChannel());
+                reimburse(cost, warUrl, event.getGuild(), new DiscordChannelIO(event));
             }
         }
         return result.toString();
     }
 
-    public static void reimburse(AttackCost cost, DBWar warUrl, Guild guild, MessageChannel channel) {
+    public static void reimburse(AttackCost cost, DBWar warUrl, Guild guild, IMessageIO io) {
         if (warUrl == null) {
             return;
         }
@@ -198,18 +196,23 @@ public class WarCostAB extends Command {
         String note = "#counter=" + warUrl.warId;
         List<Transaction2> transactions = db.getTransactionsByNote(note, false);
         if (!transactions.isEmpty()) {
-            DiscordUtil.createEmbedCommand(channel, "Reimbursed", "Already reimbursed:\n" + totalStr);
+            io.send("Already reimbursed:\n" + totalStr +" to " + warUrl.toUrl());
             return;
         }
 
         String title = "Reimburse: ~$" + MathMan.format(PnwUtil.convertedTotal(total));
         String body = "Type: " + type + "\n" + "Amt: " + totalStr;
 
+        String reimburseEmoji = "Reimburse";
         String cmd = Settings.commandPrefix(true) + "addbalance " + nation.getNationUrl() + " " + totalStr + " \"" + note + "\"";
 
-        String infoEmoji = "\u2139";
+        String infoEmoji = "War Info";
         String infoCmd = Settings.commandPrefix(true) + "warinfo " + warUrl.toUrl();
 
-        DiscordUtil.createEmbedCommand(channel, title, body, "\u2705", cmd, infoEmoji, infoCmd);
+        io.create()
+            .embed(title, body)
+            .commandButton(cmd, reimburseEmoji)
+            .commandButton(infoCmd, infoEmoji)
+            .send();
     }
 }

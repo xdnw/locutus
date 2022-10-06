@@ -154,26 +154,26 @@ public class Inflows extends Command {
             list.add(transfer);
         }
 
-        MessageChannel channel = event.getChannel();
+        StringBuilder msg = new StringBuilder();
         if ((!aaInflow.isEmpty() || !nationInflow.isEmpty()) && !flags.contains('i')) {
-            channel.sendMessage("Net inflows: ").complete();
-            send(channel, selfName, aaNameFunc, "alliance", aaInflow, days, true);
-            send(channel, selfName, nationNameFunc, "nation", nationInflow, days, true);
+            msg.append("Net inflows:\n");
+            msg.append(send(selfName, aaNameFunc, "alliance", aaInflow, days, true) + "\n");
+            msg.append(send(selfName, nationNameFunc, "nation", nationInflow, days, true) + "\n");
         }
         if ((!aaOutflow.isEmpty() || !nationOutflow.isEmpty()) && !flags.contains('o')) {
-            channel.sendMessage("Net outflows: ").complete();
-            send(channel, selfName, aaNameFunc, "alliance", aaOutflow, days, false);
-            send(channel, selfName, nationNameFunc, "nation", nationOutflow, days, false);
+            msg.append("Net outflows:\n");
+            msg.append(send(selfName, aaNameFunc, "alliance", aaOutflow, days, false) + "\n");
+            msg.append(send(selfName, nationNameFunc, "nation", nationOutflow, days, false) + "\n");
         }
 
         if (aaInflow.isEmpty() && nationInflow.isEmpty() && aaOutflow.isEmpty() && nationOutflow.isEmpty()) {
             return "No results.";
         } else {
-            return "Done!";
+            return msg.toString();
         }
     }
 
-    private void send(MessageChannel channel, String selfName, Function<Integer, String> nameFunc, String typeOther, Map<Integer, List<Transaction2>> transferMap, int days, boolean inflow) {
+    private String send(String selfName, Function<Integer, String> nameFunc, String typeOther, Map<Integer, List<Transaction2>> transferMap, int days, boolean inflow) {
         StringBuilder result = new StringBuilder();
         for (Map.Entry<Integer, List<Transaction2>> entry : transferMap.entrySet()) {
             int id = entry.getKey();
@@ -199,6 +199,6 @@ public class Inflows extends Command {
 //            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
             result.append(title + ": " + message).append("\n");
         }
-        DiscordUtil.sendMessage(channel, result.toString());
+        return result.toString();
     }
 }

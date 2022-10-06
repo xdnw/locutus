@@ -71,7 +71,7 @@ public class CardCommand extends Command implements Noformat {
             reactions.add(cmd);
         }
         String[] reactionsArr = reactions.toArray(new String[0]);
-        Message msg = DiscordUtil.createEmbedCommand(event.getChannel(), title, body, reactionsArr);
+        DiscordUtil.createEmbedCommand(event.getChannel(), title, body, reactionsArr);
         return null;
     }
 }

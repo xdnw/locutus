@@ -85,6 +85,7 @@ dependencies {
     implementation 'io.javalin:javalin-bundle:4.0.0.RC3'
 
     implementation 'com.ptsmods:mysqlw:1.7'
+    implementation 'org.openjdk.nashorn:nashorn-core:15.4'
 
     implementation 'com.google.api-client:google-api-client:1.33.0'
     implementation 'com.google.oauth-client:google-oauth-client-jetty:1.32.1'

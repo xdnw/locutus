@@ -3,6 +3,7 @@ package link.locutus.discord.util.update;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -245,16 +246,16 @@ public class NationUpdateProcessor {
         DBNation previous = event.getPrevious();
         DBNation nation = event.getCurrent();
 
+        {
+            long activeTurn = TimeUtil.getTurn(nation.lastActiveMs());
+            Locutus.imp().getNationDB().setActivity(nation.getNation_id(), activeTurn);
+        }
+
         if (nation.active_m() < 3) {
             long activeMinute = nation.lastActiveMs();
             // round to nearest minute
             activeMinute = (activeMinute / 60_000) * 60_000;
             Locutus.imp().getNationDB().setSpyActivity(nation.getNation_id(), nation.getProjectBitMask(), nation.getSpies(), activeMinute, nation.getWarPolicy());
-
-            {
-                long activeTurn = TimeUtil.getTurn(nation.lastActiveMs());
-                Locutus.imp().getNationDB().setActivity(nation.getNation_id(), activeTurn);
-            }
 
             if (previous.active_m() > 240 && Settings.INSTANCE.TASKS.AUTO_FETCH_UID) {
                 Locutus.imp().getExecutor().submit(new CaughtRunnable() {
@@ -664,7 +665,7 @@ public class NationUpdateProcessor {
     private static void checkExodus(DBNation previous, DBNation current) {
         if (current == null || previous == null || previous.getAlliance_id() == current.getAlliance_id() || current.getActive_m() > 4880 || previous.getAlliance_id() == 0 || previous.getPosition() == 1) return;
         DBAlliance alliance = previous.getAlliance(false);
-        if (alliance.getRank() > 120) return;
+        if (alliance == null || alliance.getRank() > 120) return;
 
         List<String> departureInfo = new ArrayList<>();
         departureInfo.add(PnwUtil.getMarkdownUrl(current.getId(), false) + ", cities: " + current.getCities() + ", " + Rank.byId(previous.getPosition()));
@@ -875,9 +876,9 @@ public class NationUpdateProcessor {
                 MessageChannel channel = Locutus.imp().getRootDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                 if (channel != null) {
                     Message message = new MessageBuilder().append(new EmbedBuilder().setTitle(title, finalBody)).append("<@217897994375266304>\n" +
-                            "See `$unlockTransfers <alliance-id>` and `$unlockTransfers <guild-id>`\n" +
+                            "See " + CM.offshore.unlockTransfers.cmd.toSlashMention() + "\n" +
                             "See `!coalitions FROZEN_FUNDS`").build();
-                    channel.sendMessage(message).queue();
+                    RateLimitUtil.queue(channel.sendMessage(message));
                 }
             }
         }

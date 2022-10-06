@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.CityInfraLand;
 import link.locutus.discord.db.entities.DBWar;
@@ -88,7 +89,7 @@ public class Damage extends Command {
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
         me = DiscordUtil.getNation(author);
-        if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
         if (filterWeak) {

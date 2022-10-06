@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.SpyCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -83,7 +84,7 @@ public class Who extends Command {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
             boolean showMoney = false;
-            Message msg = nation.toCard(event.getChannel(), false, showMoney);
+            nation.toCard(new DiscordChannelIO(event), false, showMoney);
 
             List<String> commands = new ArrayList<>();
             commands.add(Settings.commandPrefix(true) + "multi " + nation.getNation_id());

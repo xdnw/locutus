@@ -3,6 +3,7 @@ package link.locutus.discord.util.update;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.external.guild.SyncBounties;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -62,7 +63,7 @@ public class WarUpdateProcessor {
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 Guild guild = guildDB.getGuild();
                 try {
-                    Message msg = bounty.toCard(channel, false);
+                    bounty.toCard(channel, false);
 
                     Role bountyRole = Roles.BOUNTY_ALERT.toRole(guild);
                     if (bountyRole == null) return;
@@ -230,41 +231,48 @@ public class WarUpdateProcessor {
     }
 
     public static void handleWarRooms(List<Map.Entry<DBWar, DBWar>> wars) {
-        Map<Integer, Set<WarCategory>> warCats = new HashMap<>();
-        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            if (db.isDelegateServer()) continue;
-            WarCategory warCat = db.getWarChannel();
-            if (warCat != null) {
-                for (Integer aaId : warCat.getTrackedAllianceIds()) {
-                    warCats.computeIfAbsent(aaId, f -> new HashSet<>()).add(warCat);
-                }
-            }
-        }
-
-        Set<WarCategory> toUpdate = new LinkedHashSet<>();
-        for (Map.Entry<DBWar, DBWar> pair : wars) {
-            DBWar current = pair.getValue();
-
-            if (!toUpdate.isEmpty()) {
-                toUpdate.clear();
-            }
-            toUpdate.addAll(warCats.getOrDefault(current.attacker_aa, Collections.emptySet()));
-            toUpdate.addAll(warCats.getOrDefault(current.defender_aa, Collections.emptySet()));
-            if (!toUpdate.isEmpty()) {
-                if (wars.size() > 25 && RateLimitUtil.getCurrentUsed() > 50) {
-                    while (RateLimitUtil.getCurrentUsed(true) > 50) {
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                            break;
-                        }
+        try {
+            Map<Integer, Set<WarCategory>> warCats = new HashMap<>();
+            for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+                if (db.isDelegateServer()) continue;
+                WarCategory warCat = db.getWarChannel();
+                if (warCat != null) {
+                    for (int ally : warCat.getTrackedAllianceIds()) {
+                        warCats.computeIfAbsent(ally, f -> new HashSet<>()).add(warCat);
                     }
                 }
-                for (WarCategory warCat : toUpdate) {
-                    warCat.update(pair.getKey(), pair.getValue());
+            }
+
+            Set<WarCategory> toUpdate = new LinkedHashSet<>();
+            for (Map.Entry<DBWar, DBWar> pair : wars) {
+                DBWar current = pair.getValue();
+
+                if (!toUpdate.isEmpty()) {
+                    toUpdate.clear();
+                }
+                toUpdate.addAll(warCats.getOrDefault(current.attacker_aa, Collections.emptySet()));
+                toUpdate.addAll(warCats.getOrDefault(current.defender_aa, Collections.emptySet()));
+                if (!toUpdate.isEmpty()) {
+                    if (wars.size() > 25 && RateLimitUtil.getCurrentUsed() > 55) {
+                        while (RateLimitUtil.getCurrentUsed(true) > 55) {
+                            System.out.println("Remove:|| Wait handle war rooms");
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                                break;
+                            }
+                        }
+                    }
+                    System.out.println("Remove:|| War room update");
+                    for (WarCategory warCat : toUpdate) {
+                        warCat.update(pair.getKey(), pair.getValue());
+                    }
                 }
             }
+            System.out.println("Remove:|| Done handle war rooms");
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 
@@ -549,7 +557,7 @@ public class WarUpdateProcessor {
             case VICTORY:
                 break;
             case FORTIFY:
-                List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.war_id);
+                List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.war_id, root.epoch);
                 attacks.removeIf(f -> f.war_attack_id >= root.war_attack_id || f.attacker_nation_id != root.attacker_nation_id);
                 if (attacks.size() > 0 && attacks.get(attacks.size() - 1).attack_type == AttackType.FORTIFY) {
                     return AttackTypeSubCategory.DOUBLE_FORTIFY.toPair();
@@ -566,7 +574,7 @@ public class WarUpdateProcessor {
                 if (defender.getTanks() > 0 && defender.getSoldiers() < root.defcas2 && attacker.getSoldiers() * 0.4 > defender.getSoldiers() && root.defcas1 == 0 && attacker.getGroundStrength(true, false) > defender.getGroundStrength(true, true)) {
                     int attAir = (int) (root.att_gas_used * 4);
                     if (attAir > 3) {
-                        attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.war_id);
+                        attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.war_id, root.epoch);
                         attacks.remove(root);
                         DBWar war = Locutus.imp().getWarDb().getWar(root.war_id);
                         if (war != null) {
@@ -805,7 +813,7 @@ public class WarUpdateProcessor {
                     AlertUtil.forEachChannel(f -> true, GuildDB.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                         @Override
                         public void accept(MessageChannel channel, GuildDB guildDB) {
-                            card.embed(channel);
+                            card.embed(new DiscordChannelIO(channel, null));
                         }
                     });
                 } else if (defender.getOff() > 0 && stat.type != CounterType.UNCONTESTED) {
@@ -826,7 +834,7 @@ public class WarUpdateProcessor {
                         AlertUtil.forEachChannel(f -> true, GuildDB.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                             @Override
                             public void accept(MessageChannel channel, GuildDB guildDB) {
-                                card.embed(channel);
+                                card.embed(new DiscordChannelIO(channel, null));
                             }
                         });
                     }

@@ -4,11 +4,13 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -229,7 +231,7 @@ public class FACommands {
     }
 
     @Command
-    public String treaties(@Me MessageChannel channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch("f") boolean listExpired) {
+    public String treaties(@Me IMessageIO channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch("f") boolean listExpired) {
         StringBuilder response = new StringBuilder();
         if (alliances.size() == 1 && alliances.iterator().next().equals(db.getOrNull(GuildDB.Key.ALLIANCE_ID))) {
             Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
@@ -263,7 +265,7 @@ public class FACommands {
         if (allTreaties.isEmpty()) return "No treaties";
 
         String title = allTreaties.size() + " treaties";
-        DiscordUtil.createEmbedCommand(channel, title, response.toString());
+        channel.create().embed(title, response.toString()).send();
         return null;
     }
 
@@ -274,7 +276,7 @@ public class FACommands {
         if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You do not have FOREIGN_AFFAIRS";
         Category category = db.getOrThrow(GuildDB.Key.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use `" + Settings.commandPrefix(true) + "KeyStore " + GuildDB.Key.EMBASSY_CATEGORY + " <category>`";
+            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "").toSlashCommand() + "";
         }
         if (nation.getPosition() < Rank.OFFICER.id && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You are not an officer";
         User nationUser = nation.getUser();
@@ -288,14 +290,14 @@ public class FACommands {
             db.addCoalition(nation.getAlliance_id(), Coalition.MASKEDALLIANCES);
             GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildDB.Key.AUTOROLE);
             if (autoRoleValue == null || autoRoleValue == GuildDB.AutoRoleOption.FALSE) {
-                return "AutoRole is disabled. See `" + Settings.commandPrefix(true) + "KeyStore AutoRole`";
+                return "AutoRole is disabled. See " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "";
             }
             db.getAutoRoleTask().syncDB();
             db.getAutoRoleTask().autoRole(member, f -> {});
             aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             role = aaRoles.get(nation.getAlliance_id());
             if (role == null) {
-                return "No alliance role found. Please try `" + Settings.commandPrefix(true) + "autorole`";
+                return "No alliance role found. Please try " + CM.role.autoassign.cmd.create().toSlashCommand() + "";
             }
         }
 

@@ -10,7 +10,9 @@ import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
@@ -51,15 +53,23 @@ import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.InteractionType;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.Component;
+import net.dv8tion.jda.api.interactions.components.ItemComponent;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
@@ -154,7 +164,7 @@ public final class Locutus extends ListenerAdapter {
         this.nationDB = new NationDB();
         this.warDb = new WarDB();
         this.stockDB = new StockDB();
-        this.bankDb = new BankDB("bank",true);
+        this.bankDb = new BankDB("bank");
         this.tradeManager = new TradeManager();
 
         this.commandManager = new CommandManager(this);
@@ -463,6 +473,10 @@ public final class Locutus extends ListenerAdapter {
         return imp().getCommandManager();
     }
 
+    public SlashCommandManager getSlashCommands() {
+        return slashCommands;
+    }
+
     public static Locutus imp() {
         return INSTANCE;
     }
@@ -661,21 +675,31 @@ public final class Locutus extends ListenerAdapter {
 
         addTaskSeconds(() -> {
             synchronized (warDb) {
+                System.out.println("Start update wars 1");
+                long start = System.currentTimeMillis();
                 runEventsAsync(warDb::updateActiveWars);
+                System.out.println("Update wars 1.1 took " + ( - start + (start = System.currentTimeMillis())));
                 runEventsAsync(warDb::updateAttacks);
+                System.out.println("Update wars 1.2 took " + ( - start + (start = System.currentTimeMillis())));
             }
         }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
 
         addTaskSeconds(() -> {
             synchronized (warDb) {
+                System.out.println("Start update wars");
+                long start1 = System.currentTimeMillis();
                 runEventsAsync(warDb::updateAllWars);
                 runEventsAsync(warDb::updateAttacks);
+                long diff1 = System.currentTimeMillis() - start1;
+                {
+                    System.out.println("Update wars took " + diff1);
+                }
 
                 if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
                     long start = System.currentTimeMillis();
                     WarUpdateProcessor.checkActiveConflicts();
                     long diff = System.currentTimeMillis() - start;
-                    if (diff > 100) {
+                    if (diff > 500) {
                         AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
                     }
                 }
@@ -690,7 +714,7 @@ public final class Locutus extends ListenerAdapter {
 
         if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
             addTaskSeconds(() -> {
-                runEventsAsync(baseBallDB::updateGames);
+                runEventsAsync(getBaseballDB()::updateGames);
             }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
         }
 
@@ -849,6 +873,121 @@ public final class Locutus extends ListenerAdapter {
     }
 
     @Override
+    public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
+        try {
+            Message message = event.getMessage();
+            // Only process locutus buttons
+
+            Button button = event.getButton();
+            System.out.println("Button press " + button.getId() + " | " + button.getLabel());
+
+            if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+                System.out.println("Author not application");
+                return;
+            }
+
+
+            User user = event.getUser();
+            Guild guild = event.isFromGuild() ? event.getGuild() : null;
+            MessageChannel channel = event.getChannel();
+
+            DiscordHookIO io = new DiscordHookIO(event.getHook());
+
+            String id = button.getId();
+            if (id == null) {
+                System.out.println("ID is null");
+                return;
+            }
+            if (MathMan.isInteger(id)) {
+                List<MessageEmbed> embeds = message.getEmbeds();
+                if (embeds.size()  == 0) {
+                    io.send("No embed found: " + message.getJumpUrl());
+                    return;
+                }
+                Map<String, String> reactions = DiscordUtil.getReactions(message.getEmbeds().get(0));
+                if (reactions.isEmpty()) {
+                    io.send("No command info found: " + message.getJumpUrl());
+                    return;
+                }
+                String cmd = reactions.get(id);
+                if (cmd == null) {
+                    io.send("No command info found: " + message.getJumpUrl() + " | " + button.getId() + " | " + StringMan.getString(reactions));
+                    return;
+                }
+                id = cmd;
+            }
+
+            if (id.startsWith("<#")) {
+                String channelId = id.substring(0, id.indexOf('>') + 1);
+                channel = DiscordUtil.getChannel(message.getGuild(), channelId);
+                if (channel == null) {
+                    io.send("Unknown channel: <#" + channelId + ">");
+                    System.out.println("Unknown channel");
+                    return;
+                }
+                id = id.substring(id.indexOf(' ') + 1);
+            }
+
+            CommandBehavior behavior = null;
+            if (id.length() > 0) {
+                char char0 = id.charAt(0);
+                behavior = CommandBehavior.getOrNull(char0 + "");
+                if (behavior != null) {
+                    id = id.substring(behavior.getValue().length());
+                } else {
+                    behavior = CommandBehavior.DELETE_MESSAGE;
+                }
+            }
+
+//            event.deferReply(false).queue();
+            event.deferEdit().queue();
+
+            System.out.println("Id new " + id + " | " + behavior);
+            if (id.startsWith(Settings.commandPrefix(true)) || id.startsWith(Settings.commandPrefix(false))) {
+                String[] split = id.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])");
+                boolean success = false;
+                for (String cmd : split) {
+                    boolean result = handleCommandReaction(cmd, message, channel, user, true);
+                    System.out.println("Handle " + cmd + " | " + result);
+                    success |= result;
+                }
+                if (!success) behavior = null;
+            } else {
+                getCommandManager().getV2().run(guild, channel, user, message, io, id, true);
+            }
+
+            if (behavior != null) {
+                switch (behavior) {
+                    case DELETE_MESSAGE -> {
+                        RateLimitUtil.queue(message.delete());
+                    }
+                    case UNDO_REACTION -> {
+                        // unsupported
+                    }
+                    case DELETE_REACTION -> {
+                        List<ActionRow> rows = new ArrayList<>(message.getActionRows());
+                        for (int i = 0; i < rows.size(); i++) {
+                            ActionRow row = rows.get(i);
+                            List<ItemComponent> components = new ArrayList<>(row.getComponents());
+                            if (components.remove(button)) {
+                                rows.set(i, ActionRow.of(components));
+                            }
+                        }
+                        rows.removeIf(f -> f.getComponents().isEmpty());
+                        RateLimitUtil.queue(message.editMessageComponents(rows));
+                    }
+                    case DELETE_REACTIONS -> {
+                        RateLimitUtil.queue(message.editMessageComponents(new ArrayList<>()));
+                    }
+                }
+            }
+
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         try {
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
@@ -927,6 +1066,48 @@ public final class Locutus extends ListenerAdapter {
         onMessageReact(message, user, emote, responseId, true);
     }
 
+    private boolean handleCommandReaction(String cmd, Message message, MessageChannel channel, User user, boolean async) {
+        Command cmdObject = null;
+        boolean legacy = cmd.charAt(0) == Settings.commandPrefix(true).charAt(0);
+        if (legacy) {
+            String cmdLabel = cmd.split(" ")[0].substring(1);
+            cmdObject = commandManager.getCommandMap().get(cmdLabel.toLowerCase());
+            if (cmdObject == null) {
+                return false;
+            }
+        }
+        System.out.println("CMD1 " + cmd);
+        if (!(cmdObject instanceof Noformat)) {
+            cmd = DiscordUtil.format(message.getGuild(), channel, user, DiscordUtil.getNation(user), cmd);
+        }
+        Message cmdMessage = DelegateMessage.create(message, cmd, channel);
+
+        MessageReceivedEvent cmdEvent = new DelegateMessageEvent(message.getGuild(), 0, cmdMessage) {
+            @Nonnull
+            @Override
+            public User getAuthor() {
+                return user;
+            }
+
+            @Override
+            public long getResponseNumber() {
+                return -1;
+            }
+        };
+
+        if (cmdObject != null) {
+            try {
+                if (!cmdObject.checkPermission(cmdEvent)) {
+                    return false;
+                }
+            } catch (InsufficientPermissionException e) {
+                return false;
+            }
+        }
+        commandManager.run(cmdEvent, async, false);
+        return true;
+    }
+
     public void onMessageReact(Message message, User user, MessageReaction.ReactionEmote emote, long responseId, boolean async) {
         List<MessageEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) {
@@ -977,46 +1158,10 @@ public final class Locutus extends ListenerAdapter {
         if (prefix) raw = raw.substring(1);
         boolean success = false;
 
-        String[] split = raw.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "])");
+        String[] split = raw.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])");
+        System.out.println("Split " + StringMan.getString(split));
         for (String cmd : split) {
-            Command cmdObject = null;
-            boolean legacy = cmd.charAt(0) == Settings.commandPrefix(true).charAt(0);
-            if (legacy) {
-                String cmdLabel = cmd.split(" ")[0].substring(1);
-                cmdObject = commandManager.getCommandMap().get(cmdLabel.toLowerCase());
-                if (cmdObject == null) {
-                    continue;
-                }
-            }
-            if (!(cmdObject instanceof Noformat)) {
-                cmd = DiscordUtil.format(message.getGuild(), channel, user, DiscordUtil.getNation(user), cmd);
-            }
-            Message cmdMessage = DelegateMessage.create(message, cmd, channel);
-
-            MessageReceivedEvent cmdEvent = new DelegateMessageEvent(message.getGuild(), responseId, cmdMessage) {
-                @Nonnull
-                @Override
-                public User getAuthor() {
-                    return user;
-                }
-
-                @Override
-                public long getResponseNumber() {
-                    return -1;
-                }
-            };
-
-            if (cmdObject != null) {
-                try {
-                    if (!cmdObject.checkPermission(cmdEvent)) {
-                        continue;
-                    }
-                } catch (InsufficientPermissionException e) {
-                    continue;
-                }
-            }
-            success = true;
-            commandManager.run(cmdEvent, async, false);
+            success |= handleCommandReaction(cmd, message, channel, user, async);
         }
         if (success) {
             if (deleteMessage) {

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -45,7 +46,7 @@ public class IASheet extends Command {
         GuildDB db = Locutus.imp().getGuildDB(event);
         if (db == null) return "Not in guild";
         String allianceIdStr = db.getInfo(GuildDB.Key.ALLIANCE_ID);
-        if (allianceIdStr == null) return "Please use `" + Settings.commandPrefix(true) + "KeyStore ALLIANCE_ID <id>`";
+        if (allianceIdStr == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + "";
         int allianceId = Integer.parseInt(allianceIdStr);
 
         if (args.size() != 1) return usage();

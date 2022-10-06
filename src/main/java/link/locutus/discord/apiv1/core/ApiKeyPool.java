@@ -1,17 +1,10 @@
 package link.locutus.discord.apiv1.core;
 
-import com.politicsandwar.graphql.model.Alliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.PoliticsAndWarAPIException;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
 
 public class ApiKeyPool {
     private List<ApiKey> apiKeyPool;
@@ -164,7 +157,7 @@ public class ApiKeyPool {
         if (this.nextIndex >= this.apiKeyPool.size()) {
             this.nextIndex = 0;
         }
-        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ Settings.commandPrefix(true) + "KeyStore API_KEY`)");
+        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ CM.settings.cmd.create("API_KEY", null).toSlashCommand() + "`)");
         ApiKey key = this.apiKeyPool.get(this.nextIndex++);
         key.use();
         return key;

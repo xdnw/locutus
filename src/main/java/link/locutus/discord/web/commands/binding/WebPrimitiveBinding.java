@@ -1086,7 +1086,7 @@ public class WebPrimitiveBinding extends BindingHelper {
         });
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getPrimaryCommandId());
-            subtext.add(obj.getSimpleDesc());
+            subtext.add(obj.simpleDesc());
         });
     }
 }

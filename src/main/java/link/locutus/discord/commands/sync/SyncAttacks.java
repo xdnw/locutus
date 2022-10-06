@@ -38,7 +38,7 @@ public class SyncAttacks extends Command {
         if (args.size() == 0) {
             Locutus.imp().getWarDb().updateAttacks(Event::post);
         } else if (args.size() == 1) {
-            Locutus.imp().getWarDb().updateAttacks(Integer.parseInt(args.get(0)), false, Event::post);
+            Locutus.imp().getWarDb().updateAttacks(false, Event::post);
         } else {
             return usage();
         }

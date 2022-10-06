@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -39,8 +40,8 @@ public class SetBracket extends Command {
                 "e.g. `" + Settings.commandPrefix(true) + "SetTaxes @user 25/25`\n" +
                 "or to also set internal: `" + Settings.commandPrefix(true) + "SetTaxes @user 100/100 25/25`\n" +
                 "Notes:\n" +
-                " - Internal tax rate affects what portion of taxes are not included in `" + Settings.commandPrefix(true) + "deposits` (typically used when 100/100 taxes)\n" +
-                " - Set the alliance internal tax rate with: `" + Settings.commandPrefix(true) + "KeyStore TAX_BASE` (retroactive)\n" +
+                " - Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
+                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildDB.Key.TAX_BASE.name(), null) + " (retroactive)\n" +
                 " - This command is not retroactive and overrides the alliance internal taxrate";
     }
 

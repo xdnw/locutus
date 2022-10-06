@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -40,13 +41,12 @@ public class Login extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         try {
-            if (me == null) return "Please use `" + Settings.commandPrefix(true) + "verify`";
+            if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
             if (guild != null) {
                 return "This command must be used via private message with Locutus. DO NOT USE THIS COMMAND HERE";
             }
             GuildDB db = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
             if (db == null) return "Your alliance " + me.getAlliance_id() + " is not registered with Locutus";
-            db.getOrThrow(GuildDB.Key.API_KEY);
             db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
             if (args.size() < 2) return usage(event);
             Auth existingAuth = db.getAuth();

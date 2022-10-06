@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -246,7 +247,7 @@ public class TaxRecordCategorizer2 {
         this.taxes.removeIf(f -> !acceptsNation.test(f.nationId));
         getTaxes().removeIf(f -> f.date < start || f.date > end);
 
-        this.brackets = db.getAlliance().getTaxBrackets(true);
+        this.brackets = new HashMap<>(db.getAlliance().getTaxBrackets(true));
         for (int i = getTaxes().size() - 1; i >= 0; i--) {
             BankDB.TaxDeposit tax = getTaxes().get(i);
             if (tax.tax_id > 0 && !brackets.containsKey(tax.tax_id)) {

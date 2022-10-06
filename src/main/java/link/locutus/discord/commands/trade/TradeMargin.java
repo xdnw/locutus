@@ -40,7 +40,7 @@ public class TradeMargin extends Command {
         boolean usePercent = flags.contains('p');
 
         TradeManager trader = Locutus.imp().getTradeManager();
-        String refreshEmoji = "\uD83D\uDD04";
+        String refreshEmoji = "Refresh";
 
         Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
         Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));

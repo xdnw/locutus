@@ -21,16 +21,18 @@ public class AProject implements Project {
     private final Supplier<Project[]> reqProjects;
     private final int requiredCities;
     private final Predicate<DBNation> otherRequirements;
+    private final int maxCities;
     private String name;
     private int index;
 
-    public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements) {
+    public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, int maxCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements) {
         this.id = id;
         this.cost = cost;
         this.output = output;
         this.apiName = apiName;
         this.imageName = imageName;
         this.requiredCities = requiredCities;
+        this.maxCities = maxCities;
         this.reqProjects = reqProjects;
         this.otherRequirements = otherRequirements;
     }
@@ -43,6 +45,11 @@ public class AProject implements Project {
     @Override
     public int requiredCities() {
         return requiredCities;
+    }
+
+    @Override
+    public int maxCities() {
+        return maxCities;
     }
 
     @Override

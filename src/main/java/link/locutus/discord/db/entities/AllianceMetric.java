@@ -136,8 +136,10 @@ public enum AllianceMetric {
     CITY_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            Set<DBNation> nations = alliance.getNations(true, 0, true);
-            return new SimpleNationList(nations).getTotal().getCities() / (double) nations.size();
+            int total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) total += nation.getCities();
+            return (double) total / nations.size();
         }
     },
     MEMBERS(false) {
@@ -214,29 +216,36 @@ public enum AllianceMetric {
     OFFENSIVE_WARS(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            return alliance.getMembersTotal().getOff();
+            int total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) total += nation.getOff();
+            return total;
         }
     },
     OFFENSIVE_WARS_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            Set<DBNation> nations = alliance.getNations();
-            nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
-            return new SimpleNationList(nations).getTotal().getOff() / (double) nations.size();
+            int total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) total += nation.getOff();
+            return (double) total / nations.size();
         }
     },
     DEFENSIVE_WARS(false) {
         @Override
         public double apply(DBAlliance alliance) {
-            return alliance.getMembersTotal().getDef();
+            int total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) total += nation.getDef();
+            return total;
         }
     },
     DEFENSIVE_WARS_AVG(true) {
         @Override
         public double apply(DBAlliance alliance) {
-            Set<DBNation> nations = alliance.getNations();
-            nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
-            return new SimpleNationList(nations).getTotal().getDef() / (double) nations.size();
+            int total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) total += nation.getDef();
+            return (double) total / nations.size();
         }
     },
 

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.WarAttackParser;
@@ -239,7 +240,7 @@ public class WarCostRankingByDay extends Command {
         }
 
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(event.getGuildChannel());
+            table.write(new DiscordChannelIO(event));
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

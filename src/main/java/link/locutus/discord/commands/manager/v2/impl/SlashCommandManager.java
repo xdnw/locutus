@@ -8,9 +8,14 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Step;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.autocomplete.PrimitiveCompleter;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.interactions.commands.Command.*;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -60,6 +65,7 @@ import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.SlashCommandInteraction;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
@@ -90,6 +96,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SlashCommandManager extends ListenerAdapter {
     private final Locutus root;
     private final CommandManager2 commands;
+
+    private final Map<String, Long> commandIds = new HashMap<>();
 
     public SlashCommandManager(Locutus locutus) {
         this.root = locutus;
@@ -237,12 +245,34 @@ public class SlashCommandManager extends ListenerAdapter {
         Guild guild = root.getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER); // testing
         System.out.println("remove:||Guild " + guild + " | " + toRegister.size());
         if (!toRegister.isEmpty()) {
-            Map<String, ? extends Collection<CommandPrivilege>> map = new HashMap<>();
 //            CommandPrivilege.
 //            guild.updateCommandPrivileges(map);
-            Locutus.imp().getDiscordApi(guild.getIdLong()).updateCommands().addCommands(toRegister).queue();
-//            guild.updateCommands().addCommands(toRegister).queue();
+
+            JDA api = Locutus.imp().getDiscordApi(guild.getIdLong());
+
+//            CommandData messageCommand = Commands.message("rerun");
+//            CommandData messageCommand = Commands.message("embedinfo");
+
+            // checkup
+            // deposits
+            // who
+            // transfer
+            // wars
+
+
+
+            List<net.dv8tion.jda.api.interactions.commands.Command> commands = api.updateCommands().addCommands(toRegister).complete();
+            for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
+                String path = command.getName();
+                commandIds.put(path, command.getIdLong());
+            }
         }
+    }
+
+    public Long getCommandId(String path) {
+        Long id = commandIds.get(path);
+        if (id == null) id = commandIds.get(path.split(" ")[0]);
+        return id;
     }
 
     public SlashCommandData adaptCommands(CommandCallable callable, String id, SlashCommandData root, SubcommandGroupData discGroup, int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
@@ -310,6 +340,10 @@ public class SlashCommandManager extends ListenerAdapter {
                 }
             } catch (Throwable e) {
                 System.out.println("Error creating command: " + id);
+                for (OptionData option : options) {
+                    System.out.println( " - option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
+                }
+
                 e.printStackTrace();
                 throw e;
             }
@@ -354,8 +388,10 @@ public class SlashCommandManager extends ListenerAdapter {
 
             Range range = param.getAnnotation(Range.class);
             Step step = param.getAnnotation(Step.class);
+            Timestamp timestamp = param.getAnnotation(Timestamp.class);
+            Timediff timediff = param.getAnnotation(Timediff.class);
 
-            OptionType optionType = createType(type);
+            OptionType optionType = (timestamp != null || timediff != null) ? OptionType.STRING : createType(type);
             OptionData option = new OptionData(optionType, id, desc);
 
             option.setAutoComplete(false);
@@ -632,18 +668,14 @@ public class SlashCommandManager extends ListenerAdapter {
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event)
     {
         try {
-            System.out.println("Slash command interaction");
+            event.deferReply(false).queue();
 
             MessageChannel channel = event.getChannel();
-            SlashCommandInteraction interaction = event.getInteraction();
             InteractionHook hook = event.getHook();
-
-            event.deferReply(false).queue();
 
             HookMessageChannel hookChannel = new HookMessageChannel(channel, hook);
 
             String path = event.getCommandPath();
-            // TODO get command by path
 
             Map<String, String> combined = new HashMap<>();
             List<OptionMapping> options = event.getOptions();
@@ -653,70 +685,11 @@ public class SlashCommandManager extends ListenerAdapter {
 
             System.out.println("Path: " + path + " | values=" + combined);
 
-            List<String> pathArgs = StringMan.split(path, '/');
-            Map.Entry<CommandCallable, String> cmdAndPath = commands.getCallableAndPath(pathArgs);
-            CommandCallable cmd = cmdAndPath.getKey();
-            if (cmd == null) throw new IllegalArgumentException("No command found for " + StringMan.getString(pathArgs));
-
-            LocalValueStore<Object> locals = new LocalValueStore<>(commands.getStore());
-            locals.addProvider(Key.of(User.class, Me.class), event.getUser());
-            locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
-            locals.addProvider(Key.of(MessageChannel.class, Me.class), hookChannel);
-
-            List<String> args = new ArrayList<>(); // empty because we are using a arg map instead of parsing a string
-            ArgumentStack stack = new ArgumentStack(args, locals, commands.getValidators(), commands.getPermisser());
-            locals.addProvider(stack);
-
-            try {
-                cmd.validatePermissions(stack.getStore(), stack.getPermissionHandler());
-            } catch (Throwable e) {
-                e.printStackTrace();
-                RateLimitUtil.queue(hook.sendMessage("No permission: " + e.getMessage()));
-                return;
-            }
-
-            if (cmd instanceof ParametricCallable) {
-                ParametricCallable parametric = (ParametricCallable) cmd;
-
-                String cmdRaw = (StringMan.join(pathArgs, " ") + " " + parametric.stringifyArgumentMap(combined, " ")).trim();
-                System.out.println("CMD " + cmdRaw);
-                Message embedMessage = new MessageBuilder().setContent(Settings.commandPrefix(false) + cmdRaw).build();
-                locals.addProvider(Key.of(Message.class, Me.class), embedMessage);
-
-                String formatted = null;
-                try {
-                    Object[] parsed = parametric.parseArgumentMap(combined, stack);
-                    System.out.println("Combined " + StringMan.getString(combined) + " | " + StringMan.getString(parsed));
-                    Object result = parametric.call(null, stack.getStore(), parsed);
-                    if (result != null) {
-                        formatted = (result + "").trim(); // MarkupUtil.markdownToHTML
-                    }
-                } catch (Throwable e) {
-                    while (e.getCause() != null) {
-                        e = e.getCause();
-                    }
-                    e.printStackTrace();
-                    formatted = e.getClass().getSimpleName() + ": " + e.getMessage();
-                }
-                if (formatted != null && !formatted.isEmpty()) {
-                    for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
-                        formatted = formatted.replaceAll(key, "");
-                    }
-                    DiscordUtil.sendMessage(hook, formatted);
-                } else {
-                    RateLimitUtil.queue(hook.sendMessage("(no output)"));
-                }
-            } else {
-                RateLimitUtil.queue(hook.sendMessage("Invalid command: " + StringMan.getString(args)));
-            }
+            DiscordHookIO io = new DiscordHookIO(hook);
+            Guild guild = event.isFromGuild() ? event.getGuild() : null;
+            Locutus.imp().getCommandManager().getV2().run(guild, hookChannel, event.getUser(), null, io, path.replace("/", " "), combined, true);
         } catch (Throwable e) {
             e.printStackTrace();
         }
-    }
-
-    @Command(desc = "Locutus command")
-    public String locutus2(OnlineStatus status, Color color, Map<ResourceType, Double> rss, DBNation nation, Set<Role> roles) {
-        // delegate command
-        return "Hello World ";
     }
 }

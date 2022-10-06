@@ -50,6 +50,10 @@ public interface NationOrAllianceOrGuild {
         throw new IllegalArgumentException("Invalid state: " + this);
     }
 
+    default String getQualifiedName() {
+        return getTypePrefix() + ":" + getIdLong();
+    }
+
     default String getTypePrefix() {
         if (isNation()) return "Nation";
         if (isAlliance()) return "AA";

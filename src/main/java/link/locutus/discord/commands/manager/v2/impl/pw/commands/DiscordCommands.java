@@ -1,13 +1,17 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.RegisteredRole;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -39,6 +43,8 @@ import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
+import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.awt.Color;
 import java.io.IOException;
@@ -52,17 +58,19 @@ import java.util.function.Function;
 
 public class DiscordCommands {
     @Command
-    public String say(@Me GuildDB db, @Me Guild guild, @Me MessageChannel channel, @Me User author, @Me DBNation me, @Me Message message, List<String> args) {
-        String msg = DiscordUtil.trimContent(message.getContentRaw());
+    public String say(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation me, @TextArea String msg) {
+        msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
         msg = msg + "\n\n - " + author.getAsMention();
-        return DiscordUtil.format( guild, channel, author, me, msg.substring(5));
+
+        msg = placeholders.format(store, msg);
+        return msg;
     }
 
     @Command(desc = "Import all emojis from another guild", aliases = {"importEmoji", "importEmojis"})
     @RolePermission(Roles.ADMIN)
-    public String importEmojis(@Me MessageChannel channel, Guild guild) {
+    public String importEmojis(@Me IMessageIO channel, Guild guild) {
         if (!Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
             throw new IllegalStateException("Please enable DISCORD.CACHE.EMOTE in " + Settings.INSTANCE.getDefaultFile());
         }
@@ -79,7 +87,7 @@ public class DiscordCommands {
             String url = emote.getImageUrl();
             byte[] bytes = FileUtil.readBytesFromUrl(url);
 
-            RateLimitUtil.queue(channel.sendMessage("Creating emote: " + emote.getName() + " | " + url));
+            channel.send("Creating emote: " + emote.getName() + " | " + url);
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
@@ -99,28 +107,32 @@ public class DiscordCommands {
             "`{prefix}embed 'Some Title' 'My First Embed' '~{prefix}embedsay Hello {nation}' '{prefix}embedsay Goodbye {nation}'`",
     aliases = {"card", "embed"})
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String card(@Me MessageChannel channel, String title, String body, @TextArea List<String> commands) {
-        String emoji = "\ufe0f\u20e3";
+    public String card(@Me IMessageIO channel, String title, String body, @TextArea List<String> commands) {
+        try {
+            String emoji = "\ufe0f\u20e3";
 
-        if (commands.size() > 10) {
-            return "Too many commands (max: 10, provided: " + commands.size() + ")\n" +
-                    "Note: Commands must be inside \"double quotes\", and each subsequent command separated by a space";
-        }
+            if (commands.size() > 10) {
+                return "Too many commands (max: 10, provided: " + commands.size() + ")\n" +
+                        "Note: Commands must be inside \"double quotes\", and each subsequent command separated by a space";
+            }
 
-        ArrayList<String> reactions = new ArrayList<String>();
-        for (int i = 0; i < commands.size(); i++) {
-            String cmd = commands.get(i);
-            String codePoint = i + emoji;
-            reactions.add(codePoint);
-            reactions.add(cmd);
+            System.out.println("Commands: " + commands);
+            IMessageBuilder msg = channel.create().embed(title, body);
+            for (int i = 0; i < commands.size(); i++) {
+                String cmd = commands.get(i);
+                String codePoint = i + emoji;
+
+                msg = msg.commandButton(cmd, codePoint);
+            }
+            msg.send();
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
-        String[] reactionsArr = reactions.toArray(new String[0]);
-        Message msg = DiscordUtil.createEmbedCommand(channel, title, body, reactionsArr);
         return null;
     }
 
     @Command(desc = "Create a channel with name in a specified category and ping the specified roles upon creation")
-    public String channel(@Me GuildDB db, @Me Message message, @Me User author, @Me Guild guild, @Me MessageChannel output, @Me DBNation nation,
+    public String channel(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me JSONObject command, @Me User author, @Me Guild guild, @Me IMessageIO output, @Me DBNation nation,
                           String channelName, Category category, @Default String copypasta,
                           @Switch("i") boolean addIA,
                           @Switch("m") boolean addMilcom,
@@ -130,7 +142,7 @@ public class DiscordCommands {
                           @Switch("a") boolean pingAuthor
 
                           ) {
-        channelName = DiscordUtil.format(guild, output, author, nation, channelName);
+        channelName = placeholders.format(store, channelName);
 
         Member member = guild.getMember(author);
 
@@ -139,7 +151,8 @@ public class DiscordCommands {
         holders.addAll(member.getRoles());
         holders.add(guild.getRolesByName("@everyone", false).get(0));
 
-        boolean hasOverride = message.getAuthor().getIdLong() == Settings.INSTANCE.APPLICATION_ID;
+        IMessageBuilder msg = output.getMessage();
+        boolean hasOverride = msg != null && msg.getAuthor().getIdLong() == Settings.INSTANCE.APPLICATION_ID;
         for (IPermissionHolder holder : holders) {
             PermissionOverride overrides = category.getPermissionOverride(holder);
             if (overrides == null) continue;
@@ -228,8 +241,10 @@ public class DiscordCommands {
 
     @Command
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String updateEmbed(@Me Guild guild, @Me User user, @Me Message message, @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title, @Switch("d") String desc) {
-        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) return "This command can only be run when bound to a Locutus embed";
+    public String updateEmbed(@Me Guild guild, @Me User user, @Me IMessageIO io, @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title, @Switch("d") String desc) {
+        IMessageBuilder message = io.getMessage();
+
+        if (message == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) return "This command can only be run when bound to a Locutus embed";
         if (requiredRole != null) {
             if (!requiredRole.has(user, guild)) {
                 return null;
@@ -254,18 +269,15 @@ public class DiscordCommands {
             builder.setDescription(parse(desc.replace(("{description}"), embed.getDescription()), embed, message));
         }
 
-        DiscordUtil.updateEmbed(builder, null, new Function<EmbedBuilder, Message>() {
-            @Override
-            public Message apply(EmbedBuilder builder) {
-                 return RateLimitUtil.complete(message.getChannel().editMessageEmbedsById(message.getIdLong(), builder.build()));
-            }
-        });
+        message.clearEmbeds();
+        message.embed(builder.build());
+        message.send();
 
         return null;
     }
 
-    private String parse(String arg, MessageEmbed embed, Message message) {
-        long timestamp = message.getTimeCreated().toEpochSecond() * 1000L;
+    private String parse(String arg, MessageEmbed embed, IMessageBuilder message) {
+        long timestamp = message.getTimeCreated();
         long diff = System.currentTimeMillis() - timestamp;
         arg = arg.replace("{timediff}", TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
         return arg;
@@ -277,14 +289,14 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Unregister a nation to a discord user")
-    public String unregister(@Me MessageChannel channel, @Me Message message, @Me User user, @Default("%user%") DBNation nation, @Switch("f") boolean force) {
+    public String unregister(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Default("%user%") DBNation nation, @Switch("f") boolean force) {
         User nationUser = nation.getUser();
         if (nationUser == null) return "That nation is not registered";
         if (force && !Roles.ADMIN.hasOnRoot(user)) return "You do not have permission to force unregister";
         if (!user.equals(nationUser) && !force) {
             String title = "Unregister ANOTHER user";
             String body = nation.getNationUrlMarkup(true) + " | " + nationUser.getAsMention() + " | " + nationUser.getName();
-            DiscordUtil.pending(channel, message, title, body + "\nPress to confirm", 'f');
+            io.create().confirmation(title, body, command).send();
             return null;
         }
         Locutus.imp().getDiscordDB().unregister(nation.getNation_id(), null);
@@ -292,7 +304,7 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Register with your Politics And War nation")
-    public String register(@Me GuildDB db, @Me User user, @Default("%user%") DBNation nation) throws IOException {
+    public String register(@Me GuildDB db, @Me User user, /* @Default("%user%")  */ DBNation nation) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nation.getNation_id()) == null;
         String fullDiscriminator = user.getName() + "#" + user.getDiscriminator();
 
@@ -337,7 +349,7 @@ public class DiscordCommands {
             return e.getMessage();
         } catch (Throwable e) {
             e.printStackTrace();
-            return "Error (see console) <@" + Settings.INSTANCE.ADMIN_USER_ID + ">";
+            return "Error: " + e.getMessage();
         }
     }
 
@@ -357,9 +369,8 @@ public class DiscordCommands {
 
     @Command()
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public String channelUp(@Me TextChannel channel, @Me Message message) {
+    public String channelUp(@Me TextChannel channel) {
         RateLimitUtil.queue(channel.getManager().setPosition(channel.getPositionRaw() - 1));
-        RateLimitUtil.queue(message.delete());
         return null;
     }
 
@@ -379,9 +390,8 @@ public class DiscordCommands {
 
     @Command()
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public String channelDown(@Me TextChannel channel, @Me Message message) {
+    public String channelDown(@Me TextChannel channel) {
         RateLimitUtil.queue(channel.getManager().setPosition(channel.getPositionRaw() + 1));
-        RateLimitUtil.queue(message.delete());
         return null;
     }
 
@@ -413,12 +423,14 @@ public class DiscordCommands {
 
     @Command()
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public String channelCategory(@Me Guild guild, @Me Member member, @Me TextChannel channel, @Me Message message, Category category) {
+    public String channelCategory(@Me Guild guild, @Me Member member, @Me TextChannel channel, Category category) {
+        if (channel.getParentCategory() != null && channel.getParentCategory().getIdLong() == category.getIdLong()) {
+            return "Channel is already in category: " + category.toString();
+        }
         String[] split = channel.getName().split("-");
         if (((split.length >= 2 && MathMan.isInteger(split[split.length - 1])) || Roles.ADMIN.has(member)) && channel.canTalk(member)) {
             RateLimitUtil.queue(channel.getManager().setParent(category));
-            RateLimitUtil.queue(message.delete());
-            return "Done";
+            return null;
         } else {
             return "You do not have permission to move that channel";
         }

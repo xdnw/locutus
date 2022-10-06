@@ -145,6 +145,7 @@ public class FindProducer extends Command {
         }
 
         String title = "Daily " + args.get(0) + " production";
+        if (listAlliances && average) title += " per member";
         if (types.size() > 1) title += " (market value)";
         ranks.build(event, title);
 

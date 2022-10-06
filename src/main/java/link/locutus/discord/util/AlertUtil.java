@@ -228,6 +228,7 @@ public class AlertUtil {
 
     public static void error(String title, String body) {
         if (title == null) title = "error";
+        else if (title.toLowerCase().contains("captcha")) return;
         System.err.println("# " + title + "\n    " + StringMan.join(body.split("\r?\n"), "\n    "));
         try {
             DiscordUtil.createEmbedCommand(Settings.INSTANCE.DISCORD.CHANNEL.ERRORS, title, body);

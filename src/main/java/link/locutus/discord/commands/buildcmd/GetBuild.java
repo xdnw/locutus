@@ -3,6 +3,9 @@ package link.locutus.discord.commands.buildcmd;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -59,10 +62,10 @@ public class GetBuild extends Command {
         if (nation == null) {
             return "Nation not found: `" + args.get(0) + "`";
         }
-        return onCommand(nation, event.getChannel());
+        return onCommand(nation, new DiscordChannelIO(event));
     }
 
-    public static String onCommand(DBNation nation, MessageChannel channel) throws Exception {
+    public static String onCommand(DBNation nation, IMessageIO channel) throws Exception {
         Map<DBNation, Map<Integer, JavaCity>> builds = new GetCityBuilds(nation).adapt(i -> {});
         Map<DBNation, Map<CityBuild, List<String>>> uniqueBuilds = new HashMap<>();
         for (Map.Entry<DBNation, Map<Integer, JavaCity>> nationEntry : builds.entrySet()) {
@@ -76,8 +79,9 @@ public class GetBuild extends Command {
             }
         }
 
+        IMessageBuilder msg = channel.create();
         for (Map.Entry<DBNation, Map<CityBuild, List<String>>> entry : uniqueBuilds.entrySet()) {
-            channel.sendMessage(nation.getNation() + " has " + entry.getValue().size() + " unique builds in " + nation.getCities() + " cities:").complete();
+            msg.append(nation.getNation() + " has " + entry.getValue().size() + " unique builds in " + nation.getCities() + " cities:");
 
             Map<CityBuild, List<String>> cityPair = entry.getValue();
             nation = entry.getKey();
@@ -90,9 +94,10 @@ public class GetBuild extends Command {
                         .append(cityEntry.getKey().toString())
                         .append("```");
 
-                DiscordUtil.createEmbedCommand(channel, title, response.toString());
+                msg.embed(title, response.toString());
             }
         }
+        msg.send();
 
         return null;
     }

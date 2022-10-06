@@ -3,16 +3,21 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
@@ -57,6 +62,8 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.VoiceChannel;
+import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -82,7 +89,7 @@ import java.util.stream.Collectors;
 public class UtilityCommands {
     @Command(desc = "list channels")
     @RolePermission(Roles.ADMIN)
-    public String channelCount(@Me MessageChannel channel, @Me Guild guild) {
+    public String channelCount(@Me IMessageIO channel, @Me Guild guild) {
         StringBuilder channelList = new StringBuilder();
 
         List<Category> categories = guild.getCategories();
@@ -100,14 +107,14 @@ public class UtilityCommands {
             channelList.append("\n");
         }
 
-        DiscordUtil.upload(channel, guild.getChannels().size() + "/500 channels", channelList.toString());
+        channel.create().file(guild.getChannels().size() + "/500 channels", channelList.toString()).send();
         return null;
     }
 
     @Command(desc = "Find potential offshores used by an alliance")
     @RolePermission(Roles.ECON)
     @WhitelistPermission
-    public String findOffshore(@Me MessageChannel channel, @Me Message message, DBAlliance alliance, @Default @Timestamp Long cutoffMs) {
+    public String findOffshore(@Me IMessageIO channel, @Me JSONObject command, DBAlliance alliance, @Default @Timestamp Long cutoffMs) {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
 
         List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
@@ -127,14 +134,14 @@ public class UtilityCommands {
             valueTransferred.put((int) t.getSender(), valueTransferred.getOrDefault((int) t.getSender(), 0d) + value);
         }
 
-        String cmd = DiscordUtil.trimContent(message.getContentRaw());
+        
 
         new SummedMapRankBuilder<>(numTransactions).sort().name(new Function<Map.Entry<Integer, Integer>, String>() {
             @Override
             public String apply(Map.Entry<Integer, Integer> e) {
                 return PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey()));
             }
-        }).build(channel, cmd, "Potential offshores");
+        }).build(channel, command, "Potential offshores", true);
 
         return null;
     }
@@ -286,7 +293,7 @@ public class UtilityCommands {
 
             for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(aa.getAlliance_id())) {
 
-                List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war.warId);
+                List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
                 attacks.removeIf(f -> f.attack_type != AttackType.A_LOOT);
                 if (attacks.size() != 1) continue;
 
@@ -582,7 +589,7 @@ public class UtilityCommands {
         return "**" + title + "**\n" + response.toString();
     }
     @Command
-    public String warRanking(@Me Message message, @Me MessageChannel channel, @Timestamp long time, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders,
+    public String warRanking(@Me JSONObject command, @Me IMessageIO channel, @Timestamp long time, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders,
                              @Switch("o") boolean onlyOffensives,
                              @Switch("d") boolean onlyDefensives,
                              @Switch("n") boolean normalizePerMember,
@@ -625,24 +632,24 @@ public class UtilityCommands {
 
         String title = "Most " + offOrDef + "wars (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time) +")";
         if (normalizePerMember) title += "(per " + (ignore2dInactives ? "active " : "") + "nation)";
-        String cmd = DiscordUtil.trimContent(message.getContentRaw());
-        ranks.build(channel, cmd, title);
-
-        if (ranks.get().size() > 25) {
-            DiscordUtil.upload(channel, title, ranks.toString());
-        }
+        
+        ranks.build(channel, command, title, true);
 
         return null;
     }
 
     @Command(desc = "Calculate the costs of purchasing cities (from current to max)", aliases = {"citycost", "citycosts"})
-    public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity, @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning) {
+    public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity, @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning, @Default("false") boolean governmentSupportAgency) {
         if (maxCity > 1000) throw new IllegalArgumentException("Max cities 1000");
 
         double total = 0;
 
         for (int i = Math.max(1, currentCity); i < maxCity; i++) {
-            total += PnwUtil.nextCityCost(i, manifestDestiny, urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(), advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(), metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities());
+            total += PnwUtil.nextCityCost(i, manifestDestiny,
+                    urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(),
+                    advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(),
+                    metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities(),
+                    governmentSupportAgency);
         }
 
         return "$" + MathMan.format(total);
@@ -875,7 +882,7 @@ public class UtilityCommands {
 
     @Command(desc = "Auto rank users on discord")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String autoroleall(@Me User author, @Me GuildDB db, @Me MessageChannel channel) {
+    public String autoroleall(@Me User author, @Me GuildDB db, @Me IMessageIO channel) {
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();
 
@@ -890,14 +897,14 @@ public class UtilityCommands {
                     public void accept(String s) {
                         if (messaged) return;
                         messaged = true;
-                        RateLimitUtil.queue(channel.sendMessage(s));
+                        channel.send(s);
                     }
                 });
                 return true;
             }
         };
         if (Roles.ADMIN.hasOnRoot(author) || true) {
-            RateLimitUtil.queue(channel.sendMessage("Please wait..."));
+            channel.send("Please wait...");
             func.apply(0L);
         } else if (Roles.INTERNAL_AFFAIRS.has(author, db.getGuild())) {
             String taskId = getClass().getSimpleName() + "." + db.getGuild().getId();
@@ -922,36 +929,38 @@ public class UtilityCommands {
         }
 
         if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: `" + Settings.commandPrefix(true) + "KeyStore AutoRole`");
+            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
         if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: `" + Settings.commandPrefix(true) + "KeyStore AutoNick`");
+            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + "");
         return response.toString();
     }
 
     @Command(desc = "Auto rank users on discord")
-    public String autorole(@Me GuildDB db, @Me MessageChannel channel, Member member) {
+    public String autorole(@Me GuildDB db, @Me IMessageIO channel, Member member) {
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();
 
         DBNation nation = DiscordUtil.getNation(member.getUser());
-        Consumer<String> out = s -> RateLimitUtil.queue(channel.sendMessage(s));
-        if (nation == null) out.accept("That nation isn't registered: `" + Settings.commandPrefix(true) + "verify`");
+        Consumer<String> out = channel::send;
+        if (nation == null) out.accept("That nation isn't registered: " + CM.register.cmd.toSlashMention() + "");
         task.autoRole(member, out);
 
         StringBuilder response = new StringBuilder("Done!");
 
         if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: `" + Settings.commandPrefix(true) + "KeyStore AutoRole`");
+            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
         if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: `" + Settings.commandPrefix(true) + "KeyStore AutoNick`");
+            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + "");
         return response.toString();
     }
 
@@ -959,7 +968,7 @@ public class UtilityCommands {
     @Command(desc = "Create an alliance sheet.\n" +
             "See `{prefix}placeholders Alliance` for a list of placeholders")
     @WhitelistPermission
-    public String AllianceSheet(@Me Guild guild, @Me MessageChannel channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
+    public String AllianceSheet(NationPlaceholders placeholders, ValueStore store, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
                                 @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, IllegalAccessException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.ALLIANCES_SHEET);
@@ -1011,7 +1020,7 @@ public class UtilityCommands {
                     }
                 }
 
-                String formatted = DiscordUtil.format(guild, channel, author, nation, arg);
+                String formatted = placeholders.format(store, arg);
 
                 header.set(i, formatted);
             }
@@ -1027,9 +1036,9 @@ public class UtilityCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     @Command
-    public String NationSheet(@Me MessageChannel channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
-                           @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet,
-                           @Switch("t") boolean updateTimer) throws GeneralSecurityException, IOException {
+    public String NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
+                              @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet,
+                              @Switch("t") boolean updateTimer) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
         }
@@ -1048,7 +1057,7 @@ public class UtilityCommands {
             }
             for (int i = 0; i < columns.size(); i++) {
                 String arg = columns.get(i);
-                String formatted = DiscordUtil.format(db.getGuild(), channel, author, nation, arg);
+                String formatted = placeholders.format(store, arg);
 
                 header.set(i, formatted);
             }
@@ -1063,18 +1072,18 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Check if a nation shares networks with others")
-    public String multi(@Me MessageChannel channel, DBNation nation) {
+    public String multi(@Me IMessageIO channel, DBNation nation) {
         MultiReport report = new MultiReport(nation.getNation_id());
         String result = report.toString();
 
         String title = PnwUtil.getName(nation.getNation_id(), false) + " multi report";
         if (result.length() + title.length() >= 2000) {
             String condensed = report.toString(true);
-            DiscordUtil.createEmbedCommand(channel, PnwUtil.getName(nation.getNation_id(), false), condensed);
+            if (condensed.length() + title.length() < 2000) {
+                channel.create().embed(PnwUtil.getName(nation.getNation_id(), false), condensed).send();
+            }
         }
-
-        DiscordUtil.createEmbedCommand(channel, title, result);
-
+        channel.create().embed(title, result).send();
         String disclaimer = "```Disclaimer:\n" +
                 " - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)\n" +
                 " - A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
@@ -1082,7 +1091,6 @@ public class UtilityCommands {
                 " - It is against game rules to use evidence to threaten or coerce others\n" +
                 "See: https://politicsandwar.com/rules/" +
                 "```";
-
         return disclaimer;
     }
 
@@ -1106,8 +1114,8 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get info about your own nation")
-    public String me(@Me Message message, @Me Guild guild, @Me MessageChannel channel, @Me User author, @Me DBNation me) throws IOException {
-        return who(message, guild, channel, author, Collections.singleton(me), null, false, false, false, false, false, false, null);
+    public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation me) throws IOException {
+        return who(command, guild, channel, author, Collections.singleton(me), null, false, false, false, false, false, false, null);
     }
 
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
@@ -1119,7 +1127,7 @@ public class UtilityCommands {
             "Use `-i` to list individual nation info\n" +
             "Use `-c` to list individual nation channels" +
             "e.g. `{prefix}who @borg`")
-    public String who(@Me Message message, @Me Guild guild, @Me MessageChannel channel, @Me User author,
+    public String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author,
                       Set<DBNation> nations,
                       @Default() NationPlaceholder sortBy,
                       @Switch("l") boolean list,
@@ -1186,7 +1194,7 @@ public Map<ParametricCallable, String> getEndpoints() {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
             boolean showMoney = false;
-            Message msg = nation.toCard(channel, false, showMoney);
+            nation.toCard(channel, false, showMoney);
 
             List<String> commands = new ArrayList<>();
             commands.add(Settings.commandPrefix(true) + "multi " + nation.getNation_id());
@@ -1211,6 +1219,7 @@ public Map<ParametricCallable, String> getEndpoints() {
                 arg0 = "coalition";
                 title = "`" + arg0 + "`";
             }
+            if (nations.isEmpty()) return "No nations found";
             title = "(" + nations.size() + " nations) " + title;
 
             DBNation total = new DBNation(arg0, nations, false);
@@ -1229,8 +1238,9 @@ public Map<ParametricCallable, String> getEndpoints() {
             // Num members
             // averages
         }
+        IMessageBuilder msg = channel.create();
         if (!listInfo && page == null && nations.size() > 1) {
-            DiscordUtil.createEmbedCommand(channel, title, response.toString());
+            msg.embed(title, response.toString());
         }
 
         if (list || listMentions || listRawUserIds || listChannels || listAlliances) {
@@ -1279,7 +1289,8 @@ public Map<ParametricCallable, String> getEndpoints() {
             }
             int pages = (nations.size() + perpage - 1) / perpage;
             title += "(" + (page + 1) + "/" + pages + ")";
-            DiscordUtil.paginate(channel, title, DiscordUtil.trimContent(message.getContentRaw()), page, perpage, nationList);
+
+            msg.paginate(title, command, page, perpage, nationList).send();
         }
         if (listInfo) {
 //            if (perpage == null) perpage = 5;
@@ -1316,8 +1327,9 @@ public Map<ParametricCallable, String> getEndpoints() {
 
                 results.add(entry.toString());
             }
-            DiscordUtil.paginate(channel, "Nations", DiscordUtil.trimContent(message.getContentRaw()), page, perpage, results);
+            msg.paginate("Nations", command, page, perpage, results).send();
         }
+        msg.send();
 
         return null;
     }
@@ -1330,7 +1342,7 @@ public Map<ParametricCallable, String> getEndpoints() {
 
     @Command
     @RolePermission(value = Roles.ECON)
-    public String interest(@Me MessageChannel channel, @Me GuildDB db, Set<DBNation> nations, double interestPositivePercent, double interestNegativePercent) throws IOException, GeneralSecurityException {
+    public String interest(@Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations, double interestPositivePercent, double interestNegativePercent) throws IOException, GeneralSecurityException {
         if (nations.isEmpty()) throw new IllegalArgumentException("No nations specified");
         if (nations.size() > 180) throw new IllegalArgumentException("Cannot do intest to that many people");
 
@@ -1401,9 +1413,11 @@ public Map<ParametricCallable, String> getEndpoints() {
         result.append("\nOr press \uD83C\uDFE6 to run `" + Settings.commandPrefix(true) + "addbalance <sheet> #deposit`");
 
         String title = "Nation Interest";
-        String emoji = "\uD83C\uDFE6";
-        String cmd = Settings.commandPrefix(true) + "addbalance " + sheet.getURL() + " #deposit";
-        DiscordUtil.createEmbedCommand(channel, title, result.toString(), emoji, cmd);
+        String emoji = "Confirm";
+        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(sheet.getURL(), "#deposit", null, null);
+        channel.create().embed(title, result.toString())
+                        .commandButton(cmd, emoji)
+                                .send();
 
         return null;
     }
@@ -1453,14 +1467,14 @@ public Map<ParametricCallable, String> getEndpoints() {
 
     @Command(aliases = {"setloot"})
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String setLoot(@Me MessageChannel channel, @Me DBNation me, DBNation nation, Map<ResourceType, Double> resources, @Default("OTHER") NationLootType type, @Default("1") double fraction) {
+    public String setLoot(@Me IMessageIO channel, @Me DBNation me, DBNation nation, Map<ResourceType, Double> resources, @Default("OTHER") NationLootType type, @Default("1") double fraction) {
         resources = PnwUtil.multiply(resources, 1d / fraction);
         Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), TimeUtil.getTurn(), PnwUtil.resourcesToArray(resources), type);
         return "Set " + nation.getNation() + " to " + PnwUtil.resourcesToString(resources) + " worth: ~$" + PnwUtil.convertedTotal(resources);
     }
 
     @Command(desc = "List alliances by their new members over a timeframe")
-    public String recruitmentRankings(@Me User author, @Me MessageChannel channel, @Me Message message, @Timestamp long cutoff, @Default("80") int topX) {
+    public String recruitmentRankings(@Me User author, @Me IMessageIO channel, @Me JSONObject command, @Timestamp long cutoff, @Default("80") int topX, @Switch("u") boolean uploadFile) {
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
 
         Map<DBAlliance, Integer> rankings = new HashMap<DBAlliance, Integer>();
@@ -1499,7 +1513,7 @@ public Map<ParametricCallable, String> getEndpoints() {
 //            int total = potentialMembers.size();
             rankings.put(alliance, total);
         }
-        new SummedMapRankBuilder<>(rankings).sort().nameKeys(f -> f.getName()).build(author, channel, DiscordUtil.trimContent(message.getContentRaw()), "Most new members");
+        new SummedMapRankBuilder<>(rankings).sort().nameKeys(f -> f.getName()).build(author, channel, command, "Most new members", uploadFile);
         return null;
     }
 
@@ -1537,7 +1551,7 @@ public Map<ParametricCallable, String> getEndpoints() {
     }
 
     @Command(aliases = {"alliancecost", "aacost"})
-    public String allianceCost(@Me MessageChannel channel, Set<DBNation> nations, @Switch("u") boolean update) {
+    public String allianceCost(@Me IMessageIO channel, Set<DBNation> nations, @Switch("u") boolean update) {
         double infraCost = 0;
         double landCost = 0;
         double cityCost = 0;
@@ -1559,7 +1573,8 @@ public Map<ParametricCallable, String> getEndpoints() {
                 boolean cp = i > Projects.URBAN_PLANNING.requiredCities() && projects.contains(Projects.URBAN_PLANNING);
                 boolean acp = i > Projects.ADVANCED_URBAN_PLANNING.requiredCities() && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
                 boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
-                cityCost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp);
+                boolean gsa = projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                cityCost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp, gsa);
             }
             Map<Integer, JavaCity> cityMap = nation.getCityMap(update, false);
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
@@ -1600,7 +1615,7 @@ public Map<ParametricCallable, String> getEndpoints() {
         response.append("\n").append("**Buildings**: $" + MathMan.format(PnwUtil.convertedTotal(buildingCost)) + "\n`" + PnwUtil.resourcesToString(buildingCost) + "`");
         response.append("\n").append("**Total**: $" + MathMan.format(PnwUtil.convertedTotal(total)) + "\n`" + PnwUtil.resourcesToString(total) + "`");
 
-        DiscordUtil.createEmbedCommand(channel, title, response.toString());
+        channel.create().embed(title, response.toString()).send();
         return null;
     }
 
