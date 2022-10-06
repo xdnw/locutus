@@ -34,7 +34,7 @@ public class Damage extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return super.checkPermission(server, user);
+        return true;
     }
 
     @Override

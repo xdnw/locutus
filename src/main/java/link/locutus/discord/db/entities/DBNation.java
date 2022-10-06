@@ -519,11 +519,15 @@ public class DBNation implements NationOrAlliance {
         return new AbstractMap.SimpleEntry<>(value, loot != null);
     }
 
+    public Long getSnapshot() {
+        return null;
+    }
+
     @Command
     @RolePermission(Roles.MEMBER)
     public int allianceSeniority() {
         if (alliance_id == 0) return 0;
-        long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this);
+        long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this, getSnapshot());
         long now = System.currentTimeMillis();
         if (timestamp > now) return 0;
 
@@ -794,8 +798,15 @@ public class DBNation implements NationOrAlliance {
     }
     @Command
     public double getRads() {
-        TradeManager manager = Locutus.imp().getTradeManager();
-        double radIndex = manager.getGlobalRadiation() + manager.getGlobalRadiation(getContinent());
+        double radIndex;
+        if (getSnapshot() != null) {
+            long turn = TimeUtil.getTurn(getSnapshot());
+            Map<Continent, Double> rads = Locutus.imp().getNationDB().getRadiationByTurn(turn);
+            radIndex = rads.get(continent) + rads.values().stream().sum() / 5d;
+        } else {
+            TradeManager manager = Locutus.imp().getTradeManager();
+            radIndex = manager.getGlobalRadiation() + manager.getGlobalRadiation(getContinent());
+        }
         return (1 + (radIndex / (-1000)));
     }
 
@@ -2263,7 +2274,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Set of nation ids fighting this nation")
     public Set<Integer> getEnemies() {
-        return Locutus.imp().getWarDb().getWarsByNation(getNation_id()).stream()
+        return getActiveWars().stream()
                 .map(dbWar -> dbWar.attacker_id == getNation_id() ? dbWar.defender_id : dbWar.attacker_id)
                 .collect(Collectors.toSet());
     }
@@ -2362,7 +2373,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Days since creation")
     public int getAgeDays() {
         if (getDate() == 0) return 0;
-        return (int) TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - date);
+        return (int) TimeUnit.MILLISECONDS.toDays((getSnapshot() != null ? getSnapshot() : System.currentTimeMillis()) - date);
 //        return (int) (TimeUnit.SECONDS.toDays(ZonedDateTime.now(ZoneOffset.UTC).toEpochSecond()) - getDate() / 65536);
     }
 
