@@ -802,7 +802,7 @@ public class DBNation implements NationOrAlliance {
         if (getSnapshot() != null) {
             long turn = TimeUtil.getTurn(getSnapshot());
             Map<Continent, Double> rads = Locutus.imp().getNationDB().getRadiationByTurn(turn);
-            radIndex = rads.get(continent) + rads.values().stream().sum() / 5d;
+            radIndex = rads.get(continent) + rads.values().stream().mapToDouble(f -> f).sum() / 5d;
         } else {
             TradeManager manager = Locutus.imp().getTradeManager();
             radIndex = manager.getGlobalRadiation() + manager.getGlobalRadiation(getContinent());

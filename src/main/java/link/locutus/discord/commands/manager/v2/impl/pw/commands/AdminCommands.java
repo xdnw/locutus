@@ -17,7 +17,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -42,7 +41,6 @@ import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -69,7 +67,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class AdminCommands {
     @Command
@@ -399,7 +396,7 @@ public class AdminCommands {
                 "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name()).toSlashCommand() + "";
     }
 
-    public String apiUsageStats(PoliticsAndWarV2 api) {
+    public String printApiStats(PoliticsAndWarV2 api) {
         Map<String, AtomicInteger> methodUsage = api.getMethodUsageStats();
         List<Map.Entry<String, AtomicInteger>> sorted = new ArrayList<>(methodUsage.entrySet());
         sorted.sort((o1, o2) -> Integer.compare(o2.getValue().intValue(), o1.getValue().intValue()));
@@ -432,14 +429,14 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String rootApiUsageStats() {
         PoliticsAndWarV2 api = Locutus.imp().getRootPnwApi();
-        return apiUsageStats(api);
+        return printApiStats(api);
     }
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String apiUsageStats(@Me Guild guild, boolean cached) {
         PoliticsAndWarV2 api = Locutus.imp().getGuildDB(guild).getApi(cached);
-        return apiUsageStats(api);
+        return printApiStats(api);
     }
 
     @Command(desc = "Check if current api keys are valid")

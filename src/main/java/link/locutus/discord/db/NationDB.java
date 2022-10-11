@@ -2231,6 +2231,7 @@ public class NationDB extends DBMainV2 {
             return result;
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
     public void addRadiationByTurn(Continent continent, long turn, double radiation) {

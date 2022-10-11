@@ -1,7 +1,9 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
@@ -249,6 +251,69 @@ public class CommandGroup implements ICommandGroup {
                     throw new IllegalArgumentException("Could not find mapping for method " + method.getName() + " | " + StringMan.getString(method.getGenericParameterTypes()) + " please add it to the commands.yml file or register it after legacy remapping");
                 }
             }
+        }
+    }
+
+    public void registerCommandsWithMapping(Class<CM> remapping, boolean checkUnregisteredMethods, boolean checkCommandArguments) {
+        Class<?> clazz = CM.class;
+        Map<Class<?>, Object> instanceCache = new HashMap<>();
+        register(clazz, new ArrayList<>(), instanceCache, true);
+
+        Set<ParametricCallable> allRegistered = getParametricCallables(f -> true);
+        Set<Method> registeredMethods = new HashSet<>();
+        for (ParametricCallable callable : allRegistered) {
+            if (callable.getMethod() != null) {
+                registeredMethods.add(callable.getMethod());
+            }
+        }
+
+
+        for (Map.Entry<Class<?>, Object> entry : instanceCache.entrySet()) {
+            Object instance = entry.getValue();
+            for (Method declaredMethod : entry.getKey().getDeclaredMethods()) {
+                if (declaredMethod.getAnnotation(Command.class) == null) continue;
+                if (!registeredMethods.contains(declaredMethod)) {
+                    throw new IllegalArgumentException("No mapping found for method " + entry.getKey() + " | " + declaredMethod);
+                }
+            }
+        }
+
+    }
+
+    private void register(Class<?> clazz, List<String> path, Map<Class<?>, Object> instanceCache, boolean isRoot) {
+        AutoRegister methodInfo = clazz.getAnnotation(AutoRegister.class);
+        if (methodInfo != null) {
+            Object instance = instanceCache.computeIfAbsent(methodInfo.clazz(), f -> {
+                try {
+                    return f.newInstance();
+                } catch (InstantiationException | IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            Method found = null;
+            for (Method method : methodInfo.clazz().getDeclaredMethods()) {
+                if (method.getName().equalsIgnoreCase(methodInfo.method()) && method.getAnnotation(Command.class) != null) {
+                    if (found != null) throw new IllegalStateException("Duplicate method found in " + methodInfo.clazz().getName() + " for " + methodInfo.method());
+                    found = method;
+                }
+            }
+            if (found == null) {
+                throw new IllegalStateException("No method found " + clazz + " | " + methodInfo.method());
+                // TODO no method found
+            }
+            ParametricCallable callable = ParametricCallable.generateFromMethod(this, instance, found, store);
+            if (callable == null) {
+                throw new IllegalStateException("Method " + methodInfo.method() + " in " + methodInfo.clazz().getName() + " is not a valid @Command");
+            }
+            this.registerWithPath(callable, path, clazz.getSimpleName());
+        }
+        ArrayList<String> subPath = new ArrayList<>(path);
+
+        String simpleName = clazz.getSimpleName();
+        if (!isRoot) subPath.add(simpleName);
+
+        for (Class<?> subClass : clazz.getDeclaredClasses()) {
+            register(subClass, subPath, instanceCache, false);
         }
     }
 }

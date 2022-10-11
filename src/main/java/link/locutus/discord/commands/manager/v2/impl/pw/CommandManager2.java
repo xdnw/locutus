@@ -92,36 +92,38 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 
-        StockCommands stock = new StockCommands();
+//        StockCommands stock = new StockCommands();
+////        this.commands.registerMapping(new CM());
+//
+//        CommandGroup legacy = CommandGroup.createRoot(store, validators);
+//        //        this.commands.registerSubCommands(new ExchangeCommands(), "exchange", "corp", "corporation");
+//        legacy.registerSubCommands(stock, "stock");
+//        legacy.registerCommands(new UtilityCommands());
+//
+//        legacy.registerCommands(new BankCommands());
+//        legacy.registerCommands(new StatCommands());
+//        legacy.registerCommands(new IACommands());
+//        legacy.registerCommands(new AttackCommands());
+//        legacy.registerCommands(new AdminCommands());
+//        legacy.registerCommands(new DiscordCommands());
+//        legacy.registerCommands(new FACommands());
+//        legacy.registerCommands(new FunCommands());
+//        legacy.registerCommands(new PlayerSettingCommands());
+//        legacy.registerCommands(new LoanCommands());
+//        legacy.registerCommands(new TradeCommands());
+//        legacy.registerCommands(new WarCommands());
+//        legacy.registerSubCommands(new GrantCommands(), "grant");
+//        legacy.registerCommands(new TestCommands());
+//        legacy.registerCommands(new UnsortedCommands());
+//        legacy.registerSubCommands(new ReportCommands(), "report");
+//
+//        YamlConfiguration commandRemapConfig = loadDefaultMapping();
+//        if (commandRemapConfig != null) {
+//            this.commands.registerCommandsWithMapping(legacy, commandRemapConfig, 2, false);
+//        }
 
-        CommandGroup legacy = CommandGroup.createRoot(store, validators);
-        //        this.commands.registerSubCommands(new ExchangeCommands(), "exchange", "corp", "corporation");
-        legacy.registerSubCommands(stock, "stock");
-        legacy.registerCommands(new UtilityCommands());
-
-        legacy.registerCommands(new BankCommands());
-        legacy.registerCommands(new StatCommands());
-        legacy.registerCommands(new IACommands());
-        legacy.registerCommands(new AttackCommands());
-        legacy.registerCommands(new AdminCommands());
-        legacy.registerCommands(new DiscordCommands());
-        legacy.registerCommands(new FACommands());
-        legacy.registerCommands(new FunCommands());
-        legacy.registerCommands(new PlayerSettingCommands());
-        legacy.registerCommands(new LoanCommands());
-        legacy.registerCommands(new TradeCommands());
-        legacy.registerCommands(new WarCommands());
-        legacy.registerSubCommands(new GrantCommands(), "grant");
-        legacy.registerCommands(new TestCommands());
-        legacy.registerCommands(new UnsortedCommands());
-        legacy.registerSubCommands(new ReportCommands(), "report");
-
-        YamlConfiguration commandRemapConfig = loadDefaultMapping();
-        if (commandRemapConfig != null) {
-            this.commands.registerCommandsWithMapping(legacy, commandRemapConfig, 2, false);
-        }
-
-        legacy.registerSubCommands(new BuildCommands(), "build");
+        this.commands.registerCommandsWithMapping(CM.class, true, true);
+        this.commands.registerSubCommands(new BuildCommands(), "build");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);

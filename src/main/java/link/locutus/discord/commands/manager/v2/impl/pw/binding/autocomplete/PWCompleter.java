@@ -31,6 +31,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.lang.reflect.Type;
@@ -142,6 +143,12 @@ public class PWCompleter extends BindingHelper {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         List<String> options = new ArrayList<>(placeholders.getKeys());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
+    }
+
+    @Autocomplete
+    @Binding(types={GuildDB.Key.class})
+    public List<String> setting(String input) {
+        return StringMan.completeEnum(input, GuildDB.Key.class);
     }
 
     @Autocomplete

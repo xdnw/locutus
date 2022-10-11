@@ -58,13 +58,18 @@ public class ParametricCallable implements ICommand {
     public static List<ParametricCallable> generateFromClass(CommandCallable parent, Object object, ValueStore store) {
         List<ParametricCallable> cmds = new ArrayList<>();
         for (Method method : object.getClass().getDeclaredMethods()) {
-            Command cmdAnn = method.getAnnotation(Command.class);
-            if (cmdAnn != null) {
-                ParametricCallable callable = new ParametricCallable(parent, store, object, method, cmdAnn);
-                cmds.add(callable);
-            }
+            ParametricCallable parametric = generateFromMethod(parent, object, method, store);
+            if (parametric != null) cmds.add(parametric);
         }
         return cmds;
+    }
+
+    public static ParametricCallable generateFromMethod(CommandCallable parent, Object object, Method method, ValueStore store) {
+        Command cmdAnn = method.getAnnotation(Command.class);
+        if (cmdAnn != null) {
+            return new ParametricCallable(parent, store, object, method, cmdAnn);
+        }
+        return null;
     }
 
     private static String[] lookupParameterNames(Method method) {
