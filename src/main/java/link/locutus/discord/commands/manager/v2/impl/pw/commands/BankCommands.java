@@ -917,10 +917,6 @@ public class BankCommands {
         if (offshoreDb == null) return "Error: No guild DB set for offshore??";
 
         synchronized (OffshoreInstance.BANK_LOCK) {
-            Map<ResourceType, Double> guildOrAADeposits;
-
-            offshore.getDeposits(guildDb);
-
             Integer aaId2 = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
             if (!isAdmin) {
@@ -1460,7 +1456,7 @@ public class BankCommands {
             GuildDB otherDB = nationOrAllianceOrGuild.asGuild();
 
             // if this guild - get the transactions in the offshore
-            if (otherDB.getIdLong() == db.getIdLong()) {
+            if (otherDB.getIdLong() == db.getIdLong() || (otherDB.getOffshoreDB() == db && onlyOffshoreTransfers)) {
                 OffshoreInstance offshore = db.getOffshore();
                 transactions.addAll(offshore.getTransactionsGuild(otherDB.getIdLong(), true));
             } else {
@@ -2047,7 +2043,8 @@ public class BankCommands {
                            @Switch("b") boolean includeBaseTaxes,
                            @Switch("o") boolean ignoreInternalOffsets,
                            @Switch("t") boolean showTaxesSeparately,
-                           @Switch("d") boolean replyInDMs) throws IOException {
+                           @Switch("d") boolean replyInDMs
+                           ) throws IOException {
         if (timeCutoff == null) timeCutoff = 0L;
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
         if (offshoreIds != null) offshoreIds = PnwUtil.expandCoalition(offshoreIds);
@@ -2058,6 +2055,7 @@ public class BankCommands {
         List<String> footers = new ArrayList<>();
 
         Map<DepositType, double[]> accountDeposits = new HashMap<>();
+        List<Transaction2> txList = new ArrayList<>();
 
         if (nationOrAllianceOrGuild.isAlliance()) {
             DBAlliance alliance = nationOrAllianceOrGuild.asAlliance();
@@ -2081,6 +2079,7 @@ public class BankCommands {
             } else if (otherDb != db && offshore.getGuildDB() != db) {
                 return "You do not have permisssion to check another alliance's deposits";
             } else {
+                // txList
                 double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(alliance.getAlliance_id(), true));
                 accountDeposits.put(DepositType.DEPOSITS, deposits);
             }
@@ -2092,12 +2091,14 @@ public class BankCommands {
             if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild())) {
                 return "You do not have permission to check another guild's deposits";
             }
+            // txList
             double[] deposits = offshore.getDeposits(otherDb);
             accountDeposits.put(DepositType.DEPOSITS, deposits);
 
         } else if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild)) return "You do not have permission to check other nation's deposits";
+            // txList
             accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff);
         }
 

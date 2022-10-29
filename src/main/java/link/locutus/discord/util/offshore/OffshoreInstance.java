@@ -30,6 +30,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.springframework.web.client.HttpServerErrorException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -97,8 +98,18 @@ public class OffshoreInstance {
     }
 
     public synchronized boolean sync(Long latest, boolean checkLast) {
+        double[] stockpile;
         PoliticsAndWarV3 api = getGuildDB().getApi(allianceId, false, AlliancePermission.VIEW_BANK);
-        double[] stockpile = api.getAllianceStockpile(allianceId);
+        try {
+            stockpile = api.getAllianceStockpile(allianceId);
+        } catch (HttpServerErrorException.InternalServerError ignore) {
+            try {
+                AllianceBankContainer funds = getApi().getBank(allianceId).getAllianceBanks().get(0);
+                stockpile = PnwUtil.resourcesToArray(PnwUtil.adapt(funds));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         if (lastFunds != null && checkLast) {
             if (Arrays.equals(lastFunds, stockpile)) {
@@ -304,6 +315,8 @@ public class OffshoreInstance {
 
         return PnwUtil.resourcesToMap(addTransfers(toProcess, allianceId, 2));
     }
+
+//    public List<Transaction2> filterTransactions(int allianceId)
 
     private double[] addTransfers(List<Transaction2> transactions, long id, int type) {
         double[] resources = ResourceType.getBuffer();

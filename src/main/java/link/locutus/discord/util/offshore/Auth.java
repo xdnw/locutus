@@ -412,7 +412,7 @@ public class Auth {
                 response.append('\n').append(element.text());
             }
             if (alerts == 0) {
-                System.out.println(dom);
+                System.out.println("could not find alert for setrank " + dom);
                 response.append('\n').append("Set player rank ingame. Remember to also set the rank on discord.");
             }
 
@@ -488,6 +488,7 @@ public class Auth {
 
                     Elements tables = dom.getElementsByClass("nationtable");
                     if (tables.size() == 0) {
+                        System.out.println("Error fetching trades " + html);
                         return Collections.singleton(new TradeResult("Could not load trade page", TradeResultType.CAPTCHA));
                     }
                     Element table = tables.get(0);

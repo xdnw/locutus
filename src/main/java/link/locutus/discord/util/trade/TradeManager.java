@@ -31,6 +31,8 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -837,18 +839,22 @@ public class TradeManager {
                 Locutus.imp().getNationDB().addRadiationByTurn(continent, turn, rads);
             }
         }
-        GameInfo gameInfo = Locutus.imp().getV3().getGameInfo();
-        Radiation info = gameInfo.getRadiation();
+        try {
+            GameInfo gameInfo = Locutus.imp().getV3().getGameInfo();
+            Radiation info = gameInfo.getRadiation();
 
-        setRadiation(Continent.NORTH_AMERICA, info.getNorth_america());
-        setRadiation(Continent.SOUTH_AMERICA, info.getSouth_america());
-        setRadiation(Continent.EUROPE, info.getEurope());
-        setRadiation(Continent.AFRICA, info.getAfrica());
-        setRadiation(Continent.ASIA, info.getAsia());
-        setRadiation(Continent.AUSTRALIA, info.getAustralia());
-        setRadiation(Continent.ANTARCTICA, info.getAntarctica());
+            setRadiation(Continent.NORTH_AMERICA, info.getNorth_america());
+            setRadiation(Continent.SOUTH_AMERICA, info.getSouth_america());
+            setRadiation(Continent.EUROPE, info.getEurope());
+            setRadiation(Continent.AFRICA, info.getAfrica());
+            setRadiation(Continent.ASIA, info.getAsia());
+            setRadiation(Continent.AUSTRALIA, info.getAustralia());
+            setRadiation(Continent.ANTARCTICA, info.getAntarctica());
 
-        this.gameDate = gameInfo.getGame_date();
+            this.gameDate = gameInfo.getGame_date();
+        } catch (HttpServerErrorException.InternalServerError | HttpClientErrorException.NotFound ignore) {
+            ignore.printStackTrace();
+        }
 
         return radiation.get(continent).getKey();
     }
@@ -858,6 +864,9 @@ public class TradeManager {
     public Instant getGameDate() {
         if (this.gameDate == null) {
             getGlobalRadiation(Continent.AFRICA, true);
+        }
+        if (this.gameDate == null) {
+            this.gameDate = Instant.ofEpochSecond(TimeUtil.getOrbisDate(System.currentTimeMillis()) / 1000);
         }
         return this.gameDate;
     }

@@ -720,19 +720,32 @@ public class UnsortedCommands {
     }
 
     @Command
-    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String keyStore(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                           @Default GuildDB.Key key, @Default @TextArea String value) throws Exception {
-        List<String> cmd = new ArrayList<>();
-        if (key != null) cmd.add(key + "");
-        if (value != null) cmd.add(value);
-        return new KeyStore().onCommand(guild, channel, author, me, cmd);
-    }
-
-    @Command
-    public String rebuy(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+    public String rebuy(@Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
                         DBNation nation) throws Exception {
-        return new Rebuy().onCommand(guild, channel, author, me, nation.getNationUrl());
+        Map<Integer, Long> dcProb = nation.findDayChange();
+        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try `" + Settings.commandPrefix(true) + "unithistory`";
+
+        if (dcProb.size() == 1) {
+            Map.Entry<Integer, Long> entry = dcProb.entrySet().iterator().next();
+            Integer offset = (entry.getKey() * 2 + 2) % 24;
+            if (offset > 12) offset -= 24;
+            return "Day change at UTC" + (offset >= 0 ? "+" : "") + offset + " (turn " + entry.getKey() + ")";
+        }
+
+        String title = "Possible DC times:";
+
+        StringBuilder body = new StringBuilder("*date calculated | daychange time*\n\n");
+        for (Map.Entry<Integer, Long> entry : dcProb.entrySet()) {
+            Integer offset = (entry.getKey() * 2 + 2) % 24;
+            if (offset > 12) offset -= 24;
+            String dcStr = "UTC" + (offset >= 0 ? "+" : "") + offset + " (turn " + entry.getKey() + ")";
+            Long turn = entry.getValue();
+            long timestamp = TimeUtil.getTimeFromTurn(turn);
+            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+            body.append(dateStr + " | " + dcStr + "\n");
+        }
+        channel.create().embed(title, body.toString()).send();
+        return null;
     }
 
     @Command
@@ -842,5 +855,15 @@ public class UnsortedCommands {
     public String reroll(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
                          DBNation nation) throws Exception {
         return new Reroll().onCommand(guild, channel, author, me, nation.getNationUrl());
+    }
+
+    @Command
+    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
+    public String keyStore(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+                           @Default GuildDB.Key key, @Default @TextArea String value) throws Exception {
+        List<String> cmd = new ArrayList<>();
+        if (key != null) cmd.add(key + "");
+        if (value != null) cmd.add(value);
+        return new KeyStore().onCommand(guild, channel, author, me, cmd);
     }
 }
