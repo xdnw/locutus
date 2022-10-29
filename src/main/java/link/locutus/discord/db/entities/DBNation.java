@@ -921,7 +921,7 @@ public class DBNation implements NationOrAlliance {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
             this.last_active = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(nation.getMinutessinceactive());
-            if (eventConsumer != null && nation.getMinutessinceactive() < 15) eventConsumer.accept(new NationChangeActiveEvent(copyOriginal, this));
+            if (eventConsumer != null) eventConsumer.accept(new NationChangeActiveEvent(copyOriginal, this));
         }
         return dirty;
     }
@@ -962,10 +962,11 @@ public class DBNation implements NationOrAlliance {
         }
 
         if (nation.getLast_active() != null && this.lastActiveMs() != (nation.getLast_active().toEpochMilli())) {
-            this.setLastActive(nation.getLast_active().toEpochMilli());
             // No reason they should become less active, but guard for anyway
-            long active = nation.getLast_active().toEpochMilli();
-            if (this.lastActiveMs() < active && active > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15)) {
+            long newActive = nation.getLast_active().toEpochMilli();
+            long currentActive = this.last_active;
+            this.setLastActive(nation.getLast_active().toEpochMilli());
+            if (currentActive < newActive) {
                 if (eventConsumer != null) eventConsumer.accept(new NationChangeActiveEvent(copyOriginal, this));
             }
             dirty = true;
