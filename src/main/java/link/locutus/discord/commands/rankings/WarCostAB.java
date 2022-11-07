@@ -29,12 +29,8 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class WarCostAB extends Command {
     public WarCostAB() {
@@ -61,12 +57,14 @@ public class WarCostAB extends Command {
                 "Add -w to list the wars (txt file)\n" +
                 "Add -t to list the war types\n" +
                 "Add `-s` to list war status\n" +
-                "Add e.g `attack_type:GROUND,VICTORY` to filter by attack type";
+                "Add e.g `attack_type:GROUND,VICTORY` to filter by attack type\n" +
+                "Add `success:0` to filter by e.g. `utter failure`";
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
+        String attackSuccesStr = DiscordUtil.parseArg(args, "success");
         if (args.isEmpty() || args.size() > 4 || (args.size() >= 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
             return usage(event);
         }
@@ -77,6 +75,10 @@ public class WarCostAB extends Command {
         if (attackTypeStr != null) {
             Set<AttackType> options = new HashSet<>(BindingHelper.emumList(AttackType.class, attackTypeStr.toUpperCase(Locale.ROOT)));
             parser.getAttacks().removeIf(f -> !options.contains(f.attack_type));
+        }
+        if (attackSuccesStr != null) {
+            Set<Integer> options = Arrays.stream(attackSuccesStr.split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toSet());
+            parser.getAttacks().removeIf(f -> !options.contains(f.success));
         }
 
         AttackCost cost = parser.toWarCost();

@@ -755,20 +755,85 @@ public class UnsortedCommands {
                          @Switch("v") boolean ignoreVM,
                          @Switch("m") boolean ignoreMembers,
                          @Switch("i") boolean listIds) throws Exception {
-        List<String> cmd = new ArrayList<>();
-        cmd.add(nationOrAlliance.getUrl());
-        if (time != null) {
-            cmd.add("timestamp:" + time);
-        }
-        if (filter != null) {
-            cmd.add("" + filter.getFilter());
-        }
-        if (ignoreInactives) cmd.add("-a");
-        if (ignoreVM) cmd.add("-v");
-        if (ignoreMembers) cmd.add("-m");
-        if (listIds) cmd.add("-i");
+        StringBuilder response = new StringBuilder();
+        Map<Integer, Map.Entry<Long, Rank>> removes;
+        List<Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
 
-        return new LeftAA().onCommand(guild, channel, author, me, cmd);
+        boolean showCurrentAA = false;
+        if (nationOrAlliance.isNation()) {
+            DBNation nation = nationOrAlliance.asNation();
+            removes = nation.getAllianceHistory();
+            removes = Locutus.imp().getNationDB().getRemovesByNation(nationId);
+            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
+                DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
+                DBNation tmp = nation;
+                if (tmp == null) {
+                    tmp = new DBNation();
+                    tmp.setNation_id(nationId);
+                    tmp.setAlliance_id(aa.getAlliance_id());
+                    tmp.setNation(nationId + "");
+                }
+                AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
+                Map.Entry<Long, Rank> value = entry.getValue();
+                toPrint.add(new AbstractMap.SimpleEntry<>(key, value));
+            }
+
+        } else {
+            showCurrentAA = true;
+            removes = Locutus.imp().getNationDB().getRemovesByAlliance(aaId);
+
+            if (args.size() != 2 && args.size() != 3) return usage(event);
+
+            long timeDiff = TimeUtil.timeToSec(args.get(1)) * 1000L;
+            if (timeDiff == 0) return "Invalid time: `" + args.get(1) + "`";
+            long cuttOff = System.currentTimeMillis() - timeDiff;
+
+            if (removes.isEmpty()) return "No history found";
+            Set<DBNation> filter = null;
+            if (args.size() == 3) {
+                filter = DiscordUtil.parseNations(guild, args.get(2));
+            }
+
+            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
+                if (entry.getValue().getKey() < cuttOff) continue;
+
+                DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
+                if (nation != null && (filter == null || filter.contains(nation))) {
+
+                    if (flags.contains('a') && nation.getActive_m() > 10000) continue;
+                    if (flags.contains('v') && nation.getVm_turns() != 0) continue;
+                    if (flags.contains('m') && nation.getPosition() > 1) continue;
+
+                    AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, DBAlliance.getOrCreate(aaId));
+                    toPrint.add(new AbstractMap.SimpleEntry<>(key, entry.getValue()));
+                }
+            }
+        }
+
+        Set<Integer> ids = new LinkedHashSet<>();
+        long now = System.currentTimeMillis();
+        for (Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>> entry : toPrint) {
+            long diff = now - entry.getValue().getKey();
+            Rank rank = entry.getValue().getValue();
+            String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
+
+            Map.Entry<DBNation, DBAlliance> nationAA = entry.getKey();
+            DBNation nation = nationAA.getKey();
+            ids.add(nation.getNation_id());
+
+            response.append(timeStr + " ago: " + nationAA.getKey().getNation() + " left " + nationAA.getValue().getName() + " | " + rank.name());
+            if (showCurrentAA && nation.getAlliance_id() != 0) {
+                response.append(" and joined " + nation.getAllianceName());
+            }
+            response.append("\n");
+        }
+
+        if (flags.contains('i')) {
+            DiscordUtil.upload(event.getChannel(), "ids.txt", StringMan.join(ids, ","));
+        }
+        if (response.length() == 0) return "No history found in the specified timeframe";
+
+        return response.toString();
     }
 
     @Command(desc = "Generate an optimal build for a city")
