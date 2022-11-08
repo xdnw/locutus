@@ -27,7 +27,7 @@ public class ActivitySheet extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return (super.checkPermission(server, user) && Roles.MILCOM.has(user, server));
+        return (Roles.MILCOM.has(user, server) || Roles.ECON.has(user, server) || Roles.INTERNAL_AFFAIRS.has(user, server));
     }
 
     @Override

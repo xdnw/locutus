@@ -70,7 +70,6 @@ public class SearchMailTask implements Callable<List<Mail>> {
                 String html = auth.readStringFromURL(url, post);
 
                 if (html.contains("Are You Human?\n") || html.contains("https://politicsandwar.com/human/")) {
-                    if (auth.getNationId() == Settings.INSTANCE.NATION_ID) AlertUtil.openDesktop("https://politicsandwar.com/human/");
                     throw new IllegalArgumentException("Captcha");
                 }
                 Document dom = Jsoup.parse(html);

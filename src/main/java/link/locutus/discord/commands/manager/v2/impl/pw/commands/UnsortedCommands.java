@@ -749,7 +749,7 @@ public class UnsortedCommands {
     }
 
     @Command
-    public String leftAA(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+    public String leftAA(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                          NationOrAlliance nationOrAlliance, @Default @Timestamp Long time, @Default NationList filter,
                          @Switch("a") boolean ignoreInactives,
                          @Switch("v") boolean ignoreVM,
@@ -763,15 +763,14 @@ public class UnsortedCommands {
         if (nationOrAlliance.isNation()) {
             DBNation nation = nationOrAlliance.asNation();
             removes = nation.getAllianceHistory();
-            removes = Locutus.imp().getNationDB().getRemovesByNation(nationId);
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
                 DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
                 DBNation tmp = nation;
                 if (tmp == null) {
                     tmp = new DBNation();
-                    tmp.setNation_id(nationId);
+                    tmp.setNation_id(nation.getNation_id());
                     tmp.setAlliance_id(aa.getAlliance_id());
-                    tmp.setNation(nationId + "");
+                    tmp.setNation(nation.getNation_id() + "");
                 }
                 AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
                 Map.Entry<Long, Rank> value = entry.getValue();
@@ -780,31 +779,23 @@ public class UnsortedCommands {
 
         } else {
             showCurrentAA = true;
-            removes = Locutus.imp().getNationDB().getRemovesByAlliance(aaId);
+            DBAlliance alliance = nationOrAlliance.asAlliance();
+            removes = alliance.getRemoves();
 
-            if (args.size() != 2 && args.size() != 3) return usage(event);
-
-            long timeDiff = TimeUtil.timeToSec(args.get(1)) * 1000L;
-            if (timeDiff == 0) return "Invalid time: `" + args.get(1) + "`";
-            long cuttOff = System.currentTimeMillis() - timeDiff;
 
             if (removes.isEmpty()) return "No history found";
-            Set<DBNation> filter = null;
-            if (args.size() == 3) {
-                filter = DiscordUtil.parseNations(guild, args.get(2));
-            }
 
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-                if (entry.getValue().getKey() < cuttOff) continue;
+                if (entry.getValue().getKey() < time) continue;
 
                 DBNation nation = Locutus.imp().getNationDB().getNation(entry.getKey());
-                if (nation != null && (filter == null || filter.contains(nation))) {
+                if (nation != null && (filter == null || filter.getNations().contains(nation))) {
 
-                    if (flags.contains('a') && nation.getActive_m() > 10000) continue;
-                    if (flags.contains('v') && nation.getVm_turns() != 0) continue;
-                    if (flags.contains('m') && nation.getPosition() > 1) continue;
+                    if (ignoreInactives && nation.getActive_m() > 10000) continue;
+                    if (ignoreVM && nation.getVm_turns() != 0) continue;
+                    if (ignoreMembers && nation.getPosition() > 1) continue;
 
-                    AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, DBAlliance.getOrCreate(aaId));
+                    AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, alliance);
                     toPrint.add(new AbstractMap.SimpleEntry<>(key, entry.getValue()));
                 }
             }
@@ -828,12 +819,13 @@ public class UnsortedCommands {
             response.append("\n");
         }
 
-        if (flags.contains('i')) {
-            DiscordUtil.upload(event.getChannel(), "ids.txt", StringMan.join(ids, ","));
-        }
         if (response.length() == 0) return "No history found in the specified timeframe";
-
-        return response.toString();
+        IMessageBuilder msg = io.create();
+        if (listIds) {
+            msg.file("ids.txt",  StringMan.join(ids, ","));
+        }
+        msg.append(response.toString()).send();
+        return null;
     }
 
     @Command(desc = "Generate an optimal build for a city")
