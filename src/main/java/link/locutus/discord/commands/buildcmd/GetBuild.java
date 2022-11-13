@@ -51,7 +51,7 @@ public class GetBuild extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Invalid nation? Are you sure you are registered?";
+            return "Invalid nation? Are you sure you are registered?" + event.getAuthor().getAsMention();
         }
 
         Integer id = DiscordUtil.parseNationId(args.get(0));

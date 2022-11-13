@@ -104,7 +104,7 @@ public class PermissionBinding extends BindingHelper {
             throw new IllegalCallerException("Guild is not whitelisted");
         }
         if (!Roles.MEMBER.has(user, db.getGuild())) {
-            throw new IllegalCallerException("You do not have " + Roles.MEMBER);
+            throw new IllegalCallerException("You do not have " + Roles.MEMBER + " " + user.getAsMention());
         }
         return true;
     }
@@ -137,23 +137,23 @@ public class PermissionBinding extends BindingHelper {
             if (perm.root()) {
                 if (!requiredRole.has(user, guild)) {
                     if (perm.any()) continue;
-                    throw new IllegalCallerException("You do not have " + requiredRole.name() + " on root");
+                    throw new IllegalCallerException("You do not have " + requiredRole.name() + " on root" + " " + user.getAsMention());
                 } else if (perm.any()) {
                     return true;
                 }
             } else if (perm.guild() > 0) {
                 guild = Locutus.imp().getDiscordApi().getGuildById(perm.guild());
-                if (guild == null) throw new IllegalCallerException("Guild " + perm.guild() + " does not exist");
+                if (guild == null) throw new IllegalCallerException("Guild " + perm.guild() + " does not exist" + " " + user.getAsMention());
                 if (!requiredRole.has(user, guild)) {
                     if (perm.any()) continue;
-                    throw new IllegalCallerException("You do not have " + requiredRole.name() + " on " + guild.getName());
+                    throw new IllegalCallerException("You do not have " + requiredRole.name() + " on " + guild.getName() + " " + user.getAsMention());
                 } else if (perm.any()) {
                     return true;
                 }
             } else {
                 if (!requiredRole.has(user, guild)) {
                     if (perm.any()) continue;
-                    throw new IllegalCallerException("You do not have " + requiredRole.name());
+                    throw new IllegalCallerException("You do not have " + requiredRole.name() + " " + user.getAsMention());
                 } else if (perm.any()) {
                     return true;
                 }
