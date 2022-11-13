@@ -728,7 +728,8 @@ public class WarCategory {
                 msg.embed(builder.build());
                 msg.commandButton(CommandBehavior.UNDO_REACTION, CM.war.room.pin.cmd, "Update");
                 try {
-                    msg = msg.send().get();
+                    CompletableFuture<IMessageBuilder> sent = msg.send();
+                    if (sent != null) msg = sent.get();
                 } catch (InterruptedException | ExecutionException e) {
                     throw new RuntimeException(e);
                 }

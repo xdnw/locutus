@@ -45,7 +45,7 @@ public class AssignBuild extends Command {
 
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Invalid nation? Are you sure you are registered?";
+            return "Invalid nation? Are you sure you are registered?" + event.getAuthor().getAsMention();
         }
 
         if (args.size() != 1) {

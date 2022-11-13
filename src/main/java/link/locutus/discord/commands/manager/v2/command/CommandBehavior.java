@@ -16,7 +16,7 @@ public enum CommandBehavior {
 
     public static CommandBehavior getOrNull(String prefix) {
         for (CommandBehavior cmd : values()) {
-            if (cmd.value.equals(prefix)) return cmd;
+            if (cmd.value.equalsIgnoreCase(prefix)) return cmd;
         }
         return null;
     }

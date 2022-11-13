@@ -917,6 +917,7 @@ public final class Locutus extends ListenerAdapter {
                 id = cmd;
             }
 
+            System.out.println("ID " + id);
             if (id.startsWith("<#")) {
                 String channelId = id.substring(0, id.indexOf('>') + 1);
                 channel = DiscordUtil.getChannel(message.getGuild(), channelId);
@@ -927,17 +928,21 @@ public final class Locutus extends ListenerAdapter {
                 }
                 id = id.substring(id.indexOf(' ') + 1);
             }
+            System.out.println("ID 2 " + id);
 
             CommandBehavior behavior = null;
             if (id.length() > 0) {
+                System.out.println("Char 0 " + id.charAt(0));
                 char char0 = id.charAt(0);
                 behavior = CommandBehavior.getOrNull(char0 + "");
                 if (behavior != null) {
                     id = id.substring(behavior.getValue().length());
                 } else {
-                    behavior = CommandBehavior.DELETE_MESSAGE;
+//                    behavior = CommandBehavior.DELETE_MESSAGE;
                 }
             }
+
+            System.out.println("ID 3 " + id + " " + behavior);
 
 //            event.deferReply(false).queue();
             event.deferEdit().queue();
@@ -959,7 +964,7 @@ public final class Locutus extends ListenerAdapter {
             if (behavior != null) {
                 switch (behavior) {
                     case DELETE_MESSAGE -> {
-                        RateLimitUtil.queue(message.delete());
+//                        RateLimitUtil.queue(message.delete());
                     }
                     case UNDO_REACTION -> {
                         // unsupported
