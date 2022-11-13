@@ -2042,7 +2042,7 @@ public class BankCommands {
                            @Switch("c") Long timeCutoff,
                            @Switch("b") boolean includeBaseTaxes,
                            @Switch("o") boolean ignoreInternalOffsets,
-                           @Switch("t") boolean showTaxesSeparately,
+                           @Switch("t") Boolean showTaxesSeparately,
                            @Switch("d") boolean replyInDMs
                            ) throws IOException {
         if (timeCutoff == null) timeCutoff = 0L;
@@ -2126,7 +2126,7 @@ public class BankCommands {
 
         footers.add("value is based on current market prices");
 
-        if (showTaxesSeparately) {
+        if (showTaxesSeparately == Boolean.TRUE || (showTaxesSeparately == null &&  db.getOrNull(GuildDB.Key.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE)) {
             if (categorized.containsKey(DepositType.DEPOSITS)) {
                 response.append("DEPOSITS: ~$" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSITS))));
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSITS))).append("``` ");

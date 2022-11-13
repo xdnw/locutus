@@ -49,6 +49,7 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -2238,6 +2239,27 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
+        DISPLAY_ITEMIZED_DEPOSITS(false, null, CommandCategory.ECON) {
+            @Override
+            public boolean allowed(GuildDB db) {
+                return Roles.MEMBER.toRole(db) != null;
+            }
+
+            @Override
+            public String validate(GuildDB db, String value) {
+                return Boolean.valueOf(value) + "";
+            }
+
+            @Override
+            public Object parse(GuildDB db, String input) {
+                return Boolean.parseBoolean(input);
+            }
+            @Override
+            public String help() {
+                return "Whether members's deposits are displayed by default with a breakdown of each category (true/false)";
+            }
+        },
+
 //        MEMBER_CAN_GRANT_SELF(false, MEMBER_CAN_WITHDRAW, CommandCategory.ECON) {
 //            @Override
 //            public boolean allowed(GuildDB db) {
@@ -4423,6 +4445,43 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         }
         return null;
+    }
+
+    public Map<String, String> getCopyPastas(@Nullable Member memberOrNull) {
+        Map<String, String> options = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : getInfoMap().entrySet()) {
+            String key = entry.getKey();
+            if (!key.startsWith("copypasta.")) continue;
+            if (memberOrNull != null && !getMissingCopypastaPerms(key, memberOrNull).isEmpty()) continue;
+            options.put(key.substring("copypasta.".length()), entry.getValue());
+        }
+        return options;
+    }
+
+    /**
+     * Returns the missing copypasta permissions for the given member.
+     * @param key
+     * @param member
+     * @return
+     */
+    public Set<String> getMissingCopypastaPerms(String key, Member member) {
+        String[] split = key.split("\\.");
+        Set<String> noRoles = new HashSet<>();
+        if (split.length > 1) {
+            for (int i = 0; i < split.length - 1; i++) {
+                String roleName = split[i];
+                if (roleName.equalsIgnoreCase("copypasta")) continue;
+
+                Roles role = Roles.parse(roleName);
+                Role discRole = DiscordUtil.getRole(member.getGuild(), roleName);
+                if ((role != null && role.has(member)) || (discRole != null && member.getRoles().contains(discRole))) {
+                    return Collections.emptySet();
+                }
+                if (role != null) noRoles.add(role.toString());
+                if (discRole != null) noRoles.add(discRole.getName());
+            }
+        }
+        return noRoles;
     }
 
     public Map<String, String> getInfoMap() {

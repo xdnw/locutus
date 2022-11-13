@@ -45,23 +45,6 @@ public class CopyPasta extends Command implements Noformat {
         return Roles.MEMBER.has(user, server);
     }
 
-    public static boolean hasPermission(Member member, String key) {
-        String[] split = key.split("\\.");
-        if (split.length <= 1) return true;
-
-        for (int i = 1; i < split.length - 1; i++) {
-            String roleName = split[i];
-            Roles role = Roles.parse(roleName);
-            if (role != null && !role.has(member)) return false;
-
-            Role discRole = DiscordUtil.getRole(member.getGuild(), roleName);
-            if (discRole != null && !member.getRoles().contains(discRole)) return false;
-
-            return true;
-        }
-        return true;
-    }
-
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (guild == null) return "Not in a guild";
@@ -78,7 +61,6 @@ public class CopyPasta extends Command implements Noformat {
 
             if (value == null) {
                 Map<String, String> map = db.getInfoMap();
-                outer:
                 for (Map.Entry<String, String> entry : map.entrySet()) {
                     String otherKey = entry.getKey();
                     if (!otherKey.startsWith("copypasta.")) continue;
@@ -86,11 +68,11 @@ public class CopyPasta extends Command implements Noformat {
                     String[] split = otherKey.split("\\.");
                     if (!split[split.length - 1].equalsIgnoreCase(key)) continue;
 
-                    if (!hasPermission(guild.getMember(author), otherKey)) continue;
+                    if (!db.getMissingCopypastaPerms(otherKey, guild.getMember(author)).isEmpty()) continue;
 
                     value = entry.getValue();
                 }
-            } else if (!hasPermission(guild.getMember(author), key)) return "You do not have permission to use that key";
+            } else if (!db.getMissingCopypastaPerms(key, guild.getMember(author)).isEmpty()) return "You do not have permission to use that key";
 
             if (value == null) return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.commandPrefix(true) + "copypasta <key> <message>`";
             if (event.getMessage().getEmbeds().isEmpty()) {

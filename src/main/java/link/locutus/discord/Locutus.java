@@ -1138,6 +1138,10 @@ public final class Locutus extends ListenerAdapter {
             String channelId = raw.substring(0, raw.indexOf('>') + 1);
             channel = DiscordUtil.getChannel(message.getGuild(), channelId);
             raw = raw.substring(raw.indexOf(' ') + 1);
+        } else if (raw.startsWith("#")) {
+            String channelName = raw.substring(0, raw.indexOf(' '));
+            channel = DiscordUtil.getChannel(message.getGuild(), channelName);
+            raw = raw.substring(raw.indexOf(' ') + 1);
         }
 
         switch (raw.charAt(0)) {

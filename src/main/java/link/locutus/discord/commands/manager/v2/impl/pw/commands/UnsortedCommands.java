@@ -19,6 +19,7 @@ import link.locutus.discord.commands.info.Reroll;
 import link.locutus.discord.commands.info.Revenue;
 import link.locutus.discord.commands.info.UnitHistory;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -26,6 +27,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -36,6 +38,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
@@ -828,6 +831,122 @@ public class UnsortedCommands {
         return null;
     }
 
+    @Command
+    @RolePermission(Roles.MEMBER)
+    public String copyPasta(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me Member member, @Me User author, @Me DBNation me,
+                            @Default String key, @Default @TextArea String message, @Default Set<Role> requiredRolesAny, NationPlaceholders placeholders, ValueStore store) throws Exception {
+        if (key == null) {
+
+            Map<String, String> copyPastas = db.getCopyPastas(member);
+            Set<String> options = copyPastas.keySet().stream().map(f -> f.split("\\.")[0]).collect(Collectors.toSet());
+
+            if (options.size() <= 25) {
+                // buttons
+                IMessageBuilder msg = io.create().append("Options:");
+                for (String option : options) {
+                    msg.commandButton(CommandBehavior.DELETE_MESSAGE, CM.copyPasta.cmd.create(option, null), option);
+                }
+                msg.send();
+                return null;
+            }
+
+            // link modals
+            return "Options:\n - " + StringMan.join(options, "\n - ");
+
+            // return options
+        }
+        if (requiredRolesAny != null && !requiredRolesAny.isEmpty()) {
+            if (message == null) {
+                throw new IllegalArgumentException("requiredRoles can only be used with a message");
+            }
+            key = requiredRolesAny.stream().map(Role::getId).collect(Collectors.joining(".")) + key;
+        }
+
+        if (message == null) {
+            Set<String> noRoles = db.getMissingCopypastaPerms(key, member);
+            if (!noRoles.isEmpty()) {
+                throw new IllegalArgumentException("You do not have the required roles to use this command: `" + StringMan.join(noRoles, ",") + "`");
+            }
+        } else if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) {
+            return "Missing role: " + Roles.INTERNAL_AFFAIRS;
+        }
+
+        String value = db.getInfo("copypasta." + key);
+
+        Set<String> missingRoles = null;
+        if (value == null) {
+            Map<String, String> map = db.getCopyPastas(member);
+            for (Map.Entry<String, String> entry : map.entrySet()) {
+                String otherKey = entry.getKey();
+                String[] split = otherKey.split("\\.");
+                if (!split[split.length - 1].equalsIgnoreCase(key)) continue;
+
+                Set<String> localMissing = db.getMissingCopypastaPerms(otherKey, guild.getMember(author));
+
+                if (!localMissing.isEmpty()) {
+                    missingRoles = localMissing;
+                    continue;
+                }
+
+                value = entry.getValue();
+                missingRoles = null;
+            }
+        } else {
+            missingRoles = db.getMissingCopypastaPerms(key, guild.getMember(author));
+        }
+        if (missingRoles != null && !missingRoles.isEmpty()) {
+            throw new IllegalArgumentException("You do not have the required roles to use this command: `" + StringMan.join(missingRoles, ",") + "`");
+        }
+        if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
+
+        value = placeholders.format(store, value);
+
+        return value;
+    }
+
+    @Command
+    @RolePermission(Roles.MEMBER)
+    public String checkCities(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+                              NationList nations, @Switch("u") boolean pingUser, @Switch("m") boolean mailResults, @Switch("c") boolean postInInterviewChannels, @Switch("p") Integer page) throws Exception {
+        List<String> cmd = new ArrayList<>(Arrays.asList( nations.getFilter()));
+        if (pingUser) cmd.add("-p");
+        if (mailResults) cmd.add("-m");
+        if (postInInterviewChannels) cmd.add("-c");
+        if (page != null) cmd.add("page:" + page);
+
+        // no pagination
+
+        // ** title **
+        // > description
+
+        return new CheckCities().onCommand(guild, channel, author, me, cmd);
+    }
+
+    @Command(desc = "Generate an optimal build for a city")
+    @RolePermission(Roles.ECON)
+    @HasOffshore
+    public String warchest(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+                           NationList nations, Map<ResourceType, Double> resources, String note) throws Exception {
+        List<String> cmd = Arrays.asList(nations.getFilter(), PnwUtil.resourcesToString(resources), note);
+        return new Warchest().onCommand(guild, channel, author, me, cmd);
+    }
+
+    @Command
+    public String reroll(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+                         DBNation nation) throws Exception {
+        return new Reroll().onCommand(guild, channel, author, me, nation.getNationUrl());
+    }
+
+    @Command
+    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
+    public String keyStore(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+                           @Default GuildDB.Key key, @Default @TextArea String value) throws Exception {
+        List<String> cmd = new ArrayList<>();
+        if (key != null) cmd.add(key + "");
+        if (value != null) cmd.add(value);
+        return new KeyStore().onCommand(guild, channel, author, me, cmd);
+    }
+
     @Command(desc = "Generate an optimal build for a city")
     @RolePermission(Roles.MEMBER)
     public String optimalBuild(@Me JSONObject command, @Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
@@ -874,53 +993,5 @@ public class UnsortedCommands {
         if (moneyPositive) cmd.add("cash=" + moneyPositive);
         if (geographicContinent != null) cmd.add("continent=" + geographicContinent);
         return new OptimalBuild().onCommand(guild, channel, author, me, cmd + "");
-    }
-
-    @Command(desc = "Generate an optimal build for a city")
-    @RolePermission(Roles.ECON)
-    @HasOffshore
-    public String warchest(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                           NationList nations, Map<ResourceType, Double> resources, String note) throws Exception {
-        List<String> cmd = Arrays.asList(nations.getFilter(), PnwUtil.resourcesToString(resources), note);
-        return new Warchest().onCommand(guild, channel, author, me, cmd);
-    }
-
-
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String copyPasta(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                            String key, @Default @TextArea String message) throws Exception {
-        List<String> cmd = new ArrayList<>(List.of(key + ""));
-        if (message != null) cmd.add(message);
-        return new CopyPasta().onCommand(guild, channel, author, me, cmd);
-    }
-
-    @Command
-    @RolePermission(Roles.MEMBER)
-    public String checkCities(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                              NationList nations, @Switch("u") boolean pingUser, @Switch("m") boolean mailResults, @Switch("c") boolean postInInterviewChannels, @Switch("p") Integer page) throws Exception {
-        List<String> cmd = new ArrayList<>(Arrays.asList( nations.getFilter()));
-        if (pingUser) cmd.add("-p");
-        if (mailResults) cmd.add("-m");
-        if (postInInterviewChannels) cmd.add("-c");
-        if (page != null) cmd.add("page:" + page);
-
-        return new CheckCities().onCommand(guild, channel, author, me, cmd);
-    }
-
-    @Command
-    public String reroll(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                         DBNation nation) throws Exception {
-        return new Reroll().onCommand(guild, channel, author, me, nation.getNationUrl());
-    }
-
-    @Command
-    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String keyStore(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                           @Default GuildDB.Key key, @Default @TextArea String value) throws Exception {
-        List<String> cmd = new ArrayList<>();
-        if (key != null) cmd.add(key + "");
-        if (value != null) cmd.add(value);
-        return new KeyStore().onCommand(guild, channel, author, me, cmd);
     }
 }

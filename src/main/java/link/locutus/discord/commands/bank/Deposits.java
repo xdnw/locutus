@@ -244,7 +244,7 @@ public class Deposits extends Command {
 
         footers.add("value is based on current market prices");
 
-        if (flags.contains('t')) {
+        if (flags.contains('t') || db.getOrNull(GuildDB.Key.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE) {
             if (categorized.containsKey(DepositType.DEPOSITS)) {
                 response.append("DEPOSITS: ~$" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSITS))));
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSITS))).append("``` ");
