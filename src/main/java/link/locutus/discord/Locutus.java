@@ -957,8 +957,11 @@ public final class Locutus extends ListenerAdapter {
                     success |= result;
                 }
                 if (!success) behavior = null;
-            } else {
+            } else if (id.startsWith("{")){
                 getCommandManager().getV2().run(guild, channel, user, message, io, id, true);
+            } else if (!id.isEmpty()) {
+                event.reply("Unknown command: " + id).queue();
+                return;
             }
 
             if (behavior != null) {
