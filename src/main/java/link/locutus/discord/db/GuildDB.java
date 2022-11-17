@@ -2036,6 +2036,26 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
+        UNBLOCKADE_REQUESTS(true, null, CommandCategory.MILCOM) {
+            @Override
+            public String validate(GuildDB db, String value) {
+                return Key.validateChannel(db, value);
+            }
+            @Override
+            public Object parse(GuildDB db, String input) {
+                return DiscordUtil.getChannel(db.getGuild(), input);
+            }
+
+            @Override
+            public String toString(Object value) {
+                return ((IMentionable) value).getAsMention();
+            }
+            @Override
+            public String help() {
+                return "The #channel to receive alerts for unblockade requests";
+            }
+        },
+
         BLOCKADED_ALERTS(true, DEFENSE_WAR_CHANNEL, CommandCategory.MILCOM) {
             @Override
             public String validate(GuildDB db, String value) {

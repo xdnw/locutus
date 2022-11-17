@@ -938,7 +938,7 @@ public final class Locutus extends ListenerAdapter {
                 if (behavior != null) {
                     id = id.substring(behavior.getValue().length());
                 } else {
-//                    behavior = CommandBehavior.DELETE_MESSAGE;
+                    behavior = CommandBehavior.DELETE_MESSAGE;
                 }
             }
 
@@ -967,7 +967,7 @@ public final class Locutus extends ListenerAdapter {
             if (behavior != null) {
                 switch (behavior) {
                     case DELETE_MESSAGE -> {
-//                        RateLimitUtil.queue(message.delete());
+                        RateLimitUtil.queue(message.delete());
                     }
                     case UNDO_REACTION -> {
                         // unsupported

@@ -25,6 +25,10 @@ public class DiscordChannelIO implements IMessageIO {
         this.userMessage = userMessage;
     }
 
+    public DiscordChannelIO(MessageChannel channel) {
+        this(channel, null);
+    }
+
     public DiscordChannelIO(MessageReceivedEvent event) {
         this(event.getChannel(), event::getMessage);
     }

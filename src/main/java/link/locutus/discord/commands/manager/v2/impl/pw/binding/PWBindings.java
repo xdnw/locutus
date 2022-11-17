@@ -48,6 +48,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -204,6 +205,11 @@ public class PWBindings extends BindingHelper {
         Integer aaId = PnwUtil.parseAllianceId(input);
         if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + input);
         return DBAlliance.getOrCreate(aaId);
+    }
+
+    @Binding(value = "Audit types")
+    public Set<IACheckup.AuditType> auditTypes(String input) {
+        return emumSet(IACheckup.AuditType.class, input);
     }
 
     @Binding(value = "Spy operation")

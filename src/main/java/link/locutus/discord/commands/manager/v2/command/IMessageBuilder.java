@@ -167,7 +167,12 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder confirmation(String title, String body, JSONObject command) {
-        return embed(title, body).commandButton(command.put("force", "true").toString(), "Confirm");
+        return confirmation(title, body, command, "force");
+    }
+
+
+    default IMessageBuilder confirmation(String title, String body, JSONObject command, String parameter) {
+        return embed(title, body).commandButton(command.put(parameter, "true").toString(), "Confirm");
     }
 
     @CheckReturnValue

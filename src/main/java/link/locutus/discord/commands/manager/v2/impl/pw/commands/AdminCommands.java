@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -28,6 +29,7 @@ import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -590,10 +592,15 @@ public class AdminCommands {
         OffshoreInstance offshore = Locutus.imp().getRootBank();
         GuildDB db = offshore.getGuildDB();
         Set<Long> coalitions = db.getCoalitionRaw(Coalition.OFFSHORING);
+        Set<Long> invalidIds = new HashSet<>();
+        Set<Long> inactiveIds = new HashSet<>();
+        Set<Long> unregistered = new HashSet<>();
+
         for (Long id : coalitions) {
             if (id > Integer.MAX_VALUE) {
                 GuildDB otherDb = Locutus.imp().getGuildDB(id);
                 if (otherDb == null) {
+                    invalidIds.add(id);
                     response.append("\nOther db is null: " + id);
                     continue;
                 }
@@ -607,22 +614,26 @@ public class AdminCommands {
                     nations.removeIf(f -> f.getActive_m() > 10000);
 
                     if (nations.isEmpty()) {
+                        inactiveIds.add(id);
                         response.append("Inactive alliance (as guild) " + aaId + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong());
                     }
                 }
 
                 DBNation nation = DiscordUtil.getNation(owner.getUser());
                 if (nation == null) {
+                    inactiveIds.add(id);
                     response.append("\nowner is unregistered: " + id + " | " + owner.getIdLong());
                     continue;
                 }
                 if (nation.getActive_m() > 10000) {
+                    inactiveIds.add(id);
                     response.append("\nowner is inactive: " + id + " | " + owner.getIdLong() + " | " + nation.getNationUrl() + " | " + nation.getActive_m() + "m");
                     continue;
                 }
             } else {
                 GuildDB otherDb = Locutus.imp().getGuildDBByAA(id.intValue());
                 if (otherDb == null) {
+                    invalidIds.add(id);
                     response.append("\nAA Other db is null: " + id);
                     continue;
                 }
@@ -637,26 +648,69 @@ public class AdminCommands {
                     nations.removeIf(f -> f.getActive_m() > 10000);
 
                     if (nations.isEmpty()) {
+                        inactiveIds.add(id);
                         response.append("Inactive alliance (as guild) " + aaId + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong());
                     }
                 }
 
                 DBNation nation = DiscordUtil.getNation(owner.getUser());
                 if (nation == null) {
+                    unregistered.add(id);
                     response.append("\nAA owner is unregistered: " + id + " | " + owner.getIdLong());
                     continue;
                 }
                 if (nation.getActive_m() > 10000) {
+                    inactiveIds.add(id);
                     response.append("\nAA owner is inactive: " + id + " | " + owner.getIdLong() + " | " + nation.getNationUrl() + " | " + nation.getActive_m() + "m");
                     continue;
                 }
                 DBAlliance alliance = DBAlliance.get(id.intValue());
                 if (alliance == null || !alliance.exists()) {
+                    invalidIds.add(id);
                     response.append("\nAA does not exist: " + id);
                     continue;
                 }
             }
         }
+
+        double[] totalInvalid = ResourceType.getBuffer();
+        double[] totalInactive = ResourceType.getBuffer();
+        double[] totalUnregistered = ResourceType.getBuffer();
+
+        for (long id : inactiveIds) {
+            Map<ResourceType, Double> depo;
+            if (id > Integer.MAX_VALUE) {
+                depo = offshore.getDeposits(id, false);
+            } else {
+                depo = offshore.getDeposits((int) id, false);
+            }
+            totalInactive = PnwUtil.add(totalInactive, PnwUtil.resourcesToArray(depo));
+        }
+
+        for (long id : invalidIds) {
+            Map<ResourceType, Double> depo;
+            if (id > Integer.MAX_VALUE) {
+                depo = offshore.getDeposits(id, false);
+            } else {
+                depo = offshore.getDeposits((int) id, false);
+            }
+            totalInvalid = PnwUtil.add(totalInvalid, PnwUtil.resourcesToArray(depo));
+        }
+
+        for (long id : unregistered) {
+            Map<ResourceType, Double> depo;
+            if (id > Integer.MAX_VALUE) {
+                depo = offshore.getDeposits(id, false);
+            } else {
+                depo = offshore.getDeposits((int) id, false);
+            }
+            totalUnregistered = PnwUtil.add(totalUnregistered, PnwUtil.resourcesToArray(depo));
+        }
+
+        response.append("\n\nTotal invalid: " + PnwUtil.resourcesToString(totalInvalid));
+        response.append("\nTotal inactive: " + PnwUtil.resourcesToString(totalInactive));
+        response.append("\nTotal unregistered: " + PnwUtil.resourcesToString(totalUnregistered));
+
 
         return response.toString();
     }

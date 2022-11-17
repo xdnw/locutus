@@ -1232,42 +1232,50 @@ public class BankDB extends DBMainV3 {
 //    }
 //
     public List<Transaction2> getBankTransactions(long senderOrReceiverId, int type) {
+        return getBankTransactions(senderOrReceiverId, type, true, true);
+    }
+    public List<Transaction2> getBankTransactions(long senderOrReceiverId, int type, boolean includeLegacy, boolean includeModern) {
         if (type == 1) return getTransactionsByNation((int) senderOrReceiverId);
         if (type != 2 && type != 3) throw new IllegalArgumentException("Invalid type: " + type);
 
         List<Transaction2> list = new ArrayList<>();
 
-        String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
+        if (includeLegacy) {
 
-        queryLegacy(query, new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setLong(1, senderOrReceiverId);
-                stmt.setInt(2, type);
-                stmt.setLong(3, senderOrReceiverId);
-                stmt.setInt(4, type);
+            String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
 
-                if (type == 3) stmt.setString(5, "%#guild=" + senderOrReceiverId + "%");
-                else if (type == 2) stmt.setString(5, "%#alliance=" + senderOrReceiverId + "%");
+            queryLegacy(query, new ThrowingConsumer<PreparedStatement>() {
+                @Override
+                public void acceptThrows(PreparedStatement stmt) throws Exception {
+                    stmt.setLong(1, senderOrReceiverId);
+                    stmt.setInt(2, type);
+                    stmt.setLong(3, senderOrReceiverId);
+                    stmt.setInt(4, type);
 
-            }
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                list.add(new Transaction2(rs));
-            }
-        });
+                    if (type == 3) stmt.setString(5, "%#guild=" + senderOrReceiverId + "%");
+                    else if (type == 2) stmt.setString(5, "%#alliance=" + senderOrReceiverId + "%");
+
+                }
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    list.add(new Transaction2(rs));
+                }
+            });
+        }
 
         // ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
 
-        Condition noteCondition;
-        if (type == 3) {
-            noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#guild=" + senderOrReceiverId + "%");
-        } else if (type == 2){
-            noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#alliance=" + senderOrReceiverId + "%");
-        } else throw new InvalidResultException("Invalid type " + type);
-        list.addAll(getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.SENDER_TYPE.eq(type)),
-            TRANSACTIONS_2.RECEIVER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(type)),
-            noteCondition)));
+        if (includeModern) {
+            Condition noteCondition;
+            if (type == 3) {
+                noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#guild=" + senderOrReceiverId + "%");
+            } else if (type == 2) {
+                noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#alliance=" + senderOrReceiverId + "%");
+            } else throw new InvalidResultException("Invalid type " + type);
+            list.addAll(getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.SENDER_TYPE.eq(type)),
+                    TRANSACTIONS_2.RECEIVER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(type)),
+                    noteCondition)));
+        }
 
         return list;
     }

@@ -62,6 +62,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.time.DurationFormatUtils;
@@ -432,15 +433,28 @@ public class WarCommands {
 
     @Command(desc = "Cancel your unblockade request")
     @RolePermission(Roles.MEMBER)
-    public String cancelUnblockadeRequest(@Me DBNation me) {
+    public String cancelUnblockadeRequest(@Me DBNation me, @Me GuildDB db, @Me User author) {
+        Map.Entry<Long, String> existing = me.getUnblockadeRequest();
         me.deleteMeta(NationMeta.UNBLOCKADE_REASON);
+        if (existing == null) return "No unblockade request founds";
+
+        TextChannel unblockadeChannel = db.getOrNull(GuildDB.Key.UNBLOCKADE_REQUESTS);
+        if (unblockadeChannel != null) {
+            StringBuilder response = new StringBuilder();
+
+            response.append("**ALLY **");
+            response.append(author.getAsMention());
+            response.append("<" + me.getNationUrl() + "> Cancelled the unblockade request: `" + existing.getValue() + "`");
+            RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));
+        }
+
         return "Cancelled unblockade request";
     }
 
     @Command(desc = "Request your blockade be broken within a specific timeframe\n" +
             "e.g. `{prefix}UnblockadeMe 4day \"i am low on warchest\"`")
     @RolePermission(Roles.MEMBER)
-    public String unblockadeMe(@Me DBNation me, @Timediff long diff, @TextArea String note, @Switch("f") boolean force) throws IOException {
+    public String unblockadeMe(@Me GuildDB db, @Me DBNation me, @Me User author, @Timediff long diff, @TextArea String note, @Switch("f") boolean force) throws IOException {
         if (diff > TimeUnit.DAYS.toMillis(5)) {
             return "You cannot make a request longer than 5 days. (Make a new request later to extend your current one)";
         }
@@ -450,12 +464,10 @@ public class WarCommands {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(out);
         dos.writeLong(timestamp);
-        dos.writeChars(note);
+        dos.writeBytes(note);
         me.setMeta(NationMeta.UNBLOCKADE_REASON, out.toByteArray());
 
 //        TODO info about baiting beige and things you can do under a blockade
-
-        StringBuilder response = new StringBuilder("Added blockade request");
 
         if (me.getOff() < 5 && !force && me.getAircraftPct() < 0.3) {
             return "You do not have 5 offensive wars. If you have already lost military, it can be advantageous to give yourself beige time instead of someone wasting resources trying to break a blockade.\n" +
@@ -464,6 +476,76 @@ public class WarCommands {
                     Messages.BLOCKADE_HELP +
                     "\nAdd `-f` to ignore this check";
         }
+
+        TextChannel unblockadeChannel = db.getOrNull(GuildDB.Key.UNBLOCKADE_REQUESTS);
+        if (unblockadeChannel != null) {
+            StringBuilder response = new StringBuilder();
+
+            response.append("**ALLY **");
+            response.append(author.getAsMention());
+
+            response.append("<" + me.getNationUrl() + ">");
+            response.append(" | " + me.getAllianceName() + " | Time: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
+            response.append("\nnote: `").append(note).append("`");
+            response.append("\n```")
+                    .append(String.format("%5s", (int) me.getScore())).append(" ns").append(" | ")
+                    .append(String.format("%2s", me.getCities())).append(" \uD83C\uDFD9").append(" | ")
+                    .append(String.format("%6s", me.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
+                    .append(String.format("%5s", me.getTanks())).append(" \u2699").append(" | ")
+                    .append(String.format("%5s", me.getAircraft())).append(" \u2708").append(" | ")
+                    .append(String.format("%4s", me.getShips())).append(" \u26F5").append(" | ")
+                    .append(String.format("%1s", me.getOff())).append(" \uD83D\uDDE1").append(" | ")
+                    .append(String.format("%1s", me.getDef())).append(" \uD83D\uDEE1").append("``` ");
+            response.append("------\n");
+
+            Set<Integer> enemies = me.getBlockadedBy();
+            for (Integer id : enemies) {
+                DBNation enemy = DBNation.byId(id);
+                int maxShips = 0;
+                for (DBWar war : enemy.getActiveWars()) {
+                    DBNation other = war.getNation(!war.isAttacker(enemy));
+                    if (other == null) continue;
+                    maxShips = Math.max(other.getShips(), maxShips);
+                }
+
+                if (enemy != null) {
+                    response.append("**Enemy**: <" + enemy.getDeclareUrl() + "> | <" + enemy.getAllianceUrl() + "> " + MathMan.format(enemy.getShipPct() * 100) + "% ships");
+
+                    response.append("\n```")
+                            .append(String.format("%5s", (int) enemy.getScore())).append(" ns").append(" | ")
+                            .append(String.format("%2s", enemy.getCities())).append(" \uD83C\uDFD9").append(" | ")
+                            .append(String.format("%6s", enemy.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
+                            .append(String.format("%5s", enemy.getTanks())).append(" \u2699").append(" | ")
+                            .append(String.format("%5s", enemy.getAircraft())).append(" \u2708").append(" | ")
+                            .append(String.format("%4s", enemy.getShips())).append(" \u26F5").append(" | ")
+                            .append(String.format("%1s", enemy.getOff())).append(" \uD83D\uDDE1").append(" | ")
+                            .append(String.format("%1s", enemy.getDef())).append(" \uD83D\uDEE1").append("``` ");
+
+                    double otherOdds = PnwUtil.getOdds(maxShips, enemy.getShips(), 3);
+
+                    if (otherOdds > 0.15) {
+                        response.append(" - Another attacker has " + MathMan.format(otherOdds * 100) + "% to break blockade\n");
+                    }
+
+                    Set<Integer> blockading = enemy.getBlockading();
+                    blockading.remove(me.getNation_id());
+                    blockading.removeIf(f -> {
+                        DBNation nation = DBNation.byId(f);
+                        return (nation == null || nation.getActive_m() > 2880);
+                    });
+
+                    if (blockading.size() > 0) {
+                        response.append(" - enemy also blockading: " + StringMan.getString(blockading) + "\n");
+                    }
+                }
+            }
+            Role milcom = Roles.MILCOM.toRole(db);
+            if (milcom != null) response.append(milcom.getAsMention());
+
+            RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));
+
+        }
+
 
         return "Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP;
     }
@@ -645,9 +727,9 @@ public class WarCommands {
                     double myOdds = PnwUtil.getOdds(myShips, enemy.getShips(), 3);
 
                     if (otherOdds > 0.15) {
-                        response.append(" - Another attacker has " + (otherOdds * 100) + "% to break blockade\n");
+                        response.append(" - Another attacker has " + MathMan.format(otherOdds * 100) + "% to break blockade\n");
                     }
-                    response.append(" - You have " + (myOdds * 100) + "% to break blockade\n");
+                    response.append(" - You have " + MathMan.format(myOdds * 100) + "% to break blockade\n");
 
                     Set<Integer> blockading = enemy.getBlockading();
                     blockading.remove(ally.getNation_id());
@@ -669,6 +751,7 @@ public class WarCommands {
 
             response.append("\n\n");
         }
+        response.append("`note: 2.5x ships for guaranteed IT (rounded up). 2x for 90%. see:`" + CM.simulate.naval.cmd.toSlashMention());
 
         return response.toString();
 

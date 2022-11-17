@@ -39,7 +39,7 @@ public class FunCommands {
         Map<ResourceType, Double> resources;
         String message;
         boolean good = (down == 0 || down * 3 < up);
-        if (good) {
+        if (good && false) {
             message = "You open your present to find... a borg implant! (Batteries not included, may contain traces of nuts and bolts).\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
             resources = Collections.singletonMap(ResourceType.STEEL, 0.01);
         } else {

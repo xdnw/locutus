@@ -651,8 +651,13 @@ public class TradeCommands {
                 allDeposits = PnwUtil.add(allDeposits, deposits);
             }
         }
+        Map<ResourceType, Double> diff = PnwUtil.subResourcesToA(new HashMap<>(allDeposits), stockpile);
+
         body.append("Offshored Deposits: `" + PnwUtil.resourcesToString(allDeposits) + "`\n");
         body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(allDeposits))).append("\n");
+
+        body.append("Diff: `" + PnwUtil.resourcesToString(diff) + "`\n");
+        body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(diff))).append("\n");
 
         String emoji = "Show Day Graph";
 

@@ -261,7 +261,7 @@ public class OffshoreInstance {
         return toProcess;
     }
 
-    private synchronized Map<ResourceType, Double> getDeposits(long guildId, boolean force) {
+    public synchronized Map<ResourceType, Double> getDeposits(long guildId, boolean force) {
         List<Transaction2> toProcess = getTransactionsGuild(guildId, force);
 
         return PnwUtil.resourcesToMap(addTransfers(toProcess, guildId, 3));
@@ -538,28 +538,34 @@ public class OffshoreInstance {
             disabledGuilds.add(senderDB.getGuild().getIdLong());
 
             Map<ResourceType, Double> transfer = PnwUtil.resourcesToMap(amount);
+
+            // add first
+            MessageChannel logChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+
+            long tx_datetime = System.currentTimeMillis();
+            String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
+
+            try {
+                offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
+            } catch (Throwable e) {
+                if (logChannel != null) {
+                    String msg = "Transfer error " + e.getMessage() + " | " + PnwUtil.resourcesToString(amount) + " | " + transfer + " | " + senderDB.getGuild().toString() + "/" + aaId + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + ">";
+                    RateLimitUtil.queue(logChannel.sendMessage(msg));
+                }
+                throw e;
+            }
+
             Map.Entry<OffshoreInstance.TransferStatus, String> result = transferSafe(receiver, transfer, note);
 
             switch (result.getKey()) {
                 default:
                 case OTHER:
-                    MessageChannel logChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (logChannel != null) {
                         String msg = "Unknown result for: " + senderDB.getGuild().toString() + "/" + aaId + ": " + result + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + ">";
                         RateLimitUtil.queue(logChannel.sendMessage(msg));
                     }
                 case SUCCESS:
                 case ALLIANCE_BANK: {
-                    Map<ResourceType, Double> negative = PnwUtil.subResourcesToA(new HashMap<>(), transfer);
-                    negative.entrySet().removeIf(f -> f.getValue() >= 0);
-                    String noteLower = note.toLowerCase();
-
-                    {
-                        long tx_datetime = System.currentTimeMillis();
-                        String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
-                        offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
-                    }
-
                     if ((result.getKey() == OffshoreInstance.TransferStatus.SUCCESS || result.getKey() == OffshoreInstance.TransferStatus.ALLIANCE_BANK)) {
                         double[] newDeposits = getDeposits(senderDB, false);
                         for (ResourceType type : ResourceType.values) {
@@ -579,13 +585,14 @@ public class OffshoreInstance {
                             RateLimitUtil.queue(logChannel.sendMessage(msg));
                         }
                     } else {
-                        valid = true;
+                        valid = false;
                     }
                     if (valid) {
                         disabledGuilds.remove(senderDB.getGuild().getIdLong());
                     } else {
                         String title = "Reimburse";
                         StringBuilder body = new StringBuilder();
+                        body.append("`").append(result.getValue()).append("`\n");
                         body.append("ID: " + aaId + " | " + senderDB.getGuild().toString());
                         body.append("\nAmount: " + PnwUtil.resourcesToString(transfer));
 
@@ -608,6 +615,8 @@ public class OffshoreInstance {
                 case INSUFFICIENT_FUNDS:
                 case INVALID_DESTINATION:
                 case NOTHING_WITHDRAWN:
+                    double[] negative = ResourceType.negative(amount.clone());
+                    offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, negative);
                     disabledGuilds.remove(senderDB.getGuild().getIdLong());
                     break;
             }

@@ -1901,7 +1901,7 @@ public class BankCommands {
                 body.append("\nReceiver Offshore: " + PnwUtil.getMarkdownUrl(receiverOffshore.getAllianceId(), true));
                 body.append("\n\nPress `" + emoji + "` to confirm");
 
-                channel.create().confirmation(title, body.toString(), command).send();
+                channel.create().confirmation(title, body.toString(), command, "confirm").send();
                 return null;
             }
 
@@ -2014,7 +2014,7 @@ public class BankCommands {
                 body.append("\nReceiver Offshore: " + PnwUtil.getMarkdownUrl(receiverOffshore.getAllianceId(), true));
                 body.append("\n\nPress `" + emoji + "` to confirm");
 
-                channel.create().confirmation(title, body.toString(), command).send();
+                channel.create().confirmation(title, body.toString(), command, "confirm").send();
                 return null;
             }
 

@@ -103,7 +103,10 @@ public class TimeUtil {
         long minute = TimeUnit.MINUTES.toMillis(1);
         long lastTurn = TimeUtil.getTurn(now - minute);
         long nextTurn = TimeUtil.getTurn(now + minute);
-        return lastTurn == nextTurn;
+        if (lastTurn != nextTurn) return false;
+        int amt = (nextTurn % 12 == 0) ? 11 : 6;
+        long turnChangeTimer = TimeUtil.getTurn(now - minute * amt);
+        return turnChangeTimer == nextTurn;
     }
 
     public static long timeToSec(String string) {

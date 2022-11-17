@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -97,8 +98,8 @@ public class CheckCities extends Command {
             IACategory category = db.getIACategory();
             if (category != null) {
                 category.load();
-                category.purgeUnusedChannels(event.getChannel());
-                category.alertInvalidChannels(event.getChannel());
+                category.purgeUnusedChannels(new DiscordChannelIO(event.getChannel()));
+                category.alertInvalidChannels(new DiscordChannelIO(event.getChannel()));
             }
         }
 

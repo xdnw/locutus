@@ -44,6 +44,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
 import com.google.common.collect.BiMap;
@@ -548,6 +549,8 @@ public class WebPrimitiveBinding extends BindingHelper {
     public final Set<WarType> WARTYPES_KEY = null;
 
     public final Set<AttackType> ATTACKTYPES_KEY = null;
+
+    public final Set<IACheckup.AuditType> AUDIT_TYPES_KEY = null;
     public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
     public final Map<MilitaryUnit, Long> UNIT_MAP_KEY = null;
 
@@ -624,6 +627,14 @@ public class WebPrimitiveBinding extends BindingHelper {
                 addBinding(store -> {
                     store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                         return multipleSelectEmum(AttackType.class, valueStore);
+                    }));
+                });
+            }
+            {
+                Key key = Key.of(getClass().getDeclaredField("AUDIT_TYPES_KEY").getGenericType(), HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        return multipleSelectEmum(IACheckup.AuditType.class, valueStore);
                     }));
                 });
             }

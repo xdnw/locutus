@@ -9,6 +9,7 @@ import link.locutus.discord.db.entities.DBNation;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public interface NationList {
@@ -25,6 +27,10 @@ public interface NationList {
     }
 
     Collection<DBNation> getNations();
+
+    default Set<Integer> getAllianceIds() {
+        return getNations().stream().map(DBNation::getAlliance_id).collect(Collectors.toSet());
+    }
 
     default DBNation getTotal() {
         return DBNation.createFromList(null, getNations(), false);

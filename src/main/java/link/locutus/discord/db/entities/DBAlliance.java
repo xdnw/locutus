@@ -638,7 +638,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 if (key == null) continue;
                 if (requireBotToken && key.getBotKey() == null) continue;
                 builder.addKey(key);
-                System.out.println("Add key for " + gov.getNationUrl() + " | " + key.getKey());
             } catch (IllegalArgumentException ignore) {}
         }
         if (!builder.isEmpty()) {

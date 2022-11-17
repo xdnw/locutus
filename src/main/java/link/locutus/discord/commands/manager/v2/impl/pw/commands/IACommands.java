@@ -823,7 +823,7 @@ public class IACommands {
             body.append("subject: " + subject + "\n");
             body.append("body: ```" + message + "```");
 
-            channel.create().confirmation(embedTitle, body.toString(), command).send();
+            channel.create().confirmation(embedTitle, body.toString(), command, "confirm").send();
             return null;
         }
 
@@ -1253,7 +1253,7 @@ public class IACommands {
             if (applicants > 0) body.append("applicant receivers: " + applicants + "\n");
 
             body.append("\nPress to confirm");
-            io.create().confirmation(title, body.toString(), command).send();
+            io.create().confirmation(title, body.toString(), command, "confirm").send();
             return null;
         }
 
@@ -1487,7 +1487,7 @@ public class IACommands {
 
     @Command(aliases = {"syncInterviews", "syncInterview"})
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String syncInterviews(@Me TextChannel channel, @Me GuildDB db) {
+    public String syncInterviews(@Me IMessageIO channel, @Me GuildDB db) {
         IACategory iaCat = db.getIACategory();
         iaCat.load();
         iaCat.purgeUnusedChannels(channel);
@@ -1510,14 +1510,14 @@ public class IACommands {
 
     @Command(aliases = {"sortInterviews", "sortInterview"})
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String sortInterviews(@Me GuildMessageChannel channel, @Me GuildDB db, @Default("true") boolean sortCategoried) {
+    public String sortInterviews(@Me GuildMessageChannel channel, @Me IMessageIO io, @Me GuildDB db, @Default("true") boolean sortCategoried) {
         IACategory iaCat = db.getIACategory();
-        iaCat.purgeUnusedChannels(channel);
+        iaCat.purgeUnusedChannels(io);
         iaCat.load();
         if (iaCat.isInCategory(channel)) {
-            iaCat.sort(channel, Collections.singleton((TextChannel) channel), sortCategoried);
+            iaCat.sort(io, Collections.singleton((TextChannel) channel), sortCategoried);
         } else {
-            iaCat.sort(channel, iaCat.getAllChannels(), true);
+            iaCat.sort(io, iaCat.getAllChannels(), true);
         }
         return "Done!";
     }

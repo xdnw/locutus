@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -49,6 +50,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -58,6 +60,7 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -66,18 +69,21 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.*;
 import org.json.JSONObject;
 import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -906,20 +912,97 @@ public class UnsortedCommands {
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public String checkCities(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                              NationList nations, @Switch("u") boolean pingUser, @Switch("m") boolean mailResults, @Switch("c") boolean postInInterviewChannels, @Switch("p") Integer page) throws Exception {
-        List<String> cmd = new ArrayList<>(Arrays.asList( nations.getFilter()));
-        if (pingUser) cmd.add("-p");
-        if (mailResults) cmd.add("-m");
-        if (postInInterviewChannels) cmd.add("-c");
-        if (page != null) cmd.add("page:" + page);
+    public String checkCities(@Me GuildDB db, @Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
+                              NationList nationList, @Default Set<IACheckup.AuditType> audits, @Switch("u") boolean pingUser, @Switch("m") boolean mailResults, @Switch("c") boolean postInInterviewChannels, @Switch("s") boolean skipUpdate) throws Exception {
+        Collection<DBNation> nations = nationList.getNations();
+        Set<Integer> aaIds = nationList.getAllianceIds();
+        if (aaIds.size() > 1) {
+            return "Nations are not in the same alliance";
+        }
 
-        // no pagination
+        if (nations.size() > 1) {
+            IACategory category = db.getIACategory();
+            if (category != null) {
+                category.load();
+                category.purgeUnusedChannels(channel);
+                category.alertInvalidChannels(channel);
+            }
+        }
 
-        // ** title **
-        // > description
+        me.setMeta(NationMeta.INTERVIEW_CHECKUP, (byte) 1);
 
-        return new CheckCities().onCommand(guild, channel, author, me, cmd);
+        IACheckup checkup = new IACheckup(aaIds.iterator().next());
+
+        ApiKeyPool keys = mailResults ? db.getMailKey() : null;
+        if (mailResults && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
+
+        CompletableFuture<IMessageBuilder> msg = channel.send("Please wait...");
+
+        Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
+
+        for (DBNation nation : nations) {
+            StringBuilder output = new StringBuilder();
+            int failed = 0;
+
+            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(nation, nations.size() == 1, skipUpdate);
+            auditResults.put(nation, auditResult);
+
+            if (auditResult != null) {
+                auditResult = IACheckup.simplify(auditResult);
+            }
+
+            if (!auditResult.isEmpty()) {
+                for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : auditResult.entrySet()) {
+                    IACheckup.AuditType type = entry.getKey();
+                    Map.Entry<Object, String> info = entry.getValue();
+                    if (info == null || info.getValue() == null) continue;
+                    failed++;
+
+                    output.append("**").append(type.toString()).append(":** ");
+                    output.append(info.getValue()).append("\n\n");
+                }
+            }
+            IMessageBuilder resultMsg = channel.create();
+            if (failed > 0) {
+                resultMsg.append("**").append(nation.getName()).append("** failed ").append(failed + "").append(" checks:");
+                if (pingUser) {
+                    User user = nation.getUser();
+                    if (user != null) resultMsg.append(user.getAsMention());
+                }
+                resultMsg.append("\n");
+                resultMsg.append(output.toString());
+                if (mailResults) {
+                    String title = nation.getAllianceName() + " automatic checkup";
+
+                    String input = output.toString().replace("_", " ").replace(" * ", " STARPLACEHOLDER ");
+                    String markdown = MarkupUtil.markdownToHTML(input);
+                    markdown = MarkupUtil.transformURLIntoLinks(markdown);
+                    markdown = MarkupUtil.htmlUrl(nation.getName(), nation.getNationUrl()) + "\n" + markdown;
+                    markdown += ("\n\nPlease get in contact with us via discord for assistance");
+                    markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
+
+                    JsonObject response = nation.sendMail(keys, title, markdown);
+                    String userStr = nation.getNation() + "/" + nation.getNation_id();
+                    resultMsg.append("\n" + userStr + ": " + response);
+                }
+            } else {
+                resultMsg.append("All checks passed for " + nation.getNation());
+            }
+            resultMsg.send();
+        }
+
+        if (postInInterviewChannels) {
+            if (db.getGuild().getCategoriesByName("interview", true).isEmpty()) {
+                return "No `interview` category";
+            }
+
+            IACategory category = db.getIACategory();
+            if (category.isValid()) {
+                category.update(auditResults);
+            }
+        }
+
+        return null;
     }
 
     @Command(desc = "Generate an optimal build for a city")

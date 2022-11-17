@@ -31,6 +31,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
@@ -184,6 +185,8 @@ public class PWCompleter extends BindingHelper {
     public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
     public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
 
+    public final Set<IACheckup.AuditType> AUDIT_TYPES_KEY = null;
+
     {
         try {
             {
@@ -192,6 +195,15 @@ public class PWCompleter extends BindingHelper {
                 addBinding(store -> {
                     store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                         return StringMan.autocompleteCommaEnum(SpyCount.Operation.class, input.toString(), OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("AUDIT_TYPES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                        return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
                     }));
                 });
             }
