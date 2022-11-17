@@ -45,19 +45,7 @@ import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
@@ -637,6 +625,9 @@ public class TradeCommands {
         body.append("Stockpile: `" + PnwUtil.resourcesToString(stockpile) + "`\n");
         body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(stockpile))).append("\n");
 
+        List<String> errors = new ArrayList<>();
+        Set<Long> testedIds = new HashSet<>();
+
         Map<ResourceType, Double> allDeposits = new HashMap<>();
         for (Long coalition : coalitions) {
             Map<ResourceType, Double> deposits;
@@ -647,6 +638,17 @@ public class TradeCommands {
                 otherDb = Locutus.imp().getGuildDBByAA(coalition.intValue());
             }
             if (otherDb != null) {
+                Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
+                if (aaId != null) {
+                    if (!testedIds.add(aaId.longValue())) {
+                        errors.add("Duplicate guild: " + otherDb.getGuild() + " |> " + aaId);
+                        continue;
+                    }
+                }
+                if (!testedIds.add(otherDb.getIdLong())) {
+                    errors.add("Duplicate guild: " + otherDb.getGuild() + " <| " + aaId);
+                    continue;
+                }
                 deposits = PnwUtil.resourcesToMap(offshore.getDeposits(otherDb));
                 allDeposits = PnwUtil.add(allDeposits, deposits);
             }
