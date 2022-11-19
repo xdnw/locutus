@@ -928,6 +928,14 @@ public class DBNation implements NationOrAlliance {
 
     public boolean updateNationInfo(DBNation copyOriginal, com.politicsandwar.graphql.model.Nation nation, Consumer<Event> eventConsumer) {
         boolean dirty = false;
+        if (nation.getWars_won() != null && this.wars_won != nation.getWars_won()) {
+            wars_won = nation.getWars_won();
+            dirty = true;
+        }
+        if (nation.getWars_lost() != null && this.wars_lost != nation.getWars_lost()) {
+            wars_lost = nation.getWars_lost();
+            dirty = true;
+        }
         if (nation.getId() != null && this.getNation_id() != nation.getId()) {
             this.setNation_id(nation.getId());
             dirty = true;

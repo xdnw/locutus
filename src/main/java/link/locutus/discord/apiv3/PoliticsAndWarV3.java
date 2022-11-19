@@ -826,6 +826,9 @@ public class PoliticsAndWarV3 {
                 projection.espionage_available();
 
                 projection.tax_id();
+
+                projection.wars_won();
+                projection.wars_lost();
             }
         }, f -> PoliticsAndWarV3.ErrorResponse.THROW, nationResults);
     }
