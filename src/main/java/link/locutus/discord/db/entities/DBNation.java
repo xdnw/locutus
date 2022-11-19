@@ -539,6 +539,11 @@ public class DBNation implements NationOrAlliance {
         return BlitzGenerator.getAirStrength(this, true);
     }
 
+    @Command(desc="Military strength (1 plane = 1)")
+    public double getStrength(MMRDouble mmr) {
+        return BlitzGenerator.getAirStrength(this, mmr);
+    }
+
     @Command(desc = "Estimated combined strength of the enemies its fighting")
     public double getEnemyStrength() {
         List<DBWar> wars = getActiveWars();
@@ -1819,6 +1824,29 @@ public class DBNation implements NationOrAlliance {
     @Command
     public double getScore() {
         return score;
+    }
+
+    public double estimateScore(MMRDouble mmr, Double infra, Integer projects, Integer cities) {
+        if (projects == null) projects = getNumProjects();
+        if (infra == null) infra = getInfra();
+        if (cities == null) cities = this.cities;
+
+        double base = 10;
+        base += projects * Projects.getScore();
+        base += (cities - 1) * 75;
+        base += infra / 40d;
+        for (MilitaryUnit unit : MilitaryUnit.values) {
+            int amt;
+            if (mmr != null && unit.getBuilding() != null) {
+                amt = (int) (mmr.getPercent(unit) * unit.getBuilding().max() * unit.getBuilding().cap(f -> false) * cities);
+            } else {
+                amt = getUnits(unit);
+            }
+            if (amt > 0) {
+                base += unit.getScore(amt);
+            }
+        }
+        return base;
     }
 
     public void setScore(double score) {

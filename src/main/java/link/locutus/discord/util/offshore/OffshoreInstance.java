@@ -81,11 +81,14 @@ public class OffshoreInstance {
         return Collections.unmodifiableSet(offshoreAAs);
     }
 
-    private final AtomicBoolean outOfSync = new AtomicBoolean(false);
+    private static final AtomicBoolean outOfSync = new AtomicBoolean(false);
+    public static void setOutOfSync() {
+        outOfSync.set(true);
+    }
     private double[] lastFunds = null;
 
     public synchronized boolean sync(boolean force) {
-        if (force || !outOfSync.get()) return sync();
+        if (force || outOfSync.get()) return sync();
         return false;
     }
 
@@ -220,7 +223,7 @@ public class OffshoreInstance {
 //    }
 
     public synchronized List<Transaction2> getTransactionsGuild(long guildId, boolean force) {
-        if (force || !outOfSync.get()) sync();
+        if (force || outOfSync.get()) sync();
 
         List<Transaction2> transactions = Locutus.imp().getBankDB().getBankTransactions(guildId, 3);
 
@@ -268,7 +271,7 @@ public class OffshoreInstance {
     }
 
     public synchronized List<Transaction2> getTransactionsAA(int allianceId, boolean force) {
-        if (force || !outOfSync.get()) sync();
+        if (force || outOfSync.get()) sync();
 
         List<Transaction2> transactions = Locutus.imp().getBankDB().getBankTransactions(allianceId, 2);
 
@@ -567,7 +570,7 @@ public class OffshoreInstance {
                 case SUCCESS:
                 case ALLIANCE_BANK: {
                     if ((result.getKey() == OffshoreInstance.TransferStatus.SUCCESS || result.getKey() == OffshoreInstance.TransferStatus.ALLIANCE_BANK)) {
-                        double[] newDeposits = getDeposits(senderDB, false);
+                        double[] newDeposits = getDeposits(senderDB, true);
                         for (ResourceType type : ResourceType.values) {
                             double amt = deposits[type.ordinal()];
                             if (amt > newDeposits[type.ordinal()]) valid = true;
