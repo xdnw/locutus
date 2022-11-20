@@ -124,6 +124,7 @@ public class CommandManager2 {
 
         this.commands.registerCommandsWithMapping(CM.class, true, true);
         this.commands.registerSubCommands(new BuildCommands(), "build");
+        this.commands.registerMethod(new StatCommands(), "radiationByTurn", "")
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
