@@ -650,7 +650,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph of nation strength by score between two coalitions", aliases = {"strengthTierGraph"})
-    public String strengthTierGraph(@Me GuildDB db, @Me IMessageIO channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants) throws IOException {
+    public String strengthTierGraph(@Me GuildDB db, @Me IMessageIO channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch("i") boolean includeInactives, @Switch("n") boolean includeApplicants, @Switch("a") MMRDouble col1MMR, @Switch("b") MMRDouble col2MMR, @Switch("c") Double col1Infra, @Switch("d") Double col2Infra) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -661,8 +661,8 @@ public class StatCommands {
         int maxScore = 0;
         int minScore = Integer.MAX_VALUE;
         for (DBNation nation : allNations) {
-            maxScore = (int) Math.max(maxScore, nation.getScore());
-            minScore = (int) Math.min(minScore, nation.getScore());
+            maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null));
+            minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null));
         }
         double[] coal1Str = new double[(int) (maxScore * 1.75)];
         double[] coal2Str = new double[(int) (maxScore * 1.75)];
@@ -675,10 +675,10 @@ public class StatCommands {
         // max = (min / 0.6)
 
         for (DBNation nation : coalition1) {
-            coal1Str[(int) (nation.getScore() * 0.75)] += nation.getStrength();
+            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null) * 0.75)] += nation.getStrength(col1MMR);
         }
         for (DBNation nation : coalition2) {
-            coal2Str[(int) (nation.getScore() * 0.75)] += nation.getStrength();
+            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null) * 0.75)] += nation.getStrength(col2MMR);
         }
         for (int min = 10; min < coal1Str.length; min++) {
             double val = coal1Str[min];

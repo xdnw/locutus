@@ -104,8 +104,8 @@ public class TimeUtil {
         long lastTurn = TimeUtil.getTurn(now - minute);
         long nextTurn = TimeUtil.getTurn(now + minute);
         if (lastTurn != nextTurn) return false;
-        int amt = (nextTurn % 12 == 0) ? 11 : 6;
-        long turnChangeTimer = TimeUtil.getTurn(now - minute * amt);
+        double amt = (nextTurn % 12 == 0) ? 10.2d : 1.2d;
+        long turnChangeTimer = TimeUtil.getTurn((long) (now - minute * amt));
         return turnChangeTimer == nextTurn;
     }
 

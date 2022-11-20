@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
@@ -610,6 +611,7 @@ public class TradeCommands {
         channel.send("Please wait...");
 
         OffshoreInstance offshore = db.getOffshore();
+        offshore.sync();
         Map<ResourceType, Double> stockpile = db.getAlliance().getStockpile();
         Set<Long> coalitions = new LinkedHashSet<>(db.getCoalitionRaw(Coalition.OFFSHORING));
         coalitions.remove(db.getIdLong());
@@ -641,7 +643,14 @@ public class TradeCommands {
                 Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 if (aaId != null) {
                     if (!testedIds.add(aaId.longValue())) {
-                        errors.add("Duplicate guild: " + otherDb.getGuild() + " |> " + aaId);
+                        Set<Long> guildsMatchingAAId = new HashSet<>();
+                        for (GuildDB value : Locutus.imp().getGuildDatabases().values()) {
+                            if (value != otherDb && Objects.equals(value.getOrNull(GuildDB.Key.ALLIANCE_ID), aaId)) {
+                                guildsMatchingAAId.add(value.getIdLong());
+                            }
+                        }
+
+                        errors.add("Duplicate guild: " + otherDb.getGuild() + " |> " + aaId + " | " + StringMan.getString(guildsMatchingAAId));
                         continue;
                     }
                 }
@@ -649,7 +658,7 @@ public class TradeCommands {
                     errors.add("Duplicate guild: " + otherDb.getGuild() + " <| " + aaId);
                     continue;
                 }
-                deposits = PnwUtil.resourcesToMap(offshore.getDeposits(otherDb));
+                deposits = PnwUtil.resourcesToMap(offshore.getDeposits(otherDb, false));
                 allDeposits = PnwUtil.add(allDeposits, deposits);
             }
         }
@@ -670,10 +679,14 @@ public class TradeCommands {
 
         CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.create(PnwUtil.resourcesToString(stockpile), PnwUtil.resourcesToString(allDeposits), "200");
 
-        channel.create().embed(title, body.toString())
-                        .commandButton(cmd, "Show Graph (200d)")
-                .append("Done!")
-                                .send();
+        IMessageBuilder msg = channel.create().embed(title, body.toString())
+                .commandButton(cmd, "Show Graph (200d)")
+                .append("Done!");
+        if (!errors.isEmpty()) {
+            msg.append("\n - " + StringMan.join(errors, "\n - "));
+        }
+        msg.send();
+
         return null;
     }
 

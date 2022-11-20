@@ -1,6 +1,7 @@
 package link.locutus.discord.util.battle;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
@@ -902,9 +903,26 @@ public class BlitzGenerator {
     }
 
     public static double getAirStrength(DBNation nation, boolean isAttacker) {
+        return getAirStrength(nation, nation.getAircraft(), nation.getTanks());
+    }
+
+    public static double getAirStrength(DBNation nation, MMRDouble mmrOverride) {
+        double aircraft;
+        double tanks;
+        if (mmrOverride != null) {
+            aircraft = (mmrOverride.get(MilitaryUnit.AIRCRAFT) / 5d) * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * nation.getCities();
+            tanks = (mmrOverride.get(MilitaryUnit.TANK) / 5d) * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.max() * nation.getCities();
+        } else {
+            aircraft = nation.getAircraft();
+            tanks = nation.getTanks();
+        }
+        return getAirStrength(nation, aircraft, tanks);
+    }
+
+    public static double getAirStrength(DBNation nation, double aircraft, double tanks) {
         int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * nation.getCities();
-        double str = nation.getAircraft() + max / 2d;
-        str += nation.getTanks() / 32d;
+        double str = aircraft + max / 2d;
+        str += tanks / 32d;
 
         return str;
     }
