@@ -16,7 +16,8 @@ import java.util.regex.Pattern;
 
 public class HastebinUtil {
 
-    public static final String BIN_URL = "https://hastebin.com/documents", USER_AGENT = "Mozilla/5.0";
+    public static final String BIN_URL = "https://hastebin.com/documents";
+    public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.52";
     public static final Pattern PATTERN = Pattern.compile("\\{\"key\":\"([\\S\\s]*)\"\\}");
 
     public static String upload(final String string) throws IOException {

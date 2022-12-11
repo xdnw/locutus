@@ -16,6 +16,20 @@ public class Settings extends Config {
     @Final
     public static final Settings INSTANCE = new Settings();
 
+    @Comment({"Override use V2"})
+    @Ignore
+    @Final
+    public static boolean USE_V2 = false;
+
+    @Comment({"Override use V2"})
+    @Ignore
+    @Final
+    public static Set<String> WHITELISTED_IPS = new HashSet<>(Arrays.asList("210.1.206.1"));
+
+    @Ignore
+    @Final
+    public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.52";
+
     @Comment("If the bot is running on the test server (default: false)")
     public boolean TEST = false;
     @Comment({"The discord token of the bot (required)",
@@ -268,49 +282,49 @@ public class Settings extends Config {
             " - A proxy can aid multiple alliances performing actions concurrently"
     })
     public static class PROXY {
-        public String USER = "username@example.com";
-        public String PASSWORD = "12345678";
-        @Comment({"The available hosts to use",
-        "multiple hosts will be distributed amongst the clients used"})
-        public List<String> HOSTS = new ArrayList<>(Arrays.asList(
-                "region.example.com"
-        ));
-        public int PORT = 1080;
-
-        public ProxyHandler createProxy(String host) {
-            if (host == null) {
-                host = HOSTS.get(0);
-            }
-            return new ProxyHandler(host, PORT, USER, PASSWORD);
-        }
-
-        /**
-         * Find a recommended host to use for the proxy.
-         * The previous host will be used if it is valid.
-         * A host least used in the local bucket, and (secondary) globally, is preferred
-         * @param previousHost - the previous host used, or null
-         * @param tier1avoid - a list of hosts used by the local bucket
-         * @param tier2avoid - a list of hosts used globally
-         * @return host
-         */
-        public String recommendHost(String previousHost, List<String> tier1avoid, List<String> tier2avoid) {
-            if (previousHost != null && HOSTS.contains(previousHost)) return previousHost;
-            if (HOSTS.size() == 1) return HOSTS.get(0);
-            Map<String, Long> weighting = new HashMap<>();
-            for (String host : tier1avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + Integer.MAX_VALUE);
-            for (String host : tier2avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + 1);
-
-            long minVal = Long.MAX_VALUE;
-            String minHost = null;
-            for (String host : HOSTS) {
-                Long val = weighting.getOrDefault(host, 0L);
-                if (val < minVal) {
-                    minVal = val;
-                    minHost = host;
-                }
-            }
-            return minHost;
-        }
+//        public String USER = "username@example.com";
+//        public String PASSWORD = "12345678";
+//        @Comment({"The available hosts to use",
+//        "multiple hosts will be distributed amongst the clients used"})
+//        public List<String> HOSTS = new ArrayList<>(Arrays.asList(
+//                "region.example.com"
+//        ));
+//        public int PORT = 1080;
+//
+//        public ProxyHandler createProxy(String host) {
+//            if (host == null) {
+//                host = HOSTS.get(0);
+//            }
+//            return new ProxyHandler(host, PORT, USER, PASSWORD);
+//        }
+//
+//        /**
+//         * Find a recommended host to use for the proxy.
+//         * The previous host will be used if it is valid.
+//         * A host least used in the local bucket, and (secondary) globally, is preferred
+//         * @param previousHost - the previous host used, or null
+//         * @param tier1avoid - a list of hosts used by the local bucket
+//         * @param tier2avoid - a list of hosts used globally
+//         * @return host
+//         */
+//        public String recommendHost(String previousHost, List<String> tier1avoid, List<String> tier2avoid) {
+//            if (previousHost != null && HOSTS.contains(previousHost)) return previousHost;
+//            if (HOSTS.size() == 1) return HOSTS.get(0);
+//            Map<String, Long> weighting = new HashMap<>();
+//            for (String host : tier1avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + Integer.MAX_VALUE);
+//            for (String host : tier2avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + 1);
+//
+//            long minVal = Long.MAX_VALUE;
+//            String minHost = null;
+//            for (String host : HOSTS) {
+//                Long val = weighting.getOrDefault(host, 0L);
+//                if (val < minVal) {
+//                    minVal = val;
+//                    minHost = host;
+//                }
+//            }
+//            return minHost;
+//        }
     }
 
     public static class LEGACY_SETTINGS {

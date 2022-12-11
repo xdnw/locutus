@@ -114,6 +114,21 @@ public class CommandGroup implements ICommandGroup {
         }
     }
 
+    public void registerMethod(Object object, List<String> path, String methodName, String commandName) {
+        Method found = null;
+        for (Method method : object.getClass().getDeclaredMethods()) {
+            if (method.getName().equals(methodName)) {
+                if (found != null) throw new IllegalStateException("Duplicate method found for: " + methodName);
+                found = method;
+            }
+        }
+        if (found == null) throw new IllegalArgumentException("No method found for " + methodName);
+
+        ParametricCallable parametric = ParametricCallable.generateFromMethod(parent, object, found, store);
+        if (commandName == null) commandName = parametric.getPrimaryCommandId();
+        registerWithPath(parametric, path, commandName);
+    }
+
     public void registerSubCommands(Object object, String... aliases) {
         CommandGroup subCmd = new CommandGroup(this, aliases, store, validators);
         subCmd.registerCommands(object);
@@ -255,7 +270,7 @@ public class CommandGroup implements ICommandGroup {
     }
 
     public void registerCommandsWithMapping(Class<CM> remapping, boolean checkUnregisteredMethods, boolean checkCommandArguments) {
-        Class<?> clazz = CM.class;
+        Class<?> clazz = remapping;
         Map<Class<?>, Object> instanceCache = new HashMap<>();
         register(clazz, new ArrayList<>(), instanceCache, true);
 
@@ -272,7 +287,7 @@ public class CommandGroup implements ICommandGroup {
             Object instance = entry.getValue();
             for (Method declaredMethod : entry.getKey().getDeclaredMethods()) {
                 if (declaredMethod.getAnnotation(Command.class) == null) continue;
-                if (!registeredMethods.contains(declaredMethod)) {
+                if (!registeredMethods.contains(declaredMethod) && checkUnregisteredMethods) {
                     throw new IllegalArgumentException("No mapping found for method " + entry.getKey() + " | " + declaredMethod);
                 }
             }

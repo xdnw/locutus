@@ -247,7 +247,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public <T> T getOrThrow(Key key) {
         String value = getInfo(key);
         if (value == null) {
-            throw new UnsupportedOperationException("No " + key + " registered. Use `" + Settings.commandPrefix(true) + "KeyStore " + key + " <value>`");
+            throw new UnsupportedOperationException("No " + key + " registered. Use " + CM.settings.cmd.create(key.name(), null));
         }
         return (T) key.parse(this, value);
     }
@@ -1571,7 +1571,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
         if (!isWhitelisted() && !isValidAlliance()) {
             if (throwException) {
-                throw new IllegalArgumentException("Ensure there are members in this alliance, `" + Settings.commandPrefix(true) + "who <alliance>` and that " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + " is set");
+                throw new IllegalArgumentException("Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + " is set");
             }
             return null;
         }
@@ -1927,7 +1927,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public String help() {
-                return "The name or id of the CATEGORY you would like embassy channels created in (for `" + Settings.commandPrefix(true) + "embassy`)";
+                return "The name or id of the CATEGORY you would like embassy channels created in (for " + CM.embassy.cmd.toSlashMention() + ")";
             }
         },
 
@@ -2192,7 +2192,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             @Override
             public String help() {
-                return "Whether members can use `" + Settings.commandPrefix(true) + "offshore` (true/false)";
+                return "Whether members can use " + CM.offshore.send.cmd.toSlashMention() + " (true/false)";
             }
         },
 
@@ -2213,7 +2213,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             @Override
             public String help() {
-                return "Whether members can use " + CM.transfer.resources.cmd.toSlashMention() + " or `" + Settings.commandPrefix(true) + "grant` to access their own funds (true/false)";
+                return "Whether members can use " + CM.transfer.resources.cmd.toSlashMention() + " or " + Settings.commandPrefix(true) + "grant` to access their own funds (true/false)";
             }
         },
 
@@ -2458,7 +2458,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public String help() {
-                return "The #channel to receive alerts for custom `" + Settings.commandPrefix(true) + "BankAlerts`";
+                return "The #channel to receive alerts e.g. for custom `" + Settings.commandPrefix(true) + "BankAlerts`";
             }
         },
 
@@ -2565,7 +2565,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String help() {
                 return "Options: " + StringMan.getString(AutoNickOption.values()) + "\n" +
-                        "See also: `" + Settings.commandPrefix(true) + "clearNicks`";
+                        "See also: " + CM.role.clearNicks.cmd.toSlashMention() + "";
             }
         },
 
@@ -2583,8 +2583,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             public String help() {
                 return "Options: " + StringMan.getString(AutoRoleOption.values()) + "\n" +
                         "See also:\n" +
-                        " - `" + Settings.commandPrefix(true) + "setcoalition <alliance> MASKEDALLIANCES`\n" +
-                        " - `" + Settings.commandPrefix(true) + "clearAllianceRoles`\n" +
+                        " - " + CM.coalition.create.cmd.create(null, Coalition.MASKEDALLIANCES.name()) + "\n" +
+                        " - " + CM.role.clearAllianceRoles.cmd.toSlashMention() + "\n" +
                         " - " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE_ALLIANCE_RANK.name(), null).toSlashCommand() + "\n" +
                         " - " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE_TOP_X.name(), null).toSlashCommand();
             }
@@ -3064,7 +3064,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String help() {
                 return "The #channel to receive alerts when a raid target leaves beige.\n" +
-                        "`" + Settings.commandPrefix(true) + "AliasROle BEIGE_ALERT` must also be set and have members in range";
+                        "" + CM.role.setAlias.cmd.create(Roles.BEIGE_ALERT.name(), null) + " must also be set and have members in range";
             }
         },
 
@@ -3911,7 +3911,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             public String help() {
                 return "The internal tax amount ($/rss) in the format e.g. `25/25` to be excluded in deposits.\n" +
                         "Defaults to `100/100` (i.e. no taxes are included in depos).\n" +
-                        "Setting is retroactive. See also: `" + Settings.commandPrefix(true) + "SetTaxes`";
+                        "Setting is retroactive. See also: " + CM.nation.set.taxinternal.cmd.toSlashMention() + "";
             }
         },
 
@@ -5004,22 +5004,24 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public List<Map.Entry<Roles, Long>> getRoles() {
         if (roleAliases.isEmpty() && !cachedRoleAliases) {
-            cachedRoleAliases = true;
-            try (PreparedStatement stmt = prepareQuery("select * FROM ROLES")) {
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        try {
-                            Roles role = Roles.valueOf(rs.getString("role").toUpperCase());
-                            long alias = rs.getLong("alias");
+            synchronized (roleAliases) {
+                cachedRoleAliases = true;
+                try (PreparedStatement stmt = prepareQuery("select * FROM ROLES")) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            try {
+                                Roles role = Roles.valueOf(rs.getString("role").toUpperCase());
+                                long alias = rs.getLong("alias");
 
-                            roleAliases.putIfAbsent(role, alias);
-                        } catch (IllegalArgumentException ignore) {
+                                roleAliases.putIfAbsent(role, alias);
+                            } catch (IllegalArgumentException ignore) {
+                            }
                         }
                     }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                    return null;
                 }
-            } catch (SQLException e) {
-                e.printStackTrace();
-                return null;
             }
         }
         return new ArrayList<>(roleAliases.entrySet());

@@ -888,7 +888,7 @@ public class DBNation implements NationOrAlliance {
         if (nation.getAllianceid() != null && this.alliance_id != nation.getAllianceid()) {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
-            this.alliance_id = nation.getAllianceid();
+            this.setAlliance_id(nation.getAllianceid());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeAllianceEvent(copyOriginal, this));
         }
         if (nation.getAllianceposition() != null && (this.rank == null || this.rank.id != nation.getAllianceposition())) {
@@ -1399,7 +1399,9 @@ public class DBNation implements NationOrAlliance {
 
     public List<Transaction2> updateTransactions() {
         BankDB bankDb = Locutus.imp().getBankDB();
-        if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
+        if (Settings.USE_V2) {
+            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecsv2(nation_id, events));
+        } else if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
             System.out.println("Update bank recs 0");
             Locutus.imp().runEventsAsync(bankDb::updateBankRecs);
         } else {

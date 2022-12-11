@@ -127,7 +127,9 @@ public enum Roles {
     MAIL("Can use mail commands", GuildDB.Key.API_KEY),
 
     BLOCKADED_ALERTS("Gets alerts when you are blockaded", GuildDB.Key.BLOCKADED_ALERTS),
-    UNBLOCKADED_ALERTS("Gets alerts when you are unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS)
+    UNBLOCKADED_ALERTS("Gets alerts when you are unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS),
+
+    UNBLOCKADED_GOV_ROLE_ALERTS("Gets alerts when any member is fully unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS)
     ;
 
     public static Roles[] values = values();

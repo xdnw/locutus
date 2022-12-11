@@ -1231,10 +1231,12 @@ public class WarCategory {
 
         start = System.currentTimeMillis();
 
+        Set<Integer> duplicateChannels = new HashSet<>();
+
         for (Category category : guild.getCategories()) {
             String catName = category.getName().toLowerCase();
             if (catName.startsWith(catPrefix)) {
-                for (GuildMessageChannel channel : category.getTextChannels()) {
+                for (TextChannel channel : category.getTextChannels()) {
                     String channelName = channel.getName();
                     String[] split = channelName.split("-");
                     int targetId;
@@ -1245,6 +1247,16 @@ public class WarCategory {
                     } else {
                         continue;
                     }
+
+                    if (!duplicateChannels.add(targetId)) {
+                        RateLimitUtil.queueWhenFree(channel.delete());
+                    } else {
+                        WarRoom existing = warRoomMap.get(targetId);
+                        if (existing != null && existing.channel != null && existing.channel.getIdLong() != channel.getIdLong()) {
+                            existing.channel = channel;
+                        }
+                    }
+
                     if (byTarget.containsKey(targetId)) continue;
 
                     // delete because no active wars

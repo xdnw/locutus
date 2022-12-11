@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -235,7 +236,7 @@ public class DiscordCommands {
             return "No embed commands found";
         }
 
-        String cmd = Settings.commandPrefix(true) + "embed " + "\"" + title + "\" \"" + desc + "\" \"" + StringMan.join(reactions.values(), "\" \"") + "\"";
+        String cmd = CM.embed.commands.cmd.create(title, desc, StringMan.join(reactions.values(), "\" \"")).toSlashMention();
         return "```" + cmd + "```";
     }
 
@@ -312,12 +313,20 @@ public class DiscordCommands {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command `" + Settings.commandPrefix(true) + "validate " + nation.getNation_id() + "` again";
+                "5. Run the command " + CM.register.cmd.create(nation.getNation_id() + "").toSlashCommand() + " again";
 
         long id = user.getIdLong();
         boolean checkId = false;
 
         PNWUser existingUser = Locutus.imp().getDiscordDB().getUser(null, user.getName(), fullDiscriminator);
+
+        /*
+        Using register
+         - If the discord user/discriminator is registered to another nation, require using the discord id
+         - If the nation is registered to another user, require using the discord id
+         (have message that they can change the discord setting afterwards to their username)
+         */
+
         if (existingUser != null) {
             if (existingUser.getDiscordId() != id) {
                 errorMsg = "That nation is already registered to another user!" +
@@ -325,7 +334,7 @@ public class DiscordCommands {
                         "2. Scroll down to where it says Discord Username:\n" +
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
-                        "5. Run the command `" + Settings.commandPrefix(true) + "validate " + nation.getNation_id() + "` again";
+                        "5. Run the command " + CM.register.cmd.create(nation.getNation_id() + "").toSlashCommand() + " again";
                 checkId = true;
             }
         }

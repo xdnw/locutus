@@ -56,7 +56,7 @@ public class ValidateBlitzSheet extends Command {
         SpreadSheet sheet = SpreadSheet.create(args.get(0));
         StringBuilder response = new StringBuilder();
         Integer finalMaxWars = maxWars;
-        BlitzGenerator.getTargets(sheet, 0, f -> finalMaxWars, 0.75, 1.75, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, 0, f -> finalMaxWars, 0.75, 1.75, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");

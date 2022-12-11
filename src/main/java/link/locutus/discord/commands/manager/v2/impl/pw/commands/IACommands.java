@@ -635,7 +635,7 @@ public class IACommands {
             }
         }
 
-        response.append("\n\nTo assign a nation as your mentee, use `" + Settings.commandPrefix(false) + "mentee <nation>`");
+        response.append("\n\nTo assign a nation as your mentee, use " + CM.interview.mentee.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1066,7 +1066,7 @@ public class IACommands {
             db.getHandler().onSetRank(author, channel, nation, position);
         }
         response.append(result);
-        response.append("\nSee also " + CM.self.list.cmd.toSlashMention() + " / `" + Settings.commandPrefix(false) + "addRole @user <role>`");
+        response.append("\nSee also " + CM.self.list.cmd.toSlashMention() + " / " + CM.role.add.cmd.toSlashMention());
         return response.toString();
     }
 

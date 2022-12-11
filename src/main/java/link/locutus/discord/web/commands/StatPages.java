@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands;
 
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
@@ -51,6 +52,14 @@ public class StatPages {
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricMap = AllianceMetric.getMetrics(metrics, startTurn, endTurn, alliances);
 
         return rocker.guild.milcom.globalmilitarization.template(spheres, alliances, metricMap, metrics, startTurn, endTurn).render().toString();
+    }
+
+    @Command()
+    public Object radiationStats(Set<Continent> continents, @Timestamp long start, @Timestamp long end) {
+        long startTurn = TimeUtil.getTurn(start);
+        TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, start, end);
+        JsonObject json = table.convertTurnsToEpochSeconds(startTurn).toHtmlJson();
+        return rocker.data.timechartdatasrcpage.template("Radiation by Time", json, true).render().toString();
     }
 
     @Command()

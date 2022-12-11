@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.user.Roles;
@@ -28,7 +29,7 @@ public class RoleAlias extends Command {
 
     @Override
     public String help() {
-        return Settings.commandPrefix(true) + "aliasrole <role> <discord-role>";
+        return CM.role.setAlias.cmd.toSlashMention();
     }
 
     @Override

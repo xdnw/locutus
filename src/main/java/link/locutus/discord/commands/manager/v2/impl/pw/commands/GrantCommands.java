@@ -937,7 +937,6 @@ public class GrantCommands {
     @Command
     @RolePermission(value = {Roles.ECON_LOW_GOV, Roles.ECON, Roles.ECON_GRANT_SELF})
     public String approveEscrowed(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> deposits, Map<ResourceType, Double> escrowed) throws IOException {
-        if (true) return "Not implemented";
         /*
         Member: Can only send funds in their deposits
          */

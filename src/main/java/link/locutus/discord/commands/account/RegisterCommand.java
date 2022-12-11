@@ -36,7 +36,7 @@ public class RegisterCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.commandPrefix(true) + "validate <nation-id>";
+        return CM.register.cmd.toSlashMention();
     }
 
     @Override
@@ -70,15 +70,16 @@ public class RegisterCommand extends Command {
                         return usage();
                     } else {
                         Role appRole = Roles.APPLICANT.toRole(guild);
+                        Role memberRole = Roles.MEMBER.toRole(guild);
                         Member mentionMember = guild.getMember(mention);
 
                         if (mentionMember == null) return "User is not in server";
-                        if (appRole == null) return "No applicant role exists";
-                        if (!mentionMember.getRoles().contains(appRole)) return "User does not have applicant role";
+                        if (appRole == null && memberRole == null) return "No applicant or member role exists";
+                        if (!mentionMember.getRoles().contains(appRole) && !mentionMember.getRoles().contains(memberRole)) return "User does not have applicant role";
                         if (DiscordUtil.getNation(mention) != null) return "User is already registered";
                         DBNation mentionNation = DBNation.byId(nationId);
                         if (mentionNation == null) return "Invalid nation";
-                        if (mentionNation.getUser() == null) return "Nation already registered";
+                        if (mentionNation.getUser() != null) return "Nation already registered: " + mentionNation.getNation() + " = " + mentionNation.getUser();
                         Integer aaId = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
                         if (aaId == null) aaId = me.getAlliance_id();
                         if (aaId != mentionNation.getAlliance_id()) return "Nation has not applied ingame";
@@ -91,7 +92,7 @@ public class RegisterCommand extends Command {
         if (args.size() != 1) {
             DBNation nation = DiscordUtil.getNation(event);
             if (nation == null) {
-                return "Usage: `" + Settings.commandPrefix(true) + "validate <nation link>`";
+                return "Usage: " + CM.register.cmd.toSlashMention();
             } else {
                 return nation.register(user, guildDb, false);
             }

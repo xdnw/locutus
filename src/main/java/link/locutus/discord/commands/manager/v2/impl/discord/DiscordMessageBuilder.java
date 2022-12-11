@@ -53,8 +53,6 @@ public class DiscordMessageBuilder implements IMessageBuilder {
 
     public Message build(boolean includeContent) {
         MessageBuilder discBuilder = new MessageBuilder();
-        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
-
         if (!buttons.isEmpty()) discBuilder.setActionRows(ActionRow.partitionOf(buttons));
 
         if (!embeds.isEmpty()) {
@@ -76,6 +74,8 @@ public class DiscordMessageBuilder implements IMessageBuilder {
         } else if (!remapLongCommands.isEmpty()) {
             throw new IllegalStateException("Cannot remap long commands without embeds: " + StringMan.getString(remapLongCommands));
         }
+
+        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
 
         return discBuilder.build();
     }

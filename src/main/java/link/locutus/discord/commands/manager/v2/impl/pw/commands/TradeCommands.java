@@ -588,7 +588,7 @@ public class TradeCommands {
                 if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
-                response.append("```" + Settings.commandPrefix(true) + "addbalance " + url + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit```");
+                response.append(CM.deposits.add.cmd.create(url, PnwUtil.resourcesToString(entry.getValue()), "#deposit", null).toSlashCommand());
             } else {
                 response.append('\n').append("```").append(name).append(" | ");
                 if (client != null && client.getAlliance_id() != 0) {

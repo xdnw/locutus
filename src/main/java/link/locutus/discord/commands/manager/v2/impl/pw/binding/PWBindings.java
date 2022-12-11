@@ -212,6 +212,12 @@ public class PWBindings extends BindingHelper {
         return emumSet(IACheckup.AuditType.class, input);
     }
 
+    @Binding(value = "Continent types")
+    public Set<Continent> continentTypes(String input) {
+        if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
+        return emumSet(Continent.class, input);
+    }
+
     @Binding(value = "Spy operation")
     public Set<SpyCount.Operation> opTypes(String input) {
         Set<SpyCount.Operation> allowedOpTypes = new HashSet<>();

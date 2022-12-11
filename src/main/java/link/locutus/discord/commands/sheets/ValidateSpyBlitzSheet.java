@@ -65,7 +65,7 @@ public class ValidateSpyBlitzSheet extends Command {
             isValidTarget = n -> filter.contains(n);
         }
 
-        BlitzGenerator.getTargets(sheet, 0, maxWarsFunc, 0.4, 1.5, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");

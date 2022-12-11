@@ -90,7 +90,7 @@ public class IAChannel {
                 Map.Entry<Object, String> result = entry.getValue();
                 emojis.add(type.emoji);
             }
-            String cmd = Settings.commandPrefix(true) + "checkcities " + nation.getNation_id();
+            String cmd = CM.audit.run.cmd.create(nation.getNation_id() + "", null, null, null, null).toCommandArgs();
             IACheckup.createEmbed(channel, null, cmd, nation, audits, 0);
         }
 //        emojis.remove("");

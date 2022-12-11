@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -674,7 +675,7 @@ public class GuildHandler {
         DBNation previous = event.getPrevious();
         DBNation current = event.getCurrent();
 
-        if (previous.active_m() > 7200 && previous.getPositionEnum() == Rank.APPLICANT && current.getVm_turns() == 0) {
+        if (previous.active_m() > 7200 && previous.getPositionEnum() == Rank.APPLICANT && current.getVm_turns() == 0 && current.active_m() < 15) {
             MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
             if (channel != null) {
                 String title = "Inactive Applicant " + current.getNation() + " logged in (just now)";
@@ -1103,7 +1104,7 @@ public class GuildHandler {
             case UNIT:
                 throw new IllegalArgumentException("Units are not granted. Please get a warchest grant");
             case BUILD:
-                throw new IllegalArgumentException("Please use `" + Settings.commandPrefix(true) + "optimalbuild`");
+                throw new IllegalArgumentException("Please use " + CM.city.optimalBuild.cmd.toSlashMention() + "");
                 // MMR_RAIDING:
                 // MMR_WARTIME:
                 // MMR_PEACE: c1-10=5001,c11+=5553
@@ -1206,7 +1207,7 @@ public class GuildHandler {
                 // disburse up to 5 days?
                     GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (channel != null) {
-                        throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or `" + Settings.commandPrefix(true) + "disburse` in " + channel.getAsMention() + " to request funds from your deposits");
+                        throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.raws.cmd.toSlashMention() + " in " + channel.getAsMention() + " to request funds from your deposits");
                     }
                 throw new IllegalArgumentException("Please request resources in the resource request channel");
         }
@@ -2365,7 +2366,7 @@ public class GuildHandler {
                 Role iaRole = Roles.INTERNAL_AFFAIRS.toRole(db);
                 if (iaRole == null || guild.getMembersWithRoles(iaRole).isEmpty()) {
                     try {
-                        RateLimitUtil.queueWhenFree(output.sendMessage("Please set `" + Settings.commandPrefix(true) + "aliasRole INTERNAL_AFFAIRS` and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
+                        RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null) + " and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
                         db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
                     } catch (Throwable e) {
                         e.printStackTrace();
@@ -2480,11 +2481,13 @@ public class GuildHandler {
         DBNation nation = event.getBlockadedNation();
         GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.BLOCKADED_ALERTS);
         Role role = Roles.BLOCKADED_ALERTS.toRole(guild);
-        blockadeAlert(nation, event.getBlockaderNation(), channel, role, "blockaded");
+        blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, "blockaded");
     }
 
-    private void blockadeAlert(DBNation blockaded, DBNation blockader, GuildMessageChannel channel, Role role, String titleSuffix) {
+    private void blockadeAlert(DBNation blockaded, DBNation blockader, GuildMessageChannel channel, Role role, Role govRole, String titleSuffix) {
         if (channel == null) return;
+
+        IMessageIO io = new DiscordChannelIO(channel);
 
         String title = blockaded.getNation() + " " + titleSuffix;
         StringBuilder body = new StringBuilder();
@@ -2499,27 +2502,40 @@ public class GuildHandler {
             body.append(blockader.toMarkdown(true, false, false, true, false)).append("\n");
         }
 
-        DiscordUtil.createEmbedCommand(channel, title, body.toString());
+        IMessageBuilder msg = io.create().embed(title, body.toString());
+
+        if (govRole != null) {
+            msg.append(" (see below) " + govRole.getAsMention());
+        }
 
         User user = blockaded.getUser();
         if (user != null && role != null) {
             Member member = getGuild().getMember(user);
             if (member != null && member.getRoles().contains(role)) {
-                RateLimitUtil.complete(channel.sendMessage("^ " + member.getAsMention()));
+                msg.append(" (see below) " + member.getAsMention());
             }
         }
+        msg.send();
     }
 
     @Subscribe
     public void onUnblockade(NationUnblockadedEvent event) {
         DBNation nation = event.getBlockadedNation();
+        boolean blockaded = nation.isBlockaded();
+        String title;
+        if (blockaded) {
+            title = "Unblockaded by " + PnwUtil.getName(event.getBlockader(), false) + " (but still blockaded)";
+        } else {
+            title = "Unblockaded";
+        }
         GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.UNBLOCKADED_ALERTS);
-        Role role = Roles.UNBLOCKADED_ALERTS.toRole(guild);
-        blockadeAlert(nation, event.getBlockaderNation(), channel, role, "Unblockaded");
+        Role role = blockaded ? null : Roles.UNBLOCKADED_ALERTS.toRole(guild);
+        Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERTS.toRole(guild);
+        blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, title);
 
         processEscrow(nation);
 
-        if (!nation.isBlockaded()) {
+        if (!blockaded) {
             nation.deleteMeta(NationMeta.UNBLOCKADE_REASON);
         }
     }
@@ -2550,9 +2566,10 @@ public class GuildHandler {
 
                     String title = "Approve Queued Transfer";
                     String body = db.generateEscrowedCard(receiver);
-                    String cmd = Settings.commandPrefix(false) + "approveEscrowed " + receiver.getNationUrl() + " " + PnwUtil.resourcesToString(actualDeposits) + " " + PnwUtil.resourcesToString(actualDeposits);
+                    CM.bank.escrow.approve cmd = CM.bank.escrow.approve.cmd.create(receiver.getNationUrl(), PnwUtil.resourcesToString(actualDeposits), PnwUtil.resourcesToString(escrowed));
 
-                    DiscordUtil.createEmbedCommand(channel, title, body, cmd);
+                    IMessageIO io = new DiscordChannelIO(channel);
+                    io.create().embed(title, body).commandButton(cmd, "Approve").send();
                 }
 
             } catch (IOException e) {

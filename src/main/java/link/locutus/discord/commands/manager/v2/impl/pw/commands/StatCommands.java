@@ -1273,42 +1273,9 @@ public class StatCommands {
         return "<" + sheet.getURL() + ">";
     }
 
-    @Command
+    @Command(desc = "Create a graph of the radiation by turn")
     public String radiationByTurn(@Me IMessageIO channel, Set<Continent> continents, @Timestamp long time) throws IOException {
-        String title = "Radiation by turn";
-        long turnStart = TimeUtil.getTurn(time);
-        long turnEnd = TimeUtil.getTurn();
-        Map<Long, Map<Continent, Double>> radsbyTurn = Locutus.imp().getNationDB().getRadiationByTurns();
-        List<Continent> continentsList = new ArrayList<>(continents);
-        String[] labels = new String[continents.size() + 1];
-        for (int i = 0; i < continentsList.size(); i++) {
-            labels[i] = continentsList.get(i).name();
-        }
-        labels[labels.length - 1] = "Global";
-
-        double[] buffer = new double[labels.length];
-
-        TimeNumericTable<Void> table = new TimeNumericTable<>(title, "turn", "Radiation", labels) {
-
-            @Override
-            public void add(long turn, Void ignore) {
-                int turnRelative = (int) (turn - turnStart);
-                Map<Continent, Double> rads = radsbyTurn.get(turn);
-                if (rads == null) {
-                    Arrays.fill(buffer, 0);
-                } else {
-                    for (int i = 0; i < labels.length - 1; i++) {
-                        buffer[i] = rads.getOrDefault(continentsList.get(i), 0d);
-                    }
-                    buffer[buffer.length - 1] = rads.values().stream().mapToDouble(f -> f).sum() / 5d;
-                }
-                add(turnRelative, buffer);
-            }
-        };
-
-        for (long turn = turnStart; turn <= turnEnd; turn++) {
-            table.add(turn, (Void) null);
-        }
+        TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, time, Long.MAX_VALUE);
 
         table.write(channel);
         return "Done!";

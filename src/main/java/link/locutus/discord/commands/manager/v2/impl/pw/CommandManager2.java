@@ -122,9 +122,12 @@ public class CommandManager2 {
 //            this.commands.registerCommandsWithMapping(legacy, commandRemapConfig, 2, false);
 //        }
 
-        this.commands.registerCommandsWithMapping(CM.class, true, true);
+        this.commands.registerCommandsWithMapping(CM.class, false, false);
         this.commands.registerSubCommands(new BuildCommands(), "build");
-        this.commands.registerMethod(new StatCommands(), "radiationByTurn", "")
+        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
+
+        this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertTKRSpySheet", "convertTKRSpySheet");
+        this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertTKRSpySheet", "convertTKR");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);

@@ -551,6 +551,8 @@ public class WebPrimitiveBinding extends BindingHelper {
     public final Set<AttackType> ATTACKTYPES_KEY = null;
 
     public final Set<IACheckup.AuditType> AUDIT_TYPES_KEY = null;
+
+    public final Set<Continent> CONTINENT_TYPES_KEY = null;
     public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
     public final Map<MilitaryUnit, Long> UNIT_MAP_KEY = null;
 
@@ -635,6 +637,14 @@ public class WebPrimitiveBinding extends BindingHelper {
                 addBinding(store -> {
                     store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                         return multipleSelectEmum(IACheckup.AuditType.class, valueStore);
+                    }));
+                });
+            }
+            {
+                Key key = Key.of(getClass().getDeclaredField("CONTINENT_TYPES_KEY").getGenericType(), HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        return multipleSelectEmum(Continent.class, valueStore);
                     }));
                 });
             }

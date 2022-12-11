@@ -9,7 +9,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ActiveWarHandler {
-    private Map<Integer, DBWar[]> activeWars = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, DBWar[]> activeWars = new Int2ObjectOpenHashMap<>();
 
     private void makeWarInactive(int nationId, int warId) {
         synchronized (activeWars) {
@@ -47,6 +47,7 @@ public class ActiveWarHandler {
     }
 
     private void addActiveWar(int nationId, DBWar war) {
+        if (!war.isActive()) return;
         synchronized (activeWars) {
             DBWar[] wars = activeWars.get(nationId);
             if (wars == null) wars = new DBWar[0];

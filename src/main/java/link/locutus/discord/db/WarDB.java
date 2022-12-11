@@ -1,15 +1,13 @@
 package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.*;
-import com.ptsmods.mysqlw.query.QueryCondition;
-import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import it.unimi.dsi.fastutil.objects.ObjectBigList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.WarAttacks;
+import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -21,7 +19,6 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.handlers.ActiveWarHandler;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.city.CityNukeEvent;
 import link.locutus.discord.event.nation.NationChangeColorEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
@@ -49,15 +46,10 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class WarDB extends DBMainV2 {
 
@@ -720,10 +712,10 @@ public class WarDB extends DBMainV2 {
     }
 
     public boolean updateWars(boolean events) throws IOException {
-        if (!events || activeWars.isEmpty()) return updateAllWars(null);
+        if (!events || activeWars.isEmpty()) return updateAllWarsV2(null);
 
         ArrayDeque<Event> eventQueue = new ArrayDeque<>();
-        boolean result = updateAllWars(eventQueue::add);
+        boolean result = updateAllWarsV2(eventQueue::add);
         if (!eventQueue.isEmpty()) {
             Locutus.imp().getExecutor().submit(() -> {
                 for (Event event : eventQueue) {
@@ -734,7 +726,7 @@ public class WarDB extends DBMainV2 {
         return result;
     }
 
-    public boolean updateAllWars(Consumer<Event> eventConsumer) throws IOException {
+    public boolean updateAllWarsV2(Consumer<Event> eventConsumer) throws IOException {
         List<SWarContainer> wars = Locutus.imp().getPnwApi().getWarsByAmount(5000).getWars();
         List<DBWar> dbWars = new ArrayList<>();
         int minId = Integer.MAX_VALUE;
@@ -772,7 +764,7 @@ public class WarDB extends DBMainV2 {
 
     public boolean updateActiveWars(Consumer<Event> eventConsumer) throws IOException {
         if (activeWars.isEmpty()) {
-            return updateAllWars(eventConsumer);
+            return updateAllWarsV2(eventConsumer);
         }
         long start = System.currentTimeMillis();
 
@@ -873,9 +865,6 @@ public class WarDB extends DBMainV2 {
         Set<Integer> newWarIds = new LinkedHashSet<>();
 
         for (DBWar war : dbWars) {
-            {
-                Locutus.imp().getNationDB().setNationActive(war.attacker_id, war.date, eventConsumer);
-            }
             DBWar existing = activeWars.getWar(war.attacker_id, war.warId);
 
             if ((existing == null && !war.isActive()) || (existing != null && war.status == existing.status)) continue;
@@ -884,7 +873,8 @@ public class WarDB extends DBMainV2 {
             newWars.add(war);
             newWarIds.add(war.getWarId());
 
-            if (existing == null && war.date > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(15)) {
+            if (existing == null && war.date > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) && war.status == WarStatus.ACTIVE) {
+                Locutus.imp().getNationDB().setNationActive(war.attacker_id, war.date, eventConsumer);
                 DBNation attacker = war.getNation(true);
                 if (attacker != null && attacker.isBeige()) {
                     DBNation copy = eventConsumer == null ? null : new DBNation(attacker);
@@ -968,6 +958,7 @@ public class WarDB extends DBMainV2 {
             Locutus.imp().getNationDB().saveNationWarSnapshots(nationSnapshots);
         }
 
+        System.out.println("Done save war snaptshots");
 
         String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -987,6 +978,7 @@ public class WarDB extends DBMainV2 {
         } else {
             executeBatch(values, query, setStmt);
         }
+        System.out.println("Done save war");
     }
 
     public Map<Integer, DBWar> getWars(WarStatus status) {
@@ -1348,8 +1340,11 @@ public class WarDB extends DBMainV2 {
             return allAttacks2.get(allAttacks2.size() - 1);
         }
     }
-
     public boolean updateAttacks(boolean runAlerts, Consumer<Event> eventConsumer) {
+        return updateAttacks(runAlerts, eventConsumer, false);
+    }
+
+    public boolean updateAttacks(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) {
         long start = System.currentTimeMillis();
         synchronized (activeWars) {
             System.out.println("remove:|| updateAttacks 1 " + ( - start + (start = System.currentTimeMillis())));
@@ -1358,9 +1353,9 @@ public class WarDB extends DBMainV2 {
             Integer maxId = latest == null ? null : latest.war_attack_id;
             if (maxId == null || maxId == 0) runAlerts = false;
 
-            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
             // Dont run events if attacks are > 1 day old
-            if (latest == null || latest.epoch < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
+            if (!v2 && (latest == null || latest.epoch < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1))) {
+                PoliticsAndWarV3 v3 = Locutus.imp().getV3();
                 System.out.println("No recent attack data in DB. Updating attacks without event handling: " + maxId);
                 List<DBAttack> attackList = new ArrayList<>();
                 v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
@@ -1399,9 +1394,20 @@ public class WarDB extends DBMainV2 {
 
             System.out.println("remove:|| updateAttacks 4 " + ( - start + (start = System.currentTimeMillis())));
 
-            List<DBAttack> newAttacks = v3
-                    .fetchAttacksSince(maxId, f -> true)
-                    .stream().filter(f -> !existingIds.contains(f.getAtt_id())).map(DBAttack::new).toList();
+            List<DBAttack> newAttacks;
+            if (v2) {
+                try {
+                    List<WarAttacksContainer> attacksv2 = Locutus.imp().getPnwApi().getWarAttacksByMinWarAttackId(maxId).getWarAttacksContainers();
+                    newAttacks = attacksv2.stream().map(DBAttack::new).filter(f -> !existingIds.contains(f.war_attack_id)).collect(Collectors.toList());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+                newAttacks = v3
+                        .fetchAttacksSince(maxId, f -> true)
+                        .stream().filter(f -> !existingIds.contains(f.getAtt_id())).map(DBAttack::new).toList();
+            }
 
             System.out.println("remove:|| updateAttacks 5 " + ( - start + (start = System.currentTimeMillis())));
 
@@ -1476,6 +1482,7 @@ public class WarDB extends DBMainV2 {
                         DBWar war = getWar(attack.getWar_id());
                         if (war != null) {
                             war.status = attack.victor == attack.attacker_nation_id ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
+                            activeWars.makeWarInactive(war);
                             warsToSave.add(war);
                         }
 
@@ -1508,13 +1515,14 @@ public class WarDB extends DBMainV2 {
                         attack.infra_destroyed_value = 0d;
                         for (DBCity city : cities.values()) {
                             double infraStart, infraEnd;
-                            if (city.fetched > attack.epoch) {
+                            if (city.fetched > attack.epoch + 1) {
                                 infraStart = city.infra / (1 - pct);
                                 infraEnd = city.infra;
                             } else {
                                 infraStart = city.infra;
                                 infraEnd = (city.infra) * (1 - pct);
                             }
+                            System.out.println("Set infra to " + infraEnd + " | " + pct);
                             attack.infra_destroyed += infraStart - infraEnd;
                             if (infraStart > infraEnd) {
                                 attack.infra_destroyed_value += PnwUtil.calculateInfra(infraEnd, infraStart);

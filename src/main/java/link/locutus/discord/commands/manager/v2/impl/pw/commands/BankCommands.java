@@ -116,8 +116,13 @@ public class BankCommands {
     @HasOffshore
     @IsAlliance
     public String offshore(@Me Member member, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default("") String note) {
-        if (!Roles.ECON_LOW_GOV.has(member) && (!Roles.MEMBER.has(member) || db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) != Boolean.TRUE)) {
-            throw new IllegalArgumentException("You need ECON to offshore or to enable " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_OFFSHORE.name(), "true") + "");
+        if (!Roles.ECON_LOW_GOV.has(member)) {
+            if ((!Roles.MEMBER.has(member) || db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) != Boolean.TRUE)) {
+                throw new IllegalArgumentException("You need ECON to offshore or to enable " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_OFFSHORE.name(), "true") + "");
+            }
+            if (note != null && !note.isEmpty()) {
+                throw new IllegalArgumentException("You need ECON to use a custom note");
+            }
         }
         Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
         if (auth == null) return "No authentication enabled for this guild";
@@ -148,7 +153,7 @@ public class BankCommands {
 
             Locutus.imp().getRootBank().sync();
 
-            return null;
+            return note.isEmpty() ? note : null;
         }).call();
 
         return "Sent " + PnwUtil.resourcesToString(amountSent) + " to " + to.getName();
@@ -1772,7 +1777,6 @@ public class BankCommands {
         List<BankDB.TaxDeposit> taxes = Locutus.imp().getBankDB().getTaxesByAA(allianceId);
         Map<Integer, double[]> totalByNation = new HashMap<>();
 
-
         int[] baseArr = baseTaxRate == null ? null : baseTaxRate.toArray();
         int[] aaBase = db.getOrNull(GuildDB.Key.TAX_BASE);
 
@@ -1844,7 +1848,7 @@ public class BankCommands {
     @Command(desc = "Send from your alliance offshore account to another account (internal transfer)")
     @RolePermission(value = Roles.ECON)
     public String sendAA(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me, NationOrAllianceOrGuild receiver, @AllianceDepositLimit Map<ResourceType, Double> amount, @Switch("f") boolean confirm) {
-        if (!receiver.isAlliance()) return "Alliance -> Nation is not supported. Please use " + CM.transfer.resources.cmd.toSlashMention() + " or " + CM.deposits.add.cmd.toSlashMention() + "";
+        if (!receiver.isAlliance() && !receiver.isGuild()) return "Alliance -> Nation is not supported. Please use " + CM.transfer.resources.cmd.toSlashMention() + " or " + CM.deposits.add.cmd.toSlashMention() + "";
         for (Map.Entry<ResourceType, Double> entry : amount.entrySet()) {
             if (entry.getValue() <= 0 || entry.getValue().isNaN()) return "You cannot send negative amounts for " + entry.getKey();
         }
@@ -1855,7 +1859,7 @@ public class BankCommands {
         String name;
         if (receiver.isAlliance()) name = "AA:";
         else if (receiver.isNation()) name = "Nation:";
-        else if (receiver.isGuild()) name = "Nation:";
+        else if (receiver.isGuild()) name = "Guild:";
         else throw new IllegalArgumentException("Invalid receiver: " + receiver);
         name += receiver.getName();
 
@@ -1952,7 +1956,7 @@ public class BankCommands {
 
         synchronized (OffshoreInstance.BANK_LOCK) {
             GuildMessageChannel rssChannel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-            if (rssChannel == null) return "Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + "";
+            if (rssChannel == null) return "Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in the receiving server";
             if (channel.getIdLong() != rssChannel.getIdLong()) return "Please use the transfer command in " + rssChannel.getAsMention();
 
             if (rank.id < Rank.MEMBER.id) throw new IllegalArgumentException("You are not member");
@@ -2168,7 +2172,7 @@ public class BankCommands {
             if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {
                 Role role = Roles.ECON_WITHDRAW_SELF.toRole(db.getGuild());
                 if (db.getGuild().getMember(author).getRoles().contains(role)) {
-                    footers.add("To withdraw, use: " + CM.transfer.self.cmd.toSlashMention() + "");
+                    footers.add("To withdraw, use: `" + CM.transfer.self.cmd.toSlashMention() + "` ");
                 }
             }
         }
@@ -2219,7 +2223,7 @@ public class BankCommands {
                                 try {
                                     Map<ResourceType, Double> stockpile = alliance.getStockpile();
                                     if (PnwUtil.convertedTotal(stockpile) > 5000000) {
-                                        tips2.add("You MUST offshore funds after depositing");
+                                        tips2.add("You MUST offshore funds after depositing `" + CM.offshore.send.cmd.toSlashMention() + "` ");
                                     }
                                 } catch (Throwable ignore) {}
                             }
@@ -2288,7 +2292,7 @@ public class BankCommands {
 
     @Command(desc = "List all nations in the alliance and their current stockpile\n" +
             "Add `-n` to normalize it per city")
-    @RolePermission(Roles.ECON)
+    @RolePermission(any = true, value = {Roles.ECON_LOW_GOV, Roles.ECON})
     @IsAlliance
     public String stockpileSheet(@Me GuildDB db, @Switch("n") boolean normalize, @Switch("e") boolean onlyShowExcess, @Switch("f") boolean forceUpdate, @Me IMessageIO channel) throws IOException, GeneralSecurityException {
         DBAlliance alliance = db.getAlliance();
@@ -2364,7 +2368,7 @@ public class BankCommands {
             "Add `-a` to include applicants\n" +
             "Add `-f` to force an update of deposits\n" +
             "`note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`")
-    @RolePermission(Roles.ECON)
+    @RolePermission(any = true, value = {Roles.ECON, Roles.ECON_LOW_GOV})
     public String taxBracketSheet(@Me GuildDB db, @Switch("f") boolean force, @Switch("a") boolean includeApplicants) throws Exception {
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(

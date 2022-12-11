@@ -99,7 +99,7 @@ public class WarRanking extends Command {
         RankBuilder<String> ranks = ranksUnsorted.sort().nameKeys(i -> PnwUtil.getName(i, byAA));
         String offOrDef ="";
         if (offensive != defensive) {
-            if (offensive) offOrDef = "offensive ";
+            if (offensive) offOrDef = "offensive "; 
             else offOrDef = "defensive ";
         }
 

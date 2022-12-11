@@ -961,18 +961,18 @@ public class CM {
                     return createArgs("nations", nations, "bracket", bracket, "internalRate", internalRate);
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="setNationInternalTaxRates")
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="setInternalTaxRate")
             public static class taxinternal extends CommandRef {
                 public static final taxinternal cmd = new taxinternal();
-                public taxinternal create(String nations, String ping) {
-                    return createArgs("nations", nations, "ping", ping);
+                public taxinternal create(String nations, String taxRate) {
+                    return createArgs("nations", nations, "taxRate", taxRate);
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="setInternalTaxRate")
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="setNationInternalTaxRates")
             public static class taxinternalAuto extends CommandRef {
                 public static final taxinternalAuto cmd = new taxinternalAuto();
-                public taxinternalAuto create(String nations, String taxRate) {
-                    return createArgs("nations", nations, "taxRate", taxRate);
+                public taxinternalAuto create(String nations, String ping) {
+                    return createArgs("nations", nations, "ping", ping);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="setNationTaxBrackets")

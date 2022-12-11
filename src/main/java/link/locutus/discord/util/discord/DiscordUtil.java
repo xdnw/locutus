@@ -620,7 +620,7 @@ public class DiscordUtil {
             arg = arg.substring(1, arg.length() - 1);
         }
         if (arg.toLowerCase().startsWith("nation:")) arg = arg.substring(7);
-        if (arg.contains("politicsandwar.com/nation/id=") || arg.contains("politicsandwar.com/nation/war/declare/id=")) {
+        if (arg.contains("politicsandwar.com/nation/id=") || arg.contains("politicsandwar.com/nation/war/declare/id=") || arg.contains("politicsandwar.com/nation/espionage/eid=")) {
             String[] split = arg.split("=");
             if (split.length == 2) {
                 arg = split[1].replaceAll("/", "");

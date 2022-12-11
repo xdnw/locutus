@@ -2,11 +2,13 @@ package link.locutus.discord.util.task.ia;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.sheets.ROI;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -508,7 +510,7 @@ public class IACheckup {
             case CHECK_DEPOSITS: {
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) != null) return null;
                 String desc = "You can check your deposits using:\n" +
-                        Settings.commandPrefix(true) + "deposits @user\n" +
+                        CM.deposits.check.cmd.toSlashMention() + "\n" +
                         "(Try checking your deposits now)";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
@@ -526,7 +528,7 @@ public class IACheckup {
             }
             case GATHER_INTEL: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPYOP) != null) return null;
-                String desc = "Please use the `" + Settings.commandPrefix(true) + "IntelOp` command for a spy target\n" +
+                String desc = "Please use the " + CM.spy.find.intel.cmd.toSlashMention() + " command for a spy target\n" +
                         " - go to their nation page, and click the espionage button\n" +
                         " - Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)\n\n" +
                         "Remember to purchase max spies every day";
@@ -535,13 +537,13 @@ public class IACheckup {
             case SPY_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPIES) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "`" + Settings.commandPrefix(true) + "spies https://politicsandwar.com/nation/id=6`\n";
+                        "" + CM.nation.spies.cmd.create("https://politicsandwar.com/nation/id=6", null, null) + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case LOOT_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_LOOT) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "`" + Settings.commandPrefix(true) + "loot https://politicsandwar.com/nation/id=6`\n";
+                        "" + CM.nation.loot.cmd.create("https://politicsandwar.com/nation/id=6").toSlashCommand() + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case GENERATE_CITY_BUILDS: {
@@ -595,9 +597,24 @@ public class IACheckup {
                 Integer cityId = cities.keySet().iterator().next();
                 String cityUrl = PnwUtil.getCityUrl(cityId);
                 String mmrStr = StringMan.join(mmr, "");
-                response.append("The `" + Settings.commandPrefix(true) + "OptimalBuild <city>` command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
-                        "`" + Settings.commandPrefix(true) + "OptimalBuild " + cityUrl + " infra=" + maxInfra + " mmr=" + mmrStr + "`\n\n" +
-                        "Note: For help on using the command, use `" + Settings.commandPrefix(true) + "? optimalbuild`");
+                response.append("The " + CM.city.optimalBuild.cmd.toSlashMention() + " command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
+                        "" + CM.city.optimalBuild.cmd.create(cityUrl,
+                                null,
+                                mmrStr,
+                                null,
+                                MathMan.format(maxInfra),
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null).toSlashCommand());
                 return new AbstractMap.SimpleEntry<>(false, response.toString());
             }
             case ROI: {
@@ -618,9 +635,9 @@ public class IACheckup {
                 if (diff  <= 2) return null;
 
                 String desc ="During Peace time, you can find targets to gather intel on using:\n" +
-                        "`" + Settings.commandPrefix(true) + "Intel`\n" +
+                        "" + CM.spy.find.intel.cmd.toSlashMention() + "\n" +
                         "During wartime, you can find enemies to spy using:\n" +
-                        "`" + Settings.commandPrefix(true) + "spyops enemies * -s`\n\n" +
+                        "" + CM.spy.find.target.cmd.create("enemies", "*", null, null, null) + "\n\n" +
                         "(You should conduct a spy op every day)";
                 return new AbstractMap.SimpleEntry<>(diff, desc);
             }
@@ -692,7 +709,7 @@ public class IACheckup {
     private Map.Entry<Object, String> planRaid(DBNation nation) {
         if (nation.getMeta(NationMeta.INTERVIEW_COUNTER) == null) {
             String desc = "Raiding/warring is always better with friends. Find a good target. Use the command\n" +
-                    "`" + Settings.commandPrefix(true) + "counter <nation>`\n" +
+                    "" + CM.war.counter.nation.cmd.toSlashMention() + "\n" +
                     "And see who is online and in range to raid that person with you.";
             return new AbstractMap.SimpleEntry<>(1, desc);
         }
@@ -702,7 +719,7 @@ public class IACheckup {
     private Map.Entry<Object, String> createWarRoom(DBNation nation) {
         if (nation.getMeta(NationMeta.INTERVIEW_WAR_ROOM) == null) {
             String desc = "War rooms are channels created to coordinate a war against an enemy target. They will be created automatically by the bot against active enemies.\n" +
-                    "To manually create a war room, use: `" + Settings.commandPrefix(true) + "WarRoom`";
+                    "To manually create a war room, use: " + CM.war.room.create.cmd.toSlashMention() + "";
             return new AbstractMap.SimpleEntry<>(1, desc);
         }
         return null;
@@ -809,7 +826,7 @@ public class IACheckup {
         String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid * 15 -beige<12" : Settings.commandPrefix(false) + "raidNone *,#isbeige";
         String longDesc = "Let's declare on a target as they come off beige:\n" +
                 "1. Use e.g. `" + cmd + "` to find a target that ends beige in the next 12 turns\n" +
-                "2. Set a reminder on your phone, or on discord using `" + Settings.commandPrefix(true) + "remindme`\n" +
+                "2. Set a reminder on your phone, or on discord using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
                 "3. Get the war declaration page ready, and declare DURING turn change\n\n" +
                 "*Note:*\n" +
                 " - *If you don't get them on your first shot, try again later*\n" +
@@ -1111,7 +1128,8 @@ public class IACheckup {
         if (nation.getOff() >= targets.size() || targets.isEmpty()) return null;
         StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
-            resposnse.append("Please use `" + Settings.commandPrefix(true) + "war -p` or `" + Settings.commandPrefix(true) + "war` ");
+            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, "true", null, null, null, null).toSlashCommand();
+            resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention() + "");
         } else hasEnemies = false;
         if (hasRaids) {
             if (hasEnemies) resposnse.append("Please use ");

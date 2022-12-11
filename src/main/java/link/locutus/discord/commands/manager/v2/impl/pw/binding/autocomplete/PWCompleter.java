@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -186,6 +187,7 @@ public class PWCompleter extends BindingHelper {
     public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
 
     public final Set<IACheckup.AuditType> AUDIT_TYPES_KEY = null;
+    public final Set<Continent> CONTINENT_TYPES_KEY = null;
 
     {
         try {
@@ -204,6 +206,15 @@ public class PWCompleter extends BindingHelper {
                 addBinding(store -> {
                     store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                         return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("CONTINENT_TYPES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                        return StringMan.autocompleteCommaEnum(Continent.class, input.toString(), OptionData.MAX_CHOICES);
                     }));
                 });
             }

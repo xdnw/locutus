@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import link.locutus.discord.config.Settings;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.util.UrlEncoded;
 
@@ -150,7 +151,7 @@ public final class FileUtil {
         http.setRequestProperty("Referer", urlStr);
         http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 
-        http.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.33");
+        http.setRequestProperty("User-Agent", Settings.USER_AGENT);
         if (dataBinary != null && dataBinary.length != 0 && post) {
             http.setRequestMethod("POST");
         } else if (!post && dataBinary == null) {

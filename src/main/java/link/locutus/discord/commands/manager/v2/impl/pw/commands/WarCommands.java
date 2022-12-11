@@ -55,6 +55,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.update.LeavingBeigeAlert;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
@@ -183,6 +184,9 @@ public class WarCommands {
     @CoalitionPermission(Coalition.RAIDPERMS)
     @RolePermission(Roles.BEIGE_ALERT)
     public String beigeReminder(@Me GuildDB db, @Me DBNation me, @Filter("*,#color=beige,#vm_turns=0,#warrange={score}||*,#vm_turns>0,#vm_turns<168,#warrange={score}") Set<DBNation> targets, @Default Double requiredLoot, @Switch("s") boolean allowOutOfScore) {
+        // Check db can do beige alerts
+        LeavingBeigeAlert.testBeigeAlert(db, true);
+
         Function<DBNation, Boolean> canRaid = db.getCanRaid();
 
         if (!allowOutOfScore) {
@@ -219,12 +223,21 @@ public class WarCommands {
             }
 
             Locutus.imp().getNationDB().addBeigeReminder(target, me);
-
             response.append("Added beige reminder for " + target.getNationUrl() + " (in " + diffStr + " OR " + turns + " turns)\n");
+            try {
+                LeavingBeigeAlert.testBeigeAlert(db, target, me, null, true, false, false, false);
+            } catch (IllegalArgumentException e) {
+                response.append(" - " + e.getMessage() + ": <" + target.getNationUrl() + ">)\n");
+            }
         }
+
+        if (me.getOff() >= me.getMaxOff()) {
+            response.append("`note: You are currently at max offensives and may not receive alerts`\n");
+        }
+
         response.append("\nSee also:\n" +
                 " - " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "\n" +
-                " - `" + Settings.commandPrefix(false) + "removeBeigeReminder <nation>`\n" +
+                " - " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
                 " - " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
                 " - " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
                 " - " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
@@ -1066,7 +1079,7 @@ public class WarCommands {
             if (nationNetValues.isEmpty()) {
                 String message;
                 if (onlyPriority) {
-                    message = "No targets found. Try `" + Settings.commandPrefix(true) + "war`";
+                    message = "No targets found. Try " + CM.war.find.enemy.cmd.toSlashMention() + "";
                 } else {
                     message = "No targets found:\n" +
                             " - Add `-i` to include inactives\n" +
@@ -1416,7 +1429,7 @@ public class WarCommands {
 
         IMessageBuilder msg = channel.create().embed(title, body);
 
-        String response = ("Use `" + Settings.commandPrefix(true) + "spies <enemy>` first to ensure the results are up to date");
+        String response = ("Use " + CM.nation.spies.cmd.toSlashMention() + " first to ensure the results are up to date");
         msg.append(response.toString()).send();
         return null;
     }
@@ -1688,6 +1701,23 @@ public class WarCommands {
     @RolePermission(Roles.MILCOM)
     public String convertHidudeSpySheet(@Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsHidude(input, groupByAttacker, forceUpdate);
+
+        if (output == null) {
+            output = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+        }
+
+        generateSpySheet(output, spyOpsFiltered, groupByAttacker);
+
+        output.clearAll();
+        output.set(0, 0);
+
+        return "<" + output.getURL() + "> " + author.getAsMention();
+    }
+
+    @Command(desc = "Convert TKR's sheet format to locutus")
+    @RolePermission(Roles.MILCOM)
+    public String convertTKRSpySheet(@Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
+        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, forceUpdate);
 
         if (output == null) {
             output = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
@@ -2447,7 +2477,7 @@ public class WarCommands {
 
         Function<DBNation, Boolean> isValidTarget = n -> filter.contains(n);
 
-        BlitzGenerator.getTargets(sheet, 0, maxWarsFunc, 0.4, 1.5, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");
@@ -2478,16 +2508,16 @@ public class WarCommands {
 
         if (warsheet != null) {
             SpreadSheet blitzSheet = SpreadSheet.create(warsheet);
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, 1.75, true, f -> true, (a, b) -> {});
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, 1.75, true, true, false, f -> true, (a, b) -> {});
         }
 
         if (spysheet != null) {
             SpreadSheet spySheetObj = SpreadSheet.create(spysheet);
             try {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheetObj, 0, f -> 3, 0.4, 1.5, false, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheetObj, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheetObj, 0);
             } catch (NullPointerException e) {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheetObj, 4, f -> 3, 0.4, 1.5, false, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheetObj, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheetObj, 4);
             }
         }
@@ -2678,7 +2708,7 @@ public class WarCommands {
         StringBuilder response = new StringBuilder();
         Integer finalMaxWars = maxWars;
         if (headerRow == null) headerRow = 0;
-        BlitzGenerator.getTargets(sheet, headerRow, f -> finalMaxWars, 0.75, 1.75, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, headerRow, f -> finalMaxWars, 0.75, 1.75, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");
@@ -3275,7 +3305,7 @@ public class WarCommands {
                 Set<Integer> allies = db.getAllies(true);
                 if (allies.isEmpty()) {
                     aaId = me.getAlliance_id();
-                    if (aaId == 0) return "No alliance or allies are set.\n" + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance>") + "\nOR\n`" + Settings.commandPrefix(true) + "setcoalition <alliance> allies`";
+                    if (aaId == 0) return "No alliance or allies are set.\n" + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance>") + "\nOR\n " + CM.coalition.create.cmd.create(null, Coalition.ALLIES.name()) + "";
                     counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));

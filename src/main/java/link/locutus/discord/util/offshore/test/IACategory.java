@@ -421,7 +421,6 @@ public class IACategory {
                     }
 
                     String emoji = "Delete Channel";
-                    String cmd = Settings.commandPrefix(false) + "deleteChannel <#" + channel.getIdLong() + ">";
 
                     body.append("\n\nPress `" + emoji + "` to delete");
                     output.create().embed( "Interview not assigned to a member", body.toString())
@@ -800,7 +799,7 @@ public class IACategory {
                 return false;
             }
         },
-        SPIES("hasn't used `" + Settings.commandPrefix(true) + "spies` and `" + Settings.commandPrefix(true) + "intel` (and posted spy report)") {
+        SPIES("hasn't used " + CM.nation.spies.cmd.toSlashCommand() + " and " + CM.spy.find.intel.cmd.toSlashCommand() + " (and posted spy report)") {
             @Override
             public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;

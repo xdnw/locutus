@@ -7,6 +7,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 
@@ -62,6 +63,13 @@ public class DiscordChannelIO implements IMessageIO {
                 System.out.println("Send ");
                 CompletableFuture<Message> future = RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.build(true)));
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
+            }
+            if (discMsg.embeds.size() > 10) {
+                for (MessageEmbed embed : discMsg.embeds) {
+                    discMsg.content.append("**" + embed.getTitle() + "**\n");
+                    discMsg.content.append(embed.getDescription() + "\n");
+                }
+                discMsg.embeds.clear();
             }
             if (discMsg.content.length() > 2000) {
                 DiscordUtil.sendMessage(channel, discMsg.content.toString());

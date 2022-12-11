@@ -31,7 +31,7 @@ public class StockpileSheet extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         GuildDB db = Locutus.imp().getGuildDB(server);
-        return db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null && Roles.ECON.has(user, server);
+        return db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null && (Roles.ECON.has(user, server) || Roles.ECON_LOW_GOV.has(user, server));
     }
 
     @Override

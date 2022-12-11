@@ -137,7 +137,7 @@ public class UnsortedCommands {
 
             List<Transaction2> transfers = entry.getValue();
             String title = inflow ? name + " > " + selfName : selfName + " > " + name;
-            String followCmd = Settings.commandPrefix(true) + "inflows " + url + " " + timestamp;
+//            String followCmd = Settings.commandPrefix(true) + "inflows " + url + " " + timestamp;
 
             StringBuilder message = new StringBuilder();
 
@@ -154,7 +154,7 @@ public class UnsortedCommands {
 
             message.append(PnwUtil.resourcesToString(totals));
 
-            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
+//            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
 //            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
             out.append(title + ": " + message).append("\n");
         }
@@ -732,7 +732,7 @@ public class UnsortedCommands {
     public String rebuy(@Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
                         DBNation nation) throws Exception {
         Map<Integer, Long> dcProb = nation.findDayChange();
-        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try `" + Settings.commandPrefix(true) + "unithistory`";
+        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try " + CM.unit.history.cmd.toSlashMention() + "";
 
         if (dcProb.size() == 1) {
             Map.Entry<Integer, Long> entry = dcProb.entrySet().iterator().next();
@@ -1015,9 +1015,43 @@ public class UnsortedCommands {
     }
 
     @Command
-    public String reroll(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+    public String reroll(@Me TextChannel channel, @Me Guild guild, @Me User author,
                          DBNation nation) throws Exception {
-        return new Reroll().onCommand(guild, channel, author, me, nation.getNationUrl());
+
+        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
+        for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
+            int otherId = entry.getKey();
+            DBNation otherNation = entry.getValue();
+
+            if (otherId > nation.getId() && otherNation.getAgeDays() > nation.getAgeDays() && Math.abs(otherNation.getDate()  - nation.getDate()) > TimeUnit.DAYS.toMillis(3)) {
+                return nation.getNation() + "/" + nation.getNation_id() + " is a reroll.";
+            }
+        }
+
+//        Map<Long, BigInteger> uuids = Locutus.imp().getDiscordDB().getUuids(me.getNation_id());
+        Set<String> multiNations = new HashSet<>();;
+        Set<Integer> deletedMulti = new HashSet<>();
+//        for (BigInteger uuid : uuids.values()) {
+//            Set<Integer> multis = Locutus.imp().getDiscordDB().getMultis(uuid);
+//            for (int nationId : multis) {
+//                if (nationId >= me.getNation_id()) continue;
+//                DBNation other = Locutus.imp().getNationDB().getNation(nationId);
+//                if (other == null) {
+//                    deletedMulti.add(nationId);
+//                } else if (other.getActive_m() > 10000 || other.getVm_turns() != 0) {
+//                    multiNations.add(other.getNation());
+//                }
+//            }
+//        }
+
+        if (!deletedMulti.isEmpty()) {
+            return nation.getNation() + "/" + nation.getNation_id() + " is a possible reroll of the following nation ids: " + StringMan.getString(deletedMulti);
+        }
+        if (!multiNations.isEmpty()) {
+            return nation.getNation() + "/" + nation.getNation_id() + " is a possible reroll of the following nations: " + StringMan.getString(multiNations);
+        }
+
+        return nation.getNation() + "/" + nation.getNation_id() + " is not a reroll.";
     }
 
     @Command

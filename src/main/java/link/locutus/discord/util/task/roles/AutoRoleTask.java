@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.roles;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
@@ -418,7 +419,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         if (!isRegistered && !autoAll) {
             if (registeredRole == null) {
-                output.accept("No registered role exists. Please create one on discord, then use `" + Settings.commandPrefix(true) + "AliasRole REGISTERED @rolename`");
+                output.accept("No registered role exists. Please create one on discord, then use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), null) + "");
             } else {
                 output.accept(member.getEffectiveName() + " is NOT registered");
             }

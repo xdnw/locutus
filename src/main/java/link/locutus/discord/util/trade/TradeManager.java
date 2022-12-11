@@ -835,8 +835,6 @@ public class TradeManager {
                 if (turn == currentTurn) {
                     return rads;
                 }
-
-                Locutus.imp().getNationDB().addRadiationByTurn(continent, turn, rads);
             }
         }
         try {
@@ -875,6 +873,7 @@ public class TradeManager {
         long currentTurn = TimeUtil.getTurn();
         long[] pair = new long[]{(long) (rads * 100), currentTurn};
         byte[] bytes = ArrayUtil.toByteArray(pair);
+        Locutus.imp().getNationDB().addRadiationByTurn(continent, currentTurn, rads);
         Locutus.imp().getDiscordDB().setInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal(), bytes);
         radiation.put(continent, new AbstractMap.SimpleEntry<>(rads, currentTurn));
     }

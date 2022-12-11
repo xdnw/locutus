@@ -8,6 +8,8 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.entities.BankRecord;
+import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
@@ -250,6 +252,12 @@ public class BankDB extends DBMainV3 {
         saveBankRecs(bankRecs, eventConsumer);
     }
 
+    public void updateBankRecsv2(int nationId, Consumer<Event> eventConsumer) {
+        PoliticsAndWarV2 api = Locutus.imp().getPnwApi();
+        List<BankRecord> records = api.getBankRecords(nationId);
+        saveBankRecsV2(records, eventConsumer);
+    }
+
     public void updateBankRecs(Consumer<Event> eventConsumer) {
         ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
         int latestId = info == null ? -1 : info.getInt();
@@ -286,6 +294,30 @@ public class BankDB extends DBMainV3 {
             }
         });
         saveTransactions.run();
+    }
+
+    public void saveBankRecsV2(List<BankRecord> bankrecs, Consumer<Event> eventConsumer) {
+        if (bankrecs.isEmpty()) return;
+        if (bankrecs.size() > 10) System.out.println("remove:|| save bank recs " + bankrecs.size());
+        invalidateTXCache();
+        List<Transaction2> transfers = new ArrayList<>();
+        for (BankRecord bankrec : bankrecs) {
+            Transaction2 tx = new Transaction2(bankrec);
+            transfers.add(tx);
+        }
+        Collections.sort(transfers, Comparator.comparingLong(Transaction2::getDate));
+        int[] modified = addTransactions(transfers, true);
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
+        if (eventConsumer != null) {
+            for (int i = 0; i < modified.length; i++) {
+                if (modified[i] > 0) {
+                    Transaction2 tx = transfers.get(i);
+                    if (tx.tx_datetime > cutoff) {
+                        eventConsumer.accept(new TransactionEvent(tx));
+                    }
+                }
+            }
+        }
     }
 
     public void saveBankRecs(List<Bankrec> bankrecs, Consumer<Event> eventConsumer) {

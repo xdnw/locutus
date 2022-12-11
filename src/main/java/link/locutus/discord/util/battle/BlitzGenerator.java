@@ -86,7 +86,7 @@ public class BlitzGenerator {
         return reversed;
     }
 
-    private static void process(DBNation attacker, DBNation defender, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
+    private static void process(DBNation attacker, DBNation defender, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlots, boolean checkSpySlots, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
         double minScore = attacker.getScore() * minScoreMultiplier;
         double maxScore = attacker.getScore() * maxScoreMultiplier;
 
@@ -103,17 +103,20 @@ public class BlitzGenerator {
             double ratio = getAirStrength(defender, false) / getAirStrength(attacker, true);
             String response = ("`" + defender.getNation() + "` is " + MathMan.format(ratio) + "x stronger than " + "`" + attacker.getNation() + "`");
             invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
-        } else if (defender.getDef() == 3) {
+        } else if (checkWarSlots && defender.getDef() == 3) {
             String response = ("`" + defender.getNation() + "` is slotted");
+            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+        } else if (checkSpySlots && !defender.isEspionageAvailable()) {
+            String response = ("`" + defender.getNation() + "` is spy slotted");
             invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
         }
     }
 
     public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, int headerRow) {
-        return getTargets(sheet, headerRow, f -> Integer.MAX_VALUE, 0, Integer.MAX_VALUE, false, f -> true, (a, b) -> {});
+        return getTargets(sheet, headerRow, f -> Integer.MAX_VALUE, 0, Integer.MAX_VALUE, false, false, false, f -> true, (a, b) -> {});
     }
 
-    public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, int headerRow, Function<DBNation, Integer> maxWars, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, Function<DBNation, Boolean> isValidTarget, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
+    public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, int headerRow, Function<DBNation, Integer> maxWars, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlotted, boolean checkSpySlotted, Function<DBNation, Boolean> isValidTarget, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
         List<List<Object>> rows = sheet.get("A:ZZ");
         List<Object> header = rows.get(headerRow);
 
@@ -215,7 +218,7 @@ public class BlitzGenerator {
                             return;
                         }
 
-                        process(attackerMutable, defenderMutable, minScoreMultiplier, maxScoreMultiplier, checkUpdeclare, invalidOut);
+                        process(attackerMutable, defenderMutable, minScoreMultiplier, maxScoreMultiplier, checkUpdeclare, checkWarSlotted, checkSpySlotted, invalidOut);
 
                         allAttackers.add(attackerMutable);
                         allDefenders.add(defenderMutable);

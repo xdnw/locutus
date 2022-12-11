@@ -22,6 +22,7 @@ import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.TurnChangeEvent;
+import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
@@ -58,9 +59,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.InteractionType;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.Component;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.requests.GatewayIntent;
@@ -68,8 +67,6 @@ import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
@@ -77,23 +74,9 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
-
-import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
-import static link.locutus.discord.apiv1.enums.ResourceType.BAUXITE;
-import static link.locutus.discord.apiv1.enums.ResourceType.COAL;
-import static link.locutus.discord.apiv1.enums.ResourceType.CREDITS;
-import static link.locutus.discord.apiv1.enums.ResourceType.FOOD;
-import static link.locutus.discord.apiv1.enums.ResourceType.GASOLINE;
-import static link.locutus.discord.apiv1.enums.ResourceType.IRON;
-import static link.locutus.discord.apiv1.enums.ResourceType.LEAD;
-import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
-import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
-import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
-import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
 
 public final class Locutus extends ListenerAdapter {
     private static Locutus INSTANCE;
@@ -126,6 +109,8 @@ public final class Locutus extends ListenerAdapter {
     private EventBus eventBus;
     private SlashCommandManager slashCommands;
 
+    private ProxyHandler proxyHandler;
+
     public static synchronized Locutus create() {
         if (INSTANCE != null) throw new IllegalStateException("Already initialized");
         try {
@@ -138,6 +123,9 @@ public final class Locutus extends ListenerAdapter {
     private Locutus() throws SQLException, ClassNotFoundException, LoginException, InterruptedException, NoSuchMethodException {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
+
+        this.proxyHandler = new ProxyHandler();
+
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.commandPrefix(false).length() != 1) throw new IllegalStateException("COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.commandPrefix(true).length() != 1) throw new IllegalStateException("LEGACY_COMMAND_PREFIX must be 1 character in " + Settings.INSTANCE.getDefaultFile());
@@ -220,6 +208,10 @@ public final class Locutus extends ListenerAdapter {
         this.nationDB.load();
         this.warDb.load();
         this.tradeManager.load();
+    }
+
+    public ProxyHandler getProxyHandler() {
+        return proxyHandler;
     }
 
     public static void post(Object event) {
@@ -327,7 +319,11 @@ public final class Locutus extends ListenerAdapter {
                 initRepeatingTasks();
             }
             if (Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
-                initSubscriptions();
+                try {
+                    initSubscriptions();
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
             }
 
             for (long guildId : Settings.INSTANCE.MODERATION.BANNED_GUILDS) {
@@ -355,6 +351,8 @@ public final class Locutus extends ListenerAdapter {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && (Settings.INSTANCE.WEB.PORT_HTTP > 0 || Settings.INSTANCE.WEB.PORT_HTTPS > 0)) {
             new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
         }
+
+
 
         return this;
     }
@@ -606,7 +604,11 @@ public final class Locutus extends ListenerAdapter {
     public void initRepeatingTasks() {
         if ((Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0) && nationDB.getNations().isEmpty()) {
             logger.info("No nations found. Updating all nations");
-            nationDB.updateAllNations(null);
+            if (Settings.USE_V2) {
+                nationDB.updateNationsV2(true, null);
+            } else {
+                nationDB.updateAllNations(null);
+            }
         }
 
         // Turn change
@@ -637,98 +639,123 @@ public final class Locutus extends ListenerAdapter {
                 }
             }, 60);
         }
-
-        addTaskSeconds(() -> {
-            runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
-        }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
-
-        addTaskSeconds(() -> {
-            runEventsAsync(bankDb::updateBankRecs);
-        }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS);
-
-        addTaskSeconds(() -> {
-            runEventsAsync(nationDB::updateColoredNations);
-        }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
-
-        addTaskSeconds(() -> {
-            runEventsAsync(events -> nationDB.updateNationsV2(false, events));
-        }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
-
-        addTaskSeconds(() -> {
-            runEventsAsync(nationDB::updateDirtyCities);
-        }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS);
-
-        if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
-            SpyUpdater spyUpdate = new SpyUpdater();
+        if (Settings.USE_V2) {
             addTaskSeconds(() -> {
+                runEventsAsync(events -> nationDB.updateNationsV2(false, events));
+            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
 
-                spyUpdate.run();
+            addTaskSeconds(() -> {
+                runEventsAsync(events -> nationDB.updateNationsV2(true, events));
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
 
-            }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS);
+            addTaskSeconds(() -> {
+                runEventsAsync(events -> nationDB.updateCitiesV2(events));
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+
+            addTaskSeconds(() -> {
+                synchronized (warDb) {
+                    System.out.println("Start update wars 1");
+                    long start = System.currentTimeMillis();
+                    runEventsAsync(warDb::updateAllWarsV2);
+                    System.out.println("Update wars 1.1 took " + ( - start + (start = System.currentTimeMillis())));
+                    runEventsAsync(e -> warDb.updateAttacks(true, e, true));
+                    System.out.println("Update wars 1.2 took " + ( - start + (start = System.currentTimeMillis())));
+                }
+            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
+
+        } else {
+            addTaskSeconds(() -> {
+                runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
+            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
+
+            addTaskSeconds(() -> {
+                runEventsAsync(bankDb::updateBankRecs);
+            }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS);
+
+            addTaskSeconds(() -> {
+                runEventsAsync(nationDB::updateColoredNations);
+            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
+
+            addTaskSeconds(() -> {
+                runEventsAsync(events -> nationDB.updateNationsV2(false, events));
+            }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
+
+            addTaskSeconds(() -> {
+                runEventsAsync(nationDB::updateDirtyCities);
+            }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS);
+
+            if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
+                SpyUpdater spyUpdate = new SpyUpdater();
+                addTaskSeconds(() -> {
+
+                    spyUpdate.run();
+
+                }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS);
+            }
+
+            addTaskSeconds(() -> {
+                synchronized (warDb) {
+                    System.out.println("Start update wars 1");
+                    long start = System.currentTimeMillis();
+                    runEventsAsync(warDb::updateActiveWars);
+                    System.out.println("Update wars 1.1 took " + ( - start + (start = System.currentTimeMillis())));
+                    runEventsAsync(warDb::updateAttacks);
+                    System.out.println("Update wars 1.2 took " + ( - start + (start = System.currentTimeMillis())));
+                }
+            }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
+
+            addTaskSeconds(() -> {
+                synchronized (warDb) {
+                    System.out.println("Start update wars");
+                    long start1 = System.currentTimeMillis();
+                    runEventsAsync(warDb::updateAllWarsV2);
+                    runEventsAsync(warDb::updateAttacks);
+                    long diff1 = System.currentTimeMillis() - start1;
+                    {
+                        System.out.println("Update wars took " + diff1);
+                    }
+
+                    if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
+                        long start = System.currentTimeMillis();
+                        WarUpdateProcessor.checkActiveConflicts();
+                        long diff = System.currentTimeMillis() - start;
+                        if (diff > 500) {
+                            AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
+                        }
+                    }
+                }
+            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
+
+            checkMailTasks();
+
+            addTaskSeconds(() -> Locutus.imp().getWarDb().updateBountiesV3(), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS);
+
+            addTaskSeconds(() -> getNationDB().updateTreaties(Event::post), Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS);
+
+            if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
+                addTaskSeconds(() -> {
+                    runEventsAsync(getBaseballDB()::updateGames);
+                }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
+            }
+
+            if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
+                addTaskSeconds(() -> {
+                            runEventsAsync(getTradeManager()::updateTradeList);
+                        },
+                        Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
+            }
+
+            if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
+                addTask(() ->
+                                Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false),
+                        Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
+            }
         }
 
         if (Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS > 0) {
             LeavingBeigeAlert beigeAlerter = new LeavingBeigeAlert();
 
             addTaskSeconds(beigeAlerter::run, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS);
-        }
-
-        addTaskSeconds(() -> {
-            synchronized (warDb) {
-                System.out.println("Start update wars 1");
-                long start = System.currentTimeMillis();
-                runEventsAsync(warDb::updateActiveWars);
-                System.out.println("Update wars 1.1 took " + ( - start + (start = System.currentTimeMillis())));
-                runEventsAsync(warDb::updateAttacks);
-                System.out.println("Update wars 1.2 took " + ( - start + (start = System.currentTimeMillis())));
-            }
-        }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
-
-        addTaskSeconds(() -> {
-            synchronized (warDb) {
-                System.out.println("Start update wars");
-                long start1 = System.currentTimeMillis();
-                runEventsAsync(warDb::updateAllWars);
-                runEventsAsync(warDb::updateAttacks);
-                long diff1 = System.currentTimeMillis() - start1;
-                {
-                    System.out.println("Update wars took " + diff1);
-                }
-
-                if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
-                    long start = System.currentTimeMillis();
-                    WarUpdateProcessor.checkActiveConflicts();
-                    long diff = System.currentTimeMillis() - start;
-                    if (diff > 500) {
-                        AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
-                    }
-                }
-            }
-        }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
-
-        checkMailTasks();
-
-        addTaskSeconds(() -> Locutus.imp().getWarDb().updateBountiesV3(), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS);
-
-        addTaskSeconds(() -> getNationDB().updateTreaties(Event::post), Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS);
-
-        if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
-            addTaskSeconds(() -> {
-                runEventsAsync(getBaseballDB()::updateGames);
-            }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS);
-        }
-
-        if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
-            addTaskSeconds(() -> {
-                runEventsAsync(getTradeManager()::updateTradeList);
-            },
-            Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS);
-        }
-
-        if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
-            addTask(() ->
-                Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false),
-                Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
         }
 
         if (forumDb != null && Settings.INSTANCE.TASKS.FORUM_UPDATE_INTERVAL_SECONDS > 0) {

@@ -166,9 +166,9 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                             Set<Character> flags = new HashSet<>(Arrays.asList('s', 'r'));
                             targets = cmd.run(null, nation, db, args, flags);
                         } else if (db == null) {
-                            targets = "Your alliance does not have Locutus setup. Use the command on discord instead:\n`" + Settings.commandPrefix(true) + "spyops`";
+                            targets = "Your alliance does not have Locutus setup. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() +  "";
                         } else {
-                            targets = "Your alliance does not have any enemies set. Use the command on discord instead:\n`" + Settings.commandPrefix(true) + "spyops`";
+                            targets = "Your alliance does not have any enemies set. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() + "";
                         }
                         if (targets != null) {
                             String response = new MailRespondTask(auth, mail.leader, mail.id, MarkupUtil.bbcodeToHTML(targets), null).call();

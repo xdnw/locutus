@@ -96,7 +96,7 @@ public class WarRoom extends Command {
         if (arg.startsWith("https://docs.google.com/spreadsheets/d/") || arg.startsWith("sheet:")) {
             SpreadSheet sheet = SpreadSheet.create(arg);
             StringBuilder response = new StringBuilder();
-            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, f -> true, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
                 @Override
                 public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String s) {
                     response.append(s + "\n");

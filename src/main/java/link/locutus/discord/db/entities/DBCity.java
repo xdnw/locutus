@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
+import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
 import rocker.grant.city;
 import rocker.grant.nation;
@@ -128,6 +129,11 @@ public class DBCity {
     public boolean runChangeEvents(int nationId, DBCity previous, Consumer<Event> eventConsumer) {
         if (previous == null) {
             if (eventConsumer != null) {
+                DBNation nation = DBNation.byId(nationId);
+                if (nation != null && nation.active_m() > 4880) {
+                    new Exception().printStackTrace();
+                    AlertUtil.error("Invalid city create", "city for " + nationId + " | " + this);
+                }
                 Locutus.imp().getNationDB().setNationActive(nationId, fetched, eventConsumer);
                 eventConsumer.accept(new CityCreateEvent(nationId, this));
             }
@@ -176,22 +182,24 @@ public class DBCity {
         }
 
         if (this.infra != previous.infra) {
-            if (this.infra > previous.infra + 0.01) {
-                if (eventConsumer != null && (previous.infra != 0 || this.infra != 10)) {
-                    if (previousClone == null) previousClone = new DBCity(previous);
-                    eventConsumer.accept(new CityInfraBuyEvent(nationId, previousClone, this));
-                }
-            } else if (this.infra < previous.infra - 0.01) {
-                if (eventConsumer != null) {
-                    if (previousClone == null) previousClone = new DBCity(previous);
-                    boolean isAttack = (this.toJavaCity(f -> false).getRequiredInfra() > this.infra);
-                    Event event;
-                    if (isAttack) {
-                        event = new CityInfraDamageEvent(nationId, previousClone, this);
-                    } else {
-                        event = new CityInfraSellEvent(nationId, previousClone, this);
+            if ( previous.infra > 0) {
+                if (this.infra > previous.infra + 0.01 && getNumBuildings() * 50 <= this.infra) {
+                    if (eventConsumer != null && (previous.infra != 0 || this.infra != 10)) {
+                        if (previousClone == null) previousClone = new DBCity(previous);
+                        eventConsumer.accept(new CityInfraBuyEvent(nationId, previousClone, this));
                     }
-                    eventConsumer.accept(event);
+                } else if (this.infra < previous.infra - 0.01) {
+                    if (eventConsumer != null) {
+                        if (previousClone == null) previousClone = new DBCity(previous);
+                        boolean isAttack = (this.toJavaCity(f -> false).getRequiredInfra() > this.infra);
+                        Event event;
+                        if (isAttack) {
+                            event = new CityInfraDamageEvent(nationId, previousClone, this);
+                        } else {
+                            event = new CityInfraSellEvent(nationId, previousClone, this);
+                        }
+                        eventConsumer.accept(event);
+                    }
                 }
             }
             changed = true;

@@ -143,7 +143,7 @@ public class Deposits extends Command {
                 OffshoreInstance offshore = guildDb.getOffshore();
                 if (offshore == null) return "No offshore found";
                 GuildDB offshoreDb = guildDb.getOffshoreDB();
-                if (!Roles.ECON.has(author, guild) && !Roles.ECON.has(author, offshoreDb.getGuild()))
+                if (!Roles.ECON_LOW_GOV.has(author, guild) && !Roles.ECON_LOW_GOV.has(author, offshoreDb.getGuild()))
                     return "You do not have permission to check this guild's deposits";
 
                 double[] deposits = offshore.getDeposits(guildDb);
@@ -153,7 +153,7 @@ public class Deposits extends Command {
                 if (otherDb == null) return "Unknown guild: " + arg;
                 OffshoreInstance offshore = otherDb.getOffshore();
                 if (offshore == null) return "No offshore is set. In this server, use " + CM.coalition.add.cmd.create(otherDb.getIdLong() + "", Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create(otherDb.getIdLong() + "", Coalition.OFFSHORING.name()) + "";
-                if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild()))
+                if (!Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_LOW_GOV.has(author, otherDb.getGuild()))
                     return "You do not have permission to check another guild's deposits";
 
                 double[] deposits = offshore.getDeposits(otherDb);
@@ -173,7 +173,7 @@ public class Deposits extends Command {
                         return "No offshore set";
                     }
                 }
-                if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild()))
+                if (!Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_LOW_GOV.has(author, otherDb.getGuild()))
                     return "You do not have permisssion to check another alliance's deposits";
 
                 String name = PnwUtil.getName(allianceId, true);
@@ -186,7 +186,7 @@ public class Deposits extends Command {
                 }
                 if (nation == null) return "Nation not found: `" + arg + "`";
                 if (split.size() == 1) requiredUser = nation;
-                if (nation.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild)) return "You do not have permission to check other nation's deposits";
+                if (nation.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON_LOW_GOV.has(author, guild)) return "You do not have permission to check other nation's deposits";
 
                 Map<DepositType, double[]> nationDepo = nation.getDeposits(guildDb,
                         tracked,

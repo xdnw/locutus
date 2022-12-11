@@ -379,6 +379,39 @@ public class SpyBlitzGenerator {
         return getTargets(sheet, headerRow, true);
     }
 
+    public static Map<DBNation, List<Spyop>> getTargetsTKR(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
+        List<List<Object>> rows = sheet.get("A:Z", f -> f.setValueRenderOption("FORMULA"));
+
+        List<Spyop> allOps = new ArrayList<>();
+        Set<DBNation> update = forceUpdate ? new HashSet<>() : null;
+
+        List<Object> header = rows.get(0);
+        for (int i = 1; i < rows.size(); i++) {
+            List<Object> row = rows.get(i);
+            if (row.size() < 7) continue;
+
+            DBNation attacker = DiscordUtil.parseNation(row.get(0).toString());
+
+            Spyop op1 = createOp(attacker, row.get(3) + "", "COVERT" + "", update);
+            Spyop op2 = createOp(attacker, row.get(6) + "", "COVERT" + "", update);
+
+            if (op1 == null) System.out.println("OP is null");
+
+            if (op1 != null) allOps.add(op1);
+            if (op1 != null) allOps.add(op2);
+        }
+
+        Map<DBNation, List<Spyop>> spyOpsFiltered = new LinkedHashMap<>();
+        for (Spyop op : allOps) {
+            if (groupByAttacker) {
+                spyOpsFiltered.computeIfAbsent(op.attacker, f -> new ArrayList<>()).add(op);
+            } else {
+                spyOpsFiltered.computeIfAbsent(op.defender, f -> new ArrayList<>()).add(op);
+            }
+        }
+        return spyOpsFiltered;
+    }
+
     public static Map<DBNation, List<Spyop>> getTargetsHidude(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
 
         List<List<Object>> rows = sheet.get("A:Z", f -> f.setValueRenderOption("FORMULA"));

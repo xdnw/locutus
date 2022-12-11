@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -58,7 +59,8 @@ public class BuildCommands {
         for (CityBuildRange existing : existingRanges) {
             for (Map.Entry<Integer, Integer> range : ranges.getRanges()) {
                 if (Math.max(range.getKey(), existing.getMin()) <= Math.min(range.getValue(), existing.getMax())) {
-                    response.append('\n').append(" - Overlaps with (category, min-city, max-city) " + category + " " + existing.getMin() + " " + existing.getMax() + ". Use `" + Settings.commandPrefix(true) + "delbuild " + category + " " + existing.getMin() + "`");
+                    response.append('\n').append(" - Overlaps with (category, min-city, max-city) " + category + " " + existing.getMin() + " " + existing.getMax() + ". Use " +
+                                    CM.build.delete.cmd.create(category, existing.getMin() + "").toSlashCommand() + " to delete it.");
                 }
             }
         }

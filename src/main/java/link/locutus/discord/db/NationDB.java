@@ -1908,8 +1908,7 @@ public class NationDB extends DBMainV2 {
         } else if (previousAA != current.getAlliance_id()) {
             synchronized (nationsByAlliance) {
                 if (previousAA != 0) {
-                    nationsByAlliance.getOrDefault(previousAA, Collections.EMPTY_MAP)
-                            .remove(previousAA);
+                    nationsByAlliance.getOrDefault(previousAA, Collections.EMPTY_MAP).remove(current.getNation_id());
                 }
                 if (current.getAlliance_id() != 0) {
                     nationsByAlliance.computeIfAbsent(current.getAlliance_id(),

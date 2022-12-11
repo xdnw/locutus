@@ -152,9 +152,9 @@ public class NationUpdateProcessor {
                 int blockaded = MathMan.unpairIntX(pair);
                 int blockader = MathMan.unpairIntY(pair);
 
-                new NationUnblockadedEvent(blockaded, blockader, blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap())).post();
-
                 Locutus.imp().getWarDb().deleteBlockaded(blockaded, blockader);
+
+                new NationUnblockadedEvent(blockaded, blockader, blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap())).post();
             }
         }
         for (long pair : currentBlockadedBlockaderPair) {
@@ -304,7 +304,11 @@ public class NationUpdateProcessor {
     }
 
     private void checkOfficerChange(DBNation previous, DBNation current) {
-        if (current == null || previous == null || previous.getPosition() < Rank.OFFICER.id || previous.getAlliance_id() == current.getAlliance_id() || current.getActive_m() > 4880) return;
+        if (current == null || previous == null || previous.getAlliance_id() == current.getAlliance_id() || current.getActive_m() > 4880) return;
+        if (previous.getPosition() < Rank.OFFICER.id) {
+            DBAlliancePosition position = previous.getAlliancePosition();
+            if (position == null || !position.hasAnyAdminPermission()) return;
+        }
         DBAlliance alliance = previous.getAlliance(false);
 
         if (alliance.getRank() < 50)
@@ -563,7 +567,11 @@ public class NationUpdateProcessor {
     }
 
     private void handleOfficerDelete(DBNation previous, DBNation current) {
-        if (current != null || previous == null || previous.getPosition() < Rank.OFFICER.id || previous.getActive_m() > 10000) return;
+        if (current != null || previous == null || previous.getActive_m() > 10000) return;
+        if (previous.getPosition() < Rank.OFFICER.id) {
+            DBAlliancePosition position = previous.getAlliancePosition();
+            if (position == null || !position.hasAnyAdminPermission()) return;
+        }
         DBAlliance alliance = previous.getAlliance(false);
         if (alliance.getRank() < 50) {
             String title = previous.getNation() + " (" + Rank.byId(previous.getPosition()) + ") deleted from " + previous.getAllianceName();

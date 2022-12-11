@@ -109,7 +109,7 @@ public class SpreadSheet {
             header.set(5, record.receiver_id);
             header.set(6, record.receiver_type);
             header.set(7, record.banker_nation);
-            header.set(8, record.note);
+            header.set(8, record.note + "");
             int i = 9;
             for (ResourceType value : ResourceType.values()) {
                 if (value == ResourceType.CREDITS) continue;
@@ -320,7 +320,7 @@ public class SpreadSheet {
                 throw new IllegalArgumentException("Invalid nation/alliance/guild: `" + nameStr + "`");
             }
             Object noteObj = null;
-            if (row.size() > noteI) noteObj = row.get(noteI);
+            if (noteI != null && row.size() > noteI) noteObj = row.get(noteI);
             if (noteObj == null) noteObj = defaultNote;
             builder.add(account, transfer, noteObj.toString());
         }

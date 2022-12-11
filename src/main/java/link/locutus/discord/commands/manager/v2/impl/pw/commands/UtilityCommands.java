@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
@@ -1196,11 +1197,11 @@ public Map<ParametricCallable, String> getEndpoints() {
             boolean showMoney = false;
             nation.toCard(channel, false, showMoney);
 
-            List<String> commands = new ArrayList<>();
-            commands.add(Settings.commandPrefix(true) + "multi " + nation.getNation_id());
-            commands.add(Settings.commandPrefix(true) + "wars " + nation.getNation_id());
-            commands.add(Settings.commandPrefix(true) + "revenue " + nation.getNation_id());
-            commands.add(Settings.commandPrefix(true) + "unithistory " + nation.getNation_id() + " <unit>");
+            List<CommandRef> commands = new ArrayList<>();
+            commands.add(CM.nation.list.multi.cmd.create(nation.getNation_id() + ""));
+            commands.add(CM.nation.revenue.cmd.create(nation.getNation_id() + "", null, null));
+            commands.add(CM.war.info.cmd.create(nation.getNation_id() + ""));
+            commands.add(CM.unit.history.cmd.create(nation.getNation_id() + "", null, null));
         } else {
             int allianceId = -1;
             for (DBNation nation : nations) {
@@ -1406,15 +1407,17 @@ public Map<ParametricCallable, String> getEndpoints() {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
+        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(sheet.getURL(), "#deposit", null, null);
+
         StringBuilder result = new StringBuilder("Sheet: " + sheet.getURL() +
                 "\nTotal: `" + PnwUtil.resourcesToString(total) + "`" +
                 "\nWorth: $" + MathMan.format(PnwUtil.convertedTotal(total)));
-        result.append("\n\nUse `" + Settings.commandPrefix(true) + "disburse <sheet> #deposit`");
-        result.append("\nOr press \uD83C\uDFE6 to run `" + Settings.commandPrefix(true) + "addbalance <sheet> #deposit`");
+        result.append("\n\nUse " + CM.transfer.bulk.cmd.toSlashMention());
+        result.append("\nOr press \uD83C\uDFE6 to run " + cmd.toSlashCommand() + "");
 
         String title = "Nation Interest";
         String emoji = "Confirm";
-        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(sheet.getURL(), "#deposit", null, null);
+
         channel.create().embed(title, result.toString())
                         .commandButton(cmd, emoji)
                                 .send();
@@ -1434,11 +1437,11 @@ public Map<ParametricCallable, String> getEndpoints() {
         if (!dnr) {
             title = ("do NOT raid " + nation.getNation());
         }  else if (nation.getPosition() > 1 && nation.getActive_m() < 10000) {
-            title = ("You CAN raid " + nation.getNation() + " (however they are an active member of an alliance), see also: `" + Settings.commandPrefix(true) + "counterstats`");
+            title = ("You CAN raid " + nation.getNation() + " (however they are an active member of an alliance), see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention() + "");
         } else if (nation.getPosition() > 1) {
-            title =  "You CAN raid " + nation.getNation() + " (however they are a member of an alliance), see also: `" + Settings.commandPrefix(true) + "counterstats`";
+            title =  "You CAN raid " + nation.getNation() + " (however they are a member of an alliance), see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention() + "";
         } else if (nation.getAlliance_id() != 0) {
-            title =  "You CAN raid " + nation.getNation() + ", see also: `" + Settings.commandPrefix(true) + "counterstats`";
+            title =  "You CAN raid " + nation.getNation() + ", see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention() + "";
         } else {
             title =  "You CAN raid " + nation.getNation();
         }
