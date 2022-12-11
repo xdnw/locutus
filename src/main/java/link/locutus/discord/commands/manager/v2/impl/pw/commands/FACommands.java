@@ -31,6 +31,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.jooq.meta.derby.sys.Sys;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class FACommands {
     @Command(desc = "Generate a named coalition by the treaty web of an alliance")
@@ -245,6 +247,9 @@ public class FACommands {
                 return response.toString();
             }
         }
+
+        long now = System.currentTimeMillis();
+        long turn = TimeUtil.getTurn();
         Set<Treaty> allTreaties = new LinkedHashSet<>();
         for (DBAlliance alliance : alliances) {
             Map<Integer, Treaty> treaties = alliance.getTreaties();
@@ -256,7 +261,12 @@ public class FACommands {
                 String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
                 TreatyType type = treaty.getType();
 
-                response.append(from + " | " + type + " -> " + to).append("\n");
+                response.append(from + " | " + type + " -> " + to);
+                if (treaty.getTurnEnds() > turn) {
+                    String expires = TimeUtil.secToTime(TimeUnit.MILLISECONDS, TimeUtil.getTimeFromTurn(treaty.getTurnEnds() - turn));
+                    response.append(" (" + expires + ")");
+                }
+                response.append("\n");
             }
 
             allTreaties.addAll(treaties.values());

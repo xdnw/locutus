@@ -327,16 +327,23 @@ public class DiscordCommands {
          (have message that they can change the discord setting afterwards to their username)
          */
 
-        if (existingUser != null) {
+        String discordIdErrorMsg = "That nation is already registered to another user!" +
+                "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
+                "2. Scroll down to where it says Discord Username:\n" +
+                "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
+                "4. Click save\n" +
+                "5. Run the command " + CM.register.cmd.create(nation.getNation_id() + "").toSlashCommand() + " again";
+
+        if (existingUser != null && existingUser.getNationId() != nation.getNation_id()) {
             if (existingUser.getDiscordId() != id) {
-                errorMsg = "That nation is already registered to another user!" +
-                        "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
-                        "2. Scroll down to where it says Discord Username:\n" +
-                        "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
-                        "4. Click save\n" +
-                        "5. Run the command " + CM.register.cmd.create(nation.getNation_id() + "").toSlashCommand() + " again";
+                errorMsg = discordIdErrorMsg;
                 checkId = true;
             }
+        }
+        Long existingUserId = nation.getUserId();
+        if (existingUserId != null && existingUserId != id) {
+            errorMsg = discordIdErrorMsg;
+            checkId = true;
         }
         try {
             String pnwDiscordName = nation.fetchUsername();
@@ -349,6 +356,13 @@ public class DiscordCommands {
             }
             if (!userName.equalsIgnoreCase(pnwDiscordName) && !pnwDiscordName.contains("" + user.getIdLong())) {
                 return "Your user doesnt match: `" + pnwDiscordName + "` != `" + userName + "`\n\n" + errorMsg;
+            }
+
+            if (existingUser != null) {
+                Locutus.imp().getDiscordDB().unregister(existingUser.getNationId(), existingUser.getDiscordId());
+            }
+            if (existingUserId != null) {
+                Locutus.imp().getDiscordDB().unregister(nation.getNation_id(), existingUserId);
             }
 
             PNWUser pnwUser = new PNWUser(nation.getNation_id(), id, userName);

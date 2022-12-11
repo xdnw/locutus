@@ -387,6 +387,7 @@ jar {
 }
 
 shadowJar {
+    zip64=true
     archiveName = "${name}-${project.name}-${version}.jar"
 }
 

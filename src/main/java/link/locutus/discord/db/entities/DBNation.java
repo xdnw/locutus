@@ -2746,9 +2746,9 @@ public class DBNation implements NationOrAlliance {
 
     @Command
     public Long getUserId() {
-        User user = getUser();
-        if (user == null) return null;
-        return user.getIdLong();
+        PNWUser dbUser = getDBUser();
+        if (dbUser == null) return null;
+        return dbUser.getDiscordId();
     }
 
     public User getUser() {

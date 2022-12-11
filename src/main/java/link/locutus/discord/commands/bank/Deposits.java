@@ -337,7 +337,7 @@ public class Deposits extends Command {
                                 try {
                                     Map<ResourceType, Double> stockpile = alliance.getStockpile();
                                     if (PnwUtil.convertedTotal(stockpile) > 5000000) {
-                                        tips2.add("You MUST offshore funds after depositing");
+                                        tips2.add("You MUST offshore funds after depositing `" + CM.offshore.send.cmd.toSlashMention() + "` ");
                                     }
                                 } catch (Throwable ignore) {}
                             }
