@@ -826,6 +826,15 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command
+    public int getPositionLevel() {
+        DBAlliancePosition position = getAlliancePosition();
+        if (position == null) {
+            return 0;
+        }
+        return position.getPosition_level();
+    }
+
+    @Command
     public int getAlliancePositionId() {
         return alliancePosition;
     }
