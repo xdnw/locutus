@@ -3,6 +3,9 @@ package link.locutus.discord.commands.info.optimal;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
@@ -42,6 +45,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -119,8 +123,13 @@ public class OptimalBuild extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        DiscordChannelIO io = new DiscordChannelIO(event);
+        return onCommand(io, guild, author, me, args, flags);
+    }
+
+    public String onCommand(IMessageIO io, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) {
-            return usage(event);
+            return usage(null, io);
         }
         if (me == null) {
             return "Please use " + CM.register.cmd.toSlashMention() + "";
@@ -269,13 +278,13 @@ public class OptimalBuild extends Command {
             me = Locutus.imp().getNationDB().getNation(Integer.parseInt(pnwCity.getNationid()));
             origin = new JavaCity(pnwCity);
 
-            checkup(event.getChannel(), me, cityId, origin); // show help
+            checkup(io, me, cityId, origin); // show help
 
             if (days == null) {
                 origin.zeroNonMilitary();
             }
         } else {
-            String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+            String content = args.get(0);
             int jsonStart = content.indexOf('{');
             int jsonEnd = content.lastIndexOf('}');
             if (jsonStart == -1 && jsonEnd == -1) {
@@ -284,7 +293,7 @@ public class OptimalBuild extends Command {
                 } else if (args.size() >= 2 && MathMan.isInteger(args.get(1))) {
                     return "Did you mean: `" + Settings.commandPrefix(true) + "OptimalBuild " + args.get(1) + " " + args.get(0) + "` ?";
                 } else {
-                    return usage(event);
+                    return usage(null, io);
                 }
             }
 
@@ -333,7 +342,7 @@ public class OptimalBuild extends Command {
         Predicate<Project> hasProject = project -> addProject.contains(project) || project.get(finalMe) > 0;
         double grossModifier = finalMe.getGrossModifier();;
 
-        Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
+        CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
 
         Function<JavaCity, Double> valueFunc;
         if (taxes != null) {
@@ -536,8 +545,6 @@ public class OptimalBuild extends Command {
             optimized = origin.roiBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), days, timeout, modifyValueFunc, goal);
         }
 
-        RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
-
         optimized.setInfra(origin.getInfra());
         optimized.getMetrics(hasProject).recalculate(optimized, hasProject);
         double profit = optimized.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier());
@@ -578,22 +585,23 @@ public class OptimalBuild extends Command {
 
         result.append(" Click " + emoji + " to request a grant");
 
-        Role role = Roles.ECON.toRole(event.isFromGuild() ? event.getGuild() : null);
+        Role role = Roles.ECON.toRole(db);
         if (role != null) {
             result.append("\nPing " + role.getAsMention() + " to transfer you the funds");
         }
-        result.append("\n" + event.getAuthor().getAsMention());
+        result.append("\n" + author.getAsMention());
 
         me.setMeta(NationMeta.INTERVIEW_OPTIMALBUILD, (byte) 1);
 
         if (flags.contains('p')) {
             return title + "\n" + result.toString() + "";
         }
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, result.toString(), emoji, command);
+        io.create().embed(title, result.toString()).commandButton(command, emoji).send();
+//        DiscordUtil.createEmbedCommand(event.getChannel(), title, result.toString(), emoji, command);
         return null;
     }
 
-    private void checkup(MessageChannel channel, DBNation me, int cityId, JavaCity city) {
+    private void checkup(IMessageIO io, DBNation me, int cityId, JavaCity city) {
         Map<Integer, JavaCity> cities = Collections.singletonMap(cityId, city);
 
         ArrayList<Map.Entry<Object, String>> audits = new ArrayList<Map.Entry<Object, String>>();
@@ -612,7 +620,7 @@ public class OptimalBuild extends Command {
                 message.append(audit.getValue()).append("\n");
             }
             message.append("```");
-            RateLimitUtil.queue(channel.sendMessage("<" + PnwUtil.getCityUrl(cityId) + "> notes:" + message));
+            io.send("<" + PnwUtil.getCityUrl(cityId) + "> notes:" + message);
         }
     }
 }

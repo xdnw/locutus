@@ -595,18 +595,42 @@ public class AdminCommands {
         Set<Long> invalidIds = new HashSet<>();
         Set<Long> inactiveIds = new HashSet<>();
         Set<Long> unregistered = new HashSet<>();
+        Set<Long> threeMonthIds = new HashSet<>();
+        Set<Long> sixMonthIds = new HashSet<>();
+        Set<Long> nineMonthIds = new HashSet<>();
 
         for (Long id : coalitions) {
+            GuildDB otherDb = (id > Integer.MAX_VALUE) ? Locutus.imp().getGuildDB(id) : Locutus.imp().getGuildDBByAA(id.intValue());
+            if (otherDb == null) {
+                invalidIds.add(id);
+                response.append("\nOther db is null: " + id);
+                continue;
+            }
+            Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
+
+            List<Transaction2> transactions;
+            if (aaId != null) {
+                transactions = offshore.getTransactionsAA(aaId, false);
+            } else {
+                transactions = offshore.getTransactionsGuild(id, false);
+            }
+            transactions.removeIf(f -> f.tx_datetime > System.currentTimeMillis());
+            transactions.removeIf(f -> f.receiver_id == f.banker_nation && f.tx_id > 0);
+            long latest = transactions.isEmpty() ? 0 : transactions.stream().mapToLong(f -> f.tx_datetime).max().getAsLong();
+            String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - latest);
+            if (latest < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)) {
+                threeMonthIds.add(id);
+            }
+            if (latest < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(60)) {
+                sixMonthIds.add(id);
+            }
+            if (latest < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(90)) {
+                nineMonthIds.add(id);
+            }
+
             if (id > Integer.MAX_VALUE) {
-                GuildDB otherDb = Locutus.imp().getGuildDB(id);
-                if (otherDb == null) {
-                    invalidIds.add(id);
-                    response.append("\nOther db is null: " + id);
-                    continue;
-                }
                 Member owner = otherDb.getGuild().getOwner();
 
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 if (aaId != null) {
                     DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
@@ -631,7 +655,7 @@ public class AdminCommands {
                     continue;
                 }
             } else {
-                GuildDB otherDb = Locutus.imp().getGuildDBByAA(id.intValue());
+                otherDb = Locutus.imp().getGuildDBByAA(id.intValue());
                 if (otherDb == null) {
                     invalidIds.add(id);
                     response.append("\nAA Other db is null: " + id);
@@ -640,7 +664,6 @@ public class AdminCommands {
 
                 Member owner = otherDb.getGuild().getOwner();
 
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 if (aaId != null) {
                     DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
@@ -649,25 +672,39 @@ public class AdminCommands {
 
                     if (nations.isEmpty()) {
                         inactiveIds.add(id);
-                        response.append("Inactive alliance (as guild) " + aaId + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong());
+                        response.append("Inactive alliance (as guild) " + aaId + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong() + " | (" + timeStr + ")");
                     }
                 }
 
                 DBNation nation = DiscordUtil.getNation(owner.getUser());
                 if (nation == null) {
-                    unregistered.add(id);
-                    response.append("\nAA owner is unregistered: " + id + " | " + owner.getIdLong());
-                    continue;
+                    if (aaId != null) {
+                        DBAlliance alliance = DBAlliance.get(aaId);
+                        if (alliance != null) {
+                            Set<DBNation> nations = alliance.getNations(f -> {
+                                if (f.active_m() > 10000) return false;
+                                if (f.getPosition() > Rank.MEMBER.id) return true;
+                                DBAlliancePosition p = f.getAlliancePosition();
+                                return p != null && p.hasPermission(AlliancePermission.WITHDRAW_BANK);
+                            });
+                            if (!nations.isEmpty()) nation = nations.iterator().next();
+                        }
+                    }
+                    if (nation == null) {
+                        unregistered.add(id);
+                        response.append("\nAA owner is unregistered: " + id + " | " + owner.getIdLong() + " | (" + timeStr + ")");
+                        continue;
+                    }
                 }
                 if (nation.getActive_m() > 10000) {
                     inactiveIds.add(id);
-                    response.append("\nAA owner is inactive: " + id + " | " + owner.getIdLong() + " | " + nation.getNationUrl() + " | " + nation.getActive_m() + "m");
+                    response.append("\nAA owner is inactive: " + id + " | " + owner.getIdLong() + " | " + nation.getNationUrl() + " | " + nation.getActive_m() + "m" + " | (" + timeStr + ")");
                     continue;
                 }
                 DBAlliance alliance = DBAlliance.get(id.intValue());
                 if (alliance == null || !alliance.exists()) {
                     invalidIds.add(id);
-                    response.append("\nAA does not exist: " + id);
+                    response.append("\nAA does not exist: " + id + " | (" + timeStr + ")");
                     continue;
                 }
             }
@@ -676,6 +713,10 @@ public class AdminCommands {
         double[] totalInvalid = ResourceType.getBuffer();
         double[] totalInactive = ResourceType.getBuffer();
         double[] totalUnregistered = ResourceType.getBuffer();
+
+        double[] threeMonth = ResourceType.getBuffer();
+        double[] sixMonth = ResourceType.getBuffer();
+        double[] nineMonth = ResourceType.getBuffer();
 
         for (long id : inactiveIds) {
             Map<ResourceType, Double> depo;
@@ -707,9 +748,42 @@ public class AdminCommands {
             totalUnregistered = PnwUtil.add(totalUnregistered, PnwUtil.resourcesToArray(depo));
         }
 
+        for (long id : threeMonthIds) {
+            Map<ResourceType, Double> depo;
+            if (id > Integer.MAX_VALUE) {
+                depo = offshore.getDeposits(id, false);
+            } else {
+                depo = offshore.getDeposits((int) id, false);
+            }
+            threeMonth = PnwUtil.add(threeMonth, PnwUtil.resourcesToArray(depo));
+        }
+
+        for (long id : sixMonthIds) {
+            Map<ResourceType, Double> depo;
+            if (id > Integer.MAX_VALUE) {
+                depo = offshore.getDeposits(id, false);
+            } else {
+                depo = offshore.getDeposits((int) id, false);
+            }
+            sixMonth = PnwUtil.add(sixMonth, PnwUtil.resourcesToArray(depo));
+        }
+
+        for (long id : nineMonthIds) {
+            Map<ResourceType, Double> depo;
+            if (id > Integer.MAX_VALUE) {
+                depo = offshore.getDeposits(id, false);
+            } else {
+                depo = offshore.getDeposits((int) id, false);
+            }
+            nineMonth = PnwUtil.add(nineMonth, PnwUtil.resourcesToArray(depo));
+        }
+
         response.append("\n\nTotal invalid: " + PnwUtil.resourcesToString(totalInvalid));
         response.append("\nTotal inactive: " + PnwUtil.resourcesToString(totalInactive));
         response.append("\nTotal unregistered: " + PnwUtil.resourcesToString(totalUnregistered));
+        response.append("\n1 month: " + PnwUtil.resourcesToString(threeMonth));
+        response.append("\n2 month: " + PnwUtil.resourcesToString(sixMonth));
+        response.append("\n3 month: " + PnwUtil.resourcesToString(nineMonth));
 
 
         return response.toString();

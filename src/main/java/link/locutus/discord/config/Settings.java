@@ -195,7 +195,7 @@ public class Settings extends Config {
         @Comment("Fetches colored nations (default 5 minutes)")
         public int COLORED_NATIONS_SECONDS = 60 * 5;
 
-        @Comment("Fetches colored nations (default 15 minutes)")
+        @Comment("Fetches non Vacation Mode nations (default 15 minutes)")
         public int ALL_NON_VM_NATIONS_SECONDS = 60 * 15;
 
         @Comment("Fetches outdated cities (default 5 minute)")

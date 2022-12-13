@@ -2132,40 +2132,47 @@ public class BankCommands {
 
         if (showTaxesSeparately == Boolean.TRUE || (showTaxesSeparately == null &&  db.getOrNull(GuildDB.Key.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE)) {
             if (categorized.containsKey(DepositType.DEPOSITS)) {
-                response.append("DEPOSITS: ~$" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSITS))));
+                response.append("#DEPOSIT: (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSITS))) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSITS))).append("``` ");
             }
             if (categorized.containsKey(DepositType.TAX)) {
-                response.append("TAX: ~$" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
+                response.append("#TAX (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
-                response.append("LOANS/GRANTS: ~$" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
+                response.append("#LOAN/#GRANT (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
             }
             if (categorized.containsKey(DepositType.GRANT)) {
-                response.append("TEMPORARY: ~$" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
+                response.append("#EXPIRE (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
             }
             if (categorized.size() > 1) {
-                response.append("Total Equity: ~$" + MathMan.format(PnwUtil.convertedTotal(total)));
+                response.append("Total: (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
             }
         } else {
+            String totalTitle = "Total (`#expire`|`#loan`|`#tax`|`#deposit`: worth $";
+            String noGrantTitle = "Excluding `#expire` (worth: $";
+            String safekeepTitle = "Safekeep (`#tax`|`#deposit`: worth $";
+            boolean hasPriorCategory = false;
             if (categorized.containsKey(DepositType.GRANT)) {
-                response.append("Total Equity (safekeep + loans + grants) worth: ~$" + MathMan.format(PnwUtil.convertedTotal(total)));
+                response.append(totalTitle + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
                 footers.add("Unlike loans, debt from grants will expire if you stay (see the transaction for the timeframe)");
+                hasPriorCategory = true;
             }
             if (categorized.containsKey(DepositType.LOAN)) {
-                response.append("Safekeep + loans worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalNoGrants)));
+                response.append((hasPriorCategory ? noGrantTitle : totalTitle) + MathMan.format(PnwUtil.convertedTotal(totalNoGrants)) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(totalNoGrants)).append("``` ");
+                hasPriorCategory = true;
             }
 
-            response.append("Safekeep (bank + tax deposits) worth: ~$" + MathMan.format(PnwUtil.convertedTotal(taxAndDeposits)));
+            response.append((hasPriorCategory ? safekeepTitle : totalTitle) + MathMan.format(PnwUtil.convertedTotal(taxAndDeposits)) + ")");
             response.append("\n```").append(PnwUtil.resourcesToString(taxAndDeposits)).append("``` ");
         }
         if (me != null && nationOrAllianceOrGuild == me) {
+            footers.add("Funds default to #deposit if no other note is used");
             if (Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.RESOURCE_CONVERSION))) {
                 footers.add("You can sell resources to the alliance by depositing with the note #cash");
             }

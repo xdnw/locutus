@@ -4,6 +4,9 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -46,10 +49,14 @@ public class KeyStore extends Command implements Noformat {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        return onCommand(new DiscordChannelIO(event), guild, author, me, args, flags);
+    }
+
+    public String onCommand(IMessageIO io, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
 
         Integer page = DiscordUtil.parseArgInt(args, "page");
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return "Command must run in a guild";
         if (args.size() != 2) {
             if (args.size() == 1) {
@@ -90,7 +97,7 @@ public class KeyStore extends Command implements Noformat {
                     }
                 }
                 response.append("\n").append(desc()).append("\n").append(help());
-                DiscordUtil.createEmbedCommand(event.getChannel(), "Settings", response.toString());
+                io.create().embed("Settings", response.toString()).send();
             }
 
             Map<CommandCategory, Map<GuildDB.Key, String>> keys = getSheets(db);
@@ -109,7 +116,9 @@ public class KeyStore extends Command implements Noformat {
                     pages.add(response.toString().trim());
                 }
                 String pageStr = ((page == null ? 0 : page) + 1) + "/" + pages.size();
-                DiscordUtil.paginate(event.getGuildChannel(), event.getMessage(), "Sheets " + pageStr, DiscordUtil.trimContent(event.getMessage().getContentRaw()), page, 1, pages, null, true);
+                String title = "Sheets " + pageStr;
+                String command = "!KeyStore";
+                DiscordUtil.paginate(io, title, command, page, 1, pages, null, true);
             }
 
             return null;
@@ -122,7 +131,8 @@ public class KeyStore extends Command implements Noformat {
         if (key == GuildDB.Key.API_KEY) {
             if (!value.equalsIgnoreCase("null")) {
                 try {
-                    RateLimitUtil.queue(event.getMessage().delete());
+                    IMessageBuilder msg = io.getMessage();
+                    if (msg != null) io.delete(msg.getId());
                 } catch (InsufficientPermissionException ignore) {}
                 value = "<redacted>";
             }
@@ -136,7 +146,7 @@ public class KeyStore extends Command implements Noformat {
 
             db.setInfo(key, args.get(1));
         }
-        return "Set " + key + " to " + value + " for " + event.getGuild().getName();
+        return "Set " + key + " to " + value + " for " + guild.getName();
     }
 
     private Map<CommandCategory, Map<GuildDB.Key, String>> getSheets(GuildDB db) {

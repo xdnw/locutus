@@ -212,6 +212,8 @@ public class BankDB extends DBMainV3 {
         for (Index index : LOOT_DIFF_BY_TAX_ID.getIndexes()) ctx().createIndex(index);
         ctx().createTableIfNotExists(TAX_ESTIMATE).columns(TAX_ESTIMATE.fields()).primaryKey(TAX_ESTIMATE.getPrimaryKey().getFields()).execute();
         for (Index index : TAX_ESTIMATE.getIndexes()) ctx().createIndex(index);
+        ctx().createTableIfNotExists(TAX_DEPOSITS_DATE).columns(TAX_DEPOSITS_DATE.fields()).primaryKey(TAX_DEPOSITS_DATE.getPrimaryKey().getFields()).execute();
+        for (Index index : TAX_DEPOSITS_DATE.getIndexes()) ctx().createIndex(index);
 
 //        {
 //            StringBuilder transactions = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_ALLIANCE_2` (`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, tx_datetime BIGINT NOT NULL, sender_id BIGINT NOT NULL, sender_type INT NOT NULL, receiver_id BIGINT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");

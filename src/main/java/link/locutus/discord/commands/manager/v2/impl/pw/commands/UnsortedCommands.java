@@ -11,6 +11,7 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.commands.alliance.LeftAA;
 import link.locutus.discord.commands.bank.AddBalance;
+import link.locutus.discord.commands.bank.Disperse;
 import link.locutus.discord.commands.bank.Warchest;
 import link.locutus.discord.commands.compliance.CheckCities;
 import link.locutus.discord.commands.external.guild.CopyPasta;
@@ -58,6 +59,7 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -668,6 +670,7 @@ public class UnsortedCommands {
                                @Switch("a") boolean listByNation,
                                @Switch("s") boolean listAverage,
                                @Switch("u") boolean uploadFile) throws Exception {
+        if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNations().values());
         ArrayList<DBNation> nations = new ArrayList<>(nationList.getNations());
         nations.removeIf(n -> !n.isTaxable());
 
@@ -1006,12 +1009,63 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Generate an optimal build for a city")
-    @RolePermission(Roles.ECON)
+    @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     @HasOffshore
-    public String warchest(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                           NationList nations, Map<ResourceType, Double> resources, String note) throws Exception {
-        List<String> cmd = Arrays.asList(nations.getFilter(), PnwUtil.resourcesToString(resources), note);
-        return new Warchest().onCommand(guild, channel, author, me, cmd);
+    public String warchest(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
+                           NationList nations, Map<ResourceType, Double> resourcesPerCity, @Default String note) throws Exception {
+        if (note == null) note = "#warchest";
+
+        Collection<String> allowedLabels = Arrays.asList("#warchest", "#grant", "#deposit", "#trade", "#ignore", "#tax", "#account");
+        if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
+        Integer aaId = Locutus.imp().getGuildDB(guild).getOrNull(GuildDB.Key.ALLIANCE_ID);
+        if (aaId != null) note += "=" + aaId;
+        else {
+            note += "=" + guild.getIdLong();
+        }
+
+        Collection<DBNation> nationSet = new HashSet<>(nations.getNations());
+
+        boolean hasEcon = Roles.ECON.has(author, guild);
+        if (!hasEcon && (nationSet.size() != 1 || !nationSet.iterator().next().equals(me))) return "You only have permission to send to your own nation";
+
+        nationSet.removeIf(f -> f.getActive_m() > 7200);
+        nationSet.removeIf(f -> f.getPosition() <= 1);
+        nationSet.removeIf(f -> f.getVm_turns() != 0);
+
+        if (nationSet.isEmpty()) {
+            return "No active members in bracket";
+        }
+
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+
+        Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
+
+        Map<DBNation, Map<ResourceType, Double>> memberResources2 = DBAlliance.getOrCreate(aaId).getMemberStockpile();
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : memberResources2.entrySet()) {
+            DBNation nation = entry.getKey();
+            if (!nationIds.contains(nation.getNation_id())) continue;
+            if (PnwUtil.convertedTotal(entry.getValue()) < 0) continue;
+
+            Map<ResourceType, Double> stockpile = entry.getValue();
+            Map<ResourceType, Double> toSendCurrent = new HashMap<>();
+            for (ResourceType type : resourcesPerCity.keySet()) {
+                double required = resourcesPerCity.getOrDefault(type, 0d) * nation.getCities();
+                double current = stockpile.getOrDefault(type, 0d);
+                if (required > current) {
+                    toSendCurrent.put(type, required - current);
+                }
+            }
+            if (!toSendCurrent.isEmpty()) {
+                fundsToSendNations.put(nation, toSendCurrent);
+            }
+        }
+
+
+        String result = Disperse.disperse(db, fundsToSendNations, Collections.emptyMap(), note, io, "Send Warchest");
+        if (fundsToSendNations.size() > 1) {
+            result += author.getAsMention();
+        }
+        return result;
     }
 
     @Command
@@ -1054,19 +1108,9 @@ public class UnsortedCommands {
         return nation.getNation() + "/" + nation.getNation_id() + " is not a reroll.";
     }
 
-    @Command
-    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String keyStore(@Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                           @Default GuildDB.Key key, @Default @TextArea String value) throws Exception {
-        List<String> cmd = new ArrayList<>();
-        if (key != null) cmd.add(key + "");
-        if (value != null) cmd.add(value);
-        return new KeyStore().onCommand(guild, channel, author, me, cmd);
-    }
-
     @Command(desc = "Generate an optimal build for a city")
     @RolePermission(Roles.MEMBER)
-    public String optimalBuild(@Me JSONObject command, @Me TextChannel channel, @Me Guild guild, @Me User author, @Me DBNation me,
+    public String optimalBuild(@Me JSONObject command, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                                CityBuild build, @Default Integer days,
                                @Switch("x") @Filter("[0-9]{4}") String buildMMR,
                                @Switch("a") Integer age,
@@ -1085,6 +1129,7 @@ public class UnsortedCommands {
                                @Switch("g") Continent geographicContinent
     ) throws Exception {
         List<String> cmd = new ArrayList<>();
+        Set<Character> flags = new HashSet<>();
         if (days != null) cmd.add(days + " ");
         cmd.add(build.toString());
         if (buildMMR != null) cmd.add("mmr=" + buildMMR);
@@ -1100,7 +1145,7 @@ public class UnsortedCommands {
         if (radiation != null) cmd.add("radiation=" + radiation);
         if (taxRate != null) cmd.add("" + taxRate.toString());
         if (useRawsForManu) cmd.add("manu=" + useRawsForManu);
-        if (writePlaintext) cmd.add("-p");
+        if (writePlaintext) flags.add('p');
         if (nationalProjects != null) {
             for (Project project : nationalProjects) {
                 cmd.add("" + project.name());
@@ -1109,6 +1154,22 @@ public class UnsortedCommands {
 
         if (moneyPositive) cmd.add("cash=" + moneyPositive);
         if (geographicContinent != null) cmd.add("continent=" + geographicContinent);
-        return new OptimalBuild().onCommand(guild, channel, author, me, cmd + "");
+
+
+
+        return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
+    }
+
+    @Command
+    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
+    public String keyStore(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
+                           @Default GuildDB.Key key, @Default @TextArea String value, @Switch("s") boolean hideSheetList, @Switch("a") boolean showAll) throws Exception {
+        List<String> cmd = new ArrayList<>();
+        if (key != null) cmd.add(key + "");
+        if (value != null) cmd.add(value);
+        Set<Character> flags = new HashSet<>();
+        if (hideSheetList) flags.add('s');
+        if (showAll) flags.add('a');
+        return new KeyStore().onCommand(io, guild, author, me, cmd, flags);
     }
 }
