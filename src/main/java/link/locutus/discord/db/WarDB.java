@@ -1243,10 +1243,19 @@ public class WarDB extends DBMainV2 {
             if (pct == 0) pct = 0.1;
             double factor = 1/pct;
 
-            if (attack.loot != null) {
-                double[] lootCopy = attack.loot.clone();
-                for (int i = 0; i < lootCopy.length; i++) {
-                    lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+            switch (attack.attack_type) {
+                case VICTORY:
+                case A_LOOT:
+            }
+            if (attack.attack_type == AttackType.VICTORY || attack.attack_type == AttackType.A_LOOT) {
+                double[] lootCopy;
+                if (attack.loot != null) {
+                    lootCopy = attack.loot.clone();
+                    for (int i = 0; i < lootCopy.length; i++) {
+                        lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+                    }
+                } else {
+                    lootCopy = ResourceType.getBuffer();
                 }
 
                 if (attack.attack_type == AttackType.VICTORY) {
