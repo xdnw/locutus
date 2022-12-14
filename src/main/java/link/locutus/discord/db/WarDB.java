@@ -865,7 +865,7 @@ public class WarDB extends DBMainV2 {
         Set<Integer> newWarIds = new LinkedHashSet<>();
 
         for (DBWar war : dbWars) {
-            DBWar existing = activeWars.getWar(war.attacker_id, war.warId);
+            DBWar existing = warsById.get(war.warId);
 
             if ((existing == null && !war.isActive()) || (existing != null && war.status == existing.status)) continue;
 
@@ -899,7 +899,7 @@ public class WarDB extends DBMainV2 {
 
             long warTurn = TimeUtil.getTurn(war.date);
 
-            if (currentTurn - warTurn >= 60) {
+            if (currentTurn - warTurn >= 60 && false) { // TODO disable
                 prevWars.add(new DBWar(war));
                 war.status = WarStatus.EXPIRED;
                 newWars.add(war);

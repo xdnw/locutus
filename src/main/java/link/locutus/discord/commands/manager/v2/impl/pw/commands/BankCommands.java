@@ -949,7 +949,7 @@ public class BankCommands {
                     if (rssChannel == null)
                         return "Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + "";
                     if (channel.getIdLong() != rssChannel.getIdLong())
-                        return "Please use the transfer command in " + ((GuildMessageChannel) channel).getAsMention();
+                        return "Please use the transfer command in " + rssChannel.getAsMention();
 
                     if (!Roles.ECON_WITHDRAW_SELF.has(author, guildDb.getGuild()))
                         return "You do not have the `ECON_WITHDRAW_SELF` role. See: " + CM.role.setAlias.cmd.toSlashMention() + "";
