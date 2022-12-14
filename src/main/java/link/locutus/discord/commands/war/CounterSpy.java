@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -46,7 +47,7 @@ public class CounterSpy extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return (super.checkPermission(server, user));
+        return Roles.MEMBER.has(user, server);
     }
 
     @Override

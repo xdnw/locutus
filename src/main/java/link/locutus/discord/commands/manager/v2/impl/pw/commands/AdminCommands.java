@@ -2,10 +2,13 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -946,5 +949,29 @@ public class AdminCommands {
             result.append("\n");
         }
         return result.toString().trim();
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncLootFromAttacks() {
+        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
+        for (DBAttack attack : attacks) {
+            if (attack.looted > 0) {
+                LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.looted);
+                if (existing != null && existing.getDate() < attack.epoch) {
+                    Double pct = attack.getLootPercent();
+                    if (pct == 0) continue;
+                    double factor = 1/pct;
+
+                    double[] lootCopy = attack.loot.clone();
+                    for (int i = 0; i < lootCopy.length; i++) {
+                        lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+                    }
+
+                    Locutus.imp().getNationDB().saveAllianceLoot(attack.looted, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
+                }
+            }
+        }
+
     }
 }
