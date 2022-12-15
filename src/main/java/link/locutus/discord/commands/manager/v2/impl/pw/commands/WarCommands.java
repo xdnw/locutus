@@ -1311,7 +1311,7 @@ public class WarCommands {
                     "The alliance argument is optional\n" +
                     "Use `success>80` to specify a cutoff for spyop success")
     @RolePermission(Roles.MEMBER)
-    public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch("s") @Range(min=0, max=100) int minSuccess) throws ExecutionException, InterruptedException, IOException {
+    public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch("s") @Range(min=0, max=100) Integer minSuccess) throws ExecutionException, InterruptedException, IOException {
         if (operations.isEmpty()) throw new IllegalArgumentException("Valid operations: " + StringMan.getString(SpyCount.Operation.values()));
         if (counterWith == null) {
             counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(Collections.singleton(db.getAlliance_id())));
@@ -1376,7 +1376,7 @@ public class WarCommands {
             }
 
             double odds = SpyCount.getOdds(spiesUsed, enemySpies, safety, op, enemy);
-            if (odds <= minSuccess) continue;
+            if (minSuccess != null && odds <= minSuccess) continue;
             if (++nationCount >= 10) break;
 
             double kills = SpyCount.getKills(spiesUsed, enemy, op, safety);

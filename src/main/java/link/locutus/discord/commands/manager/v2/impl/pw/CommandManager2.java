@@ -129,6 +129,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertTKRSpySheet", "convertTKRSpySheet");
         this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertTKRSpySheet", "convertTKR");
 
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncLootFromAttacks", "syncLootFromAttacks");
+
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
         System.out.println(output);

@@ -954,16 +954,18 @@ public class AdminCommands {
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncLootFromAttacks() {
+        int found = 0;
+        int added = 0;
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
         for (DBAttack attack : attacks) {
             if (attack.looted > 0) {
                 LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.looted);
                 if (existing != null && existing.getDate() < attack.epoch) {
                     Double pct = attack.getLootPercent();
-                    if (pct == 0) continue;
+                    if (pct == 0) pct = 0.01;
                     double factor = 1/pct;
 
-                    double[] lootCopy = attack.loot.clone();
+                    double[] lootCopy = attack.loot == null ? ResourceType.getBuffer() : attack.loot.clone();
                     for (int i = 0; i < lootCopy.length; i++) {
                         lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
                     }
@@ -972,6 +974,7 @@ public class AdminCommands {
                 }
             }
         }
+        return "Done!";
 
     }
 }
