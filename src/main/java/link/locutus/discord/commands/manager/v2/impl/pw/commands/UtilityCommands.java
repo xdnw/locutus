@@ -1032,7 +1032,7 @@ public class UtilityCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
@@ -1069,7 +1069,7 @@ public class UtilityCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(desc = "Check if a nation shares networks with others")
@@ -1409,8 +1409,11 @@ public Map<ParametricCallable, String> getEndpoints() {
 
         CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(sheet.getURL(), "#deposit", null, null);
 
-        StringBuilder result = new StringBuilder("Sheet: " + sheet.getURL() +
-                "\nTotal: `" + PnwUtil.resourcesToString(total) + "`" +
+        IMessageBuilder msg = channel.create();
+        StringBuilder result = new StringBuilder();
+        sheet.attach(msg, result, false, 0);
+        
+        result.append("Total: `" + PnwUtil.resourcesToString(total) + "`" +
                 "\nWorth: $" + MathMan.format(PnwUtil.convertedTotal(total)));
         result.append("\n\nUse " + CM.transfer.bulk.cmd.toSlashMention());
         result.append("\nOr press \uD83C\uDFE6 to run " + cmd.toSlashCommand() + "");
@@ -1418,7 +1421,7 @@ public Map<ParametricCallable, String> getEndpoints() {
         String title = "Nation Interest";
         String emoji = "Confirm";
 
-        channel.create().embed(title, result.toString())
+        msg.embed(title, result.toString())
                         .commandButton(cmd, emoji)
                                 .send();
 

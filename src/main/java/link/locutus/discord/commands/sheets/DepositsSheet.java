@@ -193,7 +193,7 @@ public class DepositsSheet extends Command {
         sheet.set(0, 0);
 
         StringBuilder response = new StringBuilder();
-        response.append("<" + sheet.getURL() + ">");
+        response.append(sheet.getURL(true, true));
 
         StringBuilder footer = new StringBuilder();
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));

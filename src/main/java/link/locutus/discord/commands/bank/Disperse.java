@@ -233,23 +233,26 @@ public class Disperse extends Command {
             return null;
         } else {
 
-            IMessageBuilder msg = channel.create();
             String arr = JsonUtil.toPrettyFormat("[" + StringMan.join(postScript, ",") + "]");
-            msg.file("transfer.json", arr);
+
 
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, fundsToSendAAs).build();
 
             String emoji = "Confirm";
-            String cmd = Settings.commandPrefix(false) + "transfer Bulk " + sheet.getURL() + " " + note;
+            String cmd = Settings.commandPrefix(false) + "transfer Bulk " + sheet.getSheet().getURL() + " " + note;
 
             StringBuilder response = new StringBuilder();
-            response.append("Transfer Sheet: <" + sheet.getURL() + ">").append("\n");
             response.append("Total: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ": `" + PnwUtil.resourcesToString(total)).append("`\n");
             response.append("Info: Use the extension to disburse from offshore or Press `" + emoji + "` to run:\n" +
                     "`" + Settings.commandPrefix(false) + "transfer Bulk <sheet> " + note + "`");
 
+
+            IMessageBuilder msg = channel.create();
+            sheet.getSheet().attach(msg, response, false, 0);
+            msg.file("transfer.json", arr);
             msg.embed("Disperse", response.toString());
             msg.commandButton(cmd, emoji);
+
             msg.send();
             return null;
         }

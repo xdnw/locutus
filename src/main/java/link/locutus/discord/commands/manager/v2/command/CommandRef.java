@@ -76,6 +76,10 @@ public class CommandRef {
         return builder.toString();
     }
 
+
+    public JSONObject toJson() {
+        return new JSONObject(toCommandArgs());
+    }
     public String toCommandArgs() {
         Map<String, String> data = new HashMap<>(arguments);
         data.put("", path);

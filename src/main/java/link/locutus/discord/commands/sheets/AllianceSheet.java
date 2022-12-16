@@ -115,6 +115,6 @@ public class AllianceSheet extends Command implements Noformat {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

@@ -34,6 +34,14 @@ public class DriveFile {
     private final Drive service;
     private final String fileId;
 
+
+    public static java.io.File getCredentialsFile() {
+        return new java.io.File(CREDENTIALS_FILE_PATH);
+    }
+
+    public static boolean credentialsExists() {
+        return getCredentialsFile().exists();
+    }
     /**
      * Creates an authorized Credential object.
      * @param HTTP_TRANSPORT The network HTTP Transport.
@@ -42,7 +50,7 @@ public class DriveFile {
      */
     private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
         // Load client secrets.
-        java.io.File file = new java.io.File(CREDENTIALS_FILE_PATH);
+        java.io.File file = getCredentialsFile();
         if (!file.exists()) {
             throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
         }

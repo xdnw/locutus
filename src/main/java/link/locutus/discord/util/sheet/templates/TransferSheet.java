@@ -22,8 +22,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TransferSheet extends SpreadSheet {
+public class TransferSheet {
     private final Map<NationOrAlliance, Map<ResourceType, Double>> transfers;
+
+    private final SpreadSheet parent;
+
+    public TransferSheet(SpreadSheet other) throws GeneralSecurityException, IOException {
+        this.parent = other;
+        this.transfers = new LinkedHashMap<>();
+    }
+
+    public TransferSheet(String key) throws GeneralSecurityException, IOException {
+        this(SpreadSheet.create(key));
+    }
+
+    public TransferSheet(GuildDB db) throws GeneralSecurityException, IOException {
+        this(SpreadSheet.create(db, GuildDB.Key.TRANSFER_SHEET));
+    }
 
     public Map<NationOrAlliance, Map<ResourceType, Double>> getTransfers() {
         return transfers;
@@ -80,7 +95,7 @@ public class TransferSheet extends SpreadSheet {
      */
     public Set<String> read() {
         Set<String> invalidNationOrAlliance = new LinkedHashSet<>();
-        List<List<Object>> rows = get("A:Z");
+        List<List<Object>> rows = parent.get("A:Z");
         List<Object> header = rows.get(0);
 
         boolean useLeader = false;
@@ -148,7 +163,7 @@ public class TransferSheet extends SpreadSheet {
         for (ResourceType value : ResourceType.values) {
             if (value != ResourceType.CREDITS) header.add(value.name());
         }
-        setHeader(header);
+        parent.setHeader(header);
 
         for (Map.Entry<NationOrAlliance, Map<ResourceType, Double>> entry : transfers.entrySet()) {
             ArrayList<Object> row = new ArrayList<>();
@@ -173,30 +188,18 @@ public class TransferSheet extends SpreadSheet {
                 }
             }
 
-            addRow(row);
+            parent.addRow(row);
         }
         return this;
     }
 
-    public TransferSheet(SpreadSheet other) throws GeneralSecurityException, IOException {
-        this(other.getSpreadsheetId());
-    }
-
-    public TransferSheet(String key) throws GeneralSecurityException, IOException {
-        super(key);
-        this.transfers = new LinkedHashMap<>();
-    }
-
-    public TransferSheet(GuildDB db) throws GeneralSecurityException, IOException {
-        super(db, GuildDB.Key.TRANSFER_SHEET);
-        this.transfers = new LinkedHashMap<>();
-    }
-
     public TransferSheet build() throws IOException {
-        clear("A:Z");
-        set(0, 0);
+        parent.clear("A:Z");
+        parent.set(0, 0);
         return this;
     }
 
-
+    public SpreadSheet getSheet() {
+        return parent;
+    }
 }

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -271,6 +272,8 @@ public class MilitaryRanking extends Command {
 
         String msg = "> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
                 "> Each alliance is grouped by sphere and color coded";
-        return "<" + sheet.getURL() + ">\n" + msg;
+
+        sheet.send(new DiscordChannelIO(event), null, msg).send();
+        return null;
     }
 }

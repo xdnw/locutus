@@ -92,6 +92,6 @@ public class ProjectSheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

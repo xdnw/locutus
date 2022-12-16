@@ -166,6 +166,6 @@ public class DeserterSheet extends Command {
         sheet.set(0, 0);
 
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

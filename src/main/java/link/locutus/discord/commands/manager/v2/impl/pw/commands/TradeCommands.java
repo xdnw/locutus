@@ -444,7 +444,7 @@ public class TradeCommands {
 
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.")

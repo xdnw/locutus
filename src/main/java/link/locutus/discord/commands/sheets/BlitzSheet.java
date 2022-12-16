@@ -214,7 +214,7 @@ public class BlitzSheet extends Command {
         sheet.clear("A:Z");
         sheet.write(rowData);
 
-        return "<" + sheet.getURL() + "> " + author.getAsMention();
+        return sheet.getURL(true, true);
 
 //        int att1Index = 13;
 
@@ -349,7 +349,7 @@ public class BlitzSheet extends Command {
 //        sheet.clearAll();
 //        sheet.set(0, 0);
 //
-//        return "<" + sheet.getURL() + ">";
+//        return sheet.getURL(true, true);
     }
 
     public void assignTargets(List<DBNation> attNations, List<DBNation> defNations, Map<Integer, List<DBNation>> counters, Map<Integer, List<DBNation>> targets, Set<Integer> strongTargets, BiFunction<DBNation, DBNation, Boolean> attDefIsAllowed) {

@@ -456,11 +456,13 @@ public class Settings extends Config {
 
 
     public static class WEB {
-        @Comment("The url/op/hostname for the web interface")
+        @Comment("The url/ip/hostname for the web interface")
         public String REDIRECT = "https://locutus.link";
         @Comment({"File location of the ssl certificate",
+        " - Locutus expects a privkey.pem and a fullchain.pem in the directory",
         " - You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",
-        " - Set to empty string to not use an ssl certificate"})
+        " - Set to empty string to not use an ssl certificate",
+        })
         public String CERT_PATH = "C:/Certbot/live/locutus.link/";
         @Comment({"The password or passphrase for the certificate",
         "Leave blank if there is none"})

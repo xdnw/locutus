@@ -95,7 +95,7 @@ public class SyncTaxes extends Command {
         }
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TAX_SHEET);
         if (db.getOrNull(GuildDB.Key.TAX_SHEET) == null) sheet.set(0, 0);
-        return desc() + "\nEnter tax records here: " + sheet.getURL();
+        return desc() + "\nEnter tax records here: " + sheet.getURL(false, false);
     }
 
     public String updateTaxesLegacy(GuildDB guildDb, SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -154,7 +154,7 @@ public class SyncTaxes extends Command {
         }
 
         if (records.isEmpty()) {
-            return "Please pin, and update this sheet: " + sheet.getURL();
+            return "Please pin, and update this sheet: " + sheet.getURL(false, false);
         }
 
         Collections.sort(records, new Comparator<BankDB.TaxDeposit>() {
@@ -233,6 +233,6 @@ public class SyncTaxes extends Command {
 
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

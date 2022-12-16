@@ -95,6 +95,6 @@ public class StockpileSheet extends Command {
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
         DiscordUtil.createEmbedCommand(event.getChannel(), "AA Total", totalStr);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

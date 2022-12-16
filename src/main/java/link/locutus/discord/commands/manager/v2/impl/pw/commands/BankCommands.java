@@ -486,14 +486,13 @@ public class BankCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(desc = "Get a sheet of members and their saved up warchest (can include deposits and potential revenue)")
     @RolePermission(value = {Roles.ECON_LOW_GOV, Roles.ECON, Roles.MILCOM, Roles.MILCOM_ADVISOR})
     @IsAlliance
-    public String warchestSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("c") Map<ResourceType, Double> perCityWarchest, @Arg("Excess resources in AA bank that could be used to supplementWarchest") @Switch("b") Map<ResourceType, Double> allianceBankWarchest, @Switch("g") boolean includeGrants, @Switch("n") boolean doNotNormalizeDeposits, @Switch("d") boolean ignoreDeposits, @Switch("e") boolean ignoreStockpileInExcess, @Switch("r") Integer includeRevenueDays, @Switch("f") boolean forceUpdate) throws IOException, GeneralSecurityException {
-        int aaId = db.getAlliance_id();
+    public String warchestSheet(@Me GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Switch("c") Map<ResourceType, Double> perCityWarchest, @Arg("Excess resources in AA bank that could be used to supplementWarchest") @Switch("b") Map<ResourceType, Double> allianceBankWarchest, @Switch("g") boolean includeGrants, @Switch("n") boolean doNotNormalizeDeposits, @Switch("d") boolean ignoreDeposits, @Switch("e") boolean ignoreStockpileInExcess, @Switch("r") Integer includeRevenueDays, @Switch("f") boolean forceUpdate) throws IOException, GeneralSecurityException {
         DBAlliance alliance = db.getAlliance();
         Map<DBNation, Map<ResourceType, Double>> stockpiles = alliance.getMemberStockpile();
 
@@ -657,11 +656,11 @@ public class BankCommands {
         sheet.set(0, 0);
 
         StringBuilder response = new StringBuilder();
-        response.append("<" + sheet.getURL() + ">\n");
         response.append("Total Warchest: `" + PnwUtil.resourcesToString(totalWarchest) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalWarchest)) + "\n");
         response.append("Net Warchest Req (warchest - requirements): `" + PnwUtil.resourcesToString(totalNet) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalNet)));
 
-        return response.toString();
+        sheet.attach(io.create(), response, false, 0).send();
+        return null;
     }
 
     public static final Map<UUID, Grant> AUTHORIZED_TRANSFERS = new HashMap<>();
@@ -1065,7 +1064,7 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
@@ -1211,7 +1210,7 @@ public class BankCommands {
         sheet.set(0, 0);
 
         StringBuilder response = new StringBuilder();
-        response.append("<" + sheet.getURL() + ">");
+        response.append(sheet.getURL(true, true));
 
         StringBuilder footer = new StringBuilder();
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
@@ -1381,7 +1380,8 @@ public class BankCommands {
             }
         }
 
-        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(txSheet.getURL(), note, null, null);
+        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(txSheet.getSheet().getURL(), note, null, null);
+
         String title = "Addbalance";
         String body = "Total: \n`" + PnwUtil.resourcesToString(total) + "`\nWorth: ~$" + MathMan.format(PnwUtil.convertedTotal(total));
         String emoji = "Confirm";
@@ -1700,7 +1700,7 @@ public class BankCommands {
 
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
 
@@ -1807,7 +1807,7 @@ public class BankCommands {
             transfers.put(DBNation.byId(entry.getKey()), entry.getValue());
         }
         txSheet.write(transfers).build();
-        return txSheet.getURL();
+        return txSheet.getSheet().getURL(true, true);
     }
 
     @Command(desc = "Get a sheet of a nation tax deposits over a period")
@@ -1842,7 +1842,7 @@ public class BankCommands {
         }
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(desc = "Send from your alliance offshore account to another account (internal transfer)")
@@ -2366,7 +2366,7 @@ public class BankCommands {
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
         channel.create().embed("AA TOTAL", totalStr)
-                        .append("<" + sheet.getURL() + ">")
+                        .append(sheet.getURL(true, true))
                                 .send();
         return null;
     }
@@ -2441,7 +2441,7 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        StringBuilder response = new StringBuilder("<" + sheet.getURL() + ">");
+        StringBuilder response = new StringBuilder(sheet.getURL(true, true));
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
         return response.toString();
     }

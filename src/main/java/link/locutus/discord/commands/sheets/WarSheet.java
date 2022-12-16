@@ -164,6 +164,6 @@ public class WarSheet extends Command {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

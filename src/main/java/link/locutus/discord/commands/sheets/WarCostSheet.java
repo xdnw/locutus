@@ -233,7 +233,7 @@ public class WarCostSheet extends Command {
             e.printStackTrace();
         }
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     private double total(Set<Character> flags, DBNation nation, AttackCost cost, boolean isPrimary) {

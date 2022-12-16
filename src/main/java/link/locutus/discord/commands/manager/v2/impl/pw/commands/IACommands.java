@@ -776,7 +776,7 @@ public class IACommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command
@@ -1177,12 +1177,13 @@ public class IACommands {
         }
 
         String title = "Send " + success + " messages";
-        String embed = "Output: <" + sheet.getURL() + ">\n" +
-                "Press to confirm";
-        String emoji = "Send";
+        StringBuilder embed = new StringBuilder();
+        IMessageBuilder msg = channel.create();
+        sheet.attach(msg, embed, false, 0);
+        embed.append("\nPress `confirm` to confirm");
         CM.mail.sheet cmd = CM.mail.sheet.cmd.create(sheet.getURL(), null);
 
-        channel.create().confirmation(title, embed, cmd).send();
+        msg.confirmation(title, embed.toString(), cmd).send();
 
         if (errorMsgs.isEmpty()) return null;
         return "Errors\n - " + StringMan.join(errorMsgs, "\n - ");
@@ -1246,14 +1247,17 @@ public class IACommands {
 
         if (!confirm) {
             String title = "Send " + messageMap.size() + " to nations in " + alliances.size() + " alliances";
-            StringBuilder body = new StringBuilder("Messages: <" + sheet.getURL() + ">\n");
+            StringBuilder body = new StringBuilder("Messages:");
+            IMessageBuilder msg = io.create();
+            sheet.attach(msg, body, false, 0);
+
             if (inactive > 0) body.append("Inactive Receivers: " + inactive + "\n");
             if (vm > 0) body.append("vm Receivers: " + vm + "\n");
             if (noAA > 0) body.append("No Alliance Receivers: " + noAA + "\n");
             if (applicants > 0) body.append("applicant receivers: " + applicants + "\n");
 
             body.append("\nPress to confirm");
-            io.create().confirmation(title, body.toString(), command, "confirm").send();
+            msg.confirmation(title, body.toString(), command, "confirm").send();
             return null;
         }
 

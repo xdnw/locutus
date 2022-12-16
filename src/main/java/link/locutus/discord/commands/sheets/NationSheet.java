@@ -108,7 +108,7 @@ public class NationSheet extends Command implements Noformat {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
 //        I need, Nation name, nation link, score, war range, offensive/defensive slots open, military count (planes/tanks/ships/soldiers)
     }
 }

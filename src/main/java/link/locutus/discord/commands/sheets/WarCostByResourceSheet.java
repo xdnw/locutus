@@ -232,6 +232,6 @@ public class WarCostByResourceSheet extends Command {
             e.printStackTrace();
         }
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

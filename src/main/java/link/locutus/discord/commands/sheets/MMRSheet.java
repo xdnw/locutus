@@ -206,7 +206,7 @@ public class MMRSheet extends Command {
 
             sheet.clearAll();
             sheet.set(0, 0);
-            String response = "<" + sheet.getURL() + ">";
+            String response = sheet.getURL(true, true);
             if (!flags.contains('f')) response += "\nNote: Results may be outdated, add `-f` to update.";
             return response;
         } catch (Throwable e) {

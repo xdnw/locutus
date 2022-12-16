@@ -1694,12 +1694,12 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(desc = "Convert hidude's sheet format to locutus")
     @RolePermission(Roles.MILCOM)
-    public String convertHidudeSpySheet(@Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
+    public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsHidude(input, groupByAttacker, forceUpdate);
 
         if (output == null) {
@@ -1711,12 +1711,13 @@ public class WarCommands {
         output.clearAll();
         output.set(0, 0);
 
-        return "<" + output.getURL() + "> " + author.getAsMention();
+        output.send(io, null, author.getAsMention()).send();
+        return null;
     }
 
     @Command(desc = "Convert TKR's sheet format to locutus")
     @RolePermission(Roles.MILCOM)
-    public String convertTKRSpySheet(@Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
+    public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, forceUpdate);
 
         if (output == null) {
@@ -1728,7 +1729,8 @@ public class WarCommands {
         output.clearAll();
         output.set(0, 0);
 
-        return "<" + output.getURL() + "> " + author.getAsMention();
+        output.send(io, null, author.getAsMention()).send();
+        return null;
     }
 
     private void createOp(DBNation att, DBNation def, String type, String safety) {
@@ -1759,7 +1761,7 @@ public class WarCommands {
 
     @Command(desc = "List only spy targets for your specific alliance")
     @RolePermission(Roles.MILCOM)
-    public String listSpyTargets(@Me User author, @Me GuildDB db, SpreadSheet spySheet, Set<DBNation> attackers, @Default("*") Set<DBNation> defenders, @Switch("h") Integer headerRow, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker) throws GeneralSecurityException, IOException {
+    public String listSpyTargets(@Me IMessageIO io, @Me User author, @Me GuildDB db, SpreadSheet spySheet, Set<DBNation> attackers, @Default("*") Set<DBNation> defenders, @Switch("h") Integer headerRow, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker) throws GeneralSecurityException, IOException {
         if (headerRow == null) headerRow = 0;
         Map<DBNation, Set<Spyop>> spyOps = SpyBlitzGenerator.getTargets(spySheet, headerRow, false);
 
@@ -1790,14 +1792,15 @@ public class WarCommands {
         output.clearAll();
         output.set(0, 0);
 
-        return "<" + output.getURL() + "> " + author.getAsMention();
+        output.send(io, null, author.getAsMention()).send();
+        return null;
 
 
     }
 
     @Command(desc = "Generate a spy blitz sheet")
     @RolePermission(Roles.MILCOM)
-    public String SpySheet(@Me User author, @Me GuildDB db, Set<DBNation> attackers, Set<DBNation> defenders, @Default("nuke,missile,ships,aircraft,tanks,spies") Set<SpyCount.Operation> allowedTypes,
+    public String SpySheet(@Me IMessageIO io, @Me User author, @Me GuildDB db, Set<DBNation> attackers, Set<DBNation> defenders, @Default("nuke,missile,ships,aircraft,tanks,spies") Set<SpyCount.Operation> allowedTypes,
                            @Switch("f") boolean forceUpdate,
                            @Switch("e") boolean checkEspionageSlots,
 //                           @Switch("r") Integer requiredSpies,
@@ -1827,7 +1830,8 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + "> " + author.getAsMention();
+        sheet.send(io, null, author.getAsMention()).send();
+        return null;
     }
 
     private static void generateSpySheet(SpreadSheet sheet, Map<DBNation, List<Spyop>> opsAgainstNations) {
@@ -1981,7 +1985,7 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
@@ -2135,7 +2139,7 @@ public class WarCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        String response = "<" + sheet.getURL() + ">";
+        String response = sheet.getURL(true, true);
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
         return response;
     }
@@ -2280,7 +2284,7 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @RolePermission(Roles.MILCOM)
@@ -2399,7 +2403,7 @@ public class WarCommands {
 
             sheet.set(0, 0);
 
-            return "<" + sheet.getURL() + ">";
+            return sheet.getURL(true, true);
         } catch (Throwable e) {
             e.printStackTrace();
             return null;
@@ -2745,7 +2749,7 @@ public class WarCommands {
             "Add `-w` to process existing wars\n" +
             "Add `-e` to only assign down declares")
     @RolePermission(Roles.MILCOM)
-    public String blitzSheet(@Me User author, @Me GuildDB db, Set<DBNation> attNations, Set<DBNation> defNations, @Default("3") @Range(min=1,max=5) int maxOff,
+    public String blitzSheet(@Me IMessageIO io, @Me User author, @Me GuildDB db, Set<DBNation> attNations, Set<DBNation> defNations, @Default("3") @Range(min=1,max=5) int maxOff,
                              @Default("0") double sameAAPriority, @Default("0") double sameActivityPriority, @Default("-1") @Range(min=-1,max=11) int turn,
                              @Default("0.5") double attActivity, @Default("0.5") double defActivity,
                              @Switch("w") boolean processActiveWars,
@@ -2846,7 +2850,8 @@ public class WarCommands {
         sheet.clear("A:Z");
         sheet.write(rowData);
 
-        return "<" + sheet.getURL() + "> " + author.getAsMention();
+        sheet.send(io, null, author.getAsMention()).send();
+        return null;
     }
 
     private String getAttackerNote(DBNation nation) {
@@ -2977,7 +2982,7 @@ public class WarCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @RolePermission(value = Roles.MILCOM)
@@ -3204,7 +3209,7 @@ public class WarCommands {
 
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(desc = "Show the war card for a war by id")

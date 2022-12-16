@@ -163,7 +163,7 @@ public class CombatantSheet extends Command {
 
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
         } catch (Throwable e) {
             e.printStackTrace();
             return null;

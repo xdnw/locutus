@@ -318,7 +318,7 @@ public class SpySheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + "> " + author.getAsMention();
+        return sheet.getURL(true, true);
     }
 
     public static void generateSpySheet(SpreadSheet sheet, Map<DBNation, List<Spyop>> opsAgainstNations) {

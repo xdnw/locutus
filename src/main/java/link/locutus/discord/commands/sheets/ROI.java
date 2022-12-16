@@ -314,7 +314,7 @@ public class ROI extends Command {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            return "<" + sheet.getURL() + ">";
+            return sheet.getURL(true, true);
         } else {
             StringBuilder output = new StringBuilder("Weekly ROI (" + days + " days):\n");
             List<DBNation> nations = new ArrayList<>();

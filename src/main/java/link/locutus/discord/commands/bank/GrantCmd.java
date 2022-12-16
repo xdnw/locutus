@@ -168,7 +168,7 @@ public class GrantCmd extends Command {
             sheet.set(0, 0);
 
             String totalStr = PnwUtil.resourcesToString(total) + " worth ~$" + MathMan.format(PnwUtil.convertedTotal(total));
-            return "<" + sheet.getURL() + ">\n" + totalStr;
+            return "" + sheet.getURL(true, true) + "\n" + totalStr;
         }
 
         Grant grant = generateGrant(typeArg, guildDb, me, num, flags, true);

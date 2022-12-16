@@ -109,6 +109,6 @@ public class StrengthCitySheet extends Command {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

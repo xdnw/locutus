@@ -188,6 +188,6 @@ public class KDRSheet extends Command {
             e.printStackTrace();
         }
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }
