@@ -185,6 +185,12 @@ public class Settings extends Config {
         @Comment("Fetches all wars (default 5 minutes)")
         public int ALL_WAR_SECONDS = 60 * 5;
 
+        @Comment("Unload attacks after days (-1 = load all attacks)")
+        public int UNLOAD_ATTACKS_AFTER_DAYS = -1;
+
+        @Comment("Unload wars after days (-1 = load all wars)")
+        public int UNLOAD_WARS_AFTER_DAYS = -1;
+
         @Comment({"If escalation alerts are run every time all wars are updated",
                 "Requires ALL_WAR_SECONDS to be enabled"})
         public boolean ESCALATION_ALERTS = true;

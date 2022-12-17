@@ -85,12 +85,20 @@ public class WarDB extends DBMainV2 {
         warsByAllianceId = new Int2ObjectOpenHashMap<>();
         warsByNationId = new Int2ObjectOpenHashMap<>();
 
-        query("SELECT * FROM wars", f -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                DBWar war = create(rs);
-                setWar(war);
+        {
+            int days = Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS;
+            if (days != 0) {
+                long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+                String whereClause = days > 0 ? " WHERE date > " + date : "";
+                query("SELECT * FROM wars" + whereClause, f -> {
+                }, (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        DBWar war = create(rs);
+                        setWar(war);
+                    }
+                });
             }
-        });
+        }
 
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
 
@@ -1604,7 +1612,16 @@ public class WarDB extends DBMainV2 {
     }
 
     public Collection<DBAttack> loadAttacks() {
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2` ORDER BY `war_attack_id` ASC")) {
+        String whereClause;
+        if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS == 0) {
+            return allAttacks2;
+        } else if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS >= 0) {
+            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
+            whereClause = " WHERE date > " + date;
+        } else {
+            whereClause = "";
+        }
+        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2`" + whereClause + " ORDER BY `war_attack_id` ASC")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     allAttacks2.add(createAttack(rs));
@@ -1622,7 +1639,7 @@ public class WarDB extends DBMainV2 {
         return new RankBuilder<>(attacks).group(a -> a.war_id).get();
     }
 
-    public List<DBAttack> getAttacks2(Predicate<DBAttack> filter) {
+    public List<DBAttack> getAttacks(Predicate<DBAttack> filter) {
         int amt = 0;
         ObjectArrayList<DBAttack> list = new ObjectArrayList<>();
         synchronized (allAttacks2) {
