@@ -384,7 +384,7 @@ jar {
 }
 
 shadowJar {
-    minimize()
+//    minimize()
     zip64=true
     archiveName = "${name}-${project.name}-${version}.jar"
 }
