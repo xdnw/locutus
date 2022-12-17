@@ -1100,36 +1100,46 @@ public class DiscordUtil {
 
             for (String filterArg : filters) {
                 Map.Entry<String, Function<Double, Boolean>> filter = parseFilter(filterArg);
-                if (filter == null) {
+                {
                     Map.Entry<String, Function<String, Boolean>> strFilter = parseStringFilter(filterArg);
-                    if (strFilter == null) {
+                    if (strFilter == null && filter == null) {
                         throw new IllegalArgumentException("Invalid filter (1): `" + filterArg + "`");
                     }
-                    switch (strFilter.getKey().toLowerCase()) {
-                        case "#enemies":
-                        case "#sort":
-                        case "#inactive":
-                        case "#attacking":
-                        case "#fighting":
-                        case "#defending":
-                        case "#treaty":
-                            continue;
-                        case "#continent":
-                            nations.removeIf(n -> !strFilter.getValue().apply(n.getContinent().name().toLowerCase()));
-                            continue;
-                        case "#color":
-                            nations.removeIf(n -> !strFilter.getValue().apply(n.getColor().name().toLowerCase()));
-                            continue;
-                        case "#warpolicy":
-                        case "#policy":
-                            nations.removeIf(n -> !strFilter.getValue().apply(n.getWarPolicy().name().toLowerCase()));
-                            continue;
-                        case "#dompolicy":
-                        case "#domesticpolicy":
-                            nations.removeIf(n -> !strFilter.getValue().apply(n.getDomesticPolicy().name().toLowerCase()));
-                            continue;
-                        default:
-                            throw new IllegalArgumentException("Invalid filter (2): `" + filterArg + "`");
+                    if (strFilter != null) {
+                        switch (strFilter.getKey().toLowerCase()) {
+                            case "#enemies":
+                            case "#sort":
+                            case "#inactive":
+                            case "#attacking":
+                            case "#fighting":
+                            case "#defending":
+                            case "#treaty":
+                                continue;
+                            case "#continent":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getContinent().name().toLowerCase()));
+                                continue;
+                            case "#mmr":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getMMR().toLowerCase()));
+                                continue;
+                            case "#mmrbuildingstr":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getMMRBuildingStr().toLowerCase()));
+                                continue;
+                            case "#color":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getColor().name().toLowerCase()));
+                                continue;
+                            case "#warpolicy":
+                            case "#policy":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getWarPolicy().name().toLowerCase()));
+                                continue;
+                            case "#dompolicy":
+                            case "#domesticpolicy":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getDomesticPolicy().name().toLowerCase()));
+                                continue;
+                            default:
+                                if (filter == null) {
+                                    throw new IllegalArgumentException("Invalid filter (2): `" + filterArg + "`");
+                                }
+                        }
                     }
                 }
                 Project project = Projects.get(filter.getKey().substring(1));
@@ -1311,6 +1321,8 @@ public class DiscordUtil {
                                         }
                                     }
                                 });
+                            } else if (method.getReturnType() == String.class) {
+                                // todo
                             }
                         }
                     }
