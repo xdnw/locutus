@@ -8,17 +8,17 @@ import java.sql.SQLException;
 
 public class DBLoan {
     public int loanId;
-    public long serverId;
-    public long messageId;
+    public long loanerGuildOrAA;
+    public int loanerNation;
     public int nationId;
     public double[] resources;
     public long dueDate;
     public Status status;
 
-    public DBLoan(int loanId, long serverId, long messageId, int nationId, double[] resources, long dueDate, Status status) {
+    public DBLoan(int loanId, long loanerGuildOrAA, int loanerNation, int nationId, double[] resources, long dueDate, Status status) {
         this.loanId = loanId;
-        this.serverId = serverId;
-        this.messageId = messageId;
+        this.loanerGuildOrAA = loanerGuildOrAA;
+        this.loanerNation = loanerNation;
         this.nationId = nationId;
         this.resources = resources;
         this.dueDate = dueDate;
@@ -27,8 +27,8 @@ public class DBLoan {
 
     public DBLoan(ResultSet set) throws SQLException {
         this.loanId = set.getInt("loan_id");
-        this.serverId = set.getLong("server");
-        this.messageId = set.getLong("message");
+        this.loanerGuildOrAA = set.getLong("server");
+        this.loanerNation = set.getInt("message");
         this.nationId = set.getInt("receiver");
         this.resources = new double[ResourceType.values.length];
         long[] resourcesLong = ArrayUtil.toLongArray(set.getBytes("resources"));
@@ -49,10 +49,5 @@ public class DBLoan {
         Status(String s) {
             this.emoji = s;
         }
-    }
-
-    public void update() {
-//        JDA jda = Locutus.imp().getDiscordApi();
-        //TODO
     }
 }

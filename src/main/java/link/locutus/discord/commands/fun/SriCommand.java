@@ -55,7 +55,7 @@ public class SriCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sri";
+        return Settings.commandPrefix(true) + "sri";
     }
 
     @Override

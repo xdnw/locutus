@@ -26,7 +26,7 @@ public class Permission extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "permission <command> <value> [guild]";
+        return Settings.commandPrefix(true) + "permission <command> <value> [guild]";
     }
 
     @Override
@@ -49,7 +49,7 @@ public class Permission extends Command {
             }
         }
         if (cmd == null) {
-            return "Invalid cmd: `" + args.get(0) + "`" + ". For a list of commands use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "?`";
+            return "Invalid cmd: `" + args.get(0) + "`" + ". For a list of commands use `" + Settings.commandPrefix(true) + "?`";
         }
         GuildDB db;
         if (args.size() >= 3) {

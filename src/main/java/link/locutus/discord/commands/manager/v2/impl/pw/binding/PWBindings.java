@@ -1,7 +1,17 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv3.PWApiV3;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.SimpleNationPlaceholder;
@@ -21,14 +31,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
-import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -43,37 +48,27 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.trade.TradeManager;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
     @Binding(value = "City build json or url", examples = {"city/id=371923", "{city-json}", "city/id=1{json-modifiers}"})
-    public CityBuild city(@Me DBNation nation, String input) {
+    public CityBuild city(@Me DBNation nation, @TextArea String input) {
+        // {city X Nation}
         int index = input.indexOf('{');
         String json;
         if (index == -1) {
@@ -85,7 +80,7 @@ public class PWBindings extends BindingHelper {
         CityBuild build = null;
         if (input.contains("city/id=")) {
             int cityId = Integer.parseInt(input.split("=")[1]);
-            PWApiV3.CityDataV3 city = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
+            DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
             if (city == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
             build = city.toJavaCity(nation).toCityBuild();
         }
@@ -102,13 +97,39 @@ public class PWBindings extends BindingHelper {
         return CityRanges.parse(input);
     }
 
-    @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
-    public DBNation nation(String input) {
-        return DiscordUtil.parseNation(input);
+    @Binding(value = "War", examples = {"https://politicsandwar.com/nation/war/timeline/war=1234"})
+    public DBWar war(String arg0) {
+        if (arg0.contains("/war=")) {
+            arg0 = arg0.split("=")[1];
+        }
+        if (!MathMan.isInteger(arg0)) {
+            throw new IllegalArgumentException("Not a valid war number: `" + arg0 + "`");
+        }
+        int warId = Integer.parseInt(arg0);
+        DBWar war = Locutus.imp().getWarDb().getWar(warId);
+        if (war == null) throw new IllegalArgumentException("No war founds for id: `" + warId + "`");
+        return war;
     }
 
-    @Binding()
-    public NationOrAlliance nationOrAlliance(String input) {
+    @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
+    public DBNation nation(String input) {
+        DBNation nation = DiscordUtil.parseNation(input);
+        if (nation == null) throw new IllegalArgumentException("No such nation: `" + input + "`");
+        return nation;
+    }
+
+    @Binding(value = "Four numbers representing barracks,factory,hangar,drydock", examples = {"5553", "0/2/5/0"})
+    public MMRInt mmrInt(String input) {
+        return MMRInt.fromString(input);
+    }
+
+    @Binding(value = "Four numbers representing barracks, factory, hangar, drydock", examples = {"0.0/2.0/5.0/0.0", "5553"})
+    public MMRDouble mmrDouble(String input) {
+        return MMRDouble.fromString(input);
+    }
+
+    @Binding
+    public static NationOrAlliance nationOrAlliance(String input) {
         String lower = input.toLowerCase();
         if (lower.startsWith("aa:")) {
             return alliance(input.split(":", 2)[1]);
@@ -123,13 +144,18 @@ public class PWBindings extends BindingHelper {
         return nation;
     }
 
+    @Binding
+    public NationPlaceholders placeholders() {
+        return Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+    }
+
     @Binding(examples = "{nation}")
-    public NationPlaceholder placeholder(ArgumentStack stack, String input) {
+    public NationPlaceholder placeholder(ValueStore store, PermissionHandler permisser, String input) {
         CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
         NationPlaceholders placeholders = v2.getNationPlaceholders();
         ParametricCallable ph = placeholders.get(input);
-        ph.validatePermissions(stack.getStore(), stack.getPermissionHandler());
-        Map.Entry<Type, Function<DBNation, Object>> entry = placeholders.getPlaceholderFunction(stack.getStore(), input);
+        ph.validatePermissions(store, permisser);
+        Map.Entry<Type, Function<DBNation, Object>> entry = placeholders.getPlaceholderFunction(store, input);
         return new SimpleNationPlaceholder(ph.getPrimaryCommandId(), entry.getKey(), entry.getValue());
     }
 
@@ -143,7 +169,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = {"Borg", "alliance/id=7452", "647252780817448972"})
-    public NationOrAllianceOrGuild nationOrAllianceOrGuild(String input) {
+    public static NationOrAllianceOrGuild nationOrAllianceOrGuild(String input) {
         try {
             return nationOrAlliance(input);
         } catch (IllegalArgumentException ignore) {
@@ -175,10 +201,21 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = {"'Error 404'", "7413", "https://politicsandwar.com/alliance/id=7413"})
-    public Alliance alliance(String input) {
+    public static DBAlliance alliance(String input) {
         Integer aaId = PnwUtil.parseAllianceId(input);
         if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + input);
-        return new Alliance(aaId);
+        return DBAlliance.getOrCreate(aaId);
+    }
+
+    @Binding(value = "Audit types")
+    public Set<IACheckup.AuditType> auditTypes(String input) {
+        return emumSet(IACheckup.AuditType.class, input);
+    }
+
+    @Binding(value = "Continent types")
+    public Set<Continent> continentTypes(String input) {
+        if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
+        return emumSet(Continent.class, input);
     }
 
     @Binding(value = "Spy operation")
@@ -207,6 +244,17 @@ public class PWBindings extends BindingHelper {
         return metrics;
     }
 
+    @Binding
+    public Set<Project> projects(String input) {
+        Set<Project> result = new HashSet<>();
+        for (String type : input.split(",")) {
+            Project project = Projects.get(type);
+            if (project == null) throw new IllegalArgumentException("Invalid project: `" + project + "`");
+            result.add(project);
+        }
+        return result;
+    }
+
     @Binding(examples = "borg,AA:Cataclysm,#position>1")
     public Set<DBNation> nations(@Me Guild guild, String input) {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, input);
@@ -220,10 +268,19 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "score,soldiers")
-    public Set<NationMetricDouble> nationMetricDoubles(ArgumentStack stack, String input) {
-        Set<NationMetricDouble> metrics = new LinkedHashSet<>();
+    public Set<NationAttributeDouble> nationMetricDoubles(ValueStore store, String input) {
+        Set<NationAttributeDouble> metrics = new LinkedHashSet<>();
         for (String arg : StringMan.split(input, ',')) {
-            metrics.add(nationMetricDouble(stack, arg));
+            metrics.add(nationMetricDouble(store, arg));
+        }
+        return metrics;
+    }
+
+    @Binding(examples = "warpolicy,color")
+    public Set<NationAttribute> nationMetrics(ValueStore store, String input) {
+        Set<NationAttribute> metrics = new LinkedHashSet<>();
+        for (String arg : StringMan.split(input, ',')) {
+            metrics.add(nationMetric(store, arg));
         }
         return metrics;
     }
@@ -240,7 +297,7 @@ public class PWBindings extends BindingHelper {
                 GuildDB db = Locutus.imp().getGuildDB(guild);
                 for (String arg : args) {
                     try {
-                        Alliance aa = alliance(arg);
+                        DBAlliance aa = alliance(arg);
                         if (aa.exists()) {
                             result.add(aa);
                             continue;
@@ -252,7 +309,7 @@ public class PWBindings extends BindingHelper {
                         if (arg.charAt(0) == '~') arg = arg.substring(1);
                         Set<Integer> coalition = db.getCoalition(arg);
                         if (!coalition.isEmpty()) {
-                            result.addAll(coalition.stream().map(Alliance::new).collect(Collectors.toSet()));
+                            result.addAll(coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet()));
                             continue;
                         }
                     }
@@ -296,7 +353,7 @@ public class PWBindings extends BindingHelper {
                 }
             }
 
-            Alliance aa = alliance(arg);
+            DBAlliance aa = alliance(arg);
             try {
                 if (aa.exists()) {
                     result.add(aa);
@@ -308,7 +365,7 @@ public class PWBindings extends BindingHelper {
                 if (arg.charAt(0) == '~') arg = arg.substring(1);
                 Set<Integer> coalition = db.getCoalition(arg);
                 if (!coalition.isEmpty()) {
-                    result.addAll(coalition.stream().map(f -> new Alliance(f)).collect(Collectors.toSet()));
+                    result.addAll(coalition.stream().map(f -> DBAlliance.getOrCreate(f)).collect(Collectors.toSet()));
                     continue;
                 }
             }
@@ -320,12 +377,12 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "Cataclysm,790")
-    public Set<Alliance> alliances(@Me Guild guild, String input) {
+    public Set<DBAlliance> alliances(@Me Guild guild, String input) {
         Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, input);
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
-        Set<Alliance> alliances = new HashSet<>();
+        Set<DBAlliance> alliances = new HashSet<>();
         for (Integer aaId : aaIds) {
-            alliances.add(new Alliance(aaId));
+            alliances.add(DBAlliance.getOrCreate(aaId));
         }
         return alliances;
     }
@@ -339,6 +396,17 @@ public class PWBindings extends BindingHelper {
         }
         return result;
     }
+
+    @Binding(examples = "ATTRITION,RAID")
+    public Set<WarType> WarType(String input) {
+        return emumSet(WarType.class, input);
+    }
+
+    @Binding(examples = "GROUND,VICTORY")
+    public Set<AttackType> AttackType(String input) {
+        return emumSet(AttackType.class, input);
+    }
+
 
     @Binding(examples = {"aluminum", "money", "*", "manu", "raws", "!food"})
     public static List<ResourceType> rssTypes(String input) {
@@ -416,8 +484,14 @@ public class PWBindings extends BindingHelper {
     @Me
     public DBNation nation(@Me User user) {
         DBNation nation = DiscordUtil.getNation(user);
-        if (nation == null) throw new IllegalArgumentException("Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify");
+        if (nation == null) throw new IllegalArgumentException("Please use " + CM.register.cmd.toSlashMention() + "");
         return nation;
+    }
+
+    @Binding
+    @Me
+    public IMessageIO io() {
+        throw new IllegalArgumentException("No channel io binding found");
     }
 
     @Binding
@@ -430,8 +504,8 @@ public class PWBindings extends BindingHelper {
 
     @Binding
     @Me
-    public Alliance alliance(@Me DBNation nation) {
-        return new Alliance(nation.getAlliance_id());
+    public DBAlliance alliance(@Me DBNation nation) {
+        return DBAlliance.getOrCreate(nation.getAlliance_id());
     }
 
     @Binding
@@ -455,6 +529,11 @@ public class PWBindings extends BindingHelper {
     @Binding
     public WarStatus status(String input) {
         return WarStatus.parse(input);
+    }
+
+    @Binding
+    public AttackType attackType(String input) {
+        return emum(AttackType.class, input);
     }
 
     @Binding
@@ -515,7 +594,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public TradeDB tradeDB() {
+    public link.locutus.discord.db.TradeDB tradeDB() {
         return Locutus.imp().getTradeManager().getTradeDb();
     }
 
@@ -533,8 +612,33 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
+    public NationLootType lootType(String input) {
+        return emum(NationLootType.class, input);
+    }
+
+    @Binding
+    public ReportCommands.ReportType reportType(String input) {
+        return emum(ReportCommands.ReportType.class, input);
+    }
+
+    @Binding
     public Rank rank(String rank) {
         return emum(Rank.class, rank);
+    }
+
+    @Binding
+    public static DBAlliancePosition position(@Me GuildDB db, String name) {
+        DBAlliancePosition result = DBAlliancePosition.parse(name, db.getAlliance_id(), true);
+        System.out.println("Position " + result + " | " + name);
+        if (result == null) throw new IllegalArgumentException("Unknown position: `" + name +
+                "`. Options: " + StringMan.getString(db.getAlliance().getPositions().stream().map(DBAlliancePosition::getName).collect(Collectors.toList()))
+                + " / Special: remove/applicant");
+        return result;
+    }
+
+    @Binding
+    public AlliancePermission alliancePermission(String name) {
+        return emum(AlliancePermission.class, name);
     }
 
     @Binding
@@ -558,6 +662,11 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
+    public Continent Continent(String input) {
+        return emum(Continent.class, input);
+    }
+
+    @Binding
     public Operation op(String input) {
         return emum(Operation.class, input);
     }
@@ -578,13 +687,17 @@ public class PWBindings extends BindingHelper {
         input = input.toLowerCase();
         Set<String> coalitions = new HashSet<>(db.getCoalitions().keySet());
         for (Coalition value : Coalition.values()) coalitions.add(value.name().toLowerCase());
-        if (!coalitions.contains(input)) throw new IllegalArgumentException("No coalition found matching: `" + input + "`. Options: " + StringMan.getString(coalitions));
+        if (!coalitions.contains(input)) throw new IllegalArgumentException(
+                "No coalition found matching: `" + input +
+                        "`. Options: " + StringMan.getString(coalitions) + "\n" +
+                        "Create it via " + CM.coalition.create.cmd.toSlashMention()
+        );
         return input;
     }
 
     @Me
     @Binding
-    public WarCategory.WarRoom warRoom(@Me WarCategory warCat, @Me MessageChannel channel) {
+    public WarCategory.WarRoom warRoom(@Me WarCategory warCat, @Me TextChannel channel) {
         WarCategory.WarRoom warroom = warCat.getWarRoom(((GuildMessageChannel) channel));
         if (warroom == null) throw new IllegalArgumentException("The command was not run in a war room");
         return warroom;
@@ -593,7 +706,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     public WarCategory warChannelBinding(@Me GuildDB db) {
         WarCategory warChannel = db.getWarChannel(true);
-        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ENABLE_WAR_ROOMS true`");
+        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true").toSlashMention() + "");
         return warChannel;
     }
 
@@ -620,11 +733,22 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public NationMetricDouble nationMetricDouble(ArgumentStack stack, String input) {
+    public NationAttributeDouble nationMetricDouble(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        NationMetricDouble metric = placeholders.getMetricDouble(stack.getStore(), input);
+        NationAttributeDouble metric = placeholders.getMetricDouble(store, input);
         if (metric == null) {
-            String optionsStr = StringMan.getString(placeholders.getMetricsDouble(stack.getStore()).stream().map(f -> f.getName()).collect(Collectors.toList()));
+            String optionsStr = StringMan.getString(placeholders.getMetricsDouble(store).stream().map(NationAttribute::getName).collect(Collectors.toList()));
+            throw new IllegalArgumentException("Invalid metric: `" + input + "`. Options: " + optionsStr);
+        }
+        return metric;
+    }
+
+    @Binding
+    public NationAttribute nationMetric(ValueStore store, String input) {
+        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+        NationAttribute metric = placeholders.getMetric(store, input, false);
+        if (metric == null) {
+            String optionsStr = StringMan.getString(placeholders.getMetrics(store).stream().map(NationAttribute::getName).collect(Collectors.toList()));
             throw new IllegalArgumentException("Invalid metric: `" + input + "`. Options: " + optionsStr);
         }
         return metric;
@@ -642,7 +766,7 @@ public class PWBindings extends BindingHelper {
             int moneyRate = Integer.parseInt(split[0]);
             int rssRate = Integer.parseInt(split[1]);
 
-            Auth auth = db.getAuth();
+            Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
             Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
@@ -657,7 +781,7 @@ public class PWBindings extends BindingHelper {
         }
         String[] split = input.split("=");
         int taxId = Integer.parseInt(split[split.length - 1]);
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
         Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;

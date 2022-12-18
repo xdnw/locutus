@@ -3,7 +3,9 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
@@ -115,14 +117,15 @@ public class UnitHistory extends Command {
             }
         }
 
-            String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+        CM.unit.history cmd = CM.unit.history.cmd.create(nation.getNation_id() + "", unit.name(), null);
 
         String title = "`" + nation.getNation() + "` " + unit.name() + " history";
         int perPage =15;
         int pages = (results.size() + perPage - 1) / perPage;
         if (page == null) page = 0;
         title += " (" + (page + 1) + "/" + pages +")";
-        DiscordUtil.paginate(event.getGuildChannel(), title, cmd, page, perPage, results, footer.toString());
+
+        new DiscordChannelIO(event).create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send();
         return null;
     }
 }

@@ -4,7 +4,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
@@ -89,15 +89,15 @@ public class QuestionCommand<T extends Question> extends Command { private final
 
         List<String> reactions = new ArrayList<>();
         String[] options = question.getOptions();
-        String cmdBase = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "interview " + (index) + " " + author.getAsMention();
+        String cmdBase = Settings.commandPrefix(true) + "interview " + (index) + " " + author.getAsMention();
 
         if (options.length == 0) {
             cmdBase += " Y";
-            String emoji = "\u27A1\uFE0F";
+            String emoji = "Next";
             reactions.add(emoji);
             reactions.add(cmdBase);
 
-            body += "\n\nPress " + emoji + " to continue";
+            body += "\n\nPress `" + emoji + "` to continue";
         } else {
             for (String option : options) {
                 String emojo = option.toLowerCase();

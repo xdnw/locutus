@@ -7,7 +7,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -75,7 +75,7 @@ public class WarCommand extends Command {
 
         if (nationArg != null) me = DiscordUtil.parseNation(nationArg);
         if (me == null) {
-            return "Invalid nation? Are you sure you are registered?";
+            return "Invalid nation? Are you sure you are registered?" + event.getAuthor().getAsMention();
         }
 
         MessageChannel channel;
@@ -104,7 +104,7 @@ public class WarCommand extends Command {
                 if (aa == null) {
                     Set<Integer> enemies = db.getCoalitions().get("enemies");
                     if (enemies == null || enemies.isEmpty()) {
-                        return "No enemies set. Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> enemies` or specify an enemy alliance/coalition as your second parameter";
+                        return "No enemies set. Please use `" + Settings.commandPrefix(true) + "setcoalition <alliance> enemies` or specify an enemy alliance/coalition as your second parameter";
                     }
                     nations = Locutus.imp().getNationDB().getNations(new HashSet<>(enemies));
                     if (!includeApplicants) {
@@ -181,7 +181,7 @@ public class WarCommand extends Command {
 
                     long currentTurn = TimeUtil.getTurn();
 
-                    List<Map.Entry<DBNation, Double>> nationNetValues = new LinkedList<>();
+                    List<Map.Entry<DBNation, Double>> nationNetValues = new ArrayList<>();
 
                     GuildDB rootDB = Locutus.imp().getGuildDB(Locutus.imp().getServer());
 
@@ -274,12 +274,12 @@ public class WarCommand extends Command {
                         if (nationNetValues.isEmpty()) {
                             String message;
                             if (flags.contains('p')) {
-                                message = "No targets found. Try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "war`";
+                                message = "No targets found. Try `" + Settings.commandPrefix(true) + "war`";
                             } else {
                                 message = "No targets found:\n" +
                                         " - Add `-i` to include inactives\n" +
                                         " - Add `-a` to include applicants\n" +
-                                        "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "war -i -a`";
+                                        "e.g. `" + Settings.commandPrefix(true) + "war -i -a`";
                             }
                             RateLimitUtil.queue(channel.sendMessage(message));
                             return null;
@@ -303,7 +303,7 @@ public class WarCommand extends Command {
                         response.append('\n')
                                 .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                                 .append(" | " + String.format("%16s", nation.getNation()))
-                                .append(" | " + String.format("%16s", nation.getAlliance()));
+                                .append(" | " + String.format("%16s", nation.getAllianceName()));
 
                         if (whitelisted) {
                             double total = nation.lootTotal();

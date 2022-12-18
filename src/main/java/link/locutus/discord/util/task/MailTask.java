@@ -2,7 +2,7 @@ package link.locutus.discord.util.task;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.PnwUtil;
@@ -53,7 +53,7 @@ public class MailTask implements Callable<String> {
                         String result = MailTask.this.call();
                         Guild server = Locutus.imp().getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER);
                         if (output != null) {
-                            RateLimitUtil.queue(output.sendMessage(result));
+                            RateLimitUtil.queueWhenFree(output.sendMessage(result));
                         }
                         return result;
                     }), 3, TimeUnit.MINUTES);

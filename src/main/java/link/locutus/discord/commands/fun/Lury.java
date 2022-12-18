@@ -23,7 +23,7 @@ public class Lury extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "lury";
+        return Settings.commandPrefix(true) + "lury";
     }
 
     @Override

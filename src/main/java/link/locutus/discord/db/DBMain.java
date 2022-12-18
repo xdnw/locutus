@@ -8,6 +8,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -40,6 +41,14 @@ public abstract class DBMain implements Closeable {
 
         connection = openConnection();
         createTables();
+    }
+
+    public boolean tableExists(String tableName) throws SQLException {
+        DatabaseMetaData meta = getConnection().getMetaData();
+        try (ResultSet resultSet = meta.getTables(null, null, tableName, new String[] {"TABLE"})) {
+
+            return resultSet.next();
+        }
     }
 
     protected int getIntDef0(ResultSet rs, String id) throws SQLException {

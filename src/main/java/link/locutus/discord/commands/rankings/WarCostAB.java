@@ -1,8 +1,12 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CoalitionWarStatus;
@@ -11,7 +15,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.WarAttackParser;
 import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -21,13 +25,12 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class WarCostAB extends Command {
     public WarCostAB() {
@@ -36,7 +39,7 @@ public class WarCostAB extends Command {
 
     @Override
     public String help() {
-        return "`" + super.help() + " <alliance|coalition> <alliance|coalition> <days>` OR `" + super.help() + " <war-url>`";
+        return "`" + super.help() + " <alliance|coalition> <alliance|coalition> <days> [days-end]` OR `" + super.help() + " <war-url>`";
     }
 
     @Override
@@ -53,25 +56,32 @@ public class WarCostAB extends Command {
                 "Add -l to exclude loot\n" +
                 "Add -w to list the wars (txt file)\n" +
                 "Add -t to list the war types\n" +
-                "Add `-s` to list war status";
+                "Add `-s` to list war status\n" +
+                "Add e.g `attack_type:GROUND,VICTORY` to filter by attack type\n" +
+                "Add `success:0` to filter by e.g. `utter failure`";
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty() || args.size() > 3 || (args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
+        String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
+        String attackSuccesStr = DiscordUtil.parseArg(args, "success");
+        if (args.isEmpty() || args.size() > 4 || (args.size() >= 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
             return usage(event);
         }
 
         String arg0 = args.get(0);
 
         WarAttackParser parser = new WarAttackParser(guild, args, flags);
+        if (attackTypeStr != null) {
+            Set<AttackType> options = new HashSet<>(BindingHelper.emumList(AttackType.class, attackTypeStr.toUpperCase(Locale.ROOT)));
+            parser.getAttacks().removeIf(f -> !options.contains(f.attack_type));
+        }
+        if (attackSuccesStr != null) {
+            Set<Integer> options = Arrays.stream(attackSuccesStr.split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toSet());
+            parser.getAttacks().removeIf(f -> !options.contains(f.success));
+        }
 
         AttackCost cost = parser.toWarCost();
-
-        String withPirateStr = DiscordUtil.parseArg(args, "w_pirate");
-        String withTypeStr = DiscordUtil.parseArg(args, "w_type");
-        Boolean withPirate = withPirateStr == null ? null : Boolean.parseBoolean(withPirateStr);
-        WarType withType = withTypeStr == null ? null : WarType.parse(withTypeStr);
 
         StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l')));
         if (flags.contains('w')) {
@@ -123,24 +133,18 @@ public class WarCostAB extends Command {
             DiscordUtil.createEmbedCommand(event.getChannel(), "War Status", response.toString());
         }
 
-        if (flags.contains('l')) {
-            Set<Integer> wars = cost.getWarIds();
-        }
-
         if (Roles.ECON.has(author, guild)) {
             if (arg0.contains("/war=")) {
                 arg0 = arg0.split("war=")[1];
                 int warId = Integer.parseInt(arg0);
                 DBWar warUrl = Locutus.imp().getWarDb().getWar(warId);
-                reimburse(cost, warUrl, event);
+                reimburse(cost, warUrl, event.getGuild(), new DiscordChannelIO(event));
             }
         }
         return result.toString();
     }
 
-    private void reimburse(AttackCost cost, DBWar warUrl, MessageReceivedEvent event) {
-        Guild guild = event.isFromGuild() ? event.getGuild() : null;
-        if (guild == null) return;
+    public static void reimburse(AttackCost cost, DBWar warUrl, Guild guild, IMessageIO io) {
         if (warUrl == null) {
             return;
         }
@@ -189,24 +193,28 @@ public class WarCostAB extends Command {
                 break;
         }
 
-        GuildMessageChannel channel = event.getGuildChannel();
         String totalStr = PnwUtil.resourcesToString(total);
 
         String note = "#counter=" + warUrl.warId;
         List<Transaction2> transactions = db.getTransactionsByNote(note, false);
         if (!transactions.isEmpty()) {
-            DiscordUtil.createEmbedCommand(channel, "Reimbursed", "Already reimbursed:\n" + totalStr);
+            io.send("Already reimbursed:\n" + totalStr +" to " + warUrl.toUrl());
             return;
         }
 
         String title = "Reimburse: ~$" + MathMan.format(PnwUtil.convertedTotal(total));
         String body = "Type: " + type + "\n" + "Amt: " + totalStr;
 
-        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "addbalance " + nation.getNationUrl() + " " + totalStr + " \"" + note + "\"";
+        String reimburseEmoji = "Reimburse";
+        String cmd = Settings.commandPrefix(true) + "addbalance " + nation.getNationUrl() + " " + totalStr + " \"" + note + "\"";
 
-        String infoEmoji = "\u2139";
-        String infoCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warinfo " + warUrl.toUrl();
+        String infoEmoji = "War Info";
+        String infoCmd = Settings.commandPrefix(true) + "warinfo " + warUrl.toUrl();
 
-        DiscordUtil.createEmbedCommand(channel, title, body, "\u2705", cmd, infoEmoji, infoCmd);
+        io.create()
+            .embed(title, body)
+            .commandButton(cmd, reimburseEmoji)
+            .commandButton(infoCmd, infoEmoji)
+            .send();
     }
 }

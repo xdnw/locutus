@@ -1,7 +1,8 @@
 package link.locutus.discord.util.offshore;
 
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -9,12 +10,14 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.TimeUtil;
 
 import java.lang.reflect.Member;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -107,11 +110,12 @@ public class Grant {
     }
 
     public static double getCityInfraGranted(DBNation nation, int cityId, Collection<Transaction2> transactions) {
-        Map<Integer, Double> infraGrants = Grant.getInfraGrantsByCity(nation, transactions);
+        Map<Integer, Map<Long, Double>> infraGrants = Grant.getInfraGrantsByCityByDate(nation, transactions);
         Map<Integer, JavaCity> cityMap = nation.getCityMap(false, false);
         JavaCity city = cityMap.get(cityId);
         if (city == null) return Double.MAX_VALUE;
-        double maxGranted = infraGrants.getOrDefault(cityId, 0d);
+        Map<Long, Double> maxGrantedDate = infraGrants.getOrDefault(cityId, Collections.singletonMap(0L, 10d));
+        double maxGranted = Collections.max(maxGrantedDate.values());
         maxGranted = Math.max(maxGranted, city.getRequiredInfra());
         maxGranted = Math.max(maxGranted, city.getInfra());
         return maxGranted;
@@ -128,7 +132,7 @@ public class Grant {
                 try {
                     double amt = Double.parseDouble(infraAmt);
 
-                    Set<Integer> cities = getCities(transaction.note);
+                    Set<Integer> cities = getCities(nation, transaction.note, transaction.tx_datetime);
                     if (cities == null) {
                         cities = getCityIdsBeforeDate(nation, transaction.tx_datetime);
                     }
@@ -143,8 +147,8 @@ public class Grant {
         return null;
     }
 
-    public static Map<Integer, Double> getInfraGrantsByCity(DBNation nation, Collection<Transaction2> transactions) {
-        Map<Integer, Double> result = new HashMap<>();
+    public static Map<Integer, Map<Long, Double>> getInfraGrantsByCityByDate(DBNation nation, Collection<Transaction2> transactions) {
+        Map<Integer, Map<Long, Double>> result = new HashMap<>();
 
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
@@ -154,13 +158,12 @@ public class Grant {
                 try {
                     double amt = Double.parseDouble(infraAmt);
 
-                    Set<Integer> cities = getCities(transaction.note);
+                    Set<Integer> cities = getCities(nation, transaction.note, transaction.tx_datetime);
                     if (cities == null) {
                         cities = getCityIdsBeforeDate(nation, transaction.tx_datetime);
                     }
                     for (Integer cityId : cities) {
-                        double max = Math.max(result.getOrDefault(cityId, 0d), amt);
-                        result.put(cityId, max);
+                        result.computeIfAbsent(cityId, f -> new HashMap<>()).put(transaction.tx_datetime, amt);
                     }
                 } catch (NumberFormatException ignore) {}
             }
@@ -169,13 +172,20 @@ public class Grant {
         return null;
     }
 
-    public static boolean hasGrantedCity(Collection<Transaction2> transactions, int city) {
+    public static boolean hasGrantedCity(DBNation nation, Collection<Transaction2> transactions, int city) {
         Set<Long> costs = new HashSet<>();
         for (boolean md : new boolean[]{true, false}) {
             for (boolean cp : new boolean[]{true, false}) {
+                if (cp && !nation.hasProject(Projects.URBAN_PLANNING)) continue;
                 for (boolean aup : new boolean[]{true, false}) {
-                    double cost = PnwUtil.nextCityCost(city - 1, md, cp, aup);
-                    costs.add(Math.round(cost));
+                    if (aup && !nation.hasProject(Projects.ADVANCED_URBAN_PLANNING)) continue;
+                    for (boolean mp : new boolean[]{true, false}) {
+                        for (boolean gsa : new boolean[]{true, false}) {
+                            if (gsa && !nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) continue;
+                            double cost = PnwUtil.nextCityCost(city - 1, md, cp, aup, mp, gsa);
+                            costs.add(Math.round(cost));
+                        }
+                    }
                 }
             }
         }
@@ -183,7 +193,7 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#city")) continue;
-            Set<Integer> cities = Grant.getCities(transaction.note);
+            Set<Integer> cities = Grant.getCities(nation, transaction.note, transaction.tx_datetime);
             Double amount = Grant.getAmount(transaction.note);
 
             if (cities != null && cities.size() == 1) {
@@ -316,7 +326,14 @@ public class Grant {
         this.cities = new LinkedHashSet<>();
     }
 
-    public static Set<Integer> getCities(String note) {
+    public static List<Integer> getNCityIdAfter(DBNation nation, long date, int amt) {
+        List<DBCity> cities = new ArrayList<>(nation._getCitiesV3().values());
+        cities.removeIf(f -> f.created < date);
+        cities.sort(Comparator.comparingLong(o -> o.created));
+        return cities.subList(0, Math.min(cities.size(), amt)).stream().map(f -> f.id).toList();
+    }
+
+    public static Set<Integer> getCities(DBNation nation, String note, long date) {
         Map<String, String> parsed = PnwUtil.parseTransferHashNotes(note);
         String citiesStr = parsed.get("cities");
         if (citiesStr != null) {
@@ -324,6 +341,8 @@ public class Grant {
             for (String s : citiesStr.split(",")) {
                 if (MathMan.isInteger(s)) {
                     result.add(Integer.parseInt(s));
+                } else if (s.equalsIgnoreCase("*")) {
+                    result.addAll(getCityIdsBeforeDate(nation, date));
                 }
             }
             return result;
@@ -364,8 +383,15 @@ public class Grant {
         return this;
     }
 
+    public Grant addExpiry(long timediff) {
+        if (timediff <= 0) addNote("#ignore");
+        else addNote("#expire=" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timediff));
+        return this;
+    }
     public Grant addExpiry(int days) {
-        return addNote("#expire=" + days + "d");
+        if (days <= 0) addNote("#ignore");
+        else addNote("#expire=" + days + "d");
+        return this;
     }
 
     public Grant addNote(String note) {

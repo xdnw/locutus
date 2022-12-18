@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete;
 
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -22,11 +24,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.lang.reflect.Type;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -82,6 +80,8 @@ public class DiscordCompleter extends BindingHelper {
     public final Set<Role> ROLES_KEY = null;
     public final Set<Member> MEMBERS_KEY = null;
 
+    public final Set<Project> PROJECTS_KEY = null;
+
 
     {
         try {
@@ -116,6 +116,22 @@ public class DiscordCompleter extends BindingHelper {
                                 return DiscordBindings.role(guild, s);
                             }
                         }, Role::getName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("PROJECTS_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+
+                        List<Project> options = Arrays.asList(Projects.values);
+                        return StringMan.autocompleteComma(input.toString(), options, new Function<String, Project>() {
+                            @Override
+                            public Project apply(String s) {
+                                return Projects.get(s);
+                            }
+                        }, Project::name, Project::name, OptionData.MAX_CHOICES);
                     }));
                 });
             }

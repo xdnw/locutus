@@ -3,9 +3,10 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.MarkupUtil;
@@ -66,25 +67,25 @@ public class MilitaryRanking extends Command {
         Map<Integer, Double> sphereScore = new HashMap<>();
         Map<Integer, Map<Integer, NationList>> sphereAllianceMembers = new HashMap<>();
 
-        Map<Integer, Alliance> aaCache = new HashMap<>();
+        Map<Integer, DBAlliance> aaCache = new HashMap<>();
 
         int topX = 80;
         for (Map.Entry<Integer, List<DBNation>> entry : byAA.entrySet()) {
             if (topX-- <= 0) break;
             Integer aaId = entry.getKey();
-            Alliance alliance = aaCache.computeIfAbsent(aaId, f -> new Alliance(aaId));
-            List<Alliance> sphere = alliance.getSphereRankedCached(aaCache);
+            DBAlliance alliance = aaCache.computeIfAbsent(aaId, f -> DBAlliance.getOrCreate(aaId));
+            List<DBAlliance> sphere = alliance.getSphereRankedCached(aaCache);
             int sphereId = sphere.get(0).getAlliance_id();
 
             {
-                List<DBNation> nations = alliance.getNations(true, 2880, true);
+                Set<DBNation> nations = alliance.getNations(true, 2880, true);
                 SimpleNationList nationList = new SimpleNationList(nations);
                 sphereAllianceMembers.computeIfAbsent(sphereId, f -> new HashMap<>()).put(alliance.getAlliance_id(), nationList);
             }
 
             if (!sphereScore.containsKey(sphereId)) {
                 List<DBNation> nations = new ArrayList<>();
-                for (Alliance other : sphere) {
+                for (DBAlliance other : sphere) {
                     nations.addAll(other.getNations(true, 2880, true));
                 }
                 SimpleNationList nationList = new SimpleNationList(nations);
@@ -148,7 +149,7 @@ public class MilitaryRanking extends Command {
 
                 ArrayList<Object> row = new ArrayList<>();
                 if (aaId != 0) {
-                    Alliance alliance = new Alliance(aaId);
+                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                     row.add(MarkupUtil.sheetUrl(alliance.getName(), alliance.getUrl()));
                 } else {
                     row.add("");
@@ -162,10 +163,10 @@ public class MilitaryRanking extends Command {
                 row.add(total.getAircraft());
                 row.add(total.getShips());
 
-                double soldierPct = 100 * (double) total.getSoldiers() / (Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() * total.getCities());
-                double tankPct = 100 * (double) total.getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap() * total.getCities());
-                double airPct = 100 * (double) total.getAircraft() / (Buildings.HANGAR.max() * Buildings.HANGAR.cap() * total.getCities());
-                double navyPct = 100 * (double) total.getShips() / (Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap() * total.getCities());
+                double soldierPct = 100 * (double) total.getSoldiers() / (Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(total::hasProject) * total.getCities());
+                double tankPct = 100 * (double) total.getTanks() / (Buildings.FACTORY.max() * Buildings.FACTORY.cap(total::hasProject) * total.getCities());
+                double airPct = 100 * (double) total.getAircraft() / (Buildings.HANGAR.max() * Buildings.HANGAR.cap(total::hasProject) * total.getCities());
+                double navyPct = 100 * (double) total.getShips() / (Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(total::hasProject) * total.getCities());
 
                 row.add(soldierPct);
                 row.add(tankPct);
@@ -173,10 +174,10 @@ public class MilitaryRanking extends Command {
                 row.add( navyPct);
 
                 double[] mmr = nations.getAverageMMR(false);
-                row.add(mmr[0] * 100 / Buildings.BARRACKS.cap());
-                row.add(mmr[1] * 100 / Buildings.FACTORY.cap());
-                row.add(mmr[2] * 100 / Buildings.HANGAR.cap());
-                row.add(mmr[3] * 100 / Buildings.DRYDOCK.cap());
+                row.add(mmr[0] * 100 / Buildings.BARRACKS.cap(total::hasProject));
+                row.add(mmr[1] * 100 / Buildings.FACTORY.cap(total::hasProject));
+                row.add(mmr[2] * 100 / Buildings.HANGAR.cap(total::hasProject));
+                row.add(mmr[3] * 100 / Buildings.DRYDOCK.cap(total::hasProject));
 
                 double[] buy = nations.getMilitaryBuyPct(false);
                 row.add(buy[0]);
@@ -271,6 +272,8 @@ public class MilitaryRanking extends Command {
 
         String msg = "> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
                 "> Each alliance is grouped by sphere and color coded";
-        return "<" + sheet.getURL() + ">\n" + msg;
+
+        sheet.send(new DiscordChannelIO(event), null, msg).send();
+        return null;
     }
 }

@@ -4,10 +4,12 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.offshore.Grant;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -16,10 +18,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.util.task.balance.GetCityBuilds;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
-import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -63,7 +62,7 @@ public class GrantCmd extends Command {
                 "Add `-i` to build grants to exclude infra cost\n" +
                 "Add `-l` to build grants to exclude land cost\n" +
                 "Add `-e` or `#expire=60d` to have a grant's debt expire\n" +
-                "Add `-c` to have a grant count as cash value in `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits`\n" +
+                "Add `-c` to have a grant count as cash value in " + CM.deposits.check.cmd.toSlashMention() + "\n" +
                 "Add `-o` to only send what funds they are missing for a grant\n" +
                 "Add `-m` to multiply the grant per city";
     }
@@ -97,13 +96,13 @@ public class GrantCmd extends Command {
         if (args.size() != 3) {
             if (args.size() == 2) {
                 if (args.get(1).equalsIgnoreCase("project")) {
-                    return "Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1";
+                    return "Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1";
                 }
                 else if (args.get(1).equalsIgnoreCase("build") || (args.get(1).startsWith("{") && args.get(1).endsWith("}"))) {
                     num = Double.MAX_VALUE;
                 }
                 else if (args.get(1).equalsIgnoreCase("unit")) {
-                    return "Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>";
+                    return "Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>";
                 }
                 else if (args.get(1).equalsIgnoreCase("warchest")) {
                     num = 1d;
@@ -169,7 +168,7 @@ public class GrantCmd extends Command {
             sheet.set(0, 0);
 
             String totalStr = PnwUtil.resourcesToString(total) + " worth ~$" + MathMan.format(PnwUtil.convertedTotal(total));
-            return "<" + sheet.getURL() + ">\n" + totalStr;
+            return "" + sheet.getURL(true, true) + "\n" + totalStr;
         }
 
         Grant grant = generateGrant(typeArg, guildDb, me, num, flags, true);
@@ -204,7 +203,7 @@ public class GrantCmd extends Command {
         if (flags.contains('c')) transferFlags.add("-c");
         if (flags.contains('e')) transferFlags.add("#expire=60d");
         if (flags.contains('o')) transferFlags.add("-o");
-        String command = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer \"" + grant.getNote() + "\" " + me.getNationUrl() + " " + StringMan.getString(resources) + " " + StringMan.join(transferFlags, " ");
+        String command = "_" + Settings.commandPrefix(true) + "transfer \"" + grant.getNote() + "\" " + me.getNationUrl() + " " + StringMan.getString(resources) + " " + StringMan.join(transferFlags, " ");
         StringBuilder msg = new StringBuilder();
         msg.append(PnwUtil.resourcesToString(resources)).append("\n")
                 .append("Current values for: " + me.getNation()).append('\n')
@@ -214,7 +213,7 @@ public class GrantCmd extends Command {
 
         msg.append("\n**INSTRUCTIONS:** ").append(grant.getInstructions());
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), grant.title(), msg.toString(), "\u2705", command, "\uD83D\uDEAB", "");
+        DiscordUtil.createEmbedCommand(event.getChannel(), grant.title(), msg.toString(), "Confirm", command, "Cancel", " ");
 
         return null;
     }
@@ -227,13 +226,11 @@ public class GrantCmd extends Command {
         boolean noInfra = flags.contains('i');
         boolean noLand = flags.contains('l');
 
-        PoliticsAndWarV2 api = guildDb.getApi();
-        Nation pnwNation = me.getPnwNation(api);
         me = new DBNation(me);
 
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(me.getNation_id());
         if (!force) {
-            if (user == null || user.getDiscordId() == null) throw new IllegalArgumentException("Invalid user: " + user);
+            if (user == null) throw new IllegalArgumentException("No user found for nation: " + me.getNation_id());
             Guild guild = guildDb.getGuild();
             Member member = guild.getMemberById(user.getDiscordId());
             if (member == null) {
@@ -244,21 +241,20 @@ public class GrantCmd extends Command {
         Map<ResourceType, Double> resources = new HashMap<>();
 
         if (arg.equalsIgnoreCase("city")) {
-            me.getPnwNation();
-            if (me.cityTimerTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a city timer");
+            if (me.getCityTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a city timer");
             grant = new Grant(me, Grant.Type.CITY);
             grant.setAmount(amt);
             grant.addCity(me.getCities());
-            grant.setInstructions(grantCity(pnwNation, me, (int) amt, resources, force));
+            grant.setInstructions(grantCity(me, (int) amt, resources, force));
         } else if (arg.equalsIgnoreCase("infra")) {
             grant = new Grant(me, Grant.Type.INFRA);
             grant.setAmount(amt);
-            grant.setInstructions(grantInfra(pnwNation, me, (int) amt, resources, force, single));
+            grant.setInstructions(grantInfra(me, (int) amt, resources, force, single));
             grant.setAllCities();
         } else if (arg.equalsIgnoreCase("land")) {
             grant = new Grant(me, Grant.Type.LAND);
             grant.setAmount(amt);
-            grant.setInstructions(grantLand(pnwNation, me, (int) amt, resources, force));
+            grant.setInstructions(grantLand(me, (int) amt, resources, force));
             grant.setAllCities();
         } else if (arg.startsWith("{")) {
             if (arg.contains("infra_needed")) {
@@ -293,11 +289,10 @@ public class GrantCmd extends Command {
                 resources = PnwUtil.parseResources(arg);
             }
         } else if (arg.equalsIgnoreCase("build")) {
-            throw new IllegalArgumentException("Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <json> 1");
+            throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <json> 1");
         } else if (arg.equalsIgnoreCase("warchest")) {
-            Map<ResourceType, Double> stockpile = new GetMemberResources(me.getAlliance_id()).call().get(me.getNation_id());
+            Map<ResourceType, Double> stockpile = me.getStockpile();
             if (stockpile == null) throw new IllegalArgumentException("Unable to fetch stockpile (are you sure they are a member?)");
-            if (stockpile.get(ResourceType.CREDITS) == -1) throw new IllegalArgumentException("Please enable alliance access in: <https://politicsandwar.com/account/>");
             Map<ResourceType, Double> cityWc = guildDb.getPerCityWarchest(me);
             resources = PnwUtil.multiply(cityWc, (double) me.getCities());
             if (amt > 0 && amt != 1) {
@@ -320,11 +315,11 @@ public class GrantCmd extends Command {
             Project project = Projects.get(arg);
             if (project == null) {
                 if (arg.equalsIgnoreCase("project")) {
-                    if (pnwNation.getTurns_since_last_project() > 120 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a project timer");
-                    throw new IllegalArgumentException("Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1");
+                    if (me.getProjectTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a project timer");
+                    throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1");
                 }
                 if (arg.equalsIgnoreCase("unit")) {
-                    throw new IllegalArgumentException("Usage: " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>");
+                    throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>");
                 }
 
                 MilitaryUnit unit = MilitaryUnit.get(arg);
@@ -356,21 +351,21 @@ public class GrantCmd extends Command {
                     throw new IllegalArgumentException(me.getNation() + " can only have up to " + max + " " + unit.getName());
                 }
 
-                resources = PnwUtil.multiply(unit.getResourceCost(), amt);
+                resources = PnwUtil.resourcesToMap(unit.getCost((int) amt));
                 grant = new Grant(me, Grant.Type.UNIT);
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {
                 if (me.projectSlots() <= me.getNumProjects() && !flags.contains('f')) {
-                    throw new IllegalArgumentException("Error: " + me.getNationUrl() + " has full project slots");
+                    throw new IllegalArgumentException("Error: " + me.getNationUrl() + " has full project slots " + (me.projectSlots() + "<=" + me.getNumProjects()));
                 }
                 resources = project.cost();
-                if (!force && PnwUtil.convertedTotal(resources) > 2000000 && !pnwNation.getDomesticPolicy().equalsIgnoreCase("Technological Advancement")) {
+                if (!force && PnwUtil.convertedTotal(resources) > 2000000 && me.getDomesticPolicy() != DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
                     throw new IllegalArgumentException("Please set your Domestic Policy to `Technological Advancement` in <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/> to save 5%.");
                 }
                 if (me.hasProject(project)) {
                     throw new IllegalArgumentException("You already have: " + project.name());
                 }
-                if (pnwNation.getDomesticPolicy().equalsIgnoreCase("Technological Advancement")) {
+                if (me.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
                     resources = PnwUtil.multiply(resources, 0.95);
                 }
                 grant = new Grant(me, Grant.Type.PROJECT);
@@ -403,7 +398,7 @@ public class GrantCmd extends Command {
         return grant;
     }
 
-    public String grantLand(Nation pnwNation, DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws InterruptedException, ExecutionException, IOException {
+    public String grantLand(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws InterruptedException, ExecutionException, IOException {
         if (numBuy > 2000 && !force) {
             throw new IllegalArgumentException("Land grants >2000 are not approved as they are unprofitable.");
         }
@@ -457,7 +452,7 @@ public class GrantCmd extends Command {
         return response.toString();
     }
 
-    public String grantInfra(Nation pnwNation, DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force, boolean fetchROI) throws InterruptedException, ExecutionException, IOException {
+    public String grantInfra(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force, boolean fetchROI) throws InterruptedException, ExecutionException, IOException {
         if (me.getCities() < 9 && numBuy > 1700 && !force) {
             throw new IllegalArgumentException("Please grant up to C10 before buying infra.");
         }
@@ -477,7 +472,7 @@ public class GrantCmd extends Command {
 
         if (totalCost <= 0) return "You already have " + numBuy + " in your cities";
 
-        boolean urbanization = pnwNation.getDomesticPolicy().equalsIgnoreCase("Urbanization");
+        boolean urbanization = me.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
         boolean cce = me.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
         boolean aec = me.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
 
@@ -529,7 +524,7 @@ public class GrantCmd extends Command {
         return response.toString();
     }
 
-    public String grantCity(Nation pnwNation, DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws IOException {
+    public String grantCity(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws IOException {
         int currentCity = me.getCities();
         if (numBuy >= 10) numBuy = numBuy - currentCity;
 
@@ -539,21 +534,27 @@ public class GrantCmd extends Command {
 
         boolean cp = me.hasProject(Projects.URBAN_PLANNING);
         boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
-        boolean manifest = pnwNation.getDomesticPolicy().equalsIgnoreCase("Manifest Destiny");
+        boolean mp = me.hasProject(Projects.METROPOLITAN_PLANNING);
+        boolean manifest = me.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
+        boolean gsa = me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
 
         double cost = 0;
         for (int i = currentCity; i < currentCity + numBuy; i++) {
-            cost += PnwUtil.nextCityCost(i, manifest, cp, acp);
+            cost += PnwUtil.nextCityCost(i, manifest, cp, acp, mp, gsa);
         }
 
         StringBuilder result = new StringBuilder();
 
-        if (currentCity > 10 && !cp && !force) {
+        if (currentCity >= Projects.URBAN_PLANNING.requiredCities() && !cp && !force) {
             result.append(Projects.URBAN_PLANNING + " has not been built\n");
         }
 
-        if (currentCity > 15 && !acp && !force) {
+        if (currentCity >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !acp && !force) {
             result.append(Projects.ADVANCED_URBAN_PLANNING + " has not been built\n");
+        }
+
+        if (currentCity >= Projects.METROPOLITAN_PLANNING.requiredCities() && !mp && !force) {
+            result.append(Projects.METROPOLITAN_PLANNING.requiredCities() + " has not been built\n");
         }
 
 

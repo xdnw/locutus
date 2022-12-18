@@ -5,11 +5,10 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.task.GetMemberResources;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -33,7 +32,7 @@ public class Bank extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "bank <alliance>";
+        return Settings.commandPrefix(true) + "bank <alliance>";
     }
 
     @Override
@@ -55,7 +54,7 @@ public class Bank extends Command {
         User user = event.getAuthor();
         DBNation banker = DiscordUtil.getNation(event);
         if (banker == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
         Map<ResourceType, Double> totals = new HashMap<>();
 
@@ -70,7 +69,7 @@ public class Bank extends Command {
             if (alliance != db.getAlliance_id()) {
                 api = Locutus.imp().getApi(alliance);
             }
-            totals = new GetMemberResources(alliance).call().get(nation.getNation_id());
+            totals = nation.getStockpile();
             if (totals == null) return "They are not a member of " + alliance;
         } else {
             nation = null;

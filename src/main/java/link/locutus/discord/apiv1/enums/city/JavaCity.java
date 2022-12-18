@@ -2,10 +2,11 @@ package link.locutus.discord.apiv1.enums.city;
 
 import link.locutus.discord.commands.info.optimal.CityBranch;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.search.BFSUtil;
 import com.google.gson.Gson;
@@ -35,16 +36,18 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class JavaCity {
-    private byte[] buildings;
+    private final byte[] buildings;
     private int numBuildings = -1;
     private double infra;
+    private double land_;
+    private long dateCreated;
 
-    private Integer age;
-    private Double land;
+    private long nuke_date;
 
     private Metrics metrics;
 
@@ -73,8 +76,9 @@ public class JavaCity {
         }
         this.numBuildings = other.numBuildings;
         this.infra = other.infra;
-        this.age = other.age;
-        this.land = other.land;
+        this.dateCreated = other.dateCreated;
+        this.land_ = other.land_;
+        this.nuke_date = other.nuke_date;
     }
 
     public void clearMetrics() {
@@ -82,6 +86,10 @@ public class JavaCity {
             metrics.commerce = null;
             metrics.profit = null;
         }
+    }
+
+    public long getNukeDate() {
+        return nuke_date;
     }
 
     public String getMMR() {
@@ -108,6 +116,18 @@ public class JavaCity {
         public void recalculate(JavaCity city, Predicate<Project> hasProject) {
             pollution = 0;
             commerce = 0;
+
+            if (city.nuke_date > 1596163005000L) {
+                double pollutionMax = 400d;
+                int turnsMax = 11 * 12;
+                long turns = TimeUtil.getTurn() - TimeUtil.getTurn(city.nuke_date);
+                if (turns < turnsMax) {
+                    double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
+                    if (nukePollution > 0) {
+                        pollution += (int) nukePollution;
+                    }
+                }
+            }
 
             for (Building building : Buildings.POLLUTION_BUILDINGS) {
                 int amt = city.buildings[building.ordinal()];
@@ -151,7 +171,7 @@ public class JavaCity {
             double crimeDeaths = Math.max((crime * 0.1) * (100 * city.getInfra()) - 25, 0);
 
             double ageBonus = (1 + Math.log(Math.max(1, city.getAge())) * 0.0666666666666666666666666666666);
-            population = Math.max(10, (int) ((basePopulation - diseaseDeaths - crimeDeaths) * ageBonus));
+            population = (int) Math.round(Math.max(10, ((basePopulation - diseaseDeaths - crimeDeaths) * ageBonus)));
         }
     }
 
@@ -213,18 +233,19 @@ public class JavaCity {
         initImpTotal();
     }
 
-    public JavaCity(byte[] buildings, double infra, double land, int age) {
+    public JavaCity(byte[] buildings, double infra, double land, long dateCreated, long nuke_date) {
         this.buildings = buildings;
-        this.age = age;
-        this.land = land;
+        this.dateCreated = dateCreated;
+        this.land_ = land;
         this.infra = infra;
+        this.nuke_date = nuke_date;
         initImpTotal();
     }
 
     public JavaCity() {
         this.buildings = new byte[Buildings.size()];
-        age = 0;
-        land = 0d;
+        dateCreated = Long.MAX_VALUE;
+        land_ = 0d;
         this.numBuildings = 0;
     }
 
@@ -345,8 +366,13 @@ public class JavaCity {
 
     public JavaCity(City city) {
         this.buildings = new byte[Buildings.size()];
-        age = city.getAge();
-        this.land = Double.parseDouble(city.getLand());
+        this.dateCreated = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(city.getAge());
+        this.land_ = Double.parseDouble(city.getLand());
+
+        if (city.getNuclearpollution() > 0) {
+            double turns = 11 * 12 * (400d - city.getNuclearpollution()) / 400d;
+            nuke_date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - ((int) turns));
+        }
 
         metrics = new Metrics();
         metrics.disease = city.getDisease();
@@ -393,8 +419,8 @@ public class JavaCity {
         this.buildings = other.buildings.clone();
         this.numBuildings = other.numBuildings;
         this.infra = other.infra;
-        this.age = other.age;
-        this.land = other.land;
+        this.dateCreated = other.dateCreated;
+        this.land_ = other.land_;
     }
 
     private transient int hashCode = 0;
@@ -440,18 +466,18 @@ public class JavaCity {
     }
 
     public JavaCity optimalBuild(DBNation nation, long timeout) {
-        return optimalBuild(nation.getContinent(), nation.getRads(), nation.getCities(), nation::hasProject, timeout);
+        return optimalBuild(nation.getContinent(), nation.getRads(), nation.getCities(), nation::hasProject, nation.getGrossModifier(), timeout);
     }
 
-    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, long timeout) {
-        return optimalBuild(continent, rads, numCities, hasProject, timeout, f -> f, null);
+    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, long timeout) {
+        return optimalBuild(continent, rads, numCities, hasProject, grossModifier, timeout, f -> f, null);
     }
 
-    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, long timeout,
+    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, long timeout,
                                  Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
         Predicate<Project> finalHasProject = Projects.hasProjectCached(hasProject);
         Function<JavaCity, Double> valueFunction = javaCity -> {
-            return javaCity.profitConvertedCached(rads, finalHasProject, numCities) / javaCity.getImpTotal();
+            return javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier) / javaCity.getImpTotal();
         };
         valueFunction = modifyValueFunc.apply(valueFunction);
 
@@ -460,11 +486,11 @@ public class JavaCity {
         return optimalBuild(continent, tradeCenter, valueFunction, goal, finalHasProject, timeout);
     }
 
-    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, int days, long timeout) {
-        return roiBuild(continent, rads, numCities, hasProject, days, timeout, f -> f, null);
+    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout) {
+        return roiBuild(continent, rads, numCities, hasProject, grossModifier, days, timeout, f -> f, null);
     }
 
-    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, int days, long timeout, Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
+    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
         JavaCity origin = new JavaCity(this);
         origin.setAge(this.getAge() + days / 2);
 
@@ -474,8 +500,8 @@ public class JavaCity {
         int maxImp = (int) (this.getInfra() / 50);
         if (maxImp == zeroed.getImpTotal()) return zeroed;
 
-        double baseProfit = origin.profitConvertedCached(rads, hasProject, numCities);
-        double zeroedProfit = zeroed.profitConvertedCached(rads, hasProject, numCities);
+        double baseProfit = origin.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
+        double zeroedProfit = zeroed.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
 
         int baseImp = zeroed.getImpTotal();
         int impOverZero = maxImp - zeroed.getImpTotal();
@@ -484,13 +510,13 @@ public class JavaCity {
 
         Predicate<Project> finalHasProject = Projects.hasProjectCached(hasProject);
         Function<JavaCity, Double> valueFunction = javaCity -> {
-            double newProfit = javaCity.profitConvertedCached(rads, finalHasProject, numCities);
+            double newProfit = javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier);
 
             double cost = javaCity.calculateCostConverted(origin);
 
-            int imp = javaCity.getImpTotal() - baseImp;
-            double expectedProfit = profitPerImp * imp;
-            return ((newProfit - zeroedProfit) - expectedProfit) * days - cost;
+//            int imp = javaCity.getImpTotal() - baseImp;
+//            double expectedProfit = profitPerImp * imp;
+            return (newProfit * days - cost) / javaCity.getImpTotal();
         };
 
         valueFunction = modifyValueFunc.apply(valueFunction);
@@ -539,11 +565,11 @@ public class JavaCity {
         return optimized == null ? null : optimized.getKey();
     }
 
-    public double profitConvertedCached(double rads, Predicate<Project> hasProject, int numCities) {
+    public double profitConvertedCached(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
         if (metrics != null && metrics.profit != null) {
             return metrics.profit;
         }
-        double profit = profitConverted2(rads, hasProject, numCities);
+        double profit = profitConverted2(continent, rads, hasProject, numCities, grossModifier);
         if (metrics != null) {
             metrics.profit = profit;
         }
@@ -608,18 +634,7 @@ public class JavaCity {
         return powered;
     }
 
-    public double[] profit(DBNation nation, double[] myProfit) {
-        Predicate<Project> hasProject = p -> p != null && p.get(nation) > 0;
-
-        double radIndex = nation.getRads();
-        double rads = (1 + (radIndex * (-0.001)));
-
-        int numCities = nation.getCities();
-
-        return profit(rads, hasProject, myProfit, numCities);
-    }
-
-    public double profitConverted2(double rads, Predicate<Project> hasProject, int numCities) {
+    public double profitConverted2(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
         double profit = 0;
 
         final boolean powered = (metrics == null || metrics.powered != Boolean.FALSE) && (getPoweredInfra() >= infra);
@@ -638,14 +653,14 @@ public class JavaCity {
                         unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).infraMax();
                     }
                 }
-                profit += building.profitConverted(rads, hasProject, this, amt);
+                profit += building.profitConverted(continent, rads, hasProject, this, amt);
             }
             for (int ordinal = Buildings.GAS_REFINERY.ordinal(); ordinal < buildings.length; ordinal++) {
                 int amt = buildings[ordinal];
                 if (amt == 0) continue;
 
                 Building building = Buildings.get(ordinal);
-                profit += building.profitConverted(rads, hasProject, this, amt);
+                profit += building.profitConverted(continent, rads, hasProject, this, amt);
             }
         }
 
@@ -654,7 +669,7 @@ public class JavaCity {
             if (amt == 0) continue;
 
             Building building = Buildings.get(ordinal);
-            profit += building.profitConverted(rads, hasProject, this, amt);
+            profit += building.profitConverted(continent, rads, hasProject, this, amt);
         }
 
         // if any commerce buildings
@@ -671,7 +686,8 @@ public class JavaCity {
 
         double newPlayerBonus = numCities < 10 ? Math.max(1, (200d - ((numCities - 1) * 10d)) * 0.01) : 1;
 
-        double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * metrics.population * newPlayerBonus);
+        double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * metrics.population * newPlayerBonus) * grossModifier;;
+
 
         profit += income;
 
@@ -680,7 +696,7 @@ public class JavaCity {
         return profit;
     }
 
-    public double[] profit(double rads, Predicate<Project> hasProject, double[] profitBuffer, int numCities) {
+    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, double[] profitBuffer, int numCities, double grossModifier, int turns) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
         boolean powered = true;
@@ -698,11 +714,11 @@ public class JavaCity {
                     continue;
                 }
             }
-            profitBuffer = building.profit(rads, hasProject, this, profitBuffer);
+            profitBuffer = building.profit(continent, rads, date, hasProject, this, profitBuffer, turns);
             if (building instanceof APowerBuilding) {
                 for (int i = 0; i < amt; i++) {
                     if (unpoweredInfra > 0) {
-                        profitBuffer = ((APowerBuilding) building).consumption(unpoweredInfra, profitBuffer);
+                        profitBuffer = ((APowerBuilding) building).consumption(unpoweredInfra, profitBuffer, turns);
                         unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).infraMax();
                     }
                 }
@@ -718,11 +734,11 @@ public class JavaCity {
 
         double newPlayerBonus = Math.max(1, (200d - ((numCities - 1) * 10d)) / 100d);
 
-        double income = Math.max(0, (((commerce/50d) * 0.725) + 0.725) * metrics.population * newPlayerBonus);
+        double income = (((commerce/50d) * 0.725d) + 0.725d) * metrics.population * newPlayerBonus * grossModifier;
 
-        profitBuffer[ResourceType.MONEY.ordinal()] += income;
+        profitBuffer[ResourceType.MONEY.ordinal()] += income * turns / 12;
 
-        profitBuffer[ResourceType.FOOD.ordinal()] -= metrics.population / 1000d;
+        profitBuffer[ResourceType.FOOD.ordinal()] -= metrics.population * turns / (1000d * 12);
 
         return profitBuffer;
     }
@@ -777,19 +793,6 @@ public class JavaCity {
         return buffer;
     }
 
-    public Map<ResourceType, Double> calculateImprovementCost(Map<ResourceType, Double> total) {
-        if (total == null) {
-            total = new HashMap<>();
-        }
-        for (int i = 0; i < buildings.length; i++) {
-            int amt = buildings[i];
-            if (amt != 0) {
-                total = PnwUtil.addResourcesToA(total, Buildings.get(i).cost());
-            }
-        }
-        return total;
-    }
-
     private void initImpTotal() {
         numBuildings = 0;
         for (int building : buildings) {
@@ -837,7 +840,8 @@ public class JavaCity {
     }
 
     public int getAge() {
-        return age == null ? 0 : age;
+        if (dateCreated <= 0) return 0;
+        return (int) TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - dateCreated);
     }
 
     public double getFreeInfra() {
@@ -849,19 +853,21 @@ public class JavaCity {
     }
 
     public Double getLand() {
-        return land == null ? infra : land;
+        if (land_ <= 0) return infra;
+        return land_;
     }
     public JavaCity setInfra(double infra) {
         this.infra = infra;
         return this;
     }
 
-    public void setAge(Integer age) {
-        this.age = age;
+    public JavaCity setAge(Integer age) {
+        this.dateCreated = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(age);
+        return this;
     }
 
     public JavaCity setLand(Double land) {
-        this.land = land;
+        this.land_ = land;
         return this;
     }
 

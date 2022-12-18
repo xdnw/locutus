@@ -1,9 +1,18 @@
 package link.locutus.discord.db;
 
+import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.NationResponseProjection;
+import com.politicsandwar.graphql.model.NationsQueryRequest;
+import com.ptsmods.mysqlw.query.SelectResults;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.offshore.EncryptionUtil;
@@ -22,36 +31,35 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class DiscordDB extends DBMain {
+public class DiscordDB extends DBMainV2 {
+
     public DiscordDB() throws SQLException, ClassNotFoundException {
-        super("locutus");
+        this("locutus");
+    }
+    public DiscordDB(String name) throws SQLException, ClassNotFoundException {
+        super(name);
+        if (tableExists("credentials")) migrateCredentials();
     }
 
     @Override
     public void createTables() {
-            executeStmt("CREATE TABLE IF NOT EXISTS `USERS` (`nation_id` INT NOT NULL, `discord_id` INT, `discord_name` VARCHAR, PRIMARY KEY(discord_id))");
-            executeStmt("CREATE TABLE IF NOT EXISTS `UUIDS` (`nation_id` INT NOT NULL, `uuid` BLOB NOT NULL, `date` INT NOT NULL, PRIMARY KEY(nation_id, uuid, date))");
-            executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
+            executeStmt("CREATE TABLE IF NOT EXISTS `USERS` (`nation_id` INT NOT NULL, `discord_id` BIGINT NOT NULL, `discord_name` VARCHAR, PRIMARY KEY(discord_id))");
+            executeStmt("CREATE TABLE IF NOT EXISTS `UUIDS` (`nation_id` INT NOT NULL, `uuid` BLOB NOT NULL, `date` BIGINT NOT NULL, PRIMARY KEY(nation_id, uuid, date))");
+//            executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS` (`discordid` INT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
+
+        executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS2` (`discordid` BIGINT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
+
             executeStmt("CREATE TABLE IF NOT EXISTS `VERIFIED` (`nation_id` INT NOT NULL PRIMARY KEY)");
 
-        executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_META` (`key` INT NOT NULL, `id` INT NOT NULL, `value` BLOB NOT NULL, PRIMARY KEY(`key`, `id`))");
-        executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` INT NOT NULL)");
-
+        executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_META` (`key` BIGINT NOT NULL, `id` BIGINT NOT NULL, `value` BLOB NOT NULL, PRIMARY KEY(`key`, `id`))");
+        executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS2`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BIGINT, `bot_key` BIGINT)");
         setupApiKeys();
     }
 
@@ -73,27 +81,71 @@ public class DiscordDB extends DBMain {
             addApiKey(nationId, key);
         }
         deleteInfo(DiscordMeta.API_KEY);
+
+        try {
+            if (tableExists("API_KEYS")) {
+                try (ResultSet rs = getDb().selectBuilder("API_KEYS").select("*").executeRaw()) {
+                    while (rs.next()) {
+                        int nationId = rs.getInt("nation_id");
+                        String key = Long.toHexString(rs.getLong("api_key"));
+                        addApiKey(nationId, key);
+                    }
+                }
+                getDb().drop("API_KEYS");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void addApiKey(int nationId, String key) {
-        long keyId = new BigInteger(key, 16).longValue();
-        update("INSERT OR REPLACE INTO `API_KEYS`(`nation_id`, `api_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
+        update("INSERT OR REPLACE INTO `API_KEYS2`(`nation_id`, `api_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setLong(2, keyId);
 
         });
     }
 
-    public String getApiKey(int nationId) {
-        if (nationId == Settings.INSTANCE.NATION_ID && !Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
-            return Settings.INSTANCE.API_KEY_PRIMARY;
+    public void addBotKey(int nationId, String key) {
+        long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
+        update("INSERT OR REPLACE INTO `API_KEYS2`(`nation_id`, `bot_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
+            stmt.setLong(2, keyId);
+
+        });
+    }
+
+    public void addApiKey(int nationId, String key, String botKey) {
+        if (botKey == null) {
+            addApiKey(nationId, key);
+            return;
         }
-        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS WHERE nation_id = ?")) {
+        long keyId = new BigInteger(key, 16).longValue();
+        long botId = new BigInteger(botKey, 16).longValue();
+        update("INSERT OR REPLACE INTO `API_KEYS2`(`nation_id`, `api_key`, `bot_key`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
+            stmt.setLong(2, keyId);
+            stmt.setLong(3, botId);
+
+        });
+    }
+
+    public ApiKeyPool.ApiKey getApiKey(int nationId) {
+        if (nationId == Settings.INSTANCE.NATION_ID && !Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
+            return new ApiKeyPool.ApiKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY, Settings.INSTANCE.ACCESS_KEY);
+        }
+        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS2 WHERE nation_id = ?")) {
             stmt.setInt(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    long keyId = rs.getLong("api_key");
-                    return Long.toHexString(keyId);
+                    Long keyId = getLong(rs, "api_key");
+                    if (keyId == null) return null;
+
+                    String key = String.format("%014X", keyId);
+                    Long botKeyId = getLong(rs, "bot_key");
+                    String botKey = botKeyId == null ? null : String.format("%016X", botKeyId);
+                    return new ApiKeyPool.ApiKey(nationId, key, botKey);
                 }
             }
         } catch (SQLException e) {
@@ -102,12 +154,35 @@ public class DiscordDB extends DBMain {
         return null;
     }
 
+    public void deleteApiKeyPairByNation(int nationId) {
+        update("DELETE FROM `API_KEYS2` WHERE nation_id = ? ", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, nationId);
+
+        });
+    }
+
+    public void deleteApiKey(String key) {
+        long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
+        update("UPDATE API_KEYS2 SET api_key = NULL WHERE api_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, keyId);
+
+        });
+    }
+
+    public void deleteBotKey(String key) {
+        long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
+        update("UPDATE API_KEYS2 SET bot_key = NULL WHERE bot_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, keyId);
+
+        });
+    }
+
     public Integer getNationFromApiKey(String key) {
         if (Settings.INSTANCE.API_KEY_PRIMARY.equalsIgnoreCase(key) && Settings.INSTANCE.NATION_ID > 0) {
             return Settings.INSTANCE.NATION_ID;
         }
-        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS WHERE api_key = ?")) {
-            long keyId = new BigInteger(key, 16).longValue();
+        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS2 WHERE api_key = ?")) {
+            long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
             stmt.setLong(1, keyId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -117,7 +192,7 @@ public class DiscordDB extends DBMain {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        ApiKeyDetails keyStats = new PoliticsAndWarV3(key).getApiKeyStats();
+        ApiKeyDetails keyStats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
         if (keyStats != null && keyStats.getNation() != null && keyStats.getNation().getId() != null) {
             int natId = keyStats.getNation().getId();
             addApiKey(natId, keyStats.getKey());
@@ -202,24 +277,37 @@ public class DiscordDB extends DBMain {
         });
     }
 
-    public void logout(long discordId) {
-        update("DELETE FROM `CREDENTIALS` where `discordid` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, discordId);
+    public void logout(long nationId) {
+        update("DELETE FROM `CREDENTIALS2` where `discordid` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, nationId);
         });
     }
 
-    public void addUserPass(long discordId, String user, String password) {
+    private void migrateCredentials() {
+        Set<Long> ids = new HashSet<>();
+        String query = getDb().selectBuilder("credentials").select("discordId").buildQuery();
+        query(query, stmt -> {},
+                (ThrowingConsumer<ResultSet>) r -> ids.add(r.getLong(1)));
+        for (long discordId : ids) {
+            Map.Entry<String, String> userPass = getUserPass2(discordId, "credentials", EncryptionUtil.Algorithm.LEGACY);
+            addUserPass2(discordId, userPass.getKey(), userPass.getValue());
+        }
+
+        executeStmt("DROP TABLE CREDENTIALS");
+    }
+
+    public void addUserPass2(long nationId, String user, String password) {
         try {
             String secretStr = Settings.INSTANCE.CLIENT_SECRET;
             if (secretStr == null || secretStr.isEmpty()) secretStr = Settings.INSTANCE.BOT_TOKEN;
             byte[] secret = secretStr.getBytes(StandardCharsets.ISO_8859_1);
             byte[] salt = EncryptionUtil.generateKey();
 
-            byte[] userEnc = EncryptionUtil.encrypt(EncryptionUtil.encrypt(user.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
-            byte[] passEnc = EncryptionUtil.encrypt(EncryptionUtil.encrypt(password.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
+            byte[] userEnc = EncryptionUtil.encrypt2(EncryptionUtil.encrypt2(user.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
+            byte[] passEnc = EncryptionUtil.encrypt2(EncryptionUtil.encrypt2(password.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
 
-            update("INSERT OR REPLACE INTO `CREDENTIALS` (`discordid`, `user`, `password`, `salt`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-                stmt.setLong(1, discordId);
+            update("INSERT OR REPLACE INTO `CREDENTIALS2` (`discordid`, `user`, `password`, `salt`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                stmt.setLong(1, nationId);
                 stmt.setString(2, Base64.encodeBase64String(userEnc));
                 stmt.setString(3, Base64.encodeBase64String(passEnc));
                 stmt.setString(4, Base64.encodeBase64String(salt));
@@ -229,12 +317,16 @@ public class DiscordDB extends DBMain {
         }
     }
 
-    public Map.Entry<String, String> getUserPass(long discordId) {
-        if (discordId == Settings.INSTANCE.ADMIN_USER_ID && !Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
+    public Map.Entry<String, String> getUserPass2(long nationId) {
+        return getUserPass2(nationId, "credentials2", EncryptionUtil.Algorithm.DEFAULT);
+    }
+
+    public Map.Entry<String, String> getUserPass2(long nationId, String table, EncryptionUtil.Algorithm algorithm) {
+        if ((nationId == Settings.INSTANCE.ADMIN_USER_ID || nationId == Settings.INSTANCE.NATION_ID) && !Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
             return Map.entry(Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
         }
-        try (PreparedStatement stmt = prepareQuery("select * FROM CREDENTIALS WHERE `discordid` = ?")) {
-            stmt.setLong(1, discordId);
+        try (PreparedStatement stmt = prepareQuery("select * FROM " + table + " WHERE `discordid` = ?")) {
+            stmt.setLong(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String secretStr = Settings.INSTANCE.CLIENT_SECRET;
@@ -244,8 +336,8 @@ public class DiscordDB extends DBMain {
                     byte[] userEnc = Base64.decodeBase64(rs.getString("user"));
                     byte[] passEnc = Base64.decodeBase64(rs.getString("password"));
 
-                    byte[] userBytes = EncryptionUtil.decrypt(EncryptionUtil.decrypt(userEnc, salt), secret);
-                    byte[] passBytes = EncryptionUtil.decrypt(EncryptionUtil.decrypt(passEnc, salt), secret);
+                    byte[] userBytes = EncryptionUtil.decrypt2(EncryptionUtil.decrypt2(userEnc, salt, algorithm), secret, algorithm);
+                    byte[] passBytes = EncryptionUtil.decrypt2(EncryptionUtil.decrypt2(passEnc, salt, algorithm), secret, algorithm);
                     String user = new String(userBytes, StandardCharsets.ISO_8859_1);
                     String pass = new String(passBytes, StandardCharsets.ISO_8859_1);
 
@@ -275,9 +367,29 @@ public class DiscordDB extends DBMain {
         });
     }
 
+    public List<Map.Entry<Integer, Long>> getUuids(BigInteger uuid) {
+        ArrayList<Map.Entry<Integer, Long>> list = new ArrayList<>();
+        String query = "SELECT * FROM UUIDS WHERE uuid = ? ORDER BY date DESC";
+        query(query, new ThrowingConsumer<PreparedStatement>() {
+            @Override
+            public void acceptThrows(PreparedStatement stmt) throws SQLException {
+                stmt.setBytes(1, uuid.toByteArray());
+            }
+        }, new ThrowingConsumer<ResultSet>() {
+            @Override
+            public void acceptThrows(ResultSet rs) throws SQLException {
+                int nationId = rs.getInt("nation_id");
+                byte[] bytes = rs.getBytes("uuid");
+                long date = rs.getLong("date");
+                list.add(new AbstractMap.SimpleEntry<>(nationId, date));
+            }
+        });
+        return list;
+    }
+
     public List<Map.Entry<Integer, Map.Entry<Long, BigInteger>>> getUuids() {
-            ArrayList<Map.Entry<Integer, Map.Entry<Long, BigInteger>>> list = new ArrayList<>();
-            try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS ORDER BY date DESC")) {
+        ArrayList<Map.Entry<Integer, Map.Entry<Long, BigInteger>>> list = new ArrayList<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS ORDER BY date DESC")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int nationId = rs.getInt("nation_id");
@@ -340,10 +452,20 @@ public class DiscordDB extends DBMain {
         }
     }
 
-    public Map<BigInteger, List<Map.Entry<Long, Long>>> getUuids(int nationId) {
-            long end = Long.MAX_VALUE;
+    public BigInteger getLatestUuid(int nationId) {
+        Map<BigInteger, List<Map.Entry<Long, Long>>> uids = getUuids(nationId);
+        for (Map.Entry<BigInteger, List<Map.Entry<Long, Long>>> uidEntry : uids.entrySet()) {
+            for (Map.Entry<Long, Long> timeEntry : uidEntry.getValue()) {
+                if (timeEntry.getValue() == Long.MAX_VALUE) return uidEntry.getKey();
+            }
+        }
+        return null;
+    }
 
-            Map<BigInteger, List<Map.Entry<Long, Long>>> result = new LinkedHashMap<>();
+    public Map<BigInteger, List<Map.Entry<Long, Long>>> getUuids(int nationId) {
+        long end = Long.MAX_VALUE;
+
+        Map<BigInteger, List<Map.Entry<Long, Long>>> result = new LinkedHashMap<>();
 
         try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS WHERE nation_id = ? ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
@@ -354,7 +476,7 @@ public class DiscordDB extends DBMain {
 
                     BigInteger uuid = new BigInteger(bytes);
 
-                    List<Map.Entry<Long, Long>> list = result.computeIfAbsent(uuid, k -> new LinkedList<>());
+                    List<Map.Entry<Long, Long>> list = result.computeIfAbsent(uuid, k -> new ArrayList<>());
                     list.add(new AbstractMap.SimpleEntry<>(start, end));
                     end = start;
                 }
@@ -410,37 +532,53 @@ public class DiscordDB extends DBMain {
         }
     }
 
-//    public void addGuild(Guild guild, int allianceId, String username, String password) {
-////        addTask(TaskType.GUILD, allianceId, new UniqueStatement(allianceId) {
-////            @Override
-////            public PreparedStatement get() throws SQLException {
-////                return getConnection().prepareStatement("INSERT OR REPLACE INTO `GUILDS`(`server`, `alliance`) VALUES(?, ?)");
-////            }
-////
-////            @Override
-////            public void set(PreparedStatement stmt) throws SQLException {
-////                stmt.setLong(1, guild.getIdLong());
-////                stmt.setInt(2, min);
-////                stmt.setInt(3, max);
-////                stmt.setString(4, build);
-////            }
-////        });
-//    }
 
+    public int updateUserIdsSince(int minutes, boolean overrideExisting) {
+        List<Integer> toFetch = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < minutes).stream().map(DBNation::getNation_id).collect(Collectors.toList());
+
+        int updated = 0;
+
+        for (int i = 0; i < toFetch.size(); i += 500) {
+            List<Integer> subList = toFetch.subList(i, Math.min(i + 500, toFetch.size()));
+            updated += updateUserIds(overrideExisting, f -> f.setId(subList), Event::post);
+        }
+        return updated;
+    }
+
+    public int updateUserIds(boolean overrideExisting, Consumer<NationsQueryRequest> query, Consumer<Event> eventConsumer) {
+        int updated = 0;
+        for (Nation nation : Locutus.imp().getV3().fetchNations(query::accept, r -> {
+            r.id();
+            r.discord();
+            r.discord_id();
+        })) {
+            if (nation.getDiscord_id() == null || nation.getDiscord_id().isEmpty()) continue;
+            long discordId = Long.parseLong(nation.getDiscord_id());
+
+            PNWUser existingUser = getUserFromNationId(nation.getId());
+            if (existingUser != null && (!overrideExisting || existingUser.getDiscordId() == (discordId))) {
+                continue;
+            }
+            if (eventConsumer != null) {
+                User user = Locutus.imp().getDiscordApi().getUserById(discordId);
+                eventConsumer.accept(new NationRegisterEvent(nation.getId(), null, user, existingUser == null));
+            }
+            addUser(new PNWUser(nation.getId(), discordId, nation.getDiscord()));
+            updated++;
+        }
+        return updated;
+    }
 
     public void addUser(PNWUser user) {
-        if (user.getDiscordId() != null) {
-            updateUserCache();
-            userCache.put(user.getDiscordId(), user);
-            userNationCache.put(user.getNationId(), user);
+        updateUserCache();
+        userCache.put(user.getDiscordId(), user);
+        PNWUser existing = userNationCache.put(user.getNationId(), user);
+        if (existing != null && existing.getDiscordId() != user.getDiscordId()) {
+//            unregister(null, existing.getDiscordId());
         }
         update("INSERT OR REPLACE INTO `USERS`(`nation_id`, `discord_id`, `discord_name`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, user.getNationId());
-            if (user.getDiscordId() == null) {
-                stmt.setNull(2, Types.INTEGER);
-            } else {
-                stmt.setLong(2, user.getDiscordId());
-            }
+            stmt.setLong(2, user.getDiscordId());
             stmt.setString(3, user.getDiscordName());
         });
     }
@@ -451,14 +589,24 @@ public class DiscordDB extends DBMain {
     }
 
     private List<PNWUser> getUsersRaw() {
+        Set<Integer> nationsToDelete = new HashSet<>();
         ArrayList<PNWUser> list = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM USERS")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int nationId = rs.getInt("nation_id");
                     Long discordId = getLong(rs, "discord_id");
+                    if (discordId == null) {
+                        nationsToDelete.add(nationId);
+                        continue;
+                    }
                     String name = rs.getString("discord_name");
                     list.add(new PNWUser(nationId, discordId, name));
+                }
+            }
+            if (!nationsToDelete.isEmpty()) {
+                for (int id : nationsToDelete) {
+                    unregister(id, null);
                 }
             }
             return list;
@@ -514,12 +662,19 @@ public class DiscordDB extends DBMain {
         if (!userCache.isEmpty()) return;
         synchronized (this) {
             if (!userCache.isEmpty()) return;
-            for (PNWUser user : getUsersRaw()) {
-                Long id = user.getDiscordId();
-                if (id != null) {
-                    userCache.put(user.getDiscordId(), user);
+            List<PNWUser> users = getUsersRaw();
+            for (PNWUser user : users) {
+                long id = user.getDiscordId();
+                userCache.put(user.getDiscordId(), user);
+                PNWUser existing = userNationCache.put(user.getNationId(), user);
+                if (existing != null && existing.getDiscordId() != id) {
+                    if (existing.getDiscordId() > id) {
+                        userNationCache.put(user.getNationId(), existing);
+//                        unregister(null, id);
+                    } else {
+//                        unregister(null, existing.getDiscordId());
+                    }
                 }
-                userNationCache.put(user.getNationId(), user);
             }
         }
     }
@@ -538,7 +693,6 @@ public class DiscordDB extends DBMain {
         List<PNWUser> secondary = null;
         for (Map.Entry<Long, PNWUser> entry : cached.entrySet()) {
             PNWUser user = entry.getValue();
-            if (user.getDiscordId() == null) continue;
 
             if (nameWithDesc != null && nameWithDesc.equalsIgnoreCase(user.getDiscordName())) {
                 user.setDiscordId(user.getDiscordId());
@@ -546,12 +700,12 @@ public class DiscordDB extends DBMain {
             }
             if (name != null && user.getDiscordName() != null) {
                 if (user.getDiscordName().contains("#")) {
-                    if (discordId == null && user.getDiscordName().startsWith(name + "#")) {
-                        if (secondary == null) secondary = new LinkedList<>();
+                    if (user.getDiscordName().startsWith(name + "#")) {
+                        if (secondary == null) secondary = new ArrayList<>();
                         secondary.add(user);
                     }
                 } else if (name.equalsIgnoreCase(user.getDiscordName())) {
-                    if (secondary == null) secondary = new LinkedList<>();
+                    if (secondary == null) secondary = new ArrayList<>();
                     secondary.add(user);
                 }
             }
@@ -563,10 +717,11 @@ public class DiscordDB extends DBMain {
     }
 
     public void unregister(Integer nationId, Long discordId) {
+        if (nationId == null && discordId == null) throw new IllegalArgumentException("A nation id or discord id must be provided");
         if (discordId != null) userCache.remove(discordId);
         if (nationId != null) {
-            PNWUser user = getUserFromNationId(nationId);
-            if (user != null && user.getDiscordId() != null) {
+            PNWUser user = userNationCache.remove(nationId);
+            if (user != null) {
                 userCache.remove(user.getDiscordId());
             }
         }

@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.Response;
 import link.locutus.discord.apiv1.core.Utility;
 import link.locutus.discord.apiv1.domains.Entity;
 import link.locutus.discord.apiv1.enums.QueryURL;
+import link.locutus.discord.config.Settings;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -41,7 +42,7 @@ public class ApiQuery<T extends Entity> {
     try {
       URL url = new URL(urlStr);
       conn = (HttpURLConnection) url.openConnection();
-      conn.addRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36");
+      conn.addRequestProperty("User-Agent", Settings.USER_AGENT);
       conn.setRequestMethod("GET");
       int respCode = conn.getResponseCode();
       String respMessage = String.format("Politics and War API returned '%s' from url: %s", respCode + " " + conn.getResponseMessage(), urlPart);

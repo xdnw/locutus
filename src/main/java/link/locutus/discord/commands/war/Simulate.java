@@ -3,7 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.sim.SimulatedWar;
@@ -25,7 +25,7 @@ public class Simulate extends Command {
     }
     @Override
     public String help() {
-        return "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate <war>` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate <defender> <attacker> <type>`";
+        return "`" + Settings.commandPrefix(true) + "simulate <war>` or `" + Settings.commandPrefix(true) + "simulate <defender> <attacker> <type>`";
     }
 
     @Override
@@ -59,7 +59,7 @@ public class Simulate extends Command {
         }
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
         SimulatedWarNode origin;
 

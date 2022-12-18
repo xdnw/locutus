@@ -1,11 +1,12 @@
 package link.locutus.discord.apiv2;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.IPoliticsAndWar;
 import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv1.entities.BankRecord;
-import link.locutus.discord.apiv3.PWApiV3;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
@@ -51,6 +52,7 @@ import link.locutus.discord.apiv1.queries.TradepriceQuery;
 import link.locutus.discord.apiv1.queries.WarAttacksQuery;
 import link.locutus.discord.apiv1.queries.WarQuery;
 import link.locutus.discord.apiv1.queries.WarsQuery;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -72,11 +74,10 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private final JsonParser parser;
     private final ApiKeyPool pool;
     private final QueryExecutor legacyV1;
-    private final PWApiV3 v3_legacy;
-    private final PoliticsAndWarV3 v3;
 
+    @Deprecated
     public PoliticsAndWarV2(String key, boolean test, boolean cache) {
-        this(new ApiKeyPool(Collections.singleton(key)), test, cache);
+        this(ApiKeyPool.builder().addKeyUnsafe(key).build(), test, cache);
     }
 
     public PoliticsAndWarV2(ApiKeyPool pool, boolean test, boolean cache) {
@@ -85,17 +86,6 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         this.gson = new Gson();
         this.parser = new JsonParser();
         this.legacyV1 = new QueryExecutor(cache, test, 50, 60000);
-        this.v3_legacy = new PWApiV3(pool);
-        this.v3 = new PoliticsAndWarV3(pool);
-    }
-
-    @Deprecated
-    public PWApiV3 getV3_legacy() {
-        return v3_legacy;
-    }
-
-    public PoliticsAndWarV3 getV3() {
-        return v3;
     }
 
     public Gson getGson() {
@@ -185,22 +175,26 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private <T> T runWithKey(ThrowingFunction<String, T> task) {
         incrementUsage(new Exception().getStackTrace());
         while (true) {
-            String apiKey = pool.getNextApiKey();
+            ApiKeyPool.ApiKey keyPair = pool.getNextApiKey();
             try {
-                return task.applyThrows(apiKey);
+                return task.applyThrows(keyPair.getKey());
             } catch (Throwable e) {
                 if (e.getMessage().toLowerCase(Locale.ROOT).contains("the api key sent for this request is invalid")) {
-                    pool.removeKey(apiKey);
+                    keyPair.deleteApiKey();
+                    pool.removeKey(keyPair);
                     AlertUtil.error("Invalid key", e);
                     continue;
                 }
                 if (e.getMessage().toLowerCase(Locale.ROOT).contains("exceeded max request limit of")) {
-                    pool.removeKey(apiKey);
+                    pool.removeKey(keyPair);
                     AlertUtil.error("Exceeded max request limit", e);
                     continue;
                 }
                 String msg = e.getMessage();
-                msg = msg.replace(apiKey, "XXXX");
+                msg = StringUtils.replaceIgnoreCase(msg, keyPair.getKey(), "XXXX");
+                if (keyPair.getBotKey() != null) {
+                    msg = StringUtils.replaceIgnoreCase(msg, keyPair.getBotKey(), "YYYY");
+                }
                 String finalMsg = msg;
                 throw new RuntimeException(e) {
                     @Override
@@ -281,7 +275,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     @Override
     public AllianceMembers getAllianceMembers(int allianceId) throws IOException {
         AllianceMembers result = runWithKey(key -> (AllianceMembers) execute(new AllianceMembersQuery(allianceId, key).build()));
-        new link.locutus.discord.pnw.Alliance(allianceId).updateSpies(result);
+        DBAlliance.getOrCreate(allianceId).updateSpies(result);
         return result;
     }
 
@@ -401,11 +395,8 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
 
     public Map<String, Integer> getApiKeyUsageStats() {
         Map<String, Integer> result = new HashMap<>();
-        for (Map.Entry<String, AtomicInteger> entry : pool.getStats().entrySet()) {
-            result.put(entry.getKey(), entry.getValue().intValue());
-        }
-        for (String key : pool.getKeys()) {
-            result.putIfAbsent(key, 0);
+        for (ApiKeyPool.ApiKey key : pool.getKeys()) {
+            result.put(key.getKey().toLowerCase(Locale.ROOT), key.getUsage());
         }
         return result;
     }

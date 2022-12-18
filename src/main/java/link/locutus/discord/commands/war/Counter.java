@@ -8,7 +8,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -41,7 +41,7 @@ public class Counter extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter <war> [alliance|coalition|role]";
+        return Settings.commandPrefix(true) + "counter <war> [alliance|coalition|role]";
     }
 
     @Override
@@ -63,7 +63,7 @@ public class Counter extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
         DBNation counter;
         int defenderId;
@@ -98,7 +98,7 @@ public class Counter extends Command {
         double scoreMax = score / 0.75;
 
         boolean filterApps = false;
-        List<DBNation> pool;
+        Set<DBNation> pool;
 
         if (args.size() == 2) {
             if (args.get(1).equalsIgnoreCase("*")) {
@@ -108,7 +108,7 @@ public class Counter extends Command {
                 pool = Locutus.imp().getNationDB().getNations(allies);
             } else {
                 try {
-                    pool = new ArrayList<>(DiscordUtil.parseNations(event.getGuild(), args.get(1)));
+                    pool = DiscordUtil.parseNations(event.getGuild(), args.get(1));
                 } catch (Throwable e) {
                     e.printStackTrace();
                     throw e;
@@ -251,7 +251,7 @@ public class Counter extends Command {
             if (count++ == maxResults) break;
 
             PNWUser user = DiscordUtil.getUser(nation);
-            if (user != null && user.getDiscordId() != null) {
+            if (user != null) {
                 String statusStr = "";
                 if(guild != null) {
                     Member member = guild.getMemberById(user.getDiscordId());

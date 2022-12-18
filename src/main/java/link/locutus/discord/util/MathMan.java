@@ -8,6 +8,7 @@ import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.regex.PatternSyntaxException;
 
 public class MathMan {
 
@@ -75,8 +76,20 @@ public class MathMan {
     private static String[] splitStrArgs = {"!=", "="};
     private static BiFunction<String, String, Boolean>[] splitStrComparators = new BiFunction[splitArgs.length];
     static {
-        splitStrComparators[0] = (a, b) -> !a.equalsIgnoreCase(b);
-        splitStrComparators[1] = (a, b) -> a.equalsIgnoreCase(b);
+        splitStrComparators[0] = (a, b) -> {
+            try {
+                return !a.equalsIgnoreCase(b) && !(a.matches(b));
+            } catch (PatternSyntaxException ignore) {
+                return true;
+            }
+        };
+        splitStrComparators[1] = (a, b) -> {
+            try {
+                return a.equalsIgnoreCase(b) || a.matches(b);
+            } catch (PatternSyntaxException ignore) {
+                return false;
+            }
+        };
     }
 
     public static Map.Entry<String, Function<Double, Boolean>> parseFilter(String arg) {

@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import com.google.common.collect.BiMap;
@@ -75,11 +75,10 @@ public class ProlificOffshores extends Command {
             entry.setValue(sum);
         }
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
 
         new SummedMapRankBuilder<>(aaCount)
         .sort()
-        .nameKeys(alliances::get)
+        .nameKeys(f -> PnwUtil.getName(f, true))
         .limit(10)
         .build(event, "Prolific Offshores (" + days + " days)");
 

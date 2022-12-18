@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -138,7 +138,7 @@ public class DeserterSheet extends Command {
             Integer prevAA = nationPreviousAA.get(defender.getNation_id());
             String prevAAName = PnwUtil.getName(prevAA, true);
             row.add(MarkupUtil.sheetUrl(prevAAName, PnwUtil.getUrl(prevAA, true)));
-            row.add(MarkupUtil.sheetUrl(defender.getAlliance(), defender.getAllianceUrl()));
+            row.add(MarkupUtil.sheetUrl(defender.getAllianceName(), defender.getAllianceUrl()));
 
             row.add(dateStr);
             row.add(rank.name());
@@ -166,6 +166,6 @@ public class DeserterSheet extends Command {
         sheet.set(0, 0);
 
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

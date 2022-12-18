@@ -3,10 +3,11 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -25,16 +26,17 @@ import java.util.Map;
 import java.util.Set;
 
 public class RegisterCommand extends Command {
-    private final DiscordDB db;
+
+    private final DiscordDB discordDb;
 
     public RegisterCommand(DiscordDB db) {
         super("validate", "register", "verify", CommandCategory.USER_SETTINGS);
-        this.db = db;
+        this.discordDb = db;
     }
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate <nation-id>";
+        return CM.register.cmd.toSlashMention();
     }
 
     @Override
@@ -50,15 +52,17 @@ public class RegisterCommand extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         User user = event.getAuthor();
+        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         if (args.size() >= 2) {
             User mention = DiscordUtil.getMention(args.get(0));
             if (mention == null) {
-                return "To manually register, use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate @mention <nation-link>";
+                return "To manually register, use " + Settings.commandPrefix(true) + "validate @mention <nation-link>";
             }
             Integer nationId = DiscordUtil.parseNationId(args.get(1));
             if (nationId == null) {
                 return "Invalid nation: ``" + args.get(1) + "`" + "`";
             }
+
             if (!Roles.ADMIN.hasOnRoot(user)) {
                 if (!Settings.INSTANCE.DISCORD.REGISTER_ANYONE.contains(author.getIdLong())) {
 
@@ -66,16 +70,16 @@ public class RegisterCommand extends Command {
                         return usage();
                     } else {
                         Role appRole = Roles.APPLICANT.toRole(guild);
+                        Role memberRole = Roles.MEMBER.toRole(guild);
                         Member mentionMember = guild.getMember(mention);
 
                         if (mentionMember == null) return "User is not in server";
-                        if (appRole == null) return "No applicant role exists";
-                        if (!mentionMember.getRoles().contains(appRole)) return "User does not have applicant role";
+                        if (appRole == null && memberRole == null) return "No applicant or member role exists";
+                        if (!mentionMember.getRoles().contains(appRole) && !mentionMember.getRoles().contains(memberRole)) return "User does not have applicant role";
                         if (DiscordUtil.getNation(mention) != null) return "User is already registered";
                         DBNation mentionNation = DBNation.byId(nationId);
                         if (mentionNation == null) return "Invalid nation";
-                        if (mentionNation.getUser() == null) return "Nation already registered";
-                        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
+                        if (mentionNation.getUser() != null) return "Nation already registered: " + mentionNation.getNation() + " = " + mentionNation.getUser();
                         Integer aaId = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
                         if (aaId == null) aaId = me.getAlliance_id();
                         if (aaId != mentionNation.getAlliance_id()) return "Nation has not applied ingame";
@@ -83,14 +87,14 @@ public class RegisterCommand extends Command {
                 }
             }
 
-            return register(event, mention, nationId, true);
+            return register(event, guildDb, mention, nationId, true);
         }
         if (args.size() != 1) {
             DBNation nation = DiscordUtil.getNation(event);
             if (nation == null) {
-                return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate <nation link>`";
+                return "Usage: " + CM.register.cmd.toSlashMention();
             } else {
-                return nation.register(user, guild, false);
+                return nation.register(user, guildDb, false);
             }
         }
         if (args.get(0).equalsIgnoreCase("*")) {
@@ -119,13 +123,13 @@ public class RegisterCommand extends Command {
                     continue;
                 }
 
-                if (db.getUserFromNationId(nation.getNation_id()) != null) continue;
-                if (db.getUserFromDiscordId(member.getIdLong()) != null) continue;
+                if (nation.getUserId() != null) continue;
+                if (discordDb.getUserFromDiscordId(member.getIdLong()) != null) continue;
 
                 String fullDiscriminator = member.getUser().getName() + "#" + member.getUser().getDiscriminator();
                 PNWUser pnwUser = new PNWUser(nation.getNation_id(), member.getIdLong(), fullDiscriminator);
 
-                db.addUser(pnwUser);
+                discordDb.addUser(pnwUser);
             }
 
             return "";
@@ -136,10 +140,10 @@ public class RegisterCommand extends Command {
             return "Must be an nation id or link: ``" + args.get(0) + "`" + "`";
         }
 
-        return register(event, user, nationId, false);
+        return register(event, guildDb, user, nationId, false);
     }
 
-    public String register(MessageReceivedEvent event, User user, int nationId, boolean force) throws IOException {
+    public String register(MessageReceivedEvent event, GuildDB db, User user, int nationId, boolean force) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nationId) == null;
 
         String fullDiscriminator = user.getName() + "#" + user.getDiscriminator();
@@ -148,20 +152,20 @@ public class RegisterCommand extends Command {
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
-                "5. Run the command `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate " + nationId + "` again";
+                "5. Run the command " + CM.register.cmd.create(nationId + "").toSlashCommand() + " again";
 
         long id = user.getIdLong();
         boolean checkId = false;
 
         PNWUser existingUser = Locutus.imp().getDiscordDB().getUser(null, user.getName(), fullDiscriminator);
         if (existingUser != null) {
-            if (existingUser.getDiscordId() == null && !existingUser.getDiscordId().equals(id)) {
+            if (existingUser.getDiscordId() != id) {
                 errorMsg = "That nation is already registered to another user!" +
                         "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
                         "2. Scroll down to where it says Discord Username:\n" +
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
-                        "5. Run the command `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate " + nationId + "` again";
+                        "5. Run the command " + CM.register.cmd.create(nationId + "").toSlashCommand() + " again";
                 checkId = true;
             }
         }
@@ -198,13 +202,13 @@ public class RegisterCommand extends Command {
                 if (checkId) {
                     userName = "" + user.getIdLong();
                 }
-                if (!userName.equalsIgnoreCase(pnwDiscordName)) {
+                if (!userName.equalsIgnoreCase(pnwDiscordName) && !pnwDiscordName.contains("" + user.getIdLong())) {
                     return "Your user doesnt match: `" + pnwDiscordName + "` != `" + userName + "`\n\n" + errorMsg;
                 }
 
-                PNWUser pnwUser = new PNWUser(nationId, id, fullDiscriminator);
-                db.addUser(pnwUser);
-                String registerMessage = nation.register(user, event.isFromGuild() ? event.getGuild() : null, notRegistered);;
+                PNWUser pnwUser = new PNWUser(nationId, id, userName);
+                discordDb.addUser(pnwUser);
+                String registerMessage = nation.register(user, event.isFromGuild() ? db : null, notRegistered);;
 
                 if (!success) {
                     registerMessage += "\n" + "Error: " + errorMsg;
@@ -216,7 +220,7 @@ public class RegisterCommand extends Command {
                 return e.getMessage();
             } catch (Throwable e) {
                 e.printStackTrace();
-                return "Error (see console) <@" + Settings.INSTANCE.ADMIN_USER_ID + ">";
+                return "Error: " + e.getMessage();
             }
         }
 
@@ -224,7 +228,7 @@ public class RegisterCommand extends Command {
         nation.setNation_id(nationId);
 
         PNWUser pnwUser = new PNWUser(nationId, id, fullDiscriminator);
-        db.addUser(pnwUser);
-        return nation.register(user, event.isFromGuild() ? event.getGuild() : null, notRegistered);
+        discordDb.addUser(pnwUser);
+        return nation.register(user, db, notRegistered);
     }
 }

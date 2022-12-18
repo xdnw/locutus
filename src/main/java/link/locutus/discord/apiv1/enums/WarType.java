@@ -17,6 +17,19 @@ public enum WarType {
         this.bountyName = bountyName;
     }
 
+    public static WarType fromV3(com.politicsandwar.graphql.model.WarType warType) {
+        switch (warType) {
+            case ORDINARY:
+                return ORD;
+            case ATTRITION:
+                return ATT;
+            case RAID:
+                return RAID;
+            default:
+                throw new UnsupportedOperationException("Unknown war type: " + warType);
+        }
+    }
+
     public String getBountyName() {
         return bountyName;
     }

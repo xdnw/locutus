@@ -1,32 +1,23 @@
 package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.BBGame;
-import com.politicsandwar.graphql.model.BBGameResponseProjection;
-import com.politicsandwar.graphql.model.Baseball_gamesQueryRequest;
 import com.ptsmods.mysqlw.query.QueryOrder;
-import com.ptsmods.mysqlw.query.SelectResults;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
-import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.event.BaseballGameEvent;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.event.baseball.BaseballGameEvent;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
-
-import static java.util.Collections.singletonMap;
 
 public class BaseballDB extends DBMainV2{
     public BaseballDB(Settings.DATABASE config) throws SQLException {
@@ -37,17 +28,17 @@ public class BaseballDB extends DBMainV2{
     protected void createTables() {
         TablePreset.create("games")
                 .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("date", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("date", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("home_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("away_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("home_nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("away_nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("home_score", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("away_score", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("home_revenue", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("spoils", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("home_revenue", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("spoils", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("open", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                .putColumn("wager", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("wager", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .create(getDb())
         ;
     }
@@ -62,14 +53,21 @@ public class BaseballDB extends DBMainV2{
         return latestGame.isEmpty() ? null : latestGame.get(0).getId();
     }
 
-    public void updateGames(boolean runEvents, boolean wagered, Integer minId, Integer maxId) {
+    public void updateGames(Consumer<Event> eventConsumer) {
+        BaseballDB db = Locutus.imp().getBaseballDB();
+        Integer minId = db.getMinGameId();
+        if (minId != null) minId++;
+        db.updateGames(eventConsumer, false, minId, null);
+    }
+
+    public void updateGames(Consumer<Event> eventConsumer, boolean wagered, Integer minId, Integer maxId) {
         Set<Integer> gameIds = getBaseballGameIds();
 
-        if (gameIds.isEmpty()) runEvents = false;
+        if (gameIds.isEmpty()) eventConsumer = null;
 
-        PoliticsAndWarV3 v3 = Locutus.imp().getPnwApi().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<BBGame> games = v3.fetchBaseballGames(req -> {
-            if (wagered) req.setMin_wager(1);
+            if (wagered) req.setMin_wager(1d);
             if (minId != null) req.setMin_id(minId);
             if (maxId != null) req.setMax_id(maxId);
         }, game -> {
@@ -92,9 +90,9 @@ public class BaseballDB extends DBMainV2{
         for (BBGame game : games) {
             addGame(game);
         }
-        if (runEvents) {
+        if (eventConsumer != null) {
             for (BBGame game : games) {
-                new BaseballGameEvent(game).post();
+                eventConsumer.accept(new BaseballGameEvent(game));
             }
         }
     }
@@ -172,7 +170,7 @@ public class BaseballDB extends DBMainV2{
     }
 
     public List<BBGame> getBaseballGames(Consumer<SelectBuilder> query) {
-        List<BBGame> result = new LinkedList<>();
+        List<BBGame> result = new ArrayList<>();
         SelectBuilder builder = getDb().selectBuilder("games")
                 .select("*");
         if (query != null) query.accept(builder);

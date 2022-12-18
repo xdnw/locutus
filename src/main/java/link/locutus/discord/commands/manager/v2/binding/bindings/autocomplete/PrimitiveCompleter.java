@@ -100,7 +100,7 @@ public class PrimitiveCompleter extends BindingHelper {
     public static List<String> color(String input) {
         if (input.isEmpty()) return null;
 
-        List<String> colors = new LinkedList<>();
+        List<String> colors = new ArrayList<>();
 
         List<Map.Entry<String, Double>> distances = new ArrayList<>();
 

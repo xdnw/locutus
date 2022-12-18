@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
@@ -31,7 +31,7 @@ public class WarLossesPerCity extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarLossesPerCity <alliance|coalition|*> <days>";
+        return Settings.commandPrefix(true) + "WarLossesPerCity <alliance|coalition|*> <days>";
     }
 
     @Override
@@ -44,7 +44,7 @@ public class WarLossesPerCity extends Command {
         if (args.size() != 2) {
             return usage(event);
         }
-        Collection<DBNation> nations = Locutus.imp().getGuildDB(event).getNationsByArguments(args.get(0));
+        Collection<DBNation> nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         if (nations == null || nations.isEmpty()) {
             return "Invalid alliance or coalition: `" + args.get(0) + "`";
         }
@@ -100,9 +100,9 @@ public class WarLossesPerCity extends Command {
             response.append('\n').append(String.format("%4s", i + 1) + ". ").append(String.format("%32s", name)).append(": $").append(format(value));
         }
 
-        String emoji = "\uD83D\uDD04";
-        response.append("\n\npress " + emoji + " to refresh");
-        Message msg = DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        String emoji = "Refresh";
+        response.append("\n\nPress `" + emoji + "` to refresh");
+        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
 
         return null;
     }

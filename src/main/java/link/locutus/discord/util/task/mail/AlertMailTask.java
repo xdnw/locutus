@@ -1,11 +1,15 @@
 package link.locutus.discord.util.task.mail;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.Spyops;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
@@ -48,8 +52,7 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
         try {
             this.task.call();
         } catch (Throwable e) {
-            e.printStackTrace();
-            AlertUtil.error("Error reading mail for: " + auth.getNationId(), e);
+            AlertUtil.error("Error reading mail for: " + auth.getNationId() + ": " + e.getMessage(), e);
         }
     }
 
@@ -60,11 +63,6 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                 return;
             }
             String url = "" + Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + mail.id;
-
-            String replyEmoji = "\uD83D\uDCE7";
-            String infoEmoji = "\u2139";
-            String reply = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "say `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "mail from:" + auth.getNationId() + " \"" + mail.leader + "\" " + url + " <response>`\n - " + url;
-            String info = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkmail " + url;
 
             String title = mail.leader + " in '" + mail.subject + "'";
 
@@ -82,7 +80,6 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
             body.append("\n");
             body.append("```").append(strings.get(0)).append("```");
             body.append("\n").append(url);
-            body.append("\nPress " + replyEmoji + " to reply");
 
 
             long output = outputChannel;
@@ -96,31 +93,45 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                 channel = Locutus.imp().getDiscordApi().getGuildChannelById(outputChannel);
             }
 
-            Message message = null;
             if (channel != null) {
-                Guild guild = channel.getGuild();
-                GuildDB db = Locutus.imp().getGuildDB(guild);
-                message = DiscordUtil.createEmbedCommand(output, title, body.toString(), replyEmoji, reply, infoEmoji, info);
+                DiscordChannelIO outputBuilder = new DiscordChannelIO(channel, () -> null);
 
-                Role role = Roles.INTERNAL_AFFAIRS.toRole(guild);
-                if (role != null) {
-//                channel.sendMessage("^ " + link.locutus.discord.util.RateLimitUtil.queue(role.getAsMention()));
+                Guild guild = channel.getGuild();
+
+                if (!strings.isEmpty()) {
+                    String msg = strings.get(0);
+
+                    Map.Entry<DBNation, double[]> spyReport = SpyCount.parseSpyReport(nation, msg);
+                    if (spyReport != null) {
+                        double converted = PnwUtil.convertedTotal(spyReport.getValue());
+
+                        body.append("\nWorth: ~$" + MathMan.format(converted * 0.14));
+                    }
                 }
 
+                IMessageBuilder builder = outputBuilder.create();
+
+                Role role = Roles.MAIL.toRole(guild);
+                if (role != null) {
+                    builder.append("^ " + role.getAsMention());
+                }
+
+                builder.embed(title, body.toString());
+                DBNation receiver = Locutus.imp().getNationDB().getNationByLeader(mail.leader);
+                CM.mail.reply mailCmd = CM.mail.reply.cmd.create(receiver.getNation(), url, null, auth.getNation().getNation());
+                builder.modal(CommandBehavior.DELETE_REACTION, mailCmd, "\uD83D\uDCE7 Reply");
+
+                builder.send();
+
                 processCommands(guild, mail, strings);
+
+
             }
 
             if (nation == null) return;
 
             if (strings.isEmpty()) return;
             String msg = strings.get(0);
-
-            Map.Entry<DBNation, double[]> spyReport = SpyCount.parseSpyReport(nation, msg);
-            if (spyReport != null && message != null) {
-                double converted = PnwUtil.convertedTotal(spyReport.getValue());
-                DiscordUtil.appendDescription(message, "\nWorth: ~$" + MathMan.format(converted * 0.14));
-            }
-
 
             if (mail.subject.toLowerCase().startsWith("targets-")) {
                 if (msg.toLowerCase().startsWith("more")) {
@@ -155,14 +166,14 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                             Set<Character> flags = new HashSet<>(Arrays.asList('s', 'r'));
                             targets = cmd.run(null, nation, db, args, flags);
                         } else if (db == null) {
-                            targets = "Your alliance does not have Locutus setup. Use the command on discord instead:\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyops`";
+                            targets = "Your alliance does not have Locutus setup. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() +  "";
                         } else {
-                            targets = "Your alliance does not have any enemies set. Use the command on discord instead:\n`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyops`";
+                            targets = "Your alliance does not have any enemies set. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() + "";
                         }
                         if (targets != null) {
                             String response = new MailRespondTask(auth, mail.leader, mail.id, MarkupUtil.bbcodeToHTML(targets), null).call();
                             if (channel != null) {
-                                RateLimitUtil.queue(channel.sendMessage("Sending target messages to " + nation.getNation() + ": " + response));
+                                RateLimitUtil.queueWhenFree(channel.sendMessage("Sending target messages to " + nation.getNation() + ": " + response));
                             }
                         }
                     } catch (IOException e) {
@@ -177,7 +188,7 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
 
     private void processCommands(Guild guild, Mail mail, List<String> strings) {
         String reply = strings.get(0);
-        if (reply.isEmpty() || reply.charAt(0) != (Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX).charAt(0)) return;
+        if (reply.isEmpty() || reply.charAt(0) != (Settings.commandPrefix(true)).charAt(0)) return;
 
         DBNation nation = DBNation.byId(mail.nationId);
         if (nation == null) return;

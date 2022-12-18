@@ -1,21 +1,23 @@
 package link.locutus.discord.util.offshore;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.task.balance.GetTaxesTask;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -37,8 +39,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static java.util.Collections.emptyMap;
 
 public class Auth {
     private final String password;
@@ -61,7 +64,7 @@ public class Auth {
     private boolean loggedIn = false;
 
     public String getToken(String url) throws IOException {
-        String html = readStringFromURL(url, Collections.emptyMap());
+        String html = readStringFromURL(url, emptyMap());
         Document dom = Jsoup.parse(html);
         return dom.select("input[name=token]").attr("value");
     }
@@ -72,8 +75,13 @@ public class Auth {
             login(false);
             String result = FileUtil.readStringFromURL(urlStr, arguments, msCookieManager);
             if (result.contains("<!--Logged Out-->")) {
+                logout();
+                msCookieManager = new CookieManager();
                 login(true);
                 result = FileUtil.readStringFromURL(urlStr, arguments, msCookieManager);
+                if (result.contains("<!--Logged Out-->")) {
+                    throw new IllegalArgumentException("Failed to login to PNW");
+                }
             }
             if (result.toLowerCase().contains("authenticate your request")) {
                 new Exception().printStackTrace();
@@ -105,6 +113,7 @@ public class Auth {
     public String logout() throws IOException {
         String logout = FileUtil.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/logout/");
         Document dom = Jsoup.parse(logout);
+        clearCookies();
         return PnwUtil.getAlert(dom);
     }
 
@@ -149,14 +158,14 @@ public class Auth {
         return valid;
     }
 
-    public synchronized String getApiKey() {
-        if (apiKey == null) {
+    public synchronized ApiKeyPool.ApiKey fetchApiKey() {
+        if (apiKey == null || apiKey.isEmpty()) {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/";
             apiKey = PnwUtil.withLogin(new Callable<String>() {
                 @Override
                 public String call() throws Exception {
                     try {
-                        Document dom = Jsoup.parse(Auth.this.readStringFromURL(url + "account/", Collections.emptyMap()));
+                        Document dom = Jsoup.parse(Auth.this.readStringFromURL(url + "account/", emptyMap()));
                         Elements tables = dom.select(".nationtable");
                         Element apiTable = tables.get(tables.size() - 1);
                         return apiTable.select(".center").first().text();
@@ -167,7 +176,34 @@ public class Auth {
                 }
             }, this);
         }
-        return apiKey;
+        if (apiKey == null || apiKey.isEmpty()) throw new IllegalArgumentException("Unable to fetch api key");
+        Locutus.imp().getDiscordDB().addApiKey(getNationId(), apiKey);
+        return Locutus.imp().getDiscordDB().getApiKey(nationId);
+    }
+
+    public String createAllianceEmbargo(int embargoFrom, NationOrAlliance embargo, String message) {
+        Map<String, String> post = new HashMap<>();
+
+        post.put("create_embargo_target", embargo.isAlliance() ? embargo.getName() : embargo.asNation().getLeader());
+        post.put("create_embargo_type", embargo.isNation() ? "3" : "4");
+        post.put("create_embargo_reason", message);
+        post.put("create_embargo", "");
+        post.put("validation_token", "");
+
+        String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + embargoFrom + "&display=embargoes";
+        return PnwUtil.withLogin(new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+//                String result = Auth.this.readStringFromURL(url, emptyMap());
+//                Document dom = Jsoup.parse(result);
+//                String token = dom.getElementsByAttributeValue("name", "token").get(0).attr("value");
+
+                String result = Auth.this.readStringFromURL(url, post);
+                return PnwUtil.getAlert(Jsoup.parse(result));
+            }
+        }, this);
+
+
     }
 
     public String setCityName(int id, String name) throws IOException {
@@ -190,7 +226,7 @@ public class Auth {
             public String call() throws Exception {
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/world/bounties";
 
-                String result = Auth.this.readStringFromURL(url, Collections.emptyMap());
+                String result = Auth.this.readStringFromURL(url, emptyMap());
                 Document dom = Jsoup.parse(result);
                 String token = dom.getElementsByAttributeValue("name", "token").get(0).attr("value");
 
@@ -261,7 +297,7 @@ public class Auth {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId + "&display=acp";
         return PnwUtil.withLogin(() -> {
             List<PendingTreaty> result = new ArrayList<>();
-            String html = Auth.this.readStringFromURL(url, Collections.emptyMap());
+            String html = Auth.this.readStringFromURL(url, emptyMap());
             Document dom = Jsoup.parse(html);
             Element table = dom.getElementsByClass("nationtable").get(1);
             Elements rows = table.getElementsByTag("tr");
@@ -311,7 +347,7 @@ public class Auth {
         Callable<String> task = new Callable<>() {
             @Override
             public String call() throws IOException {
-                String result = Auth.this.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", Collections.emptyMap());
+                String result = Auth.this.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
                 Document dom = Jsoup.parse(result);
                 String token = dom.select("input[name=token]").attr("value");
                 post.put("token", token);
@@ -336,6 +372,70 @@ public class Auth {
         return getTaxBrackets(false);
     }
 
+    public String setRank(DBNation nation, DBAlliancePosition position) {
+        return PnwUtil.withLogin(() -> {
+            String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAllianceId() + "&display=acp";
+            String result = readStringFromURL(url, Collections.emptyMap());
+
+
+            Document dom = Jsoup.parse(result);
+            // https://politicsandwar.com/alliance/id=7452&display=acp&appID=1233&action=1&auth=eb9d09acc1a3c686ff070e68440ab8a7
+
+            StringBuilder response = new StringBuilder();
+
+            if (nation.getPositionEnum() == Rank.APPLICANT && position != DBAlliancePosition.APPLICANT) {
+                String title = position == DBAlliancePosition.REMOVE ? "Remove" : "Make Member";
+                Elements elems = dom.select("img[title=" + title + "]");
+                for (Element elem : elems) {
+                    if (elem.parent().parent().nextElementSibling().nextElementSibling().html().contains(nation.getNationUrl())) {
+                        String acceptUrl = elem.parent().attr("href");
+
+                        result = readStringFromURL(acceptUrl, Collections.emptyMap());
+                        response.append(PnwUtil.getAlert(Jsoup.parse(result)));
+
+                        if (position == DBAlliancePosition.REMOVE) {
+                            nation.update(false);
+                            return response.toString();
+                        }
+                    }
+                }
+                System.out.println(result);
+                new Exception().printStackTrace();
+            }
+            result = readStringFromURL(url, Collections.emptyMap());
+            dom = Jsoup.parse(result);
+
+            String token = dom.select("input[name=validation_token]").attr("value");
+
+            Map<String, String> post = new HashMap<>();
+            post.put("alliance_positions_member", nation.getNation_id() + "");
+            post.put("alliance_positions_member_name_type", "nation_id");
+            post.put("alliance_positions_new_position_select", position.getInputName());
+            post.put("validation_token", token);
+            post.put("alliance_positions_assign_submit", "Save Position Assignment");
+
+            result = readStringFromURL(url, post);
+            dom = Jsoup.parse(result);
+            int alerts = 0;
+            for (Element element : dom.getElementsByClass("alert")) {
+                String text = element.text();
+                if (text.startsWith("Player Advertisement by ")) {
+                    continue;
+                }
+                alerts++;
+                response.append('\n').append(element.text());
+            }
+            if (alerts == 0) {
+                System.out.println("could not find alert for setrank " + dom);
+                response.append('\n').append("Set player rank ingame. Remember to also set the rank on discord.");
+            }
+
+            nation.update(false);
+
+            return response.toString().trim();
+        }, this);
+    }
+
     private Map<Integer, TaxBracket> cachedBrackets;
 
     public Map<Integer, TaxBracket> getTaxBrackets(boolean useCache) {
@@ -346,7 +446,7 @@ public class Auth {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId + "&display=taxes";
         return PnwUtil.withLogin(() -> {
             Map<Integer, TaxBracket> result = new HashMap<>();
-            String html = Auth.this.readStringFromURL(url, Collections.emptyMap());
+            String html = Auth.this.readStringFromURL(url, emptyMap());
             Document dom = Jsoup.parse(html);
             Element table = dom.getElementsByClass("nationtable").get(0);
             Elements rows = table.getElementsByTag("tr");
@@ -397,11 +497,12 @@ public class Auth {
                     moreTrades = false;
 
                     String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/";
-                    String html = Auth.this.readStringFromURL(url, Collections.emptyMap());
+                    String html = Auth.this.readStringFromURL(url, emptyMap());
                     Document dom = Jsoup.parse(html);
 
                     Elements tables = dom.getElementsByClass("nationtable");
                     if (tables.size() == 0) {
+                        System.out.println("Error fetching trades " + html);
                         return Collections.singleton(new TradeResult("Could not load trade page", TradeResultType.CAPTCHA));
                     }
                     Element table = tables.get(0);
@@ -552,40 +653,6 @@ public class Auth {
         return login ? PnwUtil.withLogin(task, auth) : task.call();
     }
 
-    public void updateTaxes(Long latestDate) {
-        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(getAllianceId());
-        int latestId = 1;
-        if (latestDate == null) {
-            latestDate = 0L;
-            long now = System.currentTimeMillis();
-            if (!existing.isEmpty()) {
-
-                long date = existing.get(existing.size() - 1).date;
-                if (date < now) {
-                    latestDate = Math.max(latestDate, date);
-                }
-                latestId = existing.get(existing.size() - 1).index;
-            }
-        }
-        List<BankDB.TaxDeposit> taxes = new GetTaxesTask(this, latestDate).call();
-
-        synchronized (Locutus.imp().getBankDB()) {
-            long oldestFetched = Long.MAX_VALUE;
-            for (BankDB.TaxDeposit tax : taxes) {
-                tax.index = ++latestId;
-                oldestFetched = Math.min(oldestFetched, tax.date);
-            }
-            if (oldestFetched < latestDate - TimeUnit.DAYS.toMillis(7)) {
-                throw new IllegalArgumentException("Invalid fetch date: " + oldestFetched);
-            }
-
-            if (!taxes.isEmpty()) {
-                Locutus.imp().getBankDB().deleteTaxDeposits(getAllianceId(), oldestFetched);
-                Locutus.imp().getBankDB().addTaxDeposits(taxes);
-            }
-        }
-    }
-
     ///////////////////////
 
     public enum TradeResultType {
@@ -727,7 +794,7 @@ public class Auth {
         }
         if (total < 3000000) return null;
         return PnwUtil.withLogin(() -> {
-            String result = readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", Collections.emptyMap());
+            String result = readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
             Document dom = Jsoup.parse(result);
             String token = dom.select("input[name=token]").attr("value");
             post.put("token", token);

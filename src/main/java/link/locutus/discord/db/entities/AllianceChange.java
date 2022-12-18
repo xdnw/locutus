@@ -1,10 +1,9 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.pnw.Alliance;
 import link.locutus.discord.apiv1.enums.Rank;
 
 public class AllianceChange {
-    public Alliance fromAA, toAA;
+    public DBAlliance fromAA, toAA;
     public Rank fromRank, toRank;
     public long date;
 
@@ -13,8 +12,8 @@ public class AllianceChange {
         if (toAA == null) toAA = 0;
         if (fromRank == null) fromRank = Rank.REMOVE;
         if (toRank == null) fromRank = Rank.REMOVE;
-        this.fromAA = new Alliance(fromAA);
-        this.toAA = new Alliance(toAA);
+        this.fromAA = DBAlliance.getOrCreate(fromAA);
+        this.toAA = DBAlliance.getOrCreate(toAA);
         this.fromRank = fromRank;
         this.toRank = toRank;
         this.date = date;

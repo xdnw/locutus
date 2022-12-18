@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -194,11 +194,10 @@ public class MMRSheet extends Command {
                 navyBuyTotal /= aaNations.size();
 
                 String name = PnwUtil.getName(aaId, true);
-                DBNation total = new DBNation("", entry.getValue(), false);
+                DBNation total = DBNation.createFromList("", entry.getValue(), false);
 
                 total.setNation_id(0);
                 total.setAlliance_id(aaId);
-                total.setAlliance(name);
 
                 List<Object> row = new ArrayList<>(header);
                 setRow("ALLIANCE", row, total, barracksTotal, factoriesTotal, hangarsTotal, drydocksTotal, soldierBuyTotal, tankBuyTotal, airBuyTotal, navyBuyTotal);
@@ -207,7 +206,7 @@ public class MMRSheet extends Command {
 
             sheet.clearAll();
             sheet.set(0, 0);
-            String response = "<" + sheet.getURL() + ">";
+            String response = sheet.getURL(true, true);
             if (!flags.contains('f')) response += "\nNote: Results may be outdated, add `-f` to update.";
             return response;
         } catch (Throwable e) {
@@ -219,7 +218,7 @@ public class MMRSheet extends Command {
     public void setRow(String name, List<Object> row, DBNation nation, double barracks, double factories, double hangars, double drydocks, double soldierBuy, double tankBuy, double airBuy, double navyBuy) {
         row.set(0, name);
         row.set(1, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-        row.set(2, MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+        row.set(2, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
         row.set(3, nation.getCities());
         row.set(4, nation.getAvg_infra());
         row.set(5, nation.getScore());

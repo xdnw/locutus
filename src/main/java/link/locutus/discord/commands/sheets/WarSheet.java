@@ -7,7 +7,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 public class WarSheet extends Command {
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <allies> <enemies> [time]";
+        return Settings.commandPrefix(true) + getClass().getSimpleName() + " <allies> <enemies> [time]";
     }
 
     @Override
@@ -57,11 +57,9 @@ public class WarSheet extends Command {
         if (args.size() == 3) cutoff = now - (TimeUtil.timeToSec(args.get(2)) * 1000L);
 
         WarParser parser1 = WarParser.ofAANatobj(null, allies, null, enemies, cutoff, now);
-        WarParser parser2 = WarParser.ofAANatobj(null, enemies, null, allies, cutoff, now);
 
         Set<DBWar> allWars = new HashSet<>();
         allWars.addAll(parser1.getWars().values());
-        allWars.addAll(parser2.getWars().values());
 
         if (!flags.contains('i')) allWars.removeIf(f -> !f.isActive());
         allWars.removeIf(f -> {
@@ -141,13 +139,13 @@ public class WarSheet extends Command {
             headers.set(11, card.attackerMAP);
             headers.set(12, card.attackerResistance);
             headers.set(13, MarkupUtil.sheetUrl(att.getNation(), att.getNationUrl()));
-            headers.set(14, MarkupUtil.sheetUrl(att.getAlliance(), att.getAllianceUrl()));
+            headers.set(14, MarkupUtil.sheetUrl(att.getAllianceName(), att.getAllianceUrl()));
 
             long turnStart = TimeUtil.getTurn(war.date);
             long turns = 60 - (TimeUtil.getTurn() - turnStart);
             headers.set(15, turns);
 
-            headers.set(16, MarkupUtil.sheetUrl(def.getAlliance(), def.getAllianceUrl()));
+            headers.set(16, MarkupUtil.sheetUrl(def.getAllianceName(), def.getAllianceUrl()));
             headers.set(17, MarkupUtil.sheetUrl(def.getNation(), def.getNationUrl()));
             headers.set(18, card.defenderResistance);
             headers.set(19, card.defenderMAP);
@@ -166,6 +164,6 @@ public class WarSheet extends Command {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

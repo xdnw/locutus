@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -52,6 +52,6 @@ public class CoalitionSheet extends Command {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

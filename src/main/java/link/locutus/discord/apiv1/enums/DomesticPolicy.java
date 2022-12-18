@@ -10,6 +10,8 @@ public enum DomesticPolicy {
 
     ;
 
+    public static final DomesticPolicy[] values = values();
+
     public static DomesticPolicy parse(String policy) {
         return DomesticPolicy.valueOf(policy.toUpperCase().replace(" ", "_"));
     }

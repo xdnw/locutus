@@ -4,13 +4,12 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.trade.Offer;
-import com.google.common.collect.BiMap;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -38,7 +37,7 @@ public class Inflows extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfers <nation|alliance|coalition> <days>";
+        return Settings.commandPrefix(true) + "transfers <nation|alliance|coalition> <days>";
     }
 
     @Override
@@ -79,8 +78,7 @@ public class Inflows extends Command {
             return nation == null ? Integer.toString(i) : nation.getNation();
         };
 
-        BiMap<Integer, String> allianceNames = Locutus.imp().getNationDB().getAlliances();
-        Function<Integer, String> aaNameFunc = i -> allianceNames.getOrDefault(i, Integer.toString(i));
+        Function<Integer, String> aaNameFunc = i -> Locutus.imp().getNationDB().getAllianceName(i);
 
         if (nationId == null || arg0.contains("/allaince/") || arg0.charAt(0) == '~') {
             if (arg0.charAt(0) == '~') {
@@ -93,7 +91,7 @@ public class Inflows extends Command {
                 selfName = selfId == null ? "" : Locutus.imp().getNationDB().getAllianceName(selfId);
             }
             if (self == null || self.isEmpty()) {
-                return "Not found: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pnw-who <user>`";
+                return "Not found: `" + Settings.commandPrefix(true) + "pnw-who <user>`";
             }
 
             for (Integer allianceId : self) {
@@ -107,14 +105,14 @@ public class Inflows extends Command {
 
             allTransfers.addAll(Locutus.imp().getBankDB().getNationTransfers(nationId, cutoffMs));
 
-            List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nationId, cutoffMs);
-            for (Offer offer : trades) {
+            List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nationId, cutoffMs);
+            for (DBTrade offer : trades) {
                 int per = offer.getPpu();
                 ResourceType type = offer.getResource();
                 if (per > 1 && (per < 10000 || (type != ResourceType.FOOD && per < 100000))) {
                     continue;
                 }
-                long amount = offer.getAmount();
+                long amount = offer.getQuantity();
                 if (per <= 1) {
                     amount = offer.getTotal();
                     type = ResourceType.MONEY;
@@ -156,26 +154,26 @@ public class Inflows extends Command {
             list.add(transfer);
         }
 
-        MessageChannel channel = event.getChannel();
+        StringBuilder msg = new StringBuilder();
         if ((!aaInflow.isEmpty() || !nationInflow.isEmpty()) && !flags.contains('i')) {
-            channel.sendMessage("Net inflows: ").complete();
-            send(channel, selfName, aaNameFunc, "alliance", aaInflow, days, true);
-            send(channel, selfName, nationNameFunc, "nation", nationInflow, days, true);
+            msg.append("Net inflows:\n");
+            msg.append(send(selfName, aaNameFunc, "alliance", aaInflow, days, true) + "\n");
+            msg.append(send(selfName, nationNameFunc, "nation", nationInflow, days, true) + "\n");
         }
         if ((!aaOutflow.isEmpty() || !nationOutflow.isEmpty()) && !flags.contains('o')) {
-            channel.sendMessage("Net outflows: ").complete();
-            send(channel, selfName, aaNameFunc, "alliance", aaOutflow, days, false);
-            send(channel, selfName, nationNameFunc, "nation", nationOutflow, days, false);
+            msg.append("Net outflows:\n");
+            msg.append(send(selfName, aaNameFunc, "alliance", aaOutflow, days, false) + "\n");
+            msg.append(send(selfName, nationNameFunc, "nation", nationOutflow, days, false) + "\n");
         }
 
         if (aaInflow.isEmpty() && nationInflow.isEmpty() && aaOutflow.isEmpty() && nationOutflow.isEmpty()) {
             return "No results.";
         } else {
-            return "Done!";
+            return msg.toString();
         }
     }
 
-    private void send(MessageChannel channel, String selfName, Function<Integer, String> nameFunc, String typeOther, Map<Integer, List<Transaction2>> transferMap, int days, boolean inflow) {
+    private String send(String selfName, Function<Integer, String> nameFunc, String typeOther, Map<Integer, List<Transaction2>> transferMap, int days, boolean inflow) {
         StringBuilder result = new StringBuilder();
         for (Map.Entry<Integer, List<Transaction2>> entry : transferMap.entrySet()) {
             int id = entry.getKey();
@@ -185,7 +183,7 @@ public class Inflows extends Command {
 
             List<Transaction2> transfers = entry.getValue();
             String title = inflow ? name + " > " + selfName : selfName + " > " + name;
-            String followCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inflows " + url + " " + days;
+            String followCmd = Settings.commandPrefix(true) + "inflows " + url + " " + days;
 
             StringBuilder message = new StringBuilder();
 
@@ -197,10 +195,10 @@ public class Inflows extends Command {
 
             message.append(PnwUtil.resourcesToString(totals));
 
-            String infoCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pw-who " + url;
+            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
 //            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
             result.append(title + ": " + message).append("\n");
         }
-        DiscordUtil.sendMessage(channel, result.toString());
+        return result.toString();
     }
 }

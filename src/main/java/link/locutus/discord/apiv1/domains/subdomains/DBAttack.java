@@ -3,11 +3,11 @@ package link.locutus.discord.apiv1.domains.subdomains;
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
-import com.google.common.collect.BiMap;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -22,22 +22,6 @@ import java.util.regex.Pattern;
 import static link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS;
 
 public class DBAttack {
-    // TODO simplified version of attack for in memory usage
-    // Map<war id, map<attack id, attack_simplified>>
-    // 64 + 1 + 8 + 64 + 64 + 64 + 32 + 32 + 8 + 16 + varint = 353 bytes + varint
-    // 341gb
-    // date - long - possibly can drop if using id, and checking date against id
-    // isAttacker - boolean
-    // attack type - byte
-    // att_losses - long
-    // def_losses - long
-    // infra_destroyed_value - long
-    // att_used - int
-    // def_used - int
-    // improvements_destroyed - byte
-    // loot_percent - char (0-100%)
-    // varint array <resource, amount> => money looted
-
     public int war_attack_id;
     public long epoch;
     public int war_id;
@@ -66,6 +50,7 @@ public class DBAttack {
     public double def_mun_used;
 
     public double infraPercent_cached;
+    public int city_cached;
 
     public DBAttack() {}
 
@@ -129,6 +114,8 @@ public class DBAttack {
         a.getAtt_mun_used(),
         a.getDef_gas_used(),
         a.getDef_mun_used());
+
+        if (a.getCity_id() != null) this.city_cached = a.getCity_id();
     }
 
     public Map<ResourceType, Double> getLoot() {
@@ -231,8 +218,8 @@ public class DBAttack {
         matcher.find();
         double percent = Math.max(0.01, Double.parseDouble(matcher.group(1))) / 100d;
 
-        BiMap<String, Integer> alliances = Locutus.imp().getNationDB().getAlliances().inverse();
-        allianceIdOutput.set(alliances.getOrDefault(bank, 0));;
+        DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(bank);
+        allianceIdOutput.set(alliance != null ? alliance.getId() : 0);
         return percent;
     }
 
@@ -274,18 +261,18 @@ public class DBAttack {
 //            throw e;
             return resourceOutput;
         }
-        long money = MathMan.parseInt(moneyStr.substring(0, moneyStr.length() - 1));
-        long coal = MathMan.parseInt(matcher.group(2));
-        long oil = MathMan.parseInt(matcher.group(3));
-        long uranium = MathMan.parseInt(matcher.group(4));
-        long iron = MathMan.parseInt(matcher.group(5));
-        long bauxite = MathMan.parseInt(matcher.group(6));
-        long lead = MathMan.parseInt(matcher.group(7));
-        long gasoline = MathMan.parseInt(matcher.group(8));
-        long munitions = MathMan.parseInt(matcher.group(9));
-        long steel = MathMan.parseInt(matcher.group(10));
-        long aluminum = MathMan.parseInt(matcher.group(11));
-        long food = MathMan.parseInt(matcher.group(12));
+        double money = MathMan.parseDouble(moneyStr.substring(0, moneyStr.length() - 1));
+        double coal = MathMan.parseDouble(matcher.group(2));
+        double oil = MathMan.parseDouble(matcher.group(3));
+        double uranium = MathMan.parseDouble(matcher.group(4));
+        double iron = MathMan.parseDouble(matcher.group(5));
+        double bauxite = MathMan.parseDouble(matcher.group(6));
+        double lead = MathMan.parseDouble(matcher.group(7));
+        double gasoline = MathMan.parseDouble(matcher.group(8));
+        double munitions = MathMan.parseDouble(matcher.group(9));
+        double steel = MathMan.parseDouble(matcher.group(10));
+        double aluminum = MathMan.parseDouble(matcher.group(11));
+        double food = MathMan.parseDouble(matcher.group(12));
 
         resourceOutput[ResourceType.MONEY.ordinal()] = money;
         resourceOutput[ResourceType.COAL.ordinal()] = coal;
@@ -370,9 +357,15 @@ public class DBAttack {
             Map<MilitaryUnit, Integer> unitLosses = getUnitLosses(attacker);
             for (Map.Entry<MilitaryUnit, Integer> entry : unitLosses.entrySet()) {
                 MilitaryUnit unit = entry.getKey();
-                losses.put(ResourceType.MONEY, losses.getOrDefault(ResourceType.MONEY, 0d) + unit.getCost() * entry.getValue());
-                for (ResourceType rss : unit.getResources()) {
-                    losses.put(rss, losses.getOrDefault(rss, 0d) + unit.getRssAmt(rss) * entry.getValue());
+                int amt = entry.getValue();
+                if (amt > 0) {
+                    double[] cost = unit.getCost(amt);
+                    for (ResourceType type : ResourceType.values) {
+                        double rssCost = cost[type.ordinal()];
+                        if (rssCost > 0) {
+                            losses.put(type, losses.getOrDefault(type, 0d) + rssCost);
+                        }
+                    }
                 }
             }
         }
@@ -402,8 +395,6 @@ public class DBAttack {
                     infra_destroyed_value = PnwUtil.calculateInfra(this.city_infra_before - infra_destroyed, this.city_infra_before);
                 }
                 losses.put(ResourceType.MONEY, (losses.getOrDefault(ResourceType.MONEY, 0d) + infra_destroyed_value));
-            }
-            if (includeLoot) {
             }
         }
 
@@ -468,5 +459,9 @@ public class DBAttack {
                 ", def_gas_used=" + def_gas_used +
                 ", def_mun_used=" + def_mun_used +
                 '}';
+    }
+
+    public DBNation getNation(boolean attacker) {
+        return DBNation.byId(attacker ? attacker_nation_id : defender_nation_id);
     }
 }

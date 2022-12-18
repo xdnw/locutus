@@ -1,6 +1,6 @@
 package link.locutus.discord.web.test;
 
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.battle.sim.SimulatedWarNode;
 import link.locutus.discord.util.battle.sim.WarNation;
@@ -191,25 +191,21 @@ public class ExportSim {
         nation1.setWarPolicy(WarPolicy.PIRATE);
         nation2.setWarPolicy(WarPolicy.PIRATE);
 
-        int soldierMax = Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() * 100;
-        int tankMax = Buildings.FACTORY.max() * Buildings.FACTORY.cap() * 100;
-        int airMax = Buildings.HANGAR.max() * Buildings.HANGAR.cap() * 100;
-        int shipMax = Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap() * 100;
+        int soldierMax = Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(f -> false) * 100;
+        int tankMax = Buildings.FACTORY.max() * Buildings.FACTORY.cap(f -> false) * 100;
+        int airMax = Buildings.HANGAR.max() * Buildings.HANGAR.cap(f -> false) * 100;
+        int shipMax = Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(f -> false) * 100;
 
         nation2.setSoldiers(soldierMax);
         nation2.setTanks(tankMax);
         nation2.setAircraft(airMax);
         nation2.setShips(shipMax);
-        nation2.setInfra(1000);
-        nation2.setAvg_infra(1000);
         nation2.setCities(1);
 
         nation1.setSoldiers(soldierMax);
         nation1.setTanks(tankMax);
         nation1.setAircraft(airMax);
         nation1.setShips(shipMax);
-        nation1.setInfra(1000);
-        nation1.setAvg_infra(1000);
         nation1.setCities(1);
 
         WarNation warNation1 = new WarNation(nation1, false);
@@ -281,25 +277,21 @@ public class ExportSim {
         nation1.setWarPolicy(WarPolicy.PIRATE);
         nation2.setWarPolicy(WarPolicy.PIRATE);
 
-        int soldierMax = Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() * 100;
-        int tankMax = Buildings.FACTORY.max() * Buildings.FACTORY.cap() * 100;
-        int airMax = Buildings.HANGAR.max() * Buildings.HANGAR.cap() * 100;
-        int shipMax = Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap() * 100;
+        int soldierMax = Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(f -> false) * 100;
+        int tankMax = Buildings.FACTORY.max() * Buildings.FACTORY.cap(f -> false) * 100;
+        int airMax = Buildings.HANGAR.max() * Buildings.HANGAR.cap(f -> false) * 100;
+        int shipMax = Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(f -> false) * 100;
 
         nation2.setSoldiers(soldierMax);
         nation2.setTanks(tankMax);
         nation2.setAircraft(airMax);
         nation2.setShips(shipMax);
-        nation2.setInfra(1000);
-        nation2.setAvg_infra(1000);
         nation2.setCities(1);
 
         nation1.setSoldiers(soldierMax);
         nation1.setTanks(tankMax);
         nation1.setAircraft(airMax);
         nation1.setShips(shipMax);
-        nation1.setInfra(1000);
-        nation1.setAvg_infra(1000);
         nation1.setCities(1);
 
         WarNation warNation1 = new WarNation(nation1, false);

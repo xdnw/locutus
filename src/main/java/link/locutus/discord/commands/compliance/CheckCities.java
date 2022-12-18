@@ -1,12 +1,16 @@
 package link.locutus.discord.commands.compliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
@@ -49,7 +53,7 @@ public class CheckCities extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Roles.MEMBER.has(user, server) && Locutus.imp().getGuildDB(server).isWhitelisted();
+        return Roles.MEMBER.has(user, server);
     }
 
     private Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
@@ -62,8 +66,6 @@ public class CheckCities extends Command {
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Auth auth = db.getAuth();
-        if (auth == null && db.isWhitelisted()) auth = Locutus.imp().getRootAuth();
 
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
@@ -81,7 +83,7 @@ public class CheckCities extends Command {
         }
 
         if (nations.isEmpty()) {
-            return "No nations found for: `" + args.get(0) + "`" + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "register` ?";
+            return "No nations found for: `" + args.get(0) + "`" + ". Have they used " + CM.register.cmd.toSlashMention() + " ?";
         }
 
         int allianceId = -1;
@@ -94,9 +96,11 @@ public class CheckCities extends Command {
 
         if (nations.size() > 1) {
             IACategory category = db.getIACategory();
-            category.load();
-            category.purgeUnusedChannels(event.getChannel());
-            category.alertInvalidChannels(event.getChannel());
+            if (category != null) {
+                category.load();
+                category.purgeUnusedChannels(new DiscordChannelIO(event.getChannel()));
+                category.alertInvalidChannels(new DiscordChannelIO(event.getChannel()));
+            }
         }
 
         me.setMeta(NationMeta.INTERVIEW_CHECKUP, (byte) 1);
@@ -105,6 +109,10 @@ public class CheckCities extends Command {
 
         boolean individual = flags.contains('f') || nations.size() == 1;
         IACheckup checkup = new IACheckup(allianceId);
+
+        boolean mail = flags.contains('m');
+        ApiKeyPool keys = mail ? db.getMailKey() : null;
+        if (mail && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
 
         for (DBNation nation : nations) {
             int failed = 0;
@@ -116,7 +124,6 @@ public class CheckCities extends Command {
             }
             if (auditResult == null) {
                 CompletableFuture<Message> messageFuture = event.getChannel().sendMessage("Fetching city info: (this will take a minute)").submit();
-                page = 0;
                 auditResult = checkup.checkup(nation, individual, false);
                 auditResults.put(nation, auditResult);
                 RateLimitUtil.queue(messageFuture.get().delete());
@@ -141,12 +148,11 @@ public class CheckCities extends Command {
 
                 if (flags.contains('p')) {
                     PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
-                    if (user != null && user.getDiscordId() != null) {
+                    if (user != null) {
                         event.getChannel().sendMessage("^ " + user.getAsMention()).complete();
                     }
-                } else if (flags.contains('m')) {
-                    if (auth == null) return "No authentication found";
-                    String title = nation.getAlliance() + " automatic checkup";
+                } else if (mail) {
+                    String title = nation.getAllianceName() + " automatic checkup";
 
                     String input = output.toString().replace("_", " ").replace(" * ", " STARPLACEHOLDER ");
                     String markdown = MarkupUtil.markdownToHTML(input);
@@ -155,7 +161,7 @@ public class CheckCities extends Command {
                     markdown += ("\n\nPlease get in contact with us via discord for assistance");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 
-                    JsonObject response = nation.sendMail(auth, title, markdown);
+                    JsonObject response = nation.sendMail(keys, title, markdown);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
                     RateLimitUtil.queue(event.getChannel().sendMessage(userStr + ": " + response));
                 }
@@ -180,6 +186,6 @@ public class CheckCities extends Command {
     }
 
     private void createEmbed(DBNation nation, MessageReceivedEvent event, int failed, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult, Integer page) {
-        IACheckup.createEmbed(event.getChannel(), event.getMessage(), Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "Checkup " + nation.getNation_id(), nation, auditResult, page);
+        IACheckup.createEmbed(event.getChannel(), event.getMessage(), Settings.commandPrefix(true) + "Checkup " + nation.getNation_id(), nation, auditResult, page);
     }
 }

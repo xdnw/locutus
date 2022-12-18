@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -23,7 +23,7 @@ public class Inactive extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive <alliance|coalition|*> [days=7] [page]";
+        return Settings.commandPrefix(true) + "inactive <alliance|coalition|*> [days=7] [page]";
     }
 
     @Override
@@ -58,7 +58,7 @@ public class Inactive extends Command {
                 return "Invalid aa or coaltion: `" + args.get(0) + "`";
             }
         }
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(allianceIds);
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations(allianceIds));
         nations.removeIf(nation -> nation.getActive_m() < minutes);
 
         boolean applicants = flags.contains('a');
@@ -84,8 +84,8 @@ public class Inactive extends Command {
             response.append('\n').append(nations.get(i).toMarkdown());
         }
         String title = "Inactive Players in `" + args.get(0) + "`" + "(" + page + "/" + pages + ")";
-        String prev = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive " + args.get(0) + " " + days + " " + (page - 1) + (applicants ? " -a" : "");
-        String next = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "inactive " + args.get(0) + " " + days + " " + (page + 1) + (applicants ? " -a" : "");
+        String prev = Settings.commandPrefix(true) + "inactive " + args.get(0) + " " + days + " " + (page - 1) + (applicants ? " -a" : "");
+        String next = Settings.commandPrefix(true) + "inactive " + args.get(0) + " " + days + " " + (page + 1) + (applicants ? " -a" : "");
 
         List<String> actions = new ArrayList<>();
         if (page > 1) {

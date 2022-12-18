@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -84,10 +84,10 @@ public class NAPDown extends Command {
             response.append("\n" + napLink);
         }
 
-        String emoji = "\uD83D\uDD04";
-        response.append("\n\npress " + emoji + " to refresh");
+        String emoji = "Refresh";
+        response.append("\n\nPress `" + emoji + "` to refresh");
 
-        Message msg = DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
         return null;
     }
 }

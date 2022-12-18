@@ -1,8 +1,10 @@
 package link.locutus.discord.web.jooby;
 
 
+import io.javalin.http.Handler;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.web.jooby.handler.LocutusSSLHandler;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import link.locutus.discord.web.jooby.handler.SseHandler2;
@@ -25,10 +27,13 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.eclipse.jetty.server.Server;
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
 
 import javax.security.auth.login.LoginException;
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.AbstractMap;
@@ -37,6 +42,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -58,6 +64,9 @@ public class WebRoot {
 
     private static WebRoot INSTANCE;
 
+    private final BankRequestHandler legacyBankHandler;
+
+
     public WebRoot(int portMain, int portHTTPS) {
         if (Settings.INSTANCE.CLIENT_SECRET.isEmpty()) throw new IllegalArgumentException("Please set CLIENT_SECRET in " + Settings.INSTANCE.getDefaultFile());
         if (INSTANCE != null) throw new IllegalArgumentException("Already initialized");
@@ -70,10 +79,12 @@ public class WebRoot {
 
         RockerRuntime.getInstance().setReloading(true);
 
+        this.legacyBankHandler = new BankRequestHandler();
+
         Map<String, String> staticFileMap = new LinkedHashMap<>();
-        staticFileMap.put("src/main/java/views/css", "/css");
-        staticFileMap.put("src/main/java/views/js", "/js");
-        staticFileMap.put("src/main/java/views/img", "/");
+        staticFileMap.put("src/views/rocker/css", "/css");
+        staticFileMap.put("src/views/rocker/js", "/js");
+        staticFileMap.put("src/views/rocker/img", "/");
 
         this.app = Javalin.create(config -> {
             config.server(() -> {
@@ -107,6 +118,36 @@ public class WebRoot {
             addAccessToken(entry.getValue().getKey(), entry.getValue().getValue(), false);
         }
 
+        this.app.get("/bankrequests", new Handler() {
+            @Override
+            public void handle(@NotNull Context context) throws Exception {
+                if (!Settings.WHITELISTED_IPS.contains(context.ip())) {
+                    System.out.println("Not whitelisted: " + context.ip());
+                    return;
+                }
+                JSONObject request = legacyBankHandler.pollRequest();
+                if (request != null) {
+                    context.result(request.toString());
+                } else {
+                    context.result("");
+                }
+            }
+        });
+
+        this.app.post("/bankcallback**", new Handler() {
+            @Override
+            public void handle(@NotNull Context context) throws Exception {
+                if (!Settings.WHITELISTED_IPS.contains(context.ip())) {
+                    System.out.println("Not whitelisted: " + context.ip());
+                    return;
+                }
+                System.out.println("IP : " + context.ip());
+                UUID token = UUID.fromString(context.queryParam("token"));
+                String message = context.queryParam("result");
+
+                legacyBankHandler.callBack(token, message);
+            }
+        });
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
         this.app.get("/logout", ctx -> logout(ctx));
@@ -174,6 +215,10 @@ public class WebRoot {
             pageHandler.handle(ctx);
         });
 //        get("/favicon.ico", ctx -> null);
+    }
+
+    public BankRequestHandler getLegacyBankHandler() {
+        return legacyBankHandler;
     }
 
     public static WebRoot getInstance() {
@@ -361,13 +406,15 @@ public class WebRoot {
 
     public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.WEB.PORT_HTTPS = 8000;
-        Settings.INSTANCE.WEB.PORT_HTTP = 0;
+        Settings.INSTANCE.WEB.PORT_HTTPS = 0;
+        Settings.INSTANCE.WEB.PORT_HTTP = 8000;
+        Settings.INSTANCE.WEB.REDIRECT = "http://localhost";
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
 
         Locutus locutus = Locutus.create().start();
 
-        WebRoot webRoot = new WebRoot(-1, Settings.INSTANCE.WEB.PORT_HTTPS);
+        System.out.println("Port " + Settings.INSTANCE.WEB.PORT_HTTP + " | " + Settings.INSTANCE.WEB.PORT_HTTPS);
+        WebRoot webRoot = new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
     }
 }

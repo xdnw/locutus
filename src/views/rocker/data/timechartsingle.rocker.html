@@ -1,0 +1,6 @@
+@import com.google.gson.JsonObject
+
+@args(String title, JsonObject data, boolean time)
+@rocker.main.template(title) -> {
+<div class="col-sm locutus-chart" data-src="@data" title="@title" time="@time"></div>
+}

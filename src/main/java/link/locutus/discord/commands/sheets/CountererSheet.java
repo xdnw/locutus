@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -19,13 +19,13 @@ public class CountererSheet extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        List<DBNation> nations;
+        Set<DBNation> nations;
         if (args.isEmpty()) {
             int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
             nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
             nations.removeIf(n -> n.getPosition() <= 1);
         } else if (args.size() == 1) {
-            nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
+            nations = (DiscordUtil.parseNations(guild, args.get(0)));
         } else {
             return usage(event);
         }

@@ -3,12 +3,14 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceMeta;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
@@ -42,7 +44,7 @@ public class BankWith extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer <alliance|nation> <resource> <amount>";
+        return Settings.commandPrefix(true) + "transfer <alliance|nation> <resource> <amount>";
     }
 
     @Override
@@ -136,14 +138,14 @@ public class BankWith extends Command {
         }
 
         if (primaryNote.isEmpty() && (!flags.contains('n') || guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID) == null)) { //  && !grant
-            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "grant`, or one of the following labels: " + StringMan.getString(allowedLabels) + "\n" +
+            return "Please use `" + Settings.commandPrefix(true) + "grant`, or one of the following labels: " + StringMan.getString(allowedLabels) + "\n" +
                     "note: You can add extra information after the label e.g. `\"#deposit blah\"`";
         }
 
         String arg = args.get(0);
         Integer alliance = arg.contains("/nation/") ? null : PnwUtil.parseAllianceId(arg);
         NationOrAlliance receiver;
-        if (alliance == null || Locutus.imp().getNationDB().getAllianceName(alliance) == null) {
+        if (alliance == null || DBAlliance.get(alliance) == null) {
             Integer nationId = DiscordUtil.parseNationId(arg);
             if (nationId == null) {
                 return "Invalid nation or alliance: " + arg;
@@ -154,7 +156,7 @@ public class BankWith extends Command {
             }
 
         } else {
-            receiver = new Alliance(alliance);
+            receiver = DBAlliance.getOrCreate(alliance);
         }
 
         if (args.size() == 2 && args.get(1).contains("$")) {
@@ -216,7 +218,7 @@ public class BankWith extends Command {
 
         DBNation banker = DiscordUtil.getNation(event);
         if (banker == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
 
         if (flags.contains('e')) {
@@ -270,25 +272,25 @@ public class BankWith extends Command {
             List<String> params = new ArrayList<>();
 
 //            String allianceUrl = PnwUtil.getUrl(guildDb.getOrThrow(GuildDB.Key.ALLIANCE_ID), true);
-//            String aaCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending " + title + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer -f " + allianceUrl + " " + PnwUtil.resourcesToString(transfer) + " " + note;
+//            String aaCmd = Settings.commandPrefix(true) + "pending " + title + Settings.commandPrefix(true) + "transfer -f " + allianceUrl + " " + PnwUtil.resourcesToString(transfer) + " " + note;
 //            params.add(aaEmoji);
 //            params.add(aaCmd);
 //
 //            if (receiver.isNation()) {
-//                String nationCmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending " + title + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "transfer -f " + receiver.getUrl() + " " + PnwUtil.resourcesToString(transfer) + " " + note;
+//                String nationCmd = Settings.commandPrefix(true) + "pending " + title + Settings.commandPrefix(true) + "transfer -f " + receiver.getUrl() + " " + PnwUtil.resourcesToString(transfer) + " " + note;
 //                params.add(nationEmoji);
 //                params.add(nationCmd);
 //            }
 //
-//            params.add("\uD83D\uDD04");
+//            params.add("Refresh");
 //            params.add("");
 
             DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString(), params.toArray(new String[0]));
             return "See also:\n" +
                     "> https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8\n" +
                     "To add an offshore:\n" +
-                    "1. (int this server) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetCoalition <offshore-alliance> offshore`\n" +
-                    "2. (in the offshore) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetCoalition <alliance> offshoring`";
+                    "1. (int this server) " + CM.coalition.add.cmd.create(null, Coalition.OFFSHORE.name()) + "\n" +
+                    "2. (in the offshore) " + CM.coalition.add.cmd.create(null, Coalition.OFFSHORING.name()) + "";
         }
 
         if (!force) {
@@ -313,8 +315,8 @@ public class BankWith extends Command {
                 title = PnwUtil.resourcesToString(transfer);
             }
             title += " to " + (receiver.isAlliance() ? "AA " : "") + receiver.getName();
-            if (receiver.isNation()) title += " | " + receiver.asNation().getAlliance();
-            String body = note + (note.isEmpty() ? "" : "\n") + "Press \u2705 to confirm";
+            if (receiver.isNation()) title += " | " + receiver.asNation().getAllianceName();
+            String body = note + (note.isEmpty() ? "" : "\n") + "Press `Confirm` to confirm";
 
             if (false) { // TODO alert if nation has deposits, but -e is used for temporary expiring transfer
 //                if (receiver.isNation() && aaId != null && receiver.asNation().getAlliance_id() == aaId) {
@@ -338,7 +340,7 @@ public class BankWith extends Command {
 //                }
             }
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), title, body, "\u2705", command);
+            DiscordUtil.createEmbedCommand(event.getChannel(), title, body, "Confirm", command);
             return null;
         }
 
@@ -351,7 +353,7 @@ public class BankWith extends Command {
             Integer aaId2 = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
             if (!isAdmin) {
-                if (offshore.disabledGuilds.contains(guildDb.getGuild().getIdLong())) {
+                if (offshore.isDisabled(guildDb.getGuild().getIdLong())) {
                     MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (logChannel != null) {
                         String msg = "Transfer error: " + guild.toString() + " | " + aaId2 + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + (">");
@@ -366,29 +368,29 @@ public class BankWith extends Command {
                             return "You are not a member of " + aaId2;
                     } else if (!Roles.MEMBER.has(author, guild)) {
                         Role memberRole = Roles.MEMBER.toRole(guild);
-                        if (memberRole == null) return "No member role enabled (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "AliasRole`)";
+                        if (memberRole == null) return "No member role enabled (see " + CM.role.setAlias.cmd.toSlashMention() + ")";
                         return "You do not have the member role: " + memberRole.getName();
                     }
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) != Boolean.TRUE)
-                        return "`MEMBER_CAN_WITHDRAW` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore` )";
+                        return "`MEMBER_CAN_WITHDRAW` is false (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true") + " )";
                     GuildMessageChannel channel = guildDb.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (channel == null)
-                        return "Please have an admin use. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore RESOURCE_REQUEST_CHANNEL #someChannel`";
+                        return "Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + "";
                     if (event.getChannel().getIdLong() != channel.getIdLong())
                         return "Please use the transfer command in " + channel.getAsMention();
 
                     if (!Roles.ECON_WITHDRAW_SELF.has(author, guild))
-                        return "You do not have the `ECON_WITHDRAW_SELF` role. See: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole`";
+                        return "You do not have the `ECON_WITHDRAW_SELF` role. See: " + CM.role.setAlias.cmd.toSlashMention() + "";
                     if (!receiver.isNation() || receiver.getId() != me.getId())
                         return "You only have permission to withdraw to yourself";
 
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE && aaId2 != null) {
                         if (!guildDb.getCoalition("enemies").isEmpty())
-                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`) and `enemies` is set (see: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "removecoalition` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions`)";
-                        Alliance aaObj = new Alliance(aaId2);
+                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true") + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")";
+                        DBAlliance aaObj = DBAlliance.getOrCreate(aaId2);
                         ByteBuffer warringBuf = aaObj.getMeta(AllianceMeta.IS_WARRING);
                         if (warringBuf != null && warringBuf.get() == 1)
-                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`)";
+                            return "You cannot withdraw during wartime. `MEMBER_CAN_WITHDRAW_WARTIME` is false (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true") + ")";
                     }
 
                     // check that we personally have the required deposits
@@ -406,9 +408,12 @@ public class BankWith extends Command {
                     boolean rssConversion = guildDb.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) == Boolean.TRUE;
                     boolean hasExactResources = true;
                     for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
-                        if (myDeposits[entry.getKey().ordinal()] + 0.01 < entry.getValue()) {
+                        double amt = myDeposits[entry.getKey().ordinal()];
+                        if (amt + 0.01 < entry.getValue()) {
                             if (!rssConversion) {
-                                return "You do not have `" + MathMan.format(entry.getValue()) + "x" + entry.getKey() + "`. (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "depo @user` ). RESOURCE_CONVERSION is disabled (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore`)";
+                                return "You do not have `" + MathMan.format(entry.getValue()) + "x" + entry.getKey() + "`. (see `" + Settings.commandPrefix(true) +
+                                        "depo @user` ). RESOURCE_CONVERSION is disabled (see " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_CONVERSION.name(), null) + ")\n" +
+                                        "You may withdraw up to `" + MathMan.format(amt) + "` " + entry.getKey();
                             }
                             hasExactResources = false;
                         }
@@ -421,20 +426,22 @@ public class BankWith extends Command {
                     }
                 }
             }
-            double[] deposits = offshore.getDeposits(guildDb);
+            if (offshore.getGuildDB() != guildDb) {
+                double[] deposits = offshore.getDeposits(guildDb);
 
-            MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-            if (logChannel != null) {
-                String msg = "Prior Deposits for: " + guild.toString() + "/" + aaId2 + ": `" + PnwUtil.resourcesToString(deposits) + ("`");
-                RateLimitUtil.queue(logChannel.sendMessage(msg));
-            }
+                MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                if (logChannel != null) {
+                    String msg = "Prior Deposits for: " + guild.toString() + "/" + aaId2 + ": `" + PnwUtil.resourcesToString(deposits) + ("`");
+                    RateLimitUtil.queue(logChannel.sendMessage(msg));
+                }
 
-            if (!isAdmin && (aaId2 == null || offshore.getAllianceId() != aaId2)) {
-                for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
-                    ResourceType rss = entry.getKey();
-                    Double amt = entry.getValue();
-                    if (amt > 0 && deposits[rss.ordinal()] + 0.01 < amt) {
-                        return "You do not have " + MathMan.format(amt) + " x " + rss.name();
+                if (!isAdmin && (aaId2 == null || offshore.getAllianceId() != aaId2)) {
+                    for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
+                        ResourceType rss = entry.getKey();
+                        Double amt = entry.getValue();
+                        if (amt > 0 && deposits[rss.ordinal()] + 0.01 < amt) {
+                            return "You do not have " + MathMan.format(amt) + " x " + rss.name();
+                        }
                     }
                 }
             }

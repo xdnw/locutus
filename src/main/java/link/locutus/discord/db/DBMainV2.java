@@ -1,7 +1,10 @@
 package link.locutus.discord.db;
 
+import ch.qos.logback.classic.db.names.TableName;
 import com.ptsmods.mysqlw.Database;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.FileUtil;
 import org.apache.http.util.TextUtils;
 
 import java.io.Closeable;
@@ -17,22 +20,26 @@ import java.util.function.Consumer;
 public class DBMainV2 implements Closeable {
     private boolean isDelegate;
     private final Database db;
+    public DBMainV2(String name) throws SQLException {
+        this(Settings.INSTANCE.DATABASE, name);
+    }
 
     public DBMainV2(Settings.DATABASE config, String name) throws SQLException {
-        if (config.SQLITE.USE == config.MYSQL.USE) {
-            throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
-        }
         if (config.SQLITE.USE) {
             File file = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
-            System.out.println("File " + file);
+            // create file directory if not exist
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
             this.db = Database.connect(file);
         } else {
-            this.db = Database.connect(config.MYSQL.HOST,
-                    config.MYSQL.PORT,
-                    name,
-                    config.MYSQL.USER,
-                    config.MYSQL.PASSWORD
-                    );
+            throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
+//            this.db = Database.connect(config.MYSQL.HOST,
+//                    config.MYSQL.PORT,
+//                    name,
+//                    config.MYSQL.USER,
+//                    config.MYSQL.PASSWORD
+//                    );
         }
         init();
     }
@@ -41,7 +48,6 @@ public class DBMainV2 implements Closeable {
         this.db = Database.connect(file);
         init();
     }
-
 
     public DBMainV2(String host, int port, String name, String username, String password) throws SQLException {
         this.db = Database.connect(host, port, name, username, password);
@@ -58,6 +64,14 @@ public class DBMainV2 implements Closeable {
         // Do any initialization here
 
         createTables();
+    }
+
+    public boolean tableExists(String tableName) throws SQLException {
+        DatabaseMetaData meta = getConnection().getMetaData();
+        try (ResultSet resultSet = meta.getTables(null, null, tableName, new String[] {"TABLE"})) {
+
+            return resultSet.next();
+        }
     }
 
     protected void createTables() {
@@ -172,6 +186,13 @@ public class DBMainV2 implements Closeable {
         if (objects.isEmpty()) return new int[0];
         synchronized (this) {
             try {
+                if (objects.size() == 1) {
+                    try (PreparedStatement ps = getConnection().prepareStatement(query)) {
+                        consumer.accept(objects.iterator().next(), ps);
+                        int result = ps.executeUpdate();
+                        return new int[]{result};
+                    }
+                }
                 getConnection().setAutoCommit(false);
                 try (PreparedStatement ps = getConnection().prepareStatement(query)) {
                     boolean clear = false;
@@ -183,25 +204,29 @@ public class DBMainV2 implements Closeable {
                     }
                     return ps.executeBatch();
                 }
+                finally {
+                    try {
+                        getConnection().commit();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
+                    } finally {
+                        try {
+                            getConnection().setAutoCommit(true);
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);
-            } finally {
-                try {
-                    getConnection().commit();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-                try {
-                    getConnection().setAutoCommit(true);
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
             }
         }
     }
 
-    protected boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
+    public boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
         {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
                 stmt.setFetchSize(10000);
@@ -229,6 +254,19 @@ public class DBMainV2 implements Closeable {
         }
     }
 
+    protected int update(String sql, Object... values) {
+        synchronized (this) {
+            try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+                for (int i = 0; i < values.length; i++) {
+                    stmt.setObject(i + 1, values[i]);
+                }
+                return stmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+    }
     protected int update(String sql, Consumer<PreparedStatement> withStmt) {
         synchronized (this) {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {

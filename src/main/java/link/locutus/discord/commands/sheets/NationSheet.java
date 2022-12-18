@@ -5,8 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -85,7 +85,7 @@ public class NationSheet extends Command implements Noformat {
                 }
             }
             for (Integer allianceId : alliances) {
-                if (new Alliance(allianceId).updateSpies(false)) {
+                if (DBAlliance.getOrCreate(allianceId).updateSpies(false)) {
                     toUpdate.removeIf(f -> f.getPosition() > Rank.APPLICANT.id && f.getAlliance_id() == allianceId);
                 }
             }
@@ -95,9 +95,6 @@ public class NationSheet extends Command implements Noformat {
         }
 
         for (DBNation nation : nations) {
-            if (flags.contains('t') && nation.getCityTimerEpoch() != null && nation.getCityTimerEpoch() < TimeUtil.getTurn()) {
-                nation.getPnwNation();
-            }
             for (int i = 1; i < args.size(); i++) {
                 String arg = args.get(i);
                 String formatted = DiscordUtil.format(guild, event.getGuildChannel(), author, nation, arg);
@@ -111,7 +108,7 @@ public class NationSheet extends Command implements Noformat {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
 //        I need, Nation name, nation link, score, war range, offensive/defensive slots open, military count (planes/tanks/ships/soldiers)
     }
 }

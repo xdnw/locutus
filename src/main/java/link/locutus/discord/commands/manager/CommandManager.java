@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.external.account.Login;
 import link.locutus.discord.commands.external.account.Logout;
 import link.locutus.discord.commands.external.guild.CardCommand;
@@ -18,7 +19,6 @@ import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.account.Embassy;
 import link.locutus.discord.commands.account.GuildInfo;
 import link.locutus.discord.commands.account.HasRole;
-import link.locutus.discord.commands.account.question.Interview;
 import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
 import link.locutus.discord.commands.alliance.Dm;
@@ -26,10 +26,10 @@ import link.locutus.discord.commands.alliance.LeftAA;
 import link.locutus.discord.commands.alliance.ModifyTreaty;
 import link.locutus.discord.commands.alliance.SendTreaty;
 import link.locutus.discord.commands.alliance.SetBracket;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.sync.SyncTreaties;
 import link.locutus.discord.commands.alliance.Unregister;
 import link.locutus.discord.commands.bank.AddBalance;
-import link.locutus.discord.commands.bank.AddTaxBracket;
 import link.locutus.discord.commands.bank.TransferResources;
 import link.locutus.discord.commands.info.CounterStats;
 import link.locutus.discord.commands.bank.FindOffshore;
@@ -93,7 +93,6 @@ import link.locutus.discord.commands.external.guild.CheckPermission;
 import link.locutus.discord.commands.external.guild.KeyStore;
 import link.locutus.discord.commands.external.guild.Permission;
 import link.locutus.discord.commands.external.account.ForumScrape;
-import link.locutus.discord.commands.external.account.LoadUsers;
 import link.locutus.discord.commands.account.Say;
 import link.locutus.discord.commands.bank.Warchest;
 import link.locutus.discord.commands.fun.Jokes;
@@ -156,7 +155,6 @@ import link.locutus.discord.commands.trade.ConvertedTotal;
 import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.commands.trade.Trending;
 import link.locutus.discord.commands.trade.sub.AlertTrades;
-import link.locutus.discord.commands.trade.sub.CheckTradesCommand;
 import link.locutus.discord.commands.trade.sub.TradeSubscriptions;
 import link.locutus.discord.commands.trade.sub.UnsubTrade;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
@@ -171,7 +169,6 @@ import link.locutus.discord.commands.external.guild.MsgInfo;
 import link.locutus.discord.commands.war.Simulate;
 import link.locutus.discord.commands.account.Sudo;
 import link.locutus.discord.commands.fun.TagCommand;
-import link.locutus.discord.commands.sheets.OptimalTrades;
 import link.locutus.discord.commands.buildcmd.AddBuild;
 import link.locutus.discord.commands.bank.Bank;
 import link.locutus.discord.commands.buildcmd.AssignBuild;
@@ -201,12 +198,10 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
-import link.locutus.discord.util.*;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.task.balance.loan.LoanCommand;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
 import link.locutus.discord.commands.bank.GrantCmd;
@@ -215,7 +210,6 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -226,7 +220,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -242,8 +235,8 @@ public class CommandManager {
 
     public CommandManager(Locutus locutus) {
         this.locutus = locutus;
-        this.prefix1 = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX.charAt(0);
-        this.prefix2 = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.charAt(0);
+        this.prefix1 = Settings.commandPrefix(true).charAt(0);
+        this.prefix2 = Settings.commandPrefix(false).charAt(0);
         this.commandMap = new LinkedHashMap<>();
             this.executor = new ScheduledThreadPoolExecutor(256);
 
@@ -295,13 +288,14 @@ public class CommandManager {
             return false;
         }
 
-        if (content.equalsIgnoreCase(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "threads")) {
+        if (content.equalsIgnoreCase(Settings.commandPrefix(true) + "threads")) {
             threadDump();
             return false;
         }
 
+        boolean jsonCommand = (content.startsWith("{") && content.endsWith("}"));
         char char0 = content.charAt(0);
-        if (char0 != (prefix1) && char0 != prefix2) {
+        if (char0 != (prefix1) && char0 != prefix2 && !jsonCommand) {
             handleWarRoomSync(event);
 
             if (content.contains("You successfully gathered intelligence about")) {
@@ -316,6 +310,12 @@ public class CommandManager {
             return false;
         }
 
+        // prioritize updating nations using commands
+        DBNation nation = DiscordUtil.getNation(event.getAuthor());
+        if (nation != null) {
+            Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
+        }
+
         Guild msgGuild = event.isFromGuild() ? event.getGuild() : null;
         // Channel blacklisting / whitelisting
         MessageChannel channel = event.getChannel();
@@ -325,18 +325,22 @@ public class CommandManager {
                 Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
                 Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
                 if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_BLACKLIST`)"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_BLACKLIST.name(), null) + ")"));
                     return false;
                 }
                 if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore CHANNEL_WHITELIST`)"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_WHITELIST.name(), null) + ")"));
                     return false;
                 }
             }
         }
 
-        if (char0 == prefix2) {
-            modernized.run(event, async);
+        if (char0 == prefix2 || jsonCommand) {
+            try {
+                modernized.run(event, async);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
             return false;
         }
 
@@ -361,7 +365,7 @@ public class CommandManager {
                         if (noPermMsg) {
                             DBNation nation = DiscordUtil.getNation(msgUser);
                             if (nation == null) {
-                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify <nation-id>`"));
+                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + ""));
                                 return;
                             }
                             if (msgGuild != null) {
@@ -475,7 +479,7 @@ public class CommandManager {
             msg = msg.replaceAll("@everyone", "@ everyone");
             msg = msg.replaceAll("@here", "@ here");
             msg = msg.replaceAll("<@&", "<@ &");
-            RateLimitUtil.queue(other.channel.sendMessage(msg));
+            RateLimitUtil.queueWhenFree(other.channel.sendMessage(msg));
         }
     }
 
@@ -485,17 +489,17 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole REGISTERED @someRole`"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + ""));
                 return true;
             } else if (!member.getRoles().contains(registeredRole)) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` to get masked with the role: " + registeredRole.getName()));
+                RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName()));
                 return true;
             }
         }
         {
             Role memberRole = Roles.MEMBER.toRole(msgGuild);
             if (memberRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No member role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole MEMBER @someRole`"));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No member role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MEMBER @someRole`"));
                 return true;
             } else if (!member.getRoles().contains(memberRole)) {
                 RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + memberRole.getName()));
@@ -506,7 +510,7 @@ public class CommandManager {
             Role adminRole = Roles.ADMIN.toRole(msgGuild);
             if (adminRole == null) {
                 if (!member.hasPermission(net.dv8tion.jda.api.Permission.ADMINISTRATOR)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No admin role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole ADMIN @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`"));
                     return true;
                 }
             } else if (!member.getRoles().contains(adminRole)) {
@@ -518,7 +522,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.MILCOM)) {
                 Role milcomRole = Roles.MILCOM.toRole(msgGuild);
                 if (milcomRole == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No milcom role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole MILCOM (@someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No milcom role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MILCOM (@someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(milcomRole)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + milcomRole.getName()));
@@ -529,7 +533,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.ECON)) {
                 Role role = Roles.ECON.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.ECON + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.ECON + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.ECON + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.ECON + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
@@ -540,7 +544,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.INTERNAL_AFFAIRS)) {
                 Role role = Roles.INTERNAL_AFFAIRS.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
@@ -551,7 +555,7 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.FOREIGN_AFFAIRS)) {
                 Role role = Roles.FOREIGN_AFFAIRS.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`"));
                     return true;
                 } else if (!member.getRoles().contains(role)) {
                     RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
@@ -597,13 +601,14 @@ public class CommandManager {
 
                     DBNation nation = entry.getKey();
                     if (nation != null) {
-                        long turn = TimeUtil.getTurn();
-                        Locutus.imp().getNationDB().setLoot(nation.getNation_id(), turn, entry.getValue());
+                        long now = System.currentTimeMillis();
+                        Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), now, entry.getValue(), NationLootType.ESPIONAGE);
                         GuildDB db = Locutus.imp().getGuildDB(event.getGuild());
-                        if (db != null && db.isWhitelisted()) {
+                        if (db != null) {
                             RateLimitUtil.queue(event.getMessage().addReaction("\u2705"));
                             double converted = PnwUtil.convertedTotal(value.getValue());
                             double pct = attacker == null ? 0.10 : attacker.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
+                            if (nation.asNation().getWarPolicy() == WarPolicy.MONEYBAGS) pct *= 0.6;
                             RateLimitUtil.queue(event.getMessage().getChannel().sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct)));
                         }
                         return;
@@ -647,7 +652,6 @@ public class CommandManager {
 //        this.register(new DebugScoreRange());
 //        this.register(new DebugTyping());
         this.register(new ForumScrape());
-        this.register(new LoadUsers());
         this.register(new KickLocutus());
 
         this.register(new Sudo());
@@ -672,22 +676,6 @@ public class CommandManager {
         this.register(new CheckPermission());
         this.register(new Meta());
         this.register(new CheckMail());
-        this.register(new AddTaxBracket());
-
-        // unfinished
-        this.register(new LoanCommand());
-        this.register(new Setup());
-
-        this.register(new AlertTrades());
-        this.register(new CheckTradesCommand());
-        this.register(new UnsubTrade());
-        this.register(new TradeSubscriptions());
-        this.register(new BankAlerts());
-        this.register(new BankSubscriptions());
-        this.register(new UnsubBank());
-
-        this.register(new Commend("commend", true));
-        this.register(new Commend("denounce", false));
 
         /// not useful
         this.register(new GuildInfo());
@@ -704,7 +692,7 @@ public class CommandManager {
         ///////// Added
         this.register(new WeeklyInterest()); //
         this.register(new ImportEmoji());
-        this.register(new Interview());
+//        this.register(new Interview());
         this.register(new DummyCommand());
         this.register(new HasRole());
         this.register(new FindTrader());
@@ -823,18 +811,37 @@ public class CommandManager {
         this.register(new KeyStore());
         this.register(new AddBalance());
         this.register(new Deposits());
-        //
-        this.register(new GrantCmd(bankWith));
-        this.register(new HelpCommand(this));
         WarCostAB warCost = new WarCostAB();
         this.register(warCost);
-        this.register(new WarCostRanking());
-        this.register(new ROI());
         this.register(new MyLoot(warCost));
 
-        this.register(new IASheet());
+        this.register(new WarCostRanking());
+        this.register(new AddBuild());
+        this.register(new AssignBuild());
+        this.register(new DeleteBuild());
+        this.register(new GetBuild());
+        //
+        this.register(new HelpCommand(this));
+        this.register(new GrantCmd(bankWith));
+
+
+        this.register(new ProlificOffshores());
+        this.register(new LargestBanks());
+        this.register(new InactiveAlliances());
+
+
+
+
+
+
         this.register(new WarCostByDay());
         this.register(new WarCostRankingByDay());
+
+        this.register(new IASheet());
+        this.register(new NoteSheet());
+        this.register(new CoalitionSheet());
+        this.register(new InterviewSheet());
+        this.register(new FASheet());
 
         this.register(new MilitaryRanking());
         this.register(new AllianceLootRanking());
@@ -848,28 +855,22 @@ public class CommandManager {
         this.register(new WarsByTier());
         this.register(new AttackTypeBreakdownAB());
 
-        this.register(new ProlificOffshores());
-        this.register(new LargestBanks());
-
-        this.register(new InactiveAlliances());
-
-        this.register(new NoteSheet());
-        this.register(new CoalitionSheet());
-        this.register(new InterviewSheet());
-
-        this.register(new FASheet());
-//        this.register(new OptimalTrades());
-
-        //// later
-        this.register(new ListMultisByAlliance());
-
-        this.register(new AddBuild());
-        this.register(new DeleteBuild());
-        this.register(new GetBuild());
-        this.register(new AssignBuild());
+        this.register(new ROI());
 
         this.register(new Simulate());
 
+        // unfinished
+        this.register(new AlertTrades());
+        this.register(new Commend("commend", true));
+        this.register(new Commend("denounce", false));
+
+//        this.register(new Setup());
+
+        this.register(new UnsubTrade());
+        this.register(new TradeSubscriptions());
+        this.register(new BankAlerts());
+        this.register(new BankSubscriptions());
+        this.register(new UnsubBank());
     }
 
     public String getPrefix() {

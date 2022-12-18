@@ -11,6 +11,10 @@ public enum AllianceMeta {
     IS_WARRING,
     LAST_AT_WAR_TURN,
 
+    OFFSHORE_PARENT,
+
+    BANK_UPDATE_INDEX,
+
     ;
 
     public static AllianceMeta[] values = values();

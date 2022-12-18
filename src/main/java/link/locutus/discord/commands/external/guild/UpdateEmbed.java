@@ -2,8 +2,9 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -94,12 +95,11 @@ public class UpdateEmbed extends Command {
             return "Invalid arguments: `" + StringMan.getString(args) + "`";
         }
 
-        DiscordUtil.updateEmbed(builder, null, new Function<EmbedBuilder, Message>() {
-            @Override
-            public Message apply(EmbedBuilder builder) {
-                 return RateLimitUtil.complete(message.getChannel().editMessageEmbedsById(message.getIdLong(), builder.build()));
-            }
-        });
+        DiscordMessageBuilder discMsg = new DiscordMessageBuilder(event.getChannel(), message);
+
+        discMsg.clearEmbeds();
+        discMsg.embed(builder.build());
+        discMsg.send();
 
         return super.onCommand(event, guild, author, me, args, flags);
     }

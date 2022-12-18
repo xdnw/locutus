@@ -1,14 +1,16 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -35,11 +37,11 @@ public class SetBracket extends Command {
     @Override
     public String desc() {
         return "List or set your tax bracket." +
-                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetTaxes @user 25/25`\n" +
-                "or to also set internal: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SetTaxes @user 100/100 25/25`\n" +
+                "e.g. `" + Settings.commandPrefix(true) + "SetTaxes @user 25/25`\n" +
+                "or to also set internal: `" + Settings.commandPrefix(true) + "SetTaxes @user 100/100 25/25`\n" +
                 "Notes:\n" +
-                " - Internal tax rate affects what portion of taxes are not included in `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "deposits` (typically used when 100/100 taxes)\n" +
-                " - Set the alliance internal tax rate with: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore TAX_BASE` (retroactive)\n" +
+                " - Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
+                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildDB.Key.TAX_BASE.name(), null) + " (retroactive)\n" +
                 " - This command is not retroactive and overrides the alliance internal taxrate";
     }
 
@@ -66,7 +68,7 @@ public class SetBracket extends Command {
 
         int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
         if (aaId != nation.getAlliance_id()) return nation.getNation() + " is not in " + aaId;
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
         if (auth == null) return "No authentication enabled for this guild";
 
         Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
@@ -77,7 +79,7 @@ public class SetBracket extends Command {
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 String url = bracket.getUrl();
-                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.nations + " nations) - " + bracket.name);
+                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations) - " + bracket.getName());
             }
             return usage(event, response.toString());
         }
@@ -90,7 +92,7 @@ public class SetBracket extends Command {
             bracket = brackets.get(taxId);
         } else {
             for (TaxBracket other : brackets.values()) {
-                if (other.name.equalsIgnoreCase(arg)) {
+                if (other.getName().equalsIgnoreCase(arg)) {
                     bracket = other;
                     break;
                 }

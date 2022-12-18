@@ -1,7 +1,8 @@
 package link.locutus.discord.util.trade;
 
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.db.entities.DBTrade;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,7 +12,7 @@ import java.util.stream.Collectors;
 
 public class TradeList {
     private final ResourceType type;
-    private final List<Offer> offers;
+    private final List<DBTrade> offers;
 
     public TradeList(ResourceType type) {
         this.type = type;
@@ -22,7 +23,7 @@ public class TradeList {
         return type;
     }
 
-    public List<Offer> getOffers() {
+    public List<DBTrade> getOffers() {
         return offers;
     }
 
@@ -31,36 +32,36 @@ public class TradeList {
     }
 
     public void clearBuy() {
-        offers.removeIf(offer -> offer.getBuyer() != null);
+        offers.removeIf(offer -> offer.getBuyer() != 0);
     }
 
     public void clearSell() {
-        offers.removeIf(offer -> offer.getSeller() != null);
+        offers.removeIf(offer -> offer.getSeller() != 0);
     }
 
-    public void removeIf(Predicate<Offer> predicate) {
+    public void removeIf(Predicate<DBTrade> predicate) {
         offers.removeIf(predicate);
     }
 
-    public void addOffer(Offer offer) {
+    public void addOffer(DBTrade offer) {
         offers.add(offer);
     }
 
-    public List<Offer> iterator(boolean buy) {
-        return offers.stream().filter(offer -> (buy ? offer.getBuyer() : offer.getSeller()) != null).collect(Collectors.toList());
+    public List<DBTrade> iterator(boolean buy) {
+        return offers.stream().filter(offer -> (buy ? offer.getBuyer() : offer.getSeller()) != 0).collect(Collectors.toList());
     }
 
-    public List<Offer> iterator(boolean buy, int threshold) {
-        return iterator(buy).stream().filter(offer -> offer.getAmount() >= threshold).collect(Collectors.toList());
+    public List<DBTrade> iterator(boolean buy, int threshold) {
+        return iterator(buy).stream().filter(offer -> offer.getQuantity() >= threshold).collect(Collectors.toList());
     }
 
     public int getAmount(DBNation nation, int ppu, boolean isBuy) {
-        for (Offer offer : offers) {
+        for (DBTrade offer : offers) {
             if (offer.getPpu() == ppu) {
                 Integer transactor = isBuy ? (offer.getBuyer()) : (offer.getSeller());
                 if (transactor == null) continue;
                 if (nation.getNation_id() == transactor) {
-                    return offer.getAmount();
+                    return offer.getQuantity();
                 }
             }
         }
@@ -68,8 +69,8 @@ public class TradeList {
     }
 
     public int getDisparity(int threshold) {
-        List<Offer> buy = iterator(true, threshold);
-        List<Offer> sell = iterator(false, threshold);
+        List<DBTrade> buy = iterator(true, threshold);
+        List<DBTrade> sell = iterator(false, threshold);
         if (buy.isEmpty()) {
             buy = iterator(true);
         }

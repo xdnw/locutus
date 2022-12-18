@@ -28,7 +28,7 @@ public class GlobalTradeVolume extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         TradeManager trader = Locutus.imp().getTradeManager();
-        String refreshEmoji = "\uD83D\uDD04";
+        String refreshEmoji = "Refresh";
 
         DiscordUtil.createEmbedCommand(event.getChannel(), b -> {
             List<String> resourceNames = new ArrayList<>();

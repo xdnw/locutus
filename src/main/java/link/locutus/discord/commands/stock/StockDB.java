@@ -2,7 +2,8 @@ package link.locutus.discord.commands.stock;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.DBMain;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -33,13 +34,13 @@ public class StockDB extends DBMain {
     @Override
     public synchronized void createTables() {
         // companies
-        executeStmt("CREATE TABLE IF NOT EXISTS `exchanges` (`id` INTEGER PRIMARY KEY, `symbol` TEXT NOT NULL UNIQUE, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `shares` INT NOT NULL, `owner` INT NOT NULL, `guild` INT NOT NULL, `charter` TEXT, `website` TEXT, `category` INT NOT NULL, `required_rank` INT NOT NULL)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `exchanges` (`id` INTEGER PRIMARY KEY, `symbol` TEXT NOT NULL UNIQUE, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `shares` INT NOT NULL, `owner` BIGINT NOT NULL, `guild` BIGINT NOT NULL, `charter` TEXT, `website` TEXT, `category` INT NOT NULL, `required_rank` INT NOT NULL)");
         // officers
         executeStmt("CREATE TABLE IF NOT EXISTS `ranks` (`exchange` INT NOT NULL, `nation` INT NOT NULL, `rank` INT NOT NULL, PRIMARY KEY(exchange, nation))");
         // shareholders
         executeStmt("CREATE TABLE IF NOT EXISTS `shareholders` (`shareholder` INT NOT NULL, `company` INT NOT NULL, `shares` INT NOT NULL, PRIMARY KEY(shareholder, company))");
         // Trades are from nation <-> nation
-        executeStmt("CREATE TABLE IF NOT EXISTS `TRADES` (`id` INTEGER PRIMARY KEY, `company` INT NOT NULL, `buyer` INT NOT NULL, `seller` INT NOT NULL, `is_buying` INT NOT NULL, `resource` INT NOT NULL, `amount` INT NOT NULL, `price` INT NOT NULL, `date_offered` INT NOT NULL, `date_bought` INT NOT NULL)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `TRADES` (`id` INTEGER PRIMARY KEY, `company` INT NOT NULL, `buyer` INT NOT NULL, `seller` INT NOT NULL, `is_buying` INT NOT NULL, `resource` INT NOT NULL, `amount` BIGINT NOT NULL, `price` BIGINT NOT NULL, `date_offered` BIGINT NOT NULL, `date_bought` BIGINT NOT NULL)");
 //         Transactions from corp <-> nation or corp <-> corp
 //        executeStmt("CREATE TABLE IF NOT EXISTS `TRANSACTIONS` (`tx_id` INT NOT NULL PRIMARY KEY, tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, type INT NOT NULL, amount INT NOT NULL)");
 
@@ -53,12 +54,12 @@ public class StockDB extends DBMain {
         }
         Map<Integer, Exchange> exchanges = getExchangesById();
         // add exchange for each alliance
-        for (Map.Entry<Integer, String> entry : Locutus.imp().getNationDB().getAlliances().entrySet()) {
-            int id = entry.getKey();
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+            int id = alliance.getAlliance_id();
             Exchange exchange = exchanges.get(id);
             if (exchange == null) {
                 exchange = new Exchange(ExchangeCategory.ALLIANCE, id + "", "", 0, ROOT_GUILD);
-                exchange.name = entry.getValue();
+                exchange.name = alliance.getName();
                 exchange.requiredRank = Rank.OFFICER;
                 addExchangeWithId(exchange);
             }

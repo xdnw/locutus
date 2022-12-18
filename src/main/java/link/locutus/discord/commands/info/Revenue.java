@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -33,7 +33,7 @@ public class Revenue extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "revenue [json|city-link|nation-link]";
+        return Settings.commandPrefix(true) + "revenue [json|city-link|nation-link]";
     }
 
     @Override
@@ -54,7 +54,7 @@ public class Revenue extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate";
         }
 
         boolean force = flags.contains('f');
@@ -159,11 +159,11 @@ public class Revenue extends Command {
             Collection<JavaCity> cityList = entry.getValue().values();
 
             for (JavaCity build : cityList) {
-                cityProfit = build.profit(rads, hasProject, cityProfit, numCities);
+                cityProfit = build.profit(me.getContinent(), rads, -1L, hasProject, cityProfit, numCities, me.getGrossModifier(), 12);
             }
 
             NationColor color = nation.getColor();
-            tradeBonus = Locutus.imp().getTradeManager().getTradeBonus(color) * 12;
+            tradeBonus = color.getTurnBonus() * 12L;
 
             if (!nation.hasUnsetMil()) {
                 boolean war = nation.getOff() > 0 || nation.getDef() > 0;

@@ -1,8 +1,8 @@
 package link.locutus.discord.db.entities;
 
+import com.politicsandwar.graphql.model.War;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -13,7 +13,6 @@ import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv1.enums.AttackType;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -43,6 +42,33 @@ public class DBWar {
         this.date = date;
     }
 
+    public DBWar(War war) {
+        this.warId = war.getId();
+        this.attacker_id = war.getAtt_id();
+        this.defender_id = war.getDef_id();
+        this.attacker_aa = war.getAtt_alliance_id();
+        this.defender_aa = war.getDef_alliance_id();
+        this.warType = WarType.fromV3(war.getWar_type());
+        if (war.getWinner_id() != null && war.getWinner_id() > 0) {
+            if (war.getWinner_id() == attacker_id) {
+                this.status = WarStatus.ATTACKER_VICTORY;
+            } else {
+                status = WarStatus.DEFENDER_VICTORY;
+            }
+        } else if (war.getAtt_peace() && war.getDef_peace()) {
+            status = WarStatus.PEACE;
+        } else if (TimeUtil.getTurn() - TimeUtil.getTurn(war.getDate().toEpochMilli()) >= 60) {
+            status = WarStatus.EXPIRED;
+        } else if (war.getAtt_peace()) {
+            status = WarStatus.ATTACKER_OFFERED_PEACE;
+        } else if (war.getDef_peace()) {
+            status = WarStatus.DEFENDER_OFFERED_PEACE;
+        } else {
+            status = WarStatus.ACTIVE;
+        }
+        this.date = war.getDate().toEpochMilli();
+    }
+
     public String getWarInfoEmbed(boolean isAttacker, boolean loot) {
         return getWarInfoEmbed(isAttacker, loot, true);
     }
@@ -58,7 +84,7 @@ public class DBWar {
             String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
             body.append(typeStr);
             body.append("`" + enemy.getNation() + "`")
-                    .append(" | ").append(enemy.getAlliance()).append(":");
+                    .append(" | ").append(enemy.getAllianceName()).append(":");
         }
         if (loot && isAttacker) {
             double lootValue = enemy.lootTotal();
@@ -74,7 +100,7 @@ public class DBWar {
     }
 
     public List<DBAttack> getAttacks() {
-        return Locutus.imp().getWarDb().getAttacksByWarId(warId);
+        return Locutus.imp().getWarDb().getAttacksByWar(this);
     }
 
     public List<DBAttack> getAttacks(Collection<DBAttack> attacks) {
@@ -268,10 +294,11 @@ public class DBWar {
         this.warId = c.getWarID();
         this.attacker_id = c.getAttackerID();
         this.defender_id = c.getDefenderID();
-        Integer attacker_aa = Locutus.imp().getNationDB().getAllianceId(c.getAttackerAA());
-        this.attacker_aa = attacker_aa == null ? 0 : attacker_aa;
-        Integer defender_aa = Locutus.imp().getNationDB().getAllianceId(c.getDefenderAA());
-        this.defender_aa = defender_aa == null ? 0 : defender_aa;
+
+        DBAlliance attacker_aa = Locutus.imp().getNationDB().getAllianceByName(c.getAttackerAA());
+        this.attacker_aa = attacker_aa == null ? 0 : attacker_aa.getAlliance_id();
+        DBAlliance defender_aa = Locutus.imp().getNationDB().getAllianceByName(c.getDefenderAA());
+        this.defender_aa = defender_aa == null ? 0 : defender_aa.getAlliance_id();
         this.warType = WarType.parse(c.getWarType());
         this.status = WarStatus.parse(c.getStatus());
         this.date = TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate());
@@ -297,10 +324,10 @@ public class DBWar {
     public void update(WarContainer c) {
         this.attacker_id = Integer.parseInt(c.getAggressorId());
         this.defender_id = Integer.parseInt(c.getDefenderId());
-        Integer attacker_aa = Locutus.imp().getNationDB().getAllianceId(c.getAggressorAllianceName());
-        this.attacker_aa = attacker_aa == null ? 0 : attacker_aa;
-        Integer defender_aa = Locutus.imp().getNationDB().getAllianceId(c.getDefenderAllianceName());
-        this.defender_aa = defender_aa == null ? 0 : defender_aa;
+        DBAlliance attacker_aa = Locutus.imp().getNationDB().getAllianceByName(c.getAggressorAllianceName());
+        this.attacker_aa = attacker_aa == null ? 0 : attacker_aa.getAlliance_id();
+        DBAlliance defender_aa = Locutus.imp().getNationDB().getAllianceByName(c.getDefenderAllianceName());
+        this.defender_aa = defender_aa == null ? 0 : defender_aa.getAlliance_id();
         this.warType = WarType.parse(c.getWarType());
         this.date = TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate());
     }
@@ -317,7 +344,6 @@ public class DBWar {
         if (defender_id != dbWar.defender_id) return false;
         if (attacker_aa != dbWar.attacker_aa) return false;
         if (defender_aa != dbWar.defender_aa) return false;
-        if (date != dbWar.date) return false;
         if (warType != dbWar.warType) return false;
         return status == dbWar.status;
     }
@@ -342,15 +368,7 @@ public class DBWar {
 
     @Override
     public int hashCode() {
-        int result = warId;
-        result = 31 * result + attacker_id;
-        result = 31 * result + defender_id;
-        result = 31 * result + attacker_aa;
-        result = 31 * result + defender_aa;
-        result = 31 * result + (warType != null ? warType.hashCode() : 0);
-        result = 31 * result + (status != null ? status.hashCode() : 0);
-        result = 31 * result + (int) (date ^ (date >>> 32));
-        return result;
+        return warId;
     }
 
     public Boolean isAttacker(DBNation nation) {
@@ -396,7 +414,20 @@ public class DBWar {
         return MarkupUtil.htmlUrl(PnwUtil.getName(id, true), PnwUtil.getAllianceUrl(id));
     }
 
+    public int getNationId(int allianceId) {
+        if (attacker_aa == allianceId) return attacker_id;
+        if (defender_aa == allianceId) return defender_id;
+        return 0;
+    }
     public boolean isAttacker(int nation_id) {
         return this.attacker_id == nation_id;
+    }
+
+    public int getAllianceId(int attacker_nation_id) {
+        return attacker_nation_id == this.attacker_id ? this.attacker_aa : (attacker_nation_id == this.defender_id ? this.defender_aa : 0);
+    }
+
+    public long possibleEndDate() {
+        return TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date) + 60);
     }
 }

@@ -3,9 +3,10 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -92,7 +93,7 @@ public class AutoRole extends Command {
                     if (nation != null) {
                         String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
                         if (nation.getActive_m() > 10000) active = "**" + active + "**";
-                        response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAlliance());
+                        response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAllianceName());
                     }
                     response.append(" - ").append(entry.getValue());
                     response.append("\n");
@@ -101,25 +102,16 @@ public class AutoRole extends Command {
 
 
         } else {
-            List<Member> mentions = event.getMessage().getMentionedMembers();
-            if (mentions.size() != 1) {
-                User user = DiscordUtil.getUser(args.get(0));
-                if (user != null) {
-                    Member member = db.getGuild().getMember(user);
-                    if (member != null) {
-                        mentions.add(member);
-                    }
-                }
-                if (mentions.size() != 1) {
-                    return usage(event);
-                }
-            }
-            Member mention = mentions.get(0);
-            DBNation nation = DiscordUtil.getNation(mention.getUser());
+            DBNation nation = DiscordUtil.parseNation(args.get(0));
+            if (nation == null) return "User is not registered on the game.";
+            User user = nation.getUser();
+            if (user == null) return "Nation is not registered";
+            Member member = db.getGuild().getMember(user);
+            if (user == null) return "Nation is not registered to member on guild: " + user.getName() + "#" + user.getDiscriminator();
             List<String> output = new ArrayList<>();
             Consumer<String> out = output::add;
-            if (nation == null) out.accept("That nation isn't registered: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`");
-            task.autoRole(mention, out);
+            if (nation == null) out.accept("That nation isn't registered: " + CM.register.cmd.toSlashMention() + "");
+            task.autoRole(member, out);
 
             if (!output.isEmpty()) {
                 DiscordUtil.sendMessage(event.getGuildChannel(), StringMan.join(output, "\n"));
@@ -129,13 +121,14 @@ public class AutoRole extends Command {
         response.append("Done!");
 
         if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoRole`");
+            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
         if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoNick`");
+            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + "");
 
         return response.toString();
     }

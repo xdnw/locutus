@@ -4,9 +4,12 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -15,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public interface NationList {
@@ -24,13 +28,18 @@ public interface NationList {
 
     Collection<DBNation> getNations();
 
+    default Set<Integer> getAllianceIds() {
+        return getNations().stream().map(DBNation::getAlliance_id).collect(Collectors.toSet());
+    }
+
     default DBNation getTotal() {
-        return new DBNation(null, getNations(), false);
+        return DBNation.createFromList(null, getNations(), false);
     }
 
     default DBNation getAverage() {
-        return new DBNation(null, getNations(), true);
+        return DBNation.createFromList(null, getNations(), true);
     }
+
 
     default double[] getAverageMMR(boolean update) {
         double[] total = getTotalMMR(update);
@@ -42,7 +51,7 @@ public interface NationList {
         Map<T, List<DBNation>> mapList = new HashMap<>();
         for (DBNation nation : getNations()) {
             T group = groupBy.apply(nation);
-            mapList.computeIfAbsent(group, f -> new LinkedList<>()).add(nation);
+            mapList.computeIfAbsent(group, f -> new ArrayList<>()).add(nation);
         }
         Map<T, NationList> result = new HashMap<>();
         for (Map.Entry<T, List<DBNation>> entry : mapList.entrySet()) {
@@ -137,7 +146,7 @@ public interface NationList {
         }
         boolean hasUpdated = false;
         for (Integer allianceId : alliances) {
-            if (new Alliance(allianceId).updateSpies(false)) {
+            if (DBAlliance.getOrCreate(allianceId).updateSpies(false)) {
                 toUpdate.removeIf(f -> f.getPosition() > Rank.APPLICANT.id && f.getAlliance_id() == allianceId);
                 hasUpdated = true;
             }

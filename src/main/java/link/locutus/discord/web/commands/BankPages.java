@@ -5,10 +5,11 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -22,12 +23,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static link.locutus.discord.util.PnwUtil.convertedTotal;
@@ -40,12 +36,12 @@ public class BankPages {
 //
 //
 //
-//        return views.basictable.template("Deposits", header, rows).render().toString();
+//        return rocker.basictable.template("Deposits", header, rows).render().toString();
 //    }
 
     @Command
     @RolePermission(Roles.ECON)
-    public Object memberDeposits(@Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch('f') boolean force, @Switch('b') boolean noTaxBase, @Switch('o') boolean ignoreOffset) {
+    public Object memberDeposits(@Me Guild guild, @Me GuildDB db, @Me DBNation nation2, @Me User author, @Switch("f") boolean force, @Switch("b") boolean noTaxBase, @Switch("o") boolean ignoreOffset) {
         if (true) return nation2 + "<br><br>" + author + "<br><br>" + guild;
         Set<Long> tracked = db.getTrackedBanks();
 
@@ -65,7 +61,7 @@ public class BankPages {
             header.add(type.name());
         }
 
-        List<DBNation> nations;
+        Collection<DBNation> nations;
 
         Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
         if (allianceId != null) {
@@ -73,7 +69,7 @@ public class BankPages {
             nations.removeIf(n -> n.getPosition() <= 1);
         } else {
             Role role = Roles.MEMBER.toRole(guild);
-            if (role == null) throw new IllegalArgumentException("No `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID` set, or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole MEMBER` set");
+            if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "") + " set");
             nations = new ArrayList<>();
             for (Member member : guild.getMembersWithRoles(role)) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -129,12 +125,12 @@ public class BankPages {
             rows.add(row);
         }
 
-        return views.basictable.template("Deposits", header, rows).render().toString();
+        return rocker.basictable.template("Deposits", header, rows).render().toString();
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
     public Object bankIndex(@Me GuildDB db, @Me DBNation me, @Me User author) {
-        return views.bank.bankindex.template(db, db.getGuild(), author).render().toString();
+        return rocker.bank.bankindex.template(db, db.getGuild(), author).render().toString();
     }
 }

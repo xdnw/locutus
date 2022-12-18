@@ -1,9 +1,10 @@
 package link.locutus.discord.commands.info;
 
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -19,13 +20,13 @@ public class CityCost extends Command {
     }
     @Override
     public String help() {
-        return super.help() + " <current-city> <max-city> [manifest-destiny=false] [city-planning=false] [advanced-city-planning=false]";
+        return super.help() + " <current-city> <max-city> [manifest-destiny=false] [city-planning=false] [advanced-city-planning=false] [metropolitan-planning=false] [government-support-agency=false]";
     }
 
     @Override
     public String desc() {
         return "Calculate the costs of purchasing cities (from current to max) e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "CityCost 5 10 true false false";
+                "`" + Settings.commandPrefix(true) + "CityCost 5 10 true false false false";
     }
 
     @Override
@@ -44,15 +45,19 @@ public class CityCost extends Command {
         boolean manifest = false;
         boolean cp = false;
         boolean acp = false;
+        boolean mp = false;
+        boolean gsa = false;
 
         if (args.size() >= 3) manifest = Boolean.parseBoolean(args.get(2));
         if (args.size() >= 4) cp = Boolean.parseBoolean(args.get(3));
         if (args.size() >= 5) acp = Boolean.parseBoolean(args.get(4));
+        if (args.size() >= 6) mp = Boolean.parseBoolean(args.get(5));
+        if (args.size() >= 7) gsa = Boolean.parseBoolean(args.get(6));
 
         double total = 0;
 
         for (int i = Math.max(1, current); i < max; i++) {
-            total += PnwUtil.nextCityCost(i, manifest, cp && i >= 11, acp && i >= 16);
+            total += PnwUtil.nextCityCost(i, manifest, cp && i >= Projects.URBAN_PLANNING.requiredCities(), acp && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(), mp && i >= Projects.METROPOLITAN_PLANNING.requiredCities(), gsa);
         }
 
         return "$" + MathMan.format(total);

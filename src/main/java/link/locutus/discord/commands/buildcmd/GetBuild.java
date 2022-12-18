@@ -3,8 +3,11 @@ package link.locutus.discord.commands.buildcmd;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -15,8 +18,10 @@ import com.google.api.client.util.Lists;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import rocker.grant.nation;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +34,7 @@ public class GetBuild extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "getbuild <nation>";
+        return Settings.commandPrefix(true) + "getbuild <nation>";
     }
 
     @Override
@@ -46,17 +51,21 @@ public class GetBuild extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Invalid nation? Are you sure you are registered?";
+            return "Invalid nation? Are you sure you are registered?" + event.getAuthor().getAsMention();
         }
 
         Integer id = DiscordUtil.parseNationId(args.get(0));
         if (id == null) {
-            return "Not found: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pnw-who <user>`";
+            return "Not found: `" + Settings.commandPrefix(true) + "pnw-who <user>`";
         }
         DBNation nation = Locutus.imp().getNationDB().getNation(id);
         if (nation == null) {
             return "Nation not found: `" + args.get(0) + "`";
         }
+        return onCommand(nation, new DiscordChannelIO(event));
+    }
+
+    public static String onCommand(DBNation nation, IMessageIO channel) throws Exception {
         Map<DBNation, Map<Integer, JavaCity>> builds = new GetCityBuilds(nation).adapt(i -> {});
         Map<DBNation, Map<CityBuild, List<String>>> uniqueBuilds = new HashMap<>();
         for (Map.Entry<DBNation, Map<Integer, JavaCity>> nationEntry : builds.entrySet()) {
@@ -70,8 +79,9 @@ public class GetBuild extends Command {
             }
         }
 
+        IMessageBuilder msg = channel.create();
         for (Map.Entry<DBNation, Map<CityBuild, List<String>>> entry : uniqueBuilds.entrySet()) {
-            event.getChannel().sendMessage(nation.getNation() + " has " + entry.getValue().size() + " unique builds in " + nation.getCities() + " cities:").complete();
+            msg.append(nation.getNation() + " has " + entry.getValue().size() + " unique builds in " + nation.getCities() + " cities:");
 
             Map<CityBuild, List<String>> cityPair = entry.getValue();
             nation = entry.getKey();
@@ -84,9 +94,10 @@ public class GetBuild extends Command {
                         .append(cityEntry.getKey().toString())
                         .append("```");
 
-                DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString());
+                msg.embed(title, response.toString());
             }
         }
+        msg.send();
 
         return null;
     }

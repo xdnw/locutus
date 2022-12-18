@@ -16,7 +16,7 @@ public class APowerBuilding extends ABuilding implements PowerBuilding {
     private final ResourceType resource;
     private final double resourceValue;
 
-    public APowerBuilding(Building parent, ResourceType input, double inputAmt, int infraLevels, int infraPowered) {
+    public APowerBuilding(BuildingBuilder parent, ResourceType input, double inputAmt, int infraLevels, int infraPowered) {
         super(parent);
         if (input == null) {
             this.input = Collections.emptyMap();
@@ -60,10 +60,10 @@ public class APowerBuilding extends ABuilding implements PowerBuilding {
     }
 
     @Override
-    public double[] consumption(int infra, double[] profitBuffer) {
+    public double[] consumption(int infra, double[] profitBuffer, int turns) {
         if (resource != null) {
             int amt = (Math.min(infra, this.infra) + infraLevels - 1) / infraLevels;
-            profitBuffer[resource.ordinal()] -= amt * inputArr[resource.ordinal()];
+            profitBuffer[resource.ordinal()] -= amt * inputArr[resource.ordinal()] * turns / 12;
         }
         return profitBuffer;
     }

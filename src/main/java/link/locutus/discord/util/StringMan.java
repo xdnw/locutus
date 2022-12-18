@@ -635,7 +635,7 @@ public class StringMan {
             String arg = split[i];
             T parsed = parse.apply(arg);
             // Dont modify the original list
-            if (options == optionsOriginal) options = new LinkedList<>(options);
+            if (options == optionsOriginal) options = new ArrayList<>(options);
             options.remove(parsed);
             prefixArgs.add(parsed);
         }

@@ -1,9 +1,10 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -63,6 +64,10 @@ public class AlertUtil {
         }
     }
 
+    public static void auditAlert(DBNation nation, AttackTypeSubCategory type, String msg) {
+        auditAlert(nation, null, f -> msg);
+    }
+
     public static void auditAlert(DBNation nation, AuditType type, String msg) {
         auditAlert(nation, type, f -> msg);
     }
@@ -83,6 +88,11 @@ public class AlertUtil {
         String message = messageSuplier.apply(guildDb);
         if (message == null) return;
 
+        if (type != null) {
+            Set<AuditType> optOut = guildDb.getOrNull(GuildDB.Key.DISABLED_MEMBER_AUDITS);
+            if (optOut != null && optOut.contains(type)) return;
+        }
+
         // TODO put result in database
 
         if (pingOptOut != null && member.getRoles().contains(pingOptOut)) {
@@ -90,7 +100,7 @@ public class AlertUtil {
         } else {
             message = member.getAsMention() + "(see pins to opt out):\n" + message;
         }
-        RateLimitUtil.queue(channel.sendMessage(message));
+        RateLimitUtil.queueWhenFree(channel.sendMessage(message));
     }
 
     public static void alertNation(Class permission, GuildDB.Key channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
@@ -100,7 +110,7 @@ public class AlertUtil {
     public static void alertNation(Function<GuildDB, Boolean> hasPerm, GuildDB.Key channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
         if (nation.getAlliance_id() == 0 || nation.getPosition() <= 1) return;
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
-        if (user != null && user.getDiscordId() != null) {
+        if (user != null) {
             GuildDB guildDb = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
             if (guildDb != null && hasPerm.apply(guildDb)) {
                 Guild guild = guildDb.getGuild();
@@ -157,7 +167,7 @@ public class AlertUtil {
             if(channel !=null) {
                 MessageEmbed msg = new EmbedBuilder().setTitle(title).setDescription(body).build();
                 try {
-                    RateLimitUtil.queue(channel.sendMessageEmbeds(msg));
+                    RateLimitUtil.queueWhenFree(channel.sendMessageEmbeds(msg));
                 } catch (InsufficientPermissionException ignore) {
                     System.out.println("!! " + channel.getName() + " | " + channel.getGuild().getName() + " | " + ignore.getMessage());
                 }
@@ -213,12 +223,18 @@ public class AlertUtil {
                 PING_BUFFER.put(ping, true);
             }
         }
-        RateLimitUtil.queue(channel.sendMessage(StringMan.join(pings, " ")));
+        RateLimitUtil.queueWhenFree(channel.sendMessage(StringMan.join(pings, " ")));
     }
 
     public static void error(String title, String body) {
         if (title == null) title = "error";
-        DiscordUtil.createEmbedCommand(Settings.INSTANCE.DISCORD.CHANNEL.ERRORS, title, body);
+        else if (title.toLowerCase().contains("captcha")) return;
+        System.err.println("# " + title + "\n    " + StringMan.join(body.split("\r?\n"), "\n    "));
+        try {
+            DiscordUtil.createEmbedCommand(Settings.INSTANCE.DISCORD.CHANNEL.ERRORS, title, body);
+        } catch (IllegalArgumentException ignore) {
+            ignore.printStackTrace();
+        }
     }
 
     public static void error(String title, Throwable e) {

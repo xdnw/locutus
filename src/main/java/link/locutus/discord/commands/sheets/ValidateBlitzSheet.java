@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
@@ -56,7 +56,7 @@ public class ValidateBlitzSheet extends Command {
         SpreadSheet sheet = SpreadSheet.create(args.get(0));
         StringBuilder response = new StringBuilder();
         Integer finalMaxWars = maxWars;
-        BlitzGenerator.getTargets(sheet, 0, f -> finalMaxWars, 0.75, 1.75, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, 0, f -> finalMaxWars, 0.75, 1.75, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");

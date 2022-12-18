@@ -1,27 +1,24 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.PendingTreaty;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -34,6 +31,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.jooq.meta.derby.sys.Sys;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,13 +40,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class FACommands {
     @Command(desc = "Generate a named coalition by the treaty web of an alliance")
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String generateSphere(@Me GuildDB db, String coalition, Alliance rootAlliance, @Default("80") int topX) {
+    public String generateSphere(@Me GuildDB db, String coalition, DBAlliance rootAlliance, @Default("80") int topX) {
         SphereGenerator sphereGen = new SphereGenerator(topX);
-        Map.Entry<Integer, List<Alliance>> sphere = sphereGen.getSphere(rootAlliance);
+        Map.Entry<Integer, List<DBAlliance>> sphere = sphereGen.getSphere(rootAlliance);
         if (sphere == null) {
             return "No sphere found for " + rootAlliance.getName();
         }
@@ -61,7 +60,7 @@ public class FACommands {
                 db.removeCoalition(id, coalition);
             }
         }
-        for (Alliance alliance : sphere.getValue()) {
+        for (DBAlliance alliance : sphere.getValue()) {
             db.addCoalition(alliance.getIdLong(), coalition);
         }
         return "Set Coalition: `" + coalition + "` to `" + StringMan.getString( sphere.getValue()) + "`";
@@ -70,25 +69,25 @@ public class FACommands {
     @Command(desc = "Send a treaty to an alliance")
     @IsAuthenticated
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String sendTreaty(@Me User user, @Me GuildDB db, Alliance alliance, TreatyType type, int days, @Default String message) {
+    public String sendTreaty(@Me User user, @Me GuildDB db, DBAlliance alliance, TreatyType type, int days, @Default String message) {
         if (message != null && !message.isEmpty() && !Roles.ADMIN.has(user, db.getGuild())) {
             return "Admin is required to send a treaty with a message";
         }
         if (message == null) message = "";
-        return db.getAuth().sendTreaty(alliance.getAlliance_id(), type, message, days);
+        return db.getAuth(AlliancePermission.MANAGE_TREATIES).sendTreaty(alliance.getAlliance_id(), type, message, days) + "\nDone!";
     }
 
     @Command
     @IsAuthenticated
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String approveTreaty(@Me User user, @Me GuildDB db, Alliance alliance) {
-        Auth auth = db.getAuth();
+    public String approveTreaty(@Me User user, @Me GuildDB db, DBAlliance alliance) {
+        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);
-        treaties.removeIf(treaty -> treaty.from != alliance.getAlliance_id() && treaty.to != alliance.getAlliance_id());
+        treaties.removeIf(treaty -> treaty.getFromId() != alliance.getAlliance_id() && treaty.getToId() != alliance.getAlliance_id());
         if (treaties.isEmpty()) return "There are no pending treaties";
         for (PendingTreaty treaty : treaties) {
-            return auth.modifyTreaty(treaty.treatyId, true);
+            return auth.modifyTreaty(treaty.getId(), true);
         }
         return "No treaty found for: `" + alliance.getName() +
                 "`. Options:\n - " + StringMan.join(treaties, "\n - ");
@@ -97,21 +96,21 @@ public class FACommands {
     @Command
     @IsAuthenticated
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String cancelTreaty(@Me User user, @Me DBNation me, @Me GuildDB db, Alliance alliance) {
+    public String cancelTreaty(@Me User user, @Me DBNation me, @Me GuildDB db, DBAlliance alliance) {
 
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
-        treaties.removeIf(treaty -> treaty.from != alliance.getAlliance_id() && treaty.to != alliance.getAlliance_id());
+        treaties.removeIf(treaty -> treaty.getFromId() != alliance.getAlliance_id() && treaty.getToId() != alliance.getAlliance_id());
         if (treaties.isEmpty()) return "There are no active treaties";
 
         boolean admin = Roles.ADMIN.has(user, db.getGuild()) || (me.getAlliance_id() == db.getAlliance_id() && me.getPosition() >= Rank.HEIR.id);
 
         for (PendingTreaty treaty : treaties) {
-            if (!admin && treaty.type.getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
+            if (!admin && treaty.getType().getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
                 return "You need to be an admin to cancel a defensive treaty";
             }
-            return auth.modifyTreaty(treaty.treatyId, false);
+            return auth.modifyTreaty(treaty.getId(), false);
         }
         return "No treaty found for: `" + alliance.getName() +
                 "`. Options:\n - " + StringMan.join(treaties, "\n - ");
@@ -119,7 +118,7 @@ public class FACommands {
 
     @Command(desc = "List the coalitions")
     @RolePermission(Roles.MEMBER)
-    public String listCoalition(@Me User user, @Me GuildDB db, @Default String filter, @Switch('i') boolean listIds, @Switch('d') boolean ignoreDeleted) {
+    public String listCoalition(@Me User user, @Me GuildDB db, @Default String filter, @Switch("i") boolean listIds, @Switch("d") boolean ignoreDeleted) {
         Map<String, Set<Long>> coalitions = db.getCoalitionsRaw();
         List<String> coalitionNames = new ArrayList<>(coalitions.keySet());
         Collections.sort(coalitionNames);
@@ -180,9 +179,9 @@ public class FACommands {
         StringBuilder response = new StringBuilder();
         for (NationOrAllianceOrGuild aaOrGuild : alliances) {
             if (aaOrGuild.isNation()) {
-                Integer aaId = Locutus.imp().getNationDB().getAllianceId(aaOrGuild.getName());
-                if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
-                aaOrGuild = new Alliance(aaId);
+                DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(aaOrGuild.getName());
+                if (alliance == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
+                aaOrGuild = alliance;
             }
             db.addCoalition(aaOrGuild.getIdLong(), coalitionStr);
             response.append("Added " + aaOrGuild.getName() + " to " + coalitionStr).append("\n");
@@ -223,9 +222,9 @@ public class FACommands {
         StringBuilder response = new StringBuilder();
         for (NationOrAllianceOrGuild aaOrGuild : alliances) {
             if (aaOrGuild.isNation()) {
-                Integer aaId = Locutus.imp().getNationDB().getAllianceId(aaOrGuild.getName());
-                if (aaId == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
-                aaOrGuild = new Alliance(aaId);
+                DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(aaOrGuild.getName());
+                if (alliance == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
+                aaOrGuild = alliance;
             }
             db.removeCoalition(aaOrGuild.getIdLong(), coalitionStr);
             response.append("Removed " + aaOrGuild.getName() + " from " + coalitionStr).append("\n");
@@ -234,31 +233,40 @@ public class FACommands {
     }
 
     @Command
-    public String treaties(@Me MessageChannel channel, @Me GuildDB db, Set<Alliance> alliances, @Switch('f') boolean listExpired) {
+    public String treaties(@Me IMessageIO channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch("f") boolean listExpired) {
         StringBuilder response = new StringBuilder();
         if (alliances.size() == 1 && alliances.iterator().next().equals(db.getOrNull(GuildDB.Key.ALLIANCE_ID))) {
-            Auth auth = db.getAuth(Rank.OFFICER.id);
+            Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
             if (auth != null) {
                 List<PendingTreaty> treaties = auth.getTreaties();
                 if (!listExpired) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
                 for (PendingTreaty treaty : treaties) {
-                    response.append("#" + treaty.treatyId + ": " + PnwUtil.getName(treaty.from, true) + " | " + treaty.type + " -> " + PnwUtil.getName(treaty.to, true) + " (" + treaty.remaining + "|" + treaty.status + ")").append("\n");
+                    long turnsLeft = treaty.getTurnEnds() - TimeUtil.getTurn();
+                    response.append("#" + treaty.getId() + ": " + PnwUtil.getName(treaty.getFromId(), true) + " | " + treaty.getType() + " -> " + PnwUtil.getName(treaty.getToId(), true) + " (" + turnsLeft + " turns |" + treaty.status + ")").append("\n");
                 }
                 return response.toString();
             }
         }
+
+        long now = System.currentTimeMillis();
+        long turn = TimeUtil.getTurn();
         Set<Treaty> allTreaties = new LinkedHashSet<>();
-        for (Alliance alliance : alliances) {
+        for (DBAlliance alliance : alliances) {
             Map<Integer, Treaty> treaties = alliance.getTreaties();
 
             for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                 Treaty treaty = entry.getValue();
                 if (allTreaties.contains(treaty)) continue;
-                String from = PnwUtil.getMarkdownUrl(treaty.from, true);
-                String to = PnwUtil.getMarkdownUrl(treaty.to, true);
-                TreatyType type = treaty.type;
+                String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
+                String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
+                TreatyType type = treaty.getType();
 
-                response.append(from + " | " + type + " -> " + to).append("\n");
+                response.append(from + " | " + type + " -> " + to);
+                if (treaty.getTurnEnds() > turn) {
+                    String expires = TimeUtil.secToTime(TimeUnit.MILLISECONDS, TimeUtil.getTimeFromTurn(treaty.getTurnEnds() - turn));
+                    response.append(" (" + expires + ")");
+                }
+                response.append("\n");
             }
 
             allTreaties.addAll(treaties.values());
@@ -267,7 +275,7 @@ public class FACommands {
         if (allTreaties.isEmpty()) return "No treaties";
 
         String title = allTreaties.size() + " treaties";
-        DiscordUtil.createEmbedCommand(channel, title, response.toString());
+        channel.create().embed(title, response.toString()).send();
         return null;
     }
 
@@ -278,7 +286,7 @@ public class FACommands {
         if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You do not have FOREIGN_AFFAIRS";
         Category category = db.getOrThrow(GuildDB.Key.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore " + GuildDB.Key.EMBASSY_CATEGORY + " <category>`";
+            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "").toSlashCommand() + "";
         }
         if (nation.getPosition() < Rank.OFFICER.id && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You are not an officer";
         User nationUser = nation.getUser();
@@ -292,14 +300,14 @@ public class FACommands {
             db.addCoalition(nation.getAlliance_id(), Coalition.MASKEDALLIANCES);
             GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildDB.Key.AUTOROLE);
             if (autoRoleValue == null || autoRoleValue == GuildDB.AutoRoleOption.FALSE) {
-                return "AutoRole is disabled. See `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore AutoRole`";
+                return "AutoRole is disabled. See " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "";
             }
             db.getAutoRoleTask().syncDB();
             db.getAutoRoleTask().autoRole(member, f -> {});
             aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             role = aaRoles.get(nation.getAlliance_id());
             if (role == null) {
-                return "No alliance role found. Please try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "autorole`";
+                return "No alliance role found. Please try " + CM.role.autoassign.cmd.create().toSlashCommand() + "";
             }
         }
 
@@ -314,7 +322,7 @@ public class FACommands {
             return "You must be an officer to create an embassy";
         }
 
-        String embassyName = nation.getAlliance() + "-" + nation.getAlliance_id();
+        String embassyName = nation.getAllianceName() + "-" + nation.getAlliance_id();
 
         TextChannel channel = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category));
         updateEmbassyPerms(channel, role, nationUser, true);

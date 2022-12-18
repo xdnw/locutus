@@ -4,7 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ProjectSheet extends Command {
     public ProjectSheet() {
@@ -64,21 +66,24 @@ public class ProjectSheet extends Command {
             header.add(value.name());
         }
 
+        if (flags.contains('f')) {
+            List<Integer> ids = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toList());
+            Locutus.imp().getNationDB().updateNations(ids, Event::post);
+        }
+
         sheet.setHeader(header);
 
         for (DBNation nation : nations) {
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            header.set(1, MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
             header.set(2, nation.getCities());
             header.set(3, nation.getAvg_infra());
             header.set(4, nation.getScore());
 
-            for (Project value : Projects.values) {
-                if (flags.contains('f')) {
-                    nation.updateProjects();
-                }
-                header.set(5 + value.ordinal(), nation.hasProject(value) + "");
+            for (int i = 0; i < Projects.values.length; i++) {
+                Project project = Projects.values[i];
+                header.set(5 + i, nation.hasProject(project) + "");
             }
 
             sheet.addRow(header);
@@ -87,6 +92,6 @@ public class ProjectSheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

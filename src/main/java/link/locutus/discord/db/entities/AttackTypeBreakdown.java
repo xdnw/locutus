@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -25,19 +26,18 @@ public class AttackTypeBreakdown {
     private final String nameA;
     private final AtomicInteger totalA = new AtomicInteger();
     private final AtomicInteger totalB = new AtomicInteger();
-    private final Map<WarUpdateProcessor.AttackTypeSubCategory, Integer> mapA = new HashMap<>();
-    private final Map<WarUpdateProcessor.AttackTypeSubCategory, Integer> mapB = new HashMap<>();
+    private final Map<AttackTypeSubCategory, Integer> mapA = new HashMap<>();
+    private final Map<AttackTypeSubCategory, Integer> mapB = new HashMap<>();
 
     public AttackTypeBreakdown(String nameA, String nameB) {
         this.nameA = nameA;
         this.nameB = nameB;
     }
-
     public int getTotalAttacks(boolean primary) {
         return (primary ? totalA : totalB).get();
     }
 
-    public int getTotalAttacks(WarUpdateProcessor.AttackTypeSubCategory category, boolean primary) {
+    public int getTotalAttacks(AttackTypeSubCategory category, boolean primary) {
         return (primary ? mapA : mapB).getOrDefault(category, 0);
     }
 
@@ -57,10 +57,10 @@ public class AttackTypeBreakdown {
         boolean secondary = isSecondary.apply(attack);
         if (!primary && !secondary) return this;
 
-        Map<WarUpdateProcessor.AttackTypeSubCategory, Integer> map = primary ? mapA : mapB;
+        Map<AttackTypeSubCategory, Integer> map = primary ? mapA : mapB;
         AtomicInteger total = primary ? totalA : totalB;
 
-        WarUpdateProcessor.AttackTypeSubCategory category = WarUpdateProcessor.incrementCategory(attack, map);
+        AttackTypeSubCategory category = WarUpdateProcessor.incrementCategory(attack, map);
         if (category != null) {
             total.incrementAndGet();
         }
@@ -72,7 +72,7 @@ public class AttackTypeBreakdown {
     }
 
     public Consumer<EmbedBuilder> toEmbed() {
-        List<WarUpdateProcessor.AttackTypeSubCategory> allTypes = new ArrayList<>();
+        List<AttackTypeSubCategory> allTypes = new ArrayList<>();
         allTypes.addAll(mapA.keySet());
         allTypes.addAll(mapB.keySet());
         Collections.sort(allTypes);
@@ -80,13 +80,13 @@ public class AttackTypeBreakdown {
         List<String> typesStr = allTypes.stream().map(r -> r.name().toLowerCase()).collect(Collectors.toList());
         typesStr.add("TOTAL");
 
-        List<WarUpdateProcessor.AttackTypeSubCategory> finalAllTypes = allTypes;
+        List<AttackTypeSubCategory> finalAllTypes = allTypes;
         return b -> {
 
             ArrayList<String> groupA = new ArrayList<>();
             ArrayList<String> groupB = new ArrayList<>();
 
-            for (WarUpdateProcessor.AttackTypeSubCategory type : finalAllTypes) {
+            for (AttackTypeSubCategory type : finalAllTypes) {
                 groupA.add(MathMan.format(mapA.getOrDefault(type, 0)));
                 groupB.add(MathMan.format(mapB.getOrDefault(type, 0)));
             }

@@ -4,15 +4,15 @@ import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.task.multi.GetUid;
-import link.locutus.discord.util.trade.Offer;
 import com.google.api.client.util.Lists;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
@@ -37,7 +37,7 @@ public class MultiReport {
     private final Map<Integer, Set<BigInteger>>  uuidByNation = new LinkedHashMap<>();
     private final Map<Integer, Map<BigInteger, Long>>  diffMap;
     private final Map<Integer, Set<Map.Entry<DBWar, DBWar>>> illegalWarsByMulti;
-    private final Map<Integer, Set<Offer>> illegalTradesByMulti;
+    private final Map<Integer, Set<DBTrade>> illegalTradesByMulti;
 
     private final Map<Integer, Long> challengeEarnings = new LinkedHashMap<>();
     private final Map<Integer, Integer> challengeGames = new LinkedHashMap<>();
@@ -115,16 +115,16 @@ public class MultiReport {
                 if (!simple) response.append('\n');
             }
 
-            Set<Offer> trades = illegalTradesByMulti.get(nationId);
+            Set<DBTrade> trades = illegalTradesByMulti.get(nationId);
             if (trades != null && !trades.isEmpty()) {
                 List<Integer> tradeIds = new ArrayList<>();
                 double worth = 0;
-                for (Offer offer : trades) {
+                for (DBTrade offer : trades) {
                     int per = offer.getPpu();
                     ResourceType type = offer.getResource();
                     if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000)) || type == ResourceType.CREDITS) {
                         tradeIds.add(offer.getTradeId());
-                        worth += Math.abs(PnwUtil.convertedTotal(offer.getResource(), offer.getAmount()));
+                        worth += Math.abs(PnwUtil.convertedTotal(offer.getResource(), offer.getQuantity()));
                     }
                 }
                 if (!tradeIds.isEmpty()) {
@@ -287,10 +287,10 @@ public class MultiReport {
 
 
         this.illegalTradesByMulti = new LinkedHashMap<>();
-        List<Offer> myTrades = Locutus.imp().getTradeManager().getTradeDb().getOffers(nationId, 0);
-        for (Offer offer : myTrades) {
-            if ((offer.getSeller().equals(nationId) || multis.contains(offer.getSeller())) && (offer.getBuyer().equals(nationId) || multis.contains(offer.getBuyer()))) {
-                int multiId = (offer.getSeller().equals(nationId)) ? offer.getBuyer() : offer.getSeller();
+        List<DBTrade> myTrades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nationId, 0);
+        for (DBTrade offer : myTrades) {
+            if ((offer.getSeller() == (nationId) || multis.contains(offer.getSeller())) && (offer.getBuyer() == (nationId) || multis.contains(offer.getBuyer()))) {
+                int multiId = (offer.getSeller() == (nationId)) ? offer.getBuyer() : offer.getSeller();
                 illegalTradesByMulti.computeIfAbsent(multiId, f -> new LinkedHashSet<>()).add(offer);
             }
         }

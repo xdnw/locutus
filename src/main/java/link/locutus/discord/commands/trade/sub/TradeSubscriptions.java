@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -27,33 +28,33 @@ public class TradeSubscriptions extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        Set<TradeDB.Subscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(event.getAuthor().getIdLong());
+        List<TradeSubscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(event.getAuthor().getIdLong());
         if (subscriptions.isEmpty()) {
-            return "No subscriptions. Subscribe to get alerts using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "alert-trade`";
+            return "No subscriptions. Subscribe to get alerts using `" + Settings.commandPrefix(true) + "alert-trade`";
         }
 
         for (ResourceType type : ResourceType.values) {
             String title = type.name();
             StringBuilder body = new StringBuilder();
 
-            for (TradeDB.Subscription subscription : subscriptions) {
-                if (subscription.resource == type) {
-                    String buySell = subscription.isBuy ? "Buy" : "Sell";
-                    String operator = subscription.above ? ">" : "<";
+            for (TradeSubscription subscription : subscriptions) {
+                if (subscription.getResource() == type) {
+                    String buySell = subscription.isBuy() ? "Buy" : "Sell";
+                    String operator = subscription.isAbove() ? ">" : "<";
 
-                    String msg = buySell + " " + subscription.resource.name().toLowerCase() + " " + operator + " " + subscription.ppu;
+                    String msg = buySell + " " + subscription.getResource().name().toLowerCase() + " " + operator + " " + subscription.getPpu();
 
                     body.append('\n').append(msg);
-                    String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(subscription.endDate)) + " (UTC)";
+                    String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(subscription.getDate())) + " (UTC)";
                     body.append(" until ").append(dateStr);
                 }
             }
             if (body.length() == 0) continue;
 
-            String emoji = "\u274c";
-            String unsubCommand = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unsub-trade " + type.name();
+            String emoji = "Unsubscribe";
+            String unsubCommand = Settings.commandPrefix(true) + "unsub-trade " + type.name();
 
-            body.append("\n\n").append("*Press " + emoji + " to unsubscribe*");
+            body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
 
             DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString(), emoji, unsubCommand);
         }

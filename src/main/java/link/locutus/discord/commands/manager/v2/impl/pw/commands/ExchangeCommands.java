@@ -1,17 +1,21 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.ExchangeCategory;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -31,6 +35,8 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.awt.Color;
 import java.util.HashMap;
@@ -41,7 +47,7 @@ import java.util.Set;
 public class ExchangeCommands {
     @Command(desc = "Create an exchange")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String create(@Me Guild guild, @Me User user, @Me DBNation me, @Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation nation, ExchangeCategory category, String symbol, @Switch('f') boolean force) {
+    public String create(@Me Guild guild, @Me User user, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation nation, ExchangeCategory category, String symbol, @Switch("f") boolean force) {
         if (!symbol.matches("[a-zA-Z0-9_]+")) return "`" + symbol + "` does not match (letters, numbers, underscores)";
         if (MathMan.isInteger(symbol)) return "The exchange symbol `" + symbol + "` must contain at least one letter";
         Exchange exchange = db.getExchange(symbol);
@@ -60,7 +66,7 @@ public class ExchangeCommands {
         exchange.name = guild.getName();
 
         if (!force) {
-            DiscordUtil.pending(channel, message, "Create: " + symbol, "Press to confirm", 'f');
+            io.create().confirmation("Create: " + symbol, "Create exchange: `" + symbol + "`", command).send();
             return null;
         }
 
@@ -69,12 +75,12 @@ public class ExchangeCommands {
         exchange.createRoles();
 
         GuildMessageChannel exchangeChannel = exchange.getChannel();
-        RateLimitUtil.queue(exchangeChannel.sendMessage("Company info: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange description <info>`\n" +
-                "Company name: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange name <name>`\n" +
-                "Officers: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange promote <user> <MEMBER|OFFICER|HEIR|LEADER>`\n" +
-                "Charter: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange charter <doc-url>`\n" +
-                "Website: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange website <url>`\n" +
-                "Color Roles: `" + Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "exchange color <rank> <color>`\n"
+        RateLimitUtil.queue(exchangeChannel.sendMessage("Company info: `" + Settings.commandPrefix(false) + "exchange description <info>`\n" +
+                "Company name: `" + Settings.commandPrefix(false) + "exchange name <name>`\n" +
+                "Officers: `" + Settings.commandPrefix(false) + "exchange promote <user> <MEMBER|OFFICER|HEIR|LEADER>`\n" +
+                "Charter: `" + Settings.commandPrefix(false) + "exchange charter <doc-url>`\n" +
+                "Website: `" + Settings.commandPrefix(false) + "exchange website <url>`\n" +
+                "Color Roles: `" + Settings.commandPrefix(false) + "exchange color <rank> <color>`\n"
         ));
 
         StringBuilder help = new StringBuilder("Created exchange: `" + symbol.toUpperCase() + "`. To have it listed on the exchange please complete the following:\n");
@@ -85,7 +91,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Autorole members for an exchange")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String autoRole(@Me GuildDB db, @Me Guild guild, @Me MessageChannel channel, @Me Member member, @Me DBNation me, @Me Message message, StockDB stockDB, @Me Exchange exchange) {
+    public String autoRole(@Me GuildDB db, @Me Guild guildl, @Me Member member, @Me DBNation me, StockDB stockDB, @Me Exchange exchange) {
         exchange.autoRole(member);
         exchange.autoRole();
         StringBuilder response = new StringBuilder();
@@ -95,53 +101,55 @@ public class ExchangeCommands {
 
     @Command(desc = "Destroy an exchange")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String drop(@Me Guild guild, @Me MessageChannel channel, @Me DBNation me, @Me Message message, StockDB db, @Me Exchange exchange, @Switch('f') boolean force) {
+    public String drop(@Me Guild guild, @Me IMessageIO io, @Me DBNation me, @Me JSONObject command, StockDB db, @Me Exchange exchange, @Switch("f") boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         if (!force) {
-            DiscordUtil.pending(channel, message, "Delete: " + exchange.symbol, exchange.toString(), 'f');
+            io.create().confirmation("Delete: " + exchange.symbol, exchange.toString(), command).send();
             return null;
         }
         db.deleteExchange(exchange);
-        GuildMessageChannel tc = ((GuildMessageChannel) channel);
-        RateLimitUtil.queue(tc.delete());
+        TextChannel tc = exchange.getChannel();
+        if (tc != null) {
+            RateLimitUtil.queue(tc.delete());
+        }
         return "Deleted exchange: " + exchange.symbol;
     }
 
     @Command(desc = "Transfer funds from this corp to the accounts of a nation or another corp")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String transfer(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch('f') boolean force) {
+    public String transfer(@Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch("f") boolean force) {
         if (!force) {
             String title = "Confirm transfer: " + MathMan.format(amount) + "x" + resource.name;
             String body = "From `*" + exchange.getName() + "` to " + receiver.getUrlMarkup();
-            DiscordUtil.pending(channel, message, title, body, 'f');
+            io.create().confirmation(title, body, command).send();
             return null;
         }
         // TODO
-        Map.Entry<Boolean, String> result = new NationOrExchange(exchange).give(channel, me, receiver, resource, amount, false);
+        Map.Entry<Boolean, String> result = new NationOrExchange(exchange).give(me, receiver, resource, amount, false);
         return result.getValue();
     }
 
-    public String withdraw(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch('f') boolean force) {
+    public String withdraw(StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch("f") boolean force) {
         return null; // TODO
     }
 
     @Command(desc = "Deposit your funds into an exchange")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String deposit(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, Exchange resource, double amount, @Switch('f') boolean force) {
+    public String deposit(@Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation me, @Me Exchange exchange, Exchange resource, double amount, @Switch("f") boolean force) {
         NationOrExchange receiver = new NationOrExchange(exchange);
         if (!force) {
             String title = "Confirm transfer: " + MathMan.format(amount) + "x" + resource.name;
             String body = "From `*" + exchange.getName() + "` to " + receiver.getUrlMarkup();
-            DiscordUtil.pending(channel, message, title, body, 'f');
+            io.create().confirmation(title, body, command).send();
             return null;
         }
-        Map.Entry<Boolean, String> result = new NationOrExchange(me).give(channel, me, receiver, resource, amount, false);
+        Map.Entry<Boolean, String> result = new NationOrExchange(me).give(me, receiver, resource, amount, false);
         return result.getValue();
     }
 
     @Command(desc = "Export shares to a spreadsheet")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String exportShares(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
+    public String exportShares(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         synchronized (db) {
             return null; // TODO
         }
@@ -149,7 +157,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Import shares from a spreadsheet")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String importShares(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
+    public String importShares(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         // publicly traded companies, only Root admin can import shares
         // private companies, heir can import shares
         synchronized (db) {
@@ -159,7 +167,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Bulk transfer shares/resources from a corp to nation/corp balances")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String transferBulk(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
+    public String transferBulk(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         synchronized (db) {
             return null; // TODO
         }
@@ -167,7 +175,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Bulk withdraw resources from a corp to nations/alliances ingame")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String withdrawBulk(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
+    public String withdrawBulk(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         synchronized (db) {
             return null; // TODO
         }
@@ -175,7 +183,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Disburse raw resources to nations")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String disburse(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, Set<DBNation> nations, int days) {
+    public String disburse(StockDB db, @Me DBNation me, @Me Exchange exchange, Set<DBNation> nations, int days) {
         synchronized (db) {
             return null; // TODO
         }
@@ -183,7 +191,7 @@ public class ExchangeCommands {
 
     @Command(desc = "Bulk transfer shares/resources from a corp to nations")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String dividends(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, double valuePerShare, @Default("true") boolean sendInactive, @Default("true") boolean sendGray) {
+    public String dividends(StockDB db, @Me DBNation me, @Me Exchange exchange, double valuePerShare, @Default("true") boolean sendInactive, @Default("true") boolean sendGray) {
         synchronized (db) {
             return null; // TODO
         }
@@ -191,16 +199,13 @@ public class ExchangeCommands {
 
     @Command(desc = "Set exchange description")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String description(StockDB db, @Me DBNation me, @Me Exchange exchange, List<String> consumeAll, @Me Message message) {
+    public String description(StockDB db, @Me DBNation me, @Me Exchange exchange, @TextArea String description) {
         if (!exchange.checkPermission(me, Rank.OFFICER)) return "You are not the officer of: " + exchange.name;
 
-        String raw = DiscordUtil.trimContent(message.getContentRaw());
-        String msg = raw.substring(raw.indexOf(' ', raw.indexOf(' ') + 1) + 1);
-
-        exchange.description = msg;
+        exchange.description = description;
         db.addExchangeWithId(exchange);
 
-        return "Set company description";
+        return "Set company description to: ```" + description + "```";
     }
 
     @Command(desc = "Set exchange name")
@@ -214,15 +219,15 @@ public class ExchangeCommands {
 
     @Command(desc = "Transfer exchange ownership")
     @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String owner(@Me MessageChannel channel, @Me Message message, StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation newOwner, @Switch('f') boolean force) {
+    public String owner(@Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation newOwner, @Switch("f") boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         User user = newOwner.getUser();
-        if (user == null) return newOwner.getNation() + " has not used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (user == null) return newOwner.getNation() + " has not used " + CM.register.cmd.toSlashMention() + "";
 
         if (!force) {
-            String title = "Transfer ownership to: " + newOwner.getNation() + " | " + newOwner.getAlliance();
+            String title = "Transfer ownership to: " + newOwner.getNation() + " | " + newOwner.getAllianceName();
             String desc = "User: " + user.getAsMention() + "\nPress to confirm";
-            DiscordUtil.pending(channel, message, title, desc, 'f');
+            io.create().confirmation(title, desc, command).send();
             return null;
         }
 
@@ -281,7 +286,7 @@ public class ExchangeCommands {
             if (exchange.isAlliance()) {
                 note = "\nNote: This overrides ";
             }
-            return type + " " + user.getName() + " | " + user.getAlliance() + " to " + rank + note;
+            return type + " " + user.getName() + " | " + user.getAllianceName() + " to " + rank + note;
         }
     }
 

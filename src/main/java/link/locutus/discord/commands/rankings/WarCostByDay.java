@@ -3,10 +3,11 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -78,7 +79,7 @@ public class WarCostByDay extends Command {
 
         String arg0 = args.get(0);
 
-        List<DBAttack> attacks = new LinkedList<>();
+        List<DBAttack> attacks = new ArrayList<>();
         Function<DBAttack, Boolean> isPrimary = null;
         Function<DBAttack, Boolean> isSecondary = null;
         String nameA = "Unknown";
@@ -91,7 +92,7 @@ public class WarCostByDay extends Command {
                 DBWar war = Locutus.imp().getWarDb().getWar(warId);
                 if (war == null) return "War not found (out of sync?)";
 
-                attacks = Locutus.imp().getWarDb().getAttacksByWarId(warId);
+                attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
 
                 nameA = PnwUtil.getName(war.attacker_id, false);
                 nameB = PnwUtil.getName(war.defender_id, false);
@@ -324,7 +325,7 @@ public class WarCostByDay extends Command {
         }
 
         for (TimeDualNumericTable<AttackCost> table : tables) {
-            table.write(event.getGuildChannel());
+            table.write(new DiscordChannelIO(event));
         }
 
         return null;

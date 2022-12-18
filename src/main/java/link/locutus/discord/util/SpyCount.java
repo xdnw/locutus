@@ -1,10 +1,12 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.event.SpyReportEvent;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.event.game.SpyReportEvent;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -119,7 +121,7 @@ public class SpyCount {
     }
 
     public static int guessSpyCount(DBNation nation) throws IOException {
-        Integer current = nation.getSpies();
+        int current = nation.getSpies();
 
         int id = nation.getNation_id();
         int index = binarySearchOpType(id, 0, BY_SUCCESS.size() - 1, DEF_OP);
@@ -129,7 +131,7 @@ public class SpyCount {
         int safety = opSafety.getValue();
 
         int def = DEF_SPIES;
-        if (nation.getSpies() != null) def = nation.getSpies();
+        if (nation.getSpies() != -1) def = nation.getSpies();
 
         int inversionPoint = binarySearchSpies(id, opType, safety, 0, 59, def);
 
@@ -152,10 +154,8 @@ public class SpyCount {
         else {
             result = enemySpiesMin > 2 ? (int) Math.ceil(enemySpiesMin) : (int) enemySpiesMin;
         }
-        if (current == null || !current.equals(result)) {
-            nation.setSpies(result);
-            Locutus.imp().getNationDB().setSpies(nation.getNation_id(), result);
-            Locutus.imp().getNationDB().addNation(nation);
+        if (current != result) {
+            nation.setSpies(result, true);
         }
         nation.setMeta(NationMeta.UPDATE_SPIES, TimeUtil.getTurn());
         return result;
@@ -311,10 +311,10 @@ public class SpyCount {
         DBNation nation = entry.getKey();
 
         if (reportBy != null) {
-            Map.Entry<Long, double[]> previous = Locutus.imp().getNationDB().getLoot(nation.getNation_id());
+            LootEntry previous = Locutus.imp().getNationDB().getLoot(nation.getNation_id());
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
 
-            if (previous == null || previous.getKey() > cutoff) {
+            if (previous == null || previous.getDate() > cutoff) {
 //                if (last < currentDay) {
 //                    if (nation.getPosition() > 1) {
 ////                        GuildDB db = nation.getGuildDB();
@@ -328,7 +328,7 @@ public class SpyCount {
 
         if (nation != null) {
             long turn = TimeUtil.getTurn();
-            Locutus.imp().getNationDB().setLoot(nation.getNation_id(), turn, entry.getValue());
+            Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), turn, entry.getValue(), NationLootType.ESPIONAGE);
         }
         return entry;
     }
@@ -377,14 +377,20 @@ public class SpyCount {
     }
 
     public static enum Safety {
-        QUICK(1),
-        NORMAL(2),
-        COVERT(3);
+        QUICK(1, 1),
+        NORMAL(2, 2.8284271428571428571428571428571),
+        COVERT(3, 5.1961524285714285714285714285714d);
 
         public final int id;
+        private final double costFactor;
 
-        Safety(int id) {
+        Safety(int id, double costFactor) {
             this.id = id;
+            this.costFactor = costFactor;
+        }
+
+        public double getCostFactor() {
+            return costFactor;
         }
 
         public static Safety byId(int safety) {
@@ -565,7 +571,7 @@ public class SpyCount {
 
     public static double getNetDamage(int attacking, DBNation defender, Operation operation, int safety, boolean countOpCost) {
         double net = getNetSpyKills(attacking, defender.getSpies(), operation, safety, defender);
-        double netDamage = net * MilitaryUnit.SPIES.getCost();
+        double netDamage = net * MilitaryUnit.SPIES.getConvertedCost();
 
         double odds = getOdds(attacking, defender.getSpies(), safety, operation, defender);
         if (operation != Operation.SPIES) {
@@ -583,7 +589,7 @@ public class SpyCount {
         double losses = getFailedSpyLosses(attacking, defender.getSpies(), operation, safety);
         double kills = operation == Operation.SPIES ? getSpyKills(attacking, defender.getSpies()) : 0;
 
-        double netDamage = kills * MilitaryUnit.SPIES.getCost();
+        double netDamage = kills * MilitaryUnit.SPIES.getConvertedCost();
 
         if (operation != Operation.SPIES) {
             kills = getKills(attacking, defender, operation, safety) * (odds / 100d);

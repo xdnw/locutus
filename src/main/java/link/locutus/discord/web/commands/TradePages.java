@@ -1,7 +1,6 @@
 package link.locutus.discord.web.commands;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -33,11 +32,11 @@ public class TradePages {
             rows.add(row);
         }
 
-        return views.basictable.template("Trade Price", header, rows).render().toString();
+        return rocker.basictable.template("Trade Price", header, rows).render().toString();
     }
 
     @Command
-    public Object tradePriceByDayJson(TradeDB tradeDB, TradeManager manager, List<ResourceType> resources, int days) {
+    public Object tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeManager manager, List<ResourceType> resources, int days) {
         if (days <= 1) return "Invalid number of days";
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
@@ -101,6 +100,6 @@ public class TradePages {
         String endpoint = "/tradepricebydayjson/" + query;
 
         String title = "Trade Price By Day";
-        return views.trade.tradeprice.template(title, endpoint).render().toString();
+        return rocker.trade.tradeprice.template(title, endpoint).render().toString();
     }
 }

@@ -1,12 +1,14 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -47,12 +49,13 @@ public class Treaties extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
         if (aaId != null && alliances.size() == 1 && alliances.iterator().next().equals(aaId)) {
-            Auth auth = db.getAuth();
+            Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
             if (auth != null) {
                 List<PendingTreaty> treaties = auth.getTreaties();
                 if (!flags.contains('f')) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
                 for (PendingTreaty treaty : treaties) {
-                    response.append("#" + treaty.treatyId + ": " + PnwUtil.getName(treaty.from, true) + " | " + treaty.type + " -> " + PnwUtil.getName(treaty.to, true) + " (" + treaty.remaining + "|" + treaty.status + ")").append("\n");
+                    long turnsLeft = treaty.getTurnEnds() - TimeUtil.getTurn();
+                    response.append("#" + treaty.getId() + ": " + PnwUtil.getName(treaty.getFromId(), true) + " | " + treaty.getType() + " -> " + PnwUtil.getName(treaty.getToId(), true) + " (" + turnsLeft + " turns |" + treaty.status + ")").append("\n");
                 }
                 return response.toString();
             }
@@ -65,9 +68,9 @@ public class Treaties extends Command {
             for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                 Treaty treaty = entry.getValue();
                 if (allTreaties.contains(treaty)) continue;
-                String from = PnwUtil.getMarkdownUrl(treaty.from, true);
-                String to = PnwUtil.getMarkdownUrl(treaty.to, true);
-                TreatyType type = treaty.type;
+                String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
+                String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
+                TreatyType type = treaty.getType();
 
                 response.append(from + " | " + type + " -> " + to).append("\n");
             }

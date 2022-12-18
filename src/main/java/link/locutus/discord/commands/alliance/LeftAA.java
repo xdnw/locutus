@@ -3,8 +3,8 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -53,7 +53,7 @@ public class LeftAA extends Command {
         }
         StringBuilder response = new StringBuilder();
         Map<Integer, Map.Entry<Long, Rank>> removes;
-        List<Map.Entry<Map.Entry<DBNation, Alliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
+        List<Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
 
         boolean showCurrentAA = false;
         Integer aaId = PnwUtil.parseAllianceId(args.get(0));
@@ -64,16 +64,15 @@ public class LeftAA extends Command {
             DBNation nation = DBNation.byId(nationId);
             removes = Locutus.imp().getNationDB().getRemovesByNation(nationId);
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
-                Alliance aa = new Alliance(entry.getKey());
+                DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
                 DBNation tmp = nation;
                 if (tmp == null) {
                     tmp = new DBNation();
                     tmp.setNation_id(nationId);
                     tmp.setAlliance_id(aa.getAlliance_id());
                     tmp.setNation(nationId + "");
-                    tmp.setAlliance(aa.getName());
                 }
-                AbstractMap.SimpleEntry<DBNation, Alliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
+                AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
                 Map.Entry<Long, Rank> value = entry.getValue();
                 toPrint.add(new AbstractMap.SimpleEntry<>(key, value));
             }
@@ -104,7 +103,7 @@ public class LeftAA extends Command {
                     if (flags.contains('v') && nation.getVm_turns() != 0) continue;
                     if (flags.contains('m') && nation.getPosition() > 1) continue;
 
-                    AbstractMap.SimpleEntry<DBNation, Alliance> key = new AbstractMap.SimpleEntry<>(nation, new Alliance(aaId));
+                    AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, DBAlliance.getOrCreate(aaId));
                     toPrint.add(new AbstractMap.SimpleEntry<>(key, entry.getValue()));
                 }
             }
@@ -112,18 +111,18 @@ public class LeftAA extends Command {
 
         Set<Integer> ids = new LinkedHashSet<>();
         long now = System.currentTimeMillis();
-        for (Map.Entry<Map.Entry<DBNation, Alliance>, Map.Entry<Long, Rank>> entry : toPrint) {
+        for (Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>> entry : toPrint) {
             long diff = now - entry.getValue().getKey();
             Rank rank = entry.getValue().getValue();
             String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
 
-            Map.Entry<DBNation, Alliance> nationAA = entry.getKey();
+            Map.Entry<DBNation, DBAlliance> nationAA = entry.getKey();
             DBNation nation = nationAA.getKey();
             ids.add(nation.getNation_id());
 
             response.append(timeStr + " ago: " + nationAA.getKey().getNation() + " left " + nationAA.getValue().getName() + " | " + rank.name());
             if (showCurrentAA && nation.getAlliance_id() != 0) {
-                response.append(" and joined " + nation.getAlliance());
+                response.append(" and joined " + nation.getAllianceName());
             }
             response.append("\n");
         }

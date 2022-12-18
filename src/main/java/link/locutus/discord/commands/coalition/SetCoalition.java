@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -26,7 +26,7 @@ public class SetCoalition extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> <coalition>";
+        return Settings.commandPrefix(true) + "setcoalition <alliance> <coalition>";
     }
 
     @Override
@@ -42,7 +42,7 @@ public class SetCoalition extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) {
-            return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setcoalition <alliance> <coalition>";
+            return "Usage: `" + Settings.commandPrefix(true) + "setcoalition <alliance> <coalition>";
         }
         Coalition.checkPermission(args.get(1), guild, author);
 

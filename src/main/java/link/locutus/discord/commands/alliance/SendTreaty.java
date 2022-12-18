@@ -1,10 +1,11 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -42,7 +43,7 @@ public class SendTreaty extends Command {
         if (args.size() < 3) return usage(event);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
         if (auth == null) return "No authentication enabled for this guild";
 
         Integer aaId = PnwUtil.parseAllianceId(args.get(0));

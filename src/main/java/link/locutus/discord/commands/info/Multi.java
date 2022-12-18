@@ -18,7 +18,7 @@ public class Multi extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getClass().getSimpleName() + " <nation>";
+        return Settings.commandPrefix(true) + getClass().getSimpleName() + " <nation>";
     }
 
     @Override
@@ -46,7 +46,9 @@ public class Multi extends Command {
         String title = PnwUtil.getName(nationId, false) + " multi report";
         if (result.length() + title.length() >= 2000) {
             String condensed = report.toString(true);
-            DiscordUtil.createEmbedCommand(event.getChannel(), PnwUtil.getName(nationId, false), condensed);
+            if (condensed.length() + title.length() < 2000) {
+                DiscordUtil.createEmbedCommand(event.getChannel(), PnwUtil.getName(nationId, false), condensed);
+            }
         }
 
         DiscordUtil.createEmbedCommand(event.getChannel(), title, result);

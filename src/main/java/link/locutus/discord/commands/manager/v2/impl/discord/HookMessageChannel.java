@@ -43,6 +43,10 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
         this.hook = hook;
     }
 
+    public MessageChannel getParent() {
+        return parent;
+    }
+
     @NotNull
     @Override
     public Guild getGuild() {

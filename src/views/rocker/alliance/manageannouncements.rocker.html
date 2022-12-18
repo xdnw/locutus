@@ -1,0 +1,12 @@
+@import link.locutus.discord.db.GuildDB
+@import link.locutus.discord.db.entities.Announcement
+@import link.locutus.discord.db.entities.DBNation
+@import java.util.List
+@import java.util.Map
+
+@args (GuildDB db, List<Announcement> announcements)
+    @rocker.main.template("Manage Announcements") -> {
+    @for (Announcement announcement : announcements) {
+    @rocker.alliance.announcement.template(db, announcement)
+    }
+    }

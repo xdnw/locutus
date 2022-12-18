@@ -5,11 +5,7 @@ import link.locutus.discord.util.StringMan;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class BindingHelper {
@@ -53,7 +49,18 @@ public class BindingHelper {
         return true;
     }
 
-    public <T extends Enum> T emum(Class<T> emum, String input) {
+    public static <T extends Enum> Set<T> emumSet(Class<T> emum, String input) {
+        return new HashSet<>(emumList(emum, input));
+    }
+
+    public static <T extends Enum> List<T> emumList(Class<T> emum, String input) {
+        List<T> result = new ArrayList<>();
+        for (String s : StringMan.split(input, ',')) {
+            result.add(emum(emum, s));
+        }
+        return result;
+    }
+    public static <T extends Enum> T emum(Class<T> emum, String input) {
         input = input.replaceAll("_", " ").toLowerCase();
         Enum[] constants = emum.getEnumConstants();
         for (Enum constant : constants) {

@@ -1,5 +1,7 @@
 package link.locutus.discord.db.entities;
 
+import com.google.gson.JsonElement;
+import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -7,9 +9,10 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.trade.Offer;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import org.example.jooq.bank.tables.records.Transactions_2Record;
+import org.jooq.Record;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
@@ -39,6 +42,7 @@ import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
 import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
 import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
 import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
+import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
 public class Transaction2 {
     public int tx_id;
@@ -63,6 +67,23 @@ public class Transaction2 {
         this.resources = resources;
     }
 
+    public static Transaction2 fromApiV3(Bankrec rec) {
+        Transaction2 tx = new Transaction2(
+                rec.getId(),
+                rec.getDate().toEpochMilli(),
+                rec.getSender_id(),
+                rec.getSender_type(),
+                rec.getReceiver_id(),
+                rec.getReceiver_type(),
+                rec.getBanker_id(),
+                rec.getNote(),
+                ResourceType.getBuffer()
+        );
+        tx.resources = ResourceType.fromApiV3(rec, tx.resources);
+        return tx;
+    }
+
+    @Deprecated
     public static Transaction2 fromAPiv3(JsonObject json) throws ParseException {
         int id = Integer.parseInt(json.get("id").getAsString());
         long date = Instant.parse(json.get("date").getAsString()).toEpochMilli();
@@ -71,7 +92,8 @@ public class Transaction2 {
         int rid = json.get("rid").getAsInt();
         int rtype = json.get("rtype").getAsInt();
         int pid = json.get("pid").getAsInt();
-        String note = json.get("note").getAsString();
+        JsonElement noteObj = json.get("note");
+        String note = noteObj.isJsonNull() ? "" : noteObj.getAsString();
         Transaction2 tx = new Transaction2(id, date, sid, stype, rid, rtype, pid, note, ResourceType.getBuffer());
 
         tx.resources[ResourceType.MONEY.ordinal()] = json.get("money").getAsDouble();
@@ -87,6 +109,33 @@ public class Transaction2 {
         tx.resources[ResourceType.ALUMINUM.ordinal()] = json.get("aluminum").getAsDouble();
         tx.resources[ResourceType.FOOD.ordinal()] = json.get("food").getAsDouble();
 
+        return tx;
+    }
+
+    public static Transaction2 fromTX2Table(Transactions_2Record record) {
+        Transaction2 tx = new Transaction2(
+                record.getTxId(),
+                record.getTxDatetime(),
+                record.getSenderId(),
+                record.getSenderType(),
+                record.getReceiverId(),
+                record.getReceiverType(),
+                record.getBankerNationId(),
+                record.getNote(),
+                ResourceType.getBuffer()
+        );
+        tx.resources[MONEY.ordinal()] = record.getMoney() / 100d;
+        tx.resources[FOOD.ordinal()] = record.getFood() / 100d;
+        tx.resources[COAL.ordinal()] = record.getCoal() / 100d;
+        tx.resources[OIL.ordinal()] = record.getOil() / 100d;
+        tx.resources[URANIUM.ordinal()] = record.getUranium() / 100d;
+        tx.resources[LEAD.ordinal()] = record.getLead() / 100d;
+        tx.resources[IRON.ordinal()] = record.getIron() / 100d;
+        tx.resources[BAUXITE.ordinal()] = record.getBauxite() / 100d;
+        tx.resources[GASOLINE.ordinal()] = record.getGasoline() / 100d;
+        tx.resources[MUNITIONS.ordinal()] = record.getMunitions() / 100d;
+        tx.resources[STEEL.ordinal()] = record.getSteel() / 100d;
+        tx.resources[ALUMINUM.ordinal()] = record.getAluminum() / 100d;
         return tx;
     }
 
@@ -184,16 +233,16 @@ public class Transaction2 {
         this.resources = tax.resources;
     }
 
-    public Transaction2(Offer offer) {
+    public Transaction2(DBTrade offer) {
         tx_id = offer.getTradeId();
-        tx_datetime = offer.getEpochms();
+        tx_datetime = offer.getDate();
         sender_id = offer.getSeller();
         receiver_id = offer.getBuyer();
         receiver_type = 1;
         sender_type = 1;
         banker_nation = 0;
         resources = new double[ResourceType.values.length];
-        resources[offer.getResource().ordinal()] += offer.getAmount();
+        resources[offer.getResource().ordinal()] += offer.getQuantity();
         resources[0] -= offer.getTotal();
     }
 
@@ -225,8 +274,8 @@ public class Transaction2 {
         return true;
     }
 
-    public String createInsert(String table, boolean id) {
-        StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR REPLACE " : "") + "INTO `" + table + "` (" + (id ? "tx_id, " : "") + "tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation_id, note");
+    public String createInsert(String table, boolean id, boolean ignore) {
+        StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR " + (ignore ? "IGNORE" : "REPLACE") + " " : "") + "INTO `" + table + "` (" + (id ? "tx_id, " : "") + "tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation_id, note");
         int fieldCount = id ? 8 : 7;
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
@@ -339,5 +388,28 @@ public class Transaction2 {
 
     public NationOrAllianceOrGuild getReceiverObj() {
         return NationOrAllianceOrGuild.create(receiver_id, receiver_type);
+    }
+
+    public void set(Transactions_2Record record) {
+        record.setTxId(tx_id);
+        record.setTxDatetime(tx_datetime);
+        record.setSenderId(sender_id);
+        record.setSenderType(sender_type);
+        record.setReceiverId(receiver_id);
+        record.setReceiverType(receiver_type);
+        record.setBankerNationId(banker_nation);
+        record.setNote(note);
+        record.setMoney((long) (resources[ResourceType.MONEY.ordinal()] * 100d));
+        record.setFood((long) (resources[ResourceType.FOOD.ordinal()] * 100d));
+        record.setCoal((long) (resources[ResourceType.COAL.ordinal()] * 100d));
+        record.setOil((long) (resources[ResourceType.OIL.ordinal()] * 100d));
+        record.setUranium((long) (resources[ResourceType.URANIUM.ordinal()] * 100d));
+        record.setLead((long) (resources[ResourceType.LEAD.ordinal()] * 100d));
+        record.setIron((long) (resources[ResourceType.IRON.ordinal()] * 100d));
+        record.setBauxite((long) (resources[ResourceType.BAUXITE.ordinal()] * 100d));
+        record.setGasoline((long) (resources[ResourceType.GASOLINE.ordinal()] * 100d));
+        record.setMunitions((long) (resources[ResourceType.MUNITIONS.ordinal()] * 100d));
+        record.setSteel((long) (resources[ResourceType.STEEL.ordinal()] * 100d));
+        record.setAluminum((long) (resources[ResourceType.ALUMINUM.ordinal()] * 100d));
     }
 }

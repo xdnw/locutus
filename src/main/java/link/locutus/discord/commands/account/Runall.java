@@ -33,11 +33,11 @@ public class Runall extends Command implements Noformat {
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         String msg = DiscordUtil.trimContent(event.getMessage().getContentRaw());
-        msg = msg.replaceAll(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "runall " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX, "");
-        String[] split = msg.split("\\r?\\n" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX);
+        msg = msg.replaceAll(Settings.commandPrefix(true) + "runall " + Settings.commandPrefix(true), "");
+        String[] split = msg.split("\\r?\\n" + Settings.commandPrefix(true));
         for (int i = 0; i < split.length; i++) {
-            String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + split[i];
-            if (cmd.toLowerCase().startsWith(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "runall")) continue;
+            String cmd = Settings.commandPrefix(true) + split[i];
+            if (cmd.toLowerCase().startsWith(Settings.commandPrefix(true) + "runall")) continue;
             Message message = new DelegateMessage(event.getMessage()) {
                 @Nonnull
                 @Override

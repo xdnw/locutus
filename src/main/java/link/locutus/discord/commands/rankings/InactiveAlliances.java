@@ -5,7 +5,9 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import com.google.common.collect.BiMap;
@@ -13,11 +15,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -27,7 +25,7 @@ public class InactiveAlliances extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "InactiveAlliances <alliances|coalition> [days=7]";
+        return Settings.commandPrefix(true) + "InactiveAlliances <alliances|coalition> [days=7]";
     }
 
     @Override
@@ -41,10 +39,10 @@ public class InactiveAlliances extends Command {
             return usage(event);
         }
         String group;
-        List<DBNation> nations;
+        Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
             group = "*";
-            nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+            nations = (Locutus.imp().getNationDB().getNations().values());
         } else {
             group = args.get(0);
             Set<Integer> alliances = DiscordUtil.parseAlliances(DiscordUtil.getDefaultGuild(event), group);
@@ -66,8 +64,6 @@ public class InactiveAlliances extends Command {
 
         Map<Integer, Integer> allianceSize = new RankBuilder<>(nations).group(DBNation::getAlliance_id).sumValues(i -> 1).get();
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
-
         new RankBuilder<>(nations)
                 .removeIf(nation -> nation.getActive_m() > minutes)
                 .group(DBNation::getAlliance_id)
@@ -83,7 +79,7 @@ public class InactiveAlliances extends Command {
                 .name(new Function<Map.Entry<Integer, Integer>, String>() {
                     @Override
                     public String apply(Map.Entry<Integer, Integer> e) {
-                        return alliances.get(e.getKey()) + ": " + e.getValue() + "/" + allianceSize.get(e.getKey());
+                        return PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + "/" + allianceSize.get(e.getKey());
                     }
                 }).build(event, "Active in " + group + " (" + days + " days)");
 

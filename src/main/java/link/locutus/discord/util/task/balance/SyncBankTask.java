@@ -3,10 +3,11 @@ package link.locutus.discord.util.task.balance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.bank.SyncBanks;
 import link.locutus.discord.db.entities.Transfer;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;

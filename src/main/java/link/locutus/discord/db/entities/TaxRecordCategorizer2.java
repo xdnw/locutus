@@ -1,11 +1,10 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -22,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -239,8 +239,6 @@ public class TaxRecordCategorizer2 {
             expenseRequirements.add(tx -> tx.note != null && tx.note.contains("#expire"));
         }
 
-        Auth auth = db.getAuth();
-
         this.alliances = new HashSet<>();
         getAlliances().add(getAaId());
         getAlliances().addAll(db.getCoalition(Coalition.OFFSHORE));
@@ -249,16 +247,16 @@ public class TaxRecordCategorizer2 {
         this.taxes.removeIf(f -> !acceptsNation.test(f.nationId));
         getTaxes().removeIf(f -> f.date < start || f.date > end);
 
-        this.brackets = auth.getTaxBrackets(true);
+        this.brackets = new HashMap<>(db.getAlliance().getTaxBrackets(true));
         for (int i = getTaxes().size() - 1; i >= 0; i--) {
             BankDB.TaxDeposit tax = getTaxes().get(i);
-            if (tax.tax_id > 0 && !getBrackets().containsKey(tax.tax_id)) {
-                TaxBracket bracket = new TaxBracket(tax.tax_id, tax.allianceId, 0, "", tax.moneyRate, tax.resourceRate);
-                getBrackets().put(tax.tax_id, bracket);
+            if (tax.tax_id > 0 && !brackets.containsKey(tax.tax_id)) {
+                TaxBracket bracket = new TaxBracket(tax.tax_id, tax.allianceId, "", tax.moneyRate, tax.resourceRate, System.currentTimeMillis());
+                brackets.put(tax.tax_id, bracket);
             }
         }
 
-        this.allNations = new Alliance(getAaId()).getNations(true, 0, true);
+        this.allNations = new ArrayList<>(DBAlliance.getOrCreate(getAaId()).getNations(true, 0, true));
         this.allNations.removeIf(f -> !acceptsNation.test(f.getNation_id()));
         this.nationsByBracket = new Int2ObjectOpenHashMap<>();
         this.bracketsByNation = new Int2ObjectOpenHashMap<>();
@@ -269,10 +267,10 @@ public class TaxRecordCategorizer2 {
             long pair = MathMan.pairInt(bracket.moneyRate, bracket.rssRate);
             bracketsByTaxRatePair.computeIfAbsent(pair, f -> new ArrayList<>()).add(bracket);
 
-            List<DBNation> nations = bracket.getNations();
+            Set<DBNation> nations = bracket.getNations();
             nations.removeIf(f -> f.getPosition() <= 1);
             if (!nations.isEmpty()) {
-                getNationsByBracket().put(bracket.taxId, nations);
+                getNationsByBracket().put(bracket.taxId, new ArrayList<>(nations));
                 for (DBNation nation : nations) {
                     if (acceptsNation.test(nation.getNation_id())) {
                         getBracketsByNation().put(nation.getNation_id(), bracket);
@@ -313,7 +311,7 @@ public class TaxRecordCategorizer2 {
         }
 
         // transactions from alliance bank & any registered offshores
-        this.expenseTransfers = new LinkedList<>();
+        this.expenseTransfers = new ArrayList<>();
         for (Integer senderAAId : getAlliances()) {
             getExpenseTransfers().addAll(Locutus.imp().getBankDB().getTransactionsByAllianceSender(senderAAId));
         }
@@ -325,7 +323,7 @@ public class TaxRecordCategorizer2 {
         }
 
         if (includeDeposits) {
-            LinkedList<Transaction2> depositTransfers = new LinkedList<>();
+            List<Transaction2> depositTransfers = new ArrayList<>();
             for (Integer senderAAId : getAlliances()) {
                 depositTransfers.addAll(Locutus.imp().getBankDB().getTransactionsByAllianceReceiver(senderAAId));
                 depositTransfers.removeIf(f -> !f.isSenderNation());
@@ -372,7 +370,7 @@ public class TaxRecordCategorizer2 {
                 }
                 continue;
             }
-            getTransactionsByBracket().computeIfAbsent(taxId, f -> new LinkedList<>()).add(transfer);
+            getTransactionsByBracket().computeIfAbsent(taxId, f -> new ArrayList<>()).add(transfer);
 
             TransactionType type;
             if (transfer.isSenderNation()) {
@@ -382,9 +380,9 @@ public class TaxRecordCategorizer2 {
             } else {
                 type = TransactionType.WITHDRAWAL;
             }
-            transactionsByBracketByType.computeIfAbsent(taxId, f -> new LinkedList<>()).add(new AbstractMap.SimpleEntry<>(transfer, type));
-            getTransactionsByNation().computeIfAbsent(nationId, f -> new LinkedList<>()).add(transfer);
-            getTransactionsByNationByBracket().computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new LinkedList<>()).add(transfer);
+            transactionsByBracketByType.computeIfAbsent(taxId, f -> new ArrayList<>()).add(new AbstractMap.SimpleEntry<>(transfer, type));
+            getTransactionsByNation().computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
+            getTransactionsByNationByBracket().computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
         }
 
         this.incomeByNationByBracket = new Int2ObjectOpenHashMap<>();

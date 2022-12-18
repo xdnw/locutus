@@ -6,7 +6,8 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import com.google.common.collect.BiMap;
@@ -61,7 +62,6 @@ public class NetProfitPerWar extends Command {
         title = String.format(title, days);
 
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
-        BiMap<Integer, String> allianceNames = Locutus.imp().getNationDB().getAlliances();
 
         Set<Integer> finalAAs = AAs;
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
@@ -94,7 +94,7 @@ public class NetProfitPerWar extends Command {
             // Sort descending
             .sort()
             // Change key to alliance name
-            .nameKeys(allianceId -> allianceNames.getOrDefault(allianceId, Integer.toString(allianceId)))
+            .nameKeys(allianceId -> PnwUtil.getName(allianceId, true))
             .limit(25);
         } else {
             // Sort descending

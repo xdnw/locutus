@@ -1,7 +1,7 @@
 package link.locutus.discord.util.task.multi;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -12,6 +12,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.concurrent.Callable;
 
@@ -24,40 +25,12 @@ public class GetUid implements Callable<BigInteger> {
         this.nation = nation;
     }
     @Override
-    public BigInteger call() throws Exception {
+    public BigInteger call() throws IOException {
         String url = nation.getNationUrl();
         String html = FileUtil.readStringFromURL(url);
 
         Document dom = Jsoup.parse(html);
         try {
-            long projBitmask = 1;
-
-            Elements projectsRoot = dom.select("th:contains(National Projects)");
-            if (!projectsRoot.isEmpty()) {
-                Element root = projectsRoot.get(0).parent();
-                Element sibling = root;
-                while ((sibling = sibling.nextElementSibling()) != null) {
-                    Elements img = sibling.select("img");
-                    if (!img.isEmpty()) {
-                        String projectName = img.get(0).attr("alt");
-                        Project project = Projects.get(projectName);
-
-                        if (project == null) {
-                            AlertUtil.error("Invalid project", projectName);
-                        } else {
-                            projBitmask |= 1 << (project.ordinal() + 1);
-                        }
-                    }
-                }
-
-
-                long previous = nation.getProjectBitMask();
-                if (previous != projBitmask) {
-                    nation.setProjectsRaw(projBitmask);
-                    Locutus.imp().getNationDB().addNation(nation);
-                }
-            }
-
             Elements uuidTd = dom.select("td:contains(Unique ID)");
             if (!uuidTd.isEmpty()) {
 

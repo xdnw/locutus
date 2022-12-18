@@ -1,13 +1,17 @@
 package link.locutus.discord.util.task.balance;
 
+import com.politicsandwar.graphql.model.GameInfo;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.web.jooby.BankRequestHandler;
+import link.locutus.discord.web.jooby.WebRoot;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -17,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
@@ -56,7 +61,7 @@ public class BankWithTask implements Callable<String> {
 
                 double[] resources = ResourceType.getBuffer();
                 if (table == null || table.text().contains("You do not have permission")) {
-                    resources = PnwUtil.resourcesToArray(new Alliance(auth.getAllianceId()).getStockpile());
+                    resources = PnwUtil.resourcesToArray(DBAlliance.getOrCreate(auth.getAllianceId()).getStockpile());
                 } else {
                     resources[ResourceType.MONEY.ordinal()] = MathMan.parseDouble(table.select("td:contains(Money)").first().nextElementSibling().text());
                     resources[ResourceType.FOOD.ordinal()] = MathMan.parseDouble(table.select("td:contains(Food)").first().nextElementSibling().text());
@@ -138,7 +143,11 @@ public class BankWithTask implements Callable<String> {
                     }
                     response.append('\n').append(text);
                 }
-
+                if (response.length() == 1) {
+                    System.err.println("Invalid bank transfer " + auth.getNationId() + " | " + fromBank + " | " + result);
+                } else {
+                    System.out.println("Response " + auth.getNationId() + " | " + fromBank + " | " + result);
+                }
 //                response.append('\n').append("Current alliance totals: ").append("```" + StringMan.getString(copy) + "```");
                 return response.toString();
             } catch (Throwable e) {

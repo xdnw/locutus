@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Announcement;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 public class AlliancePages {
     @Command
-    public Object allianceLeaves(int allianceId, @Switch('a') boolean includeInactive, @Switch('v') boolean includeVM, @Switch('m') boolean include) {
+    public Object allianceLeaves(int allianceId, @Switch("a") boolean includeInactive, @Switch("v") boolean includeVM, @Switch("m") boolean include) {
         Map<Integer, Map.Entry<Long, Rank>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
 
         String title = "Rank changes for " + MarkupUtil.htmlUrl(PnwUtil.getName(allianceId, true), PnwUtil.getUrl(allianceId, true));
@@ -41,7 +41,7 @@ public class AlliancePages {
             row.add(MarkupUtil.htmlUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
             row.add(timeRank.getValue());
             if (nation != null) {
-                row.add(MarkupUtil.htmlUrl(nation.getAlliance(), nation.getAllianceUrl()));
+                row.add(MarkupUtil.htmlUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 row.add(Rank.byId(nation.getPosition()));
                 String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
                 if (nation.getVm_turns() != 0) {
@@ -57,22 +57,22 @@ public class AlliancePages {
             }
             rows.add(row);
         }
-        return views.basictable.template(title, header, rows).render().toString();
+        return rocker.basictable.template(title, header, rows).render().toString();
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public String announcements(@Me GuildDB db, @Me DBNation nation, @Switch('a') boolean showArchived) {
+    public String announcements(@Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), !showArchived);
 
-        return views.alliance.playerannouncements.template(db, nation, announcements).render().toString();
+        return rocker.alliance.playerannouncements.template(db, nation, announcements).render().toString();
     }
 
     @Command
     @RolePermission(Roles.ADMIN)
-    public String manageAnnouncements(@Me GuildDB db, @Me DBNation nation, @Switch('a') boolean showArchived) {
+    public String manageAnnouncements(@Me GuildDB db, @Me DBNation nation, @Switch("a") boolean showArchived) {
         List<Announcement> announcements = db.getAnnouncements();
-        return views.alliance.manageannouncements.template(db, announcements).render().toString();
+        return rocker.alliance.manageannouncements.template(db, announcements).render().toString();
     }
 
     @Command
@@ -80,6 +80,6 @@ public class AlliancePages {
     public String announcementVariations(@Me GuildDB db, @Me DBNation nation, int announcementId) {
         Announcement announcement = db.getAnnouncement(announcementId);
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByAnnId(announcementId);
-        return views.alliance.announcementvariations.template(db, announcement, announcements).render().toString();
+        return rocker.alliance.announcementvariations.template(db, announcement, announcements).render().toString();
     }
 }

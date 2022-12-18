@@ -8,7 +8,7 @@ import link.locutus.discord.commands.manager.dummy.DelegateContentMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -61,8 +61,8 @@ public class ChannelCommand extends Command {
         DBNation nation = DiscordUtil.getNation(event);
 
         String channelName = DiscordUtil.format(guild, event.getChannel(), author, nation, args.get(0));
-        List<Category> categories = new LinkedList<>();
-        List<TextChannel> channels = new LinkedList<>();
+        List<Category> categories = new ArrayList<>();
+        List<TextChannel> channels = new ArrayList<>();
         Category freeCategory = null;
         for (String arg : args.get(1).split(",")) {
             Category category = DiscordUtil.getCategory(guild, arg);
@@ -123,7 +123,7 @@ public class ChannelCommand extends Command {
             if (args.size() == 3) {
                 String arg = args.get(2).toLowerCase();
                 if (arg.equalsIgnoreCase("#interview")) {
-                    DelegateMessage msg = new DelegateContentMessage(event.getMessage(), Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "interview " + author.getAsMention() + " 0");
+                    DelegateMessage msg = new DelegateContentMessage(event.getMessage(), Settings.commandPrefix(true) + "interview " + author.getAsMention() + " 0");
                     msg = new DelegateChannelMessage(msg, createdChannel);
                     MessageReceivedEvent finalEvent = new DelegateMessageEvent(event.isFromGuild() ? event.getGuild() : null, event.getResponseNumber(), msg);
                     Locutus.imp().getCommandManager().run(finalEvent);

@@ -1,11 +1,13 @@
 package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -74,32 +76,31 @@ public class MailTargets extends Command {
 
         if (!args.get(0).equalsIgnoreCase("null")) {
             SpreadSheet blitzSheet = SpreadSheet.create(args.get(0));
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, 1.75, true, f -> true, (a, b) -> {});
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, 1.75, true, true, false, f -> true, (a, b) -> {});
         }
 
         if (!args.get(1).equalsIgnoreCase("null")) {
             SpreadSheet spySheet = SpreadSheet.create(args.get(1));
             try {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 0, f -> 3, 0.4, 1.5, false, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 0);
             } catch (NullPointerException e) {
                 e.printStackTrace();
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 4, f -> 3, 0.4, 1.5, false, f -> true, (a, b) -> {});
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 4);
             }
         }
 
-        String[] keys = { Locutus.imp().getRootAuth().getApiKey() };
-//        Auth auth = Locutus.imp().getRootAuth();
-        if (flags.contains('l') || (!Roles.MILCOM.hasOnRoot(event.getAuthor()) && !Roles.INTERNAL_AFFAIRS.hasOnRoot(event.getAuthor()))) {
-            keys = Locutus.imp().getGuildDB(event).getOrThrow(GuildDB.Key.API_KEY);
-        }
+
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        ApiKeyPool keys = db.getMailKey();
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
 
         String header = "";
         if (args.size() >= 4) {
             header = args.get(3);
 
-            if (!Roles.MAIL.has(author, guild)) return "You need the MAIL role on discord (see `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole`) to add the custom message: `" + header + "`";
+            if (!Roles.MAIL.has(author, guild)) return "You need the MAIL role on discord (see " + CM.role.setAlias.cmd.toSlashMention() + ") to add the custom message: `" + header + "`";
         }
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
@@ -214,7 +215,7 @@ public class MailTargets extends Command {
                     Spyop spyop = mySpyOps.get(i);
                     String safety = spyop.safety == 3 ? "covert" : spyop.safety == 2 ? "normal" : "quick";
 
-                    String name = spyop.defender.getNation() + " | " + spyop.defender.getAlliance();
+                    String name = spyop.defender.getNation() + " | " + spyop.defender.getAllianceName();
                     String nationUrl = MarkupUtil.htmlUrl(name, "https://tinyurl.com/y26weu7d/id=" + spyop.defender.getNation_id());
 
                     String spyUrl = baseUrl + spyop.defender.getNation_id();
@@ -233,14 +234,9 @@ public class MailTargets extends Command {
             mailTargets.put(attacker, new AbstractMap.SimpleEntry<>(subject, body));
         }
 
-        String key = keys[0];
-        Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-        if (nationId == null) return "Invalid `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
-        DBNation sender = DBNation.byId(nationId);
-
         if (!flags.contains('f')) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
-            String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
+            String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : mailTargets.keySet()) alliances.add(nation.getAlliance_id());
@@ -249,13 +245,8 @@ public class MailTargets extends Command {
 
             StringBuilder body = new StringBuilder();
             body.append("subject: " + subject + "\n");
-            body.append("Send from: " + sender.getNationUrlMarkup(true) + "\n");
 
-            if (sender.getNation_id() == Settings.INSTANCE.NATION_ID) {
-                body.append("\nAdd `-l` to send from your alliance instead of Borg");
-            }
-
-            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "\u2705", pending);
+            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "Next", pending);
             return event.getAuthor().getAsMention();
         }
 

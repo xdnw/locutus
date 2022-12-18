@@ -2,8 +2,8 @@ package link.locutus.discord.util.battle;
 
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.util.PnwUtil;
@@ -47,7 +47,7 @@ public class SpyBlitzGenerator {
 
     private Map<Integer, Double> allianceWeighting = new HashMap<>();
 
-    public SpyBlitzGenerator setAllianceWeighting(Alliance alliance, double weight) {
+    public SpyBlitzGenerator setAllianceWeighting(DBAlliance alliance, double weight) {
         allianceWeighting.put(alliance.getAlliance_id(), weight);
         return this;
     }
@@ -86,7 +86,7 @@ public class SpyBlitzGenerator {
             list.updateSpies(true);
         }
 
-        List<Spyop> ops = new LinkedList<>();
+        List<Spyop> ops = new ArrayList<>();
 
         Set<SpyCount.Operation> allowedOpTypes = new HashSet<>(allowedTypes);
 
@@ -176,7 +176,7 @@ public class SpyBlitzGenerator {
                     }
                     if (operation == SpyCount.Operation.MISSILE) {
                         Integer missileCap = defender.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
-                        if (defender.getMissiles().equals(missileCap)) {
+                        if (defender.getMissiles() == missileCap) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();
                             if (minute > 30) {
@@ -231,11 +231,11 @@ public class SpyBlitzGenerator {
         };
 
         for (Spyop op : ops) {
-            List<Spyop> attOps = opsByNations.computeIfAbsent(op.attacker, f -> new LinkedList<>());
+            List<Spyop> attOps = opsByNations.computeIfAbsent(op.attacker, f -> new ArrayList<>());
             if (attOps.size() >= getNumOps.apply(op.attacker)) {
                 continue;
             }
-            List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new LinkedList<>());
+            List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new ArrayList<>());
             if (defOps.size() >= maxDef) {
                 continue;
             }
@@ -358,7 +358,7 @@ public class SpyBlitzGenerator {
         list.removeIf(DBNation::hasUnsetMil);
         list.removeIf(f -> f.getActive_m() > 1440);
         list.removeIf(f -> f.getVm_turns() > 0);
-        list.removeIf(f -> f.getSpies() == null || f.getSpies() <= 0);
+        list.removeIf(f -> f.getSpies() <= 0);
         list.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         if (checkEspionageSlots && !isAttacker) {
             list.removeIf(DBNation::isEspionageFull);
@@ -377,6 +377,39 @@ public class SpyBlitzGenerator {
 
     public static Map<DBNation, Set<Spyop>> getTargets(SpreadSheet sheet, int headerRow) {
         return getTargets(sheet, headerRow, true);
+    }
+
+    public static Map<DBNation, List<Spyop>> getTargetsTKR(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
+        List<List<Object>> rows = sheet.get("A:Z", f -> f.setValueRenderOption("FORMULA"));
+
+        List<Spyop> allOps = new ArrayList<>();
+        Set<DBNation> update = forceUpdate ? new HashSet<>() : null;
+
+        List<Object> header = rows.get(0);
+        for (int i = 1; i < rows.size(); i++) {
+            List<Object> row = rows.get(i);
+            if (row.size() < 7) continue;
+
+            DBNation attacker = DiscordUtil.parseNation(row.get(0).toString());
+
+            Spyop op1 = createOp(attacker, row.get(3) + "", "COVERT" + "", update);
+            Spyop op2 = createOp(attacker, row.get(6) + "", "COVERT" + "", update);
+
+            if (op1 == null) System.out.println("OP is null");
+
+            if (op1 != null) allOps.add(op1);
+            if (op1 != null) allOps.add(op2);
+        }
+
+        Map<DBNation, List<Spyop>> spyOpsFiltered = new LinkedHashMap<>();
+        for (Spyop op : allOps) {
+            if (groupByAttacker) {
+                spyOpsFiltered.computeIfAbsent(op.attacker, f -> new ArrayList<>()).add(op);
+            } else {
+                spyOpsFiltered.computeIfAbsent(op.defender, f -> new ArrayList<>()).add(op);
+            }
+        }
+        return spyOpsFiltered;
     }
 
     public static Map<DBNation, List<Spyop>> getTargetsHidude(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {

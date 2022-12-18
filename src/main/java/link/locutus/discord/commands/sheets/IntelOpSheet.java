@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.SpyCount;
@@ -51,7 +51,7 @@ public class IntelOpSheet extends Command {
                 "`<ignore-topX>` - filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
                 "Add `-l` to remove targets with loot history\n" +
                 "Add `-d` to list targets currently on the dnr\n\n" +
-                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "IntelOpSheet 10d 'Error 404' 25`";
+                "e.g. `" + Settings.commandPrefix(true) + "IntelOpSheet 10d 'Error 404' 25`";
     }
 
     @Override
@@ -73,7 +73,7 @@ public class IntelOpSheet extends Command {
 
         if (attackers.isEmpty()) return usage(event);
 
-        List<DBNation> enemies = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
 
 
         Set<Integer> allies = db.getAllies();
@@ -147,7 +147,7 @@ public class IntelOpSheet extends Command {
                 while (iter.hasNext()) {
                     DBNation enemy = iter.next();
                     if (!attacker.isInSpyRange(enemy)) continue;
-                    List<Spyop> currentOps = targets.computeIfAbsent(enemy, f -> new LinkedList<>());
+                    List<Spyop> currentOps = targets.computeIfAbsent(enemy, f -> new ArrayList<>());
                     if (currentOps.size() > 1) continue;
                     if (currentOps.size() == 1 && currentOps.get(0).attacker == attacker) continue;
                     Spyop op = new Spyop(attacker, enemy, 1, SpyCount.Operation.INTEL, 0, 3);
@@ -172,6 +172,6 @@ public class IntelOpSheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

@@ -3,7 +3,7 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -94,22 +94,21 @@ public class AllianceLootRanking extends Command {
         String title = "Loot (" + days + " days):";
         StringBuilder response = new StringBuilder();
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
         for (int i = 0; i < Math.min(25, sorted.size()); i++) {
             Map.Entry<Integer, Map<ResourceType, Double>> entry = sorted.get(i);
             int allianceId = entry.getKey();
             Double value = entry.getValue().getOrDefault(ResourceType.MONEY, 0d);
 
-            String name = alliances.getOrDefault(allianceId, Integer.toString(allianceId));
+            String name = PnwUtil.getName(allianceId, true);
             name = name.substring(0, Math.min(32, name.length()));
 
             response.append('\n').append(String.format("%4s", i + 1) + ". ").append(String.format("%32s", name)).append(": $").append(format(value));
         }
 
-        String emoji = "\uD83D\uDD04";
+        String emoji = "Refresh";
         String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
-        response.append("\n\npress " + emoji + " to refresh");
-        Message msg = DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, cmd);
+        response.append("\n\nPress `" + emoji + "` to refresh");
+        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, cmd);
 
         return null;
     }

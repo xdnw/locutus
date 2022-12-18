@@ -3,10 +3,12 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.SpyCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -37,18 +39,18 @@ public class Who extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pw-who <nation|alliance|coalition>";
+        return Settings.commandPrefix(true) + "pw-who <nation|alliance|coalition>";
     }
 
     @Override
     public String desc() {
-        return "Get detailed information about a nation. Nation argument can be nation name, id, link, or discord tag\n" +
+        return "Get detailed information about a nation.\nNation argument can be nation name, id, link, or discord tag\n" +
                 "Use `-l` to list the nations instead of just providing a summary\n" +
                 "Use `-r` to list discord tag (raw)\n" +
                 "Use `-p` to list discord tag (ping)\n" +
                 "Use `-i` to list individual nation info\n" +
                 "Use `-c` to list individual nation channels" +
-                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "who @borg`";
+                "e.g. `" + Settings.commandPrefix(true) + "who @borg`";
     }
 
     @Override
@@ -63,7 +65,7 @@ public class Who extends Command {
         String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
 
         if (args.isEmpty()) {
-            return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pnw-who <discord-user>`";
+            return "Usage: `" + Settings.commandPrefix(true) + "pnw-who <discord-user>`";
         }
 
         StringBuilder response = new StringBuilder();
@@ -75,21 +77,20 @@ public class Who extends Command {
 
 
         if (nations.isEmpty()) {
-            return "Not found: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pnw-who <user>`";
+            return "Not found: `" + Settings.commandPrefix(true) + "pnw-who <user>`";
         }
         String title;
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
-            if (flags.contains('u') && isAdmin) nation.getPnwNation();
             boolean showMoney = false;
-            Message msg = nation.toCard(event.getChannel(), false, showMoney);
+            nation.toCard(new DiscordChannelIO(event), false, showMoney);
 
             List<String> commands = new ArrayList<>();
-            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "multi " + nation.getNation_id());
-            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "wars " + nation.getNation_id());
-            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "revenue " + nation.getNation_id());
-            commands.add(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unithistory " + nation.getNation_id() + " <unit>");
+            commands.add(Settings.commandPrefix(true) + "multi " + nation.getNation_id());
+            commands.add(Settings.commandPrefix(true) + "wars " + nation.getNation_id());
+            commands.add(Settings.commandPrefix(true) + "revenue " + nation.getNation_id());
+            commands.add(Settings.commandPrefix(true) + "unithistory " + nation.getNation_id() + " <unit>");
 
         } else {
             int allianceId = -1;
@@ -111,8 +112,8 @@ public class Who extends Command {
             }
             title = "(" + nations.size() + " nations) " + title;
 
-            DBNation total = new DBNation(arg0, nations, false);
-            DBNation average = new DBNation(arg0, nations, true);
+            DBNation total = DBNation.createFromList(arg0, nations, false);
+            DBNation average = DBNation.createFromList(arg0, nations, true);
 
             response.append("Total for " + arg0 + ":").append('\n');
 
@@ -121,6 +122,15 @@ public class Who extends Command {
             response.append("Average for " + arg0 + ":").append('\n');
 
             printAA(response, average, isAdmin);
+
+            if (allianceId > 0) {
+                for (DBAlliance other : Locutus.imp().getNationDB().getAlliances()) {
+                    DBAlliance parent = other.getCachedParentOfThisOffshore();
+                    if (parent != null && parent.getAlliance_id() == allianceId) {
+                        response.append("\n - Offshore: " + other.getMarkdownUrl());
+                    }
+                }
+            }
 
             // min score
             // max score
@@ -152,13 +162,13 @@ public class Who extends Command {
                     String nationStr = flags.contains('l') ? nation.getNationUrlMarkup(true) : "";
                     if (flags.contains('p')) {
                         PNWUser user = nation.getDBUser();
-                        if (user != null && user.getDiscordId() != null) {
+                        if (user != null) {
                             nationStr += (" <@" + user.getDiscordId() + ">");
                         }
                     }
                     if (flags.contains('r')) {
                         PNWUser user = nation.getDBUser();
-                        if (user != null && user.getDiscordId() != null) {
+                        if (user != null) {
                             nationStr += (" `<@" + user.getDiscordId() + ">`");
                         }
                     }
@@ -194,7 +204,7 @@ public class Who extends Command {
                 StringBuilder entry = new StringBuilder();
                 entry.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                         .append(" | " + String.format("%16s", nation.getNation()))
-                        .append(" | " + String.format("%16s", nation.getAlliance()))
+                        .append(" | " + String.format("%16s", nation.getAllianceName()))
                         .append("\n```")
 //                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
                         .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")

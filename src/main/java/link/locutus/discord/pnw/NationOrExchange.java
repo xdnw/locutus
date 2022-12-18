@@ -1,12 +1,15 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.StockDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.TextChannel;
 
 import java.io.IOException;
 import java.util.AbstractMap;
@@ -53,7 +56,7 @@ public class NationOrExchange {
         return getExchange().name;
     }
 
-    public Map.Entry<Boolean, String> give(MessageChannel channel, DBNation banker, NationOrExchange receiver, Exchange share, double amount, boolean anonymous) {
+    public Map.Entry<Boolean, String> give(DBNation banker, NationOrExchange receiver, Exchange share, double amount, boolean anonymous) {
         if (receiver.getId() == getId()) return new AbstractMap.SimpleEntry<>(false, "You can't give to yourself");
 
         StockDB db = Locutus.imp().getStockDB();
@@ -80,7 +83,9 @@ public class NationOrExchange {
             StringBuilder response = new StringBuilder();
             response.append("Successfully transfered " + MathMan.format(amount) + "x" + exchange.symbol);
 
-            String title = "Funds received/" + channel.getIdLong();
+            String title = "Funds received";
+            TextChannel channel = exchange.getChannel();
+            if (channel != null) title += "/" + channel.getIdLong();
             StringBuilder body = new StringBuilder();
 
             body.append("You have been sent the following:");
@@ -88,7 +93,7 @@ public class NationOrExchange {
                 body.append("\nFrom: " + MarkupUtil.htmlUrl(this.getName(), this.getUrl()));
                 if (this.isNation() && getNation().getAlliance_id() != 0) {
                     body.append(" | ");
-                    body.append(MarkupUtil.htmlUrl(getNation().getAlliance(), getNation().getAllianceUrl()));
+                    body.append(MarkupUtil.htmlUrl(getNation().getAllianceName(), getNation().getAllianceUrl()));
                 }
             }
             body.append("\nAmount: " + MathMan.format(amount) + "x" + exchange.symbol);
@@ -127,7 +132,7 @@ public class NationOrExchange {
     public String getUrlMarkup() {
         String name = this.getName();
         if (isNation()) {
-            name += " | " + MarkupUtil.htmlUrl(getNation().getAlliance(), getNation().getAllianceUrl());
+            name += " | " + MarkupUtil.htmlUrl(getNation().getAllianceName(), getNation().getAllianceUrl());
         } else {
             name = "EX:" + name;
         }

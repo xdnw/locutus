@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBSpyUpdate;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
@@ -37,7 +37,7 @@ public class FindSpyOp extends Command {
     @Override
     public String desc() {
         return "See who was online at the time of a spy op e.g.\n" +
-                "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "findspyop \"08/05 04:33 pm\" 50`";
+                "`" + Settings.commandPrefix(true) + "findspyop \"08/05 04:33 pm\" 50`";
     }
 
     @Override
@@ -93,21 +93,6 @@ public class FindSpyOp extends Command {
             boolean spySatellite = Projects.SPY_SATELLITE.has(update.projects);
             boolean intelligence = Projects.INTELLIGENCE_AGENCY.has(update.projects);
 
-            if (update.change < 0) {
-                Map.Entry<SpyCount.SpyOp, Integer> estimate = SpyCount.estimateSpiesUsed(update.change, update.spies);
-                if (estimate != null) {
-                    uncertainty = estimate.getValue();
-
-                    SpyCount.SpyOp op = estimate.getKey();
-                    spiesUsed = op.spies;
-                    safety = op.safety;
-
-                    diff = 0;
-
-                    foundOp = true;
-                }
-            }
-
             if (spiesUsed == -1) spiesUsed = attacker.getSpies();
 
             double odds = SpyCount.getOdds(spiesUsed, defenderSpies, safety, SpyCount.Operation.SPIES, defender);
@@ -155,7 +140,7 @@ public class FindSpyOp extends Command {
         for (Map.Entry<DBNation, Map.Entry<Double, String>> entry : sorted) {
             DBNation att = entry.getKey();
 
-            response.append(att.getNation() + " | " + att.getAlliance() + "\n");
+            response.append(att.getNation() + " | " + att.getAllianceName() + "\n");
             response.append(entry.getValue().getValue()).append("\n\n");
         }
 

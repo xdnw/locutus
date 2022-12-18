@@ -1,11 +1,12 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -28,7 +29,7 @@ public class SyncBanks extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "syncbanks [epoch]";
+        return Settings.commandPrefix(true) + "syncbanks [epoch]";
     }
 
     @Override
@@ -37,7 +38,7 @@ public class SyncBanks extends Command {
         Long latest = args.size() == 1 ? Long.parseLong(args.get(0)) : null;
 
         GuildDB db = Locutus.imp().getGuildDB(event);
-        Auth auth = db.getAuth(Rank.OFFICER.id);
+        Auth auth = db.getAuth(AlliancePermission.VIEW_BANK);
         if (auth == null) return "No authentication found for this guild";
 
         event.getChannel().sendMessage("Syncing bank for " + db.getGuild());

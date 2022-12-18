@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+
 public class LocalValueStore<T> extends DelegateValueStore<T> {
     private final ValueStore<T> global;
 
@@ -10,6 +12,9 @@ public class LocalValueStore<T> extends DelegateValueStore<T> {
 
     @Override
     public <V extends T> Parser<V> get(Key<V> key) {
+        if (key.getType() == ValueStore.class) {
+            return new ProviderParser<>((Key) key, this);
+        }
         ValueStore<T> local = getParent();
         Parser<V> value = local.get(key);
 

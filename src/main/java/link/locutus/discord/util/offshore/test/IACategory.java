@@ -1,16 +1,14 @@
 package link.locutus.discord.util.offshore.test;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.CounterType;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.InterviewMessage;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
@@ -35,6 +33,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -60,10 +59,10 @@ import java.util.stream.Collectors;
 
 public class IACategory {
     private final GuildDB db;
-    private final Alliance alliance;
+    private final DBAlliance alliance;
     private final Map<DBNation, IAChannel> channelMap = new HashMap<>();
     private final Guild guild;
-    private MessageChannel output;
+    private IMessageIO output;
 
     private List<Category> activeCategories = new ArrayList<>();
     private List<Category> inactiveCategories = new ArrayList<>();
@@ -87,17 +86,17 @@ public class IACategory {
         this.db = db;
         MessageChannel outputChannel = db.getOrNull(GuildDB.Key.INTERVIEW_INFO_SPAM);
         if (outputChannel != null) {
-            this.output = outputChannel;
+            this.output = new DiscordChannelIO(outputChannel);
         } else {
             this.output = null;
         }
         this.guild = db.getGuild();
-        this.alliance = new Alliance((Integer) db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
+        this.alliance = DBAlliance.getOrCreate((Integer) db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
         fetchChannels();
     }
 
-    public void setOutput(GuildMessageChannel output) {
-        this.output = output;
+    public void setOutput(GuildMessageChannel outputChannel) {
+        this.output = new DiscordChannelIO(outputChannel);;
     }
 
     public Map<DBNation, IAChannel> getChannelMap() {
@@ -190,13 +189,30 @@ public class IACategory {
     }
 
     public GuildMessageChannel getOrCreate(User user) {
+        return getOrCreate(user, false);
+    }
+    public GuildMessageChannel getOrCreate(User user, boolean throwError) {
         Member member = guild.getMember(user);
-        if (member == null) return null;
+        if (member == null) {
+            try {
+                member = guild.retrieveMemberById(user.getIdLong(), true).complete();
+                if (member == null) {
+                    if (throwError) throw new IllegalArgumentException("Member is null");
+                    return null;
+                }
+            } catch (ErrorResponseException e) {
+                if (throwError) throw new IllegalArgumentException("Member is null: " + e.getMessage());
+                return null;
+            }
+        }
 
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null) {
             IAChannel iaChannel = channelMap.get(nation);
-            if (iaChannel != null && iaChannel.getChannel() != null) return iaChannel.getChannel();
+            if (iaChannel != null && iaChannel.getChannel() != null) {
+                TextChannel channel = guild.getTextChannelById(iaChannel.getChannel().getIdLong());
+                if (channel != null) return iaChannel.getChannel();
+            }
 
             for (TextChannel channel : getAllChannels()) {
                 String[] split = channel.getName().split("-");
@@ -219,7 +235,10 @@ public class IACategory {
         }
         Category category = getFreeCategory(activeCategories);
 
-        if (category == null) return null;
+        if (category == null) {
+            if (throwError) throw new IllegalArgumentException("No interview category found");
+            return null;
+        }
 
         String channelName;
         if (nation != null) {
@@ -227,7 +246,21 @@ public class IACategory {
         }
 
         TextChannel channel = RateLimitUtil.complete(category.createTextChannel(user.getName()));
-        if (channel == null) return null;
+        if (channel == null) {
+            if (guild.getCategoryById(category.getIdLong()) == null) {
+                fetchChannels();
+                category = getFreeCategory(activeCategories);
+                if (category == null) {
+                    if (throwError) throw new IllegalArgumentException("Interview category was deleted or is inaccessible");
+                    return null;
+                }
+                channel = RateLimitUtil.complete(category.createTextChannel(user.getName()));
+            }
+            if (channel == null) {
+                if (throwError) throw new IllegalArgumentException("Error creating channel");
+                return null;
+            }
+        }
         channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL).complete();
 
         Role interviewer = Roles.INTERVIEWER.toRole(guild);
@@ -312,7 +345,7 @@ public class IACategory {
 
     }
 
-    public void purgeUnusedChannels(MessageChannel output) {
+    public void purgeUnusedChannels(IMessageIO output) {
         if (output == null) output = this.output;
 
         List<TextChannel> channels = getAllChannels();
@@ -321,7 +354,7 @@ public class IACategory {
             if (iaChannel == null) {
                 Member member = getOverride(channel.getMemberPermissionOverrides());
                 if (member == null) {
-                    if (output != null) RateLimitUtil.queue(output.sendMessage("Deleted channel " + channel.getName() + " (no member was found)"));
+                    if (output != null) output.send("Deleted channel " + channel.getName() + " (no member was found)");
                     RateLimitUtil.queue(channel.delete());
                     continue;
                 }
@@ -330,21 +363,21 @@ public class IACategory {
                     Message latest = RateLimitUtil.complete(tc.retrieveMessageById(tc.getLatestMessageIdLong()));
                     long created = latest.getTimeCreated().toEpochSecond() * 1000L;
                     if (System.currentTimeMillis() - created > TimeUnit.DAYS.toMillis(10)) {
-                        if (output != null) RateLimitUtil.queue(output.sendMessage("Deleted channel " + channel.getName() + " (no recent message - no nation (found)"));
+                        if (output != null) output.send("Deleted channel " + channel.getName() + " (no recent message - no nation (found)");
                         RateLimitUtil.queue(tc.delete());
                     }
                 } catch (Exception e) {}
             } else {
                 DBNation nation = iaChannel.getNation();
                 if (nation.getActive_m() > 20000 || (nation.getActive_m() > 10000) && nation.getAlliance_id() != alliance.getAlliance_id()) {
-                   if (output != null)  RateLimitUtil.queue(output.sendMessage("Deleted channel " + channel.getName() + " (nation is (inactive)"));
+                   if (output != null) output.send("Deleted channel " + channel.getName() + " (nation is (inactive)");
                     RateLimitUtil.queue(channel.delete());
                 }
             }
         }
     }
 
-    public void alertInvalidChannels(MessageChannel output) {
+    public void alertInvalidChannels(IMessageIO output) {
         if (output == null) output = this.output;
 
         List<TextChannel> channels = getAllChannels();
@@ -387,11 +420,12 @@ public class IACategory {
                         }
                     }
 
-                    String emoji = "\uD83D\uDC80";
-                    String cmd = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "deleteChannel <#" + channel.getIdLong() + ">";
+                    String emoji = "Delete Channel";
 
-                    body.append("\n\nPress " + emoji + " to delete");
-                    DiscordUtil.createEmbedCommand(output, "Interview not assigned to a member", body.toString(), emoji, cmd);
+                    body.append("\n\nPress `" + emoji + "` to delete");
+                    output.create().embed( "Interview not assigned to a member", body.toString())
+                                    .commandButton(CM.channel.delete.current.cmd.create(channel.getAsMention()), emoji)
+                                            .send();
 
                     if (nation != null && ((nation.getActive_m() > 7200) || (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || nation.getAlliance_id() != alliance.getAlliance_id())))) {
                         if (getFreeCategory(inactiveCategories) != null && !inactiveCategories.contains(channel.getParentCategory())) {
@@ -459,7 +493,7 @@ public class IACategory {
             }
         }
 
-        List<DBNation> nations = alliance.getNations(true, 2880, true);
+        Set<DBNation> nations = alliance.getNations(true, 2880, true);
         for (DBNation nation : nations) {
             if (channelMap.containsKey(nation)) continue;
         }
@@ -480,7 +514,7 @@ public class IACategory {
         return member;
     }
 
-    public MessageChannel getOutput() {
+    public IMessageIO getOutput() {
         return output;
     }
 
@@ -531,7 +565,7 @@ public class IACategory {
         return null;
     }
 
-    public void sort(GuildMessageChannel output, Collection<TextChannel> channels, boolean sortCategoried) {
+    public void sort(IMessageIO output, Collection<TextChannel> channels, boolean sortCategoried) {
         Set<TextChannel> toSort = new HashSet<>();
 
         Map<SortedCategory, Set<Category>> categories = new HashMap<>();
@@ -601,14 +635,14 @@ public class IACategory {
                         fullCategories.add(sort);
                         continue outer;
                     }
-                    RateLimitUtil.queue(output.sendMessage("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName()));
+                    output.send("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName());
                     channel.getManager().setParent(parent).complete();
                     continue outer;
                 }
             }
             Category parent = getFreeCategory(passedCategories);
             if (parent != null && !channel.getParentCategory().equals(parent)) {
-                RateLimitUtil.queue(output.sendMessage("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName()));
+                output.send("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName());
                 channel.getManager().setParent(parent).complete();
             }
         }
@@ -731,7 +765,7 @@ public class IACategory {
                     return true;
                 }
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null && nation.getOff() < 5) {
-                    List<DBNation> enemies = Locutus.imp().getNationDB().getNations(Collections.singleton(0));
+                    Set<DBNation> enemies = Locutus.imp().getNationDB().getNations(Collections.singleton(0));
                     enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * 1.75 || f.getScore() < nation.getScore() * 0.75 || f.getActive_m() < 10000);
                     int raids = Math.min(4, enemies.size());
                     if (nation.getOff() < raids) return true;
@@ -746,7 +780,7 @@ public class IACategory {
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null) return true;
-                if (db.getAuth() != null && db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
+                if (db.getAuth(AlliancePermission.WITHDRAW_BANK) != null && db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                     List<Transaction2> transactions = nation.getTransactions(-1);
                     for (Transaction2 transaction : transactions) {
                         if(transaction.receiver_id == nation.getNation_id() && transaction.note.contains("#deposit")) {
@@ -765,7 +799,7 @@ public class IACategory {
                 return false;
             }
         },
-        SPIES("hasn't used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies` and `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "intel` (and posted spy report)") {
+        SPIES("hasn't used " + CM.nation.spies.cmd.toSlashCommand() + " and " + CM.spy.find.intel.cmd.toSlashCommand() + " (and posted spy report)") {
             @Override
             public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;

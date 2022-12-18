@@ -1,8 +1,8 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PnwUtil;
@@ -13,18 +13,21 @@ import java.awt.Color;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SphereGenerator {
-    private final Map<Integer, Alliance> alliances;
+    private final Map<Integer, DBAlliance> alliances;
     private final Map<Integer, Map<Integer, NationList>> sphereAllianceMembers;
     private final Map<Integer, Color> sphereColors;
     private final Map<Integer, Double> sphereScore;
-    private final Map<Integer, List<Alliance>> alliancesBySphere;
+    private final Map<Integer, List<DBAlliance>> alliancesBySphere;
     private final List<Integer> spheresRanked;
     private final Map<Integer, String> sphereNames = new HashMap<>();
 
@@ -32,8 +35,8 @@ public class SphereGenerator {
         this(Locutus.imp().getNationDB().getAlliances(true, true, true, topX));
     }
 
-    public Map.Entry<Integer, List<Alliance>> getSphere(Alliance alliance) {
-        for (Map.Entry<Integer, List<Alliance>> entry : alliancesBySphere.entrySet()) {
+    public Map.Entry<Integer, List<DBAlliance>> getSphere(DBAlliance alliance) {
+        for (Map.Entry<Integer, List<DBAlliance>> entry : alliancesBySphere.entrySet()) {
             if (entry.getValue().contains(alliance)) {
                 return new AbstractMap.SimpleEntry<>(entry.getKey(), new ArrayList<>(entry.getValue()));
             }
@@ -41,33 +44,41 @@ public class SphereGenerator {
         return null;
     }
 
-    public SphereGenerator(Collection<Alliance> alliances) {
-        Map<Integer, Alliance> aaCache = new HashMap<>();
+    public SphereGenerator(Collection<DBAlliance> alliances) {
+        Map<Integer, DBAlliance> aaCache = new HashMap<>();
         this.alliances = new HashMap<>();
         this.sphereAllianceMembers = new HashMap<>();
         this.sphereColors = new HashMap<>();
         this.sphereScore = new HashMap<>();
         this.alliancesBySphere = new HashMap<>();
 
-        for (Alliance alliance : alliances) {
+        for (DBAlliance alliance : alliances) {
+            System.out.println("remove:||" + alliance.getName());
             this.alliances.put(alliance.getId(), alliance);
-            List<Alliance> sphere = alliance.getSphereRankedCached(aaCache);
+            List<DBAlliance> sphere = alliance.getSphereRankedCached(aaCache);
             int sphereId = sphere.get(0).getAlliance_id();
 
             Color color = sphereColors.computeIfAbsent(sphereId, f -> CIEDE2000.randomColor(sphereId, DiscordUtil.BACKGROUND_COLOR, sphereColors.values()));
 
             sphereColors.put(sphereId, color);
-            alliancesBySphere.put(sphereId, sphere);
+            List<DBAlliance> root = alliancesBySphere.computeIfAbsent(sphereId, k -> new ArrayList<>());
+            int originalRootSize = root.size();
+            for (DBAlliance toAdd : sphere) {
+                if (!root.contains(toAdd)) root.add(toAdd);
+            }
+            if (originalRootSize != 0 && originalRootSize != root.size()) {
+                Collections.sort(root, (o1, o2) -> Double.compare(o2.getScore(), o1.getScore()));
+            }
 
             {
-                List<DBNation> nations = alliance.getNations(true, 7200, true);
+                Set<DBNation> nations = alliance.getNations(true, 7200, true);
                 SimpleNationList nationList = new SimpleNationList(nations);
                 sphereAllianceMembers.computeIfAbsent(sphereId, f -> new HashMap<>()).put(alliance.getAlliance_id(), nationList);
             }
 
             if (!sphereScore.containsKey(sphereId)) {
                 List<DBNation> nations = new ArrayList<>();
-                for (Alliance other : sphere) {
+                for (DBAlliance other : sphere) {
                     nations.addAll(other.getNations(true, 7200, true));
                 }
                 SimpleNationList nationList = new SimpleNationList(nations);
@@ -85,17 +96,25 @@ public class SphereGenerator {
         this.spheresRanked = new ArrayList<>(sphereScore.keySet());
         spheresRanked.sort((o1, o2) -> Double.compare(sphereScore.get(o2), sphereScore.get(o1)));
 
+        Map<Integer, Integer> sphereByAA = new HashMap<>();
+        for (Map.Entry<Integer, List<DBAlliance>> entry : alliancesBySphere.entrySet()) {
+            for (DBAlliance alliance : entry.getValue()) {
+                sphereByAA.put(alliance.getId(), entry.getKey());
+            }
+
+        }
+
     }
 
-    public Alliance getAlliance(int allianceId) {
+    public DBAlliance getAlliance(int allianceId) {
         return alliances.get(allianceId);
     }
 
-    public Map<Integer, Alliance> getAlliancesMap() {
+    public Map<Integer, DBAlliance> getAlliancesMap() {
         return alliances;
     }
 
-    public Set<Alliance> getAlliances() {
+    public Set<DBAlliance> getAlliances() {
         return new HashSet<>(alliances.values());
     }
 
@@ -125,7 +144,7 @@ public class SphereGenerator {
         return sphereScore.getOrDefault(sphereId, 0d);
     }
 
-    public List<Alliance> getAlliances(int sphereId) {
+    public List<DBAlliance> getAlliances(int sphereId) {
         return alliancesBySphere.get(sphereId);
     }
 

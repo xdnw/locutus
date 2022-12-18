@@ -9,7 +9,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.WarParser;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -70,7 +70,6 @@ public class WarCostSheet extends Command {
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
         WarParser parser1 = WarParser.of(guild, args.get(0), args.get(1), cutOff);
-        WarParser parser2 = WarParser.of(guild, args.get(1), args.get(0), cutOff);
 
         Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Clearing sheet..."));
 
@@ -106,7 +105,6 @@ public class WarCostSheet extends Command {
         long start = System.currentTimeMillis();
 
         Map<Integer, DBWar> allWars = new HashMap<>(parser1.getWars());
-        allWars.putAll(parser2.getWars());
 
         Map<DBNation, List<DBWar>> warsByNation = new RankBuilder<>(allWars.values()).group(new BiConsumer<DBWar, GroupedRankBuilder<DBNation, DBWar>>() {
             @Override
@@ -123,7 +121,6 @@ public class WarCostSheet extends Command {
         }).get();
 
         List<DBAttack> allAttacks = new ArrayList<>(parser1.getAttacks());
-        allAttacks.addAll(parser2.getAttacks());
 
         for (Map.Entry<DBNation, List<DBWar>> entry : warsByNation.entrySet()) {
             DBNation nation = entry.getKey();
@@ -143,7 +140,7 @@ public class WarCostSheet extends Command {
             {
                 List<DBWar> wars = entry.getValue();
                 Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-                List<DBAttack> attacks = new LinkedList<>();
+                List<DBAttack> attacks = new ArrayList<>();
                 for (DBAttack attack : allAttacks) if (warIds.contains(attack.war_id)) attacks.add(attack);
                 Map<Integer, List<DBAttack>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.war_id).get();
 
@@ -236,7 +233,7 @@ public class WarCostSheet extends Command {
             e.printStackTrace();
         }
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     private double total(Set<Character> flags, DBNation nation, AttackCost cost, boolean isPrimary) {

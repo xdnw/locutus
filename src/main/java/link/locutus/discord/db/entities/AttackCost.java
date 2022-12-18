@@ -128,11 +128,13 @@ public class AttackCost {
         Map<ResourceType, Double> unitCost = new HashMap<>();
 
         for (Map.Entry<MilitaryUnit, Integer> unitAmt : units.entrySet()) {
-            Map<ResourceType, Double> unitRss = unitAmt.getKey().getResourceCost();
-            for (Map.Entry<ResourceType, Double> rss : unitRss.entrySet()) {
-                ResourceType type = rss.getKey();
-                double value = rss.getValue() * unitAmt.getValue();
-                unitCost.put(type, unitCost.getOrDefault(type, 0d) + value);
+            MilitaryUnit unit = unitAmt.getKey();
+            int amt = unitAmt.getValue();
+            if (amt > 0) {
+                double[] cost = unit.getCost(amt);
+                for (int i = 0; i < cost.length; i++) {
+                    unitCost.put(ResourceType.values[i], unitCost.getOrDefault(ResourceType.values[i], 0d) + cost[i]);
+                }
             }
         }
 

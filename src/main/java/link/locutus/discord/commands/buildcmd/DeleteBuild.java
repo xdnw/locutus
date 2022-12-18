@@ -19,7 +19,7 @@ public class DeleteBuild extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "delbuild <category> <min-cities>";
+        return Settings.commandPrefix(true) + "delbuild <category> <min-cities>";
     }
 
     @Override

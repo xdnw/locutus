@@ -3,7 +3,7 @@ package link.locutus.discord.util.parser;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.ICommand;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.ScriptUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -154,8 +154,8 @@ public class ArgParser {
         for (Method method : DBNation.class.getDeclaredMethods()) {
             if (method.getParameters().length != 0) continue;
             if(method.getReturnType().equals(Void.TYPE)) continue;
-            if (method.getName().toLowerCase().contains("money")) continue;
-
+            link.locutus.discord.commands.manager.v2.binding.annotation.Command annotation = method.getAnnotation(link.locutus.discord.commands.manager.v2.binding.annotation.Command.class);
+            if (annotation == null) continue;
             Command cmd = Command.create((event, guild, author, me, args, flags) -> {
                 DBNation nation = me;
                 if (nation == null && args.isEmpty()) {
@@ -213,7 +213,7 @@ public class ArgParser {
             for (int i = 0; i < line.length(); i++) {
                 char current = line.charAt(i);
                 if (current == '{') {
-                    if (indicies == null) indicies = new LinkedList<>();
+                    if (indicies == null) indicies = new ArrayList<>();
                     indicies.add(i);
                     q++;
                 } else if (current == '}' && indicies != null) {

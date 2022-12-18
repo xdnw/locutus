@@ -3,7 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
@@ -65,7 +65,7 @@ public class ValidateSpyBlitzSheet extends Command {
             isValidTarget = n -> filter.contains(n);
         }
 
-        BlitzGenerator.getTargets(sheet, 0, maxWarsFunc, 0.4, 1.5, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");

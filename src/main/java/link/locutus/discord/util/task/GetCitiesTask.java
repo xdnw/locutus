@@ -1,24 +1,17 @@
 package link.locutus.discord.util.task;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class GetCitiesTask implements Callable<Map<DBNation, List<SCityContainer>>> {
-    protected final List<DBNation> nations;
+    protected final Set<DBNation> nations;
     protected final Map<Integer, DBNation> nationsMap;
     protected Predicate<SCityContainer> filter;
 
@@ -41,7 +34,7 @@ public class GetCitiesTask implements Callable<Map<DBNation, List<SCityContainer
     }
 
     public GetCitiesTask(DBNation... nationsArr) {
-        this.nations = Arrays.asList(nationsArr);
+        this.nations = new HashSet<>(Arrays.asList(nationsArr));
         this.nationsMap = nations.stream().collect(Collectors.toMap(DBNation::getNation_id, nation -> nation));
         this.filter = new Predicate<SCityContainer>() {
             @Override

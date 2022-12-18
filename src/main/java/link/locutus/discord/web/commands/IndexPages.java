@@ -10,9 +10,9 @@ import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Announcement;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -30,19 +30,11 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
-import views.guild.memberindex;
+import rocker.guild.memberindex;
 
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -134,7 +126,7 @@ public class IndexPages {
             }
         }
 
-        for (Alliance alliance : Locutus.imp().getNationDB().getAlliances(false, false, false, 9999)) {
+        for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances(false, false, false, 9999)) {
             double val = 0;
             String name = alliance.getName();
             if ((alliance.getId() + "").equals(termLow)) {
@@ -156,7 +148,7 @@ public class IndexPages {
             if (val > 0) {
                 String url = alliance.getUrl();
                 StringBuilder body = new StringBuilder();
-                List<DBNation> nations = alliance.getNations(true, 0, true);
+                Set<DBNation> nations = alliance.getNations(true, 0, true);
                 DBNation total = alliance.getMembersTotal();
                 body.append("Nations: " + nations.size()).append("<br>");
                 body.append("Score: " + total.getScore()).append("<br>");
@@ -174,7 +166,7 @@ public class IndexPages {
 
         PageHandler pageHandler = WebRoot.getInstance().getPageHandler();
 //        pageHandler.getCommands()
-        return views.command.search.template(term, results).render().toString();
+        return rocker.command.search.template(term, results).render().toString();
     }
 
     private void recursive(CommandCallable root, Consumer<CommandCallable> onEach) {
@@ -203,7 +195,7 @@ public class IndexPages {
                 pages.toHtml(stack.getStore(), stack.getPermissionHandler(), pageEndpoint)
         );
 
-        return views.command.guildindex.template(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages).render().toString();
+        return rocker.command.guildindex.template(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages).render().toString();
     }
 
     @Command()
@@ -213,7 +205,7 @@ public class IndexPages {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             dbs.add(db);
         }
-        return views.guild.guilds.template(dbs).render().toString();
+        return rocker.guild.guilds.template(dbs).render().toString();
     }
 
     @Command()
@@ -244,9 +236,8 @@ public class IndexPages {
 
         Collections.sort(myWars, Comparator.comparingLong(o -> o.date));
         Collections.reverse(myWars);
-        List<Integer> warIds = myWars.stream().map(f -> f.warId).collect(Collectors.toList());
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (2)");
-        List<DBAttack> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWarIds(warIds);
+        List<DBAttack> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (3)");
         boolean isFightingActives = false;
 
@@ -297,17 +288,17 @@ public class IndexPages {
     @Command()
     @RolePermission(Roles.MEMBER)
     public Object allianceIndex(@Me User user, int allianceId) {
-        Alliance alliance = new Alliance(allianceId);
+        DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
         GuildDB db = alliance.getGuildDB();
         Guild guild = db != null ? db.getGuild() : null;
 
         String url = alliance.getUrl();
-        List<DBNation> nations = alliance.getNations();
+        Set<DBNation> nations = alliance.getNations();
 
         // 1 view wars
         // 2 view members
 
-        return views.alliance.allianceindex.template(db, guild, alliance, user).render().toString();
+        return rocker.alliance.allianceindex.template(db, guild, alliance, user).render().toString();
     }
 
     @Command()

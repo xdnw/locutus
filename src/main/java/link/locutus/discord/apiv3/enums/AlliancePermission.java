@@ -18,7 +18,7 @@ public enum AlliancePermission {
     PROMOTE_SELF_TO_LEADER
     ;
 
-    public boolean has(int permission) {
+    public boolean has(long permission) {
         return (permission & (1 << this.ordinal())) > 0;
     }
 }

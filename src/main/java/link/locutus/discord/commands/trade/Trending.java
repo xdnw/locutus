@@ -5,9 +5,9 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -54,7 +54,7 @@ public class Trending extends Command {
         Map<ResourceType, Double> highMap = averages.getValue();
 
         TradeDB tradeDB = Locutus.imp().getTradeManager().getTradeDb();
-        for (Offer offer : tradeDB.getOffers(cutoffMs)) {
+        for ( DBTrade offer : tradeDB.getTrades(cutoffMs)) {
             // Ignore outliers
             int ppu = offer.getPpu();
 
@@ -81,7 +81,7 @@ public class Trending extends Command {
                 cumulative = new LongAdder();
                 rssMap.put(ppu, cumulative);
             }
-            cumulative.add(offer.getAmount());
+            cumulative.add(offer.getQuantity());
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -135,6 +135,6 @@ public class Trending extends Command {
 
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

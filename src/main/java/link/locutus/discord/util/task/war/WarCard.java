@@ -1,11 +1,12 @@
 package link.locutus.discord.util.task.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -205,10 +206,10 @@ public class WarCard {
 //
 //        description.append("\n\n");
 //
-//        description.append("Press " + cmdEmoji + " to refresh\n");
-//        description.append("Press " + simEmoji + " to simulate\n");
-//        description.append("Press " + counterEmoji + " to find counters\n");
-//        description.append("Press " + spyEmoji + " to find spyops\n");
+//        description.append("Press `" + cmdEmoji + "` to refresh\n");
+//        description.append("Press `" + simEmoji + "` to simulate\n");
+//        description.append("Press `" + counterEmoji + "` to find counters\n");
+//        description.append("Press `" + spyEmoji + "` to find spyops\n");
 //
 //        this.title = title;
 //        this.description = description.toString();
@@ -226,7 +227,7 @@ public class WarCard {
 
     public void update(DBWar war, boolean checkCounters, boolean onlyCheckBlockade) {
         this.war = war;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(warId);
+        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
         update(attacks, onlyCheckBlockade);
         if (checkCounters) updateCounterStats();
     }
@@ -277,10 +278,10 @@ public class WarCard {
 
         if (addReactions) {
             description.append("\n\n");
-            description.append("Press " + cmdEmoji + " to refresh\n");
-            description.append("Press " + simEmoji + " to simulate\n");
-            description.append("Press " + counterEmoji + " to find counters\n");
-            description.append("Press " + spyEmoji + " to find spyops\n");
+            description.append("Press `" + cmdEmoji + "` to refresh\n");
+//            description.append("Press `" + simEmoji + "` to simulate\n");
+            description.append("Press `" + counterEmoji + "` to find counters\n");
+            description.append("Press `" + spyEmoji + "` to find spyops\n");
         }
         return description.toString();
     }
@@ -410,33 +411,40 @@ public class WarCard {
         return counterStat;
     }
 
-    private static final String cmdEmoji = "\uD83D\uDD04";
-    private static final String simEmoji = "\uD83E\uDD16";
-    private static final String counterEmoji = "\uD83C\uDD98";
-    public static final String spyEmoji = "\uD83D\uDD75";
+    private static final String cmdEmoji = "War Info";
+    private static final String simEmoji = "Simulate";
+    private static final String counterEmoji = "Counter";
+    public static final String spyEmoji = "Spies";
 
-    public void embed(MessageChannel channel) {
+    public void embed(IMessageIO channel) {
         embed(channel, false);
     }
 
-    public void embed(MessageChannel channel, boolean addReactions) {
+    public void embed(IMessageIO channel, boolean addReactions) {
         String warUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
-        String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "WarInfo " + warUrl;
-        String sim = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "simulate " + warUrl;
-        String counter = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counter " + warUrl;
-        String counterSpy = "~" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "counterspy " + warUrl + " *";
+        String cmd = Settings.commandPrefix(true) + "WarInfo " + warUrl;
+        String sim = "~" + Settings.commandPrefix(true) + "simulate " + warUrl;
+        String counter = "~" + Settings.commandPrefix(true) + "counter " + warUrl;
+        String counterSpy = "~" + Settings.commandPrefix(true) + "counterspy " + warUrl + " *";
 
-        String pendingEmoji = "\u2705";
-        String pending = "_" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "UpdateEmbed role:milcom 'description:{description}\n" +
+        String pendingEmoji = "Claim";
+        String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed role:milcom 'description:{description}\n" +
                 "\n" +
                 "Assigned to %user% in {timediff}'";
 
         if (addReactions) {
             String desc = getDescription();
-            desc += "\n\nPress " + pendingEmoji + " to assign";
-            DiscordUtil.createEmbedCommand(channel, getTitle(), desc, pendingEmoji, pending, cmdEmoji, cmd);
+            desc += "\n\nPress `" + pendingEmoji + "` to assign";
+
+            channel.create().embed(getTitle(), desc)
+                    .commandButton(pending, pendingEmoji)
+                    .commandButton(cmd, cmdEmoji)
+                    .commandButton(counter, counterEmoji)
+                    .commandButton(counterSpy, spyEmoji)
+                    .send();
+
         } else {
-            DiscordUtil.createEmbedCommand(channel, getTitle(), getDescription());
+            channel.create().embed(getTitle(), getDescription()).send();
         }
     }
 

@@ -1,9 +1,21 @@
 package link.locutus.discord.db;
 
+import com.politicsandwar.graphql.model.*;
+import com.ptsmods.mysqlw.query.QueryCondition;
+import com.ptsmods.mysqlw.query.QueryOrder;
+import com.ptsmods.mysqlw.query.builder.SelectBuilder;
+import com.ptsmods.mysqlw.table.ColumnType;
+import com.ptsmods.mysqlw.table.TablePreset;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.Transfer;
+import link.locutus.discord.apiv1.entities.BankRecord;
+import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -13,9 +25,45 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.User;
+import org.example.jooq.bank.Tables;
+import org.example.jooq.bank.tables.records.SubscriptionsRecord;
+import org.example.jooq.bank.tables.records.TaxDepositsDateRecord;
+import org.example.jooq.bank.tables.records.TaxEstimateRecord;
+import org.example.jooq.bank.tables.records.Transactions_2Record;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jooq.Condition;
+import org.jooq.Index;
+import org.jooq.InsertSetMoreStep;
+import org.jooq.Loader;
+import org.jooq.LoaderError;
+import org.jooq.LoaderOptionsStep;
+import org.jooq.Operator;
+import org.jooq.OrderField;
+import org.jooq.Query;
+import org.jooq.Record;
+import org.jooq.Result;
+import org.jooq.SelectConditionStep;
+import org.jooq.SelectConnectByStep;
+import org.jooq.SelectForUpdateStep;
+import org.jooq.SelectJoinStep;
+import org.jooq.SelectLimitPercentStep;
+import org.jooq.SelectLimitStep;
+import org.jooq.SelectSeekStep1;
+import org.jooq.SelectWhereStep;
+import org.jooq.SelectWithTiesStep;
+import org.jooq.SortField;
+import org.jooq.TableField;
+import org.jooq.TableLike;
+import org.jooq.exception.InvalidResultException;
+import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -29,102 +77,273 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
-public class BankDB extends DBMain {
-    public BankDB() throws SQLException, ClassNotFoundException {
-        super("bank");
+import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
+import static link.locutus.discord.apiv1.enums.ResourceType.BAUXITE;
+import static link.locutus.discord.apiv1.enums.ResourceType.COAL;
+import static link.locutus.discord.apiv1.enums.ResourceType.FOOD;
+import static link.locutus.discord.apiv1.enums.ResourceType.GASOLINE;
+import static link.locutus.discord.apiv1.enums.ResourceType.IRON;
+import static link.locutus.discord.apiv1.enums.ResourceType.LEAD;
+import static link.locutus.discord.apiv1.enums.ResourceType.MONEY;
+import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
+import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
+import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
+import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
+import static org.example.jooq.bank.Tables.LOOT_DIFF_BY_TAX_ID;
+import static org.example.jooq.bank.Tables.SUBSCRIPTIONS;
+import static org.example.jooq.bank.Tables.TAX_BRACKETS;
+import static org.example.jooq.bank.Tables.TAX_DEPOSITS_DATE;
+import static org.example.jooq.bank.Tables.TAX_ESTIMATE;
+import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
+import static org.example.jooq.bank.Tables.TRANSACTIONS_ALLIANCE_2;
+import static org.example.jooq.web.Tables.TOKENS3;
+import static org.jooq.impl.DSL.lower;
+import static org.springframework.data.mongodb.core.query.Update.update;
+
+public class BankDB extends DBMainV3 {
+
+    public BankDB(String name) throws SQLException, ClassNotFoundException {
+        super(Settings.INSTANCE.DATABASE, name, false);
+//        if (name.equalsIgnoreCase("bank") && new File("database/import_bank.db").exists()) {
+//            System.out.println("Importing external bank recs");
+//            importFromExternal("import_bank");
+//            System.out.println("Exporting external bank recs");
+//            byte[] maxIdData = ByteBuffer.allocate(4).putInt(87004798).array();
+//            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
+//        }
     }
+
+//    public void updateBankRecs(int nationId) {
+//        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+//        List<Bankrec> recs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+//            @Override
+//            public void accept(BankrecsQueryRequest r) {
+//                r.setOr_id(List.of(nationId));
+//                r.setOr_type(List.of(1)); //1 == nation
+//            }
+//        });
+//
+//
+////        v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+////            @Override
+////            public void accept(BankrecsQueryRequest r) {
+////                r.setMin_id();
+////                r.setOr_type();
+////            }
+////        });
+////
+////        selectTransactions(s -> {
+////            s.order("tx_id", QueryOrder.OrderDirection.DESC);
+////            s.limit(1);
+////        });
+//
+////        addTransaction()
+////
+////        updated = addTransactions(transactions);
+//    }
+
+    public List<Transaction2> getTransactions(Condition condition) {
+        return getTransactions(condition, null, null);
+    }
+    public List<Transaction2> getTransactions(Condition condition, SortField<?> orderBy, Integer limit) {
+        Result<Record> rs = query(TRANSACTIONS_2, condition, orderBy, limit);
+        List<Transaction2> list = new ArrayList<>();
+        for (Record r : rs) {
+            list.add(Transaction2.fromTX2Table((Transactions_2Record) r));
+        }
+        return list;
+    }
+
+    public synchronized void addTaxEstimate(int taxId, int minCash, int maxCash, int minRss, int maxRss) {
+        ctx().insertInto(TAX_ESTIMATE, TAX_ESTIMATE.TAX_ID, TAX_ESTIMATE.MIN_CASH, TAX_ESTIMATE.MAX_CASH, TAX_ESTIMATE.MIN_RSS, TAX_ESTIMATE.MAX_RSS)
+                .values(taxId, minCash, maxCash, minRss, maxRss)
+                .execute();
+    }
+
+    public Map<Integer, TaxEstimate> getTaxEstimates() {
+        return getTaxEstimates(null, null, null);
+    }
+
+    public Map<Integer, TaxEstimate> getTaxEstimates(Condition condition, SortField<?> orderBy, Integer limit) {
+        Result<Record> rs = query(TAX_ESTIMATE, condition, orderBy, limit);
+        Map<Integer, TaxEstimate> result = new Int2ObjectOpenHashMap<>();
+        for (Record r : rs) {
+            TaxEstimate estimate = new TaxEstimate();
+            estimate.tax_id = (r.get(TAX_ESTIMATE.TAX_ID));
+            estimate.min_cash = (r.get(TAX_ESTIMATE.MIN_CASH));
+            estimate.max_cash = (r.get(TAX_ESTIMATE.MAX_CASH));
+            estimate.min_rss = (r.get(TAX_ESTIMATE.MIN_RSS));
+            estimate.max_rss = (r.get(TAX_ESTIMATE.MAX_RSS));
+            result.put(estimate.tax_id, estimate);
+        }
+         return result;
+    }
+
+//    public void importFromExternal(String fileName) throws SQLException, ClassNotFoundException {
+//        BankDB otherDb = new BankDB(fileName, false);
+//        List<Transaction2> transactions = selectTransactions(f -> {
+//        });
+//        int batchSize = 10000;
+//        for (int i = 0; i < transactions.size(); i+= batchSize) {
+//            List<Transaction2> subList = transactions.subList(i, Math.min(i + batchSize, transactions.size()));
+//            addTransactions(subList, true);
+//        }
+//    }
 
     @Override
     public void createTables() {
-        {
-            StringBuilder txTableCreate = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_2` (`tx_id` INT NOT NULL PRIMARY KEY, tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
-                txTableCreate.append(", " + type.name() + " INT NOT NULL");
-            }
-            txTableCreate.append(")");
-            executeStmt(txTableCreate.toString());
+        ctx().createTableIfNotExists(TRANSACTIONS_2).columns(TRANSACTIONS_2.fields()).primaryKey(TRANSACTIONS_2.getPrimaryKey().getFields()).execute();
+        for (Index index : TRANSACTIONS_2.getIndexes()) ctx().createIndex(index);
+        ctx().createTableIfNotExists(SUBSCRIPTIONS).columns(SUBSCRIPTIONS.fields()).primaryKey(SUBSCRIPTIONS.getPrimaryKey().getFields()).execute();
+        for (Index index : SUBSCRIPTIONS.getIndexes()) ctx().createIndex(index);
+        ctx().createTableIfNotExists(TAX_BRACKETS).columns(TAX_BRACKETS.fields()).primaryKey(TAX_BRACKETS.getPrimaryKey().getFields()).execute();
+        for (Index index : TAX_BRACKETS.getIndexes()) ctx().createIndex(index);
+        ctx().createTableIfNotExists(LOOT_DIFF_BY_TAX_ID).columns(LOOT_DIFF_BY_TAX_ID.fields()).primaryKey(LOOT_DIFF_BY_TAX_ID.getPrimaryKey().getFields()).execute();
+        for (Index index : LOOT_DIFF_BY_TAX_ID.getIndexes()) ctx().createIndex(index);
+        ctx().createTableIfNotExists(TAX_ESTIMATE).columns(TAX_ESTIMATE.fields()).primaryKey(TAX_ESTIMATE.getPrimaryKey().getFields()).execute();
+        for (Index index : TAX_ESTIMATE.getIndexes()) ctx().createIndex(index);
+        ctx().createTableIfNotExists(TAX_DEPOSITS_DATE).columns(TAX_DEPOSITS_DATE.fields()).primaryKey(TAX_DEPOSITS_DATE.getPrimaryKey().getFields()).execute();
+        for (Index index : TAX_DEPOSITS_DATE.getIndexes()) ctx().createIndex(index);
 
-            executeStmt("CREATE INDEX IF NOT EXISTS index_sender ON TRANSACTIONS_2 (sender_id, sender_type);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_receiver ON TRANSACTIONS_2 (receiver_id, receiver_type);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_sender_receiver_id ON TRANSACTIONS_2 (receiver_id, sender_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_sender_receiver ON TRANSACTIONS_2 (sender_id, sender_type, receiver_id, receiver_type);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_sender_id ON TRANSACTIONS_2 (sender_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_sender_type ON TRANSACTIONS_2 (sender_type);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_receiver_id ON TRANSACTIONS_2 (receiver_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_receiver_type ON TRANSACTIONS_2 (receiver_type);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_tx_datetime ON TRANSACTIONS_2 (tx_datetime);");
+//        {
+//            StringBuilder transactions = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_ALLIANCE_2` (`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, tx_datetime BIGINT NOT NULL, sender_id BIGINT NOT NULL, sender_type INT NOT NULL, receiver_id BIGINT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
+//            for (ResourceType type : ResourceType.values) {
+//                if (type == ResourceType.CREDITS) continue;
+//                transactions.append(", " + type.name() + " INT NOT NULL");
+//            }
+//            transactions.append(")");
+//
+//            try (Statement stmt = getConnection().createStatement()) {
+//                stmt.addBatch(transactions.toString());
+//                stmt.executeBatch();
+//                stmt.clearBatch();
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+//        }
+    }
+    public Transaction2 getLatestTransaction() {
+        List<Transaction2> latestList = getTransactions(null, TRANSACTIONS_2.TX_ID.desc(), 1);
+        return latestList.isEmpty() ? null : latestList.get(0);
+    }
+
+    public void updateBankRecs(int nationId, Consumer<Event> eventConsumer) {
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+
+        List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
+        int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
+        List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+            @Override
+            public void accept(BankrecsQueryRequest request) {
+                request.setOr_type(List.of(1));
+                request.setOr_id(List.of(nationId));
+                if (minId > 0) request.setMin_id(minId + 1);
+            }
+        });
+
+        saveBankRecs(bankRecs, eventConsumer);
+    }
+
+    public void updateBankRecsv2(int nationId, Consumer<Event> eventConsumer) {
+        PoliticsAndWarV2 api = Locutus.imp().getPnwApi();
+        List<BankRecord> records = api.getBankRecords(nationId);
+        saveBankRecsV2(records, eventConsumer);
+    }
+
+    public void updateBankRecs(Consumer<Event> eventConsumer) {
+        ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
+        int latestId = info == null ? -1 : info.getInt();
+
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+
+        List<Bankrec> records = new ArrayList<>();
+        Runnable saveTransactions = () -> {
+            if (records.isEmpty()) return;
+            System.out.println("Saving bank recs " + records.size());
+            List<Bankrec> copy = new ArrayList<>(records);
+            int maxId = copy.stream().mapToInt(Bankrec::getId).max().getAsInt();
+            saveBankRecs(copy, eventConsumer);
+
+            byte[] maxIdData = ByteBuffer.allocate(4).putInt(maxId).array();
+            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
+            records.clear();
+        };
+        v3.fetchBankRecs(new Consumer<BankrecsQueryRequest>() {
+            @Override
+            public void accept(BankrecsQueryRequest f) {
+                f.setOr_type(List.of(1));
+                if (latestId > 0) f.setMin_id(latestId + 1);
+                f.setOrderBy(List.of(new QueryBankrecsOrderByOrderByClause(QueryBankrecsOrderByColumn.ID, SortOrder.ASC, null)));
+            }
+        }, v3.createBankRecProjection(), new Predicate<Bankrec>() {
+            @Override
+            public boolean test(Bankrec bankrec) {
+                records.add(bankrec);
+                if (records.size() > 1000) {
+                    saveTransactions.run();
+                }
+                return false;
+            }
+        });
+        saveTransactions.run();
+    }
+
+    public void saveBankRecsV2(List<BankRecord> bankrecs, Consumer<Event> eventConsumer) {
+        if (bankrecs.isEmpty()) return;
+        if (bankrecs.size() > 10) System.out.println("remove:|| save bank recs " + bankrecs.size());
+        invalidateTXCache();
+        List<Transaction2> transfers = new ArrayList<>();
+        for (BankRecord bankrec : bankrecs) {
+            Transaction2 tx = new Transaction2(bankrec);
+            transfers.add(tx);
         }
-
-        {
-            StringBuilder transactions = new StringBuilder("CREATE TABLE IF NOT EXISTS `TRANSACTIONS_ALLIANCE_2` (`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar");
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
-                transactions.append(", " + type.name() + " INT NOT NULL");
+        Collections.sort(transfers, Comparator.comparingLong(Transaction2::getDate));
+        int[] modified = addTransactions(transfers, true);
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
+        if (eventConsumer != null) {
+            for (int i = 0; i < modified.length; i++) {
+                if (modified[i] > 0) {
+                    Transaction2 tx = transfers.get(i);
+                    if (tx.tx_datetime > cutoff) {
+                        eventConsumer.accept(new TransactionEvent(tx));
+                    }
+                }
             }
-            transactions.append(")");
-
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(transactions.toString());
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-            executeStmt("CREATE INDEX IF NOT EXISTS index_sender_id ON TRANSACTIONS_ALLIANCE_2 (sender_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_sender_type ON TRANSACTIONS_ALLIANCE_2 (sender_type);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_receiver_id ON TRANSACTIONS_ALLIANCE_2 (receiver_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_receiver_type ON TRANSACTIONS_ALLIANCE_2 (receiver_type);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_tx_datetime ON TRANSACTIONS_ALLIANCE_2 (tx_datetime);");
         }
-        {
-            String transactions = "CREATE TABLE IF NOT EXISTS `TRANSACTIONS_BANK` (`date` INT NOT NULL, note VARCHAR, bank INT NOT NULL, receiver INT NOT NULL, banker INT NOT NULL, resource INT NOT NULL, amount REAL NOT NULL, PRIMARY KEY(date, bank, receiver, banker, resource, amount))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(transactions);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
+    }
+
+    public void saveBankRecs(List<Bankrec> bankrecs, Consumer<Event> eventConsumer) {
+        if (bankrecs.isEmpty()) return;
+        if (bankrecs.size() > 10) System.out.println("remove:|| save bank recs " + bankrecs.size());
+        invalidateTXCache();
+        List<Transaction2> transfers = new ArrayList<>();
+        for (Bankrec bankrec : bankrecs) {
+            Transaction2 tx = Transaction2.fromApiV3(bankrec);
+            transfers.add(tx);
+        }
+        Collections.sort(transfers, Comparator.comparingLong(Transaction2::getDate));
+        int[] modified = addTransactions(transfers, true);
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
+        if (eventConsumer != null) {
+            for (int i = 0; i < modified.length; i++) {
+                if (modified[i] > 0) {
+                    Transaction2 tx = transfers.get(i);
+                    if (tx.tx_datetime > cutoff) {
+                        eventConsumer.accept(new TransactionEvent(tx));
+                    }
+                }
             }
-        };
-        {
-            String query = "CREATE TABLE IF NOT EXISTS `SUBSCRIPTIONS` (`user` INT NOT NULL, `allianceOrNation` INT NOT NULL, `isNation` INT NOT NULL, `date` INT NOT NULL, `isReceive` INT NOT NULL, `amount` INT NOT NULL, PRIMARY KEY(user, allianceOrNation, isNation))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(query);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
-            String query = "CREATE TABLE IF NOT EXISTS `TAX_BRACKETS` (`id` INT NOT NULL, `money` INT NOT NULL, `resources` INT NOT NULL, PRIMARY KEY(id))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(query);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
-            String query = "CREATE TABLE IF NOT EXISTS `TAX_DEPOSITS_DATE` (`tax_id` INT NOT NULL DEFAULT (-1), `alliance` INT NOT NULL, `date` INT NOT NULL, `id` INT NOT NULL, `nation` INT NOT NULL, `moneyrate` INT NOT NULL, `resoucerate` INT NOT NULL, `resources` BLOB NOT NULL, `internal_taxrate` INT NOT NULL DEFAULT (-1), PRIMARY KEY(alliance, date, nation))";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(query);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-            executeStmt("CREATE INDEX IF NOT EXISTS index_tax_deposits_nation ON TAX_DEPOSITS_DATE (nation);");
-        };
+        }
     }
 
 //    public void addLoan(DBLoan loan) {
@@ -148,45 +367,80 @@ public class BankDB extends DBMain {
 //    }
 
     public void addTaxDeposit(TaxDeposit record) {
-        addTaxDeposit(record.allianceId, record.date, record.index, record.nationId, (int) record.moneyRate, (int) record.resourceRate, record.internalMoneyRate, record.internalResourceRate, record.resources);
+        addTaxDeposits(List.of(record));
     }
 
-    public List<Transaction2> getAllTransactions(NationOrAlliance sender, NationOrAlliance receiver, NationOrAlliance banker, long timeframe) {
-        boolean checkNation = (sender != null && sender.isNation()) || (receiver != null && receiver.isNation()) || (sender == null && receiver == null);
-        boolean checkAlliance = !checkNation || (sender == null && receiver == null);
-        if (sender == null && receiver == null && banker == null) return Collections.emptyList();
+    public List<Transaction2> getAllTransactions(NationOrAlliance sender, NationOrAlliance receiver, NationOrAlliance banker, Long startDate, Long endDate) {
+        if (sender == null && receiver == null && banker == null) throw new IllegalArgumentException("Please provide at least one of sender, receiver, or banker");
 
-        String query = "SELECT * FROM %table% WHERE tx_datetime > ?";
+        Condition condition = null;
         if (sender != null) {
-            query += " AND sender_id = " + sender.getIdLong();
-            query += " AND sender_type = " + sender.getReceiverType();
+            condition = and(condition, TRANSACTIONS_2.SENDER_ID.eq(sender.getIdLong()).and(TRANSACTIONS_2.SENDER_TYPE.eq(sender.getReceiverType())));
         }
         if (receiver != null) {
-            query += " AND receiver_id = " + receiver.getIdLong();
-            query += " AND receiver_type = " + receiver.getReceiverType();
+            condition = and(condition, TRANSACTIONS_2.RECEIVER_ID.eq(receiver.getIdLong()).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(receiver.getReceiverType())));
         }
         if (banker != null) {
-            query += "banker_nation_id = " + banker;
+            condition = and(condition, TRANSACTIONS_2.BANKER_NATION_ID.eq(banker.getId()));
         }
-
-        List<Transaction2> results = new ArrayList<>();
-        if (checkNation) {
-            // tx_datetime INT NOT NULL, sender_id INT NOT NULL, sender_type INT NOT NULL, receiver_id INT NOT NULL, receiver_type INT NOT NULL, banker_nation_id INT NOT NULL, note varchar
-            String queryNation = query.replaceFirst("%table%", "TRANSACTIONS_2");
-
-            query(queryNation,
-                    (ThrowingConsumer<PreparedStatement>) elem -> elem.setLong(1, timeframe),
-                    (ThrowingConsumer<ResultSet>) elem -> results.add(new Transaction2(elem))
-            );
+        if (startDate != null) {
+            condition = and(condition, TRANSACTIONS_2.TX_DATETIME.ge(startDate));
         }
-        if (checkAlliance) {
-            String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
-            query(queryAA,
-                    (ThrowingConsumer<PreparedStatement>) elem -> elem.setLong(1, timeframe),
-                    (ThrowingConsumer<ResultSet>) elem -> results.add(new Transaction2(elem))
-            );
+        if (endDate != null) {
+            condition = and(condition, TRANSACTIONS_2.TX_DATETIME.le(endDate));
+        }
+        List<Transaction2> results = getTransactions(condition);
+        try {
+            boolean checkNation = (sender != null && sender.isNation()) || (receiver != null && receiver.isNation()) || (sender == null && receiver == null);
+            boolean checkAlliance = !checkNation || (sender == null && receiver == null);
+
+            if (checkAlliance && tableExists("TRANSACTIONS_ALLIANCE_2")) {
+                String query = "SELECT * FROM %table% WHERE tx_datetime > ? AND tx_datetime < ? ";
+                if (sender != null) {
+                    query += " AND sender_id = " + sender.getIdLong();
+                    query += " AND sender_type = " + sender.getReceiverType();
+                }
+                if (receiver != null) {
+                    query += " AND receiver_id = " + receiver.getIdLong();
+                    query += " AND receiver_type = " + receiver.getReceiverType();
+                }
+                if (banker != null) {
+                    query += " AND banker_nation_id = " + banker;
+                }
+                    String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
+                    queryLegacy(queryAA,
+                            (ThrowingConsumer<PreparedStatement>) elem -> {
+                                elem.setLong(1, startDate == null ? 0 : startDate);
+                                elem.setLong(2, endDate == null ? 0 : endDate);
+                            },
+                            (ThrowingConsumer<ResultSet>) elem -> {
+                                while (elem.next()) {
+                                    results.add(new Transaction2(elem));
+                                }
+                            }
+                    );
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
         return results;
+    }
+
+    public void deleteLegacyAllianceTransactions(int allianceId, long minDate) {
+        try {
+            if (tableExists("TRANSACTIONS_ALLIANCE_2")) {
+                ctx().deleteFrom(TRANSACTIONS_ALLIANCE_2)
+                        .where(TRANSACTIONS_ALLIANCE_2.TX_DATETIME.gt(minDate).and(
+                                DSL.or(TRANSACTIONS_ALLIANCE_2.SENDER_ID.eq((long) allianceId).and(TRANSACTIONS_ALLIANCE_2.SENDER_TYPE.eq(2)),
+                                        (TRANSACTIONS_ALLIANCE_2.RECEIVER_ID.eq((long) allianceId).and(TRANSACTIONS_ALLIANCE_2.RECEIVER_TYPE.eq(2)))
+                                )
+                            )
+                        )
+                        .execute();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static class TaxDeposit {
@@ -219,6 +473,11 @@ public class BankDB extends DBMain {
             int rss = rs.getInt("resoucerate");
             int id = rs.getInt("id");
             long date = rs.getLong("date");
+            // round date for legacy reasons
+            if (date > 1656153134000L && date < 1657449182000L) {
+                date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date));
+            }
+
             long[] cents = ArrayUtil.toLongArray(rs.getBytes("resources"));
             double[] deposit = new double[cents.length];
             for (int i = 0; i < cents.length; i++) deposit[i] = cents[i] / 100d;
@@ -232,6 +491,35 @@ public class BankDB extends DBMain {
             byte internalResourceRate = MathMan.unpairShortY(internalTaxRatePair);
 
             int tax_id = rs.getInt("tax_id");
+
+            return new TaxDeposit(alliance, date, id, tax_id, nation, money, rss, internalMoneyRate, internalResourceRate, deposit);
+        }
+
+        public static TaxDeposit of(TaxDepositsDateRecord rs) {
+            int money = rs.getMoneyrate();
+            int rss = rs.getResoucerate();
+            int id = rs.getId();
+            long date = rs.getDate();
+            // round date for legacy reasons
+            if (date > 1656153134000L && date < 1657449182000L) {
+                date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date));
+            }
+
+            long[] cents = ArrayUtil.toLongArray(rs.getResources());
+            double[] deposit = new double[cents.length];
+            for (int i = 0; i < cents.length; i++) deposit[i] = cents[i] / 100d;
+
+            int alliance = rs.getAlliance();
+            int nation = rs.getNation();
+
+            short internalTaxRatePair = rs.getInternalTaxrate().shortValue();
+
+            byte internalMoneyRate = MathMan.unpairShortX(internalTaxRatePair);
+            byte internalResourceRate = MathMan.unpairShortY(internalTaxRatePair);
+            if (internalMoneyRate > 100 || internalMoneyRate < -1) throw new IllegalStateException("Internal money rate is invalid: " + internalMoneyRate + " #" + id);
+            if (internalResourceRate > 100 || internalResourceRate < -1) throw new IllegalStateException("Internal rss rate is too high: " + internalResourceRate + " #" + id);
+
+            int tax_id = rs.getTaxId();
 
             return new TaxDeposit(alliance, date, id, tax_id, nation, money, rss, internalMoneyRate, internalResourceRate, deposit);
         }
@@ -330,161 +618,67 @@ public class BankDB extends DBMain {
     }
 
     public List<Transaction2> getTransactionsByBySenderOrReceiver(Set<Long> senders, Set<Long> receivers, long minDateMs) {
-        List<Transaction2> list = new ArrayList<>();
-        query("select * FROM TRANSACTIONS_2 WHERE tx_datetime > ? AND sender_id in " + StringMan.getString(senders) + " AND receiver_id in " + StringMan.getString(receivers) + " ORDER BY tx_id DESC",
-                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, minDateMs),
-                (ThrowingConsumer<ResultSet>) rs -> {
-                    while (rs.next()) {
-                        list.add(new Transaction2(rs));
-                    }
-                });
-        return list;
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.SENDER_ID.in(senders).and(TRANSACTIONS_2.RECEIVER_ID.in(receivers))), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
     public List<Transaction2> getTransactionsByBySender(Set<Long> senders, long minDateMs) {
-        List<Transaction2> list = new ArrayList<>();
-        query("select * FROM TRANSACTIONS_2 WHERE tx_datetime > ? AND sender_id in " + StringMan.getString(senders) + " ORDER BY tx_id DESC",
-                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, minDateMs),
-                (ThrowingConsumer<ResultSet>) rs -> {
-                    while (rs.next()) {
-                        list.add(new Transaction2(rs));
-                    }
-                });
-        return list;
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.SENDER_ID.in(senders)), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
     public List<Transaction2> getTransactionsByByReceiver(Set<Long> receivers, long minDateMs) {
-        List<Transaction2> list = new ArrayList<>();
-        query("select * FROM TRANSACTIONS_2 WHERE tx_datetime > ? AND receiver_id in " + StringMan.getString(receivers) + " ORDER BY tx_id DESC",
-                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, minDateMs),
-                (ThrowingConsumer<ResultSet>) rs -> {
-                    while (rs.next()) {
-                        list.add(new Transaction2(rs));
-                    }
-                });
-        return list;
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.RECEIVER_ID.in(receivers)), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
     public List<Transaction2> getTransactions(long minDateMs, boolean desc) {
-        List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE tx_datetime > ? ORDER BY tx_id " + (desc ? "DESC" : "ASC"))) {
-            stmt.setLong(1, minDateMs);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs), desc ? TRANSACTIONS_2.TX_ID.desc() : TRANSACTIONS_2.TX_ID.asc(), null);
     }
 
     public List<Transaction2> getToNationTransactions(long minDateMs) {
-        ArrayList<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE tx_datetime > ? AND sender_type = 2 ORDER BY tx_id DESC")) {
-            stmt.setLong(1, minDateMs);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1)), TRANSACTIONS_2.TX_ID.desc(), null);
     }
     public List<Transaction2> getNationTransfers(int nationId, long minDateMs) {
-            ArrayList<Transaction2> list = new ArrayList<>();
-            try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE tx_datetime > ? AND ((receiver_id = ? AND receiver_type = 1) OR (sender_id = ? AND sender_type = 1)) ORDER BY tx_id DESC")) {
-            stmt.setLong(1, minDateMs);
-            stmt.setInt(2, nationId);
-            stmt.setInt(3, nationId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(
+                (TRANSACTIONS_2.RECEIVER_ID.eq((long) nationId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))).or
+                (TRANSACTIONS_2.SENDER_ID.eq((long) nationId).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)))
+        ), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
     public Map<Integer, List<Transaction2>> getNationTransfersByNation(long minDateMs, Set<Integer> nationIds) {
         Map<Integer, List<Transaction2>> result = new HashMap<>();
 
-        String idStr = StringMan.getString(nationIds);
+        List<Transaction2> transactions = getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(
+                (TRANSACTIONS_2.RECEIVER_ID.in(nationIds).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))).or
+                (TRANSACTIONS_2.SENDER_ID.in(nationIds).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)))
+        ), TRANSACTIONS_2.TX_ID.desc(), null);
 
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE tx_datetime > ? AND ((receiver_id in " + idStr + " AND receiver_type = 1) OR (sender_id in " + idStr + " AND sender_type = 1))  ORDER BY tx_id DESC")) {
-            stmt.setLong(1, minDateMs);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    Transaction2 transfer = new Transaction2(rs);
-                    int nationId = (int) (transfer.sender_type == 1 ? transfer.sender_id : transfer.receiver_id);
-                    List<Transaction2> list = result.get(nationId);
-                    if (list == null) {
-                        result.put(nationId, list = new LinkedList<>());
-                    }
-                    list.add(transfer);
-                }
+
+        for (Transaction2 transfer : transactions) {
+            // add to result map
+            int nationId = (int) (transfer.sender_type == 1 ? transfer.sender_id : transfer.receiver_id);
+            List<Transaction2> list = result.get(nationId);
+            if (list == null) {
+                result.put(nationId, list = new ArrayList<>());
             }
-            return result;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
+            list.add(transfer);
         }
+        return result;
     }
 //
     public List<Transaction2> getAllianceTransfers(int allianceId, long minDateMs) {
-            ArrayList<Transaction2> list = new ArrayList<>();
-            try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE tx_datetime > ? AND ((receiver_id = ? AND receiver_type == 2) OR (sender_id = ? AND sender_type == 2)) ORDER BY tx_id DESC")) {
-            stmt.setLong(1, minDateMs);
-            stmt.setInt(2, allianceId);
-            stmt.setInt(3, allianceId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(
+        (TRANSACTIONS_2.RECEIVER_ID.eq((long) allianceId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2))).or
+        (TRANSACTIONS_2.SENDER_ID.eq((long) allianceId).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)))), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
     public int getTransactionsByNationCount(int nation) {
-        List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select COUNT(*) as `num_rows` FROM TRANSACTIONS_2 WHERE (sender_id = ? AND sender_type = 1) OR (receiver_id = ? AND receiver_type = 1)")) {
-            stmt.setInt(1, nation);
-            stmt.setInt(2, nation);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.getInt("num_rows");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
-        }
+        return ctx().fetchCount(TRANSACTIONS_2,
+                DSL.or(TRANSACTIONS_2.SENDER_ID.eq((long) nation).and(TRANSACTIONS_2.SENDER_TYPE.eq(1))),
+                        TRANSACTIONS_2.RECEIVER_ID.eq((long) nation).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))
+                );
     }
 
     public List<Transaction2> getTransactionsByBanker(int nation) {
-        List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE banker_nation_id = ?")) {
-            stmt.setInt(1, nation);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return getTransactions(TRANSACTIONS_2.BANKER_NATION_ID.eq(nation));
     }
 
     private SoftReference<Map.Entry<Integer, List<Transaction2>>> txNationCache = null;
@@ -493,328 +687,298 @@ public class BankDB extends DBMain {
     }
 
     public List<Transaction2> getTransactionsByNation(int nation) {
+        return getTransactionsByNation(nation, -1);
+    }
+
+    public List<Transaction2> getTransactionsByNation(int nation, int limit) {
         Reference<Map.Entry<Integer, List<Transaction2>>> tmp = txNationCache;
         Map.Entry<Integer, List<Transaction2>> cached = tmp == null ? null : tmp.get();
         if (cached != null && cached.getKey() == nation) {
             return cached.getValue();
         }
-        List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE (sender_id = ? AND sender_type = 1) OR (receiver_id = ? AND receiver_type = 1)")) {
-            stmt.setInt(1, nation);
-            stmt.setInt(2, nation);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            txNationCache = new SoftReference<>(new AbstractMap.SimpleEntry<>(nation, new ArrayList<>(list)));
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        List<Transaction2> list = getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq((long) nation).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)),
+                TRANSACTIONS_2.RECEIVER_ID.eq((long) nation).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))), TRANSACTIONS_2.TX_ID.desc(), limit > 0 ? limit : null);
+        txNationCache = new SoftReference<>(new AbstractMap.SimpleEntry<>(nation, new ArrayList<>(list)));
+        return list;
     }
 
     public List<Transaction2> getTransactionsByNote(String note) {
-        List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE lower(note) like ?")) {
-            stmt.setString(1, ("%" + note + "%").toLowerCase());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        note = note.toLowerCase(Locale.ROOT);
+        return getTransactions(lower(TRANSACTIONS_2.NOTE).like("%" + note + "%"));
+    }
+
+    public List<Transaction2> getTransactionsByNote(String note, long cutoff) {
+        note = note.toLowerCase(Locale.ROOT);
+        return getTransactions(TRANSACTIONS_2.TX_DATETIME.gt(cutoff).and(lower(TRANSACTIONS_2.NOTE).like("%" + note + "%")));
     }
 
     public List<Transaction2> getTransactionsByAllianceSender(int alliance_id) {
-        List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE (sender_id = ? AND sender_type = 2)")) {
-            stmt.setInt(1, alliance_id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return getTransactions(TRANSACTIONS_2.SENDER_ID.eq((long) alliance_id).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)));
     }
 
     public List<Transaction2> getTransactionsByAllianceReceiver(int alliance_id) {
-        List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE (receiver_id = ? AND receiver_type = 2)")) {
-            stmt.setInt(1, alliance_id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        return getTransactions(TRANSACTIONS_2.RECEIVER_ID.eq((long) alliance_id).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2)));
     }
 
     public List<Transaction2> getTransactionsByAlliance(int alliance_id) {
-        List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_2 WHERE (sender_id = ? AND sender_type = 2) OR (receiver_id = ? AND receiver_type = 2)")) {
-            stmt.setInt(1, alliance_id);
-            stmt.setInt(2, alliance_id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
+        return getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq((long) alliance_id).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)),
+                TRANSACTIONS_2.RECEIVER_ID.eq((long) alliance_id).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2))));
+    }
+
+    public synchronized int[] addTransactions(List<Transaction2> transactions, boolean ignoreInto) {
+        if (transactions.isEmpty()) return new int[0];
+        List<Query> queries = new ArrayList<>(transactions.size());
+        for (Transaction2 transaction : transactions) {
+            Transactions_2Record record = ctx().newRecord(TRANSACTIONS_2);
+            transaction.set(record);
+
+            @NotNull InsertSetMoreStep<Transactions_2Record> insert = ctx().insertInto(TRANSACTIONS_2).set(record);
+            Query query;
+            if (ignoreInto) {
+                query = insert.onDuplicateKeyIgnore();
+            } else {
+                query = insert.onDuplicateKeyUpdate().set(record);
             }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
+            queries.add(query);
+        }
+        invalidateTXCache();
+        if (queries.size() == 1) {
+            System.out.println("Add 1");
+            return new int[]{queries.get(0).execute()};
+        } else {
+            System.out.println("Add batch");
+            return ctx().batch(queries).execute();
         }
     }
 
-    public void addTransactions(List<Transaction2> transactions) {
-        if (transactions.isEmpty()) return;
-        invalidateTXCache();
-        String query = transactions.get(0).createInsert("TRANSACTIONS_2", true);
-        executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::set);
-    }
-
-    public void addTransaction(Transaction2 tx) {
-        invalidateTXCache();
-        String sql = tx.createInsert("TRANSACTIONS_2", true);
-        update(sql, (ThrowingConsumer<PreparedStatement>) tx::set);
+    public int addTransaction(Transaction2 tx, boolean ignoreInto) {
+        return addTransactions(Collections.singletonList(tx), ignoreInto)[0];
     }
 
     public List<TaxDeposit> getTaxesPaid(int nation, int alliance) {
         List<TaxDeposit> list = new ArrayList<>();
-        query("select * FROM TAX_DEPOSITS_DATE WHERE alliance = ? AND nation = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, alliance);
-            stmt.setInt(2, nation);
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                list.add(TaxDeposit.of(rs));
-            }
-        });
+        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliance).and(TAX_DEPOSITS_DATE.NATION.eq(nation))).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 
     public List<TaxDeposit> getTaxesByBracket(int tax_id) {
         List<TaxDeposit> list = new ArrayList<>();
-        query("select * FROM TAX_DEPOSITS_DATE WHERE tax_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, tax_id);
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                list.add(TaxDeposit.of(rs));
-            }
-        });
+        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(tax_id)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 
     public List<TaxDeposit> getTaxesByBracket(int tax_id, long afterDate) {
         List<TaxDeposit> list = new ArrayList<>();
-        query("select * FROM TAX_DEPOSITS_DATE WHERE tax_id = ? AND date > ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, tax_id);
-            stmt.setLong(2, afterDate);
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                list.add(TaxDeposit.of(rs));
-            }
-        });
+        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(tax_id).and(TAX_DEPOSITS_DATE.DATE.ge(afterDate))).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 
     public List<TaxDeposit> getTaxesPaid(int nation) {
         List<TaxDeposit> list = new ArrayList<>();
-
-        query("select * FROM TAX_DEPOSITS_DATE WHERE nation = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, nation);
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                list.add(TaxDeposit.of(rs));
-            }
-        });
+        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.NATION.eq(nation)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 
     public List<TaxDeposit> getTaxesByAA(int alliance) {
         List<TaxDeposit> list = new ArrayList<>();
-
-        query("select * FROM TAX_DEPOSITS_DATE WHERE alliance = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, alliance);
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                list.add(TaxDeposit.of(rs));
-            }
-        });
+        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliance)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 
+    public TaxDeposit getLatestTaxDeposit(int allianceId) {
+        @Nullable TaxDepositsDateRecord record = ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(allianceId)).orderBy(TAX_DEPOSITS_DATE.DATE.asc()).limit(1).fetchOne();
+        return record == null ? null : TaxDeposit.of(record);
+    }
+
     public List<TaxDeposit> getTaxesByTurn(int alliance) {
+
         List<TaxDeposit> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TAX_DEPOSITS_DATE WHERE alliance = ? order by DATE ASC")) {
-            stmt.setInt(1, alliance);
-            try (ResultSet rs = stmt.executeQuery()) {
-                TaxDeposit turnTotal = null;
+        TaxDeposit turnTotal = null;
 
-                double moneyRateDouble = 0;
-                double rssRateDouble = 0;
-                double intMoneyRateDouble = 0;
-                double intRssRateDouble = 0;
+        double moneyRateDouble = 0;
+        double rssRateDouble = 0;
+        double intMoneyRateDouble = 0;
+        double intRssRateDouble = 0;
 
-                int i = 0;
-                while (rs.next()) {
-                    i++;
-                    TaxDeposit nextDeposit = TaxDeposit.of(rs);
+        int i = 0;
 
-                    if (turnTotal == null) {
-                        i = 1;
-                        turnTotal = nextDeposit;
-                        moneyRateDouble = turnTotal.moneyRate;
-                        rssRateDouble = turnTotal.resourceRate;
-                        intMoneyRateDouble = turnTotal.internalMoneyRate;
-                        intRssRateDouble = turnTotal.internalResourceRate;
-                    }
-                    else if (Math.abs(turnTotal.date - nextDeposit.date) > 5 * 60 * 1000) {
-                        i = 1;
-                        turnTotal.moneyRate = (int) moneyRateDouble;
-                        turnTotal.resourceRate = (int) rssRateDouble;
-                        turnTotal.internalMoneyRate = (int) intMoneyRateDouble;
-                        turnTotal.internalResourceRate = (int) intRssRateDouble;
-                        list.add(turnTotal);
-                        turnTotal = nextDeposit;
-                    } else {
-                        moneyRateDouble = ((moneyRateDouble * (i - 1d) + nextDeposit.moneyRate) / i);
-                        rssRateDouble = ((rssRateDouble * (i - 1d) + nextDeposit.resourceRate) / i);
-                        intMoneyRateDouble = ((intMoneyRateDouble * (i - 1d) + nextDeposit.internalMoneyRate) / i);
-                        intRssRateDouble = ((intRssRateDouble * (i - 1d) + nextDeposit.internalResourceRate) / i);
+        @NotNull Result<TaxDepositsDateRecord> results = ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliance)).fetch();
+        for (TaxDepositsDateRecord result : results) {
+            i++;
+            TaxDeposit nextDeposit = TaxDeposit.of(result);
 
-                        ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, turnTotal.resources, nextDeposit.resources, false);
-                    }
-                }
-                if (turnTotal != null) list.add(turnTotal);
+            if (turnTotal == null) {
+                i = 1;
+                turnTotal = nextDeposit;
+                moneyRateDouble = turnTotal.moneyRate;
+                rssRateDouble = turnTotal.resourceRate;
+                intMoneyRateDouble = turnTotal.internalMoneyRate;
+                intRssRateDouble = turnTotal.internalResourceRate;
+            } else if (Math.abs(turnTotal.date - nextDeposit.date) > 5 * 60 * 1000) {
+                i = 1;
+                turnTotal.moneyRate = (int) moneyRateDouble;
+                turnTotal.resourceRate = (int) rssRateDouble;
+                turnTotal.internalMoneyRate = (int) intMoneyRateDouble;
+                turnTotal.internalResourceRate = (int) intRssRateDouble;
+                list.add(turnTotal);
+                turnTotal = nextDeposit;
+            } else {
+                moneyRateDouble = ((moneyRateDouble * (i - 1d) + nextDeposit.moneyRate) / i);
+                rssRateDouble = ((rssRateDouble * (i - 1d) + nextDeposit.resourceRate) / i);
+                intMoneyRateDouble = ((intMoneyRateDouble * (i - 1d) + nextDeposit.internalMoneyRate) / i);
+                intRssRateDouble = ((intRssRateDouble * (i - 1d) + nextDeposit.internalResourceRate) / i);
+
+                ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, turnTotal.resources, nextDeposit.resources, false);
             }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
         }
+        if (turnTotal != null) list.add(turnTotal);
+        return list;
     }
 
     public void deleteTaxDeposits(int allianceId, long date) {
-        update("DELETE FROM `TAX_DEPOSITS_DATE` where alliance = ? AND date >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, allianceId);
-            stmt.setLong(2, date);
-        });
-
+        ctx().deleteFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(allianceId).and(TAX_DEPOSITS_DATE.DATE.eq(date))).execute();
     }
 
-    public void addTaxDeposits(Collection<TaxDeposit> records) {
-        try {
-            synchronized (this) {
-                String query = "INSERT OR IGNORE INTO `TAX_DEPOSITS_DATE` (`alliance`, `date`, `id`, `nation`, `moneyrate`, `resoucerate`, `resources`, `internal_taxrate`, `tax_id`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                executeBatch(records, query, new ThrowingBiConsumer<TaxDeposit, PreparedStatement>() {
-                    @Override
-                    public void acceptThrows(TaxDeposit record, PreparedStatement stmt) throws SQLException {
-                        stmt.setInt(1, record.allianceId);
-                        stmt.setLong(2, record.date);
-                        stmt.setInt(3, record.index);
-                        stmt.setInt(4, record.nationId);
-                        stmt.setInt(5, (int) record.moneyRate);
-                        stmt.setInt(6, (int) record.resourceRate);
+    public synchronized int[] addTaxDeposits(Collection<TaxDeposit> records) {
+        List<Query> queries = new ArrayList<>();
+        for (TaxDeposit record : records) {
+            @NotNull TaxDepositsDateRecord dbRecord = ctx().newRecord(TAX_DEPOSITS_DATE);
+            dbRecord.setAlliance(record.allianceId);
+            long dateRounded = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(record.date));
+            dbRecord.setDate(dateRounded);
 
-                        double[] deposit = record.resources;
-                        long[] depositCents = new long[deposit.length];
-                        for (int i = 0; i < deposit.length; i++) depositCents[i] = (long) (deposit[i] * 100);
-                        byte[] depositBytes = ArrayUtil.toByteArray(depositCents);
+            dbRecord.setId(record.index);
+            dbRecord.setNation(record.nationId);
+            dbRecord.setMoneyrate((int) record.moneyRate);
+            dbRecord.setResoucerate((int) record.resourceRate);
 
-                        stmt.setBytes(7, depositBytes);
+            double[] deposit = record.resources;
+            long[] depositCents = new long[deposit.length];
+            for (int i = 0; i < deposit.length; i++) depositCents[i] = (long) (deposit[i] * 100);
+            byte[] depositBytes = ArrayUtil.toByteArray(depositCents);
 
-                        short internalPair = MathMan.pairByte(record.internalMoneyRate, record.internalResourceRate);
-                        stmt.setShort(8, internalPair);
-                        stmt.setInt(9, record.tax_id);
-                    }
-                });
-            }
-        } catch (Throwable e) {
-            e.printStackTrace();
-            for (TaxDeposit record : records) {
-                addTaxDeposit(record);
-            }
+            dbRecord.setResources(depositBytes);
+
+            short internalPair = MathMan.pairByte(record.internalMoneyRate, record.internalResourceRate);
+            dbRecord.setInternalTaxrate((int) internalPair);
+            dbRecord.setTaxId(record.tax_id);
+
+            Query query = ctx().insertInto(TAX_DEPOSITS_DATE).set(dbRecord).onDuplicateKeyIgnore();
+            queries.add(query);
         }
-    }
-
-    public void addTaxDeposit(int allianceId, long date, int taxIndex, int nation, int moneyRate, int rssRate, int internalMoneyRate, int internalResourceRate, double[] deposit) {
-        long[] depositCents = new long[deposit.length];
-        for (int i = 0; i < deposit.length; i++) depositCents[i] = (long) (deposit[i] * 100);
-        byte[] depositBytes = ArrayUtil.toByteArray(depositCents);
-
-        update("INSERT OR IGNORE INTO `TAX_DEPOSITS_DATE` (`alliance`, `date`, `id`, `nation`, `moneyrate`, `resoucerate`, `resources`, `internal_taxrate`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, allianceId);
-            stmt.setLong(2, date);
-            stmt.setInt(3, taxIndex);
-            stmt.setInt(4, nation);
-            stmt.setInt(5, moneyRate);
-            stmt.setInt(6, rssRate);
-            stmt.setBytes(7, depositBytes);
-            stmt.setShort(8, MathMan.pairByte(internalMoneyRate, internalResourceRate));
-        });
+        if (queries.size() == 1) {
+            return new int[]{queries.get(0).execute()};
+        } else {
+            return ctx().batch(queries).execute();
+        }
     }
 
     public void clearTaxDeposits(int allianceId) {
-        update("DELETE FROM `TAX_DEPOSITS_DATE` WHERE `alliance` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, allianceId);
-        });
+        ctx().deleteFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(allianceId)).execute();
     }
 
-    public Map<Integer, Map.Entry<Integer, Integer>> getTaxBrackets() {
-        Map<Integer, Map.Entry<Integer, Integer>> result = new HashMap<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TAX_BRACKETS")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int id = rs.getInt("id");
-                    int money = rs.getInt("money");
-                    int rss = rs.getInt("resources");
-                    result.put(id, new AbstractMap.SimpleEntry<>(money, rss));
+    public Map<Integer, TaxBracket> getTaxBracketsFromDeposits() {
+        Map<Integer, TaxBracket> rates = new HashMap<>();
+        ctx().select(TAX_DEPOSITS_DATE.TAX_ID, DSL.max(TAX_DEPOSITS_DATE.DATE), TAX_DEPOSITS_DATE.MONEYRATE, TAX_DEPOSITS_DATE.RESOUCERATE, TAX_DEPOSITS_DATE.ALLIANCE)
+        .from(TAX_DEPOSITS_DATE).groupBy(TAX_DEPOSITS_DATE.TAX_ID, TAX_DEPOSITS_DATE.MONEYRATE, TAX_DEPOSITS_DATE.RESOUCERATE).fetch().forEach(f -> {
+            int id = f.component1();
+            long date = f.component2();
+            int money = f.component3();
+            int rss = f.component4();
+            int alliance = f.component5();
+
+            TaxBracket existing = rates.get(id);
+            if (existing == null || existing.dateFetched < date) {
+                existing = new TaxBracket(id, alliance, "", money, rss, date);
+                rates.put(id, existing);
+            }
+        });
+
+        return rates;
+    }
+
+    public Map<Integer, TaxBracket> getTaxBracketsAndEstimates() {
+        return getTaxBracketsAndEstimates(true, true, true);
+    }
+    public Map<Integer, TaxBracket> getTaxBracketsAndEstimates(boolean allowDeposits, boolean allowApi, boolean addUnknownBrackets) {
+        Map<Integer, TaxBracket> rates = new HashMap<>();
+
+        Map<Integer, Integer> taxIdByAlliances = new HashMap<>();
+        // add date to tax record
+        List<Map.Entry<Integer, TaxBracket>> bracketEntries = new ArrayList<>();
+
+        if (allowDeposits) bracketEntries.addAll(getTaxBracketsFromDeposits().entrySet());
+        if (allowApi) bracketEntries.addAll(getTaxBrackets(taxIdByAlliances).entrySet());
+//        if (allowSuggestions) bracketEntries.addAll(getTaxBracketSuggestions(taxIdByAlliances).entrySet());
+
+        for (Map.Entry<Integer, TaxBracket> entry : bracketEntries) {
+            TaxBracket bracket = entry.getValue();
+            TaxBracket existing = rates.get(bracket.taxId);
+            if (existing == null || existing.dateFetched < bracket.dateFetched) {
+                rates.put(bracket.taxId, bracket);
+            }
+        }
+
+        if (addUnknownBrackets) {
+            if (taxIdByAlliances.isEmpty()) {
+                taxIdByAlliances.putAll(Locutus.imp().getNationDB().getAllianceIdByTaxId());
+            }
+            for (Map.Entry<Integer, Integer> entry : taxIdByAlliances.entrySet()) {
+                int taxId = entry.getKey();
+                int allianceId = entry.getValue();
+                if (!rates.containsKey(taxId)) {
+                    rates.put(taxId, new TaxBracket(taxId, allianceId, "", -1, -1, 0));
                 }
             }
-            return result;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
+
         }
+
+        return rates;
     }
 
-    public void addTaxBracket(int taxId, int money, int rss) {
-        update("INSERT OR REPLACE INTO `TAX_BRACKETS`(`id`, `money`, `resources`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, taxId);
-            stmt.setInt(2, money);
-            stmt.setInt(3, rss);
+    public Map<Integer, TaxBracket> getTaxBrackets() {
+        return getTaxBrackets(new HashMap<>());
+    }
+
+    public Map<Integer, TaxBracket> getTaxBrackets(Map<Integer, Integer> alliancesByTaxId) {
+        if (alliancesByTaxId.isEmpty()) alliancesByTaxId.putAll(Locutus.imp().getNationDB().getAllianceIdByTaxId());
+
+        Map<Integer, TaxBracket> result = new HashMap<>();
+        for (org.example.jooq.bank.tables.records.TaxBracketsRecord rs : ctx().selectFrom(TAX_BRACKETS).fetch()) {
+            int id = rs.getId();
+            int money = rs.getMoney();
+            int rss = rs.getResources();
+            long date = rs.getDate();
+            int allianceId = alliancesByTaxId.getOrDefault(id, 0);
+            result.put(id, new TaxBracket(id, allianceId, "", money, rss, date));
+        }
+        return result;
+    }
+
+    public void addTaxBracket(TaxBracket bracket) {
+        updateLegacy("INSERT OR REPLACE INTO `TAX_BRACKETS`(`id`, `money`, `resources`, `date`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, bracket.taxId);
+            stmt.setInt(2, bracket.moneyRate);
+            stmt.setInt(3, bracket.rssRate);
+            stmt.setLong(4, bracket.dateFetched);
         });
     }
 
     public synchronized void purgeSubscriptions() {
         long now = System.currentTimeMillis();
-        update("DELETE FROM `SUBSCRIPTIONS` WHERE date < ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        updateLegacy("DELETE FROM `SUBSCRIPTIONS` WHERE date < ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, now);
         });
     }
 
     public void unsubscribeAll(User user) {
-        update("DELETE FROM `SUBSCRIPTIONS` WHERE user = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        updateLegacy("DELETE FROM `SUBSCRIPTIONS` WHERE user = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, user.getIdLong());
         });
     }
 
     public void unsubscribe(User user, int allianceOrNation, BankSubType type) {
-        update("DELETE FROM `SUBSCRIPTIONS` WHERE user = ? AND allianceOrNation = ? AND isNation & ? > 0", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        updateLegacy("DELETE FROM `SUBSCRIPTIONS` WHERE user = ? AND allianceOrNation = ? AND isNation & ? > 0", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, user.getIdLong());
             stmt.setInt(2, allianceOrNation);
             stmt.setInt(3, type.mask);
@@ -823,7 +987,7 @@ public class BankDB extends DBMain {
 
     public void subscribe(User user, int allianceOrNation, BankSubType type, long date, boolean isReceive, long amount) {
         long pair = user.getIdLong();
-        update("INSERT OR REPLACE INTO `SUBSCRIPTIONS`(`user`, `allianceOrNation`, `isNation`, `date`, `isReceive`, `amount`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        updateLegacy("INSERT OR REPLACE INTO `SUBSCRIPTIONS`(`user`, `allianceOrNation`, `isNation`, `date`, `isReceive`, `amount`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, user.getIdLong());
             stmt.setInt(2, allianceOrNation);
             stmt.setInt(3, type.mask);
@@ -861,22 +1025,21 @@ public class BankDB extends DBMain {
     public Set<Subscription> getSubscriptions(int allianceOrNation, BankSubType type, boolean isReceive, long amount) {
         long date = System.currentTimeMillis();
         Set<Subscription> list = new LinkedHashSet<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM SUBSCRIPTIONS WHERE allianceOrNation = ? AND isNation & ? > 0 AND isReceive = ? AND amount <= ? AND DATE > ?")) {
-            stmt.setInt(1, allianceOrNation);
-            stmt.setInt(2, type.mask);
-            stmt.setBoolean(3, isReceive);
-            stmt.setLong(4, amount);
-            stmt.setLong(5, date);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(createSub(rs));
-                }
+
+        ctx().selectFrom(SUBSCRIPTIONS)
+        .where(SUBSCRIPTIONS.ALLIANCEORNATION.eq(allianceOrNation))
+        .and(SUBSCRIPTIONS.ISNATION.bitAnd(type.mask).gt(0))
+        .and(SUBSCRIPTIONS.ISRECEIVE.eq(isReceive ? 1 : 0))
+        .and(SUBSCRIPTIONS.AMOUNT.eq(amount))
+        .and(SUBSCRIPTIONS.DATE.gt(date))
+        .fetch().forEach(rs -> {
+            try {
+                list.add(createSub(rs));
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
+        });
+        return list;
     }
 
     public static class Subscription {
@@ -897,327 +1060,266 @@ public class BankDB extends DBMain {
         }
     }
 
-    public Subscription createSub(ResultSet rs) throws SQLException {
-        // `user`, `allianceOrNation`, `isNation`, `date`, `isReceive`, `amount`
-        return new Subscription(rs.getLong("user"),
-                rs.getInt("allianceOrNation"),
-                BankSubType.get(rs.getInt("isNation")),
-                rs.getLong("date"),
-                rs.getBoolean("isReceive"),
-                rs.getLong("amount")
-                );
+    public Subscription createSub(org.example.jooq.bank.tables.records.SubscriptionsRecord rs) throws SQLException {
+        long user = rs.getUser();
+        int allianceOrNation = rs.getAllianceornation();
+        BankSubType type = BankSubType.get(rs.getIsnation());
+        long date = rs.getDate();
+        boolean isReceive = rs.getIsreceive() == 1;
+        long amount = rs.getAmount();
+        return new Subscription(user, allianceOrNation, type, date, isReceive, amount);
     }
 
     public Set<Subscription> getSubscriptions(long userId) {
         long date = System.currentTimeMillis();
         Set<Subscription> list = new LinkedHashSet<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM SUBSCRIPTIONS WHERE user = ? AND date > ?")) {
-            stmt.setLong(1, userId);
-            stmt.setLong(2, date);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(createSub(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
-    public void addAllianceTransactions(List<Transaction2> transactions) {
-        if (transactions.isEmpty()) return;
-        long now = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(60);
-        for (Transaction2 transaction : transactions) {
-            if (transaction.tx_datetime > now) throw new IllegalArgumentException("Transaction date is > now: " + transaction.tx_datetime);
-        }
-
-        String query = transactions.get(0).createInsert("TRANSACTIONS_ALLIANCE_2", false);
-        executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::setNoID);
-    }
-
-    public void importTransactionsLegacy() {
-        BankDB bankDb = Locutus.imp().getBankDB();
-
-        Set<Long> offshores = Locutus.imp().getRootBank().getGuildDB().getCoalitionRaw(Coalition.OFFSHORE);
-        List<Transfer> transfersLegacy = bankDb.getBankTransactionsLegacy();
-        transfersLegacy.removeIf(f -> f.getReceiver() > 10000);
-        transfersLegacy.removeIf(f -> !offshores.contains((long) f.getSender()) && !offshores.contains((long) f.getReceiver()) || f.getAmount() == 0);
-        Map<Long, List<Transfer>> byAA = new HashMap<>();
-        for (Transfer transfer : transfersLegacy) {
-            long pair = transfer.getSender() ^ ((long) transfer.getReceiver() << 17L) ^ ((long) transfer.getBanker() << 34L);
-            byAA.computeIfAbsent(pair, f -> new LinkedList<>()).add(transfer);
-        }
-
-        List<Transaction2> transaction2s = new ArrayList<>();
-
-        int notOffshore = 0;
-        Map<Integer, double[]> duplicateByAA = new HashMap<>();
-
-        for (Map.Entry<Long, List<Transfer>> entry : byAA.entrySet()) {
-            List<Transfer> transferList = entry.getValue();
-            Collections.sort(transferList, new Comparator<Transfer>() {
-                @Override
-                public int compare(Transfer o1, Transfer o2) {
-                    return Long.compare(o1.getDate(), o2.getDate());
-                }
-            });
-            Transaction2 transaction = null;
-            Transfer last = null;
-
-            List<Integer> toRemove = new LinkedList<>();
-            for (int i = 0; i < transferList.size(); i++) {
-                for (int j = i + 1; j < transferList.size(); j++) {
-                    Transfer tx1 = transferList.get(i);
-                    Transfer tx2 = transferList.get(j);
-                    if (tx2.getDate() > tx1.getDate() + 60000) break;
-                    if (!tx1.isReceiverAA() || !tx2.isReceiverAA() || !tx1.isSenderAA() || !tx2.isSenderAA()) continue;
-                    if (tx1.getReceiver() > 8762 || tx1.getSender() > 8762) continue;
-                    if (!offshores.contains((long) tx1.getSender()) && !offshores.contains((long) tx1.getReceiver())) {
-                        notOffshore++;
-                        continue;
-                    }
-                    if (tx1.getSender() == tx2.getSender() &&
-                            tx1.getReceiver() == tx2.getReceiver() &&
-                            tx1.getBanker() == tx2.getBanker() &&
-                            tx1.getDate() / 60000 == tx2.getDate() / 60000 &&
-                            tx1.getRss() == tx2.getRss() &&
-                            tx1.getAmount() == tx2.getAmount() &&
-                            Objects.equals(tx1.getNote(), tx2.getNote())
-                    ) {
-                        toRemove.add(j);
-                        if (tx1.isSenderAA()) {
-                            duplicateByAA.computeIfAbsent(tx1.getSender(), f -> ResourceType.getBuffer())[tx1.getRss().ordinal()] += (tx1.getAmount() * 1);
-                        }
-                        if (tx1.isReceiverAA()) {
-                            duplicateByAA.computeIfAbsent(tx1.getReceiver(), f -> ResourceType.getBuffer())[tx1.getRss().ordinal()] += (tx1.getAmount() * -1);
-                        }
-                    }
-                }
-            }
-            if (!toRemove.isEmpty()) {
-                toRemove = new ArrayList<>(new HashSet<>(toRemove));
-                Collections.sort(toRemove);
-                for (int i = toRemove.size() - 1; i >= 0; i--) {
-                    transferList.remove((int) toRemove.get(i));
-                }
-            }
-
-            for (Transfer transfer : transferList) {
-                // if equal to previous and rss id > previous rss id
-                if (last == null) {
-                    last = transfer;
-                    transaction = new Transaction2(last);
-                    continue;
-                }
-                if (transfer.isReceiverAA() != last.isReceiverAA() ||
-                        transfer.isSenderAA() != last.isSenderAA() ||
-                        (transfer.getDate() / 60000) != (last.getDate() / 60000) ||
-                        transfer.getSender() != last.getSender() ||
-                        transfer.getReceiver() != last.getReceiver() ||
-                        transfer.getBanker() != last.getBanker() ||
-//                        transfer.getRss().ordinal() <= last.getRss().ordinal() ||
-                        transaction.resources[transfer.getRss().ordinal()] != 0 ||
-                        !Objects.equals(transfer.getNote(), last.getNote())
-                ) {
-                    transaction2s.add(transaction);
-                    last = transfer;
-                    transaction = new Transaction2(last);
-                    continue;
-                } else {
-                    transaction.resources[transfer.getRss().ordinal()] += transfer.getAmount();
-                }
-            }
-            if (transaction != null) {
-                transaction2s.add(transaction);
+        @NotNull Result<SubscriptionsRecord> records = ctx().selectFrom(SUBSCRIPTIONS).where(SUBSCRIPTIONS.USER.eq(userId)).and(SUBSCRIPTIONS.DATE.gt(date)).fetch();
+        for (SubscriptionsRecord rs : records) {
+            try {
+                list.add(createSub(rs));
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
         }
-
-        double[] total = ResourceType.getBuffer();
-        for (Long offshore : offshores) {
-            total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, duplicateByAA.getOrDefault(offshore.intValue(), ResourceType.getBuffer()));
-        }
-        for (Map.Entry<Integer, double[]> entry : duplicateByAA.entrySet()) {
-            if (offshores.contains((long) entry.getKey())) continue;
-        }
-
-        Collections.sort(transaction2s, new Comparator<Transaction2>() {
-            @Override
-            public int compare(Transaction2 o1, Transaction2 o2) {
-                return Long.compare(o1.getDate(), o2.getDate());
-            }
-        });
-
-        addAllianceTransactions(transaction2s);
-    }
-
-    public void removeAllianceTransactions(int allianceId, long timestamp) {
-        update("DELETE FROM `TRANSACTIONS_ALLIANCE_2` WHERE (sender_id = ? AND sender_type = ?) or (receiver_id = ? AND receiver_type = ?) and tx_datetime >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, allianceId);
-            stmt.setInt(2, 2);
-            stmt.setInt(3, allianceId);
-            stmt.setInt(4, 2);
-            stmt.setLong(5, timestamp);
-        });
-    }
-
-    public void removeAllianceTransactions(int aaId1, int aaId2, long timestamp) {
-        if (aaId1 == aaId2) {
-            removeAllianceTransactions(aaId1, timestamp);
-            return;
-        }
-        update("DELETE FROM `TRANSACTIONS_ALLIANCE_2` WHERE ((sender_type = 2 and receiver_type = 2) and ((sender_id = ? and receiver_id = ?) or (sender_id = ? and receiver_id = ?))) and tx_datetime >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, aaId1);
-            stmt.setInt(2, aaId2);
-            stmt.setInt(3, aaId2);
-            stmt.setInt(4, aaId1);
-            stmt.setLong(5, timestamp);
-        });
-    }
-
-    public void removeAllianceTransactions(int allianceId) {
-        update("DELETE FROM `TRANSACTIONS_ALLIANCE_2` WHERE (sender_id = ? AND sender_type = ?) or (receiver_id = ? AND receiver_type = ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, allianceId);
-            stmt.setInt(2, 2);
-            stmt.setInt(3, allianceId);
-            stmt.setInt(4, 2);
-        });
-    }
-
-    public List<Transaction2> getBankTransactionsWithNote(String note, long cutoff) {
-        note = "%" + note.toLowerCase() + "%";
-        String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE tx_datetime >= ? AND lower(note) like ?";
-
-        List<Transaction2> list = new ArrayList<>();
-
-        String finalNote = note;
-        query(query, new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setLong(1, cutoff);
-                stmt.setString(2, finalNote);
-            }
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                list.add(new Transaction2(rs));
-            }
-        });
         return list;
     }
 
+//    public void addAllianceTransactionsLegacy3(List<Transaction2> transactions) {
+//        if (transactions.isEmpty()) return;
+//        long now = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(60);
+//        for (Transaction2 transaction : transactions) {
+//            if (transaction.tx_datetime > now) throw new IllegalArgumentException("Transaction date is > now: " + transaction.tx_datetime);
+//        }
+//
+//        String query = transactions.get(0).createInsert("TRANSACTIONS_ALLIANCE_2", false, false);
+//        executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::setNoID);
+//    }
+//
+//    public void importTransactionsLegacy() {
+//        BankDB bankDb = Locutus.imp().getBankDB();
+//
+//        Set<Long> offshores = Locutus.imp().getRootBank().getGuildDB().getCoalitionRaw(Coalition.OFFSHORE);
+//        List<Transfer> transfersLegacy = bankDb.getBankTransactionsLegacy();
+//        transfersLegacy.removeIf(f -> f.getReceiver() > 10000);
+//        transfersLegacy.removeIf(f -> !offshores.contains((long) f.getSender()) && !offshores.contains((long) f.getReceiver()) || f.getAmount() == 0);
+//        Map<Long, List<Transfer>> byAA = new HashMap<>();
+//        for (Transfer transfer : transfersLegacy) {
+//            long pair = transfer.getSender() ^ ((long) transfer.getReceiver() << 17L) ^ ((long) transfer.getBanker() << 34L);
+//            byAA.computeIfAbsent(pair, f -> new ArrayList<>()).add(transfer);
+//        }
+//
+//        List<Transaction2> transaction2s = new ArrayList<>();
+//
+//        int notOffshore = 0;
+//        Map<Integer, double[]> duplicateByAA = new HashMap<>();
+//
+//        for (Map.Entry<Long, List<Transfer>> entry : byAA.entrySet()) {
+//            List<Transfer> transferList = entry.getValue();
+//            Collections.sort(transferList, new Comparator<Transfer>() {
+//                @Override
+//                public int compare(Transfer o1, Transfer o2) {
+//                    return Long.compare(o1.getDate(), o2.getDate());
+//                }
+//            });
+//            Transaction2 transaction = null;
+//            Transfer last = null;
+//
+//            List<Integer> toRemove = new ArrayList<>();
+//            for (int i = 0; i < transferList.size(); i++) {
+//                for (int j = i + 1; j < transferList.size(); j++) {
+//                    Transfer tx1 = transferList.get(i);
+//                    Transfer tx2 = transferList.get(j);
+//                    if (tx2.getDate() > tx1.getDate() + 60000) break;
+//                    if (!tx1.isReceiverAA() || !tx2.isReceiverAA() || !tx1.isSenderAA() || !tx2.isSenderAA()) continue;
+//                    if (tx1.getReceiver() > 8762 || tx1.getSender() > 8762) continue;
+//                    if (!offshores.contains((long) tx1.getSender()) && !offshores.contains((long) tx1.getReceiver())) {
+//                        notOffshore++;
+//                        continue;
+//                    }
+//                    if (tx1.getSender() == tx2.getSender() &&
+//                            tx1.getReceiver() == tx2.getReceiver() &&
+//                            tx1.getBanker() == tx2.getBanker() &&
+//                            tx1.getDate() / 60000 == tx2.getDate() / 60000 &&
+//                            tx1.getRss() == tx2.getRss() &&
+//                            tx1.getAmount() == tx2.getAmount() &&
+//                            Objects.equals(tx1.getNote(), tx2.getNote())
+//                    ) {
+//                        toRemove.add(j);
+//                        if (tx1.isSenderAA()) {
+//                            duplicateByAA.computeIfAbsent(tx1.getSender(), f -> ResourceType.getBuffer())[tx1.getRss().ordinal()] += (tx1.getAmount() * 1);
+//                        }
+//                        if (tx1.isReceiverAA()) {
+//                            duplicateByAA.computeIfAbsent(tx1.getReceiver(), f -> ResourceType.getBuffer())[tx1.getRss().ordinal()] += (tx1.getAmount() * -1);
+//                        }
+//                    }
+//                }
+//            }
+//            if (!toRemove.isEmpty()) {
+//                toRemove = new ArrayList<>(new HashSet<>(toRemove));
+//                Collections.sort(toRemove);
+//                for (int i = toRemove.size() - 1; i >= 0; i--) {
+//                    transferList.remove((int) toRemove.get(i));
+//                }
+//            }
+//
+//            for (Transfer transfer : transferList) {
+//                // if equal to previous and rss id > previous rss id
+//                if (last == null) {
+//                    last = transfer;
+//                    transaction = new Transaction2(last);
+//                    continue;
+//                }
+//                if (transfer.isReceiverAA() != last.isReceiverAA() ||
+//                        transfer.isSenderAA() != last.isSenderAA() ||
+//                        (transfer.getDate() / 60000) != (last.getDate() / 60000) ||
+//                        transfer.getSender() != last.getSender() ||
+//                        transfer.getReceiver() != last.getReceiver() ||
+//                        transfer.getBanker() != last.getBanker() ||
+////                        transfer.getRss().ordinal() <= last.getRss().ordinal() ||
+//                        transaction.resources[transfer.getRss().ordinal()] != 0 ||
+//                        !Objects.equals(transfer.getNote(), last.getNote())
+//                ) {
+//                    transaction2s.add(transaction);
+//                    last = transfer;
+//                    transaction = new Transaction2(last);
+//                    continue;
+//                } else {
+//                    transaction.resources[transfer.getRss().ordinal()] += transfer.getAmount();
+//                }
+//            }
+//            if (transaction != null) {
+//                transaction2s.add(transaction);
+//            }
+//        }
+//
+//        double[] total = ResourceType.getBuffer();
+//        for (Long offshore : offshores) {
+//            total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, duplicateByAA.getOrDefault(offshore.intValue(), ResourceType.getBuffer()));
+//        }
+//        for (Map.Entry<Integer, double[]> entry : duplicateByAA.entrySet()) {
+//            if (offshores.contains((long) entry.getKey())) continue;
+//        }
+//
+//        Collections.sort(transaction2s, new Comparator<Transaction2>() {
+//            @Override
+//            public int compare(Transaction2 o1, Transaction2 o2) {
+//                return Long.compare(o1.getDate(), o2.getDate());
+//            }
+//        });
+//
+//        addAllianceTransactionsLegacy2(transaction2s);
+//    }
+//
+//    public void removeAllianceTransactions(int allianceId, long timestamp) {
+//        updateLegacy("DELETE FROM `TRANSACTIONS_ALLIANCE_2` WHERE (sender_id = ? AND sender_type = ?) or (receiver_id = ? AND receiver_type = ?) and tx_datetime >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+//            stmt.setInt(1, allianceId);
+//            stmt.setInt(2, 2);
+//            stmt.setInt(3, allianceId);
+//            stmt.setInt(4, 2);
+//            stmt.setLong(5, timestamp);
+//        });
+//    }
+//
+//    public void removeAllianceTransactions(int aaId1, int aaId2, long timestamp) {
+//        if (aaId1 == aaId2) {
+//            removeAllianceTransactions(aaId1, timestamp);
+//            return;
+//        }
+//        updateLegacy("DELETE FROM `TRANSACTIONS_ALLIANCE_2` WHERE ((sender_type = 2 and receiver_type = 2) and ((sender_id = ? and receiver_id = ?) or (sender_id = ? and receiver_id = ?))) and tx_datetime >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+//            stmt.setInt(1, aaId1);
+//            stmt.setInt(2, aaId2);
+//            stmt.setInt(3, aaId2);
+//            stmt.setInt(4, aaId1);
+//            stmt.setLong(5, timestamp);
+//        });
+//    }
+//
+//    public void removeAllianceTransactions(int allianceId) {
+//        updateLegacy("DELETE FROM `TRANSACTIONS_ALLIANCE_2` WHERE (sender_id = ? AND sender_type = ?) or (receiver_id = ? AND receiver_type = ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+//            stmt.setInt(1, allianceId);
+//            stmt.setInt(2, 2);
+//            stmt.setInt(3, allianceId);
+//            stmt.setInt(4, 2);
+//        });
+//    }
+//
+//    public List<Transaction2> getBankTransactionsWithNote(String note, long cutoff) {
+//        note = "%" + note.toLowerCase() + "%";
+//        String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE tx_datetime >= ? AND lower(note) like ?";
+//
+//        List<Transaction2> list = new ArrayList<>();
+//
+//        String finalNote = note;
+//        query(query, new ThrowingConsumer<PreparedStatement>() {
+//            @Override
+//            public void acceptThrows(PreparedStatement stmt) throws Exception {
+//                stmt.setLong(1, cutoff);
+//                stmt.setString(2, finalNote);
+//            }
+//        }, (ThrowingConsumer<ResultSet>) rs -> {
+//            while (rs.next()) {
+//                list.add(new Transaction2(rs));
+//            }
+//        });
+//        return list;
+//    }
+//
     public List<Transaction2> getBankTransactions(long senderOrReceiverId, int type) {
+        return getBankTransactions(senderOrReceiverId, type, true, true);
+    }
+    public List<Transaction2> getBankTransactions(long senderOrReceiverId, int type, boolean includeLegacy, boolean includeModern) {
         if (type == 1) return getTransactionsByNation((int) senderOrReceiverId);
         if (type != 2 && type != 3) throw new IllegalArgumentException("Invalid type: " + type);
 
         List<Transaction2> list = new ArrayList<>();
 
-        String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
+        if (includeLegacy) {
 
-        query(query, new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setLong(1, senderOrReceiverId);
-                stmt.setInt(2, type);
-                stmt.setLong(3, senderOrReceiverId);
-                stmt.setInt(4, type);
+            String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
 
-                if (type == 3) stmt.setString(5, "%#guild=" + senderOrReceiverId + "%");
-                else if (type == 2) stmt.setString(5, "%#alliance=" + senderOrReceiverId + "%");
+            queryLegacy(query, new ThrowingConsumer<PreparedStatement>() {
+                @Override
+                public void acceptThrows(PreparedStatement stmt) throws Exception {
+                    stmt.setLong(1, senderOrReceiverId);
+                    stmt.setInt(2, type);
+                    stmt.setLong(3, senderOrReceiverId);
+                    stmt.setInt(4, type);
 
-            }
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                list.add(new Transaction2(rs));
-            }
-        });
+                    if (type == 3) stmt.setString(5, "%#guild=" + senderOrReceiverId + "%");
+                    else if (type == 2) stmt.setString(5, "%#alliance=" + senderOrReceiverId + "%");
+
+                }
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    list.add(new Transaction2(rs));
+                }
+            });
+        }
+
+        // ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
+
+        if (includeModern) {
+            Condition noteCondition;
+            if (type == 3) {
+                noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#guild=" + senderOrReceiverId + "%");
+            } else if (type == 2) {
+                noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#alliance=" + senderOrReceiverId + "%");
+            } else throw new InvalidResultException("Invalid type " + type);
+            list.addAll(getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.SENDER_TYPE.eq(type)),
+                    TRANSACTIONS_2.RECEIVER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(type)),
+                    noteCondition)));
+        }
+
         return list;
     }
 
-    private List<Transfer> getBankTransactionsLegacy() {
-        ArrayList<Transfer> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_BANK")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(Transfer.of(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-//    public void removeBankTransactions(int allianceId, long timestamp) {
-//        update("DELETE FROM `TRANSACTIONS_BANK` WHERE (bank = ? or receiver = ?) and date >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//            stmt.setLong(3, timestamp);
-//        });
-//    }
-//
-//    public void removeBankTransactions(int allianceId) {
-//        update("DELETE FROM `TRANSACTIONS_BANK` WHERE bank = ? or receiver = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//        });
-//    }
-//
-//    public void addBankTransactions(Collection<Transfer> transfers) {
-//        try {
-//            synchronized (this) {
-//                LinkedList<Transfer> copy = new LinkedList<>(transfers);
-//                copy.removeIf(transfer -> {
-//                    long bankTurn = TimeUtil.getTurn(transfer.getDate());
-//                    return (bankTurn > TimeUtil.getTurn() + 1) || transfer.getSender() == 0 || transfer.getReceiver() == 0;
-//                });
-//                String query = "INSERT OR IGNORE INTO `TRANSACTIONS_BANK` (`date`, note, bank, receiver, banker, resource, amount) VALUES(?, ?, ?, ?, ?, ?, ?)";
-//                executeBatch(transfers, query, new ThrowingBiConsumer<Transfer, PreparedStatement>() {
-//                    @Override
-//                    public void acceptThrows(Transfer transfer, PreparedStatement stmt) throws SQLException {
-//                        stmt.setLong(1, transfer.getDate());
-//                        stmt.setString(2, transfer.getNote());
-//                        stmt.setInt(3, transfer.getSender());
-//                        stmt.setInt(4, transfer.getReceiver());
-//                        stmt.setInt(5, transfer.getBanker());
-//                        stmt.setInt(6, transfer.getRss().ordinal());
-//                        stmt.setDouble(7, transfer.getAmount());
-//                    }
-//                });
-//            }
-//        } catch (Throwable e) {
-//            e.printStackTrace();
-//            for (Transfer transfer : transfers) {
-//                Locutus.imp().getBankDB().addBankTransaction(transfer);
-//            }
-//        }
-//    }
-//
-//    public void addBankTransaction(Transfer transfer) {
-//        long bankTurn = TimeUtil.getTurn(transfer.getDate());
-//        if (bankTurn > TimeUtil.getTurn() + 1) return;
-//        if (transfer.isReceiverAA() || transfer.isSenderAA()) {
-//            update("INSERT OR IGNORE INTO `TRANSACTIONS_BANK` (`date`, note, bank, receiver, banker, resource, amount) VALUES(?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//                stmt.setLong(1, transfer.getDate());
-//                stmt.setString(2, transfer.getNote());
-//                stmt.setInt(3, transfer.getSender());
-//                stmt.setInt(4, transfer.getReceiver());
-//                stmt.setInt(5, transfer.getBanker());
-//                stmt.setInt(6, transfer.getRss().ordinal());
-//                stmt.setDouble(7, transfer.getAmount());
-//            });
-//            return;
-//        }
-//    }
-//
-//    public List<Transfer> getBankTransactions(long guildId) {
+//    private List<Transfer> getBankTransactionsLegacy() {
 //        ArrayList<Transfer> list = new ArrayList<>();
-//        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_BANK WHERE lower(note) like ?")) {
-//            stmt.setString(1, "%#guild=" + guildId + "%");
+//        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_BANK")) {
 //            try (ResultSet rs = stmt.executeQuery()) {
 //                while (rs.next()) {
-//                    list.add(create(rs));
+//                    list.add(Transfer.of(rs));
 //                }
 //            }
 //            return list;
@@ -1226,23 +1328,4 @@ public class BankDB extends DBMain {
 //            return null;
 //        }
 //    }
-//
-//    public List<Transfer> getBankTransactions(int allianceId) {
-//        ArrayList<Transfer> list = new ArrayList<>();
-//        try (PreparedStatement stmt = prepareQuery("select * FROM TRANSACTIONS_BANK WHERE bank = ? OR receiver = ? OR lower(note) like ?")) {
-//            stmt.setInt(1, allianceId);
-//            stmt.setInt(2, allianceId);
-//            stmt.setString(3, "%#alliance=" + allianceId + "%");
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    list.add(create(rs));
-//                }
-//            }
-//            return list;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
-//
 }

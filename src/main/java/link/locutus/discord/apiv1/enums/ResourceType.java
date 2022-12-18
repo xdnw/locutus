@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
+import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -7,10 +8,14 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public enum ResourceType {
@@ -19,61 +24,25 @@ public enum ResourceType {
 
     FOOD("food", "withfood", 11, 400, 2, 0, 20, 1.25d, () -> Projects.MASS_IRRIGATION, 0) {
             @Override
-            public double getBaseProduction(double rads, boolean project, double land) {
+            public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, long date) {
                 int factor = 500;
-                if (project) {
+                if (hasProject.test(getProject())) {
                     factor = 400;
                 }
-//                double radIndex = nation.getRads() + 32.37;
-//                rads = (1 + (radIndex / (-1000)));
+                if (hasProject.test(Projects.FALLOUT_SHELTER)) {
+                    rads = Math.max(0.1, rads);
+                } else {
+                    rads = Math.max(0, rads);
+                }
 
-                double season = 1;
-
-//            switch (ZonedDateTime.now(ZoneOffset.UTC).getMonth()) {
-//                case DECEMBER:
-//                case JANUARY:
-//                case FEBRUARY:
-//                    switch (nation.getContinent().toLowerCase()) {
-//                        case "north america":
-//                        case "europe":
-//                        case "asia":
-//                            season = 0.8;
-//                            break;
-//                        case "antarctica":
-//                            season = 0.5;
-//                            break;
-//                        default:
-//                            season = 1.2;
-//                            break;
-//                    }
-//                    break;
-//                case JUNE:
-//                case JULY:
-//                case AUGUST:
-//                    switch (nation.getContinent().toLowerCase()) {
-//                        case "north america":
-//                        case "europe":
-//                        case "asia":
-//                            season = 1.2;
-//                            break;
-//                        case "antarctica":
-//                            season = 0.5;
-//                            break;
-//                        default:
-//                            season = 0.8;
-//                            break;
-//                    }
-//                    break;
-//            }
-
-            // 0.0025 - 0.002
+                double season = date <= 0 ? continent.getSeasonModifier() : continent.getSeasonModifier(date);
 
                 return Math.max(0, (land / factor) * 12 * season * rads);
             }
 
         @Override
-        public double getProduction(double rads, boolean project, double land, int improvements) {
-            return improvements * (1 + ((0.5 * (improvements - 1)) / (20 - 1))) * getBaseProduction(rads, project, land);
+        public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, int improvements, long date) {
+            return improvements * (1 + ((0.5 * (improvements - 1)) / (20 - 1))) * getBaseProduction(continent, rads, hasProject, land, date);
         }
     },
     COAL("coal", "withcoal", 10, 600, 12, 3, 10),
@@ -105,11 +74,70 @@ public enum ResourceType {
         return true;
     }
 
+    public static double[] floor(double[] resources, double min) {
+        for (int i = 0; i < resources.length; i++) {
+            if (resources[i] < min) resources[i] = min;
+        }
+        return resources;
+    }
+
+    public static double[] ceil(double[] resources, double max) {
+        for (int i = 0; i < resources.length; i++) {
+            if (resources[i] > max) resources[i] = max;
+        }
+        return resources;
+    }
+
+    public static double[] set(double[] resources, double[] values) {
+        for (int i = 0; i < values.length; i++) {
+            resources[i] = values[i];
+        }
+        return resources;
+    }
+
+    public static double[] subtract(double[] resources, double[] values) {
+        for (int i = 0; i < values.length; i++) {
+            resources[i] -= values[i];
+        }
+        return resources;
+    }
+
+    public static double[] add(double[] resources, double[] values) {
+        for (int i = 0; i < values.length; i++) {
+            resources[i] += values[i];
+        }
+        return resources;
+    }
+
+    public static double[] negative(double[] resources) {
+        for (int i = 0; i < resources.length; i++) {
+            resources[i] = -resources[i];
+        }
+        return resources;
+    }
 
     public double[] toArray(double amt) {
         double[] result = getBuffer();
         result[ordinal()] = amt;
         return result;
+    }
+
+    public static double getEquilibrium(double[] total) {
+        double consumeCost = 0;
+        double taxable = 0;
+        for (ResourceType type : values) {
+            double amt = total[type.ordinal()];
+            if (amt < 0) {
+                consumeCost += Math.abs(PnwUtil.convertedTotal(type, -amt));
+            } else if (amt > 0){
+                taxable += Math.abs(PnwUtil.convertedTotal(type, amt));
+            }
+        }
+        if (taxable > consumeCost) {
+            double requiredTax = consumeCost / taxable;
+            return requiredTax;
+        }
+        return -1;
     }
 
     public Building getBuilding() {
@@ -127,6 +155,81 @@ public enum ResourceType {
 
     public static double[] getBuffer() {
         return new double[ResourceType.values.length];
+    }
+
+    public static ResourcesBuilder builder() {
+        return new ResourcesBuilder();
+    }
+
+    public ResourcesBuilder builder(double amt) {
+        return builder().add(this, amt);
+    }
+
+    public static class ResourcesBuilder {
+        private double[] resources = null;
+
+        private double[] getResources() {
+            if (resources == null) resources = getBuffer();
+            return resources;
+        }
+
+        public ResourcesBuilder add(ResourceType type, double amt) {
+            if (amt != 0) {
+                getResources()[type.ordinal()] += amt;
+            }
+            return this;
+        }
+
+        public ResourcesBuilder add(double[] amt) {
+            for (ResourceType type : ResourceType.values) {
+                add(type, amt[type.ordinal()]);
+            }
+            return this;
+        }
+
+        public ResourcesBuilder add(Map<ResourceType, Double> amt) {
+            for (Map.Entry<ResourceType, Double> entry : amt.entrySet()) {
+                add(entry.getKey(), entry.getValue());
+            }
+            return this;
+        }
+
+        public ResourcesBuilder addMoney(double amt) {
+            return add(ResourceType.MONEY, amt);
+        }
+
+        public boolean isEmpty() {
+            return resources == null || ResourceType.isEmpty(resources);
+        }
+
+        public double[] build() {
+            return getResources();
+        }
+
+
+        public ResourcesBuilder subtract(double[] resources) {
+            for (int i = 0; i < resources.length; i++) {
+                add(ResourceType.values[i], -resources[i]);
+            }
+            return this;
+        }
+    }
+
+    public static double[] fromApiV3(Bankrec rec, double[] buffer) {
+        double[] resources = buffer == null ? getBuffer() : buffer;
+        resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
+        resources[ResourceType.COAL.ordinal()] = rec.getCoal();
+        resources[ResourceType.OIL.ordinal()] = rec.getOil();
+        resources[ResourceType.URANIUM.ordinal()] = rec.getUranium();
+        resources[ResourceType.IRON.ordinal()] = rec.getIron();
+        resources[ResourceType.BAUXITE.ordinal()] = rec.getBauxite();
+        resources[ResourceType.LEAD.ordinal()] = rec.getLead();
+        resources[ResourceType.GASOLINE.ordinal()] = rec.getGasoline();
+        resources[ResourceType.MUNITIONS.ordinal()] = rec.getMunitions();
+        resources[ResourceType.STEEL.ordinal()] = rec.getSteel();
+        resources[ResourceType.ALUMINUM.ordinal()] = rec.getAluminum();
+        resources[ResourceType.FOOD.ordinal()] = rec.getFood();
+        return resources;
     }
 
     private final double baseProduction;
@@ -212,21 +315,25 @@ public enum ResourceType {
         return boostFactor;
     }
 
-    public double getInput(double rads, boolean project, JavaCity city, int improvements) {
+    public double getInput(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements) {
         if (inputs == null) return 0;
 
-        double base = getBaseProduction(rads, project, city.getLand());
+        double base = getBaseProduction(continent, rads, hasProject, city.getLand(), -1);
         base = (base * baseProductionInverse) * baseInput;
 
         return base * (1+0.5*((improvements - 1d) * capInverse)) * improvements;
     }
 
-    public double getBaseProduction(double rads, boolean project, double land) {
+    public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, long date) {
         double factor = 1;
-        if (project) {
+        if (getProject() != null && hasProject.test(getProject())) {
             factor = boostFactor;
         }
         return baseProduction * factor;
+    }
+
+    public double getManufacturingMultiplier() {
+        return baseProduction / baseInput;
     }
 
     public Project getProject() {
@@ -237,12 +344,12 @@ public enum ResourceType {
         return cap;
     }
 
-    public double getProduction(double rads, boolean project, JavaCity city, int improvements) {
-        return getProduction(rads, project, city.getLand(), improvements);
+    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int improvements, long date) {
+        return getProduction(continent, rads, hasProject, city.getLand(), improvements, date);
     }
 
-    public double getProduction(double rads, boolean project, double land, int improvements) {
-        double base = getBaseProduction(rads, project, land);
+    public double getProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, int improvements, long date) {
+        double base = getBaseProduction(continent, rads, hasProject, land, date);
         return base * (1+0.5*((improvements - 1) * capInverse)) *improvements;
     }
 

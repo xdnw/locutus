@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -25,7 +25,7 @@ public class GetCoalitions extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions [filter]";
+        return Settings.commandPrefix(true) + "coalitions [filter]";
     }
 
     @Override
@@ -33,7 +33,7 @@ public class GetCoalitions extends Command {
         return "List all coalitions\n" +
                 "Add `-i` to list only IDs\n" +
                 "Add `-d` to ignore deleted AAs\n" +
-                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "coalitions enemies`";
+                "e.g. `" + Settings.commandPrefix(true) + "coalitions enemies`";
     }
 
     @Override
@@ -43,7 +43,7 @@ public class GetCoalitions extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        boolean isAdmin = Roles.ADMIN.hasOnRoot(event.getAuthor());
+        boolean isAdmin = Roles.ADMIN.has(event.getAuthor(), guild);
         if (args.size() > 1) return usage(event);
 
         Map<String, Set<Long>> coalitions = Locutus.imp().getGuildDB(event).getCoalitionsRaw();

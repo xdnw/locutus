@@ -2,6 +2,8 @@ package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -25,7 +27,7 @@ public interface NationOrAllianceOrGuild {
                 }
                 return nation;
             case 2:
-                return new Alliance((int) id);
+                return DBAlliance.getOrCreate((int) id);
             case 3:
                 return (NationOrAllianceOrGuild) Locutus.imp().getDiscordApi().getGuildById(id);
             default:
@@ -46,6 +48,10 @@ public interface NationOrAllianceOrGuild {
         if (isAlliance()) return 2;
         if (isGuild()) return 3;
         throw new IllegalArgumentException("Invalid state: " + this);
+    }
+
+    default String getQualifiedName() {
+        return getTypePrefix() + ":" + getIdLong();
     }
 
     default String getTypePrefix() {
@@ -88,8 +94,8 @@ public interface NationOrAllianceOrGuild {
         return getIdLong() > Integer.MAX_VALUE;
     }
 
-    default Alliance asAlliance() {
-        return (Alliance) this;
+    default DBAlliance asAlliance() {
+        return (DBAlliance) this;
     }
 
     default boolean isNation() {
@@ -104,7 +110,7 @@ public interface NationOrAllianceOrGuild {
             GuildDB db = asGuild();
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             if (aaId != null) {
-                nations.addAll(new Alliance(aaId).getNations(true, 0, true));
+                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(true, 0, true));
             } else {
                 Guild guild = db.getGuild();
                 Role role = Roles.MEMBER.toRole(guild);
@@ -134,7 +140,7 @@ public interface NationOrAllianceOrGuild {
             GuildDB db = asGuild();
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             if (aaId != null) {
-                nations.addAll(new Alliance(aaId).getNations(false, 0, false));
+                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(false, 0, false));
             }
             Guild guild = db.getGuild();
             for (Member member : guild.getMembers()) {

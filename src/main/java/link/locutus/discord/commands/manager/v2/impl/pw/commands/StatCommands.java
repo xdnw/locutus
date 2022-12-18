@@ -4,34 +4,33 @@ import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
-import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
-import link.locutus.discord.commands.rankings.builder.RankBuilder;
-import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.rankings.WarCostAB;
+import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarParser;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -59,6 +58,8 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.ClassUtils;
+import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -74,22 +75,296 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.commands.rankings.WarCostRanking.scale;
+
 public class StatCommands {
+
+    @Command(desc = "Rank war costs between two parties")
+    public String warCostRanking(@Me IMessageIO io, @Me User author, @Me JSONObject command,
+                                 @Timestamp long timeStart, @Timestamp @Default  Long timeEnd, @Default("*") Set<NationOrAlliance> coalition1, @Default("*") Set<NationOrAlliance> coalition2,
+                                 @Switch("i") boolean excludeInfra,
+                                 @Switch("c") boolean excludeConsumption,
+                                 @Switch("l") boolean excludeLoot,
+                                 @Switch("u") boolean excludeUnits,
+                                 @Switch("t") boolean total,
+                                 @Switch("p") boolean netProfit,
+                                 @Switch("d") boolean damage,
+                                 @Switch("n") boolean netTotal,
+                                 @Switch("g") boolean groupByAlliance,
+                                 @Switch("s") boolean scalePerCity,
+
+                                 @Switch("kills") MilitaryUnit unitKill,
+                                 @Switch("deaths") MilitaryUnit unitLoss,
+                                 @Switch("attack") AttackType attackType,
+
+                                 @Switch("wartype") Set<WarType> allowedWarTypes,
+                                 @Switch("status") Set<WarStatus> allowedWarStatuses,
+                                 @Switch("attacks") Set<AttackType> allowedAttacks,
+
+                                 @Switch("r") ResourceType resource,
+                                 @Switch("f") boolean uploadFile
+                                 ) {
+        if (timeEnd == null) timeEnd = Long.MAX_VALUE;
+
+        WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd)
+                .allowWarStatuses(allowedWarStatuses)
+                .allowedWarTypes(allowedWarTypes)
+                .allowedAttackTypes(allowedAttacks);
+
+        if (netProfit && unitKill != null) throw new IllegalArgumentException("The netProfit flag cannot be combined with unitKill");
+        if (netProfit && unitLoss != null) throw new IllegalArgumentException("The netProfit flag cannot be combined with unitKill");
+
+        int sign = netProfit ? -1 : 1;
+        String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, (Math.min(System.currentTimeMillis(), timeEnd) - timeStart));
+
+        String typeName = null;
+        if (unitKill != null) typeName = unitKill.getName();
+        if (unitLoss != null) typeName = unitLoss.getName();
+        if (resource != null) typeName = resource.getName();
+        if (attackType != null) typeName = attackType.getName();
+
+        String title = (damage && netTotal ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (netProfit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : "losses")) + " " + (!total ? "per " + (groupByAlliance ? "nation" : "war") : "of war") + " (%s)";
+        title = String.format(title, diffStr);
+
+        Map<Integer, DBWar> wars = parser.getWars();
+
+        BiFunction<Boolean, DBAttack, Double> valueFunc;
+        {
+            BiFunction<Boolean, DBAttack, Double> getValue = null;
+            if (unitKill != null) {
+                getValue = (attacker, attack) -> attack.getUnitLosses(!attacker).getOrDefault(unitKill, 0).doubleValue();
+            }
+            if (unitLoss != null) {
+                if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (1)");
+                getValue = (attacker, attack) -> attack.getUnitLosses(attacker).getOrDefault(unitLoss, 0).doubleValue();
+            }
+            if (attackType != null) {
+                if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (2)");
+                getValue = (attacker, attack) -> attack.attack_type == attackType ? 1d : 0d;
+            }
+            if (resource != null) {
+                if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (3)");
+                double min = damage ? 0 : Double.NEGATIVE_INFINITY;
+                getValue = (attacker, attack) -> Math.max(min, attack.getLosses(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot).getOrDefault(resource, 0d));
+            }
+            if (getValue == null) {
+                getValue = (attacker, attack) -> {
+                    if (!damage) {
+                        return attack.getLossesConverted(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot);
+                    } else {
+                        double totalVal = 0;
+                        Map<ResourceType, Double> losses = attack.getLosses(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot);
+                        for (Map.Entry<ResourceType, Double> entry : losses.entrySet()) {
+                            if (entry.getValue() > 0) totalVal += PnwUtil.convertedTotal(entry.getKey(), entry.getValue());
+                        }
+                        return totalVal;
+                    }
+                };
+            }
+            valueFunc = getValue;
+        }
+
+        GroupedRankBuilder<Integer, DBAttack> nationAllianceGroup = new RankBuilder<>(parser.getAttacks())
+        .group((BiConsumer<DBAttack, GroupedRankBuilder<Integer, DBAttack>>) (attack, map) -> {
+            // Group attacks into attacker and defender
+            if (groupByAlliance) {
+                map.put(wars.get(attack.war_id).attacker_aa, attack);
+                map.put(wars.get(attack.war_id).defender_aa, attack);
+            } else {
+                map.put(attack.attacker_nation_id, attack);
+                map.put(attack.defender_nation_id, attack);
+            }
+        });
+
+        // war
+        // nation
+        // alliance
+        BiFunction<Integer, DBAttack, Integer> groupBy;
+        if (groupByAlliance) groupBy = (attacker, attack) -> wars.get(attack.war_id).getNationId(attacker);
+        else groupBy = (attacker, attack) -> attack.war_id;
+
+        NumericMappedRankBuilder<Integer, Integer, Double> byGroupMap;
+        if (!damage) {
+            byGroupMap = nationAllianceGroup.map(groupBy,
+                    // Convert attack to profit value
+                    (byNatOrAA, attack) -> {
+                        DBWar war = wars.get(attack.war_id);
+                        int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
+                        DBNation nation = DBNation.byId(nationId);
+                        return scale(nation, sign * valueFunc.apply(attack.attacker_nation_id == nationId, attack), scalePerCity);
+                    });
+        } else {
+            byGroupMap = nationAllianceGroup.map(groupBy,
+                    // Convert attack to profit value
+                    (byNatOrAA, attack) -> {
+                        DBWar war = wars.get(attack.war_id);
+                        int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
+                        DBNation nation = parser.getNation(nationId, war);
+                        boolean primary = (attack.attacker_nation_id != nationId) == netProfit;
+                        double totalVal = valueFunc.apply(primary, attack);
+                        if (netTotal) {
+                            totalVal -= valueFunc.apply(!primary, attack);
+                        }
+                        return scale(nation, totalVal, scalePerCity);
+                    });
+        }
+
+        SummedMapRankBuilder<Integer, Number> byGroupSum;
+        if (total) {
+            byGroupSum = byGroupMap.sum();
+        } else {
+            byGroupSum = byGroupMap.average();
+        }
+
+        RankBuilder<String> ranks = byGroupSum
+                .sort()
+                .nameKeys(id -> PnwUtil.getName(id, groupByAlliance));
+
+        // Embed the rank list
+        
+        ranks.build(io, command, title, uploadFile);
+        return null;
+    }
+
+    @Command(desc = "War costs stats between two coalitions")
+    public String myloot(@Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation nation,
+                           Set<NationOrAlliance> coalition2, @Timestamp long timeStart,
+                           @Default @Timestamp Long timeEnd,
+                           @Switch("u") boolean ignoreUnits,
+                           @Switch("i") boolean ignoreInfra,
+                           @Switch("c") boolean ignoreConsumption,
+                           @Switch("l") boolean ignoreLoot,
+
+                           @Switch("l") boolean listWarIds,
+                           @Switch("t") boolean showWarTypes,
+
+                           @Switch("w")Set<WarType> allowedWarTypes,
+                           @Switch("s") Set<WarStatus> allowedWarStatus,
+                           @Switch("a")Set<AttackType> allowedAttackTypes) {
+        return warsCost(guild, channel, author, Collections.singleton(nation), coalition2, timeStart, timeEnd,
+                ignoreUnits, ignoreInfra, ignoreConsumption, ignoreLoot, listWarIds, showWarTypes,
+                allowedWarTypes, allowedWarStatus, allowedAttackTypes);
+    }
+
+    @Command(desc = "War costs of a single war (use warsCost for multiple wars)")
+    public String warCost(@Me User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
+                          @Switch("u") boolean ignoreUnits,
+                          @Switch("i") boolean ignoreInfra,
+                          @Switch("c") boolean ignoreConsumption,
+                          @Switch("l") boolean ignoreLoot) {
+        AttackCost cost = war.toCost();
+        if (Roles.ECON.has(author, guild)) {
+               WarCostAB.reimburse(cost, war, guild, channel);
+        }
+        return cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot);
+    }
+
+    /**
+     * @param coalition1
+     * @param coalition2
+     * @param timeStart
+     * @param timeEnd
+     * @return
+     */
+    @Command(desc = "War costs stats between two coalitions")
+    public String warsCost(@Me Guild guild, @Me IMessageIO channel, @Me User author,
+            Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2, @Timestamp long timeStart,
+                          @Default @Timestamp Long timeEnd,
+                          @Switch("u") boolean ignoreUnits,
+                          @Switch("i") boolean ignoreInfra,
+                          @Switch("c") boolean ignoreConsumption,
+                          @Switch("l") boolean ignoreLoot,
+
+                          @Switch("l") boolean listWarIds,
+                          @Switch("t") boolean showWarTypes,
+
+                          @Switch("w")Set<WarType> allowedWarTypes,
+                          @Switch("s") Set<WarStatus> allowedWarStatus,
+                          @Switch("a")Set<AttackType> allowedAttackTypes) {
+        if (timeEnd == null) timeEnd = Long.MAX_VALUE;
+        WarParser parser = WarParser.of(coalition1, coalition2, timeStart, timeEnd == null ? Long.MAX_VALUE : timeEnd);
+        // filter wars
+        if (allowedWarTypes != null) {
+            parser.getWars().entrySet().removeIf(f -> !allowedWarTypes.contains(f.getValue()));
+        }
+        if (allowedWarStatus != null) {
+            parser.getWars().entrySet().removeIf(f -> !allowedWarStatus.contains(f.getValue().getStatus()));
+        }
+
+        // filter attacks
+        if (allowedAttackTypes != null) {
+            parser.getAttacks().removeIf(f -> !allowedAttackTypes.contains(f));
+        }
+
+        AttackCost cost = parser.toWarCost();
+
+        IMessageBuilder msg = channel.create();
+        msg.append(cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot));
+        if (listWarIds) {
+            msg.file(cost.getNumWars() + " wars", " - " + StringMan.join(cost.getWarIds(), "\n - "));
+        }
+        if (showWarTypes) {
+            List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
+            Map<WarType, Integer> byType = new HashMap<>();
+            for (DBWar war : wars) {
+                byType.put(war.getWarType(), byType.getOrDefault(war.getWarType(), 0) + 1);
+            }
+            StringBuilder response = new StringBuilder();
+            for (Map.Entry<WarType, Integer> entry : byType.entrySet()) {
+                response.append("\n" + entry.getKey() + ": " + entry.getValue());
+            }
+            msg.embed("War Types", response.toString());
+        }
+        if (listWarIds) {
+            List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
+            Map<CoalitionWarStatus, Integer> byStatus = new HashMap<>();
+            for (DBWar war : wars) {
+                CoalitionWarStatus status = null;
+                switch (war.status) {
+                    case ATTACKER_OFFERED_PEACE:
+                    case DEFENDER_OFFERED_PEACE:
+                    case ACTIVE:
+                        status = CoalitionWarStatus.ACTIVE;
+                        break;
+                    case PEACE:
+                        status = CoalitionWarStatus.PEACE;
+                        break;
+                    case EXPIRED:
+                        status = CoalitionWarStatus.EXPIRED;
+                        break;
+                }
+                if (status != null) {
+                    byStatus.put(status, byStatus.getOrDefault(status, 0) + 1);
+                }
+            }
+            int attVictory = cost.getVictories(true).size();
+            int defVictory = cost.getVictories(false).size();
+            byStatus.put(CoalitionWarStatus.COL1_VICTORY, attVictory);
+            byStatus.put(CoalitionWarStatus.COL1_DEFEAT, defVictory);
+
+            StringBuilder response = new StringBuilder();
+            for (Map.Entry<CoalitionWarStatus, Integer> entry : byStatus.entrySet()) {
+                response.append("\n" + entry.getKey() + ": " + entry.getValue());
+            }
+            msg.embed("War Status", response.toString());
+        }
+
+        msg.send();
+        return null;
+    }
+
     @Command(desc = "List resources in each continent")
     public String continent(TradeManager manager) {
         StringBuilder response = new StringBuilder();
@@ -102,6 +377,92 @@ public class StatCommands {
             response.append(StringMan.join(types, "\n - ") + "\n");
         }
         return response.toString();
+    }
+
+    @Command(desc = "Rank alliances by a metric")
+    public void allianceRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+        long turn = TimeUtil.getTurn();
+        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metrics = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turn);
+
+        Map<DBAlliance, Double> metricsDiff = new LinkedHashMap<>();
+        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metrics.entrySet()) {
+            DBAlliance alliance = entry.getKey();
+            double diff = entry.getValue().get(metric).values().iterator().next();
+            metricsDiff.put(alliance, diff);
+        }
+        displayAllianceRanking(channel, command, metric, metricsDiff, reverseOrder, uploadFile);
+    }
+
+    public void displayAllianceRanking(IMessageIO channel, JSONObject command, AllianceMetric metric, Map<DBAlliance, Double> metricsDiff, boolean reverseOrder, boolean uploadFile) {
+
+        SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>(metricsDiff);
+        if (reverseOrder) {
+            builder = builder.sortAsc();
+        } else {
+            builder = builder.sort();
+        }
+        String title = "Top " + metric + " by alliance";
+
+        RankBuilder<String> named = builder.nameKeys(f -> f.getName());
+        named.build(channel, null, title, uploadFile);
+    }
+    @Command(desc = "Rank alliances by a metric over a specified time period")
+    public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+        long turnStart = TimeUtil.getTurn(timeStart);
+        long turnEnd = TimeUtil.getTurn(timeEnd);
+        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsStart = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turnStart);
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsEnd = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turnEnd);
+
+        Map<DBAlliance, Double> metricsDiff = new LinkedHashMap<>();
+        for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metricsEnd.entrySet()) {
+            DBAlliance alliance = entry.getKey();
+            if (!metricsStart.containsKey(alliance)) continue;
+            double dataStart = metricsStart.get(alliance).get(metric).values().iterator().next();
+            double dataEnd = entry.getValue().get(metric).values().iterator().next();
+            metricsDiff.put(alliance, dataEnd - dataStart);
+        }
+        displayAllianceRanking(channel, command, metric, metricsDiff, reverseOrder, uploadFile);
+    }
+
+    @Command(desc = "Rank nations by an attribute")
+    public void nationRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, NationAttributeDouble attribute, @Switch("a") boolean groupByAlliance, @Switch("r") boolean reverseOrder, @Switch("t") boolean total) {
+        Map<DBNation, Double> attributeByNation = new HashMap<>();
+        for (DBNation nation : nations) {
+            Double value = attribute.apply(nation);
+            if (value.isNaN() || value.isInfinite()) continue;
+            attributeByNation.put(nation, value);
+        }
+
+
+        String title = (total ? "Total" : groupByAlliance ? "Average" : "Top") + " " + attribute.getName() + " by " + (groupByAlliance ? "alliance" : "nation");
+
+        SummedMapRankBuilder<DBNation, Double> builder = new SummedMapRankBuilder<>(attributeByNation);
+
+        RankBuilder<String> named;
+        if (groupByAlliance) {
+            NumericGroupRankBuilder<Integer, Double> grouped = builder.group(new BiConsumer<Map.Entry<DBNation, Double>, GroupedRankBuilder<Integer, Double>>() {
+                @Override
+                public void accept(Map.Entry<DBNation, Double> entry, GroupedRankBuilder<Integer, Double> builder) {
+                    builder.put(entry.getKey().getAlliance_id(), entry.getValue());
+                }
+            });
+            SummedMapRankBuilder<Integer, ? extends Number> summed;
+            if (total) {
+                summed = grouped.sum();
+            } else {
+                summed = grouped.average();
+            }
+            summed = reverseOrder ? summed.sortAsc() : summed.sort();
+            named = summed.nameKeys(f -> PnwUtil.getName(f, true));
+        } else {
+            builder = reverseOrder ? builder.sortAsc() : builder.sort();
+            named = builder.nameKeys(DBNation::getName);
+        }
+        named.build(channel, command, title, true);
     }
 
     @Command(desc = "List the radiation in each continent")
@@ -133,8 +494,7 @@ public class StatCommands {
 
     @Command(desc = "View an alliances stats for counters")
     @RolePermission(Roles.MEMBER)
-    @WhitelistPermission
-    public String counterStats(@Me MessageChannel channel, Alliance alliance) {
+    public String counterStats(@Me IMessageIO channel, DBAlliance alliance) {
         List<Map.Entry<DBWar, CounterStat>> counters = Locutus.imp().getWarDb().getCounters(Collections.singleton(alliance.getAlliance_id()));
 
         if (counters.isEmpty()) return "No data (to include treatied alliances, append `-a`";
@@ -177,12 +537,12 @@ public class StatCommands {
         response.append(MathMan.format(chanceActive * 100) + "% for actives (" + totalActive + " wars)").append('\n');
         response.append(MathMan.format(chanceInactive * 100) + "% for inactives (" + totalInactive + " wars)");
 
-        DiscordUtil.createEmbedCommand(channel, title, response.toString());
+        channel.create().embed(title, response.toString()).send();
         return null;
     }
 
     @Command
-    public String metricTierGraph(@Me MessageChannel channel, NationMetricDouble metric, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('t') boolean total) throws IOException {
+    public String attributeTierGraph(@Me IMessageIO channel, NationAttributeDouble metric, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch("i") boolean includeInactives, @Switch("i") boolean includeApplicants, @Switch("t") boolean total) throws IOException {
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
 
@@ -192,8 +552,8 @@ public class StatCommands {
         Map<Integer, List<DBNation>> coalition1ByCity = new HashMap<>();
         Map<Integer, List<DBNation>> coalition2ByCity = new HashMap<>();
 
-        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new LinkedList<>()).add(n);
-        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new LinkedList<>()).add(n);
+        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
 
         int min = Math.min(Collections.min(coalition1ByCity.keySet()), Collections.min(coalition2ByCity.keySet()));
         int max = Math.max(Collections.max(coalition1ByCity.keySet()), Collections.max(coalition2ByCity.keySet()));
@@ -274,7 +634,9 @@ public class StatCommands {
         DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         writer.write(plot, baos, 1400, 600);
-        RateLimitUtil.queue(channel.sendFile(baos.toByteArray(), ("img.png")));
+
+        IMessageBuilder msg = channel.create();
+        msg.file("img.png", baos.toByteArray());
 
         plot.setInsets(new Insets2D.Double(20.0, 100.0, 40.0, 0.0));
         plot.getTitle().setText("MMR by city count");
@@ -282,12 +644,13 @@ public class StatCommands {
         StringBuilder response = new StringBuilder("> Each coalition is grouped by city count and color coded.\n" +
                 "> **RED** = Coalition 1\n" +
                 "> **BLUE** = Coalition 2\n");
-
-        return response.toString();
+        msg.append(response.toString());
+        msg.send();
+        return null;
     }
 
     @Command(desc = "Generate a graph of nation strength by score between two coalitions", aliases = {"strengthTierGraph"})
-    public String strengthTierGraph(@Me GuildDB db, @Me MessageChannel channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('i') boolean includeInactives, @Switch('a') boolean includeApplicants) throws IOException {
+    public String strengthTierGraph(@Me GuildDB db, @Me IMessageIO channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch("i") boolean includeInactives, @Switch("n") boolean includeApplicants, @Switch("a") MMRDouble col1MMR, @Switch("b") MMRDouble col2MMR, @Switch("c") Double col1Infra, @Switch("d") Double col2Infra) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -298,8 +661,8 @@ public class StatCommands {
         int maxScore = 0;
         int minScore = Integer.MAX_VALUE;
         for (DBNation nation : allNations) {
-            maxScore = (int) Math.max(maxScore, nation.getScore());
-            minScore = (int) Math.min(minScore, nation.getScore());
+            maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null));
+            minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null));
         }
         double[] coal1Str = new double[(int) (maxScore * 1.75)];
         double[] coal2Str = new double[(int) (maxScore * 1.75)];
@@ -312,10 +675,10 @@ public class StatCommands {
         // max = (min / 0.6)
 
         for (DBNation nation : coalition1) {
-            coal1Str[(int) (nation.getScore() * 0.75)] += nation.getStrength();
+            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null) * 0.75)] += nation.getStrength(col1MMR);
         }
         for (DBNation nation : coalition2) {
-            coal2Str[(int) (nation.getScore() * 0.75)] += nation.getStrength();
+            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null) * 0.75)] += nation.getStrength(col2MMR);
         }
         for (int min = 10; min < coal1Str.length; min++) {
             double val = coal1Str[min];
@@ -353,7 +716,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph of spy counts by city count between two coalitions (filters out >2d inactives)")
-    public String spyTierGraph(@Me GuildDB db, @Me MessageChannel channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('t') boolean total) throws IOException {
+    public String spyTierGraph(@Me GuildDB db, @Me IMessageIO channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch("t") boolean total) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (f.getPosition() <= 1) || (f.getActive_m() > 2880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (f.getPosition() <= 1) || (f.getActive_m() > 2880));
@@ -399,7 +762,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph of num nation by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"})
-    public String scoreTierGraph(@Me GuildDB db, @Me MessageChannel channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('i') boolean includeInactives, @Switch('a') boolean includeApplicants) throws IOException {
+    public String scoreTierGraph(@Me GuildDB db, @Me IMessageIO channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -445,7 +808,6 @@ public class StatCommands {
             }
         }
 
-        double[] buffer = new double[2];
         TimeDualNumericTable<Void> table = new TimeDualNumericTable<Void>("Nations by score range", "score", "nations", "coalition 1", "coalition 2") {
             @Override
             public void add(long score, Void ignore) {
@@ -460,7 +822,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank of nations by # of challenge baseball games")
-    public void baseballRanking(BaseballDB db, @Me MessageChannel channel, @Timestamp long date, @Switch('f') boolean uploadFile, @Switch('a') boolean byAlliance) {
+    public void baseballRanking(BaseballDB db, @Me JSONObject command, @Me IMessageIO channel, @Timestamp long date, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
 
         Map<Integer, Integer> mostGames = new HashMap<>();
@@ -478,14 +840,11 @@ public class StatCommands {
 
         String title = "# BB Games (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
         RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
-        ranks.build(null, channel, null, title);
-        if (uploadFile && ranks.get().size() > 25) {
-            DiscordUtil.upload(channel, title, ranks.toString());
-        }
+        ranks.build(channel, command, title, uploadFile);
     }
 
     @Command(desc = "Rank of nations by # of challenge baseball games")
-    public void baseballChallengeRanking(BaseballDB db, @Me MessageChannel channel, @Switch('f') boolean uploadFile, @Switch('a') boolean byAlliance) {
+    public void baseballChallengeRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
 
         Map<Integer, Integer> mostGames = new HashMap<>();
@@ -504,14 +863,11 @@ public class StatCommands {
 
         String title = "# Challenge BB Games";
         RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
-        ranks.build(null, channel, null, title);
-        if (uploadFile && ranks.get().size() > 25) {
-            DiscordUtil.upload(channel, title, ranks.toString());
-        }
+        ranks.build(channel, command, title, uploadFile);
     }
 
     @Command(desc = "List the baseball wager inflows for a nation id")
-    public String baseBallChallengeInflow(BaseballDB db, @Me MessageChannel channel, int nationId, @Default("timestamp:0") @Timestamp long dateSince) {
+    public String baseBallChallengeInflow(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, int nationId, @Default("timestamp:0") @Timestamp long dateSince, @Switch("u") boolean uploadFile) {
         List<BBGame> games = db.getBaseballGames(new Consumer<SelectBuilder>() {
             @Override
             public void accept(SelectBuilder f) {
@@ -532,7 +888,7 @@ public class StatCommands {
                 mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
             }
             RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> PnwUtil.getName(f, false));
-            ranks.build(null, channel, null, title);
+            ranks.build(channel, command, title, uploadFile);
         }
         {
             String title = "$ Wagered with " + PnwUtil.getName(nationId, false);
@@ -542,13 +898,13 @@ public class StatCommands {
                 mostWageredWinnings.merge(otherId, game.getWager().longValue(), Long::sum);
             }
             RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, false));
-            ranks.build(null, channel, null, title);
+            ranks.build(channel, command, title, uploadFile);
         }
         return null;
     }
 
     @Command(desc = "Rank of nations by challenge baseball game earnings")
-    public void baseballEarningsRanking(BaseballDB db, @Me MessageChannel channel, @Timestamp long date, @Switch('f') boolean uploadFile, @Switch('a') boolean byAlliance) {
+    public void baseballEarningsRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Timestamp long date, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
 
         Map<Integer, Long> mostWageredWinnings = new HashMap<>();
@@ -570,14 +926,11 @@ public class StatCommands {
 
         String title = "BB Earnings $ (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
         RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
-        ranks.build(null, channel, null, title);
-        if (uploadFile && ranks.get().size() > 25) {
-            DiscordUtil.upload(channel, title, ranks.toString());
-        }
+        ranks.build(channel, command, title, uploadFile);
     }
 
     @Command(desc = "Rank of nations by challenge baseball game earnings")
-    public void baseballChallengeEarningsRanking(BaseballDB db, @Me MessageChannel channel, @Switch('f') boolean uploadFile, @Switch('a') boolean byAlliance) {
+    public void baseballChallengeEarningsRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
 
         Map<Integer, Long> mostWageredWinnings = new HashMap<>();
@@ -599,23 +952,20 @@ public class StatCommands {
 
         String title = "BB Challenge Earnings $";
         RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PnwUtil.getName(f, byAlliance));
-        ranks.build(null, channel, null, title);
-        if (uploadFile && ranks.get().size() > 25) {
-            DiscordUtil.upload(channel, title, ranks.toString());
-        }
+        ranks.build(channel, command, title, uploadFile);
     }
 
     @Command(desc = "Generate ranking of war status by AA")
-    public void warStatusRankingByAA(@Me GuildDB db, @Me MessageChannel channel, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
-        warStatusRankingBy(true, db, channel, attackers, defenders, time);
+    public void warStatusRankingByAA(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
+        warStatusRankingBy(true, db, channel, command, attackers, defenders, time);
     }
 
     @Command(desc = "Generate ranking of war status by Nation")
-    public void warStatusRankingByNation(@Me GuildDB db, @Me MessageChannel channel, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
-        warStatusRankingBy(false, db, channel, attackers, defenders, time);
+    public void warStatusRankingByNation(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
+        warStatusRankingBy(false, db, channel, command, attackers, defenders, time);
     }
 
-    public void warStatusRankingBy(boolean isAA, @Me GuildDB db, @Me MessageChannel channel, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
+    public void warStatusRankingBy(boolean isAA, @Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
         BiFunction<Boolean, DBWar, Integer> getId;
         if (isAA) getId = (primary, war) -> primary ? war.attacker_aa : war.defender_aa;
         else getId = (primary, war) -> primary ? war.attacker_id : war.defender_id;
@@ -639,12 +989,12 @@ public class StatCommands {
             }
         }
 
-        if (!victoryByEntity.isEmpty()) new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> PnwUtil.getName(f, isAA)).build(null, channel, null, "Victories");
-        if (!expireByEntity.isEmpty()) new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> PnwUtil.getName(f, isAA)).build(null, channel, null, "Expiries");
+        if (!victoryByEntity.isEmpty()) new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> PnwUtil.getName(f, isAA)).build(channel, command, "Victories");
+        if (!expireByEntity.isEmpty()) new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> PnwUtil.getName(f, isAA)).build(channel, command, "Expiries");
     }
 
     @Command(desc = "Generate a graph of num nation by score between two coalitions")
-    public String mmrTierGraph(@Me GuildDB db, @Me MessageChannel channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants, @Switch('s') SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String mmrTierGraph(@Me GuildDB db, @Me IMessageIO channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch("i") boolean includeInactives, @Switch("i") boolean includeApplicants, @Switch("s") SpreadSheet sheet, @Switch("b") boolean buildings) throws IOException, GeneralSecurityException {
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
 
@@ -654,8 +1004,8 @@ public class StatCommands {
         Map<Integer, List<DBNation>> coalition1ByCity = new HashMap<>();
         Map<Integer, List<DBNation>> coalition2ByCity = new HashMap<>();
 
-        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new LinkedList<>()).add(n);
-        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new LinkedList<>()).add(n);
+        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
 
         int min = Math.min(Collections.min(coalition1ByCity.keySet()), Collections.min(coalition2ByCity.keySet()));
         int max = Math.max(Collections.max(coalition1ByCity.keySet()), Collections.max(coalition2ByCity.keySet()));
@@ -673,7 +1023,7 @@ public class StatCommands {
 
                 for (int j = 0; j < coalitions.length; j++) {
                     List<DBNation> coalition = coalitions[j];
-                    SimpleNationList natCityList = new SimpleNationList(coalition);
+                    NationList natCityList = new SimpleNationList(coalition);
                     DBNation nation = natCityList.getNations().isEmpty() ? null : natCityList.getAverage();
                     String name = j == 0 ? "" + cities : "";
                     if (nation == null) {
@@ -688,11 +1038,17 @@ public class StatCommands {
                     MilitaryUnit[] units = new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP};
                     double[] pcts = new double[units.length];
 
+                    double[] arr = buildings ? nation.getMMRBuildingArr() : null;
                     for (int i = 0; i < units.length; i++) {
                         MilitaryUnit unit = units[i];
-                        double amt = nation.getUnits(unit);
-                        double cap = unit.getBuilding().cap() * unit.getBuilding().max() * cities;
-                        double pct = amt / cap;
+                        double pct;
+                        if (buildings) {
+                            pct = arr[i] / unit.getBuilding().cap(nation::hasProject);
+                        } else {
+                            double amt = nation.getUnits(unit);
+                            double cap = unit.getBuilding().cap(nation::hasProject) * unit.getBuilding().max() * cities;
+                            pct = amt / cap;
+                        }
                         pcts[i] = pct;
 
                         total += pct * 25;
@@ -761,29 +1117,34 @@ public class StatCommands {
 
             DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            writer.write(plot, baos, 1400, 600);
-            RateLimitUtil.queue(channel.sendFile(baos.toByteArray(), ("img.png")));
 
             plot.setInsets(new Insets2D.Double(20.0, 100.0, 40.0, 0.0));
             plot.getTitle().setText("MMR by city count");
+            writer.write(plot, baos, 1400, 600);
 
             StringBuilder response = new StringBuilder("> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
                     "> Each coalition is grouped by city count and color coded.\n" +
                     "> **RED** = Coalition 1\n" +
                     "> **BLUE** = Coalition 2\n");
 
+            IMessageBuilder msg = channel.create();
+            msg.image("img.png", baos.toByteArray());
+
             if (sheet != null) {
                 sheet.clear("A:Z");
                 sheet.set(0, 0);
-                response.append("<" + sheet.getURL() + ">");
+                response.append(sheet.getURL(true, true));
             }
 
-            return response.toString();
+            msg.append(response.toString());
+            msg.send();
+
+            return null;
         }
     }
 
     @Command(desc = "Generate a graph of num nation by city count")
-    public String cityTierGraph(@Me GuildDB db, @Me MessageChannel channel, NationList coalition1, NationList coalition2, @Switch('i') boolean includeInactives, @Switch('i') boolean includeApplicants) throws IOException {
+    public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, NationList coalition1, NationList coalition2, @Switch("i") boolean includeInactives, @Switch("i") boolean includeApplicants) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -812,9 +1173,9 @@ public class StatCommands {
     }
 
     @Command
-    public String allianceMetricsCompareByTurn(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<Alliance> alliances, @Timestamp long time) throws IOException {
+    public String allianceMetricsCompareByTurn(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> alliances, @Timestamp long time) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
-        Set<Alliance>[] coalitions = alliances.stream().map(f -> Collections.singleton(f)).collect(Collectors.toList()).toArray(new Set[0]);
+        Set<DBAlliance>[] coalitions = alliances.stream().map(f -> Collections.singleton(f)).collect(Collectors.toList()).toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(f -> f.getName()).collect(Collectors.toList());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalitions);
         table.write(channel);
@@ -822,7 +1183,7 @@ public class StatCommands {
     }
 
     @Command(aliases = {})
-    public String allianceMetricsAB(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<Alliance> coalition1, Set<Alliance> coalition2, @Timestamp long time) throws IOException {
+    public String allianceMetricsAB(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Timestamp long time) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, null, coalition1, coalition2);
         table.write(channel);
@@ -831,8 +1192,8 @@ public class StatCommands {
 
     @RolePermission(value = {Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS, Roles.INTERNAL_AFFAIRS}, any=true)
     @Command(desc = "Create a nation sheet, grouped by alliance")
-    public String allianceNationsSheet(@Me MessageChannel channel, @Me User author, @Me Guild guild, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
-                                       @Switch('s') SpreadSheet sheet, @Switch('t') boolean useTotal, @Switch('i') boolean includeInactives, @Switch('a') boolean includeApplicants) throws IOException, GeneralSecurityException, IllegalAccessException, InvocationTargetException {
+    public String allianceNationsSheet(NationPlaceholders placeholders, ValueStore store, @Me IMessageIO channel, @Me User author, @Me Guild guild, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
+                                       @Switch("s") SpreadSheet sheet, @Switch("t") boolean useTotal, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants) throws IOException, GeneralSecurityException, IllegalAccessException, InvocationTargetException {
         nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         Map<Integer, Set<DBNation>> natByAA = new HashMap<>();
         for (DBNation nation : nations) {
@@ -850,7 +1211,7 @@ public class StatCommands {
         for (Map.Entry<Integer, Set<DBNation>> entry : natByAA.entrySet()) {
             Integer aaId = entry.getKey();
 
-            Alliance alliance = new Alliance(aaId);
+            DBAlliance alliance = DBAlliance.getOrCreate(aaId);
             SAllianceContainer sAlliance = alliances.get(aaId);
 
             SimpleNationList list = new SimpleNationList(entry.getValue());
@@ -861,6 +1222,8 @@ public class StatCommands {
                 String arg = columns.get(i);
                 if (arg.equalsIgnoreCase("{nations}")) {
                     arg = list.getNations().size() + "";
+                } else if (arg.equalsIgnoreCase("{alliance}")) {
+                        arg = alliance.getName() + "";
                 } else {
                     DBNation nation = useTotal ? total : average;
                     if (arg.startsWith("avg:")) {
@@ -869,12 +1232,6 @@ public class StatCommands {
                     } else if (arg.startsWith("total:")) {
                         arg = arg.substring(6);
                         nation = total;
-                    }
-                    if (arg.contains("{") && arg.contains("}")) {
-                        arg = DiscordUtil.format(guild, channel, author, nation, arg);
-                        if (!arg.contains("{")) {
-                            // TODO replace nation format
-                        }
                     }
                     if (arg.contains("{") && arg.contains("}")) {
                         if (sAlliance != null)
@@ -886,7 +1243,7 @@ public class StatCommands {
                                 }
                             }
 
-                        for (Method method : Alliance.class.getDeclaredMethods()) {
+                        for (Method method : DBAlliance.class.getDeclaredMethods()) {
                             if (method.getParameters().length != 0) continue;
                             Class type = method.getReturnType();
                             if (type == String.class || ClassUtils.isPrimitiveOrWrapper(type)) {
@@ -897,6 +1254,9 @@ public class StatCommands {
                                 }
                             }
                         }
+                    }
+                    if (arg.contains("{") && arg.contains("}")) {
+                        arg = placeholders.format(store, arg);
                     }
                 }
 
@@ -910,11 +1270,19 @@ public class StatCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
+    }
+
+    @Command(desc = "Create a graph of the radiation by turn")
+    public String radiationByTurn(@Me IMessageIO channel, Set<Continent> continents, @Timestamp long time) throws IOException {
+        TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, time, Long.MAX_VALUE);
+
+        table.write(channel);
+        return "Done!";
     }
 
     @Command
-    public String allianceMetricsByTurn(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<Alliance> coalition, @Timestamp long time) throws IOException {
+    public String allianceMetricsByTurn(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition, @Timestamp long time) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         List<String> coalitionNames = Arrays.asList(metric.name());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalition);
@@ -934,25 +1302,23 @@ public class StatCommands {
                     "Add -w to normalize it per war"
     )
     @RolePermission(Roles.MILCOM)
-    public String WarCostByResourceSheet(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time,
-                                         @Switch('c') boolean excludeConsumption,
-                                         @Switch('i') boolean excludeInfra,
-                                         @Switch('l') boolean excludeLoot,
-                                         @Switch('u') boolean excludeUnitCost,
-                                         @Switch('g') boolean includeGray,
-                                         @Switch('d') boolean includeDefensives,
-                                         @Switch('n') boolean normalizePerCity,
-                                         @Switch('w') boolean normalizePerWar,
-                                         @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String WarCostByResourceSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time,
+                                         @Switch("c") boolean excludeConsumption,
+                                         @Switch("i") boolean excludeInfra,
+                                         @Switch("l") boolean excludeLoot,
+                                         @Switch("u") boolean excludeUnitCost,
+                                         @Switch("g") boolean includeGray,
+                                         @Switch("d") boolean includeDefensives,
+                                         @Switch("n") boolean normalizePerCity,
+                                         @Switch("w") boolean normalizePerWar,
+                                         @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.WAR_COST_SHEET);
         }
 
         WarParser parser1 = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
-        WarParser parser2 = WarParser.of(defenders, attackers, time, Long.MAX_VALUE);
 
         Map<Integer, DBWar> allWars = new HashMap<>(parser1.getWars());
-        allWars.putAll(parser2.getWars());
 
         Map<DBNation, List<DBWar>> warsByNation = new RankBuilder<>(allWars.values()).group(new BiConsumer<DBWar, GroupedRankBuilder<DBNation, DBWar>>() {
             @Override
@@ -968,8 +1334,6 @@ public class StatCommands {
             }
         }).get();
 
-        Message msg = RateLimitUtil.complete(channel.sendMessage("Clearing sheet..."));
-
         List<Object> header = new ArrayList<>(Arrays.asList(
                 // Raids	Raid profit	Raid Ratio	Def	Def Loss	Def Dmg	Def Ratio	Off	Off Loss	Off Dmg	Off Ratio	Wars	War Loss	War Dmg	War Ratio
                 "nation",
@@ -984,8 +1348,6 @@ public class StatCommands {
 
         sheet.clear("A:Z");
 
-        RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Updating wars..."));
-
         sheet.setHeader(header);
 
         long start = System.currentTimeMillis();
@@ -993,7 +1355,6 @@ public class StatCommands {
             DBNation nation = nationEntry.getKey();
             List<DBWar> wars = nationEntry.getValue();
             if (System.currentTimeMillis() - start > 5000) {
-                RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
                 start = System.currentTimeMillis();
             }
             int nationId = nation.getNation_id();
@@ -1059,7 +1420,7 @@ public class StatCommands {
 
             header = new ArrayList<>();
             header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
-            header.add(MarkupUtil.sheetUrl(nation.getAlliance(), nation.getAllianceUrl()));
+            header.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
 
             int numWars = activeCost.getNumWars();
             header.add(numWars);
@@ -1099,18 +1460,9 @@ public class StatCommands {
             sheet.addRow(header);
         }
 
-        try {
+        sheet.set(0, 0);
 
-            RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Uploading sheet"));
-
-            sheet.set(0, 0);
-
-            RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(aliases = {"WarCostByAllianceSheet", "WarCostByAASheet", "WarCostByAlliance", "WarCostByAA"},
@@ -1118,11 +1470,11 @@ public class StatCommands {
                     "Add -i to include inactives\n" +
                     "Add -a to include applicants")
     @RolePermission(Roles.MILCOM)
-    public String WarCostByAllianceSheet(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db,
+    public String WarCostByAllianceSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
                                          Set<DBNation> nationSet,
                                          @Timestamp long time,
-                                         @Switch('i') boolean includeInactives,
-                                         @Switch('a') boolean includeApplicants) throws IOException, GeneralSecurityException {
+                                         @Switch("i") boolean includeInactives,
+                                         @Switch("a") boolean includeApplicants) throws IOException, GeneralSecurityException {
         Map<Integer, List<DBNation>> nationsByAA = Locutus.imp().getNationDB().getNationsByAlliance(nationSet, false, !includeInactives, !includeApplicants, true);
 
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
@@ -1181,7 +1533,7 @@ public class StatCommands {
             };
             warCost.addCost(attacks, isPrimary, f -> !isPrimary.apply(f));
 
-            Alliance alliance = new Alliance(entry.getKey());
+            DBAlliance alliance = DBAlliance.getOrCreate(entry.getKey());
 
 
             ArrayList<Object> row = new ArrayList<>();
@@ -1219,7 +1571,7 @@ public class StatCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     @Command(desc = "Warcost (for each nation) broken down by war type.\n" +
@@ -1229,21 +1581,18 @@ public class StatCommands {
             "Add -u to exclude unit cost\n" +
             "Add -n to normalize it per city")
     @RolePermission(Roles.MILCOM)
-    public String WarCostSheet(@Me MessageChannel channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time,
-                               @Switch('c') boolean excludeConsumption,
-                               @Switch('i') boolean excludeInfra,
-                               @Switch('l') boolean excludeLoot,
-                               @Switch('u') boolean excludeUnitCost,
-                               @Switch('n') boolean normalizePerCity,
-                               @Switch('s') SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String WarCostSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time,
+                               @Switch("c") boolean excludeConsumption,
+                               @Switch("i") boolean excludeInfra,
+                               @Switch("l") boolean excludeLoot,
+                               @Switch("u") boolean excludeUnitCost,
+                               @Switch("n") boolean normalizePerCity,
+                               @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.WAR_COST_SHEET);
         }
 
         WarParser parser1 = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
-        WarParser parser2 = WarParser.of(defenders, attackers, time, Long.MAX_VALUE);
-
-        Message msg = RateLimitUtil.complete(channel.sendMessage("Clearing sheet..."));
 
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -1269,13 +1618,10 @@ public class StatCommands {
 
         sheet.clear("A:Z");
 
-        RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Updating wars..."));
-
         sheet.setHeader(header);
         long start = System.currentTimeMillis();
 
         Map<Integer, DBWar> allWars = new HashMap<>(parser1.getWars());
-        allWars.putAll(parser2.getWars());
 
         Map<Integer, List<DBWar>> warsByNation = new RankBuilder<>(allWars.values()).group(new BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>() {
             @Override
@@ -1295,15 +1641,11 @@ public class StatCommands {
         }).get();
 
         List<DBAttack> allAttacks = new ArrayList<>(parser1.getAttacks());
-        allAttacks.addAll(parser2.getAttacks());
 
         for (Map.Entry<Integer, List<DBWar>> entry : warsByNation.entrySet()) {
             int nationId = entry.getKey();
             DBNation nation = DBNation.byId(nationId);
             if (nation == null) continue;
-            if (-start + (start = System.currentTimeMillis()) > 5000) {
-                RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Updating wars for " + nationId));
-            }
 //            int nationId = nation.getNation_id();
 
             AttackCost attInactiveCost = new AttackCost();
@@ -1317,7 +1659,7 @@ public class StatCommands {
             {
                 List<DBWar> wars = entry.getValue();
                 Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-                List<DBAttack> attacks = new LinkedList<>();
+                List<DBAttack> attacks = new ArrayList<>();
                 for (DBAttack attack : allAttacks) if (warIds.contains(attack.war_id)) attacks.add(attack);
                 Map<Integer, List<DBAttack>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.war_id).get();
 
@@ -1399,18 +1741,10 @@ public class StatCommands {
             sheet.addRow(header);
         }
 
-        try {
+        sheet.clear("A:Z");
+        sheet.set(0, 0);
 
-            RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Uploading sheet"));
-            sheet.clear("A:Z");
-            sheet.set(0, 0);
-
-            RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 
     private double total(boolean consumption, boolean infra, boolean loot, boolean units, boolean normalize, DBNation nation, AttackCost cost, boolean isPrimary) {

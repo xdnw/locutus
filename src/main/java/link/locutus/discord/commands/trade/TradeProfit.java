@@ -5,12 +5,12 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -32,7 +32,7 @@ public class TradeProfit extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "tradeprofit <nations> <days>";
+        return Settings.commandPrefix(true) + "tradeprofit <nations> <days>";
     }
 
     @Override
@@ -65,7 +65,7 @@ public class TradeProfit extends Command {
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
-        List<Offer> trades = Locutus.imp().getTradeManager().getTradeDb().getOffers(cutoffMs);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(cutoffMs);
 
         Map<ResourceType, Long> netOutflows = new HashMap<>();
 
@@ -79,7 +79,8 @@ public class TradeProfit extends Command {
 
         Map<ResourceType, Long> salesPrice = new HashMap<>();
 
-        for (Offer trade : trades) {
+        int numTrades = 0;
+        for (DBTrade trade : trades) {
             Integer buyer = trade.getBuyer();
             Integer seller = trade.getSeller();
 
@@ -95,20 +96,22 @@ public class TradeProfit extends Command {
                 continue;
             }
 
+            numTrades++;
+
             int sign = (nationIds.contains(seller) ^ trade.isBuy()) ? 1 : -1;
-            long total = trade.getAmount() * (long) trade.getPpu();
+            long total = trade.getQuantity() * (long) trade.getPpu();
 
             if (sign > 0) {
-                inflows.put(type, trade.getAmount() + inflows.getOrDefault(type, 0L));
-                sales.put(type, trade.getAmount() + sales.getOrDefault(type, 0L));
+                inflows.put(type, trade.getQuantity() + inflows.getOrDefault(type, 0L));
+                sales.put(type, trade.getQuantity() + sales.getOrDefault(type, 0L));
                 salesPrice.put(type, total + salesPrice.getOrDefault(type, 0L));
             } else {
-                outflow.put(type, trade.getAmount() + outflow.getOrDefault(type, 0L));
-                purchases.put(type, trade.getAmount() + purchases.getOrDefault(type, 0L));
+                outflow.put(type, trade.getQuantity() + outflow.getOrDefault(type, 0L));
+                purchases.put(type, trade.getQuantity() + purchases.getOrDefault(type, 0L));
                 purchasesPrice.put(type, total + purchasesPrice.getOrDefault(type, 0L));
             }
 
-            netOutflows.put(type, ((-1) * sign * trade.getAmount()) + netOutflows.getOrDefault(type, 0L));
+            netOutflows.put(type, ((-1) * sign * trade.getQuantity()) + netOutflows.getOrDefault(type, 0L));
             netOutflows.put(ResourceType.MONEY, (sign * total) + netOutflows.getOrDefault(ResourceType.MONEY, 0L));
         }
 
@@ -158,7 +161,7 @@ public class TradeProfit extends Command {
             .append(' ').append("Total Volume:```")
             .append(String.format("%16s", PnwUtil.resourcesToString(totalVolume)))
             .append("```");
-        response.append("Profit total: $").append(MathMan.format(profitTotal));
+        response.append("Profit total: $").append(MathMan.format(profitTotal) + " (" + numTrades + " trades)");
         return response.toString().trim();
     }
 }

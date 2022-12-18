@@ -3,7 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -36,7 +36,7 @@ public class Rebuy extends Command {
         if (nation == null) return "Unknown nation `" + args.get(0) + "`";
 
         Map<Integer, Long> dcProb = nation.findDayChange();
-        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "unithistory`";
+        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try `" + Settings.commandPrefix(true) + "unithistory`";
 
         if (dcProb.size() == 1) {
             Map.Entry<Integer, Long> entry = dcProb.entrySet().iterator().next();

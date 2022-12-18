@@ -1,12 +1,15 @@
 package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -19,6 +22,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -63,13 +67,25 @@ public class TaxBracketSheet extends Command {
 
         sheet.setHeader(header);
 
-        Auth auth = db.getAuth();
-        if (auth == null) return "No authentication enabled for this guild";
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
+        boolean failedFetch = true;
+        Map<Integer, TaxBracket> brackets;
+        try {
+            brackets = db.getAlliance().getTaxBrackets(false);
+            failedFetch = false;
+        } catch (IllegalArgumentException e) {
+            brackets = new LinkedHashMap<>();
+            Set<Integer> allianceIds = db.getAllianceIds(true);
+            Map<Integer, TaxBracket> allAllianceBrackets = Locutus.imp().getBankDB().getTaxBracketsAndEstimates();
+            for (Map.Entry<Integer, TaxBracket> entry : allAllianceBrackets.entrySet()) {
+                TaxBracket bracket = entry.getValue();
+                if (allianceIds.contains(bracket.getAllianceId(false))) {
+                    brackets.put(entry.getKey(), bracket);
+                }
+            }
+        }
 
         Map<DBNation, TaxBracket> nations = new HashMap<>();
         for (TaxBracket bracket : brackets.values()) {
-            if (bracket.nations == 0) continue;
             for (DBNation nation : bracket.getNations()) {
                 nations.put(nation, bracket);
             }
@@ -102,6 +118,8 @@ public class TaxBracketSheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        StringBuilder response = new StringBuilder(sheet.getURL(true, true));
+        if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
+        return response.toString();
     }
 }

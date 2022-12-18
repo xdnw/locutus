@@ -1,13 +1,14 @@
 package link.locutus.discord.commands.sync;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -60,25 +61,24 @@ public class SyncTaxes extends Command {
             switch (args.get(0).toLowerCase()) {
                 default:
                     SpreadSheet sheet = SpreadSheet.create(args.get(0));
-                    if (!args.get(0).startsWith("sheet:") && !args.get(0).startsWith("https://docs.google.com/spreadsheets/d/")) return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "synctaxes <sheet-url>";
+                    if (!args.get(0).startsWith("sheet:") && !args.get(0).startsWith("https://docs.google.com/spreadsheets/d/")) return Settings.commandPrefix(true) + "synctaxes <sheet-url>";
                     return updateTaxesLegacy(db, sheet);
                 case "sheet": {
                     if (args.size() != 1) return usage();
                     if (db.hasAuth() && !Roles.ADMIN.has(author, guild)) {
-                        return "No permission. Authentication is enabled for this guild. Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "SyncTaxes auto` or have an admin run this command";
+                        return "No permission. Authentication is enabled for this guild. Please use `" + Settings.commandPrefix(true) + "SyncTaxes auto` or have an admin run this command";
                     }
                     return updateTaxesLegacy(db, null);
                 }
-                case "auto": {
-                    Auth auth = db.getAuth();
-                    if (auth == null) return "No authentication found";
+                case "legacy": {
                     Long latestDate = null;
-                    if (args.size() >= 2) latestDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1)) * 1000L;
+                    if (args.size() >= 2)
+                        latestDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1)) * 1000L;
                     if (args.size() > 2) return usage();
 
-                    CompletableFuture<Message> msgFuture = event.getChannel().sendMessage("Syncing taxes for " + auth.getAllianceId() + ". Please wait...").submit();
+                    CompletableFuture<Message> msgFuture = event.getChannel().sendMessage("Syncing taxes for " + db.getAlliance_id() + ". Please wait...").submit();
 
-                    List<BankDB.TaxDeposit> taxes = db.getHandler().updateTaxes(latestDate);
+                    List<BankDB.TaxDeposit> taxes = db.getHandler().updateTaxesLegacy(latestDate);
 
                     Message msg = msgFuture.get();
                     RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
@@ -86,11 +86,16 @@ public class SyncTaxes extends Command {
                     return "Updated " + taxes.size() + " records.\n"
                             + "<" + updateTurnGraph(db) + ">";
                 }
+                case "auto": {
+                    List<BankDB.TaxDeposit> taxes = db.getAlliance().updateTaxes();
+                    return "Updated " + taxes.size() + " records.";
+
+                }
             }
         }
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TAX_SHEET);
         if (db.getOrNull(GuildDB.Key.TAX_SHEET) == null) sheet.set(0, 0);
-        return desc() + "\nEnter tax records here: " + sheet.getURL();
+        return desc() + "\nEnter tax records here: " + sheet.getURL(false, false);
     }
 
     public String updateTaxesLegacy(GuildDB guildDb, SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -149,7 +154,7 @@ public class SyncTaxes extends Command {
         }
 
         if (records.isEmpty()) {
-            return "Please pin, and update this sheet: " + sheet.getURL();
+            return "Please pin, and update this sheet: " + sheet.getURL(false, false);
         }
 
         Collections.sort(records, new Comparator<BankDB.TaxDeposit>() {
@@ -228,6 +233,6 @@ public class SyncTaxes extends Command {
 
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + ">";
+        return sheet.getURL(true, true);
     }
 }

@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -26,7 +26,7 @@ public class Sudo extends Command implements Noformat {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sudo <user> <command>";
+        return Settings.commandPrefix(true) + "sudo <user> <command>";
     }
 
     @Override

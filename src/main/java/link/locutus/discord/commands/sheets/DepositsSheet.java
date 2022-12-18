@@ -3,10 +3,11 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -25,13 +26,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static link.locutus.discord.util.PnwUtil.convertedTotal;
@@ -100,7 +95,7 @@ public class DepositsSheet extends Command {
 
         Set<Long> tracked = null;
 
-        List<DBNation> nations;
+        Set<DBNation> nations;
         if (args.isEmpty()) {
             Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             if (allianceId != null) {
@@ -108,8 +103,8 @@ public class DepositsSheet extends Command {
                 nations.removeIf(n -> n.getPosition() <= 1);
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ALLIANCE_ID` set, or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "aliasRole MEMBER` set");
-                nations = new ArrayList<>();
+                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "") + " set");
+                nations = new HashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     nations.add(nation);
@@ -118,7 +113,7 @@ public class DepositsSheet extends Command {
 
             }
         } else if (args.size() >= 1) {
-            nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
+            nations = (DiscordUtil.parseNations(guild, args.get(0)));
             if (args.size() == 2) {
                 Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(1));
                 tracked = new LinkedHashSet<>();
@@ -198,23 +193,31 @@ public class DepositsSheet extends Command {
         sheet.set(0, 0);
 
         StringBuilder response = new StringBuilder();
-        response.append("<" + sheet.getURL() + ">");
+        response.append(sheet.getURL(true, true));
 
         StringBuilder footer = new StringBuilder();
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
 
+        String type = "";
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore != null) {
-            double[] aaDeposits = offshore.getDeposits(db);
+        double[] aaDeposits;
+        if (offshore != null && offshore.getGuildDB() != db) {
+            type = "offshored";
+            aaDeposits = offshore.getDeposits(db);
+        } else if (db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null){
+            type = "bank";
+            aaDeposits = PnwUtil.resourcesToArray(db.getAlliance().getStockpile());
+        } else aaDeposits = null;
+        if (aaDeposits != null) {
             if (PnwUtil.convertedTotal(aaDeposits) > 0) {
                 for (int i = 0; i < aaDeposits.length; i++) {
                     aaTotalNet[i] = aaDeposits[i] - aaTotalNet[i];
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
 
                 }
-                footer.append("\n**Net offshored (normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-                footer.append("\n**Net offshored**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
             }
+            footer.append("\n**Net " + type + " (normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+            footer.append("\n**Net " + type + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
 
         DiscordUtil.createEmbedCommand(event.getChannel(), "AA Total", footer.toString());

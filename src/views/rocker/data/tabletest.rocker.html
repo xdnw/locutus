@@ -1,0 +1,6 @@
+@import java.util.*
+
+@args (String title, String data)
+@rocker.main.template("Hello World") -> {
+    @rocker.data.table_data.template(title, data)
+}

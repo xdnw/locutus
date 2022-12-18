@@ -17,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
@@ -25,22 +26,14 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.StockBinding;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.update.RaidUpdateProcessor;
-import link.locutus.discord.web.commands.EconPages;
-import link.locutus.discord.web.commands.GrantPages;
-import link.locutus.discord.web.commands.IAPages;
-import link.locutus.discord.web.commands.StatPages;
-import link.locutus.discord.web.commands.WarPages;
+import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
-import link.locutus.discord.web.commands.BankPages;
-import link.locutus.discord.web.commands.IndexPages;
-import link.locutus.discord.web.commands.TradePages;
 import link.locutus.discord.web.commands.binding.NationListPages;
 import link.locutus.discord.web.commands.binding.StringWebBinding;
 import link.locutus.discord.web.commands.binding.WebPrimitiveBinding;
@@ -77,7 +70,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -85,7 +77,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class PageHandler implements Handler {
-    private Logger logger = Logger.getLogger(RaidUpdateProcessor.class.getSimpleName());
+    private Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
     private final WebRoot root;
 
     private final CommandGroup commands;
@@ -125,6 +117,9 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(new TradePages());
         this.commands.registerCommands(new AlliancePages());
         this.commands.registerCommands(new NationListPages());
+
+        this.commands.registerCommands(new TestPages());
+
         this.commands.registerCommands(this);
     }
 
@@ -170,8 +165,8 @@ public class PageHandler implements Handler {
         try {
             String cmdStr = cmds.get(0);
             if (cmdStr.isEmpty()) return;
-            if (cmdStr.charAt(0) == '!') cmdStr = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + cmdStr.substring(1);
-            if (cmdStr.charAt(0) == '$') cmdStr = Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + cmdStr.substring(1);
+            if (cmdStr.charAt(0) == '!') cmdStr = Settings.commandPrefix(true) + cmdStr.substring(1);
+            if (cmdStr.charAt(0) == '$') cmdStr = Settings.commandPrefix(false) + cmdStr.substring(1);
 
             Context ctx = sse.ctx;
             JsonObject userJson = root.getDiscordUser(ctx);
@@ -213,6 +208,8 @@ public class PageHandler implements Handler {
             action.load(sseMessage);
 
             MessageReceivedEvent finalEvent = new DelegateMessageEvent(guildDb.getGuild(), -1, sseMessage);
+
+
             Locutus.imp().getCommandManager().run(finalEvent, false, true);
 
         } catch (Throwable e) {
@@ -288,7 +285,7 @@ public class PageHandler implements Handler {
                     msgBuilder.setContent("");
                 }
 
-                List<MessageEmbed> embeds = new LinkedList<>();
+                List<MessageEmbed> embeds = new ArrayList<>();
 
                 DataObject embedJson = json.optObject("embed").orElse(null);
                 if (embedJson != null) {
@@ -494,7 +491,7 @@ public class PageHandler implements Handler {
             }
             DBNation nation = DiscordUtil.getNation(id);
             if (nation == null) {
-                ctx.result("Please use <b>" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
+                ctx.result("Please use <b>" + CM.register.cmd.toSlashMention() + "</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
                         "You are currently signed in as " + user.getName() + "#" + user.getDiscriminator() + ": " + MarkupUtil.htmlUrl("Logout", WebRoot.REDIRECT + "/logout"));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;
@@ -567,7 +564,7 @@ public class PageHandler implements Handler {
 
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);
 
-        ctx.result(views.error.template(entry.getKey(), entry.getValue()).render().toString());
+        ctx.result(rocker.error.template(entry.getKey(), entry.getValue()).render().toString());
     }
 
     private Object wrap(Object call, Context ctx) {
@@ -590,7 +587,7 @@ public class PageHandler implements Handler {
                     ctx.header("Content-Type", "application/json");
                     return str;
                 }
-                return views.alert.template("Response", str).render().toString();
+                return rocker.alert.template("Response", str).render().toString();
             }
         }
         return call;

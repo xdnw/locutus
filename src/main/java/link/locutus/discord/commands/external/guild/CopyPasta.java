@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -35,31 +35,14 @@ public class CopyPasta extends Command implements Noformat {
 
     @Override
     public String desc() {
-        return "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta <key>` to post a premade response\n" +
-                "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta <key> <message>` to set the response\n" +
+        return "Use `" + Settings.commandPrefix(true) + "copypasta <key>` to post a premade response\n" +
+                "Use `" + Settings.commandPrefix(true) + "copypasta <key> <message>` to set the response\n" +
                 "Use e.g. `ECON.key` as the key to restrict use to the econ role";
     }
 
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.MEMBER.has(user, server);
-    }
-
-    public static boolean hasPermission(Member member, String key) {
-        String[] split = key.split("\\.");
-        if (split.length <= 1) return true;
-
-        for (int i = 1; i < split.length - 1; i++) {
-            String roleName = split[i];
-            Roles role = Roles.parse(roleName);
-            if (role != null && !role.has(member)) return false;
-
-            Role discRole = DiscordUtil.getRole(member.getGuild(), roleName);
-            if (discRole != null && !member.getRoles().contains(discRole)) return false;
-
-            return true;
-        }
-        return true;
     }
 
     @Override
@@ -78,7 +61,6 @@ public class CopyPasta extends Command implements Noformat {
 
             if (value == null) {
                 Map<String, String> map = db.getInfoMap();
-                outer:
                 for (Map.Entry<String, String> entry : map.entrySet()) {
                     String otherKey = entry.getKey();
                     if (!otherKey.startsWith("copypasta.")) continue;
@@ -86,13 +68,13 @@ public class CopyPasta extends Command implements Noformat {
                     String[] split = otherKey.split("\\.");
                     if (!split[split.length - 1].equalsIgnoreCase(key)) continue;
 
-                    if (!hasPermission(guild.getMember(author), otherKey)) continue;
+                    if (!db.getMissingCopypastaPerms(otherKey, guild.getMember(author)).isEmpty()) continue;
 
                     value = entry.getValue();
                 }
-            } else if (!hasPermission(guild.getMember(author), key)) return "You do not have permission to use that key";
+            } else if (!db.getMissingCopypastaPerms(key, guild.getMember(author)).isEmpty()) return "You do not have permission to use that key";
 
-            if (value == null) return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta <key> <message>`";
+            if (value == null) return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.commandPrefix(true) + "copypasta <key> <message>`";
             if (event.getMessage().getEmbeds().isEmpty()) {
                 RateLimitUtil.queue(event.getMessage().delete());
             }
@@ -112,11 +94,11 @@ public class CopyPasta extends Command implements Noformat {
             String message = content.substring(start + 1);
             if (message.isEmpty() || message.equalsIgnoreCase("null")) {
                 db.deleteInfo("copypasta." + key);
-                return "Deleted message for `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta " + args.get(0) + "`";
+                return "Deleted message for `" + Settings.commandPrefix(true) + "copypasta " + args.get(0) + "`";
             } else {
                 db.setInfo("copypasta." + key, message);
-                return "Added message for `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta " + args.get(0) + "`\n" +
-                        "Remove using `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "copypasta " + args.get(0) + " null`";
+                return "Added message for `" + Settings.commandPrefix(true) + "copypasta " + args.get(0) + "`\n" +
+                        "Remove using `" + Settings.commandPrefix(true) + "copypasta " + args.get(0) + " null`";
             }
         }
     }

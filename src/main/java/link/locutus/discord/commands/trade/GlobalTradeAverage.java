@@ -63,7 +63,7 @@ public class GlobalTradeAverage extends Command {
             b.addField("High", StringMan.join(high, "\n"), true);
 
 
-        }, "\uD83D\uDD04", DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        }, "Refresh", DiscordUtil.trimContent(event.getMessage().getContentRaw()));
 
         return null;
     }

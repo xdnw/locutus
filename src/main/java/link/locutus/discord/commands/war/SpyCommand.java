@@ -3,10 +3,11 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
@@ -29,7 +30,7 @@ public class SpyCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spy <nation> [spies-used]";
+        return Settings.commandPrefix(true) + "spy <nation> [spies-used]";
     }
 
     @Override
@@ -48,9 +49,9 @@ public class SpyCommand extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         if (args.size() < 1 || args.size() > 3) {
-            return "Usage: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spy <nation-link> [num-used] [safety]`";
+            return "Usage: `" + Settings.commandPrefix(true) + "spy <nation-link> [num-used] [safety]`";
         }
 
         Integer nationId = DiscordUtil.parseNationId(args.get(0));
@@ -83,14 +84,8 @@ public class SpyCommand extends Command {
 
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
-        int result = SpyCount.guessSpyCount(nation);
-        if (nation.getSpies() == null || nation.getSpies() != result) {
-            Locutus.imp().getNationDB().setSpies(nation.getNation_id(), result);
-            nation.setSpies(result);
-            Locutus.imp().getNationDB().addNation(nation);
-        }
-
+        DBNation nation = DBNation.byId(nationId);
+        int result = nation.updateSpies(true, true);
 
         StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies.");
         response.append("\nRecommended:");

@@ -2,7 +2,7 @@ package link.locutus.discord.commands.stock;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -345,8 +345,8 @@ public class Exchange {
         return Locutus.imp().getDiscordApi().getGuildById(StockDB.ROOT_GUILD);
     }
 
-    public Message alert(String title, String message) {
-        return DiscordUtil.createEmbedCommand(getChannel(), title, message);
+    public void alert(String title, String message) {
+        DiscordUtil.createEmbedCommand(getChannel(), title, message);
     }
 
     public String alert(String message) {

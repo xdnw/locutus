@@ -1,9 +1,10 @@
 package link.locutus.discord.util.offshore.test;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -89,7 +90,7 @@ public class IAChannel {
                 Map.Entry<Object, String> result = entry.getValue();
                 emojis.add(type.emoji);
             }
-            String cmd = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkcities " + nation.getNation_id();
+            String cmd = CM.audit.run.cmd.create(nation.getNation_id() + "", null, null, null, null).toCommandArgs();
             IACheckup.createEmbed(channel, null, cmd, nation, audits, 0);
         }
 //        emojis.remove("");
@@ -121,11 +122,11 @@ public class IAChannel {
                         double add = 1;
                         double factor = 1 - 0.5 * ((double) i / history.size());
                         String content = DiscordUtil.trimContent(message.getContentRaw()).toLowerCase();
-                        if (content.contains(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX + "setrank") || content.contains(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "setrank") && rankChange) {
+                        if (content.contains(Settings.commandPrefix(false) + "setrank") || content.contains(Settings.commandPrefix(true) + "setrank") && rankChange) {
                             return senderNation;
-                        } else if (content.contains(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "checkup")) {
+                        } else if (content.contains(Settings.commandPrefix(true) + "checkup")) {
                             add += 8;
-                        } else if (content.contains(Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify")) {
+                        } else if (content.contains(CM.register.cmd.toSlashMention() + "")) {
                             add += 4;
                         }
                         numMessage.put(senderNation, numMessage.getOrDefault(senderNation, 0d) + factor * add);

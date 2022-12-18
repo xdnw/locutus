@@ -2,13 +2,15 @@ package link.locutus.discord.apiv1.enums;
 
 public enum TreatyType {
     NONE(0),
-    MDP(6),
-    MDOAP(7, "MDoAP"),
-    ODP(3),
-    ODOAP(4, "ODoAP"),
-    PROTECTORATE(5, "Protectorate"),
+    MDP(7),
+    MDOAP(8, "MDoAP"),
+    ODP(4),
+    ODOAP(5, "ODoAP"),
+    PROTECTORATE(6, "Protectorate"),
     PIAT(1),
     NAP(2),
+
+    NPT(3),
 
     ;
 

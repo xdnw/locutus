@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
@@ -31,12 +31,12 @@ public class AssignBuild extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "build [category]";
+        return Settings.commandPrefix(true) + "build [category]";
     }
 
     @Override
     public String desc() {
-        return "Have the bot give you a build for war or raiding, based on your city count. Available categories are: `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "build ?`";
+        return "Have the bot give you a build for war or raiding, based on your city count. Available categories are: `" + Settings.commandPrefix(true) + "build ?`";
     }
 
 
@@ -45,15 +45,14 @@ public class AssignBuild extends Command {
 
         DBNation me = DiscordUtil.getNation(event);
         if (me == null) {
-            return "Invalid nation? Are you sure you are registered?";
+            return "Invalid nation? Are you sure you are registered?" + event.getAuthor().getAsMention();
         }
 
         if (args.size() != 1) {
             return usage(event);
         }
         GuildDB db = Locutus.imp().getGuildDB(event);
-        double[] resources = new double[ResourceType.values.length];
-        String result = build(db, me, args.get(0), resources);
+        String result = build(db, me, me.getCities(), args.get(0));
 
         return result;
     }
@@ -63,7 +62,7 @@ public class AssignBuild extends Command {
         return Roles.MEMBER.has(user, server);
     }
 
-    public String build(GuildDB db, DBNation me, String arg, double[] total) throws InterruptedException, ExecutionException, IOException {
+    public static String build(GuildDB db, DBNation me, int cities, String arg) throws InterruptedException, ExecutionException, IOException {
         JavaCity to = null;
 
         if (arg.contains("/city/")) {
@@ -85,7 +84,7 @@ public class AssignBuild extends Command {
 
             List<CityBuildRange> list = builds.get(category);
             for (CityBuildRange range : list) {
-                if (me.getCities() >= range.getMin() && me.getCities() <= range.getMax()) {
+                if (cities >= range.getMin() && cities <= range.getMax()) {
                     to = new JavaCity(range.getBuildGson());
                     break;
                 }
@@ -96,7 +95,7 @@ public class AssignBuild extends Command {
         }
 
         double[] totalArr = new double[ResourceType.values.length];
-        Map<Integer, JavaCity> from = new GetCityBuilds(me).adapt().get(me);
+        Map<Integer, JavaCity> from = me.getCityMap(true);
         return to.instructions(from, totalArr);
     }
 }

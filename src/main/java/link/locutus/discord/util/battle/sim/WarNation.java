@@ -1,6 +1,6 @@
 package link.locutus.discord.util.battle.sim;
 
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -38,17 +38,15 @@ public class WarNation {
         nation1.setMissiles(0);
         nation1.setNukes(0);
         nation1.setWarPolicy(WarPolicy.PIRATE);
-        int soldierMax = Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() * 100;
-        int tankMax = Buildings.FACTORY.max() * Buildings.FACTORY.cap() * 100;
-        int airMax = Buildings.HANGAR.max() * Buildings.HANGAR.cap() * 100;
-        int shipMax = Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap() * 100;
+        int soldierMax = Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(f -> false) * 100;
+        int tankMax = Buildings.FACTORY.max() * Buildings.FACTORY.cap(f -> false) * 100;
+        int airMax = Buildings.HANGAR.max() * Buildings.HANGAR.cap(f -> false) * 100;
+        int shipMax = Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(f -> false) * 100;
 
         nation1.setSoldiers(soldierMax);
         nation1.setTanks(tankMax);
         nation1.setAircraft(airMax);
         nation1.setShips(shipMax);
-        nation1.setInfra(1000);
-        nation1.setAvg_infra(1000);
         nation1.setCities(1);
 
         WarNation warNation1 = new WarNation(nation1, false);
@@ -71,7 +69,7 @@ public class WarNation {
         this.aircraft = nation.getAircraft();
         this.ships = nation.getShips();
         this.cities = nation.getCities();
-        this.avg_infra = nation.getAvg_infra();
+        this.avg_infra = (int) nation.getAvg_infra();
         this.money = 0;
     }
 

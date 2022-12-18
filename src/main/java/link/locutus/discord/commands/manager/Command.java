@@ -3,9 +3,11 @@ package link.locutus.discord.commands.manager;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
@@ -85,13 +87,17 @@ public abstract class Command {
     }
 
     public String usage(String arg, MessageChannel channel) {
+        return usage(arg, channel == null ? null : new DiscordChannelIO(channel));
+    }
+
+    public String usage(String arg, IMessageIO channel) {
         if (channel != null) {
             StringBuilder response = new StringBuilder();
             if (arg != null) {
                 response.append("**").append(arg).append("**\n\n");
             }
             response.append("`").append(help()).append("`").append(" - ").append(desc());
-            DiscordUtil.createEmbedCommand(channel, aliases.get(0), response.toString().trim());
+            channel.create().embed(aliases.get(0), response.toString().trim()).send();
             throw new IllegalArgumentException("");
         }
         throw new IllegalArgumentException("Usage: " + help());
@@ -110,7 +116,7 @@ public abstract class Command {
     }
 
     public String usage() {
-        return usage((String) null, null);
+        return usage((String) null, (MessageChannel) null);
     }
 
     public String noPerm(String perm) {
@@ -164,7 +170,7 @@ public abstract class Command {
     }
 
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + aliases.get(0);
+        return Settings.commandPrefix(true) + aliases.get(0);
     }
 
     public String desc() {

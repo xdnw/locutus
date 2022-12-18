@@ -3,9 +3,10 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -48,7 +49,7 @@ public class IntelOp extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         if (args.size() > 1) return usage(event);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -60,7 +61,7 @@ public class IntelOp extends Command {
             if (dnr != null) topX = dnr;
         }
 
-        List<DBNation> enemies = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
 
         Set<Integer> allies = db.getAllies(true);
 
@@ -87,7 +88,7 @@ public class IntelOp extends Command {
         enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
 
         if (false) {
-            List<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
+            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
             myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / 1.75, f.getScore() / 0.75) <= 0);

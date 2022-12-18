@@ -8,7 +8,7 @@ import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
 import link.locutus.discord.commands.rankings.builder.NumericMappedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -54,7 +54,7 @@ public class WarCostRanking extends Command {
                 "Add -c to exclude consumption\n" +
                 "Add -l to exclude loot\n" +
                 "Add -t to rank total instead of average per war\n" +
-                "Add -p to do net instead of profit\n" +
+                "Add -p to do loss instead of profit\n" +
                 "Add -d to do damage dealt instead of cost\n" +
                 "Add -n to do net instead of total/average\n" +
                 "Add -a to group by alliance instead of nation\n" +
@@ -67,7 +67,7 @@ public class WarCostRanking extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(MessageReceivedEvent event2, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         Iterator<String> iter = args.iterator();
         MilitaryUnit unitKill = null;
         MilitaryUnit unitLoss = null;
@@ -103,7 +103,7 @@ public class WarCostRanking extends Command {
             }
         }
 
-        if (args.size() != 1 && args.size() != 2) return usage(event);
+        if (args.size() == 0 || args.size() > 3) return usage(event2);
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
         Map<Integer, DBNation> nationMap = nations.stream().collect(Collectors.toMap(DBNation::getNation_id, e -> e));
@@ -126,15 +126,20 @@ public class WarCostRanking extends Command {
 
         int sign = profit ? -1 : 1;
         long diff = TimeUtil.timeToSec(args.get(1)) * 1000L;
-        String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
-        long cutoffMs = System.currentTimeMillis() - diff;
+        long start = System.currentTimeMillis() - diff;
+        long end = args.size() >= 3 ? System.currentTimeMillis() - (TimeUtil.timeToSec(args.get(2)) * 1000L) : Long.MAX_VALUE;
+
+        String diffStr;
+        if (end == Long.MAX_VALUE) {
+            diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
+        } else {
+            diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, end - start);
+        }
 
         String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
         title = String.format(title, diffStr);
 
-        BiMap<Integer, String> allianceNames = Locutus.imp().getNationDB().getAlliances();
-
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(start, end);
 
         boolean finalUnits = units;
         boolean finalInfra = infra;
@@ -232,7 +237,7 @@ public class WarCostRanking extends Command {
                     // Sort descending
             ranks = byAA.sort()
                     // Change key to alliance name
-                    .nameKeys(allianceId -> allianceNames.getOrDefault(allianceId, Integer.toString(allianceId)));
+                    .nameKeys(allianceId -> PnwUtil.getName(allianceId, true));
         } else {
             // Sort descending
             ranks = byNation
@@ -243,15 +248,15 @@ public class WarCostRanking extends Command {
         }
 
         // Embed the rank list
-        ranks.build(event, title);
+        ranks.build(event2, title);
 
         if (ranks.get().size() > 25 && !flags.contains('f')) {
-            DiscordUtil.upload(event.getGuildChannel(), title, ranks.toString());
+            DiscordUtil.upload(event2.getChannel(), title, ranks.toString());
         }
         return null;
     }
 
-    private double scale(DBNation nation, double value, boolean enabled) {
+    public static double scale(DBNation nation, double value, boolean enabled) {
         if (enabled) {
             value /= nation.getCities();
         }

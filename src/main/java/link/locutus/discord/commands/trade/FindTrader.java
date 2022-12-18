@@ -4,14 +4,13 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transfer;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.trade.Offer;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -67,9 +66,9 @@ public class FindTrader extends Command {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
 
         TradeManager manager = Locutus.imp().getTradeManager();
-        TradeDB db = manager.getTradeDb();
+        link.locutus.discord.db.TradeDB db = manager.getTradeDb();
         long cutoff = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
-        List<Offer> offers = db.getOffers(cutoff);
+        List<DBTrade> offers = db.getTrades(cutoff);
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
         Map<Integer, double[]> inflows = manager.inflows(transfers, flags.contains('a'));
@@ -106,7 +105,7 @@ public class FindTrader extends Command {
             b.addField("Nation", StringMan.join(nationName, "\n"), true);
             b.addField("Amt", StringMan.join(amtList, "\n"), true);
             b.addField("Ppu", StringMan.join(ppuList, "\n"), true);
-        }, "\uD83D\uDD04", DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        }, "Refresh", DiscordUtil.trimContent(event.getMessage().getContentRaw()));
         return null;
     }
 }

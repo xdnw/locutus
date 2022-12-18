@@ -1,12 +1,15 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -21,6 +24,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class MailCommand extends Command implements Noformat {
@@ -30,7 +34,7 @@ public class MailCommand extends Command implements Noformat {
 
     @Override
     public String help() {
-        return "`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "mail <nation> <subject> <message...>` or `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "mail <leader> <message-url> <message...>`";
+        return "`" + Settings.commandPrefix(true) + "mail <nation> <subject> <message...>` or `" + Settings.commandPrefix(true) + "mail <leader> <message-url> <message...>`";
     }
 
     @Override
@@ -46,6 +50,7 @@ public class MailCommand extends Command implements Noformat {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() < 3) return usage(event);
+        String fromStr = DiscordUtil.parseArg(args, "from");
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
@@ -56,7 +61,6 @@ public class MailCommand extends Command implements Noformat {
             if (arg1.contains("message/id=")) {
                 Auth auth = null;
 
-                String fromStr = DiscordUtil.parseArg(args, "from");
                 if (fromStr != null) {
                     DBNation from = DiscordUtil.parseNation(fromStr);
                     if (from == null) throw new IllegalArgumentException("Invalid sender: " + fromStr);
@@ -66,9 +70,9 @@ public class MailCommand extends Command implements Noformat {
                     if (!hasPerms) return "You do not have permission to reply to this message";
                 } else {
                     try {
-                        auth = me.getAuth(Roles.INTERNAL_AFFAIRS);
+                        auth = me.getAuth();
                     } catch (IllegalArgumentException e) {
-                        auth = db.getAuth();
+                        auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
                         if (auth == null) throw e;
                     }
                 }
@@ -91,26 +95,32 @@ public class MailCommand extends Command implements Noformat {
             message = MarkupUtil.transformURLIntoLinks(message);
             String subject = args.get(1);
 
-            String[] keys = { Locutus.imp().getRootAuth().getApiKey() };
-            if (flags.contains('l') || (!Roles.ADMIN.hasOnRoot(event.getAuthor()) && !Roles.INTERNAL_AFFAIRS.hasOnRoot(event.getAuthor()))) {
-                keys = Locutus.imp().getGuildDB(event).getOrThrow(GuildDB.Key.API_KEY);
+            ApiKeyPool.ApiKey myKey = me.getApiKey(false);
+
+            ApiKeyPool key = null;
+            if (flags.contains('l') || myKey == null) {
+                if (!Roles.MAIL.has(author, db.getGuild())) {
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use`" + Settings.commandPrefix(false) + "credentials addApiKey` to add your own key";
+                }
+                key = db.getMailKey();
+            } else {
+                key = ApiKeyPool.builder().addKey(myKey).build();
+            }
+            if (key == null){
+                return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey`";
             }
 
 
-            Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-            if (nationId == null) return "Invalid Key `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore API_KEY`";
-            DBNation sender = DBNation.byId(nationId);
-
             if (!flags.contains('f')) {
                 String title = "Send " + nations.size() + " messages";
-                String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()).replaceFirst(" ", " -f ");
+                String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()).replaceFirst(" ", " -f ");
 
                 Set<Integer> alliances = new LinkedHashSet<>();
                 for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
                 String embedTitle = title + " to ";
                 if (nations.size() == 1) {
                     DBNation nation = nations.iterator().next();
-                    embedTitle += nations.size() == 1 ? nation.getName() + " | " + nation.getAlliance() : "nations";
+                    embedTitle += nations.size() == 1 ? nation.getName() + " | " + nation.getAllianceName() : "nations";
                 } else {
                     embedTitle += " nations";
                 }
@@ -120,11 +130,7 @@ public class MailCommand extends Command implements Noformat {
                 body.append("subject: " + subject + "\n");
                 body.append("body: ```" + message + "```");
 
-                if (sender.getNation_id() == Settings.INSTANCE.NATION_ID) {
-                    body.append("\nAdd `-l` to send from your alliance instead of Borg");
-                }
-
-                DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "\u2705", pending);
+                DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "Next", pending);
                 return null;
             }
 
@@ -138,7 +144,7 @@ public class MailCommand extends Command implements Noformat {
                 RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Sending to " + nation.getNation()));
 
 
-                response.append(nation.sendMail(keys[0], subject, message)).append("\n");
+                response.append(nation.sendMail(key, subject, message)).append("\n");
 //                response.append(new MailTask(auth, nation, subject, message).call()).append('\n');
             }
 

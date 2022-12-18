@@ -7,7 +7,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.event.TransactionEvent;
+import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -26,6 +26,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static link.locutus.discord.db.GuildDB.Key.BANK_ALERT_CHANNEL;
 import static link.locutus.discord.db.GuildDB.Key.DEPOSIT_ALERT_CHANNEL;
@@ -33,8 +34,9 @@ import static link.locutus.discord.db.GuildDB.Key.WITHDRAW_ALERT_CHANNEL;
 
 public class BankUpdateProcessor {
     @Subscribe
-    public static void process(TransactionEvent event) {
+    public void process(TransactionEvent event) {
         Transaction2 transfer = event.getTransaction();
+        if (transfer.tx_datetime < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1));
 
         if (transfer.note != null && transfer.note.contains("of the alliance bank inventory.")) return;
         if (!transfer.isReceiverNation() && !transfer.isSenderNation()) return;
@@ -42,26 +44,40 @@ public class BankUpdateProcessor {
         int nationId = (int) (transfer.isSenderNation() ? transfer.getSender() : transfer.getReceiver());
         int aaId = (int) (transfer.isSenderAA() ? transfer.getSender() : transfer.getReceiver());
 
-        GuildDB guildDb = Locutus.imp().getGuildDBByAA(aaId);
-        if (guildDb != null) {
-            GuildDB.Key key = transfer.isReceiverAA() ? DEPOSIT_ALERT_CHANNEL : WITHDRAW_ALERT_CHANNEL;
-            Roles locrole = transfer.isReceiverAA() ? Roles.ECON_DEPOSIT_ALERTS : Roles.ECON_WITHDRAW_ALERTS;
-            String channelId = guildDb.getInfo(key);
+        Set<Integer> trackedAlliances = new HashSet<>(aaId);
+        if (transfer.note != null) {
+            for (Map.Entry<String, String> entry : PnwUtil.parseTransferHashNotes(transfer.note).entrySet()) {
+                if (MathMan.isInteger(entry.getValue())) {
+                    try {
+                        int id = Integer.parseInt(entry.getValue());
+                        trackedAlliances.add(id);
+                    } catch (NumberFormatException ignore) {}
+                }
+            }
+        }
+        for (int allianceId : trackedAlliances) {
+            GuildDB guildDb = Locutus.imp().getGuildDBByAA(allianceId);
+            if (guildDb != null) {
+                GuildDB.Key key = transfer.isReceiverAA() ? DEPOSIT_ALERT_CHANNEL : WITHDRAW_ALERT_CHANNEL;
+                Roles locrole = transfer.isReceiverAA() ? Roles.ECON_DEPOSIT_ALERTS : Roles.ECON_WITHDRAW_ALERTS;
+                String channelId = guildDb.getInfo(key);
 
-            if (channelId != null) {
-                Guild guild = guildDb.getGuild();
-                if (guild != null) {
-                    MessageChannel channel = DiscordUtil.getChannel(guild, channelId);
-                    if (channel != null) {
-                        Map.Entry<String, String> card = createCard(transfer, nationId);
-                        if (card != null) {
-                            try {
-                                DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
-                                Role role = locrole.toRole(guild);
-                                if (role != null) {
-                                    AlertUtil.bufferPing(channel, role.getAsMention());
+                if (channelId != null) {
+                    Guild guild = guildDb.getGuild();
+                    if (guild != null) {
+                        MessageChannel channel = DiscordUtil.getChannel(guild, channelId);
+                        if (channel != null) {
+                            Map.Entry<String, String> card = createCard(transfer, nationId);
+                            if (card != null) {
+                                try {
+                                    DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
+                                    Role role = locrole.toRole(guild);
+                                    if (role != null) {
+                                        AlertUtil.bufferPing(channel, role.getAsMention());
+                                    }
+                                } catch (InsufficientPermissionException ignore) {
                                 }
-                            } catch (InsufficientPermissionException ignore) {}
+                            }
                         }
                     }
                 }
@@ -89,8 +105,6 @@ public class BankUpdateProcessor {
                 Map.Entry<String, String> card = createCard(transfer, nationId);
 
                 for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
-                    Integer perm = guildDB.getPermission(BankAlerts.class);
-                    if (perm == null || perm <= 0) continue;
                     String channelId = guildDB.getInfo(BANK_ALERT_CHANNEL, false);
                     if (channelId == null) {
                         continue;

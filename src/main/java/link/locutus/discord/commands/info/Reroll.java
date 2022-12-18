@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -24,7 +24,7 @@ public class Reroll extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "reroll <nation>";
+        return Settings.commandPrefix(true) + "reroll <nation>";
     }
 
     @Override
@@ -50,17 +50,13 @@ public class Reroll extends Command {
         }
         DBNation me = Locutus.imp().getNationDB().getNation(id);
         if (me == null) {
-            return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "sync ?)";
-        }
-        if (me.getDate() == null) {
-            me.getPnwNation();
+            return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.commandPrefix(true) + "sync ?)";
         }
 
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();
-            if (otherNation.getDate() == null) continue;
 
             if (otherId > id && otherNation.getAgeDays() > me.getAgeDays() && Math.abs(otherNation.getDate()  - me.getDate()) > TimeUnit.DAYS.toMillis(3)) {
                 return me.getNation() + "/" + me.getNation_id() + " is a reroll.";

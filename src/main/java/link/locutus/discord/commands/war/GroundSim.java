@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.war;
 
 import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;

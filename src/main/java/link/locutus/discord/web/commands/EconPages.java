@@ -14,7 +14,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
@@ -22,12 +22,11 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.TaxRecordCategorizer2;
 import net.dv8tion.jda.api.entities.Guild;
-import views.guild.econ.taxexpensesbyturn;
+import rocker.guild.econ.taxexpensesbyturn;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,10 +38,9 @@ public class EconPages {
     @Command(desc = "Show running tax expenses by day by bracket")
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
-    @WhitelistPermission
     @IsAuthenticated
-    public Object taxExpensesByTime(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Timestamp long start, @Timestamp long end, @Default Set<DBNation> nationFilter, @Switch('s') @Range(min=1) Integer movingAverageTurns, @Switch('c') boolean cumulative,
-                                    @Switch('t') boolean dontRequireTagged) throws Exception {
+    public Object taxExpensesByTime(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Timestamp long start, @Timestamp long end, @Default Set<DBNation> nationFilter, @Switch("s") @Range(min=1) Integer movingAverageTurns, @Switch("c") boolean cumulative,
+                                    @Switch("t") boolean dontRequireTagged) throws Exception {
 
         if (movingAverageTurns != null && cumulative) throw new IllegalArgumentException("Please pick either a moving average, or cumulative, not both");
 
@@ -65,7 +63,7 @@ public class EconPages {
         for (BankDB.TaxDeposit tax : categorized.getTaxes()) {
             long turn = tax.getTurn();
             long turnRel = turn - turnStart;
-            taxRecordsByBracket.computeIfAbsent(tax.tax_id, f -> new LinkedList<>()).add(tax);
+            taxRecordsByBracket.computeIfAbsent(tax.tax_id, f -> new ArrayList<>()).add(tax);
         }
 
         Map<Integer, List<Map.Entry<Transaction2, TaxRecordCategorizer2.TransactionType>>> txsByType = categorized.getTransactionsByBracketByType();
@@ -118,11 +116,10 @@ public class EconPages {
     @Command(desc = "Show cumulative tax expenses over a period by nation/bracket")
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
-    @WhitelistPermission
     @IsAuthenticated
-    public Object taxExpensesIndex(@Me GuildDB db, @Timestamp long start, @Timestamp long end, @Switch('n') NationList nationList,
-                                   @Switch('g') boolean dontRequireGrant, @Switch('t') boolean dontRequireTagged, @Switch('e') boolean dontRequireExpiry,
-                                   @Switch('d') boolean includeDeposits) throws Exception {
+    public Object taxExpensesIndex(@Me GuildDB db, @Timestamp long start, @Timestamp long end, @Switch("n") NationList nationList,
+                                   @Switch("g") boolean dontRequireGrant, @Switch("t") boolean dontRequireTagged, @Switch("e") boolean dontRequireExpiry,
+                                   @Switch("d") boolean includeDeposits) throws Exception {
 
         List<String> errors = new ArrayList<>();
         Predicate<Integer> allowedNations;
@@ -136,7 +133,7 @@ public class EconPages {
         }
         TaxRecordCategorizer2 categorized = new TaxRecordCategorizer2(db, start, end, dontRequireGrant, dontRequireTagged, dontRequireExpiry, includeDeposits, allowedNations, errors::add);
 
-        return views.guild.econ.taxexpenses.template(
+        return rocker.guild.econ.taxexpenses.template(
                 db, categorized.getAaId(), categorized.getAlliances(), !dontRequireGrant, !dontRequireExpiry, !dontRequireTagged,
                 categorized.getBrackets(), categorized.getTaxes(), categorized.getBracketsByNation(), categorized.getNationsByBracket(), categorized.getAllNations(),
                 categorized.getBracketToNationDepositCount(), categorized.getAllNationDepositCount(),

@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import com.google.common.base.Function;
 import net.dv8tion.jda.api.entities.Guild;
@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class AAMembers extends Command {
@@ -22,7 +23,7 @@ public class AAMembers extends Command {
     }
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + getAliases().get(0) + " <page>";
+        return Settings.commandPrefix(true) + getAliases().get(0) + " <page>";
     }
 
     @Override
@@ -35,7 +36,7 @@ public class AAMembers extends Command {
         if (args.isEmpty()) {
             return usage(event);
         }
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(Settings.INSTANCE.getAlliance(event)));
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(Settings.INSTANCE.getAlliance(event)));
 
         int page = Integer.parseInt(args.get(0));
         int perPage = 5;
@@ -60,7 +61,7 @@ public class AAMembers extends Command {
                 String infra = n.toMarkdown(false, false, true);
 
                 StringBuilder response = new StringBuilder();
-                response.append(n.getNation()).append(" | ").append(n.getAlliance()).append(" | ").append(active);
+                response.append(n.getNation()).append(" | ").append(n.getAllianceName()).append(" | ").append(active);
                 if (user != null) {
                     response.append('\n').append(user.getDiscordName()).append(" | ").append("`<@!").append(user.getDiscordId()).append(">`");
                 }

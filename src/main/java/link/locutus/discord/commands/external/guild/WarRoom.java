@@ -1,13 +1,14 @@
 package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -62,13 +63,15 @@ public class WarRoom extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty()) return usage();
+
         if ((flags.contains('p') || flags.contains('m')) && !Roles.MILCOM.has(event.getMember())) {
             return "You need the milcom role to use `-p` or `-m`";
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory warCat = db.getWarChannel(true);
         if (warCat == null) {
-            return "War categories are not enabled. See `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "KeyStore ENABLE_WAR_ROOMS true`";
+            return "War categories are not enabled. See " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true").toSlashMention() + "";
         }
         String filterArg = DiscordUtil.parseArg(args, "filter");
 
@@ -93,7 +96,7 @@ public class WarRoom extends Command {
         if (arg.startsWith("https://docs.google.com/spreadsheets/d/") || arg.startsWith("sheet:")) {
             SpreadSheet sheet = SpreadSheet.create(arg);
             StringBuilder response = new StringBuilder();
-            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, f -> true, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
                 @Override
                 public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String s) {
                     response.append(s + "\n");
@@ -189,14 +192,14 @@ public class WarRoom extends Command {
         for (DBNation attacker : attackers) {
             User user = attacker.getUser();
             if (user == null) {
-                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAlliance() + ". Have they used `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify` ?");
+                errorOutput.accept("No user for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Have they used " + CM.register.cmd.toSlashMention() + " ?");
                 continue;
             }
 
             guild = channel.getGuild();
             Member member = guild.getMemberById(user.getIdLong());
             if (member == null) {
-                errorOutput.accept("No member for: " + attacker.getNation() + " | " + attacker.getAlliance() + ". Are they on this discord?");
+                errorOutput.accept("No member for: " + attacker.getNation() + " | " + attacker.getAllianceName() + ". Are they on this discord?");
                 continue;
             }
 

@@ -103,7 +103,10 @@ public class TimeUtil {
         long minute = TimeUnit.MINUTES.toMillis(1);
         long lastTurn = TimeUtil.getTurn(now - minute);
         long nextTurn = TimeUtil.getTurn(now + minute);
-        return lastTurn == nextTurn;
+        if (lastTurn != nextTurn) return false;
+        double amt = (nextTurn % 12 == 0) ? 10.2d : 1.2d;
+        long turnChangeTimer = TimeUtil.getTurn((long) (now - minute * amt));
+        return turnChangeTimer == nextTurn;
     }
 
     public static long timeToSec(String string) {
@@ -141,20 +144,27 @@ public class TimeUtil {
         String[] split = string.indexOf(' ') != -1 ? string.split(" ") : new String[] {string};
         long time = 0;
         for (String value : split) {
-            int nums = Integer.parseInt(value.replaceAll("[^\\d]", ""));
+            double nums = Double.parseDouble(value.replaceAll("[^\\d.]", ""));
             String letters = value.replaceAll("[^a-z]", "");
             switch (letters) {
+                case "month(s)":
+                case "months":
+                    time += TimeUnit.DAYS.toSeconds(30) * nums;
+                    break;
                 case "week":
                 case "weeks":
                 case "wks":
+                case "week(s)":
                 case "w":
                     time += 604800 * nums;
                     break;
+                case "day(s)":
                 case "days":
                 case "day":
                 case "d":
                     time += 86400 * nums;
                     break;
+                case "hour(s)":
                 case "hour":
                 case "hr":
                 case "hrs":
@@ -162,6 +172,7 @@ public class TimeUtil {
                 case "h":
                     time += 3600 * nums;
                     break;
+                case "minute(s)":
                 case "minutes":
                 case "minute":
                 case "mins":
@@ -169,6 +180,7 @@ public class TimeUtil {
                 case "m":
                     time += 60 * nums;
                     break;
+                case "second(s)":
                 case "seconds":
                 case "second":
                 case "secs":
@@ -259,8 +271,22 @@ public class TimeUtil {
         return ChronoUnit.DAYS.between(Instant.EPOCH, utc);
     }
 
+    public static long getDay(long timestamp) {
+        return ChronoUnit.DAYS.between(Instant.EPOCH, Instant.ofEpochMilli(timestamp));
+    }
+
     public static <T> T runDayTask(String id, Function<Long, T> task) {
         return runTimeTask(id, TimeUtil::getDay, task);
+    }
+
+    public static long getOrbisDate(long date) {
+        long origin = 16482268800000L / 11L;
+        return origin + (date - origin) * 12;
+    }
+
+    public static long getRealDate(long orbisDate) {
+        long origin = 16482268800000L / 11L;
+        return ((orbisDate - origin) / 12) + origin;
     }
 
     public static <T> T runTurnTask(String id, Function<Long, T> task) {

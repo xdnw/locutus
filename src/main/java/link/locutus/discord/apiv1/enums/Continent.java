@@ -3,8 +3,12 @@ package link.locutus.discord.apiv1.enums;
 import link.locutus.discord.Locutus;
 import org.apache.commons.lang3.text.WordUtils;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Locale;
+
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
 public enum Continent {
@@ -30,6 +34,20 @@ public enum Continent {
         this.name = WordUtils.capitalize(name().replace("_", " "));
     }
 
+    public static Continent parseV3(String toUpperCase) {
+        switch (toUpperCase.toUpperCase(Locale.ROOT)) {
+            case "NA": return NORTH_AMERICA;
+            case "SA": return SOUTH_AMERICA;
+            case "EU": return EUROPE;
+            case "AF": return AFRICA;
+            case "AS": return ASIA;
+            case "AU": return AUSTRALIA;
+            case "AN": return ANTARCTICA;
+            default:
+                throw new IllegalArgumentException("No continent found for: " + toUpperCase);
+        }
+    }
+
     public double foodModifier(ZonedDateTime time) {
         if (north == Boolean.TRUE) {
             return 1;
@@ -40,8 +58,16 @@ public enum Continent {
     }
 
     public double getSeasonModifier() {
+        return getSeasonModifier(Locutus.imp().getTradeManager().getGameDate());
+    }
+
+    public double getSeasonModifier(long date) {
+        return getSeasonModifier(Instant.ofEpochMilli(date));
+    }
+
+    public double getSeasonModifier(Instant instant) {
         double season = 1;
-        switch (ZonedDateTime.now(ZoneOffset.UTC).getMonth()) {
+        switch (LocalDateTime.ofInstant(instant, ZoneOffset.UTC).getMonth()) {
             case DECEMBER:
             case JANUARY:
             case FEBRUARY:

@@ -1,11 +1,9 @@
 package link.locutus.discord.util.battle;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -14,6 +12,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import rocker.grant.nation;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -87,7 +86,7 @@ public class BlitzGenerator {
         return reversed;
     }
 
-    private static void process(DBNation attacker, DBNation defender, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
+    private static void process(DBNation attacker, DBNation defender, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlots, boolean checkSpySlots, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
         double minScore = attacker.getScore() * minScoreMultiplier;
         double maxScore = attacker.getScore() * maxScoreMultiplier;
 
@@ -104,17 +103,20 @@ public class BlitzGenerator {
             double ratio = getAirStrength(defender, false) / getAirStrength(attacker, true);
             String response = ("`" + defender.getNation() + "` is " + MathMan.format(ratio) + "x stronger than " + "`" + attacker.getNation() + "`");
             invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
-        } else if (defender.getDef() == 3) {
+        } else if (checkWarSlots && defender.getDef() == 3) {
             String response = ("`" + defender.getNation() + "` is slotted");
+            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+        } else if (checkSpySlots && !defender.isEspionageAvailable()) {
+            String response = ("`" + defender.getNation() + "` is spy slotted");
             invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
         }
     }
 
     public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, int headerRow) {
-        return getTargets(sheet, headerRow, f -> Integer.MAX_VALUE, 0, Integer.MAX_VALUE, false, f -> true, (a, b) -> {});
+        return getTargets(sheet, headerRow, f -> Integer.MAX_VALUE, 0, Integer.MAX_VALUE, false, false, false, f -> true, (a, b) -> {});
     }
 
-    public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, int headerRow, Function<DBNation, Integer> maxWars, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, Function<DBNation, Boolean> isValidTarget, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
+    public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, int headerRow, Function<DBNation, Integer> maxWars, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlotted, boolean checkSpySlotted, Function<DBNation, Boolean> isValidTarget, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
         List<List<Object>> rows = sheet.get("A:ZZ");
         List<Object> header = rows.get(headerRow);
 
@@ -182,8 +184,8 @@ public class BlitzGenerator {
                 Object aaCell = row.get(allianceI);
                 if (aaCell != null) {
                     String allianceStr = aaCell.toString();
-                    Integer allianceId = Locutus.imp().getNationDB().getAllianceId(allianceStr);
-                    if (allianceId != null && nation.getAlliance_id() != allianceId) {
+                    DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(allianceStr);
+                    if (alliance != null && nation.getAlliance_id() != alliance.getAlliance_id()) {
                         String response = ("Nation: `" + nationStr + "` is no longer in alliance: `" + allianceStr + "`\n");
                         invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
                     }
@@ -216,7 +218,7 @@ public class BlitzGenerator {
                             return;
                         }
 
-                        process(attackerMutable, defenderMutable, minScoreMultiplier, maxScoreMultiplier, checkUpdeclare, invalidOut);
+                        process(attackerMutable, defenderMutable, minScoreMultiplier, maxScoreMultiplier, checkUpdeclare, checkWarSlotted, checkSpySlotted, invalidOut);
 
                         allAttackers.add(attackerMutable);
                         allDefenders.add(defenderMutable);
@@ -306,8 +308,8 @@ public class BlitzGenerator {
     }
 
     public void addAlliances(Set<Integer> allianceIds, boolean attacker) {
-        List<DBNation> nations = Locutus.imp().getNationDB().getNations(allianceIds);
-        addNations(new HashSet<>(nations), attacker);
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNations(allianceIds);
+        addNations(nations, attacker);
     }
 
     public Set<DBNation> getNations(boolean attacker) {
@@ -371,7 +373,7 @@ public class BlitzGenerator {
 
     public Map<DBNation, List<DBNation>> assignEasyTargets(double maxCityRatio, double maxGroundRatio, double maxAirRatio) {
         init();
-        int airCap = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap();
+//        int airCap = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap(f -> false);
 //        colA.removeIf(n -> n.getAircraft() < airCap * n.getCities() * 0.8);
 
         Map<DBNation, List<DBNation>> attPool = new HashMap<>(); // Pool of nations that could be used as targets
@@ -899,28 +901,45 @@ public class BlitzGenerator {
     }
 
     public static double getBaseStrength(int cities) {
-        int max = Buildings.HANGAR.cap() * Buildings.HANGAR.max() * cities;
+        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * cities;
         return max / 2d;
     }
 
     public static double getAirStrength(DBNation nation, boolean isAttacker) {
-        int max = Buildings.HANGAR.cap() * Buildings.HANGAR.max() * nation.getCities();
-        double str = nation.getAircraft() + max / 2d;
-        str += nation.getTanks() / 32d;
+        return getAirStrength(nation, nation.getAircraft(), nation.getTanks());
+    }
+
+    public static double getAirStrength(DBNation nation, MMRDouble mmrOverride) {
+        double aircraft;
+        double tanks;
+        if (mmrOverride != null) {
+            aircraft = (mmrOverride.get(MilitaryUnit.AIRCRAFT) / 5d) * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * nation.getCities();
+            tanks = (mmrOverride.get(MilitaryUnit.TANK) / 5d) * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.max() * nation.getCities();
+        } else {
+            aircraft = nation.getAircraft();
+            tanks = nation.getTanks();
+        }
+        return getAirStrength(nation, aircraft, tanks);
+    }
+
+    public static double getAirStrength(DBNation nation, double aircraft, double tanks) {
+        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max() * nation.getCities();
+        double str = aircraft + max / 2d;
+        str += tanks / 32d;
 
         return str;
     }
 
     public double getGroundStrength(DBNation nation, boolean isAttacker) {
-        int max = Buildings.BARRACKS.cap() * Buildings.BARRACKS.max() * nation.getCities();
+        int max = Buildings.BARRACKS.cap(nation::hasProject) * Buildings.BARRACKS.max() * nation.getCities();
         double str = nation.getSoldiers() + max / 2d;
         str -= nation.getTanks() * 20;
         return str;
     }
 
     public double getValue(DBNation defender, boolean isAttacker, List<DBNation> attackers) {
-        int airRebuyPerCity = Buildings.HANGAR.cap() * Buildings.HANGAR.perDay();
-        int maxAirPerCity = Buildings.HANGAR.cap() * Buildings.HANGAR.max();
+        int airRebuyPerCity = Buildings.HANGAR.cap(defender::hasProject) * Buildings.HANGAR.perDay();
+        int maxAirPerCity = Buildings.HANGAR.cap(defender::hasProject) * Buildings.HANGAR.max();
 
 //        double scoreRatio = enemyPlaneRatio.apply(defender.getScore());
 //        double activity = activityFactor(defender, false);

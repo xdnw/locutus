@@ -9,15 +9,17 @@ type Query {
     leader_name: [String]
     alliance_id: [Int]
     alliance_position: [Int]
+    alliance_position_id: [Int]
     color: [String]
     created_after: DateTime
-    min_score: Double
-    max_score: Double
+    min_score: Float
+    max_score: Float
     cities: [Int]
     min_cities: Int
     max_cities: Int
     vmode: Boolean
     discord: [String]
+    discord_id: [String]
     tax_id: [Int]
     orderBy: [QueryNationsOrderByOrderByClause!]
 
@@ -87,8 +89,8 @@ type Query {
   ): WarPaginator
   bounties(
     nation_id: [Int]
-    min_amount: Double
-    max_amount: Double
+    min_amount: Float
+    max_amount: Float
     orderBy: [QueryBountiesOrderByOrderByClause!]
 
     # Limits number of fetched items. Maximum allowed value: 1000.
@@ -164,8 +166,9 @@ type Query {
     team_id: [Int]
     orderBy: [QueryBaseballGamesOrderByOrderByClause!]
     open: Boolean
-    max_wager: Int
-    min_wager: Int
+    max_wager: Float
+    min_wager: Float
+    wager: [Float]
 
     # Limits number of fetched items. Maximum allowed value: 1000.
     first: Int = 50
@@ -246,10 +249,10 @@ type Nation {
   color: String
   num_cities: Int
   cities: [City!]!
-  score: Double
+  score: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  update_tz: Double
+  update_tz: Float
   population: Int
   flag: String
   vmode: Int @deprecated(reason: "Use vacation_mode_turns instead.")
@@ -269,6 +272,7 @@ type Nation {
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
   spies: Int
   discord: String
+  discord_id: String
   treasures: [Treasure!]!
 
   # All offensive wars within the last 14 days
@@ -349,42 +353,42 @@ type Nation {
   turns_since_last_project: Int
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  money: Double
+  money: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  coal: Double
+  coal: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  oil: Double
+  oil: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  uranium: Double
+  uranium: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  iron: Double
+  iron: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  bauxite: Double
+  bauxite: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  lead: Double
+  lead: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  gasoline: Double
+  gasoline: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  munitions: Double
+  munitions: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  steel: Double
+  steel: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  aluminum: Double
+  aluminum: Float
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
-  food: Double
+  food: Float
   projects: Int
-  project_bits: Int
+  project_bits: Long
   ironw: Boolean @deprecated(reason: "Use iron_works instead")
   iron_works: Boolean
   bauxitew: Boolean @deprecated(reason: "Use bauxite_works instead")
@@ -416,7 +420,7 @@ type Nation {
   city_planning: Boolean @deprecated(reason: "Use urban_planning instead")
   urban_planning: Boolean
   adv_city_planning: Boolean
-    @deprecated(reason: "Use advanced_urban_planning instead")
+  @deprecated(reason: "Use advanced_urban_planning instead")
   advanced_urban_planning: Boolean
   space_program: Boolean
   spy_satellite: Boolean
@@ -424,28 +428,31 @@ type Nation {
   pirate_economy: Boolean
   recycling_initiative: Boolean
   telecom_satellite: Boolean
-    @deprecated(reason: "Use telecommunications_satellite instead")
+  @deprecated(reason: "Use telecommunications_satellite instead")
   telecommunications_satellite: Boolean
   green_tech: Boolean @deprecated(reason: "Use green_technologies instead")
   green_technologies: Boolean
   arable_land_agency: Boolean
   clinical_research_center: Boolean
   specialized_police_training: Boolean
-    @deprecated(reason: "Use specialized_police_training_program instead")
+  @deprecated(reason: "Use specialized_police_training_program instead")
   specialized_police_training_program: Boolean
   adv_engineering_corps: Boolean
-    @deprecated(reason: "Use advanced_engineering_corps instead")
+  @deprecated(reason: "Use advanced_engineering_corps instead")
   advanced_engineering_corps: Boolean
   government_support_agency: Boolean
   research_and_development_center: Boolean
   resource_production_center: Boolean
+  metropolitan_planning: Boolean
+  military_salvage: Boolean
+  fallout_shelter: Boolean
   wars_won: Int
   wars_lost: Int
   tax_id: Int
   alliance_seniority: Int
   baseball_team: BBTeam
-  gross_national_income: Double
-  gross_domestic_product: Double
+  gross_national_income: Float
+  gross_domestic_product: Float
   soldier_casualties: Int
   soldier_kills: Int
   tank_casualties: Int
@@ -460,7 +467,8 @@ type Nation {
   nuke_kills: Int
   spy_casualties: Int
   spy_kills: Int
-  money_looted: Double
+  spy_attacks: Int
+  money_looted: Float
 }
 
 enum AlliancePositionEnum {
@@ -510,14 +518,14 @@ type Alliance {
   id: Int
   name: String
   acronym: String
-  score: Double
+  score: Float
   color: String
   date: DateTimeAuto
   nations(
     alliance_position: [Int]
     color: [String]
-    min_score: Double
-    max_score: Double
+    min_score: Float
+    max_score: Float
     cities: [Int]
     min_cities: Int
     max_cities: Int
@@ -526,7 +534,7 @@ type Alliance {
     limit: Int
     orderBy: [AllianceNationsOrderByOrderByClause!]
   ): [Nation!]!
-  average_score: Double
+  average_score: Float
   sent_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
   received_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
   treaties(limit: Int): [Treaty!]!
@@ -583,41 +591,52 @@ type Alliance {
   # This field will return null unless you are an officer or higher in this alliance
   tax_brackets: [TaxBracket]
 
-  # This field will return null unless you are in this alliance and have access to view its bank
-  money: Double
+  # All wars within the last 14 days
+  wars(
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    active: Boolean
+    limit: Int
+    orderBy: [AllianceWarsOrderByOrderByClause!]
+  ): [War!]!
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  coal: Double
+  money: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  oil: Double
+  coal: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  uranium: Double
+  oil: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  iron: Double
+  uranium: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  bauxite: Double
+  iron: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  lead: Double
+  bauxite: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  gasoline: Double
+  lead: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  munitions: Double
+  gasoline: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  steel: Double
+  munitions: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  aluminum: Double
+  steel: Float
 
   # This field will return null unless you are in this alliance and have access to view its bank
-  food: Double
+  aluminum: Float
+
+  # This field will return null unless you are in this alliance and have access to view its bank
+  food: Float
 }
 
 # Order by clause for Alliance.nations.orderBy.
@@ -724,18 +743,18 @@ type Bankrec {
 
   # Note (if any) included with the transaction by the banker
   note: String
-  money: Double
-  coal: Double
-  oil: Double
-  uranium: Double
-  iron: Double
-  bauxite: Double
-  lead: Double
-  gasoline: Double
-  munitions: Double
-  steel: Double
-  aluminum: Double
-  food: Double
+  money: Float
+  coal: Float
+  oil: Float
+  uranium: Float
+  iron: Float
+  bauxite: Float
+  lead: Float
+  gasoline: Float
+  munitions: Float
+  steel: Float
+  aluminum: Float
+  food: Float
 
   # The unique identifier of the tax bracket
   tax_id: Int
@@ -781,6 +800,186 @@ type TaxBracket {
   bracket_name: String
 }
 
+# Order by clause for Alliance.wars.orderBy.
+input AllianceWarsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceWarsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.wars.orderBy.
+enum AllianceWarsOrderByColumn {
+  ID
+  DATE
+}
+
+type War {
+  id: Int
+  date: DateTimeAuto
+  reason: String
+  war_type: WarType
+  groundcontrol: Int @deprecated(reason: "Use ground_control instead.")
+  ground_control: Int
+  airsuperiority: Int @deprecated(reason: "Use air_superiority instead.")
+  air_superiority: Int
+  navalblockade: Int @deprecated(reason: "Use naval_blockade instead.")
+  naval_blockade: Int
+  winner: Int @deprecated(reason: "Use winner_id instead.")
+  winner_id: Int
+  attacks(
+    min_id: Int
+    max_id: Int
+    war_id: [Int]
+    before: DateTime
+    after: DateTime
+    orderBy: [WarAttacksOrderByOrderByClause!]
+  ): [WarAttack!]!
+  turnsleft: Int @deprecated(reason: "Use turns_left instead.")
+  turns_left: Int
+  attid: Int @deprecated(reason: "Use att_id instead.")
+  att_id: Int
+  att_alliance_id: Int
+  att_alliance_position: AlliancePositionEnum
+  attacker: Nation
+  defid: Int @deprecated(reason: "Use def_id instead.")
+  def_id: Int
+  def_alliance_id: Int
+  def_alliance_position: AlliancePositionEnum
+  defender: Nation
+  attpoints: Int @deprecated(reason: "Use att_points instead.")
+  att_points: Int
+  defpoints: Int @deprecated(reason: "Use def_points instead.")
+  def_points: Int
+  attpeace: Boolean @deprecated(reason: "Use att_peace instead.")
+  att_peace: Boolean
+  defpeace: Boolean @deprecated(reason: "Use def_peace instead.")
+  def_peace: Boolean
+  att_resistance: Int
+  def_resistance: Int
+  att_fortify: Boolean
+  def_fortify: Boolean
+  att_gas_used: Float
+  def_gas_used: Float
+  att_mun_used: Float
+  def_mun_used: Float
+  att_alum_used: Int
+  def_alum_used: Int
+  att_steel_used: Int
+  def_steel_used: Int
+  att_infra_destroyed: Float
+  def_infra_destroyed: Float
+  att_money_looted: Float
+  def_money_looted: Float
+  att_soldiers_killed: Int
+  def_soldiers_killed: Int
+  att_tanks_killed: Int
+  def_tanks_killed: Int
+  att_aircraft_killed: Int
+  def_aircraft_killed: Int
+  att_ships_killed: Int
+  def_ships_killed: Int
+  att_missiles_used: Int
+  def_missiles_used: Int
+  att_nukes_used: Int
+  def_nukes_used: Int
+  att_infra_destroyed_value: Float
+  def_infra_destroyed_value: Float
+}
+
+enum WarType {
+  ORDINARY
+  ATTRITION
+  RAID
+}
+
+# Order by clause for War.attacks.orderBy.
+input WarAttacksOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: WarAttacksOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for War.attacks.orderBy.
+enum WarAttacksOrderByColumn {
+  ID
+  DATE
+}
+
+type WarAttack {
+  # the War Attacks API requires some logic to interpret. A tabulated display of the JSON logic can be found here politicsandwar.fandom.com/wiki/War_Attacks_API
+  id: Int
+  date: DateTimeAuto
+  attid: Int @deprecated(reason: "Use att_id instead.")
+  att_id: Int
+  attacker: Nation
+  defid: Int @deprecated(reason: "Use def_id instead.")
+  def_id: Int
+  defender: Nation
+  type: AttackType
+  warid: Int @deprecated(reason: "Use war_id instead.")
+  war_id: Int
+  war: War
+  victor: Int
+
+  # Success ranges from 0: Utter Failure to 3: Immense Triumph
+  success: Int
+
+  # Based on the type of the attack, attCas1 will return the casualties suffered by the attacker
+  # if it's an airstrike then planes lost / naval attack then ships lost
+  attcas1: Int
+
+  # Casualties of the defender, the casualties suffered by the primary unit of the type of battle
+  # for airstrikes: planes / ground battles: soldiers
+  defcas1: Int
+
+  # If the attack is a ground attack, attCas2 is used to display the tanks lost by the attacker
+  attcas2: Int
+
+  # If the attack is a ground attack, defCas2 is used to display the tanks lost by the defender - or if it's an airstrike on ships/tanks/soldiers/money,
+  # this field will return ships/tanks/soldiers/money sunk and defCas1 will return aircraft casualties of the defender
+  defcas2: Int
+  cityid: Int @deprecated(reason: "Use city_id instead.")
+  city_id: Int
+  infradestroyed: Float @deprecated(reason: "Use infra_destroyed instead.")
+  infra_destroyed: Float
+  improvementslost: Int @deprecated(reason: "Use improvements_lost instead.")
+  improvements_lost: Int
+  moneystolen: Float @deprecated(reason: "Use money_stolen instead.")
+  money_stolen: Float
+  loot_info: String
+  resistance_eliminated: Int
+  city_infra_before: Float
+  infra_destroyed_value: Float
+  att_mun_used: Float
+  def_mun_used: Float
+  att_gas_used: Float
+  def_gas_used: Float
+  aircraft_killed_by_tanks: Int
+}
+
+enum AttackType {
+  AIRVINFRA
+  AIRVSOLDIERS
+  AIRVTANKS
+  AIRVMONEY
+  AIRVSHIPS
+  AIRVAIR
+  GROUND
+  MISSILE
+  MISSILEFAIL
+  NUKE
+  NUKEFAIL
+  NAVAL
+  FORTIFY
+  PEACE
+  VICTORY
+  ALLIANCELOOT
+}
+
 enum WarPolicy {
   ATTRITION
   TURTLE
@@ -809,8 +1008,8 @@ type City {
   nation: Nation
   name: String
   date: Date
-  infrastructure: Double
-  land: Double
+  infrastructure: Float
+  land: Float
   powered: Boolean
   oilpower: Int @deprecated(reason: "Use oil_power instead")
   oil_power: Int
@@ -873,171 +1072,6 @@ type Treasure {
   spawn_date: Date
   nation_id: Int
   nation: Nation
-}
-
-type War {
-  id: Int
-  date: DateTimeAuto
-  reason: String
-  war_type: WarType
-  groundcontrol: Int @deprecated(reason: "Use ground_control instead.")
-  ground_control: Int
-  airsuperiority: Int @deprecated(reason: "Use air_superiority instead.")
-  air_superiority: Int
-  navalblockade: Int @deprecated(reason: "Use naval_blockade instead.")
-  naval_blockade: Int
-  winner: Int @deprecated(reason: "Use winner_id instead.")
-  winner_id: Int
-  attacks(
-    min_id: Int
-    max_id: Int
-    war_id: [Int]
-    before: DateTime
-    after: DateTime
-    orderBy: [WarAttacksOrderByOrderByClause!]
-  ): [WarAttack!]!
-  turnsleft: Int @deprecated(reason: "Use turns_left instead.")
-  turns_left: Int
-  attid: Int @deprecated(reason: "Use att_id instead.")
-  att_id: Int
-  att_alliance_id: Int
-  att_alliance_position: AlliancePositionEnum
-  attacker: Nation
-  defid: Int @deprecated(reason: "Use def_id instead.")
-  def_id: Int
-  def_alliance_id: Int
-  def_alliance_position: AlliancePositionEnum
-  defender: Nation
-  attpoints: Int @deprecated(reason: "Use att_points instead.")
-  att_points: Int
-  defpoints: Int @deprecated(reason: "Use def_points instead.")
-  def_points: Int
-  attpeace: Boolean @deprecated(reason: "Use att_peace instead.")
-  att_peace: Boolean
-  defpeace: Boolean @deprecated(reason: "Use def_peace instead.")
-  def_peace: Boolean
-  att_resistance: Int
-  def_resistance: Int
-  att_fortify: Boolean
-  def_fortify: Boolean
-  att_gas_used: Double
-  def_gas_used: Double
-  att_mun_used: Double
-  def_mun_used: Double
-  att_alum_used: Int
-  def_alum_used: Int
-  att_steel_used: Int
-  def_steel_used: Int
-  att_infra_destroyed: Double
-  def_infra_destroyed: Double
-  att_money_looted: Double
-  def_money_looted: Double
-  att_soldiers_killed: Int
-  def_soldiers_killed: Int
-  att_tanks_killed: Int
-  def_tanks_killed: Int
-  att_aircraft_killed: Int
-  def_aircraft_killed: Int
-  att_ships_killed: Int
-  def_ships_killed: Int
-  att_missiles_used: Int
-  def_missiles_used: Int
-  att_nukes_used: Int
-  def_nukes_used: Int
-  att_infra_destroyed_value: Double
-  def_infra_destroyed_value: Double
-}
-
-enum WarType {
-  ORDINARY
-  ATTRITION
-  RAID
-}
-
-# Order by clause for War.attacks.orderBy.
-input WarAttacksOrderByOrderByClause {
-  # The column that is used for ordering.
-  column: WarAttacksOrderByColumn!
-
-  # The direction that is used for ordering.
-  order: SortOrder!
-}
-
-# Allowed column names for War.attacks.orderBy.
-enum WarAttacksOrderByColumn {
-  ID
-  DATE
-}
-
-type WarAttack {
-  # the War Attacks API requires some logic to interpret. A tabulated display of the JSON logic can be found here politicsandwar.fandom.com/wiki/War_Attacks_API
-  id: Int
-  date: DateTimeAuto
-  attid: Int @deprecated(reason: "Use att_id instead.")
-  att_id: Int
-  attacker: Nation
-  defid: Int @deprecated(reason: "Use def_id instead.")
-  def_id: Int
-  defender: Nation
-  type: AttackType
-  warid: Int @deprecated(reason: "Use war_id instead.")
-  war_id: Int
-  war: War
-  victor: Int
-
-  # Success ranges from 0: Utter Failure to 3: Immense Triumph
-  success: Int
-
-  # Based on the type of the attack, attCas1 will return the casualties suffered by the attacker
-  # if it's an airstrike then planes lost / naval attack then ships lost
-  attcas1: Int
-
-  # Casualties of the defender, the casualties suffered by the primary unit of the type of battle
-  # for airstrikes: planes / ground battles: soldiers
-  defcas1: Int
-
-  # If the attack is a ground attack, attCas2 is used to display the tanks lost by the attacker
-  attcas2: Int
-
-  # If the attack is a ground attack, defCas2 is used to display the tanks lost by the defender - or if it's an airstrike on ships/tanks/soldiers/money,
-  # this field will return ships/tanks/soldiers/money sunk and defCas1 will return aircraft casualties of the defender
-  defcas2: Int
-  cityid: Int @deprecated(reason: "Use city_id instead.")
-  city_id: Int
-  infradestroyed: Double @deprecated(reason: "Use infra_destroyed instead.")
-  infra_destroyed: Double
-  improvementslost: Int @deprecated(reason: "Use improvements_lost instead.")
-  improvements_lost: Int
-  moneystolen: Double @deprecated(reason: "Use money_stolen instead.")
-  money_stolen: Double
-  loot_info: String
-  resistance_eliminated: Int
-  city_infra_before: Double
-  infra_destroyed_value: Double
-  att_mun_used: Double
-  def_mun_used: Double
-  att_gas_used: Double
-  def_gas_used: Double
-  aircraft_killed_by_tanks: Int
-}
-
-enum AttackType {
-  AIRVINFRA
-  AIRVSOLDIERS
-  AIRVTANKS
-  AIRVMONEY
-  AIRVSHIPS
-  AIRVAIR
-  GROUND
-  MISSILE
-  MISSILEFAIL
-  NUKE
-  NUKEFAIL
-  NAVAL
-  FORTIFY
-  PEACE
-  VICTORY
-  ALLIANCELOOT
 }
 
 # Order by clause for Nation.wars.orderBy.
@@ -1191,7 +1225,7 @@ type BBTeam {
   stadium: String
   quality: Int
   seating: Int
-  rating: Double
+  rating: Float
   wins: Int
   glosses: Int
   runs: Int
@@ -1242,10 +1276,10 @@ type BBGame {
   away_score: Int
   sim_text: String
   highlights: String
-  home_revenue: Double
-  spoils: Double
+  home_revenue: Float
+  spoils: Float
   open: Int
-  wager: Double
+  wager: Float
 }
 
 type BBPlayer {
@@ -1258,11 +1292,11 @@ type BBPlayer {
   name: String
   age: Int
   position: String
-  pitching: Double
-  batting: Double
-  speed: Double
-  awareness: Double
-  overall: Double
+  pitching: Float
+  batting: Float
+  speed: Float
+  awareness: Float
+  overall: Float
   birthday: Int
 }
 
@@ -1278,14 +1312,14 @@ type GameInfo {
 }
 
 type Radiation {
-  global: Double
-  north_america: Double
-  south_america: Double
-  europe: Double
-  africa: Double
-  asia: Double
-  australia: Double
-  antarctica: Double
+  global: Float
+  north_america: Float
+  south_america: Float
+  europe: Float
+  africa: Float
+  asia: Float
+  australia: Float
+  antarctica: Float
 }
 
 # Order by clause for Query.nations.orderBy.
@@ -1383,18 +1417,18 @@ type TradepricePaginator {
 type Tradeprice {
   id: Int
   date: Date
-  coal: Double
-  oil: Double
-  uranium: Double
-  iron: Double
-  bauxite: Double
-  lead: Double
-  gasoline: Double
-  munitions: Double
-  steel: Double
-  aluminum: Double
-  food: Double
-  credits: Double
+  coal: Float
+  oil: Float
+  uranium: Float
+  iron: Float
+  bauxite: Float
+  lead: Float
+  gasoline: Float
+  munitions: Float
+  steel: Float
+  aluminum: Float
+  food: Float
+  credits: Float
 }
 
 # Order by clause for Query.trades.orderBy.
@@ -1748,99 +1782,49 @@ type Embargo {
   receiver_id: Int
   receiver: Nation
   reason: String
+  type: EmbargoType
+}
+
+enum EmbargoType {
+  NATION_TO_NATION
+  NATION_TO_ALLIANCE
+  ALLIANCE_TO_NATION
+  ALLIANCE_TO_ALLIANCE
 }
 
 type Mutation {
   bankDeposit(
-    money: Double = 0.0
-    coal: Double = 0.0
-    oil: Double = 0.0
-    uranium: Double = 0.0
-    iron: Double = 0.0
-    bauxite: Double = 0.0
-    lead: Double = 0.0
-    gasoline: Double = 0.0
-    munitions: Double = 0.0
-    steel: Double = 0.0
-    aluminum: Double = 0.0
-    food: Double = 0.0
+    money: Float = 0.0
+    coal: Float = 0.0
+    oil: Float = 0.0
+    uranium: Float = 0.0
+    iron: Float = 0.0
+    bauxite: Float = 0.0
+    lead: Float = 0.0
+    gasoline: Float = 0.0
+    munitions: Float = 0.0
+    steel: Float = 0.0
+    aluminum: Float = 0.0
+    food: Float = 0.0
     note: String
   ): Bankrec!
   bankWithdraw(
     receiver: Int!
     receiver_type: Int!
-    money: Double = 0.0
-    coal: Double = 0.0
-    oil: Double = 0.0
-    uranium: Double = 0.0
-    iron: Double = 0.0
-    bauxite: Double = 0.0
-    lead: Double = 0.0
-    gasoline: Double = 0.0
-    munitions: Double = 0.0
-    steel: Double = 0.0
-    aluminum: Double = 0.0
-    food: Double = 0.0
+    money: Float = 0.0
+    coal: Float = 0.0
+    oil: Float = 0.0
+    uranium: Float = 0.0
+    iron: Float = 0.0
+    bauxite: Float = 0.0
+    lead: Float = 0.0
+    gasoline: Float = 0.0
+    munitions: Float = 0.0
+    steel: Float = 0.0
+    aluminum: Float = 0.0
+    food: Float = 0.0
     note: String
   ): Bankrec!
-}
-
-type Subscription {
-  allianceCreate: Alliance
-  allianceDelete(id: [Int]): Alliance
-  allianceUpdate(id: [Int]): Alliance
-  alliancePositionCreate(id: [Int], alliance_id: [Int]): AlliancePosition
-  alliancePositionDelete(id: [Int], alliance_id: [Int]): AlliancePosition
-  alliancePositionUpdate(id: [Int], alliance_id: [Int]): AlliancePosition
-  bankrecCreate(sid: [Int], stype: [Int], rid: [Int], rtype: [Int]): Bankrec
-  bbgameCreate(team_id: [Int]): BBGame
-  bbgameDelete(id: [Int], team_id: [Int]): BBGame
-  bbgameUpdate(id: [Int], team_id: [Int]): BBGame
-  bbplayerCreate(team_id: [Int]): BBPlayer
-  bbplayerDelete(id: [Int], team_id: [Int]): BBPlayer
-  bbplayerUpdate(id: [Int], team_id: [Int]): BBPlayer
-  bbteamCreate(nation_id: [Int]): BBTeam
-  bbteamDelete(id: [Int], nation_id: [Int]): BBTeam
-  bbteamUpdate(id: [Int], nation_id: [Int]): BBTeam
-  bountyCreate(nation_id: [Int]): Bounty
-  bountyDelete(id: [Int], nation_id: [Int]): Bounty
-  bountyUpdate(id: [Int], nation_id: [Int]): Bounty
-  cityCreate(id: [Int], nation_id: [Int]): City
-  cityDelete(id: [Int], nation_id: [Int]): City
-  cityUpdate(id: [Int], nation_id: [Int]): City
-  embargoCreate(id: [Int], nation_id: [Int]): Embargo
-  embargoDelete(id: [Int], nation_id: [Int]): Embargo
-  nationCreate(id: [Int], alliance_id: [Int]): Nation
-  nationDelete(id: [Int], alliance_id: [Int]): Nation
-  nationUpdate(id: [Int], alliance_id: [Int]): Nation
-  taxBracketCreate(id: [Int], alliance_id: [Int]): TaxBracket
-  taxBracketDelete(id: [Int], alliance_id: [Int]): TaxBracket
-  taxBracketUpdate(id: [Int], alliance_id: [Int]): TaxBracket
-  tradeCreate(
-    nation_id: [Int]
-    offer_resource: [String]
-    buy_or_sell: String
-  ): Trade
-  tradeDelete(
-    id: [Int]
-    nation_id: [Int]
-    offer_resource: [String]
-    buy_or_sell: String
-  ): Trade
-  tradeUpdate(
-    id: [Int]
-    nation_id: [Int]
-    offer_resource: [String]
-    buy_or_sell: String
-  ): Trade
-  treasureTradeUpdate(id: [Int], nation_id: [Int]): TreasureTrade
-  treatyCreate(alliance_id: [Int]): Treaty
-  treatyUpdate(id: [Int], alliance_id: [Int]): Treaty
-  warCreate(nation_id: [Int], alliance_id: [Int]): War
-  warDelete(id: [Int], nation_id: [Int], alliance_id: [Int]): War
-  warUpdate(id: [Int], nation_id: [Int], alliance_id: [Int]): War
-  warAttackCreate(war_id: [Int]): WarAttack
-  warAttackDelete(war_id: [Int]): WarAttack
 }
 
 # A datetime and timezone string in ISO 8601 format `Y-m-dTH:i:sO`, e.g. `2020-04-20T13:53:12+02:00`.

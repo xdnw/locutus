@@ -1,6 +1,10 @@
 package link.locutus.discord.web.commands.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -14,7 +18,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.binding.annotation.RegisteredRole;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
@@ -22,17 +26,13 @@ import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -44,16 +44,11 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
 import com.google.common.collect.BiMap;
 import com.google.gson.JsonArray;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -75,18 +70,9 @@ import java.awt.Color;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.web.WebUtil.createInput;
@@ -94,6 +80,7 @@ import static link.locutus.discord.web.WebUtil.generateSearchableDropdown;
 import static link.locutus.discord.web.WebUtil.wrapLabel;
 
 public class WebPrimitiveBinding extends BindingHelper {
+
 
     @HtmlInput
     @Binding(types={int.class, Integer.class}, examples = {"3"})
@@ -164,7 +151,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getAsMention());
             DBNation nation = DiscordUtil.getNation(obj);
             if (nation != null) {
-                subtext.add(nation.getNation() + " - " + nation.getAlliance() + " - " + Rank.byId(nation.getPosition()));
+                subtext.add(nation.getNation() + " - " + nation.getAllianceName() + " - " + Rank.byId(nation.getPosition()));
             } else {
                 subtext.add("");
             }
@@ -180,7 +167,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getAsMention());
             DBNation nation = DiscordUtil.getNation(obj.getUser());
             if (nation != null) {
-                subtext.add(nation.getNation() + " - " + nation.getAlliance() + " - " + Rank.byId(nation.getPosition()));
+                subtext.add(nation.getNation() + " - " + nation.getAllianceName() + " - " + Rank.byId(nation.getPosition()));
             } else {
                 subtext.add("");
             }
@@ -216,10 +203,10 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
-    @Binding(types = NationMetricDouble.class)
+    @Binding(types = NationAttributeDouble.class)
     public String nationMetricDouble(ArgumentStack stack, ParameterData param) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        List<NationMetricDouble> options = placeholders.getMetricsDouble(stack.getStore());
+        List<NationAttributeDouble> options = placeholders.getMetricsDouble(stack.getStore());
 
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getName());
@@ -304,6 +291,14 @@ public class WebPrimitiveBinding extends BindingHelper {
         return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
     }
 
+
+    @HtmlInput
+    @Binding(types=DBWar.class)
+    public String war(ParameterData param) {
+        String pattern = Pattern.quote(Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war") + "=[0-9]+";
+        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
+    }
+
     /*
     --------------------------------------------------------------------
      */
@@ -349,7 +344,7 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types=DBNation.class, examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
     public String nation(ParameterData param) {
-        LinkedList<DBNation> options = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        Collection<DBNation> options = (Locutus.imp().getNationDB().getNations().values());
         options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         options.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
@@ -357,7 +352,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getId());
             String sub;
             if (obj.getPosition() > 1) {
-                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAlliance() + " - " + Rank.byId(obj.getPosition());
+                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAllianceName() + " - " + Rank.byId(obj.getPosition());
             } else {
                 sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore());
             }
@@ -368,18 +363,18 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= NationOrAlliance.class)
     public String nationOrAlliance(ParameterData param) {
-        LinkedList<DBNation> nations = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
+        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
 
         List<Map.Entry<String, String>> options = new ArrayList<>(alliances.size() + nations.size());
         for (DBNation nation : nations) {
             options.add(new AbstractMap.SimpleEntry<>(nation.getName(), nation.getNation_id() + ""));
         }
-        for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(new AbstractMap.SimpleEntry<>("AA:" + entry.getValue(), "AA:" + entry.getKey()));
+        for (DBAlliance alliance : alliances) {
+            options.add(new AbstractMap.SimpleEntry<>("AA:" + alliance.getName(), "AA:" + alliance.getId()));
         }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getKey());
@@ -390,11 +385,11 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= NationOrAllianceOrGuild.class)
     public String nationOrAllianceOrGuild(@Me User user, ParameterData param) {
-        LinkedList<DBNation> nations = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
 
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
+        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
 
         List<Guild> guilds = user.getMutualGuilds();
 
@@ -402,9 +397,8 @@ public class WebPrimitiveBinding extends BindingHelper {
         for (Guild guild : guilds) {
             options.add(Locutus.imp().getGuildDB(guild));
         }
-        for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(new Alliance(entry.getKey()));
-        }
+        options.addAll(alliances);
+
         for (DBNation nation : nations) {
             options.add(nation);
         }
@@ -416,7 +410,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             } else if (obj.isNation()) {
                 names.add(obj.getName());
                 values.add(obj.getId());
-                subtext.add("nation - " + obj.asNation().getAlliance());
+                subtext.add("nation - " + obj.asNation().getAllianceName());
             } else if (obj.isGuild()) {
                 names.add(formatGuildName(obj.asGuild().getGuild()));
                 values.add("guild:" + obj.getIdLong());
@@ -442,23 +436,14 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
-    @Binding(types=Alliance.class, examples = {"'Error 404'", "7413", "https://politicsandwar.com/alliance/id=7413"})
+    @Binding(types= DBAlliance.class, examples = {"'Error 404'", "7413", "https://politicsandwar.com/alliance/id=7413"})
     public String alliance(ParameterData param) {
         return alliance(param, false);
     }
 
     public String alliance(ParameterData param, boolean multiple) {
-        BiMap<Integer, String> alliances = Locutus.imp().getNationDB().getAlliances();
-        List<Alliance> options = new ArrayList<>(alliances.size());
-        for (Map.Entry<Integer, String> entry : alliances.entrySet()) {
-            options.add(new Alliance(entry.getKey()));
-        }
-        Collections.sort(options, new Comparator<Alliance>() {
-            @Override
-            public int compare(Alliance o1, Alliance o2) {
-                return Double.compare(o2.getScore(), o1.getScore());
-            }
-        });
+        List<DBAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAlliances());
+        Collections.sort(options, (o1, o2) -> Double.compare(o2.getScore(), o1.getScore()));
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getName());
             values.add("aa:" + obj.getId());
@@ -490,7 +475,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             filterStr = DiscordUtil.format(guild, channel, user, me, filterStr);
             options = DiscordUtil.parseNations(guild, filterStr);
         } else {
-            options = new LinkedList<>(Locutus.imp().getNationDB().getNations().values());
+            options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
             options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
             options.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
         }
@@ -500,7 +485,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getId());
             String sub;
             if (obj.getPosition() > 1) {
-                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAlliance() + " - " + Rank.byId(obj.getPosition());
+                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAllianceName() + " - " + Rank.byId(obj.getPosition());
             } else {
                 sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore());
             }
@@ -511,6 +496,12 @@ public class WebPrimitiveBinding extends BindingHelper {
 
     public <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue) {
         return multipleSelect(param, objects, toNameValue, false);
+    }
+
+    public <T> String multipleSelectEmum(Class<T> emum, ValueStore valueStore) {
+        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+        List<T> options = Arrays.asList(emum.getEnumConstants());
+        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.toString(), t.toString()), true);
     }
 
     public <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue, boolean multiple) {
@@ -543,15 +534,25 @@ public class WebPrimitiveBinding extends BindingHelper {
 
     public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
     public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
-    public final Set<NationMetricDouble> NATION_METRIC_KEY = null;
+
+    public final Set<Project> PROJECTS_KEY = null;
+    public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
     public final Set<DBNation> NATIONS_KEY = null;
     public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
     public final Set<NationOrAllianceOrGuild> NATIONS_OR_ALLIANCE_OR_GUILD_KEY = null;
     public final Set<Role> ROLES_KEY = null;
     public final Set<Member> MEMBERS_KEY = null;
-    public final Set<Alliance> ALLIANCES_KEY = null;
+    public final Set<DBAlliance> ALLIANCES_KEY = null;
     public final List<ResourceType> RESOURCE_LIST_KEY = null;
     public final Set<WarStatus> WARSTATUSES_KEY = null;
+
+    public final Set<WarType> WARTYPES_KEY = null;
+
+    public final Set<AttackType> ATTACKTYPES_KEY = null;
+
+    public final Set<IACheckup.AuditType> AUDIT_TYPES_KEY = null;
+
+    public final Set<Continent> CONTINENT_TYPES_KEY = null;
     public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
     public final Map<MilitaryUnit, Long> UNIT_MAP_KEY = null;
 
@@ -611,8 +612,39 @@ public class WebPrimitiveBinding extends BindingHelper {
                     store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                         ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                         List<WarStatus> options = Arrays.asList(WarStatus.values());
-
                         return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                    }));
+                });
+            }
+            {
+                Key key = Key.of(getClass().getDeclaredField("WARTYPES_KEY").getGenericType(), HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        return multipleSelectEmum(WarType.class, valueStore);
+                    }));
+                });
+            }
+            {
+                Key key = Key.of(getClass().getDeclaredField("ATTACKTYPES_KEY").getGenericType(), HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        return multipleSelectEmum(AttackType.class, valueStore);
+                    }));
+                });
+            }
+            {
+                Key key = Key.of(getClass().getDeclaredField("AUDIT_TYPES_KEY").getGenericType(), HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        return multipleSelectEmum(IACheckup.AuditType.class, valueStore);
+                    }));
+                });
+            }
+            {
+                Key key = Key.of(getClass().getDeclaredField("CONTINENT_TYPES_KEY").getGenericType(), HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        return multipleSelectEmum(Continent.class, valueStore);
                     }));
                 });
             }
@@ -655,6 +687,18 @@ public class WebPrimitiveBinding extends BindingHelper {
                 });
             }
             {
+                Type type = getClass().getDeclaredField("PROJECTS_KEY").getGenericType();
+                Key key = Key.of(type, HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                        List<Project> options = Arrays.asList(Projects.values);
+
+                        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                    }));
+                });
+            }
+            {
                 Type type = getClass().getDeclaredField("NATION_METRIC_KEY").getGenericType();
                 Key key = Key.of(type, HtmlInput.class);
                 addBinding(store -> {
@@ -662,7 +706,7 @@ public class WebPrimitiveBinding extends BindingHelper {
                         ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
 
                         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-                        List<NationMetricDouble> options = placeholders.getMetricsDouble(valueStore);
+                        List<NationAttributeDouble> options = placeholders.getMetricsDouble(valueStore);
 
                         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
                             names.add(obj.getName());
@@ -853,9 +897,37 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
+    @Binding(types= AttackType.class)
+    public String AttackType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(AttackType.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+    }
+
+    @HtmlInput
     @Binding(types=Rank.class)
     public String rank(ParameterData param) {
         return multipleSelect(param, Arrays.asList(Rank.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= NationLootType.class)
+    public String lootType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(NationLootType.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+    }
+
+    @HtmlInput
+    @Binding(types=AlliancePermission.class)
+    public String AlliancePermission(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(AlliancePermission.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
+    }
+
+    @HtmlInput
+    @Binding(types=DBAlliancePosition.class)
+    public String position(@Me GuildDB db, ParameterData param) {
+        DBAlliance alliance = DBAlliance.get(db.getAlliance_id());
+        Set<DBAlliancePosition> positions = new HashSet<>(alliance.getPositions());
+        positions.add(DBAlliancePosition.REMOVE);
+        positions.add(DBAlliancePosition.APPLICANT);
+        return multipleSelect(param, positions, rank -> new AbstractMap.SimpleEntry<>(rank.getName(), rank.getInputName()));
     }
 
     @HtmlInput
@@ -887,6 +959,12 @@ public class WebPrimitiveBinding extends BindingHelper {
     @Binding(types= OnlineStatus.class)
     public String onlineStatus(ParameterData param) {
         return multipleSelect(param, Arrays.asList(OnlineStatus.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= Continent.class)
+    public String Continent(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(Continent.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
@@ -923,6 +1001,12 @@ public class WebPrimitiveBinding extends BindingHelper {
     @Binding(types= TreatyType.class)
     public String TreatyType(ParameterData param) {
         return multipleSelect(param, Arrays.asList(TreatyType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= ReportCommands.ReportType.class)
+    public String ReportType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(ReportCommands.ReportType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
@@ -998,12 +1082,11 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= TaxBracket.class)
     public String bracket(@Me GuildDB db, ParameterData param) {
-        Auth auth = db.getAuth();
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
+        Map<Integer, TaxBracket> brackets = db.getAlliance().getTaxBrackets(true);
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(obj.name + ": " + obj.moneyRate + "/" + obj.rssRate);
-            subtext.add("#" + obj.taxId + " (" + obj.nations + " nations)");
+            names.add(obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
+            subtext.add("#" + obj.taxId + " (" + obj.getNations().size() + " nations)");
             values.add("tax_id=" + obj.taxId);
         });
     }
@@ -1024,7 +1107,7 @@ public class WebPrimitiveBinding extends BindingHelper {
         });
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getPrimaryCommandId());
-            subtext.add(obj.getSimpleDesc());
+            subtext.add(obj.simpleDesc());
         });
     }
 }

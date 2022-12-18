@@ -3,11 +3,12 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -64,7 +65,7 @@ public class Spyops extends Command {
                 "Use `*` for op type to automatically find the best op type\n" +
                 "Available op types: " + StringMan.join(SpyCount.Operation.values(), ", ") + "\n" +
                 "Use `success>80` to specify a cutoff for spyop success\n\n" +
-                "e.g. `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyop enemies spies` | `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spyop enemies * -s`\n" +
+                "e.g. `" + Settings.commandPrefix(true) + "spyop enemies spies` | `" + Settings.commandPrefix(true) + "spyop enemies * -s`\n" +
                 "Add `-s` to force an update of nations with full spy slots\n" +
                 "Add `-k` to prioritize kills";
     }
@@ -92,7 +93,7 @@ public class Spyops extends Command {
             }
 
             if (!flags.contains('f')) {
-                StringBuilder response = new StringBuilder("Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <enemy>` first to ensure the results are up to date");
+                StringBuilder response = new StringBuilder("Use `" + Settings.commandPrefix(true) + "spies <enemy>` first to ensure the results are up to date");
                 if (!flags.contains('s')) {
                     response.append(". Add `-s` to remove enemies who are already spy slotted");
                 }
@@ -127,7 +128,7 @@ public class Spyops extends Command {
             return usage(event);
         }
         if (me == null) {
-            return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "validate`";
+            return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
 
         SpyCount.Operation operation;
@@ -135,7 +136,7 @@ public class Spyops extends Command {
             operation = args.size() >= 1 ? SpyCount.Operation.valueOf(args.get(1).toUpperCase()) : SpyCount.Operation.INTEL;
 
             if (operation.unit == null && operation != SpyCount.Operation.SPIES) {
-                return "Try `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "loot <nation>`, `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "who <nation>`, `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "spies <nation>` or (buggy) `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "DebugGetRss <nation>`";
+                return "Try `" + Settings.commandPrefix(true) + "loot <nation>`, `" + Settings.commandPrefix(true) + "who <nation>`, `" + Settings.commandPrefix(true) + "spies <nation>` or (buggy) `" + Settings.commandPrefix(true) + "DebugGetRss <nation>`";
             }
         } catch (IllegalArgumentException e) {
             if (!args.get(1).equalsIgnoreCase("*")) {
@@ -204,7 +205,7 @@ public class Spyops extends Command {
 
         for (DBNation nation : nations) {
             Integer spies = nation.updateSpies(false, flags.contains('f'));
-            if (spies == null || nation.getSpies() == null) {
+            if (spies == null) {
                 continue;
             }
             if (spies == -1) {
@@ -304,7 +305,7 @@ public class Spyops extends Command {
             targets.add(new AbstractMap.SimpleEntry<>(nation, task));
         }
 
-        targets.removeIf(f -> f.getKey().isEspionageFull(false, false, false));
+        targets.removeIf(f -> f.getKey().isEspionageFull());
 
         if (flags.contains('s')) {
             Auth auth = Locutus.imp().getRootAuth();
@@ -316,7 +317,7 @@ public class Spyops extends Command {
                         for (Map.Entry<DBNation, Runnable> target : targets) {
                             DBNation defender = target.getKey();
                             try {
-                                if (defender.isEspionageFull(false, true, false)) continue;
+                                if (defender.isEspionageFull()) continue;
                             } catch (Throwable e) {
                                 e.printStackTrace();
                             }

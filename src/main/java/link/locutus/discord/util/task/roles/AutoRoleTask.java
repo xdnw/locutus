@@ -1,13 +1,14 @@
 package link.locutus.discord.util.task.roles;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -85,10 +86,10 @@ public class AutoRoleTask implements IAutoRoleTask {
             } catch (IllegalArgumentException e) {}
         }
 
-        String roleOptStr = db.getInfo(GuildDB.Key.AUTOROLE);
-        if (roleOptStr != null) {
+        GuildDB.AutoRoleOption roleOpt = db.getOrNull(GuildDB.Key.AUTOROLE);
+        if (roleOpt != null) {
             try {
-                setAllianceMask(GuildDB.AutoRoleOption.valueOf(roleOptStr.toUpperCase()));
+                setAllianceMask(roleOpt);
             } catch (IllegalArgumentException e) {}
         }
         initRegisteredRole = false;
@@ -285,6 +286,8 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         List<Member> members = guild.getMembers();
 
+        Map<Integer, Role> existantAllianceRoles = new HashMap<>(allianceRoles);
+
         for (int i = 0; i < members.size(); i++) {
             Member member = members.get(i);
             try {
@@ -308,12 +311,12 @@ public class AutoRoleTask implements IAutoRoleTask {
                 throw e;
             }
         }
-        Iterator<Map.Entry<Integer, Role>> iter = allianceRoles.entrySet().iterator();
-        while (iter.hasNext()) {
-            Role role = iter.next().getValue();
+
+        for (Map.Entry<Integer, Role> entry : existantAllianceRoles.entrySet()) {
+            Role role = entry.getValue();
             List<Member> withRole = guild.getMembersWithRoles(role);
             if (withRole.isEmpty()) {
-                iter.remove();
+                allianceRoles.remove(entry.getKey());
                 tasks.add(role.delete().submit());
             }
         }
@@ -416,7 +419,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         if (!isRegistered && !autoAll) {
             if (registeredRole == null) {
-                output.accept("No registered role exists. Please create one on discord, then use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "AliasRole REGISTERED @rolename`");
+                output.accept("No registered role exists. Please create one on discord, then use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), null) + "");
             } else {
                 output.accept(member.getEffectiveName() + " is NOT registered");
             }
@@ -520,7 +523,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
                     Role role = allianceRoles.get(alliance_id);
                     if (role == null && alliance_id != 0) {
-                        role = createRole(position, guild, alliance_id, nation.getAlliance());
+                        role = createRole(position, guild, alliance_id, nation.getAllianceName());
                         if (role != null) {
                             allianceRoles.put(alliance_id, role);
                         }

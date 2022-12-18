@@ -1,29 +1,29 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetric;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationMetricDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMetric;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.SpyCount;
@@ -32,6 +32,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.util.task.ia.IACheckup;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.lang.reflect.Type;
@@ -47,6 +49,29 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={Coalition.class})
     public List<String> Coalition(String input) {
         return StringMan.completeEnum(input, Coalition.class);
+    }
+
+    @Autocomplete
+    @Binding(types={AlliancePermission.class})
+    public List<String> AlliancePermission(String input) {
+        return StringMan.completeEnum(input, AlliancePermission.class);
+    }
+
+    @Autocomplete
+    @Binding(types={DBAlliancePosition.class})
+    public List<Map.Entry<String, String>> DBAlliancePosition(@Me GuildDB db, String input) {
+        DBAlliance alliance = DBAlliance.get(db.getAlliance_id());
+        List<DBAlliancePosition> options = new ArrayList<>(alliance.getPositions());
+        options.add(DBAlliancePosition.REMOVE);
+        options.add(DBAlliancePosition.APPLICANT);
+
+        options = StringMan.getClosest(input, options, DBAlliancePosition::getName, OptionData.MAX_CHOICES, true);
+        return options.stream().map(new Function<DBAlliancePosition, Map.Entry<String, String>>() {
+            @Override
+            public Map.Entry<String, String> apply(DBAlliancePosition f) {
+                return Map.entry(f.getName(), f.getInputName());
+            }
+        }).collect(Collectors.toList());
     }
 
 
@@ -82,7 +107,7 @@ public class PWCompleter extends BindingHelper {
         if (input.isEmpty()) return null;
 
         List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
-        options.addAll(Locutus.imp().getNationDB().getAlliances().keySet().stream().map(Alliance::new).collect(Collectors.toList()));
+        options.addAll(Locutus.imp().getNationDB().getAlliances());
 
         options = StringMan.getClosest(input, options, new Function<NationOrAlliance, String>() {
             @Override
@@ -94,8 +119,7 @@ public class PWCompleter extends BindingHelper {
         return options.stream().map(new Function<NationOrAlliance, Map.Entry<String, String>>() {
             @Override
             public Map.Entry<String, String> apply(NationOrAlliance f) {
-
-                return null;
+                return Map.entry(f.getName(), f.getTypePrefix() + ":" + f.getId());
             }
         }).collect(Collectors.toList());
     }
@@ -124,11 +148,17 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={NationMetricDouble.class})
+    @Binding(types={GuildDB.Key.class})
+    public List<String> setting(String input) {
+        return StringMan.completeEnum(input, GuildDB.Key.class);
+    }
+
+    @Autocomplete
+    @Binding(types={NationAttributeDouble.class})
     public List<String> NationPlaceholder(ArgumentStack stack, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         List<String> options = placeholders.getMetricsDouble(stack.getStore())
-                .stream().map(NationMetric::getName).collect(Collectors.toList());
+                .stream().map(NationAttribute::getName).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 
@@ -139,17 +169,25 @@ public class PWCompleter extends BindingHelper {
     }
 
     public final List<ResourceType> RESOURCE_LIST_KEY = null;
-    public final Set<Alliance> ALLIANCES_KEY = null;
+    public final Set<DBAlliance> ALLIANCES_KEY = null;
     public final Set<WarStatus> WARSTATUSES_KEY = null;
+    public final Set<WarType> WARTYPES_KEY = null;
+    public final Set<AttackType> ATTACKTYPES_KEY = null;
     public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
     public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
     public final Map<MilitaryUnit, Long> UNIT_MAP_KEY = null;
+
+
+
 
     public final Set<NationOrAllianceOrGuild> NATIONS_OR_ALLIANCE_OR_GUILD_KEY = null;
     public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
     public final Set<DBNation> NATIONS_KEY = null;
     public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
-    public final Set<NationMetricDouble> NATION_METRIC_KEY = null;
+    public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
+
+    public final Set<IACheckup.AuditType> AUDIT_TYPES_KEY = null;
+    public final Set<Continent> CONTINENT_TYPES_KEY = null;
 
     {
         try {
@@ -159,6 +197,24 @@ public class PWCompleter extends BindingHelper {
                 addBinding(store -> {
                     store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                         return StringMan.autocompleteCommaEnum(SpyCount.Operation.class, input.toString(), OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("AUDIT_TYPES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                        return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("CONTINENT_TYPES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                        return StringMan.autocompleteCommaEnum(Continent.class, input.toString(), OptionData.MAX_CHOICES);
                     }));
                 });
             }
@@ -177,6 +233,24 @@ public class PWCompleter extends BindingHelper {
                 addBinding(store -> {
                     store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                         return StringMan.autocompleteCommaEnum(WarStatus.class, input.toString(), OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("WARTYPES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                        return StringMan.autocompleteCommaEnum(WarType.class, input.toString(), OptionData.MAX_CHOICES);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("ATTACKTYPES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                        return StringMan.autocompleteCommaEnum(AttackType.class, input.toString(), OptionData.MAX_CHOICES);
                     }));
                 });
             }

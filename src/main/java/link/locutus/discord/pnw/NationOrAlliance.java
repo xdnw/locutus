@@ -1,5 +1,8 @@
 package link.locutus.discord.pnw;
 
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+
 public interface NationOrAlliance extends NationOrAllianceOrGuild {
     int getId();
 
@@ -9,8 +12,8 @@ public interface NationOrAlliance extends NationOrAllianceOrGuild {
 
     String getName();
 
-    default Alliance asAlliance() {
-        return (Alliance) this;
+    default DBAlliance asAlliance() {
+        return (DBAlliance) this;
     }
 
     default boolean isNation() {

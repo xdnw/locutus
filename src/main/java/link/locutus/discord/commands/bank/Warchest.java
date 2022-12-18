@@ -3,15 +3,16 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.task.GetMemberResources;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -33,13 +34,12 @@ public class Warchest extends Command {
     }
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return (super.checkPermission(server, user) || (Roles.MEMBER.has(user, server) && server != null && Locutus.imp().getGuildDB(server).isAllyOfRoot())) &&
-                Roles.ECON.has(user, server);
+        return Roles.MEMBER.has(user, server) && server != null;
     }
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warchest <*|nations|tax_url> <resources> <note>";
+        return Settings.commandPrefix(true) + "warchest <*|nations|tax_url> <resources> <note>";
     }
 
     @Override
@@ -49,13 +49,10 @@ public class Warchest extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 3) {
-            GuildDB db = Locutus.imp().getGuildDB(guild);
-            return usage(event, "Current warchest (per city): " + PnwUtil.resourcesToString(db.getPerCityWarchest(me)));
-        }
-
-        int allianceId = Settings.INSTANCE.getAlliance(event);
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
+        if (args.size() < 3) {
+            return usage(event, "Current warchest (per city): " + PnwUtil.resourcesToString(guildDb.getPerCityWarchest(me)));
+        }
 
         String note = "#warchest";
         if (args.size() >= 3) note = args.get(2);
@@ -67,15 +64,19 @@ public class Warchest extends Command {
             note += "=" + guild.getIdLong();
         }
 
+        boolean hasEcon = Roles.ECON.has(author, guild);
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
-            if (!Roles.ECON.has(author, guild)) {
+            if (!hasEcon) {
                 return "No permission: " + Roles.ECON.name();
             }
-            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
         } else {
             nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         }
+        if (nations.isEmpty()) return "No nations specified";
+        if (!hasEcon && (nations.size() != 1 || !nations.iterator().next().equals(me))) return "You only have permission to send to your own nation";
+
 
         nations.removeIf(f -> f.getActive_m() > 7200);
         nations.removeIf(f -> f.getPosition() <= 1);
@@ -92,11 +93,10 @@ public class Warchest extends Command {
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
 
-        Map<Integer, Map<ResourceType, Double>> memberResources = new GetMemberResources(allianceId).call();
-        for (Map.Entry<Integer, Map<ResourceType, Double>> entry : memberResources.entrySet()) {
-            int nationId = entry.getKey();
-            if (!nationIds.contains(nationId)) continue;
-            DBNation nation = DBNation.byId(nationId);
+        Map<DBNation, Map<ResourceType, Double>> memberResources2 = DBAlliance.getOrCreate(aaId).getMemberStockpile();
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : memberResources2.entrySet()) {
+            DBNation nation = entry.getKey();
+            if (!nationIds.contains(nation.getNation_id())) continue;
             if (PnwUtil.convertedTotal(entry.getValue()) < 0) continue;
 
             Map<ResourceType, Double> stockpile = entry.getValue();
@@ -113,7 +113,7 @@ public class Warchest extends Command {
             }
         }
 
-        String result = Disperse.disperse(guildDb, fundsToSendNations, Collections.emptyMap(), note, event.getGuildChannel(), "Send Warchest");
+        String result = Disperse.disperse(guildDb, fundsToSendNations, Collections.emptyMap(), note, new DiscordChannelIO(event), "Send Warchest");
         if (fundsToSendNations.size() > 1) {
             RateLimitUtil.queue(event.getGuildChannel().sendMessage(author.getAsMention()));
         }

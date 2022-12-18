@@ -4,17 +4,14 @@ import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbed;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.InterviewMessage;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -24,7 +21,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.parser.ArgParser;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.tax.GetNationsFromTaxBracket;
 import com.google.common.base.Charsets;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -48,11 +44,14 @@ import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONObject;
 import org.jsoup.internal.StringUtil;
+import rocker.guild.ia.message;
 
 import java.awt.Color;
 import java.io.IOException;
@@ -76,7 +75,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -93,15 +94,19 @@ public class DiscordUtil {
         if (content.charAt(0) == '<') {
             int end = content.indexOf('>');
             if (end != -1) {
+                String idStr = content.substring(1, end);
                 content = content.substring(end + 1).trim();
+                if (content.length() > 0 && Character.isAlphabetic(content.charAt(0)) && MathMan.isInteger(idStr) && Long.parseLong(idStr) == Settings.INSTANCE.APPLICATION_ID) {
+                    content = Settings.commandPrefix(true) + content;
+                }
             }
         }
         return content;
     }
 
-    public static Message upload(MessageChannel channel, String title, String body) {
+    public static CompletableFuture<Message> upload(MessageChannel channel, String title, String body) {
         if (!title.contains(".")) title += ".txt";
-         return RateLimitUtil.complete(channel.sendFile(body.getBytes(StandardCharsets.ISO_8859_1), title));
+         return RateLimitUtil.queue(channel.sendFile(body.getBytes(StandardCharsets.ISO_8859_1), title));
     }
 
     public static void sortInterviewChannels(List<? extends GuildMessageChannel> channels, Map<Long, List<InterviewMessage>> messages, Map<? extends GuildMessageChannel, User> interviewUsers) {
@@ -227,7 +232,15 @@ public class DiscordUtil {
     }
 
     public static void paginate(MessageChannel channel, Message message, String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
-        if (results.isEmpty()) return;
+        DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
+        paginate(io, title, command, page, perPage, results, footer, inline);
+    }
+
+    public static void paginate(IMessageIO io, String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+        if (results.isEmpty()) {
+            System.out.println("Results are empty");
+            return;
+        }
 
         int numResults = results.size();
         int maxPage = (numResults - 1) / perPage;
@@ -245,72 +258,93 @@ public class DiscordUtil {
         boolean hasPrev = page > 0;
         boolean hasNext = page < maxPage;
 
-        String identifier = command.charAt(0) == '!' ? "page:" : "-p ";
+        String previousPageCmd;
+        String nextPageCmd;
 
-        String cmdCleared = command.replaceAll(identifier + "[0-9]+", "");
-        if (inline) cmdCleared = "~" + cmdCleared;
+        if (command.charAt(0) == Settings.commandPrefix(true).charAt(0)) {
+            String cmdCleared = command.replaceAll("page:" + "[0-9]+", "");
+            previousPageCmd = cmdCleared + " page:" + (page - 1);
+            nextPageCmd = cmdCleared + " page:" + (page + 1);
+        } else if (command.charAt(0) == '{') {
+            JSONObject json = new JSONObject(command);
+            Map<String, Object> arguments = json.toMap();
+
+            previousPageCmd = new JSONObject(arguments).put("page", page - 1).toString();
+            nextPageCmd = new JSONObject(arguments).put("page", page + 1).toString();
+        } else {
+            String cmdCleared = command.replaceAll("-p " + "[0-9]+", "");
+            if (!cmdCleared.startsWith(Settings.commandPrefix(false))) {
+                cmdCleared = Settings.commandPrefix(false) + cmdCleared;
+            }
+            previousPageCmd = cmdCleared + " -p " + (page - 1);
+            nextPageCmd = cmdCleared + " -p " + (page + 1);
+        }
+
+        String prefix = inline ? "~" : "";
         if (hasPrev) {
-            reactions.put("\u2B05\uFE0F", cmdCleared + " " + identifier + (page-1));
+            reactions.put("\u2B05\uFE0F Previous", prefix + previousPageCmd);
         }
         if (hasNext) {
-            reactions.put("\u27A1\uFE0F", cmdCleared + " " + identifier + (page+1));
+            reactions.put("Next \u27A1\uFE0F", prefix + nextPageCmd);
         }
 
-        if (message != null && message.getAuthor().getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
-            EmbedBuilder builder = new EmbedBuilder();
-            builder.setTitle(title);
-            builder.setDescription(body.toString());
-            if (footer != null) builder.setFooter(footer);
-            updateEmbed(builder, reactions, b -> updateMessage(channel, message, b.build()));
+        IMessageBuilder message = io.getMessage();
+        if (message == null || message.getAuthor() == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            System.out.println("remove:||Create new");
+            message = io.create();
         } else {
-            List<String> reactionsList = new ArrayList<>();
-            for (Map.Entry<String, String> entry : reactions.entrySet()) {
-                reactionsList.add(entry.getKey());
-                reactionsList.add(entry.getValue());
-            }
-            createEmbedCommandWithFooter(channel, title, body.toString(), footer, reactionsList.toArray(new String[0]));
+            System.out.println("remove:||Reuse old");
         }
+
+        EmbedBuilder builder = new EmbedBuilder();
+        builder.setTitle(title);
+        builder.setDescription(body.toString());
+        if (footer != null) builder.setFooter(footer);
+
+        message.clearEmbeds();
+        message.embed(builder.build());
+        message.clearButtons();
+        message.addCommands(reactions);
+
+        System.out.println("remove:||Sending message");
+
+        message.send();
     }
 
-    public static Message createEmbedCommand(long chanelId, String title, String message, String... reactionArguments) {
+    public static void createEmbedCommand(long chanelId, String title, String message, String... reactionArguments) {
         MessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(chanelId);
         if (channel == null) {
-//            channel = Locutus.imp().getDiscordApi().getPrivateChannelById(chanelId);
-//            if (channel == null) {
-                throw new IllegalArgumentException("Invalid channel " + chanelId);
-//            }
+            throw new IllegalArgumentException("Invalid channel " + chanelId);
         }
-        return createEmbedCommand(channel, title, message, reactionArguments);
+        createEmbedCommand(channel, title, message, reactionArguments);
     }
 
-    public static Message createEmbedCommand(MessageChannel channel, String title, String message, String... reactionArguments) {
-        return createEmbedCommandWithFooter(channel, title, message, null, reactionArguments);
+    public static void createEmbedCommand(MessageChannel channel, String title, String message, String... reactionArguments) {
+        createEmbedCommandWithFooter(channel, title, message, null, reactionArguments);
     }
 
-    public static Message createEmbedCommandWithFooter(MessageChannel channel, String title, String message, String footer, String... reactionArguments) {
+    public static void createEmbedCommandWithFooter(MessageChannel channel, String title, String message, String footer, String... reactionArguments) {
         if (message.length() > 2000 && reactionArguments.length == 0) {
-            return DiscordUtil.upload(channel, title, message);
+            if (title.length() >= 1024) title = title.substring(0, 1020) + "...";
+            DiscordUtil.upload(channel, title, message);
+            return;
         }
-        return createEmbedCommand(channel, new Consumer<EmbedBuilder>() {
+        String finalTitle = title;
+        createEmbedCommand(channel, new Consumer<EmbedBuilder>() {
             @Override
             public void accept(EmbedBuilder builder) {
-                String titleFinal = title;
+                String titleFinal = finalTitle;
                 if (titleFinal.length() >= 200) {
                     titleFinal = titleFinal.substring(0, 197) + "..";
                 }
                 builder.setTitle(titleFinal);
-                String tmp = message;
-                if (tmp.length() > 2000) {
-                    Message msg = DiscordUtil.upload(channel, titleFinal, message);
-                    tmp = "(see attachment)";
-                }
-                builder.setDescription(tmp);
+                builder.setDescription(message);
                 if (footer != null) builder.setFooter(footer);
             }
         }, reactionArguments);
     }
 
-    public static Message createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, String... reactionArguments) {
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, String... reactionArguments) {
         if (reactionArguments.length % 2 != 0) {
             throw new IllegalArgumentException("invalid pairs: " + StringMan.getString(reactionArguments));
         }
@@ -318,7 +352,7 @@ public class DiscordUtil {
         for (int i = 0; i < reactionArguments.length; i+=2) {
             map.put(reactionArguments[i], reactionArguments[i + 1]);
         }
-        return createEmbedCommand(channel, builder, map);
+        createEmbedCommand(channel, builder, map);
     }
 
     public static Message getMessage(String url) {
@@ -340,59 +374,12 @@ public class DiscordUtil {
     }
 
 
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> consumer, Map<String, String> reactionArguments) {
+        EmbedBuilder builder = new EmbedBuilder();
+        consumer.accept(builder);
+        MessageEmbed embed = builder.build();
 
-    public static Message createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, Map<String, String> reactionArguments) {
-        EmbedBuilder embed = new EmbedBuilder();
-        builder.accept(embed);
-        return updateEmbed(embed, reactionArguments, builder1 -> channel.sendMessageEmbeds(builder1.build()).complete());
-    }
-
-    public static Message updateMessage(MessageChannel channel, Message message, MessageEmbed embed) {
-        try {
-            if (message != null && message.getChannel().getIdLong() == channel.getIdLong()) {
-                 return RateLimitUtil.complete(channel.editMessageEmbedsById(message.getIdLong(), embed));
-            }
-        } catch (ErrorResponseException ignore) {}
-         return RateLimitUtil.complete(channel.sendMessageEmbeds(embed));
-    }
-
-    public static Message appendDescription(Message message, String append) {
-        List<MessageEmbed> embeds = message.getEmbeds();
-        if (embeds.size() != 1) return null;
-        MessageEmbed embed = embeds.get(0);
-        EmbedBuilder builder = new EmbedBuilder(embed);
-        builder.setDescription(embed.getDescription() + append);
-        return DiscordUtil.updateEmbed(builder, null, new Function<EmbedBuilder, Message>() {
-            @Override
-            public Message apply(EmbedBuilder builder) {
-                 return RateLimitUtil.complete(message.getChannel().editMessageEmbedsById(message.getIdLong(), builder.build()));
-            }
-        });
-    }
-
-    public static Message updateEmbed(EmbedBuilder embed, Map<String, String> reactionArguments, Function<EmbedBuilder, Message> createMsg) {
-        if (reactionArguments != null && !reactionArguments.isEmpty()) {
-            List<NameValuePair> pairs = reactionArguments.entrySet().stream()
-                    .map((Function<Map.Entry<String, String>, NameValuePair>)
-                            e -> new BasicNameValuePair(e.getKey(), e.getValue()))
-                    .collect(Collectors.toList());
-            String query = URLEncodedUtils.format(pairs, "UTF-8");
-
-            embed.setThumbnail("https://example.com?" + query);
-//            embed.setImage("https://example.com?" + query);
-        }
-        Message msg = createMsg.apply(embed);
-
-        if (reactionArguments != null) {
-            List<MessageReaction> existing = msg.getReactions();
-            if (!existing.isEmpty()) {
-                RateLimitUtil.complete(msg.clearReactions());
-            }
-            for (String emoji : reactionArguments.keySet()) {
-                RateLimitUtil.queue(msg.addReaction(emoji));
-            }
-        }
-        return msg;
+        new DiscordChannelIO(channel, null).create().embed(embed).addCommands(reactionArguments).send();
     }
 
     private static final ArgParser parser = new ArgParser();
@@ -573,9 +560,7 @@ public class DiscordUtil {
         DiscordDB disDb = Locutus.imp().getDiscordDB();
         PNWUser pnwUser = disDb.getUserFromDiscordId(userId);
         if (pnwUser != null) {
-            int id = pnwUser.getNationId();
-            NationDB natDb = Locutus.imp().getNationDB();
-            return natDb.getNation(id);
+            return DBNation.byId(pnwUser.getNationId());
         }
         return null;
     }
@@ -634,7 +619,8 @@ public class DiscordUtil {
         if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
             arg = arg.substring(1, arg.length() - 1);
         }
-        if (arg.contains("politicsandwar.com/nation/id=") || arg.contains("politicsandwar.com/nation/war/declare/id=")) {
+        if (arg.toLowerCase().startsWith("nation:")) arg = arg.substring(7);
+        if (arg.contains("politicsandwar.com/nation/id=") || arg.contains("politicsandwar.com/nation/war/declare/id=") || arg.contains("politicsandwar.com/nation/espionage/eid=")) {
             String[] split = arg.split("=");
             if (split.length == 2) {
                 arg = split[1].replaceAll("/", "");
@@ -702,11 +688,49 @@ public class DiscordUtil {
         return null;
     }
 
-    public static void sendMessage(MessageChannel channel, String message) {
+    public static CompletableFuture<Message> sendMessage(InteractionHook hook, String message) {
         if (message.length() > 20000) {
             if (message.length() < 200000) {
-                DiscordUtil.upload(channel, "message.txt", message);
-                return;
+                return RateLimitUtil.queue(hook.sendFile(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt"));
+            }
+            new Exception().printStackTrace();
+            System.out.println(message);
+            throw new IllegalArgumentException("Cannot send message of this length: " + message.length());
+        }
+        if (message.contains("@everyone")) {
+            message = message.replace("@everyone", "");
+        }
+        if (message.contains("@here")) {
+            message = message.replace("@here", "");
+        }
+        message = WordUtils.wrap(message, 2000, "\n", true, ",");
+        if (message.length() > 2000) {
+            String[] lines = message.split("\\r?\\n");
+            StringBuilder buffer = new StringBuilder();
+            for (String line : lines) {
+                if (buffer.length() + 1 + line.length() > 2000) {
+                    String str = buffer.toString().trim();
+                    if (!str.isEmpty()) {
+                        hook.sendMessage(str).complete();
+                    }
+                    buffer.setLength(0);
+                }
+                buffer.append('\n').append(line);
+            }
+            String finalMsg = buffer.toString().trim();
+            if (finalMsg.length() != 0) {
+                return hook.sendMessage(finalMsg).submit();
+            }
+        } else if (!message.isEmpty()) {
+            return hook.sendMessage(message).submit();
+        }
+        return null;
+    }
+
+    public static CompletableFuture<Message> sendMessage(MessageChannel channel, String message) {
+        if (message.length() > 20000) {
+            if (message.length() < 200000) {
+                return DiscordUtil.upload(channel, "message.txt", message);
             }
             new Exception().printStackTrace();
             throw new IllegalArgumentException("Cannot send message of this length: " + message.length());
@@ -732,11 +756,12 @@ public class DiscordUtil {
                 buffer.append('\n').append(line);
             }
             if (buffer.length() != 0) {
-                channel.sendMessage(buffer).complete();
+                return channel.sendMessage(buffer).submit();
             }
         } else if (!message.isEmpty()) {
-            channel.sendMessage(message).complete();
+            return channel.sendMessage(message).submit();
         }
+        return null;
     }
 
     public static Guild getDefaultGuild(MessageReceivedEvent event) {
@@ -791,13 +816,8 @@ public class DiscordUtil {
 
                     continue;
                 } else if (name.contains("tax_id=")) {
-                    try {
-                        nations.addAll(new GetNationsFromTaxBracket(name).call());
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        if (ignoreErrors) continue;
-                        throw new IllegalArgumentException(e.getMessage());
-                    }
+                    int taxId = PnwUtil.parseTaxId(name);
+                    nations.addAll(Locutus.imp().getNationDB().getNationsMatching(f -> f.getTax_id() == taxId));
                     continue;
                 } else if (name.startsWith("https://docs.google.com/spreadsheets/d/") || name.startsWith("sheet:")) {
                     String key;
@@ -872,7 +892,9 @@ public class DiscordUtil {
                     nations.removeIf(f -> not.contains(f));
                     continue;
                 } else if (name.toLowerCase().startsWith("aa:")) {
-                    List<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(parseAlliances(guild, name.split(":", 2)[1]));
+                    Set<Integer> alliances = parseAlliances(guild, name.split(":", 2)[1].trim());
+                    if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
+                    Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
                     if (noApplicants) {
                         allianceMembers.removeIf(n -> n.getPosition() <= 1);
                     }
@@ -917,7 +939,7 @@ public class DiscordUtil {
                             throw new IllegalArgumentException("Invalid nation/aa: " + name);
                         }
                     } else {
-                        List<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
+                        Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
                         if (noApplicants) {
                             allianceMembers.removeIf(n -> n.getPosition() <= 1);
                         }
@@ -954,14 +976,14 @@ public class DiscordUtil {
                                 if (aaId != null) {
                                     allies.add(aaId);
                                     Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(aaId);
-                                    treaties.entrySet().removeIf(e -> e.getValue().type != TreatyType.PROTECTORATE);
+                                    treaties.entrySet().removeIf(e -> e.getValue().getType() != TreatyType.PROTECTORATE);
 
-                                    List<DBNation> aaNations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
+                                    Set<DBNation> aaNations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
                                     double totalScore = aaNations.stream().mapToDouble(DBNation::getScore).sum();
 
                                     for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                                         int protId = entry.getKey();
-                                        List<DBNation> protNations = Locutus.imp().getNationDB().getNations(Collections.singleton(protId));
+                                        Set<DBNation> protNations = Locutus.imp().getNationDB().getNations(Collections.singleton(protId));
                                         double protScore = aaNations.stream().mapToDouble(DBNation::getScore).sum();
                                         if (protScore < totalScore) {
                                             allies.add(protId);
@@ -1039,8 +1061,8 @@ public class DiscordUtil {
                                 for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
                                     if (newAlliances.contains(entry.getKey())) continue;
                                     Treaty treaty = entry.getValue();
-                                    if (treatyTypes.contains(treaty.type)) {
-                                        if (depth == 0 || treaty.type != TreatyType.PROTECTORATE || newAlliances.contains(treaty.from)) {
+                                    if (treatyTypes.contains(treaty.getType())) {
+                                        if (depth == 0 || treaty.getType() != TreatyType.PROTECTORATE || newAlliances.contains(treaty.getFromId())) {
                                             newAlliances.add(entry.getKey());
                                         }
                                     }
@@ -1048,7 +1070,7 @@ public class DiscordUtil {
                             }
                             newAlliances.removeAll(alliances);
                             if (!newAlliances.isEmpty()) {
-                                List<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(newAlliances);
+                                Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(newAlliances);
                                 if (noApplicants) {
                                     allianceMembers.removeIf(n -> n.getPosition() <= 1);
                                 }
@@ -1078,36 +1100,46 @@ public class DiscordUtil {
 
             for (String filterArg : filters) {
                 Map.Entry<String, Function<Double, Boolean>> filter = parseFilter(filterArg);
-                if (filter == null) {
+                {
                     Map.Entry<String, Function<String, Boolean>> strFilter = parseStringFilter(filterArg);
-                    if (strFilter == null) {
+                    if (strFilter == null && filter == null) {
                         throw new IllegalArgumentException("Invalid filter (1): `" + filterArg + "`");
                     }
-                    switch (strFilter.getKey().toLowerCase()) {
-                        case "#enemies":
-                        case "#sort":
-                        case "#inactive":
-                        case "#attacking":
-                        case "#fighting":
-                        case "#defending":
-                        case "#treaty":
-                            continue;
-                        case "#continent":
-                            nations.removeIf(n -> !strFilter.getValue().apply(n.getContinent().name().toLowerCase()));
-                            continue;
-                        case "#color":
-                            nations.removeIf(n -> !strFilter.getValue().apply(n.getColor().name().toLowerCase()));
-                            continue;
-                        case "#warpolicy":
-                        case "#policy":
-                            nations.removeIf(n -> !strFilter.getValue().apply(n.getWarPolicy().name().toLowerCase()));
-                            continue;
-                        case "#dompolicy":
-                        case "#domesticpolicy":
-                            nations.removeIf(n -> !strFilter.getValue().apply(n.getDomesticPolicy().name().toLowerCase()));
-                            continue;
-                        default:
-                            throw new IllegalArgumentException("Invalid filter (2): `" + filterArg + "`");
+                    if (strFilter != null) {
+                        switch (strFilter.getKey().toLowerCase()) {
+                            case "#enemies":
+                            case "#sort":
+                            case "#inactive":
+                            case "#attacking":
+                            case "#fighting":
+                            case "#defending":
+                            case "#treaty":
+                                continue;
+                            case "#continent":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getContinent().name().toLowerCase()));
+                                continue;
+                            case "#mmr":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getMMR().toLowerCase()));
+                                continue;
+                            case "#mmrbuildingstr":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getMMRBuildingStr().toLowerCase()));
+                                continue;
+                            case "#color":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getColor().name().toLowerCase()));
+                                continue;
+                            case "#warpolicy":
+                            case "#policy":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getWarPolicy().name().toLowerCase()));
+                                continue;
+                            case "#dompolicy":
+                            case "#domesticpolicy":
+                                nations.removeIf(n -> !strFilter.getValue().apply(n.getDomesticPolicy().name().toLowerCase()));
+                                continue;
+                            default:
+                                if (filter == null) {
+                                    throw new IllegalArgumentException("Invalid filter (2): `" + filterArg + "`");
+                                }
+                        }
                     }
                 }
                 Project project = Projects.get(filter.getKey().substring(1));
@@ -1127,7 +1159,7 @@ public class DiscordUtil {
                         continue;
                     }
                     case "#turntimer": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (n.cityTimerTurns() - TimeUtil.getTurn())));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (n.getCityTurns() - TimeUtil.getTurn())));
                         continue;
                     }
                     case "#barracks":
@@ -1176,20 +1208,20 @@ public class DiscordUtil {
                         continue;
                     }
                     case "#soldier%": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getSoldiers() / (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap() * n.getCities())))));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getSoldiers() / (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(n::hasProject) * n.getCities())))));
                         continue;
                     }
                     case "#tank%": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getTanks() / (Math.max(1, Buildings.FACTORY.max() * Buildings.FACTORY.cap() * n.getCities())))));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getTanks() / (Math.max(1, Buildings.FACTORY.max() * Buildings.FACTORY.cap(n::hasProject) * n.getCities())))));
                         continue;
                     }
                     case "#plane%":
                     case "#aircraft%": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getAircraft() / (Math.max(1, Buildings.HANGAR.max() * Buildings.HANGAR.cap() * n.getCities())))));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getAircraft() / (Math.max(1, Buildings.HANGAR.max() * Buildings.HANGAR.cap(n::hasProject) * n.getCities())))));
                         continue;
                     }
                     case "#ship%": {
-                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getShips() / (Math.max(1, Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap() * n.getCities())))));
+                        nations.removeIf(n -> !filter.getValue().apply((double) (100 * n.getShips() / (Math.max(1, Buildings.DRYDOCK.max() * Buildings.DRYDOCK.cap(n::hasProject) * n.getCities())))));
                         continue;
                     }
                     case "#registered":
@@ -1276,8 +1308,7 @@ public class DiscordUtil {
                                         }
                                     }
                                 });
-                            }
-                            else if (method.getReturnType() == int.class || method.getReturnType() == long.class || method.getReturnType() == double.class) {
+                            } else if (method.getReturnType() == int.class || method.getReturnType() == long.class || method.getReturnType() == double.class) {
                                 hasMethod = true;
                                 nations.removeIf(new Predicate<DBNation>() {
                                     @Override
@@ -1290,6 +1321,8 @@ public class DiscordUtil {
                                         }
                                     }
                                 });
+                            } else if (method.getReturnType() == String.class) {
+                                // todo
                             }
                         }
                     }
@@ -1389,6 +1422,16 @@ public class DiscordUtil {
             }
         }
     }
+    public static void pending(IMessageIO output, JSONObject command, String title, String desc) {
+        pending(output, command, title, desc, "force");
+    }
+    public static void pending(IMessageIO output, JSONObject command, String title, String desc, String forceFlag) {
+        String forceCmd = command.put(forceFlag, "true").toString();
+        output.create()
+                .embed("Confirm: " + title, desc)
+                .commandButton(CommandBehavior.DELETE_MESSAGE, forceCmd, "Confirm")
+                .send();
+    }
 
     public static void pending(MessageChannel channel, Message message, String title, String desc, char f) {
         pending(channel, message, title, desc, f, "");
@@ -1396,7 +1439,7 @@ public class DiscordUtil {
 
     public static void pending(MessageChannel channel, Message message, String title, String desc, char f, String cmdAppend) {
         String cmd = DiscordUtil.trimContent(message.getContentRaw()) + " -" + f + cmdAppend;
-        DiscordUtil.createEmbedCommand(channel, "Confirm: " + title, desc, "\u2705", cmd);
+        DiscordUtil.createEmbedCommand(channel, "Confirm: " + title, desc, "Confirm", cmd);
     }
 
     public static String getChannelUrl(GuildMessageChannel channel) {
@@ -1432,13 +1475,13 @@ public class DiscordUtil {
 
     public static long getUserIdByNationId(int nationId) {
         PNWUser pwUser = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
-        if (pwUser != null && pwUser.getDiscordId() != null) return pwUser.getDiscordId();
+        if (pwUser != null) return pwUser.getDiscordId();
         User user = getUserByNationId(nationId);
         if (user != null) return user.getIdLong();
         return 0;
     }
 
-    public static List<DBNation> getNationsByAA(int alliance_id) {
-        return Locutus.imp().getNationDB().getNations(Collections.singleton(alliance_id));
+    public static Set<DBNation> getNationsByAA(int alliance_id) {
+        return DBAlliance.getOrCreate(alliance_id).getNations();
     }
 }

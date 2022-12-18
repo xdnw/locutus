@@ -4,7 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
@@ -46,7 +47,7 @@ public class CounterSpy extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return (super.checkPermission(server, user));
+        return Roles.MEMBER.has(user, server);
     }
 
     @Override
@@ -102,14 +103,14 @@ public class CounterSpy extends Command {
                 return "Unknown op: `" + args.get(1) + "`" + ". Valid options are: " + StringMan.getString(SpyCount.Operation.values());
             }
         }
-        List<DBNation> toCounter;
+        Set<DBNation> toCounter;
         if (args.size() == 3) {
-            toCounter = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(2), true, true));
+            toCounter = DiscordUtil.parseNations(guild, args.get(2), true, true);
         } else {
             if (me.getAlliance_id() == 0) return usage(event);
             toCounter = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
         }
-        toCounter.removeIf(n -> n.getSpies() == null || n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
+        toCounter.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
@@ -136,9 +137,6 @@ public class CounterSpy extends Command {
                         break;
                     case INTEL:
 
-                }
-                if (operation == SpyCount.Operation.SPIES && enemySpies == 0) {
-                    return "Enemy has no spies";
                 }
 
                 SpyCount.Operation[] opTypes = SpyCount.Operation.values();

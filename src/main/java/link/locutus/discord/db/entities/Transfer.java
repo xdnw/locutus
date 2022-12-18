@@ -14,10 +14,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.AbstractMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Transfer {
     private boolean isReceiverAA;
@@ -59,7 +56,7 @@ public class Transfer {
     }
 
     public static List<Transfer> of(Element row, int resourceOffset) {
-        List<Transfer> list = new LinkedList<>();
+        List<Transfer> list = new ArrayList<>();
 
         Elements columns = row.getElementsByTag("td");
 

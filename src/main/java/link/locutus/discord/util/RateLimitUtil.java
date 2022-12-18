@@ -6,18 +6,11 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
 import link.locutus.discord.web.jooby.adapter.JoobyMessageAction;
 import link.locutus.discord.web.jooby.adapter.JoobyRestAction;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.requests.RestAction;
-import net.dv8tion.jda.api.requests.restaction.MessageAction;
 
-import java.util.AbstractMap;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -46,7 +39,7 @@ public class RateLimitUtil {
         return 50;
     }
 
-    private static RestAction addRequest(RestAction action) {
+    private static <T> RestAction<T> addRequest(RestAction<T> action) {
         if (action instanceof JoobyMessageAction || action instanceof JoobyRestAction) {
             return action;
         }
@@ -82,10 +75,10 @@ public class RateLimitUtil {
                             for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
                                 response.append("\n - " + entry2.getValue() + ": " + entry2.getKey());
                             }
-
                         }
                     }
                 }
+                System.out.println(response);
             }
         } else {
             lastLimitTotal = 0;
@@ -116,9 +109,8 @@ public class RateLimitUtil {
         UUID id = UUID.randomUUID();
         long channelId = channel.getIdLong();
         synchronized (messageQueueLastSent) {
-            messageQueue.computeIfAbsent(channelId, f -> new LinkedList<>()).add(new AbstractMap.SimpleEntry<>(id, message));
+            messageQueue.computeIfAbsent(channelId, f -> new ArrayList<>()).add(new AbstractMap.SimpleEntry<>(id, message));
         }
-
         Locutus.imp().getCommandManager().getExecutor().schedule(new CaughtRunnable() {
             @Override
             public void runUnsafe() {
@@ -152,20 +144,54 @@ public class RateLimitUtil {
 
     }
 
-    public static void queue(MessageAction action) {
-        addRequest(action).queue();
+    private static final ConcurrentLinkedQueue<Runnable> queuedActions = new ConcurrentLinkedQueue<>();
+    private static boolean runningTask = false;
+
+    public static void queueWhenFree(RestAction<?> action) {
+        queueWhenFree(() -> queue(action));
     }
 
-    public static Message complete(MessageAction action) {
-        return (Message) addRequest(action).complete();
+    public static void queueWhenFree(Runnable action) {
+        if (getCurrentUsed() < getLimitPerMinute()) {
+            action.run();
+            return;
+        }
+        queuedActions.add(action);
+
+        if (!runningTask) {
+            synchronized (RateLimitUtil.class) {
+                if (!runningTask) {
+                    runningTask = true;
+                    Locutus.imp().getExecutor().submit(new CaughtRunnable() {
+                        @Override
+                        public void runUnsafe() throws InterruptedException {
+                            while (true) {
+                                if (queuedActions.isEmpty() || getCurrentUsed() >= getLimitPerMinute()) {
+                                    Thread.sleep(10000);
+                                    continue;
+                                }
+                                Runnable current = queuedActions.poll();
+                                if (current == null) continue;
+
+                                try {
+                                    current.run();
+                                } catch (Throwable e) {
+                                    AlertUtil.error("Error with queued action", e);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
     }
 
     public static <T> T complete(RestAction<T> action) {
         return (T) addRequest(action).complete();
     }
 
-    public static <T> void queue(RestAction<T> action) {
-        if (action == null) return;
-        addRequest(action).queue();
+    public static <T> CompletableFuture<T> queue(RestAction<T> action) {
+        if (action == null) return null;
+        return addRequest(action).submit();
     }
 }

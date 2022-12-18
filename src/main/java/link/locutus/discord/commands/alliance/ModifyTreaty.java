@@ -1,12 +1,13 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.PendingTreaty;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -39,7 +40,7 @@ public class ModifyTreaty extends Command {
 
     @Override
     public String desc() {
-        return "Use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "treaties` to list the current treaties";
+        return "Use `" + Settings.commandPrefix(true) + "treaties` to list the current treaties";
     }
 
     @Override
@@ -48,21 +49,22 @@ public class ModifyTreaty extends Command {
 
         int treatyOrAAId = PnwUtil.parseAllianceId(args.get(0));
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Auth auth = db.getAuth();
+        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
         if (auth == null) return "No authentication enabled for this guild";
 
         List<PendingTreaty> treaties = auth.getTreaties();
-        treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
-        treaties.removeIf(treaty -> treaty.from != treatyOrAAId && treaty.to != treatyOrAAId && treaty.treatyId != treatyOrAAId);
+        if (!value) treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
+        if (value) treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);
+        treaties.removeIf(treaty -> treaty.getFromId() != treatyOrAAId && treaty.getToId() != treatyOrAAId && treaty.getId() != treatyOrAAId);
         if (treaties.isEmpty()) return "There are no active treaties";
 
         boolean admin = Roles.ADMIN.has(author, db.getGuild()) || (me.getAlliance_id() == db.getAlliance_id() && me.getPosition() >= Rank.HEIR.id);
 
         for (PendingTreaty treaty : treaties) {
-            if (!admin && treaty.type.getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
+            if (!admin && treaty.getType().getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
                 return "You need to be an admin to cancel a defensive treaty";
             }
-            return auth.modifyTreaty(treaty.treatyId, false);
+            return auth.modifyTreaty(treaty.getId(), value);
         }
         return "No treaty found";
     }

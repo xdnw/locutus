@@ -88,7 +88,8 @@ public class BFSUtil {
                 }
             }
 
-            if (goal.apply(next)) {
+            Boolean result = goal.apply(next);
+            if (result == Boolean.TRUE) {
                 Double value = valueFunction.apply(next);
                 if (value > maxValue) {
                     T lastMax = max;
@@ -101,6 +102,9 @@ public class BFSUtil {
                 } else {
                     garbageLastMax.accept(next);
                 }
+                continue;
+            } else if (result == null) {
+                garbageLastMax.accept(next);
                 continue;
             }
 

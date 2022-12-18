@@ -5,10 +5,10 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.InterviewMessage;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -33,7 +33,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -93,7 +92,7 @@ public class IAPages {
             IACategory.SortedCategory category = iaCat.getSortedCategory(channel);
             categoryMap.put(channel, category);
 
-            channelsByCategory.computeIfAbsent(category, f -> new LinkedList<>()).add(channel);
+            channelsByCategory.computeIfAbsent(category, f -> new ArrayList<>()).add(channel);
         }
 
         List<IACategory.SortedCategory> categories = new ArrayList<>(Arrays.asList(IACategory.SortedCategory.values()));
@@ -149,7 +148,7 @@ public class IAPages {
         long diff = System.currentTimeMillis() - start;
         System.out.println("Diff " + diff + "ms");
 
-        return views.guild.ia.iachannels.template(db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels).render().toString();
+        return rocker.guild.ia.iachannels.template(db, me, author, iaCat, categories, categoryMap, channelsByCategory, interviewNation, interviewUsers, avatarsJson, usersJson, messagesJson, myChannels).render().toString();
     }
 
     @Command()
@@ -159,8 +158,8 @@ public class IAPages {
         IACheckup checkup = new IACheckup(db, db.getAlliance_id(), true);
         Map<IACheckup.AuditType, Map<DBNation, String>> allianceAuditResults = new LinkedHashMap<>();
 
-        Alliance alliance = db.getAlliance();
-        List<DBNation> allNations = alliance.getNations(true, 0, true);
+        DBAlliance alliance = db.getAlliance();
+        List<DBNation> allNations = new ArrayList<>(alliance.getNations(true, 0, true));
         Collections.sort(allNations, Comparator.comparingInt(DBNation::getCities));
 
         List<DBNation> inactive = allNations.stream().filter(f -> f.getActive_m() > 4320).collect(Collectors.toList());
@@ -187,7 +186,7 @@ public class IAPages {
         }
 
 
-        return views.guild.ia.audits.template(db, alliance, allianceAuditResultsSorted).render().toString();
+        return rocker.guild.ia.audits.template(db, alliance, allianceAuditResultsSorted).render().toString();
     }
 
     @Command()
@@ -299,8 +298,8 @@ public class IAPages {
             lastMentorTxByNationId.put(mentorId, transaction.tx_datetime);
         }
 
-        Alliance alliance = db.getAlliance();
-        List<DBNation> members = alliance.getNations(true, 2880, true);
+        DBAlliance alliance = db.getAlliance();
+        Set<DBNation> members = alliance.getNations(true, 2880, true);
         members.removeIf(f -> !mentees.contains(f));
 
         for (DBNation member : members) {
@@ -336,7 +335,7 @@ public class IAPages {
             }
         }
 
-        return views.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
+        return rocker.guild.ia.mentors.template(iaCat, db, mentorsSorted, menteeMentorMap, categoryMap, passedMap, lastMentorTxByNationId,
                 mentors, numPassedMap, membersUnverified, membersNotOnDiscord, nationsNoIAChan, noMentor, idleMentors,
                 checkup).render().toString();
     }

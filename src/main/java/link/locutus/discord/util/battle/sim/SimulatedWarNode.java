@@ -1,7 +1,7 @@
 package link.locutus.discord.util.battle.sim;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -175,12 +175,13 @@ public class SimulatedWarNode {
 
     public void addChild(SimulatedWarNode child) {
         if (this.children == null) {
-            this.children = new LinkedList<>();
+            this.children = new ArrayList<>();
         }
         if (this.children instanceof SimulatedWarNode) {
-            LinkedList<SimulatedWarNode> list = new LinkedList<>();
+            List<SimulatedWarNode> list = new ArrayList<>();
             list.add(child);
             list.add((SimulatedWarNode) this.children);
+            this.children = list;
         } else {
             this.children = child;
         }

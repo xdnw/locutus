@@ -3,19 +3,14 @@ package link.locutus.discord.web.endpoints.stats;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.endpoints.Endpoint;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 public class WarCostEnd extends Endpoint {
@@ -33,11 +28,11 @@ public class WarCostEnd extends Endpoint {
         String args1 = path.get(1);
         int days = Integer.parseInt(path.get(2));
 
-        List<DBAttack> attacks = new LinkedList<>();
-        Function<DBAttack, Boolean> isPrimary = null;
-        Function<DBAttack, Boolean> isSecondary = null;
-        String nameA = "Unknown";
-        String nameB = "Unknown";
+        List<DBAttack> attacks;
+        Function<DBAttack, Boolean> isPrimary;
+        Function<DBAttack, Boolean> isSecondary;
+        String nameA;
+        String nameB;
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 

@@ -1,15 +1,14 @@
 package link.locutus.discord.util;
 
+import com.google.gson.stream.MalformedJsonException;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.trade.Offer;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
@@ -17,32 +16,18 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
+import org.json.JSONObject;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import rocker.grant.nation;
 
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -139,19 +124,24 @@ public class PnwUtil {
         return "sphere:" + getName(sphereId, true);
     }
 
+    public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
+        return sumNationTransactions(guildDB, tracked, transactionsEntries, false, false, f -> true);
+    }
+
     /**
      * Sum the nation transactions (assumes all transactions are valid and should be added)
      * @param tracked
      * @param transactionsEntries
      * @return
      */
-    public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
+    public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
         Map<DepositType, double[]> result = new HashMap<>();
 
         boolean allowExpiryDefault = (guildDB.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) == Boolean.TRUE) || guildDB.getIdLong() == 790253684537688086L;
         long allowExpiryCutoff = 1635910300000L;
         Predicate<Transaction2> allowExpiry = transaction2 ->
                 allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;
+        if (forceIncludeExpired) allowExpiry = f -> false;
 
         if (tracked == null) {
             tracked = new HashSet<>();
@@ -165,13 +155,14 @@ public class PnwUtil {
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();
             Transaction2 record = entry.getValue();
+            if (!filter.test(record)) continue;
 
             boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
 
             boolean allowConversion = record.tx_id != -1 && isOffshoreSender;
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
-            PnwUtil.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true);
+            PnwUtil.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored);
         }
         return result;
     }
@@ -261,7 +252,7 @@ public class PnwUtil {
         return true;
     }
 
-    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits) {
+    public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored) {
         /*
         allowConversion sender is nation and alliance has conversion enabled
          */
@@ -289,6 +280,12 @@ public class PnwUtil {
                 case "#account":
                     return;
                 case "#ignore":
+                    if (includeIgnored) {
+                        if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                            return;
+                        }
+                        continue;
+                    }
                     return;
                 case "#deposit":
                 case "#deposits":
@@ -377,7 +374,7 @@ public class PnwUtil {
                                     } else {
                                         if (amt < 1) continue;
 
-                                        List<Offer> trades = tradeDb.getOffers(resource, start, end);
+                                        List<DBTrade> trades = tradeDb.getTrades(resource, start, end);
 
                                         Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
                                         if (avg != null) {
@@ -394,7 +391,7 @@ public class PnwUtil {
                                     note = note.replaceAll(entry.getKey() + "[^ ]+", "#cash=" + MathMan.format(cashValue));
                                     note += " #" + hash;
                                     record.note = note;
-                                    Locutus.imp().getBankDB().addTransaction(record);
+                                    Locutus.imp().getBankDB().addTransaction(record, false);
                                 }
                             }
                         }
@@ -447,11 +444,6 @@ public class PnwUtil {
         return new Gson().toJson(post);
     }
 
-    public static void main(String[] args) {
-        String m = "2*{steel=3}";
-        System.out.println(StringMan.getString(parseResources(m)));
-    }
-
     public static Map<ResourceType, Double> parseResources(String arg) {
         if (arg.contains("\t") || arg.contains("    ")) {
             String[] split = arg.split("[\t]");
@@ -467,6 +459,8 @@ public class PnwUtil {
                 return result;
             }
         }
+        arg = arg.trim();
+        if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
         arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         double sign = 1;
         if (arg.charAt(0) == '-') {
@@ -478,6 +472,7 @@ public class PnwUtil {
             result.put(ResourceType.MONEY, MathMan.parseDouble(arg) * sign);
             return result;
         }
+
 
         arg = arg.replace("GAS:", "GASOLINE:");
         arg = arg.replace("URA:", "URANIUM:");
@@ -494,7 +489,6 @@ public class PnwUtil {
 
         int preMultiply = arg.indexOf("*{");
         int postMultiply = arg.indexOf("}*");
-        System.out.println("Pre multiply " + preMultiply);
         if (preMultiply != -1) {
             String[] split = arg.split("\\*\\{", 2);
             arg = "{" + split[1];
@@ -506,7 +500,20 @@ public class PnwUtil {
             sign *= MathMan.parseDouble(split[1]);
         }
 
-        Map<ResourceType, Double> transfer = new Gson().fromJson(arg, type);
+        Map<ResourceType, Double> transfer;
+        try {
+            JSONObject json = new JSONObject(arg);
+            json.remove("TRANSACTION_COUNT");
+            for (String rssType : json.keySet()) {
+                ResourceType.parse(rssType);
+            }
+            transfer = new Gson().fromJson(json.toString(), type);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid resource json: `" + arg + "` (" + e.getMessage() + ")");
+        }
+        if (transfer.containsKey(null)) {
+            throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
+        }
         if (sign != 1) {
             for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
                 entry.setValue(entry.getValue() * sign);
@@ -530,9 +537,9 @@ public class PnwUtil {
                 arg = split[1].replaceAll("/", "");
             }
         } else {
-            Integer allianceId = Locutus.imp().getNationDB().getAllianceId(arg);
-            if (allianceId != null) {
-                return allianceId;
+            DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(arg);
+            if (alliance != null) {
+                return alliance.getAlliance_id();
             }
         }
         if (MathMan.isInteger(arg)) {
@@ -610,7 +617,9 @@ public class PnwUtil {
     private static double[] LAND_COST_CACHE = null;
 
     public static double calculateLand(double from, double to) {
-        if (to <= from) return 0;
+        if (from < 0 || from == to) return 0;
+        if (to <= from) return (from - to) * -50;
+        if (to > 20000) throw new IllegalArgumentException("Land cannot exceed 10,000");
         double[] tmp = LAND_COST_CACHE;
         if (tmp != null && from == tmp[0] && to == tmp[1]) {
             return tmp[2];
@@ -633,17 +642,27 @@ public class PnwUtil {
     }
 
     public static double cityCost(DBNation nation, int from, int to) {
+        return cityCost(from, to,
+                nation != null && nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
+                nation != null && nation.hasProject(Projects.URBAN_PLANNING),
+                nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+                nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
+                nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+    }
+
+    public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
         double total = 0;
         for (int city = Math.max(1, from); city < to; city++) {
             total += nextCityCost(city,
-                nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
-                nation.hasProject(Projects.URBAN_PLANNING),
-                nation.hasProject(Projects.ADVANCED_URBAN_PLANNING));
+                    manifestDestiny,
+                    cityPlanning,
+                    advCityPlanning,
+                    metPlanning, govSupportAgency);
         }
         return total;
     }
 
-    public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning) {
+    public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency) {
         double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
         if (cityPlanning) {
             cost -= 50000000;
@@ -651,10 +670,15 @@ public class PnwUtil {
         if (advCityPlanning) {
             cost -= 100000000;
         }
-        if (manifestDestiny) {
-            cost *= 0.95;
+        if (metPlanning) {
+            cost -= 150_000_000;
         }
-        return cost;
+        if (manifestDestiny) {
+            double factor = 0.05;
+            if (govSupportAgency) factor += 0.025;
+            cost *= (1 - factor);
+        }
+        return Math.max(0, cost);
     }
 
     public static Map<ResourceType, Double> adapt(AllianceBankContainer bank) {
@@ -672,8 +696,21 @@ public class PnwUtil {
 
     private static double[] INFRA_COST_CACHE = null;
 
+
+    public static double calculateInfra(double from, double to, boolean aec, boolean cfce, boolean urbanization, boolean gsa) {
+        double factor = 1;
+        if (aec) factor -= 0.05;
+        if (cfce) factor -= 0.05;
+        if (urbanization) {
+            factor -= 0.05;
+            if (gsa) factor -= 0.025;
+        }
+        return PnwUtil.calculateInfra(from, to) * (to > from ? factor : 1);
+    }
     public static double calculateInfra(double from, double to) {
-        if (to <= from) return 0;
+        if (from < 0) return 0;
+        if (to <= from) return (from - to) * -150;
+        if (to > 10000) throw new IllegalArgumentException("Infra cannot exceed 10,000");
 
         double[] tmp = INFRA_COST_CACHE;
         if (tmp != null && from == tmp[0] && to == tmp[1]) {
@@ -931,41 +968,62 @@ public class PnwUtil {
         return total;
     }
 
-    public static double[] getRevenue(double[] profitBuffer, DBNation nation, Map<Integer, JavaCity> cityMap, boolean militaryUpkeep, boolean tradeBonus, boolean bonus) {
+    public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood) {
+        double rads = nation.getRads();
+        boolean atWar = nation.getNumWars() > 0;
+        long date = -1L;
+        return getRevenue(profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, checkRpc, noFood, rads, atWar);
+    }
+
+    public static double[] getRevenue(double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
-        Predicate<Project> hasProject = project -> project != null && nation.hasProject(project);
-
-        double rads = nation.getRads();
-
+        Continent continent = nation.getContinent();
+        double grossModifier = nation.getGrossModifier(noFood);
         int numCities = bonus ? nation.getCities() : 10;
 
-        Collection<JavaCity> cityList = cityMap.values();
-
-        for (JavaCity build : cityList) {
-            profitBuffer = build.profit(rads, hasProject, profitBuffer, numCities);
+        // Project revenue
+        if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.RESOURCE_PRODUCTION_CENTER)) {
+            for (ResourceType type : ResourceType.values) {
+                if (type.isRaw()) {
+                    profitBuffer[type.ordinal()] += turns * nation.getCities();
+                }
+            }
         }
 
+        // city revenue
+        for (JavaCity build : cities) {
+            profitBuffer = build.profit(continent, rads, date, nation::hasProject, profitBuffer, numCities, grossModifier, turns);
+        }
+
+        System.out.println("Profit " + MathMan.format(profitBuffer[0]) + " | food: " + MathMan.format(profitBuffer[ResourceType.FOOD.ordinal()]));
+
+        // trade revenue
         if (tradeBonus) {
-            profitBuffer[0] += Locutus.imp().getTradeManager().getTradeBonus(nation.getColor()) * 12;
+            profitBuffer[0] += nation.getColor().getTurnBonus() * turns * grossModifier;
         }
 
-        if (!nation.hasUnsetMil() && militaryUpkeep) {
-            boolean war = nation.getOff() > 0 || nation.getDef() > 0;
+        System.out.println("Turn bonus " + MathMan.format(nation.getColor().getTurnBonus() * turns * grossModifier));
+        System.out.println("Gross modifier " + MathMan.format(grossModifier) + " | " + MathMan.format(rads));
+
+        // Add military upkeep
+        if (militaryUpkeep && !nation.hasUnsetMil()) {
+            double factor = nation.getMilitaryUpkeepFactor();
 
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int amt = nation.getUnits(unit);
                 if (amt == 0) continue;
 
-                double[] upkeep = unit.getUpkeep(war);
+                double[] upkeep = unit.getUpkeep(atWar);
                 for (int i = 0; i < upkeep.length; i++) {
                     double value = upkeep[i];
                     if (value != 0) {
-                        profitBuffer[i] -= value * amt;
+                        profitBuffer[i] -= value * amt * factor * turns / 12;
                     }
                 }
             }
         }
+
         return profitBuffer;
     }
 
@@ -995,6 +1053,15 @@ public class PnwUtil {
         return MarkupUtil.markdownUrl(PnwUtil.getName(nationId, isAA), PnwUtil.getUrl(nationId, isAA));
     }
 
+    public static int parseTaxId(String url) {
+        String regex = "tax_id=([0-9]+)";
+        Matcher matcher = Pattern.compile(regex).matcher(url.toLowerCase(Locale.ROOT));
+        if (matcher.find()) {
+            int id = Integer.parseInt(matcher.group(1));
+            return id;
+        }
+        throw new IllegalArgumentException("Not a valid tax url: `" + url + "`");
+    }
     public static String getName(long nationOrAllianceId, boolean isAA) {
         if (isAA) {
             String name = Locutus.imp().getNationDB().getAllianceName((int) nationOrAllianceId);
@@ -1043,8 +1110,8 @@ public class PnwUtil {
         return "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + cityId;
     }
 
-    public static String getNationUrl(int cityId) {
-        return "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + cityId;
+    public static String getNationUrl(int nationId) {
+        return "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nationId;
     }
 
     public static String getAllianceUrl(int cityId) {

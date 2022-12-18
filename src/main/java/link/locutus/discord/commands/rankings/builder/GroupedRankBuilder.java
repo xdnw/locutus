@@ -2,11 +2,7 @@ package link.locutus.discord.commands.rankings.builder;
 
 import link.locutus.discord.util.MathMan;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -55,7 +51,7 @@ public class GroupedRankBuilder<T, G> {
     public void put(T key, G value) {
         List<G> existing = mapped.get(key);
         if (existing == null) {
-            existing = new LinkedList<>(Collections.singletonList(value));
+            existing = new ArrayList<>(Collections.singletonList(value));
             mapped.put(key, existing);
         } else {
             existing.add(value);

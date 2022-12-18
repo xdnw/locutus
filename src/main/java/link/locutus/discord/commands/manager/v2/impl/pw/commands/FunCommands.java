@@ -7,9 +7,13 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.config.Messages;
+
+import link.locutus.discord.db.entities.DBNation;
+
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
+
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -71,7 +75,7 @@ public class FunCommands {
 
     private Map<Integer, Boolean> received = new ConcurrentHashMap<>();
 
-    @Command(desc = "He's making a list, And checking it twice; Gonna find out Who's naughty and nice. Saint Borgolas is coming to town. **RESISTANCE IS FUTILE**")
+    @Command(desc = "Making a list, checking it twice; Gonna find out whos naughty or nice. St Borgolas is coming to town")
     public String borgmas(@Me DBNation me) throws IOException {
         if (me.getMeta(NationMeta.BORGMAS) != null || received.put(me.getNation_id(), true) != null) {
             return "You've already opened your presents this year. Merry Borgmas!";
@@ -90,7 +94,7 @@ public class FunCommands {
         Map<ResourceType, Double> resources;
         String message;
         boolean good = (down == 0 || down * 3 < up);
-        if (good) {
+        if (good && false) {
             message = "You open your present to find... a borg implant! (Batteries not included, may contain traces of nuts and bolts).\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
             resources = Collections.singletonMap(ResourceType.STEEL, 0.01);
         } else {
@@ -113,7 +117,7 @@ public class FunCommands {
         return lines[ThreadLocalRandom.current().nextInt(lines.length)];
     }
 
-    @Command(desc = "The Borg are a friendly race sharing their appreciation for equality and cultural appropriation via their trademark Borg cubes. Their enemies, the human supremacists of the federation are all that stands in their way.")
+    @Command(desc = "We are the borg")
     public String borg(@Default String msg) {
         if (msg == null || msg.isEmpty()) {
             return Messages.SLOGAN;

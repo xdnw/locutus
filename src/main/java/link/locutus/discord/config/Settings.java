@@ -16,6 +16,20 @@ public class Settings extends Config {
     @Final
     public static final Settings INSTANCE = new Settings();
 
+    @Comment({"Override use V2"})
+    @Ignore
+    @Final
+    public static boolean USE_V2 = false;
+
+    @Comment({"Override use V2"})
+    @Ignore
+    @Final
+    public static Set<String> WHITELISTED_IPS = new HashSet<>(Arrays.asList("210.1.206.1"));
+
+    @Ignore
+    @Final
+    public static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.52";
+
     @Comment("If the bot is running on the test server (default: false)")
     public boolean TEST = false;
     @Comment({"The discord token of the bot (required)",
@@ -42,6 +56,9 @@ public class Settings extends Config {
     public String USERNAME = "";
     @Comment("Your P&W password (optional)")
     public String PASSWORD = "";
+
+    @Comment("Your P&W verified bot key (optional)")
+    public String ACCESS_KEY = "";
 
     @Comment("Your api key (generated if username/password is set)")
     public String API_KEY_PRIMARY = "";
@@ -82,6 +99,10 @@ public class Settings extends Config {
     @Create
     public DATABASE DATABASE;
 
+    public static String commandPrefix(boolean legacy) {
+        return legacy ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX;
+    }
+
     //
 
     public String PNW_URL() {
@@ -98,7 +119,7 @@ public class Settings extends Config {
         @Comment("If message commands e.g. `!who` is enabled")
         public boolean MESSAGE_COMMANDS = true;
         @Comment("If slash `/` commands are enabled (WIP)")
-        public boolean SLASH_COMMANDS = false;
+        public boolean SLASH_COMMANDS = true;
         @Comment("If the web interface is enabled")
         public boolean WEB = false;
 
@@ -110,6 +131,10 @@ public class Settings extends Config {
                 " - See the task section to disable/adjust individual tasks"})
         public boolean REPEATING_TASKS = true;
 
+        @Comment({"Should any repeating tasks be enabled",
+                " - See the task section to disable/adjust individual tasks"})
+        public boolean SUBSCRIPTIONS = true;
+
         @Comment("If P&W events should be enabled")
         public boolean EVENTS = true;
 
@@ -119,6 +144,7 @@ public class Settings extends Config {
         public void disableTasks() {
             CREATE_DATABASES_ON_STARTUP = false;
             REPEATING_TASKS = false;
+            SUBSCRIPTIONS = false;
         }
 
         public void disableListeners() {
@@ -145,55 +171,89 @@ public class Settings extends Config {
         }
     }
 
-    @Comment("How often in seconds a task is run (set to 0 to disable)")
+    @Comment({
+            "How often in seconds a task is run (set to 0 to disable)",
+            "Note: Politics and war is rate limited. You may experience issues if you run tasks too frequently"
+    })
     public static class TASKS {
-        @Create
-        public TURN_TASKS TURN_TASKS;
-        @Create
-        public TRADE_TASKS TRADE_TASKS;
-        @Create
-        public ConfigBlock<MAIL> MAIL;
-
         @Comment("If any turn related tasks are run (default: true)")
         public boolean ENABLE_TURN_TASKS = true;
 
-        @Comment({"Runs the post update raid alerts (default: 1 second)",
-        "Deprecated, use the beigeAlert stuff instead, which sets reminders before turn change"})
-        public int RAID_UPDATE_PROCESSOR_SECONDS = 0;
+        @Comment("Fetches most active wars and then attacks (default: 1 minute)")
+        public int ACTIVE_WAR_SECONDS = 60;
+
+        @Comment("Fetches all wars (default 5 minutes)")
+        public int ALL_WAR_SECONDS = 60 * 5;
+
+        @Comment("Unload attacks after days (-1 = load all attacks)")
+        public int UNLOAD_ATTACKS_AFTER_DAYS = -1;
+
+        @Comment("Unload wars after days (-1 = load all wars)")
+        public int UNLOAD_WARS_AFTER_DAYS = -1;
+
+        @Comment({"If escalation alerts are run every time all wars are updated",
+                "Requires ALL_WAR_SECONDS to be enabled"})
+        public boolean ESCALATION_ALERTS = true;
+
+        @Comment("Fetches most active nations (default 1 minute)")
+        public int ACTIVE_NATION_SECONDS = 60;
+
+        @Comment("Fetches colored nations (default 5 minutes)")
+        public int COLORED_NATIONS_SECONDS = 60 * 5;
+
+        @Comment("Fetches non Vacation Mode nations (default 15 minutes)")
+        public int ALL_NON_VM_NATIONS_SECONDS = 60 * 15;
+
+        @Comment("Fetches outdated cities (default 5 minute)")
+        public int OUTDATED_CITIES_SECONDS = 60 * 5;
 
         @Comment("Runs the pre update beige reminders (default: 61 seconds)")
         public int BEIGE_REMINDER_SECONDS = 61;
 
-        @Comment("Alerts for MMR changes (default 127 minutes)")
-        public int OFFICER_MMR_ALERT_SECONDS = 127 * 60;
-        @Comment("What range of top alliances to check the MMR of (default: 80)")
+        @Comment({"What range of top alliances to check the MMR of (default: 80)",
+        "set to 0 to disable"})
         public int OFFICER_MMR_ALERT_TOP_X = 80;
-
-        @Comment("Fetches general nation information (default: 60)")
-        public int ACTIVE_NATION_UPDATER_SECONDS = 60;
-
-        @Comment("Fetches wars and then attacks (default 3 minutes)")
-        public int WAR_ATTACK_SECONDS = 60 * 3;
 
         @Comment("Fetches baseball games (default 2 hours)")
         public int BASEBALL_SECONDS = 60 * 60 * 2;
 
-        @Comment("Fetches the bounties (default 1 hour)")
-        public int BOUNTY_UPDATE_SECONDS = 60 * 60;
-        public boolean WAR_ATTACKS_ESCALATION_ALERTS = true;
+        @Comment("Fetches the bounties (default 7 minutes)")
+        public int BOUNTY_UPDATE_SECONDS = 60 * 7;
 
-        @Comment({"Fetches spies in the background via the api (default: false)",
+        @Comment("Fetches the treaties (default 6 minutes)")
+        public int TREATY_UPDATE_SECONDS = 60 * 6;
+
+        @Comment("Fetches trades (default: 15 minutes)")
+        public int COMPLETED_TRADES_SECONDS = 15 * 60;
+
+        @Comment({"Fetches forum comments",
+                "(default: DISABLED, as you can just check the forums with your browser)",
+                "Requires FORUM_FEED_SERVER to be enabled"})
+        public int FORUM_UPDATE_INTERVAL_SECONDS = 0;
+
+        @Comment({"Fetches spies in the background via webscrape (default: disabled)",
                 "If disabled, spies will be fetched when needed",
                 "*Requires setting the `trackspies` coalition in the root server"})
-        public boolean FETCH_SPIES_BACKGROUND_API = false;
+        public int FETCH_SPIES_INTERVAL_SECONDS = 0;
 
-        @Comment({"Fetches spies in the background via webscrape (default: false)",
-                "If disabled, spies will be fetched when needed",
-                "*Requires setting the `trackspies` coalition in the root server"})
-        public boolean FETCH_SPIES_BACKGROUND_SCRAPE = false;
+        @Comment("Fetches discord ids (default: 15 minutes)")
+        public int NATION_DISCORD_SECONDS = 15 * 60;
 
-        @Comment({"If network UIDs are fetched (for multi checking) (default: false)"})
-        public boolean FETCH_UUID = false;
+        @Comment({"Fetches all bank records at invterval (default: disabled)",
+                "If disabled, bank records will be fetched when needed"})
+        public int BANK_RECORDS_INTERVAL_SECONDS = 0;
+
+        @Comment({"If network UIDs are fetched automatically (for multi checking) (disabled by default, since it is slow and uses web scraping)"})
+        public boolean AUTO_FETCH_UID = false;
+
+        @Create
+        public TURN_TASKS TURN_TASKS;
+
+        @Create
+        public SUBSCRIPTIONS SUBSCRIPTIONS;
+
+        @Create
+        public ConfigBlock<MAIL> MAIL;
 
         @Comment({"Fetch ingame mail of an authenticated nation and post it to a channel",
                 "Set the values to 0 to disable",
@@ -206,33 +266,19 @@ public class Settings extends Config {
             public long CHANNEL_ID = 674505503400919040L;
         }
 
-        public static class TRADE_TASKS {
-            @Comment("Fetches trades (default: 15 minutes)")
-            public int COMPLETED_TRADES_SECONDS = 15 * 60;
+        public static class SUBSCRIPTIONS {
+            public boolean CITIES = true;
         }
 
         public static class TURN_TASKS {
-            public boolean VM_NATION_UPDATER = true;
-
-            public boolean GUILD_ALLIANCE_TASKS = true;
-            public boolean GUILD_NATION_TASKS = true;
-
             public boolean ALLIANCE_METRICS = true;
-
             @Comment("TODO: Not finished")
             public boolean MAP_FULL_ALERT = true;
-            @Comment("Update spy slots on turn change")
-            public boolean SPY_SLOTS = true;
-            @Comment("Update nation policy on turn change")
-            public boolean POLICY = true;
-            @Comment("Update nation projects on turn change")
-            public boolean PROJECT = true;
-            @Comment({"If bank records should be fetched each turn (default: false)",
-                    " - If disabled, records will be fetched on demand"})
-            public boolean BANK_RECORDS = false;
-            @Comment({"Update nation cities on turn change (default: true)",
-            " - If disabled, records will be fetched on demand"})
-            public boolean CITIES = true;
+
+            @Comment({"Fetches spies in the background via the api (default: false)",
+                    "If disabled, spies will be fetched when needed",
+                    "*Requires setting the `trackspies` coalition in the root server"})
+            public boolean FETCH_SPIES_BACKGROUND_API = false;
         }
     }
 
@@ -242,49 +288,49 @@ public class Settings extends Config {
             " - A proxy can aid multiple alliances performing actions concurrently"
     })
     public static class PROXY {
-        public String USER = "username@example.com";
-        public String PASSWORD = "12345678";
-        @Comment({"The available hosts to use",
-        "multiple hosts will be distributed amongst the clients used"})
-        public List<String> HOSTS = new ArrayList<>(Arrays.asList(
-                "region.example.com"
-        ));
-        public int PORT = 1080;
-
-        public ProxyHandler createProxy(String host) {
-            if (host == null) {
-                host = HOSTS.get(0);
-            }
-            return new ProxyHandler(host, PORT, USER, PASSWORD);
-        }
-
-        /**
-         * Find a recommended host to use for the proxy.
-         * The previous host will be used if it is valid.
-         * A host least used in the local bucket, and (secondary) globally, is preferred
-         * @param previousHost - the previous host used, or null
-         * @param tier1avoid - a list of hosts used by the local bucket
-         * @param tier2avoid - a list of hosts used globally
-         * @return host
-         */
-        public String recommendHost(String previousHost, List<String> tier1avoid, List<String> tier2avoid) {
-            if (previousHost != null && HOSTS.contains(previousHost)) return previousHost;
-            if (HOSTS.size() == 1) return HOSTS.get(0);
-            Map<String, Long> weighting = new HashMap<>();
-            for (String host : tier1avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + Integer.MAX_VALUE);
-            for (String host : tier2avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + 1);
-
-            long minVal = Long.MAX_VALUE;
-            String minHost = null;
-            for (String host : HOSTS) {
-                Long val = weighting.getOrDefault(host, 0L);
-                if (val < minVal) {
-                    minVal = val;
-                    minHost = host;
-                }
-            }
-            return minHost;
-        }
+//        public String USER = "username@example.com";
+//        public String PASSWORD = "12345678";
+//        @Comment({"The available hosts to use",
+//        "multiple hosts will be distributed amongst the clients used"})
+//        public List<String> HOSTS = new ArrayList<>(Arrays.asList(
+//                "region.example.com"
+//        ));
+//        public int PORT = 1080;
+//
+//        public ProxyHandler createProxy(String host) {
+//            if (host == null) {
+//                host = HOSTS.get(0);
+//            }
+//            return new ProxyHandler(host, PORT, USER, PASSWORD);
+//        }
+//
+//        /**
+//         * Find a recommended host to use for the proxy.
+//         * The previous host will be used if it is valid.
+//         * A host least used in the local bucket, and (secondary) globally, is preferred
+//         * @param previousHost - the previous host used, or null
+//         * @param tier1avoid - a list of hosts used by the local bucket
+//         * @param tier2avoid - a list of hosts used globally
+//         * @return host
+//         */
+//        public String recommendHost(String previousHost, List<String> tier1avoid, List<String> tier2avoid) {
+//            if (previousHost != null && HOSTS.contains(previousHost)) return previousHost;
+//            if (HOSTS.size() == 1) return HOSTS.get(0);
+//            Map<String, Long> weighting = new HashMap<>();
+//            for (String host : tier1avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + Integer.MAX_VALUE);
+//            for (String host : tier2avoid) weighting.put(host, weighting.getOrDefault(host, 0L) + 1);
+//
+//            long minVal = Long.MAX_VALUE;
+//            String minHost = null;
+//            for (String host : HOSTS) {
+//                Long val = weighting.getOrDefault(host, 0L);
+//                if (val < minVal) {
+//                    minVal = val;
+//                    minHost = host;
+//                }
+//            }
+//            return minHost;
+//        }
     }
 
     public static class LEGACY_SETTINGS {
@@ -378,7 +424,7 @@ public class Settings extends Config {
         public List<Long> REGISTER_ANYONE = Arrays.asList();
         @Comment({
                 "User ids of people who can `!register` other nations who are applicants in their alliance",
-                "Less abusable version of the above, since applicants aren't typically important that impersonation would be too damagingaaaaaaaaaaa"
+                "Less abusable version of the above, since applicants aren't typically important that impersonation would be too damaging"
         })
         public List<Long> REGISTER_APPLICANTS = Arrays.asList();
 
@@ -416,11 +462,13 @@ public class Settings extends Config {
 
 
     public static class WEB {
-        @Comment("The url/op/hostname for the web interface")
+        @Comment("The url/ip/hostname for the web interface")
         public String REDIRECT = "https://locutus.link";
         @Comment({"File location of the ssl certificate",
+        " - Locutus expects a privkey.pem and a fullchain.pem in the directory",
         " - You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",
-        " - Set to empty string to not use an ssl certificate"})
+        " - Set to empty string to not use an ssl certificate",
+        })
         public String CERT_PATH = "C:/Certbot/live/locutus.link/";
         @Comment({"The password or passphrase for the certificate",
         "Leave blank if there is none"})
@@ -434,8 +482,8 @@ public class Settings extends Config {
     }
 
     public static class DATABASE {
-        @Create
-        public MYSQL MYSQL;
+//        @Create
+//        public MYSQL MYSQL;
         @Create
         public SQLITE SQLITE;
 
@@ -445,16 +493,16 @@ public class Settings extends Config {
             @Comment("The directory to store the database in")
             public String DIRECTORY = "database";
         }
-
-        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")
-        public static final class MYSQL {
-            @Comment("Should MySQL be used?")
-            public boolean USE = false;
-            public String HOST = "localhost";
-            public int PORT = 3306;
-            public String USER = "root";
-            public String PASSWORD = "password";
-        }
+//
+//        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")
+//        public static final class MYSQL {
+//            @Comment("Should MySQL be used?")
+//            public boolean USE = false;
+//            public String HOST = "localhost";
+//            public int PORT = 3306;
+//            public String USER = "root";
+//            public String PASSWORD = "password";
+//        }
     }
 
     private File defaultFile = new File("config" + File.separator + "config.yaml");

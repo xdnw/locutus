@@ -22,6 +22,8 @@ public enum DiscordMeta {
 
     OPT_OUT(true),
 
+    BANK_RECS_SEQUENTIAL(false),
+
     ;
 
     public static DiscordMeta[] values = DiscordMeta.values();

@@ -1,11 +1,7 @@
 import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
-import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 
 buildscript {
-    ext.kotlin_version = '1.5.30'
-//    ext {
-//        joobyVersion = "2.9.4"
-//    }
+    ext.kotlin_version = '1.7.10'
     repositories {
         mavenCentral()
         gradlePluginPortal()
@@ -16,20 +12,21 @@ buildscript {
     dependencies {
 //        classpath "io.jooby:jooby-gradle-plugin:2.8.5"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath "com.github.jengelman.gradle.plugins:shadow:6.1.0"
+//        classpath 'org.jooq:jooq-codegen:3.17.5'
+        classpath 'org.xerial:sqlite-jdbc:3.36.0.3'
     }
 }
 
 plugins {
     id 'java'
     id "idea"
-    id "com.fizzed.rocker" version "1.3.0"
+    id "nu.studer.rocker" version "3.0.4"
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0"
-    id "com.github.johnrengelman.shadow" version "6.1.0"
+    id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "nu.studer.jooq" version "8.0"
 }
 
 apply plugin: "kotlin"
-apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
 
 group 'link.locutus'
@@ -63,9 +60,7 @@ compileJava.options.compilerArgs.add '-parameters'
 compileTestJava.options.compilerArgs.add '-parameters'
 
 dependencies {
-//    implementation name: 'pw4j-1.6.1'
-//    implementation 'io.github.adorable-skullmaster:pw4j:1.6.0'
-
+    implementation 'com.pusher:pusher-java-client:2.3.0-beta'
 
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
     implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25'
@@ -73,33 +68,21 @@ dependencies {
     implementation "org.xerial:sqlite-jdbc:3.30.1"
     implementation "com.google.code.gson:gson:2.8.6"
     implementation 'org.jsoup:jsoup:1.12.1'
-    compile 'org.bitbucket.cowwoc:diff-match-patch:1.2'
+    implementation 'org.bitbucket.cowwoc:diff-match-patch:1.2'
 
     implementation ('net.dv8tion:JDA:5.0.0-alpha.5') {
 //        implementation 'club.minnced:discord-webhooks:4.2.0_182'
         exclude module: 'opus-java'
     }
-    // https://mvnrepository.com/artifact/club.minnced/discord-webhooks
     implementation group: 'club.minnced', name: 'discord-webhooks', version: '0.7.2'
 
-
-    // https://mvnrepository.com/artifact/io.jooby/jooby
-//    implementation group: 'io.jooby', name: 'jooby', version: '2.9.4'
-//    implementation "io.jooby:jooby-http2-undertow:2.9.4"
-//    implementation 'io.jooby:jooby-gson:2.9.4'
-
-//    annotationProcessor "io.jooby:jooby:2.9.4"
-//    implementation "io.jooby:jooby-netty:2.9.4"
-//    implementation 'io.jooby:jooby-gson:2.8.5'
 
     implementation 'io.javalin:javalin:4.0.0.RC3'
     implementation 'io.javalin:javalin-parent:4.0.0.RC3'
     implementation 'io.javalin:javalin-bundle:4.0.0.RC3'
 
-// https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk15on
-//    implementation group: 'org.bouncycastle', name: 'bcpkix-jdk15on', version: '1.69'
-
     implementation 'com.ptsmods:mysqlw:1.7'
+    implementation 'org.openjdk.nashorn:nashorn-core:15.4'
 
     implementation 'com.google.api-client:google-api-client:1.33.0'
     implementation 'com.google.oauth-client:google-oauth-client-jetty:1.32.1'
@@ -140,52 +123,199 @@ dependencies {
     implementation "org.mapstruct:mapstruct:1.4.2.Final"
     annotationProcessor "org.mapstruct:mapstruct-processor:1.4.2.Final"
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.2.2'
+
+    // https://mvnrepository.com/artifact/de.siegmar/fastcsv
+    implementation group: 'de.siegmar', name: 'fastcsv', version: '2.2.0'
+
+    implementation('org.xerial:sqlite-jdbc:3.40.0.0')
+    implementation('org.hibernate:hibernate-core:6.1.5.Final')
+    implementation('org.hibernate:hibernate-community-dialects:6.1.5.Final')
+
+    implementation('org.jooq:jooq:3.17.5')
+    implementation("org.jooq:jooq-meta:3.17.5")
+    implementation("org.jooq:jooq-codegen:3.17.5")
+
+    jooqGenerator 'org.xerial:sqlite-jdbc:3.36.0.3'
+
 }
 
-sourceSets {
-    main {
-        rocker {
-            srcDir('src/main/java')
+rocker {
+    version = '1.3.0'
+    configurations {
+        main {
+//            optimize = true
+            templateDir = file('src/views')
+            outputDir = file("$buildDir/generated-src/views")
         }
     }
 }
 
-rocker {
-    // (All settings are shown with their defaults)
-    //
-    // Skips building templates all together
-    skip false
-    // Base directory for generated java sources, actual target is sub directory
-    // with the name of the source set. The value is passed through project.file().
-    outputBaseDirectory = "$buildDir/generated-src/rocker"
-    // Base directory for the directory where the hot reload feature
-    // will (re)compile classes to at runtime (and where `rocker-compiler.conf`
-    // is generated, which is used by RockerRuntime.getInstance().setReloading(true)).
-    // The actual target is a sub directory with the name of the source set.
-    // The value is passed through project.file().
-    classBaseDirectory = "$buildDir/classes"
-    failOnError true
-    skipTouch true
-    // must not be empty when skipTouch is equal to false
-    touchFile ""
-    javaVersion '1.8'
-    extendsClass null
-    extendsModelClass null
-    optimize null
-    discardLogicWhitespace null
-    targetCharset null
-    suffixRegex null
-    postProcessing null
-    markAsGenerated null
-}
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-}
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
+jooq {
+    version = "3.17.5"  // default (can be omitted)
+    edition = nu.studer.gradle.jooq.JooqEdition.OSS  // default (can be omitted)
+    configurations {
+        bank {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/bank.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+
+                        packageName = 'org.example.jooq.bank'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        locutus {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/locutus.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.locutus'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        nations {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/nations.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.nations'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        trade {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/trade.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.trade'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        war {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/war.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.war'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
+
+        web {
+            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+            generationTool {
+                jdbc {
+                    driver = 'org.sqlite.JDBC'
+                    url = 'jdbc:sqlite:database/web.db'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                    }
+                    generate {
+                        deprecated = false
+                        records = true
+                        immutablePojos = true
+                        fluentSetters = true
+                    }
+                    target {
+                        packageName = 'org.example.jooq.web'
+                    }
+                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                }
+            }
+        }
     }
 }
 
@@ -193,15 +323,21 @@ compileTestKotlin {
 /**
  * Generate requests and model from external service
  */
+
 compileJava.dependsOn "graphqlCodegenProductService"
-sourceSets.main.java.srcDir "$buildDir/generated"
 task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     graphqlSchemas.includePattern = "schema\\.graphqls"
     outputDir = new File("$buildDir/generated")
     modelPackageName = "com.politicsandwar.graphql.model"
     customTypesMapping = [
+            Date: "java.util.Date",
             DateTime: "java.util.Date",
             DateTimeAuto: "java.time.Instant"
+    ]
+    useObjectMapperForRequestSerialization = [
+            "DateTime",
+            "DateTimeAuto",
+            "java.util.Date",
     ]
     parentInterfaces {
         queryResolver = "graphql.kickstart.tools.GraphQLQueryResolver"
@@ -219,16 +355,37 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     unknownFieldsPropertyName = "additionalFields"
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs 'src'
+            srcDirs "$buildDir/generated"
+            srcDirs "$buildDir/generated-src"
+        }
+    }
+}
+
+//sourceSets.main.java.srcDirs (
+//        tasks.named('generateBankJooq').flatMap { it.outputDir },
+//        tasks.named('generateLocutusJooq').flatMap { it.outputDir },
+//        tasks.named('generateNationsJooq').flatMap { it.outputDir },
+//        tasks.named('generateTradeJooq').flatMap { it.outputDir },
+//        tasks.named('generateWarJooq').flatMap { it.outputDir },
+//        tasks.named('generateWebJooq').flatMap { it.outputDir }
+//)
+
 jar {
     manifest {
         attributes(
-                'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+                'Class-Path': configurations.runtimeClasspath.files.collect { it.getName() }.join(' '),
                 'Main-Class': 'link.locutus.discord.Locutus'
         )
     }
 }
 
 shadowJar {
+//    minimize()
+    zip64=true
     archiveName = "${name}-${project.name}-${version}.jar"
 }
 

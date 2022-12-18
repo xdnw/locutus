@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -43,6 +43,9 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
         if (args.size() != 1) return usage();
         GuildDB db = Locutus.imp().getGuildDB(guild);
         IACategory iaCat = db.getIACategory();
+        if (iaCat == null) {
+            throw new IllegalArgumentException("No interview category found");
+        }
         if (iaCat.getCategories().isEmpty()) {
             return "No categories found starting with: `interview`";
         }
@@ -77,7 +80,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
             }
         }
 
-        GuildMessageChannel channel = iaCat.getOrCreate(user);
+        GuildMessageChannel channel = iaCat.getOrCreate(user, true);
         if (channel == null) {
             String reason = "";
 
@@ -136,7 +139,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
 //                    body.append("Channel: " + interviewChannel.getAsMention() + "\n\n");
 //                    body.append("The first on the trigger, react with the " + emoji + " emoji");
 //
-//                    String pending = Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "pending 'Interview Assigned' '@%user% in " + interviewChannel.getAsMention() + "'";
+//                    String pending = Settings.commandPrefix(true) + "pending 'Interview Assigned' '@%user% in " + interviewChannel.getAsMention() + "'";
 //
 //                    DiscordUtil.createEmbedCommand(alertChannel, title, body.toString(), emoji, pending);
 //

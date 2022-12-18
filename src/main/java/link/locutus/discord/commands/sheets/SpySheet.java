@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -95,7 +95,7 @@ public class SpySheet extends Command {
         attackers.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > 1880 || t.getPosition() <= 1);
         if (minSpies != -1) {
             Integer finalMinSpies1 = minSpies;
-            attackers.removeIf(t -> t.getSpies() != null && t.getSpies() < finalMinSpies1 - 3);
+            attackers.removeIf(t -> t.getSpies() < finalMinSpies1 - 3);
         }
         defenders.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > 2880);
 
@@ -115,7 +115,7 @@ public class SpySheet extends Command {
 
         if (flags.contains('f')) {
             for (DBNation defender : defenders) {
-                if (defender.getSpies() != null && defender.getSpies() <= 3 && flags.contains('c')) continue;
+                if (defender.getSpies() <= 3 && flags.contains('c')) continue;
                 defender.updateSpies(true);
             }
             for (DBNation attacker : attackers) attacker.updateSpies(true);
@@ -139,7 +139,7 @@ public class SpySheet extends Command {
         BiFunction<Double, Double, Double> defSpyGraph = PnwUtil.getXInRange(defenders, n -> Math.pow(n.updateSpies(false, false).doubleValue(), 2));
 
         Integer finalMinSpies = minSpies;
-        attackers.removeIf(n -> n.getSpies() == null || n.getSpies() <= finalMinSpies);
+        attackers.removeIf(n -> n.getSpies() <= finalMinSpies);
 
         // higher = higher value target
         Function<Double, Double> enemySpyRatio = new Function<Double, Double>() {
@@ -155,14 +155,13 @@ public class SpySheet extends Command {
             defenders.removeIf(DBNation::isEspionageFull);
         }
 
-        List<Spyop> ops = new LinkedList<>();
+        List<Spyop> ops = new ArrayList<>();
 
         for (DBNation attacker : attackers) {
             Activity activity = null;
             Integer mySpies = attacker.getSpies();
             if (mySpies == null || mySpies == 0) continue;
             for (DBNation defender : defenders) {
-                if (defender.getSpies() == null) continue;
                 if (attacker.isInSpyRange(defender) && defender.getSpies() * 0.66 <= attacker.getSpies()) {
                     double loginRatio = loginProb.get(defender);
 
@@ -222,7 +221,7 @@ public class SpySheet extends Command {
                         }
                         if (operation == SpyCount.Operation.MISSILE) {
                             Integer missileCap = defender.hasProject(Projects.SPACE_PROGRAM) ? 2 : 1;
-                            if (defender.getMissiles().equals(missileCap)) {
+                            if (defender.getMissiles() == (missileCap)) {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                                 int minute = now.getHour() * 60 + now.getMinute();
                                 if (minute > 30) {
@@ -283,11 +282,11 @@ public class SpySheet extends Command {
         };
 
         for (Spyop op : ops) {
-            List<Spyop> attOps = opsByNations.computeIfAbsent(op.attacker, f -> new LinkedList<>());
+            List<Spyop> attOps = opsByNations.computeIfAbsent(op.attacker, f -> new ArrayList<>());
             if (attOps.size() >= getNumOps.apply(op.attacker)) {
                 continue;
             }
-            List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new LinkedList<>());
+            List<Spyop> defOps = opsAgainstNations.computeIfAbsent(op.defender, f -> new ArrayList<>());
             if (defOps.size() == 3) {
                 continue;
             }
@@ -319,7 +318,7 @@ public class SpySheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return "<" + sheet.getURL() + "> " + author.getAsMention();
+        return sheet.getURL(true, true);
     }
 
     public static void generateSpySheet(SpreadSheet sheet, Map<DBNation, List<Spyop>> opsAgainstNations) {
@@ -360,7 +359,7 @@ public class SpySheet extends Command {
 
             ArrayList<Object> row = new ArrayList<>();
             row.add(MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            row.add(MarkupUtil.sheetUrl(nation.getAlliance(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
+            row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getScore());
@@ -380,7 +379,7 @@ public class SpySheet extends Command {
                 attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "\"";
 
                 if (multipleAAs) {
-                    attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "|" + attacker.getAlliance() + "\"";
+                    attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "|" + attacker.getAllianceName() + "\"";
                 } else {
                     attStr += "& \"|" + spyop.operation.name() + "|" + safety + "|" + spyop.spies + "\"";
                 }

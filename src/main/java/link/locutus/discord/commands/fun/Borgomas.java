@@ -3,10 +3,11 @@ package link.locutus.discord.commands.fun;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.Alliance;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -43,7 +44,7 @@ public class Borgomas extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "verify`";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
 
         if (me.getMeta(NationMeta.BORGMAS) != null || received.put(me.getNation_id(), true) != null) {
             return "You've already opened your presents this year. Merry Borgmas!";
@@ -61,17 +62,17 @@ public class Borgomas extends Command {
 
         Map<ResourceType, Double> resources;
         String message;
-        boolean good = down < 2;
+        boolean good = down < 2 || false;
         if (good) {
             message = "You open your present to find... 1,000,000 borg bucks! (Legal tender throughout Unicomplex, Orbis and all assimilated worlds).\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
             resources = Collections.singletonMap(ResourceType.MONEY, 1000000d);
         } else {
             GuildDB dbAA = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
-            if (dbAA != null && (dbAA.isWhitelisted() || dbAA.getOffshore() != null)) {
+            if (true || (dbAA != null && (dbAA.isWhitelisted() || dbAA.getOffshore() != null))) {
                 message = "You open your present to find a 10kg hunk of coal...\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
                 resources = Collections.singletonMap(ResourceType.COAL, 0.01);
             } else {
-                List<DBNation> members = new Alliance(me.getAlliance_id()).getNations(true, 7200, true);
+                Set<DBNation> members = DBAlliance.getOrCreate(me.getAlliance_id()).getNations(true, 7200, true);
                 members.removeIf(f -> f.getActive_m() > 2880 && f.isGray());
                 members.add(me);
                 DBNation maxNation = null;

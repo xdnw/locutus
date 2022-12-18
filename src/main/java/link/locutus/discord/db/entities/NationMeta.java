@@ -1,6 +1,5 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -27,7 +26,7 @@ public enum NationMeta {
     INTERVIEW_WAR_ROOM,
     INTERVIEW_CHECKUP,
 
-    LAST_BANK_UPDATE(ByteBuffer::getLong),
+    DEPRECATED_LAST_BANK_UPDATE(ByteBuffer::getLong),
 
     INTERVIEW_INDEX,
 
@@ -97,7 +96,15 @@ public enum NationMeta {
 
     LAST_CHECKED_AUDITS,
 
-    UNBLOCKADE_REASON
+    UNBLOCKADE_REASON,
+
+    LAST_LOGIN_DAY,
+
+    LAST_LOGIN_COUNT,
+
+    RECRUIT_AD_COUNT,
+
+    RECRUIT_GOV_MESSAGE,
 
     ;
 

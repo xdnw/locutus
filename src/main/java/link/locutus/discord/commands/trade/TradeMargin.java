@@ -3,7 +3,7 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -40,7 +40,7 @@ public class TradeMargin extends Command {
         boolean usePercent = flags.contains('p');
 
         TradeManager trader = Locutus.imp().getTradeManager();
-        String refreshEmoji = "\uD83D\uDD04";
+        String refreshEmoji = "Refresh";
 
         Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
         Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));

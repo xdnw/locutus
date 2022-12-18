@@ -1,11 +1,12 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -29,7 +30,7 @@ public class EditAlliance extends Command {
 
     @Override
     public String help() {
-        return Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "editalliance [attr] [value]";
+        return Settings.commandPrefix(true) + "editalliance [attr] [value]";
     }
 
     @Override
@@ -51,8 +52,7 @@ public class EditAlliance extends Command {
         StringBuilder response = new StringBuilder();
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Rank rank = args.size() > 0 && args.get(0).contains("bank") ? Rank.HEIR : Rank.OFFICER;
-        Auth auth = db.getAuth(rank.id);
+        Auth auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
         if (auth == null) return "No authorization set";
         int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 

@@ -11,7 +11,7 @@ import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.CounterType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
-import link.locutus.discord.pnw.DBNation;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -144,7 +144,7 @@ public class NAPViolations extends Command {
             String title = "Possible NAP violations: fought/peaced/expired";
             named.build(event, title);
 
-            return "Total: " + total + "\nUse `" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "NapViolations [alliance]` for more AA info";
+            return "Total: " + total + "\nUse `" + Settings.commandPrefix(true) + "NapViolations [alliance]` for more AA info";
         } else if (args.size() == 1) {
             int rank = 0;
             for (Map.Entry<Integer, Integer> entry : rankingMap.entrySet()) {
@@ -168,7 +168,7 @@ public class NAPViolations extends Command {
             if (!aaWars.isEmpty()) {
                 result.append("Wars:\n");
                 for (DBWar war : aaWars) {
-                    result.append("`" + Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX + "warinfo " + war.warId + "` - " + war.status + " - " + PnwUtil.getName(war.defender_aa, true) + "\n");
+                    result.append("`" + Settings.commandPrefix(true) + "warinfo " + war.warId + "` - " + war.status + " - " + PnwUtil.getName(war.defender_aa, true) + "\n");
                 }
             }
 

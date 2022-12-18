@@ -107,7 +107,7 @@ public enum AttackType {
 
     public Map<MilitaryUnit, Integer> getLosses(int a, int b, int c) {
         if (a == 0 && b == 0 && c == 0) return Collections.emptyMap();
-        HashMap<MilitaryUnit, Integer> map = new HashMap<>(2);
+        Map<MilitaryUnit, Integer> map = new HashMap<>(2);
         if (a != 0) {
             map.put(units[0], a);
         }
@@ -118,5 +118,15 @@ public enum AttackType {
             map.put(units[2], c);
         }
         return map;
+    }
+
+    public boolean isVictory() {
+        switch (this) {
+            case VICTORY:
+            case A_LOOT:
+                return true;
+            default:
+                return false;
+        }
     }
 }
