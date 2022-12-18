@@ -123,9 +123,9 @@ public class CounterSpy extends Command {
             }
 
             for (DBNation counterWith : toCounter) {
-                Integer mySpies = counterWith.updateSpies();
+                Integer mySpies = counterWith.getSpies();
                 if (mySpies == null) {
-                    mySpies = SpyCount.guessSpyCount(counterWith);
+                    continue;
                 }
 
                 if (enemySpies == -1) {
