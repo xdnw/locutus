@@ -278,7 +278,9 @@ public class LeavingBeigeAlert {
                 Function<DBNation, Boolean> canRaid = db.getCanRaid();
 
                 List<Member> members = guild.getMembersWithRoles(beigeAlert);
-                members.removeAll(guild.getMembersWithRoles(beigeAlertOptOut));
+                if (beigeAlertOptOut != null) {
+                    members.removeAll(guild.getMembersWithRoles(beigeAlertOptOut));
+                }
 
                 if (members.isEmpty()) continue;
 

@@ -113,7 +113,7 @@ public class TradeSubscription {
             case MISTRADE -> {
                 if (currentTopBuy == null || currentTopSell == null) return false;
 
-                int currentDispairty = currentTopBuy.getPpu() - currentTopSell.getPpu();
+                int currentDispairty = currentTopSell.getPpu() - currentTopBuy.getPpu();
                 if (currentDispairty <= 0) return false;
                 return above ? currentDispairty >= ppu : currentDispairty <= ppu;
             }

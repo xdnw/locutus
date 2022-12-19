@@ -98,6 +98,8 @@ public class TradeListener {
                 body.append(toPriceString(oldBuy) + " -> " + toPriceString(newBuy));
                 if (buyChange) body.append("**");
 
+                body.append("\n\n" + MarkupUtil.markdownUrl("BuySell Link", resource.url(null, true)));
+
                 List<String> pings = new ArrayList<>();
                 for (TradeSubscription sub : rssSubs) {
                     String ping = sub.getPing(db) + " " + sub.getType() + " " + (sub.isBuy() ? "buying" : "selling") + " " + (sub.isAbove() ? "above" : "below") + " $" + sub.getPpu() + (sub.getDate() != Long.MAX_VALUE ? " (expires: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, sub.getDate() - System.currentTimeMillis()) + ")" : "");

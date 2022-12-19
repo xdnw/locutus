@@ -275,13 +275,15 @@ public enum ResourceType {
         return graphId;
     }
 
-    public String url(boolean isBuy, boolean shorten) {
+    public String url(Boolean isBuy, boolean shorten) {
         String url;
         if (shorten) {
-            if (isBuy) {
+            if (isBuy == Boolean.TRUE) {
                 url = "https://tinyurl.com/qmm5ue7?resource1=%s";
-            } else {
+            } else if (isBuy == Boolean.FALSE){
                 url = "https://tinyurl.com/s2n7xp9?resource1=%s";
+            } else {
+                url = "https://tinyurl.com/26sxb2xb?resource1=%s";
             }
             url = String.format(url, name().toLowerCase());
         } else {
