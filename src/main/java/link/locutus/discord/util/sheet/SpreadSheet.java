@@ -53,6 +53,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
@@ -145,6 +147,7 @@ public class SpreadSheet {
 
         Sheets api = null;
 
+        System.out.println("Credentials " + credentialsExists());
         if (credentialsExists()) {
             if (sheetId == null) {
                 Spreadsheet spreadsheet = new Spreadsheet()
@@ -211,22 +214,20 @@ public class SpreadSheet {
     public static String parseId(String id) {
         if (id.startsWith("sheet:")) {
             id = id.split(":")[1];
-        } else if (id.startsWith("https://docs.google.com/spreadsheets/d/")){
-            id = id.split("/")[5];
+        } else if (id.startsWith("https://docs.google.com/spreadsheets/")){
+            String regex = "([a-zA-Z0-9-_]{30,})";
+            Matcher m = Pattern.compile(regex).matcher(id);
+            m.find();
+            id = m.group();
         }
         return id.split("/")[0];
     }
 
     private SpreadSheet(String id, Sheets api) throws GeneralSecurityException, IOException {
         if (id != null) {
-            if (id.startsWith("sheet:")) {
-                id = id.split(":")[1];
-            } else if (id.startsWith("https://docs.google.com/spreadsheets/d/")) {
-                id = id.split("/")[5];
-            }
             if (api == null && credentialsExists()) api = getServiceAPI();
             this.service = api;
-            this.spreadsheetId = id;
+            this.spreadsheetId = parseId(id);
         }
     }
 
@@ -538,6 +539,7 @@ public class SpreadSheet {
 
     public List<List<Object>> get(String range, Consumer<Sheets.Spreadsheets.Values.Get> onGet) {
         try {
+            System.out.println("Service " + service + " | " + spreadsheetId);
             Sheets.Spreadsheets.Values.Get query = service.spreadsheets().values().get(spreadsheetId, range);
             if (onGet != null) onGet.accept(query);
             ValueRange result = query.execute();

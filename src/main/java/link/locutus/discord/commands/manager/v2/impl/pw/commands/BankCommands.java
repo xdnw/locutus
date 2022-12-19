@@ -311,8 +311,9 @@ public class BankCommands {
             nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
         }
 
+        List<String> errorList = new ArrayList<>();
         Consumer<String> updateTask = io::send;
-        Consumer<String> errors = io::send;
+        Consumer<String> errors = errorList::add;
 
         fundsToSendNations = new DepositRawTask(nations, aaId != null ? aaId : 0, updateTask, daysDefault, true, ignoreInactives, errors).setForce(force).call();
         if (nations.isEmpty()) {
@@ -333,6 +334,9 @@ public class BankCommands {
         String result = Disperse.disperse(db, fundsToSendNations, fundsToSendAAs, note, io, title);
         if (fundsToSendNations.size() > 1 || fundsToSendAAs.size() > 0) {
             result += "\n" + author.getAsMention();
+        }
+        if (!errorList.isEmpty()) {
+            result += "\nErrors:\n - " + StringMan.join(errorList, "\n - ");
         }
         return result;
     }
@@ -2579,6 +2583,9 @@ public class BankCommands {
                     }
                 }
                 response.append("Registered " + alliance + " as an offshore. See: https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit");
+                if (aaId == null) {
+                    response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
+                }
             } catch (Throwable e) {
                 root.removeCoalition(alliance.getAlliance_id(), Coalition.OFFSHORE);
                 offshoreDB.removeCoalition(sender.getIdLong(), Coalition.OFFSHORING);

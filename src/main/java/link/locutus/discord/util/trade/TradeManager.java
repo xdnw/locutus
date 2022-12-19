@@ -721,7 +721,7 @@ public class TradeManager {
 
                 // if it's a mixup
                 {
-                    TradeSubscription mixupAlert = new TradeSubscription(Roles.TRADE_ALERT.ordinal(), type, Long.MAX_VALUE, true, true, 1, TradeDB.TradeAlertType.MIXUP).setRole(true);
+                    TradeSubscription mixupAlert = new TradeSubscription(Roles.TRADE_ALERT.ordinal(), type, Long.MAX_VALUE, true, true, 1, TradeDB.TradeAlertType.MISTRADE).setRole(true);
                     if (mixupAlert.applies(topBuy, topSell, topBuyOld, topSellOld)) {
                         subscriptionsToCall.add(mixupAlert);
                     }

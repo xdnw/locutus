@@ -819,14 +819,8 @@ public class DiscordUtil {
                     int taxId = PnwUtil.parseTaxId(name);
                     nations.addAll(Locutus.imp().getNationDB().getNationsMatching(f -> f.getTax_id() == taxId));
                     continue;
-                } else if (name.startsWith("https://docs.google.com/spreadsheets/d/") || name.startsWith("sheet:")) {
-                    String key;
-                    if (name.startsWith("sheet:")) {
-                        key = name.split(":")[1];
-                    } else {
-                        key = name.split("/")[5];
-                    }
-
+                } else if (name.startsWith("https://docs.google.com/spreadsheets/") || name.startsWith("sheet:")) {
+                    String key = SpreadSheet.parseId(name);
                     SpreadSheet sheet = null;
                     try {
                         sheet = SpreadSheet.create(key);

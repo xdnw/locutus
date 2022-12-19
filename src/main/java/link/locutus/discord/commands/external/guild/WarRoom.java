@@ -93,7 +93,7 @@ public class WarRoom extends Command {
         }
         if (args.size() < 2) return usage(event);
 
-        if (arg.startsWith("https://docs.google.com/spreadsheets/d/") || arg.startsWith("sheet:")) {
+        if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             SpreadSheet sheet = SpreadSheet.create(arg);
             StringBuilder response = new StringBuilder();
             Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {

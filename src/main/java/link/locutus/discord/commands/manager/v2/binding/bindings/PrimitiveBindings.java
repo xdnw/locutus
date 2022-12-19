@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
@@ -16,7 +17,6 @@ import link.locutus.discord.util.TimeUtil;
 import java.awt.Color;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -84,7 +84,16 @@ public class PrimitiveBindings extends BindingHelper {
         if (annotation != null && !input.matches(annotation.value())) {
             throw new IllegalArgumentException("Input: `" + input + "` does not match: `" + annotation.value() + "`");
         }
-
+        ArgChoice choice = param.getAnnotation(ArgChoice.class);
+        if (choice != null) {
+            String[] choices = choice.value();
+            for (String s : choices) {
+                if (choice.caseSensitive() ? s.equals(input) : s.equalsIgnoreCase(input)) {
+                    return s;
+                }
+            }
+            throw new IllegalArgumentException("Input: `" + input + "` is not a valid choice. Valid choices are: " + StringMan.join(choices, ", "));
+        }
         return input;
     }
 

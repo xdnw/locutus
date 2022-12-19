@@ -1,18 +1,15 @@
 package link.locutus.discord.db.entities;
 
-import com.ptsmods.mysqlw.table.ColumnType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Role;
-import rocker.grant.nation;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 
 public class TradeSubscription {
@@ -113,7 +110,7 @@ public class TradeSubscription {
         BinaryOperator<DBTrade> getTrade = (buy, sell) -> this.isBuy ? buy : sell;
 
         switch (type) {
-            case MIXUP -> {
+            case MISTRADE -> {
                 if (currentTopBuy == null || currentTopSell == null) return false;
 
                 int currentDispairty = currentTopBuy.getPpu() - currentTopSell.getPpu();
