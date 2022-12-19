@@ -225,7 +225,7 @@ public class SpyCount {
         return -1;
     }
 
-    public static int binarySearchOpType(int id, int min, int max, int def) throws IOException {
+    private static int binarySearchOpType(int id, int min, int max, int def) throws IOException {
         if (min >= max) {
             return max;
         }

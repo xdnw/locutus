@@ -74,6 +74,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class AdminCommands {
+
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String deleteAllInaccessibleChannels(@Switch("f") boolean force) {
@@ -102,6 +103,16 @@ public class AdminCommands {
         }
         String footer = "Rerun the command with `-f` to confirm";
         return response + footer;
+    }
+
+
+    @Command(desc = "Reset city names")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String resetCityNames(@Me DBNation me, @Me Auth auth, String name) throws IOException {
+        for (int id : me.getCityMap(false).keySet()) {
+            auth.setCityName(id, name);
+        }
+        return "Done!";
     }
 
 
