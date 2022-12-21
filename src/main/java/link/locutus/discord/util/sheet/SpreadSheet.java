@@ -5,6 +5,7 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.Transaction2;
@@ -434,7 +435,7 @@ public class SpreadSheet {
                     .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                     .setAccessType("offline")
                     .build();
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(Settings.INSTANCE.WEB.GOOGLE_SHEET_VALIDATION_PORT).build();
             return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         }
     }
