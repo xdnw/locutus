@@ -2452,13 +2452,24 @@ public class BankCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN)
-    public String addOffshore(@Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance alliance) throws IOException {
+    public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance alliance, @Switch("f") boolean confirm) throws IOException {
         if (root.isDelegateServer()) return "Cannot enable offshoring for delegate server (run this command in the root server)";
 
-        if (root.isOffshore()) {
+        IMessageBuilder confirmButton = io.create().confirmation(CM.offshore.add.cmd.create(alliance.getId() + ""));
+        GuildDB offshoreDB = alliance.getGuildDB();
+
+        if (offshoreDB != null) {
+            if (offshoreDB.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
+                return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
+            }
+            if (offshoreDB.getOrNull(GuildDB.Key.API_KEY) == null) {
+                return "Please set the key " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + " in " + offshoreDB.getGuild();
+            }
+        }
+
+        if (root.isOffshore() && (offshoreDB == null || !offshoreDB.isOffshore() || offshoreDB == root)) {
             if (nation.getAlliance_id() != alliance.getAlliance_id()) {
-                throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore\n" +
-                        "Note: If this is not a locutus managed offshore, please use `coalition add alliances:<alliance> coalition:offshore`");
+                throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
 
             Set<Long> announceChannels = new HashSet<>();
@@ -2466,8 +2477,6 @@ public class BankCommands {
             if (nation.getNation_id() == Settings.INSTANCE.NATION_ID) {
                 announceChannels.add(Settings.INSTANCE.DISCORD.CHANNEL.ADMIN_ALERTS);
             }
-
-            root.setInfo(GuildDB.Key.ALLIANCE_ID, alliance.getAlliance_id() + "");
 
             Set<Long> alliancesOrGuilds = root.getCoalitionRaw(Coalition.OFFSHORING);
             for (Long alliancesOrGuild : alliancesOrGuilds) {
@@ -2477,6 +2486,22 @@ public class BankCommands {
                 }
                 serverIds.add(alliancesOrGuild);
             }
+
+
+            if (!confirm) {
+                int priorAAId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
+                String title = "Change offshore to: " + alliance.getName() + "/" + alliance.getId();
+                StringBuilder body = new StringBuilder();
+                body.append("The current alliance to this guild will be unregistered: `(`" + root.getOrNull(GuildDB.Key.ALLIANCE_ID) + "`)`\n");
+                        body.append("The new alliance: `" + alliance.getId() + " will be set ` (See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null) + ")\n");
+                        body.append("All other guilds using the prior alliance (" + priorAAId + ") will be changed to use the new offshore");
+
+
+                confirmButton.embed(title, body.toString()).send();
+                return null;
+            }
+
+            root.setInfo(GuildDB.Key.ALLIANCE_ID, alliance.getAlliance_id() + "");
 
             for (Long serverId : serverIds) {
                 GuildDB db = Locutus.imp().getGuildDB(serverId);
@@ -2523,27 +2548,65 @@ public class BankCommands {
             return "Done";
         }
 
-        GuildDB offshoreDB = alliance.getGuildDB();
         if (offshoreDB == null) {
             return "No guild found for alliance: " + alliance.getAlliance_id();
         }
+
+        OffshoreInstance currentOffshore = root.getOffshore();
+        if (currentOffshore != null) {
+            if (currentOffshore.getAllianceId() == alliance.getAlliance_id()) {
+                return "This guild is already the offshore for this server";
+            }
+            Integer aaId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            long id = aaId != null ? aaId.longValue() : root.getIdLong();
+
+            if (!confirm) {
+                String title = "Replace current offshore";
+                StringBuilder body = new StringBuilder();
+                body.append("Changing offshores will close the account with your previous offshore provider\n");
+                body.append("Your current offshore is set to: " + currentOffshore.getAllianceId() + "\n");
+                body.append("To check your funds with the current offshore, use " +
+                        CM.deposits.check.cmd.create(id + "", null, null, null, null, null, null));
+                body.append("\nIt is recommended to withdraw all funds from the current offshore before changing, as Locutus may not be able to access the account after closing it`");
+
+                confirmButton.embed(title, body.toString()).send();
+                return null;
+            }
+            if (aaId != null) {
+                offshoreDB.removeCoalition(aaId, Coalition.OFFSHORING);
+            }
+            offshoreDB.removeCoalition(root.getIdLong(), Coalition.OFFSHORING);
+
+            root.removeCoalition(currentOffshore.getAllianceId(), Coalition.OFFSHORE);
+            root.removeCoalition(currentOffshore.getGuildDB().getIdLong(), Coalition.OFFSHORE);
+        }
+
+        if (offshoreDB == root) {
+            if (!confirm) {
+                String title = "Designate " + alliance.getName() + "/" + alliance.getId() + " as the bank";
+                StringBuilder body = new StringBuilder();
+                body.append("Withdraw commands will use this alliance bank\n");
+                body.append("To have another alliance/corporation use this bank as an offshore:\n");
+                body.append(" - You must be admin on both discord servers\n");
+                body.append(" - On the other guild, use: " + CM.offshore.add.cmd.create(alliance.getAlliance_id() + "") + "\n\n");
+                body.append("If this is an offshore, and you create a new alliance, you may use this command to set the new alliance (all servers offshoring here will be updated)");
+
+                confirmButton.embed(title, body.toString()).send();
+                return null;
+            }
+            root.addCoalition(alliance.getAlliance_id(), Coalition.OFFSHORE);
+            root.addCoalition(alliance.getAlliance_id(), Coalition.OFFSHORING);
+            return "Done! Set " + alliance.getName() + "/" + alliance.getId() + " as the designated bank for this server";
+        }
+
         if (!offshoreDB.isOffshore()) {
             return "No offshore found for alliance: " + alliance.getAlliance_id() + ". Are you sure that's a valid offshore setup with locutus?";
         }
-        OffshoreInstance currentOffshore = root.getOffshore();
-        if (currentOffshore != null) {
-            return "This guild already has an offshore. If you would like to set a different offshore, use " + CM.coalition.delete.cmd.create(Coalition.OFFSHORE.name()) + " to remove it.\n" +
-                    "Note: Removing offshores will remove deposits tracked from it.";
-        }
         Boolean enabled = offshoreDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING);
         if (enabled != Boolean.TRUE && !Roles.ECON.has(user, offshoreDB.getGuild())) {
-            return "You do not have ECON on " + offshoreDB.getGuild() + " AND " + CM.settings.cmd.create(GuildDB.Key.PUBLIC_OFFSHORING.name(), null) + " is not enabled on that guild.";
-        }
-        if (offshoreDB.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
-            return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
-        }
-        if (offshoreDB.getOrNull(GuildDB.Key.API_KEY) == null) {
-            return "Please set the key " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + " in " + offshoreDB.getGuild();
+            Role role = Roles.ECON.toRole(offshoreDB);
+            String roleName = role == null ? "ECON" : role.getName();
+            return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + CM.settings.cmd.create(GuildDB.Key.PUBLIC_OFFSHORING.name(), null) + " is not enabled on that guild.";
         }
 
         StringBuilder response = new StringBuilder();
