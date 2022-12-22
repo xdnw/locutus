@@ -337,6 +337,19 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
+    public List<Treasure> fetchTreasures() {
+        TreasuresQueryResponse result = request(new TreasuresQueryRequest(), new TreasureResponseProjection()
+                        .name()
+                    .color()
+                    .continent()
+                    .bonus()
+                    .spawn_date()
+                    .nation_id(),
+                TreasuresQueryResponse.class);
+        if (result.treasures() == null) throw new GraphQLException("Error fetching colors");
+        return result.treasures();
+    }
+
     public List<BBGame> fetchBaseballGames(Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query) {
         return fetchBaseballGames(BASEBALL_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }

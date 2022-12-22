@@ -1033,7 +1033,7 @@ public class IACommands {
 
                 if (db.getOffshore() != null) {
                     String title = "Disburse 3 days";
-                    String body = "Use this once they have a suitable city build & color to send resources for the next 5 days";
+                    String body = "Use this once they have a suitable city build & color to send resources for the next 3 days";
 
                     CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, null, "true");
                     channel.create().embed(title, body)

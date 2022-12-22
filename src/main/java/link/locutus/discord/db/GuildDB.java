@@ -3406,6 +3406,34 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
+
+        TREASURE_ALERT_CHANNEL(true, null, CommandCategory.MILCOM) {
+            @Override
+            public String validate(GuildDB db, String value) {
+                return Key.validateChannel(db, value);
+            }
+
+            @Override
+            public Object parse(GuildDB db, String input) {
+                return DiscordUtil.getChannel(db.getGuild(), input);
+            }
+
+            @Override
+            public String toString(Object value) {
+                return ((IMentionable) value).getAsMention();
+            }
+
+            @Override
+            public <T> boolean hasPermission(GuildDB db, User author, T value) {
+                return db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS);
+            }
+
+            @Override
+            public String help() {
+                return "The channel to receive alerts when a bounty is placed";
+            }
+        },
+
         MEMBER_REBUY_INFRA_ALERT(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
             @Override
             public String validate(GuildDB db, String value) {

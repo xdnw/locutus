@@ -130,6 +130,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertTKRSpySheet", "convertTKR");
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncLootFromAttacks", "syncLootFromAttacks");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTreasures", "treasures");
 
         this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertAbsolute", "price");
         this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertMistrade", "mistrade");

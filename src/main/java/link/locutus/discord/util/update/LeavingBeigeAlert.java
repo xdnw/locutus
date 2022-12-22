@@ -1,6 +1,9 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -335,28 +338,31 @@ public class LeavingBeigeAlert {
                 @Override
                 public void run() {
                     PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel());
+                    DiscordChannelIO io = new DiscordChannelIO(channel);
+                    IMessageBuilder msg = io.create();
 
                     Map<DBNation, Boolean> myTargets = entry.getValue();
                     for (Map.Entry<DBNation, Boolean> targetEntry : myTargets.entrySet()) {
                         DBNation target = targetEntry.getKey();
 
-                        double loot = lootEstimateByNation.computeIfAbsent(target, f -> f.lootTotal());
+                        double loot = lootEstimateByNation.computeIfAbsent(target, DBNation::lootTotal);
                         String title = "Target: " + target.getNation() + ": Worth ~$" + MathMan.format(loot);
-                        String msg = target.toMarkdown(true, true, true, true, false);
+                        String body = target.toMarkdown(true, true, true, true, false);
 
                         boolean isSubscription = targetEntry.getValue();
                         if (isSubscription) {
-                            msg += "\n**subscribed alert**";
+                            body += "\n**subscribed alert**";
                         } else {
                             NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NONES);
                             if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) return;
 
-                            msg += "\n**auto alert**";
+                            body += "\n**auto alert**";
                         }
 
-                        DiscordUtil.createEmbedCommand(channel, title, msg);
-                        RateLimitUtil.queueWhenFree(channel.sendMessage(footer));
+                        msg.embed(title, body);
                     }
+                    msg.append(footer);
+                    msg.send();
                 }
             });
 

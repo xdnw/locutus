@@ -1607,11 +1607,11 @@ public class BankCommands {
         }
 
         if (alliance.isGuild()) {
-            offshore.disabledGuilds.remove(alliance.asGuild().getGuild().getIdLong());
+            offshore.disabledGuilds.remove(alliance.asGuild().getIdLong());
         } else if (alliance.isAlliance()) {
             GuildDB guild = alliance.asAlliance().getGuildDB();
             if (guild == null) return "No guild found for AA:" + alliance;
-            offshore.disabledGuilds.remove(guild.getGuild().getIdLong());
+            offshore.disabledGuilds.remove(guild.getIdLong());
         } else {
            return alliance + " must be a guild or alliance";
         }
