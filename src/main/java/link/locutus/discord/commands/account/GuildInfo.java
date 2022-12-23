@@ -40,7 +40,7 @@ public class GuildInfo extends Command {
 
         String title = guild.getName() + "/" + guild.getIdLong() + "\n" +
                 "Owner: " + guild.getOwner() + "\n" +
-                "Admins: " + StringMan.getString(guild.getMembers());
+                "Members: " + StringMan.getString(guild.getMembers());
         return title;
     }
 }

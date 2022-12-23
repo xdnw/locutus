@@ -253,7 +253,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public <T> T getOrNull(Key key, boolean allowDelegate) {
-        Object parsed = infoParsed.getOrDefault(key, nullInstance);
+        Object parsed;
+        synchronized (infoParsed) {
+            parsed = infoParsed.getOrDefault(key, nullInstance);
+        }
         if (parsed != nullInstance) return (T) parsed;
 
         boolean isDelegate = false;
@@ -268,7 +271,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         try {
             parsed =  (T) key.parse(this, value);
             if (!isDelegate) {
-                infoParsed.put(key, parsed);
+                synchronized (infoParsed) {
+                    infoParsed.put(key, parsed);
+                }
             }
             return (T) parsed;
         } catch (IllegalArgumentException e) {
@@ -4560,12 +4565,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void setInfo(Key key, String value) {
-        infoParsed.remove(key);
+        synchronized (infoParsed) {
+            infoParsed.remove(key);
+        }
         setInfo(key.name(), key.validate(this, value));
     }
 
     private Map<String, String> info;
-    private Map<Key, Object> infoParsed = new ConcurrentHashMap<>();
+    private Map<Key, Object> infoParsed = new HashMap<>();
     private final Object nullInstance = new Object();
 
     public String getInfo(String key) {
