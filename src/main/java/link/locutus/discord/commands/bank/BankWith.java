@@ -288,9 +288,8 @@ public class BankWith extends Command {
             DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString(), params.toArray(new String[0]));
             return "See also:\n" +
                     "> https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8\n" +
-                    "To add an offshore:\n" +
-                    "1. (int this server) " + CM.coalition.add.cmd.create(null, Coalition.OFFSHORE.name()) + "\n" +
-                    "2. (in the offshore) " + CM.coalition.add.cmd.create(null, Coalition.OFFSHORING.name()) + "";
+                    "To add an offshore:" + CM.offshore.add.cmd.toSlashMention() + "\n" +
+                    "(Set this alliance as the offshore to use the local bank)";
         }
 
         if (!force) {

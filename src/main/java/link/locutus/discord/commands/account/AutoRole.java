@@ -120,11 +120,11 @@ public class AutoRole extends Command {
 
         response.append("Done!");
 
-        if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
+        if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
             response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
-        if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
+        if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
             response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));

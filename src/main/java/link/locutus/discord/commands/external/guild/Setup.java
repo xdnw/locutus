@@ -45,7 +45,7 @@ public class Setup extends Command {
         for (GuildDB.Key key : values()) {
             if (!key.requiresSetup) continue;
             if (key.requires != null) {
-                if (guildDb.getInfo(key.requires) == null) continue;
+                if (guildDb.getOrNull(key.requires) == null) continue;
             }
             String value = guildDb.getInfo(key);
             if (value == null) {
