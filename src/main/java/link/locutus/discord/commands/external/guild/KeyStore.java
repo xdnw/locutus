@@ -138,7 +138,7 @@ public class KeyStore extends Command implements Noformat {
             }
         }
         if (args.get(1).equalsIgnoreCase("null")) {
-            db.deleteInfo(key.name());
+            db.deleteInfo(key);
         } else {
             String newVal = key.validate(db, args.get(1));
             Object obj = key.parse(db, newVal);

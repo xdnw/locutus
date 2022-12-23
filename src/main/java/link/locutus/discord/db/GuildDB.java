@@ -4537,6 +4537,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return info;
     }
 
+    private final Object nullInstance = new Object();
+
     public String getInfo(Key key, boolean allowDelegate) {
         return getInfo(key.name(), allowDelegate);
     }
@@ -4546,10 +4548,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void setInfo(Key key, String value) {
+        infoParsed.remove(key);
         setInfo(key.name(), key.validate(this, value));
     }
 
     private Map<String, String> info;
+    private Map<Key, Object> infoParsed;
 
     public String getInfo(String key) {
         return getInfo(key, true);

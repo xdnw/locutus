@@ -889,9 +889,8 @@ public class BankCommands {
                             .embed(title, body.toString())
                                     .append("See also:\n" +
                                             "> https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8\n" +
-                                            "To add an offshore:\n" +
-                                            "1. (int this server) " + CM.coalition.add.cmd.create(null, Coalition.OFFSHORE.name()) + "\n" +
-                                            "2. (in the offshore) " + CM.coalition.add.cmd.create(null, Coalition.OFFSHORING.name()) + "")
+                                            "To add an offshore:" + CM.offshore.add.cmd.toSlashMention() + "\n" +
+                                            "(Set this alliance as the offshore to use the local bank)")
                                             .send();
             return null;
         }
@@ -2452,7 +2451,7 @@ public class BankCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN)
-    public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance alliance, @Switch("f") boolean confirm) throws IOException {
+    public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance alliance, @Switch("f") boolean force) throws IOException {
         if (root.isDelegateServer()) return "Cannot enable offshoring for delegate server (run this command in the root server)";
 
         IMessageBuilder confirmButton = io.create().confirmation(CM.offshore.add.cmd.create(alliance.getId() + ""));
@@ -2488,7 +2487,7 @@ public class BankCommands {
             }
 
 
-            if (!confirm) {
+            if (!force) {
                 int priorAAId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 String title = "Change offshore to: " + alliance.getName() + "/" + alliance.getId();
                 StringBuilder body = new StringBuilder();
@@ -2549,7 +2548,7 @@ public class BankCommands {
         }
 
         if (offshoreDB == null) {
-            return "No guild found for alliance: " + alliance.getAlliance_id();
+            return "No guild found for alliance: " + alliance.getAlliance_id() + ". To register a guild to an alliance: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), alliance.getAlliance_id() + "");
         }
 
         OffshoreInstance currentOffshore = root.getOffshore();
@@ -2560,7 +2559,7 @@ public class BankCommands {
             Integer aaId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
             long id = aaId != null ? aaId.longValue() : root.getIdLong();
 
-            if (!confirm) {
+            if (!force) {
                 String title = "Replace current offshore";
                 StringBuilder body = new StringBuilder();
                 body.append("Changing offshores will close the account with your previous offshore provider\n");
@@ -2582,12 +2581,12 @@ public class BankCommands {
         }
 
         if (offshoreDB == root) {
-            if (!confirm) {
+            if (!force) {
                 String title = "Designate " + alliance.getName() + "/" + alliance.getId() + " as the bank";
                 StringBuilder body = new StringBuilder();
                 body.append("Withdraw commands will use this alliance bank\n");
                 body.append("To have another alliance/corporation use this bank as an offshore:\n");
-                body.append(" - You must be admin on both discord servers\n");
+                body.append(" - You must be admin or econ on both discord servers\n");
                 body.append(" - On the other guild, use: " + CM.offshore.add.cmd.create(alliance.getAlliance_id() + "") + "\n\n");
                 body.append("If this is an offshore, and you create a new alliance, you may use this command to set the new alliance (all servers offshoring here will be updated)");
 
