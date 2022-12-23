@@ -4549,8 +4549,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return info;
     }
 
-    private final Object nullInstance = new Object();
-    
     @Deprecated
     public String getInfo(Key key, boolean allowDelegate) {
         return getInfo(key.name(), allowDelegate);

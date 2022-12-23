@@ -1260,14 +1260,14 @@ public class IACheckup {
         String myMMR = null;
         for (Map.Entry<NationFilterString, MMRMatcher> entry : requiredMmrMap.entrySet()) {
             NationFilterString nationMatcher = entry.getKey();
-            if (nationMatcher.test(nation)) {
-                if (myMMR == null) {
-                    myMMR = nation.getMMRBuildingStr();
-                }
-                MMRMatcher required = entry.getValue();
-                if (required.test(myMMR)) {
-                    return null;
-                } else {
+            if (myMMR == null) {
+                myMMR = nation.getMMRBuildingStr();
+            }
+            MMRMatcher required = entry.getValue();
+            if (required.test(myMMR)) {
+                return null;
+            } else {
+                if (nationMatcher.toCached(10000).test(nation)) {
                     allowedMMr.add(required.getRequired());
                 }
             }
