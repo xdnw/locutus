@@ -717,7 +717,7 @@ public class IACommands {
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
             "e.g. `{prefix}lootValueSheet #cities<10,#position>1,#active_m<2880,someAlliance`")
     @RolePermission(Roles.MILCOM)
-    public String lootValueSheet(@Me GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String lootValueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         attackers.removeIf(f -> f.getActive_m() > 10000);
         attackers.removeIf(f -> f.getVm_turns() > 0);
         if (attackers.size() > 200) return "Too many nations";
@@ -776,7 +776,8 @@ public class IACommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command

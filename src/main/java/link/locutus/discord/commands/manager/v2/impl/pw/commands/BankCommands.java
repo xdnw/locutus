@@ -372,7 +372,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of members and their revenue (compared to optimal)")
     @RolePermission(value = {Roles.ECON_LOW_GOV, Roles.ECON})
     @IsAlliance
-    public String revenueSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+    public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.REVENUE_SHEET);
         }
@@ -490,7 +490,9 @@ public class BankCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        return sheet.getURL(true, true);
+
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Get a sheet of members and their saved up warchest (can include deposits and potential revenue)")
@@ -663,7 +665,7 @@ public class BankCommands {
         response.append("Total Warchest: `" + PnwUtil.resourcesToString(totalWarchest) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalWarchest)) + "\n");
         response.append("Net Warchest Req (warchest - requirements): `" + PnwUtil.resourcesToString(totalNet) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalNet)));
 
-        sheet.attach(io.create(), response, false, 0).send();
+        sheet.attach(io.create(), response, false, 0).append(response.toString()).send();
         return null;
     }
 
@@ -1030,7 +1032,7 @@ public class BankCommands {
 
     @Command(desc = "Sheet of projects each nation has")
     @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
-    public String ProjectSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String ProjectSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.PROJECT_SHEET);
         }
@@ -1067,7 +1069,8 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
@@ -1212,9 +1215,6 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        StringBuilder response = new StringBuilder();
-        response.append(sheet.getURL(true, true));
-
         StringBuilder footer = new StringBuilder();
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
 
@@ -1240,9 +1240,8 @@ public class BankCommands {
             footer.append("\n**Net " + type + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
 
-        channel.create().embed("AA Total", footer.toString())
-                        .append(response.toString())
-                                .send();
+        sheet.attach(channel.create()).embed("AA Total", footer.toString())
+                .send();
         return null;
     }
 
@@ -1584,7 +1583,7 @@ public class BankCommands {
             }
         }
 
-        io.create().file("transfer-results.csv", output.toString()).append("Done!\nTotal sent: `" + PnwUtil.resourcesToString(totalSent) + "`").send();
+        io.create().file("transfer-results.csv", output.toString()).append("Done!\nTotal sent: `" + PnwUtil.resourcesToString(totalSent) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalSent))).send();
         return null;
     }
 
@@ -1655,7 +1654,7 @@ public class BankCommands {
             "Note: this command does set nations brackets. See: `{prefix}setNationTaxBrackets` and `{prefix}setNationInternalTaxRates` ")
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
-    public String listRequiredTaxRates(@Me GuildDB db, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String listRequiredTaxRates(@Me IMessageIO io, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -1703,7 +1702,8 @@ public class BankCommands {
 
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
 
@@ -1771,7 +1771,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of a nation tax deposits over a period")
     @RolePermission(value = Roles.ECON)
-    public String taxDeposits(@Me GuildDB db, Set<DBNation> nations, @Arg("Set to 0/0 to include all taxes") @Default() TaxRate baseTaxRate, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String taxDeposits(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Arg("Set to 0/0 to include all taxes") @Default() TaxRate baseTaxRate, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         if (startDate == null) startDate = 0L;
@@ -1810,12 +1810,14 @@ public class BankCommands {
             transfers.put(DBNation.byId(entry.getKey()), entry.getValue());
         }
         txSheet.write(transfers).build();
-        return txSheet.getSheet().getURL(true, true);
+
+        txSheet.getSheet().attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Get a sheet of a nation tax deposits over a period")
     @RolePermission(value = Roles.ECON)
-    public String taxRecords(@Me GuildDB db, DBNation nation, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String taxRecords(@Me IMessageIO io, @Me GuildDB db, DBNation nation, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         if (startDate == null) startDate = 0L;
@@ -1845,7 +1847,8 @@ public class BankCommands {
         }
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Send from your alliance offshore account to another account (internal transfer)")
@@ -2368,9 +2371,7 @@ public class BankCommands {
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        channel.create().embed("AA TOTAL", totalStr)
-                        .append(sheet.getURL(true, true))
-                                .send();
+        sheet.attach(channel.create().embed("AA TOTAL", totalStr)).send();
         return null;
     }
 
@@ -2379,7 +2380,7 @@ public class BankCommands {
             "Add `-f` to force an update of deposits\n" +
             "`note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`")
     @RolePermission(any = true, value = {Roles.ECON, Roles.ECON_LOW_GOV})
-    public String taxBracketSheet(@Me GuildDB db, @Switch("f") boolean force, @Switch("a") boolean includeApplicants) throws Exception {
+    public String taxBracketSheet(@Me IMessageIO io, @Me GuildDB db, @Switch("f") boolean force, @Switch("a") boolean includeApplicants) throws Exception {
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -2444,9 +2445,11 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        StringBuilder response = new StringBuilder(sheet.getURL(true, true));
+        StringBuilder response = new StringBuilder();
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
-        return response.toString();
+
+        sheet.attach(io.create(), response.toString()).send();
+        return null;
     }
 
     @Command

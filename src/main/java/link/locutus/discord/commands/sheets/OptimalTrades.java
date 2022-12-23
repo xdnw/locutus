@@ -57,6 +57,7 @@ public class OptimalTrades extends Command {
         response.append('\n').append("Profit: ").append(profit);
         response.append('\n').append("Note: Actual exploitation is probably closer to 50% (depending on activity. This is where the alerts will come in handy)");
 
-        return null;//response.toString();
+        msg.append(response.toString()).send();
+        return null;
     }
 }

@@ -1080,7 +1080,8 @@ public class UtilityCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
@@ -1117,7 +1118,8 @@ public class UtilityCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @Command(desc = "Check if a nation shares networks with others")

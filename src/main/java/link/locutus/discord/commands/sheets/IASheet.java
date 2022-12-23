@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -138,6 +139,7 @@ public class IASheet extends Command {
 
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(new DiscordChannelIO(event).create()).send();
+        return null;
     }
 }

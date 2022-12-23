@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -168,7 +169,8 @@ public class GrantCmd extends Command {
             sheet.set(0, 0);
 
             String totalStr = PnwUtil.resourcesToString(total) + " worth ~$" + MathMan.format(PnwUtil.convertedTotal(total));
-            return "" + sheet.getURL(true, true) + "\n" + totalStr;
+            sheet.attach(new DiscordChannelIO(event).create().append(totalStr), null, false, 0).send();
+            return null;
         }
 
         Grant grant = generateGrant(typeArg, guildDb, me, num, flags, true);

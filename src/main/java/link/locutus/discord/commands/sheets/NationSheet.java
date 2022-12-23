@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -108,7 +109,8 @@ public class NationSheet extends Command implements Noformat {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(new DiscordChannelIO(event).create()).send();
+        return null;
 //        I need, Nation name, nation link, score, war range, offensive/defensive slots open, military count (planes/tanks/ships/soldiers)
     }
 }

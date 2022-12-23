@@ -1133,7 +1133,7 @@ public class StatCommands {
             if (sheet != null) {
                 sheet.clear("A:Z");
                 sheet.set(0, 0);
-                response.append(sheet.getURL(true, true));
+                sheet.attach(msg);
             }
 
             msg.append(response.toString());
@@ -1270,7 +1270,8 @@ public class StatCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @Command(desc = "Create a graph of the radiation by turn")
@@ -1462,7 +1463,8 @@ public class StatCommands {
 
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @Command(aliases = {"WarCostByAllianceSheet", "WarCostByAASheet", "WarCostByAlliance", "WarCostByAA"},
@@ -1571,7 +1573,8 @@ public class StatCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @Command(desc = "Warcost (for each nation) broken down by war type.\n" +
@@ -1744,7 +1747,8 @@ public class StatCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     private double total(boolean consumption, boolean infra, boolean loot, boolean units, boolean normalize, DBNation nation, AttackCost cost, boolean isPrimary) {

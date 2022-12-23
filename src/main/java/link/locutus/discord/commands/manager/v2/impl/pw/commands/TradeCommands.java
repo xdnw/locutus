@@ -354,7 +354,7 @@ public class TradeCommands {
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public String trending(@Me GuildDB db, @Timestamp long time) throws GeneralSecurityException, IOException {
+    public String trending(@Me IMessageIO channel, @Me GuildDB db, @Timestamp long time) throws GeneralSecurityException, IOException {
         Map<ResourceType, Map<Integer, LongAdder>> sold = new EnumMap<>(ResourceType.class);
         Map<ResourceType, Map<Integer, LongAdder>> bought = new EnumMap<>(ResourceType.class);
 
@@ -444,7 +444,8 @@ public class TradeCommands {
 
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.")
