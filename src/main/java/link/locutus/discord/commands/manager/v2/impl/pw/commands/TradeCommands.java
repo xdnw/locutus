@@ -1004,9 +1004,12 @@ public class TradeCommands {
 
     @Command(desc = "List nations who have bought/sold the most of a resource over a period")
     @RolePermission(value = Roles.MEMBER)
-    public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch("a") boolean groupByAlliance) {
+    public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch("a") boolean groupByAlliance, @Switch("p") boolean includeMoneyTrades) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<DBTrade> offers = db.getTrades(cutoff);
+        if (!includeMoneyTrades) {
+            offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
+        }
         int findsign = isBuy ? 1 : -1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);

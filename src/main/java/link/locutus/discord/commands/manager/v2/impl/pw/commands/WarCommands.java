@@ -1694,7 +1694,7 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(io.create()).send();
         return null;
     }
 

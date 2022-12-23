@@ -1237,6 +1237,7 @@ public class PnwUtil {
         double b1 = defStrength * 0.4;
         double b2 = defStrength;
 
+        // Skip formula for common cases (for performance)
         if (attStrength <= 0) return 0;
         if (defStrength * 2.5 <= attStrength) return success == 3 ? 1 : 0;
         if (a2 <= b1 || b2 <= a1) return 0;
