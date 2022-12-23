@@ -659,15 +659,15 @@ public class DiscordUtil {
             if (user != null) {
                 return user.getNationId();
             }
+        }
+        if (!MathMan.isInteger(arg)) {
             if (arg.contains("=HYPERLINK") && arg.contains("nation/id=")) {
                 String regex = "nation/id=([0-9]+)";
                 Matcher m = Pattern.compile(regex).matcher(arg);
                 m.find();
-                arg = m.group();
+                arg = m.group(1);
                 return Integer.parseInt(arg);
             }
-        }
-        if (!MathMan.isInteger(arg)) {
             return null;
         }
         try {
