@@ -147,15 +147,14 @@ public class ROI extends Command {
         }
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
-        if (guildDb == null || guildDb.getInfo(GuildDB.Key.ALLIANCE_ID) == null) {
+        if (guildDb == null || guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
             return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<value>") + "";
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
 
-        String allianceStr = guildDb.getInfo(GuildDB.Key.ALLIANCE_ID);
-        if (allianceStr == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>") + "";
-        int allianceId = Integer.parseInt(allianceStr);
+        Integer allianceId = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        if (allianceId == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>") + "";
 
         List<ROIResult> roiMap = new ArrayList<>();
         boolean useSheet = false;

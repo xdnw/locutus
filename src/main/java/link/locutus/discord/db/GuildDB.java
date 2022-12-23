@@ -245,20 +245,32 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public <T> T getOrThrow(Key key) {
-        String value = getInfo(key);
+        T value = getOrNull(key);
         if (value == null) {
             throw new UnsupportedOperationException("No " + key + " registered. Use " + CM.settings.cmd.create(key.name(), null));
         }
-        return (T) key.parse(this, value);
+        return value;
     }
 
     public <T> T getOrNull(Key key, boolean allowDelegate) {
-        String value = getInfo(key, allowDelegate);
+        Object parsed = infoParsed.getOrDefault(key, nullInstance);
+        if (parsed != nullInstance) return (T) parsed;
+
+        boolean isDelegate = false;
+        String value = getInfo(key, false);
         if (value == null) {
-            return null;
+            isDelegate = true;
+            if (allowDelegate) {
+                value = getInfo(key, true);
+            }
         }
+        if (value == null) return null;
         try {
-            return (T) key.parse(this, value);
+            parsed =  (T) key.parse(this, value);
+            if (!isDelegate) {
+                infoParsed.put(key, parsed);
+            }
+            return (T) parsed;
         } catch (IllegalArgumentException e) {
             return null;
         }
@@ -4537,19 +4549,24 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return info;
     }
 
+    @Deprecated
     public String getInfo(Key key, boolean allowDelegate) {
         return getInfo(key.name(), allowDelegate);
     }
 
+    @Deprecated
     public String getInfo(Key key) {
         return getInfo(key, true);
     }
 
     public void setInfo(Key key, String value) {
+        infoParsed.remove(key);
         setInfo(key.name(), key.validate(this, value));
     }
 
     private Map<String, String> info;
+    private Map<Key, Object> infoParsed = new ConcurrentHashMap<>();
+    private final Object nullInstance = new Object();
 
     public String getInfo(String key) {
         return getInfo(key, true);

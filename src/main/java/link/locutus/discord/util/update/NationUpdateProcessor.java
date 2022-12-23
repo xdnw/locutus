@@ -785,13 +785,9 @@ public class NationUpdateProcessor {
                     GuildDB guildDB = entry.getValue();
                     Integer perm = guildDB.getPermission(BankAlerts.class);
                     if (perm == null || perm <= 0) continue;
-                    String channelId = guildDB.getInfo(GuildDB.Key.BANK_ALERT_CHANNEL, false);
-                    if (channelId == null) {
-                        continue;
-                    }
+                    GuildMessageChannel channel = guildDB.getOrNull(GuildDB.Key.BANK_ALERT_CHANNEL, false);
                     Guild guild = guildDB.getGuild();
-                    GuildChannel channel = guild.getGuildChannelById(channelId);
-                    if (channel == null || !(channel instanceof GuildMessageChannel)) {
+                    if (channel == null) {
                         continue;
                     }
                     DiscordUtil.createEmbedCommand((MessageChannel) channel, title, body.substring(0, Math.min(body.length(), 2000)));

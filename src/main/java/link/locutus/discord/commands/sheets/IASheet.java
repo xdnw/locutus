@@ -45,9 +45,8 @@ public class IASheet extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(event);
         if (db == null) return "Not in guild";
-        String allianceIdStr = db.getInfo(GuildDB.Key.ALLIANCE_ID);
-        if (allianceIdStr == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + "";
-        int allianceId = Integer.parseInt(allianceIdStr);
+        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        if (allianceId == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + "";
 
         if (args.size() != 1) return usage();
         List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
