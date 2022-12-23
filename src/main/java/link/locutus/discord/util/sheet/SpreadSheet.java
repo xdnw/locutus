@@ -274,7 +274,7 @@ public class SpreadSheet {
 
     public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative, String defaultNote) {
         Map<String, Boolean> result = new LinkedHashMap<String, Boolean>();
-        List<List<Object>> rows = get("A:Z");
+        List<List<Object>> rows = getAll();
         List<Object> header = rows.get(0);
 
         Integer noteI = null;
@@ -532,6 +532,11 @@ public class SpreadSheet {
             this.values = get("A:ZZ");
         }
         return this.values;
+    }
+
+    public List<List<Object>> getAll() {
+        if (service == null) return loadValues();
+        return get("A:ZZ");
     }
 
     public List<List<Object>> get(String range) {

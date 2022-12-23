@@ -40,7 +40,7 @@ public class FASheet extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.FA_CONTACT_SHEET);
-        List<List<Object>> existing = sheet.get("A:Z");
+        List<List<Object>> existing = sheet.getAll();
         if (existing == null) existing = new ArrayList<>();
         Map<Integer, String> notes = new HashMap<>();
         Map<Integer, String> lastContacted = new HashMap<>();

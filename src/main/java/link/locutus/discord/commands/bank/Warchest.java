@@ -87,20 +87,19 @@ public class Warchest extends Command {
             return "No nations in bracket";
         }
 
-        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-
         Map<ResourceType, Double> perCity = PnwUtil.parseResources(args.get(1));
         if (perCity.isEmpty()) return "Invalid amount: `" + args.get(1) + "`";
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
 
         Map<DBNation, Map<ResourceType, Double>> memberResources2 = new HashMap<>();
+        boolean skipStockpile = flags.contains('s');
         if (!flags.contains('s')) {
             if (aaId == null) return "No alliance found for this guild. Add `-s` to skip checking stockpile";
             memberResources2 = DBAlliance.getOrCreate(aaId).getMemberStockpile();
         }
         for (DBNation nation : nations) {
-            Map<ResourceType, Double> stockpile = memberResources2.get(nation);
+            Map<ResourceType, Double> stockpile = memberResources2.getOrDefault(nation, skipStockpile ? Collections.emptyMap() : null);
 
             if (PnwUtil.convertedTotal(stockpile) < 0) continue;
 

@@ -828,7 +828,7 @@ public class DiscordUtil {
                         throw new RuntimeException(e);
                     }
 
-                    List<List<Object>> rows = sheet.get("A:Z");
+                    List<List<Object>> rows = sheet.getAll();
                     if (rows == null || rows.isEmpty()) continue;
 
                     List<DBNation> toAdd = new ArrayList<>();

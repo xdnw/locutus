@@ -95,7 +95,7 @@ public class TransferSheet {
      */
     public Set<String> read() {
         Set<String> invalidNationOrAlliance = new LinkedHashSet<>();
-        List<List<Object>> rows = parent.get("A:Z");
+        List<List<Object>> rows = parent.getAll();
         List<Object> header = rows.get(0);
 
         boolean useLeader = false;

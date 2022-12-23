@@ -500,7 +500,7 @@ public class SpyBlitzGenerator {
     }
 
     public static Map<DBNation, Set<Spyop>> getTargets(SpreadSheet sheet, int headerRow, boolean groupByAttacker) {
-        List<List<Object>> rows = sheet.get("A:Z");
+        List<List<Object>> rows = sheet.getAll();
         List<Object> header = rows.get(headerRow);
 
         Integer targetI = null;
