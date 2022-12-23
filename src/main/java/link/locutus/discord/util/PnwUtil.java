@@ -541,6 +541,13 @@ public class PnwUtil {
             if (alliance != null) {
                 return alliance.getAlliance_id();
             }
+            if (arg.contains("=HYPERLINK") && arg.contains("alliance/id=")) {
+                String regex = "alliance/id=([0-9]+)";
+                Matcher m = Pattern.compile(regex).matcher(arg);
+                m.find();
+                arg = m.group();
+                return Integer.parseInt(arg);
+            }
         }
         if (MathMan.isInteger(arg)) {
             try {

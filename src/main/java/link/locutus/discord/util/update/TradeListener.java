@@ -114,11 +114,11 @@ public class TradeListener {
                 treasureColors.add(treasure.getColor());
                 // update last respawn alert
                 treasure.setRespawnAlertDate(now);
-                Locutus.imp().getNationDB().saveTreasures(Collections.singleton(treasure));
 
                 treasuresToAlert.add(treasure);
             }
         }
+        Locutus.imp().getNationDB().saveTreasures(treasuresToAlert);
 
         DBNation maxNation = null;
         for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {

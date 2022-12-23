@@ -81,6 +81,8 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.parseFilter;
@@ -656,6 +658,13 @@ public class DiscordUtil {
             PNWUser user = Locutus.imp().getDiscordDB().getUser(null, arg, arg);
             if (user != null) {
                 return user.getNationId();
+            }
+            if (arg.contains("=HYPERLINK") && arg.contains("nation/id=")) {
+                String regex = "nation/id=([0-9]+)";
+                Matcher m = Pattern.compile(regex).matcher(arg);
+                m.find();
+                arg = m.group();
+                return Integer.parseInt(arg);
             }
         }
         if (!MathMan.isInteger(arg)) {
