@@ -4497,9 +4497,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<DBNation> nations = alliance.getNations();
         for (DBNation gov : nations) {
             if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id) continue;
-            DBAlliancePosition position = gov.getAlliancePosition();
-            if (permissions != null && permissions.length > 0 && (position == null || !position.hasAllPermission(permissions))) {
-                continue;
+            if (gov.getPositionEnum().id < Rank.HEIR.id) {
+                DBAlliancePosition position = gov.getAlliancePosition();
+                if (permissions != null && permissions.length > 0 && (position == null || !position.hasAllPermission(permissions))) {
+                    continue;
+                }
             }
             try {
                 Auth auth = gov.getAuth(null);

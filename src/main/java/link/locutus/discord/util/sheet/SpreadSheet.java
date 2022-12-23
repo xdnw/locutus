@@ -348,7 +348,7 @@ public class SpreadSheet {
             if (csv.length() + currentLength + 9 < 4000 && allowInline) {
                 append = "```csv\n" + csv + "```";
             } else {
-                append = "[see attached sheet.csv]";
+                append = "(`sheet:" + spreadsheetId + "`)";
                 msg.file("sheet.csv", csv);
             }
         } else {
