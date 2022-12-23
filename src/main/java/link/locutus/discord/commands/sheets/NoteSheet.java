@@ -50,7 +50,7 @@ public class NoteSheet extends Command {
 
         Map<DBNation, List<Object>> rows = new HashMap<>();
 
-        List<List<Object>> existing = sheet.get("A:Z");
+        List<List<Object>> existing = sheet.getAll();
         if (existing == null) existing = new ArrayList<>();
         for (int i = 1; i < existing.size(); i++) {
             List<Object> row = existing.get(i);

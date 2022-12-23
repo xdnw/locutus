@@ -3085,7 +3085,7 @@ public class WarCommands {
         ));
 
         Map<Integer, String> notes = new HashMap<>();
-        List<List<Object>> rows = sheet.get("A:Z");
+        List<List<Object>> rows = sheet.getAll();
 
         if (rows != null && !rows.isEmpty()) {
             for (int i = 1; i < rows.size(); i++) {
