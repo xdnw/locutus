@@ -102,7 +102,8 @@ public class NationSheet extends Command implements Noformat {
             @Override
             public int compare(DBNation o1, DBNation o2) {
                 if (o1.getAlliance_id() != o2.getAlliance_id()) return Integer.compare(o1.getAlliance_id(), o2.getAlliance_id());
-                return Integer.compare(o1.getCities(), o2.getCities());
+                if (o1.getCities() != o2.getCities()) return Integer.compare(o2.getCities(), o1.getCities());
+                return Double.compare(o2.getScore(), o1.getScore());
             }
         });
         for (DBNation nation : nationsSorted) {
