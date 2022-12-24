@@ -19,6 +19,8 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -95,7 +97,16 @@ public class NationSheet extends Command implements Noformat {
             }
         }
 
-        for (DBNation nation : nations) {
+        List<DBNation> nationsSorted = new ArrayList<>(nations);
+        Collections.sort(nationsSorted, new Comparator<DBNation>() {
+            @Override
+            public int compare(DBNation o1, DBNation o2) {
+                if (o1.getAlliance_id() != o2.getAlliance_id()) return Integer.compare(o1.getAlliance_id(), o2.getAlliance_id());
+                if (o1.getCities() != o2.getCities()) return Integer.compare(o2.getCities(), o1.getCities());
+                return Double.compare(o2.getScore(), o1.getScore());
+            }
+        });
+        for (DBNation nation : nationsSorted) {
             for (int i = 1; i < args.size(); i++) {
                 String arg = args.get(i);
                 String formatted = DiscordUtil.format(guild, event.getGuildChannel(), author, nation, arg);
