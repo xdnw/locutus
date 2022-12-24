@@ -234,7 +234,6 @@ public class SyncTaxes extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
-        return null;
+        return sheet.getURL(true, true);
     }
 }
