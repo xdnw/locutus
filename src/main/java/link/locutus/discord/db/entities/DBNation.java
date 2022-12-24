@@ -702,6 +702,38 @@ public class DBNation implements NationOrAlliance {
         return getAuth(Roles.ADMIN);
     }
 
+    public double getStrongestOffEnemyOfScore(Predicate<Double> filter) {
+        List<DBWar> wars = getActiveOffensiveWars();
+        for (DBWar war : wars) {
+            DBNation other = war.getNation(war.isAttacker(this));
+            if (other == null || other.active_m() > 2440 || other.getVm_turns() > 0) continue;
+            if (filter.test(other.getScore())) {
+                return other.getStrength();
+            }
+        }
+        return -1;
+    }
+
+    public double getStrongestEnemyOfScore(Predicate<Double> filter) {
+        List<DBWar> wars = getActiveOffensiveWars();
+        for (DBWar war : wars) {
+            DBNation other = war.getNation(war.isAttacker(this));
+            if (other == null || other.active_m() > 2440 || other.getVm_turns() > 0) continue;
+            if (filter.test(other.getScore())) {
+                return other.getStrength();
+            }
+        }
+        return -1;
+    }
+
+    public boolean isFightingOffEnemyOfScore(Predicate<Double> filter) {
+        return getStrongestOffEnemyOfScore(filter) != -1;
+    }
+
+    public boolean isFightingEnemyOfScore(Predicate<Double> filter) {
+        return getStrongestEnemyOfScore(filter) != -1;
+    }
+
     public Auth getAuth(Roles role) {
         if (this.auth != null && !this.auth.isValid()) this.auth = null;
         if (this.auth != null) return auth;
