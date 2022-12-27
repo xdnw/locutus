@@ -704,26 +704,41 @@ public class DBNation implements NationOrAlliance {
 
     public double getStrongestOffEnemyOfScore(Predicate<Double> filter) {
         List<DBWar> wars = getActiveOffensiveWars();
+        double strongest = -1;
         for (DBWar war : wars) {
-            DBNation other = war.getNation(war.isAttacker(this));
+            DBNation other = war.getNation(!war.isAttacker(this));
             if (other == null || other.active_m() > 2440 || other.getVm_turns() > 0) continue;
             if (filter.test(other.getScore())) {
-                return other.getStrength();
+                strongest = Math.max(strongest, other.getStrength());
             }
         }
-        return -1;
+        return strongest;
+    }
+
+    @Command
+    public double getStrongestEnemy() {
+        double val = getStrongestEnemyOfScore((score) -> true);
+        return val == -1 ? 0 : val;
+    }
+
+    @Command
+    public double getStrongestEnemyRelative() {
+        double enemyStr = getStrongestEnemy();
+        double myStrength = getStrength();
+        return myStrength == 0 ? 0 : enemyStr / myStrength;
     }
 
     public double getStrongestEnemyOfScore(Predicate<Double> filter) {
-        List<DBWar> wars = getActiveOffensiveWars();
+        List<DBWar> wars = getActiveWars();
+        double strongest = -1;
         for (DBWar war : wars) {
-            DBNation other = war.getNation(war.isAttacker(this));
+            DBNation other = war.getNation(!war.isAttacker(this));
             if (other == null || other.active_m() > 2440 || other.getVm_turns() > 0) continue;
             if (filter.test(other.getScore())) {
-                return other.getStrength();
+                strongest = Math.max(strongest, other.getStrength());
             }
         }
-        return -1;
+        return strongest;
     }
 
     public boolean isFightingOffEnemyOfScore(Predicate<Double> filter) {

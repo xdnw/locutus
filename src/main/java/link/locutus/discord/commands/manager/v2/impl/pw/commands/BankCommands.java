@@ -2307,13 +2307,14 @@ public class BankCommands {
             "Add `-n` to normalize it per city")
     @RolePermission(any = true, value = {Roles.ECON_LOW_GOV, Roles.ECON})
     @IsAlliance
-    public String stockpileSheet(@Me GuildDB db, @Switch("n") boolean normalize, @Switch("e") boolean onlyShowExcess, @Switch("f") boolean forceUpdate, @Me IMessageIO channel) throws IOException, GeneralSecurityException {
+    public String stockpileSheet(@Me GuildDB db, @Default Set<DBNation> nationFilter, @Switch("n") boolean normalize, @Switch("e") boolean onlyShowExcess, @Switch("f") boolean forceUpdate, @Me IMessageIO channel) throws IOException, GeneralSecurityException {
         DBAlliance alliance = db.getAlliance();
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 
         List<String> header = new ArrayList<>();
         header.add("nation");
+        header.add("discord");
         header.add("cities");
         header.add("avg_infra");
         header.add("off|def");
@@ -2341,8 +2342,9 @@ public class BankCommands {
             List<Object> row = new ArrayList<>();
 
             DBNation nation = entry.getKey();
-            if (nation == null) continue;
+            if (nation == null || (nationFilter != null && !nationFilter.contains(nation))) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            row.add(nation.getUserDiscriminator());
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getOff() +"|" + nation.getDef());
@@ -2469,7 +2471,9 @@ public class BankCommands {
             }
         }
 
-        if (root.isOffshore() && (offshoreDB == null || !offshoreDB.isOffshore() || offshoreDB == root)) {
+        System.out.println("Root " + root.isOffshore() + " | " + " " + offshoreDB + " | ");
+        if (offshoreDB != null) System.out.println(!offshoreDB.isOffshore() + " | " + ( offshoreDB == root));
+        if (root.isOffshore() && (offshoreDB == null || !offshoreDB.isOffshore() || (offshoreDB == root))) {
             if (nation.getAlliance_id() != alliance.getAlliance_id()) {
                 throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
