@@ -1537,7 +1537,7 @@ public class DBNation implements NationOrAlliance {
         boolean update = updateThreshold == 0;
         if (!update && updateThreshold > 0) {
             Transaction2 tx = Locutus.imp().getBankDB().getLatestTransaction();
-            if (tx.tx_datetime < last_active) update = true;
+            if (tx == null || tx.tx_datetime < last_active) update = true;
             else if (System.currentTimeMillis() - tx.tx_datetime > updateThreshold) update = true;
         }
         if (update) {
@@ -2125,6 +2125,15 @@ public class DBNation implements NationOrAlliance {
     public void setNukes(int nukes) {
         getCache().processUnitChange(this, MilitaryUnit.NUKE, this.nukes, nukes);
         this.nukes = nukes;
+    }
+
+    @Command(desc = "Number of turns since entering VM")
+    public int getVacationTurnsElapsed() {
+        long turn = TimeUtil.getTurn();
+        if (entered_vm > 0 && entered_vm < turn) {
+            return (int) (turn - entered_vm);
+        }
+        return 0;
     }
 
     @Command(desc = "Number of turns in Vacation Mode")
