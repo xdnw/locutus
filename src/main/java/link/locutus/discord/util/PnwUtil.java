@@ -1003,15 +1003,10 @@ public class PnwUtil {
             profitBuffer = build.profit(continent, rads, date, nation::hasProject, profitBuffer, numCities, grossModifier, turns);
         }
 
-        System.out.println("Profit " + MathMan.format(profitBuffer[0]) + " | food: " + MathMan.format(profitBuffer[ResourceType.FOOD.ordinal()]));
-
         // trade revenue
         if (tradeBonus) {
             profitBuffer[0] += nation.getColor().getTurnBonus() * turns * grossModifier;
         }
-
-        System.out.println("Turn bonus " + MathMan.format(nation.getColor().getTurnBonus() * turns * grossModifier));
-        System.out.println("Gross modifier " + MathMan.format(grossModifier) + " | " + MathMan.format(rads));
 
         // Add military upkeep
         if (militaryUpkeep && !nation.hasUnsetMil()) {

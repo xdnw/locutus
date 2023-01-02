@@ -180,7 +180,7 @@ public class NationUpdateProcessor {
             if (nation.getActive_m() > 7200 || nation.getPosition() <= Rank.APPLICANT.id || nation.getVm_turns() > 0) continue;
             int aaId = nation.getAlliance_id();
             membersByAA.put(aaId, membersByAA.getOrDefault(aaId, 0) + 1);
-            boolean active = nation.getActive_m() < 15;
+            boolean active = nation.getActive_m() < 30;
             if (!active && nation.getActive_m() < 1440 && nation.getVm_turns() == 0 && nation.getPositionEnum().id > Rank.APPLICANT.id) {
                 User user = nation.getUser();
                 if (user != null) {
@@ -214,8 +214,12 @@ public class NationUpdateProcessor {
                     double avgMMR = averageMilitarization.getOrDefault(aaId, 0d) / (double) active;
 
                     int required = (int) Math.floor(Math.pow(members, 0.7) * 1.5);
-                    if (active < required) continue;
-                    if (avgMMR < 0.5 && members < required * 2) continue;
+                    if (active < required) {
+                        continue;
+                    }
+                    if (avgMMR < 0.5 && members < required * 2) {
+                        continue;
+                    }
 
                     Integer previous = ACTIVITY_ALERTS.get(aaId);
                     if (previous != null && previous + 2 >= active) continue;
