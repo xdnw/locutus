@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceMeta;
@@ -75,7 +76,10 @@ public class BankWith extends Command {
         boolean isAdmin = Roles.ECON.hasOnRoot(author);
 
         OffshoreInstance offshore = guildDb.getOffshore();
-        if (offshore == null) return "No offshore is set";
+        if (offshore == null) {
+            PermissionBinding.hasOffshore(guildDb, null);
+            return "No offshore is set";
+        }
 
         List<String> otherNotes = new ArrayList<>();
         String primaryNote = "";

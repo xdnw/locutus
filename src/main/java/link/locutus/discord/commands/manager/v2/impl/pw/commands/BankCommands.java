@@ -2469,7 +2469,7 @@ public class BankCommands {
             }
         }
 
-        if (root.isOffshore() && (offshoreDB == null || !offshoreDB.isOffshore() || offshoreDB == root)) {
+        if (((offshoreDB == null && root.getOrNull(GuildDB.Key.ALLIANCE_ID) != null && root.getCoalition(Coalition.OFFSHORE).contains(root.getAlliance_id())) || offshoreDB == root) && alliance.getId() == nation.getAlliance_id()) {
             if (nation.getAlliance_id() != alliance.getAlliance_id()) {
                 throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
@@ -2647,9 +2647,13 @@ public class BankCommands {
                         response.append("Reset deposit for " + root.getGuild() + "\n");
                     }
                 }
+
                 response.append("Registered " + alliance + " as an offshore. See: https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit");
                 if (aaId == null) {
                     response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
+                }
+                if (offshoreDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
+                    response.append("\nNote: Disable war alerts using: " + CM.settings.cmd.create(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES.name(), "false"));
                 }
             } catch (Throwable e) {
                 root.removeCoalition(alliance.getAlliance_id(), Coalition.OFFSHORE);
