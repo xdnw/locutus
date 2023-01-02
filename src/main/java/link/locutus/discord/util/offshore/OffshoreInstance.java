@@ -895,11 +895,11 @@ public class OffshoreInstance {
         }
         boolean whitelistedError = msg.contains("The API key you provided does not allow whitelisted access.");
         if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
-            String key = getGuildDB().getOrNull(GuildDB.Key.API_KEY);
-            if (key == null) {
+            String[] keys = getGuildDB().getOrNull(GuildDB.Key.API_KEY);
+            if (keys == null) {
                 msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention();
             } else {
-                Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+                Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
                 if (nation == null) {
                     msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
                 } else {
