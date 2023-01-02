@@ -311,7 +311,7 @@ public class NationUpdateProcessor {
         }
         DBAlliance alliance = previous.getAlliance(false);
 
-        if (alliance.getRank() < 50)
+        if (alliance != null && alliance.getRank() < 50)
         {
             String title = current.getNation() + " (" + Rank.byId(previous.getPosition()) + ") leaves " + previous.getAllianceName();
             String body = current.toEmbedString(false);

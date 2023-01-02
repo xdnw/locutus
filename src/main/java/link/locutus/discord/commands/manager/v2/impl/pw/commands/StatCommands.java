@@ -1644,11 +1644,14 @@ public class StatCommands {
         }).get();
 
         List<DBAttack> allAttacks = new ArrayList<>(parser1.getAttacks());
-
+        Set<Integer> aaIds = attackers.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Set<Integer> natIds = attackers.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
         for (Map.Entry<Integer, List<DBWar>> entry : warsByNation.entrySet()) {
             int nationId = entry.getKey();
             DBNation nation = DBNation.byId(nationId);
             if (nation == null) continue;
+            if (!natIds.contains(nation.getId()) && !aaIds.contains(nation.getAlliance_id())) continue;
+
 //            int nationId = nation.getNation_id();
 
             AttackCost attInactiveCost = new AttackCost();
