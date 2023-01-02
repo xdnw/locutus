@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
 public class WarDB extends DBMainV2 {
 
 
-    private ActiveWarHandler activeWars = new ActiveWarHandler();
+    private final  ActiveWarHandler activeWars = new ActiveWarHandler();
     private Map<Integer, DBWar> warsById;
     private Map<Integer, Map<Integer, DBWar>> warsByAllianceId;
     private Map<Integer, Map<Integer, DBWar>> warsByNationId;
@@ -963,8 +963,8 @@ public class WarDB extends DBMainV2 {
             DBNation defender = war.getNation(false);
             if (attacker != null) nationSnapshots.put(war.getWarId(), attacker);
             if (defender != null) nationSnapshots.put(war.getWarId(), defender);
-            Locutus.imp().getNationDB().saveNationWarSnapshots(nationSnapshots);
         }
+        Locutus.imp().getNationDB().saveNationWarSnapshots(nationSnapshots);
 
         System.out.println("Done save war snaptshots");
 
@@ -1354,38 +1354,40 @@ public class WarDB extends DBMainV2 {
 
     public boolean updateAttacks(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) {
         long start = System.currentTimeMillis();
-        synchronized (activeWars) {
-            System.out.println("remove:|| updateAttacks 1 " + ( - start + (start = System.currentTimeMillis())));
-            DBAttack latest = getLatestAttack();
-            System.out.println("remove:|| updateAttacks 2 " + ( - start + (start = System.currentTimeMillis())));
-            Integer maxId = latest == null ? null : latest.war_attack_id;
-            if (maxId == null || maxId == 0) runAlerts = false;
+        DBAttack latest = getLatestAttack();
+        Integer maxId = latest == null ? null : latest.war_attack_id;
+        if (maxId == null || maxId == 0) runAlerts = false;
 
-            // Dont run events if attacks are > 1 day old
-            if (!v2 && (latest == null || latest.epoch < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1))) {
-                PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-                System.out.println("No recent attack data in DB. Updating attacks without event handling: " + maxId);
-                List<DBAttack> attackList = new ArrayList<>();
-                v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
-                    @Override
-                    public boolean test(WarAttack v3Attack) {
-                        DBAttack attack = new DBAttack(v3Attack);
-                        synchronized (attackList) {
-                            attackList.add(attack);
-                            if (attackList.size() > 1000) {
-                                System.out.println("Save " + attack.war_attack_id);
-                                saveAttacks(attackList);
-                                attackList.clear();
-                                System.out.println("Save end");
-                            }
+        // Dont run events if attacks are > 1 day old
+        if (!v2 && (latest == null || latest.epoch < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1))) {
+            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            System.out.println("No recent attack data in DB. Updating attacks without event handling: " + maxId);
+            List<DBAttack> attackList = new ArrayList<>();
+            v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
+                @Override
+                public boolean test(WarAttack v3Attack) {
+                    DBAttack attack = new DBAttack(v3Attack);
+                    synchronized (attackList) {
+                        attackList.add(attack);
+                        if (attackList.size() > 1000) {
+                            System.out.println("Save " + attack.war_attack_id);
+                            saveAttacks(attackList);
+                            attackList.clear();
+                            System.out.println("Save end");
                         }
-                        return false;
                     }
-                });
-                saveAttacks(attackList);
-                return true;
-            }
+                    return false;
+                }
+            });
+            saveAttacks(attackList);
+            return true;
+        }
 
+        List<DBAttack> dbAttacks = new ArrayList<>();
+        Set<DBWar> warsToSave = new LinkedHashSet<>();
+        List<DBAttack> dirtyCities = new ArrayList<>();
+
+        synchronized (activeWars) {
             System.out.println("remove:|| updateAttacks 3 " + ( - start + (start = System.currentTimeMillis())));
 
             Set<Integer> existingIds = new IntOpenHashSet();
@@ -1420,9 +1422,6 @@ public class WarDB extends DBMainV2 {
             System.out.println("remove:|| updateAttacks 5 " + ( - start + (start = System.currentTimeMillis())));
 
             Map<DBAttack, Double> attackInfraPctMembers = new HashMap<>();
-            List<DBAttack> dbAttacks = new ArrayList<>();
-
-            List<DBAttack> dirtyCities = new ArrayList<>();
 
             long now = System.currentTimeMillis();
             for (DBAttack attack : newAttacks) {
@@ -1482,8 +1481,6 @@ public class WarDB extends DBMainV2 {
                     attack.infra_destroyed_value = 0;
                 }
 
-                Set<DBWar> warsToSave = new LinkedHashSet<>();
-
                 {
                     if (attack.attack_type == AttackType.VICTORY && attack.infraPercent_cached > 0) {
                         DBNation defender = Locutus.imp().getNationDB().getNation(attack.defender_nation_id);
@@ -1503,8 +1500,6 @@ public class WarDB extends DBMainV2 {
                         }
                     }
                 }
-
-                saveWars(warsToSave);
 
                 dbAttacks.add(attack);
             }
@@ -1540,42 +1535,44 @@ public class WarDB extends DBMainV2 {
                     }
                 }
             }
-
-            System.out.println("remove:|| updateAttacks 7 " + ( - start + (start = System.currentTimeMillis())));
-
-            if (runAlerts) {
-                for (DBAttack attack : dirtyCities) {
-                    Locutus.imp().getNationDB().markCityDirty(attack.defender_nation_id, attack.city_cached, attack.epoch);
-                }
-            }
-
-            System.out.println("remove:|| updateAttacks 8 " + ( - start + (start = System.currentTimeMillis())));
-
-
-            { // add to db
-                saveAttacks(dbAttacks);
-            }
-
-            System.out.println("remove:|| updateAttacks 9 " + ( - start + (start = System.currentTimeMillis())));
-
-            if (runAlerts && eventConsumer != null) {
-                long start2 = System.currentTimeMillis();
-                NationUpdateProcessor.updateBlockades();
-                long diff = System.currentTimeMillis() - start2;
-
-                System.out.println("remove:|| updateAttacks 10 " + ( - start + (start = System.currentTimeMillis())));
-
-                if (diff > 200) {
-                    System.err.println("Took too long to update blockades (" + diff + "ms)");
-                }
-
-                for (DBAttack attack : dbAttacks) {
-                    eventConsumer.accept(new AttackEvent(attack));
-                }
-                System.out.println("remove:|| updateAttacks 11 " + ( - start + (start = System.currentTimeMillis())));
-            }
-            return true;
         }
+
+        saveWars(warsToSave);
+
+        System.out.println("remove:|| updateAttacks 7 " + ( - start + (start = System.currentTimeMillis())));
+
+        if (runAlerts) {
+            for (DBAttack attack : dirtyCities) {
+                Locutus.imp().getNationDB().markCityDirty(attack.defender_nation_id, attack.city_cached, attack.epoch);
+            }
+        }
+
+        System.out.println("remove:|| updateAttacks 8 " + ( - start + (start = System.currentTimeMillis())));
+
+
+        { // add to db
+            saveAttacks(dbAttacks);
+        }
+
+        System.out.println("remove:|| updateAttacks 9 " + ( - start + (start = System.currentTimeMillis())));
+
+        if (runAlerts && eventConsumer != null) {
+            long start2 = System.currentTimeMillis();
+            NationUpdateProcessor.updateBlockades();
+            long diff = System.currentTimeMillis() - start2;
+
+            System.out.println("remove:|| updateAttacks 10 " + ( - start + (start = System.currentTimeMillis())));
+
+            if (diff > 200) {
+                System.err.println("Took too long to update blockades (" + diff + "ms)");
+            }
+
+            for (DBAttack attack : dbAttacks) {
+                eventConsumer.accept(new AttackEvent(attack));
+            }
+            System.out.println("remove:|| updateAttacks 11 " + ( - start + (start = System.currentTimeMillis())));
+        }
+        return true;
     }
 
 //    public List<DBAttack> getAttacks(List<Alliance> coal1Alliances, List<DBNation> coal1Nations, List<Alliance> coal2Alliances, List<DBNation> coal2Nations, long start, long end) {

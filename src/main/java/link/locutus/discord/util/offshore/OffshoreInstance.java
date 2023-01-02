@@ -4,6 +4,7 @@ package link.locutus.discord.util.offshore;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.GameInfo;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -34,10 +35,13 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
+import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -634,6 +638,7 @@ public class OffshoreInstance {
                 case INSUFFICIENT_FUNDS:
                 case INVALID_DESTINATION:
                 case NOTHING_WITHDRAWN:
+                case INVALID_API_KEY:
                     disabledGuilds.remove(senderDB.getIdLong());
                     double[] negative = ResourceType.negative(amount.clone());
                     offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, negative);
@@ -747,6 +752,21 @@ public class OffshoreInstance {
             }
         }
 
+        if (auth == null || !auth.isValid()) {
+            // get api
+            try {
+                PoliticsAndWarV3 api = getAlliance().getApi(false, AlliancePermission.WITHDRAW_BANK);
+                Bankrec result = api.transferFromBank(PnwUtil.resourcesToArray(transfer), receiver, note);
+                return new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, result.toString());
+            } catch (HttpClientErrorException.Unauthorized e) {
+                return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "Invalid API key");
+
+            } catch (RuntimeException e) {
+                String msg = e.getMessage();
+                return categorize(msg);
+            }
+        }
+
 
         DBNation receiverNation = null;
         int receiverAlliance = 0;
@@ -833,6 +853,8 @@ public class OffshoreInstance {
         ALLIANCE_BANK,
         VACATION_MODE,
         NOTHING_WITHDRAWN,
+
+        INVALID_API_KEY,
     }
 
     private Map.Entry<TransferStatus, String> categorize(BankWithTask task) {
@@ -852,23 +874,45 @@ public class OffshoreInstance {
         if (msg.contains("You successfully transferred funds from the alliance bank.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, msg);
         }
-        if (msg.contains("You can't send funds to this nation because they are in Vacation Mode")) {
+        if (msg.contains("You can't send funds to this nation because they are in Vacation Mode") || msg.contains("You can't withdraw resources to a nation in vacation mode")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.VACATION_MODE, msg);
         }
-        if (msg.contains("There was an Error with your Alliance Bank Withdrawal: You can't withdraw funds to that nation because they are under a naval blockade. When the naval blockade ends they will be able to receive funds.")) {
+        if (msg.contains("There was an Error with your Alliance Bank Withdrawal: You can't withdraw funds to that nation because they are under a naval blockade. When the naval blockade ends they will be able to receive funds.")
+        || msg.contains("You can't withdraw resources to a blockaded nation.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.BLOCKADE, msg);
         }
         if (msg.contains("This player has been flagged for using the same network as you.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.MULTI, msg);
         }
-        if (msg.contains("Insufficient funds") || msg.contains("You don't have that much")) {
+        if (msg.contains("Insufficient funds") || msg.contains("You don't have that much") || msg.contains("You don't have enough resources.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.INSUFFICIENT_FUNDS, msg);
         }
         if (msg.contains("You did not enter a valid recipient name.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, msg);
         }
-        if (msg.contains("You did not withdraw anything.")) {
+        if (msg.contains("You did not withdraw anything.") || msg.contains("You can't withdraw no resources.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.NOTHING_WITHDRAWN, msg);
+        }
+        boolean whitelistedError = msg.contains("The API key you provided does not allow whitelisted access.");
+        if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
+            String[] keys = getGuildDB().getOrNull(GuildDB.Key.API_KEY);
+            if (keys == null) {
+                msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention();
+            } else {
+                Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
+                if (nation == null) {
+                    msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
+                } else {
+                    msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access";
+                }
+            }
+            if (whitelistedError) {
+                msg += "\nEnsure Whitelisted access is enabled in " + Settings.INSTANCE.PNW_URL() + "/account";
+            }
+            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
+        }
+        if (msg.contains("You need provide the X-Bot-Key header with the key for a verified bot to use this endpoint.")) {
+            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
         }
         if (msg.isEmpty()) msg = "Unknown Error (Captcha?)";
         return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, msg);

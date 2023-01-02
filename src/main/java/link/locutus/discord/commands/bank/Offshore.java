@@ -88,8 +88,12 @@ public class Offshore extends Command {
         double[] amountSent = ResourceType.getBuffer();
 
         DBAlliance alliance = db.getAlliance();
-        PoliticsAndWarV3 api = alliance.getApi(true, AlliancePermission.WITHDRAW_BANK);
-        if (api != null) {
+        Auth auth = null;
+        try {
+            auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
+        } catch (IllegalArgumentException ignore) {}
+        PoliticsAndWarV3 api = alliance.getApi(false, AlliancePermission.WITHDRAW_BANK);
+        if (api != null && auth == null) {
             Map<ResourceType, Double> resources = alliance.getStockpile();
             double[] amtToSend = ResourceType.getBuffer();
             for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
@@ -100,7 +104,6 @@ public class Offshore extends Command {
 
             return "Offshored: " + api.transferFromBank(amtToSend, DBAlliance.get(to), note);
         } else {
-            Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
             if (auth == null) {
                 return "Please authenticate with locutus. Options:\n" +
                         "Option 1: Provide a bot key via `" + Settings.commandPrefix(false) + "credentials addApiKey`\n" +

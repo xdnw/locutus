@@ -2307,13 +2307,14 @@ public class BankCommands {
             "Add `-n` to normalize it per city")
     @RolePermission(any = true, value = {Roles.ECON_LOW_GOV, Roles.ECON})
     @IsAlliance
-    public String stockpileSheet(@Me GuildDB db, @Switch("n") boolean normalize, @Switch("e") boolean onlyShowExcess, @Switch("f") boolean forceUpdate, @Me IMessageIO channel) throws IOException, GeneralSecurityException {
+    public String stockpileSheet(@Me GuildDB db, @Default Set<DBNation> nationFilter, @Switch("n") boolean normalize, @Switch("e") boolean onlyShowExcess, @Switch("f") boolean forceUpdate, @Me IMessageIO channel) throws IOException, GeneralSecurityException {
         DBAlliance alliance = db.getAlliance();
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 
         List<String> header = new ArrayList<>();
         header.add("nation");
+        header.add("discord");
         header.add("cities");
         header.add("avg_infra");
         header.add("off|def");
@@ -2341,8 +2342,9 @@ public class BankCommands {
             List<Object> row = new ArrayList<>();
 
             DBNation nation = entry.getKey();
-            if (nation == null) continue;
+            if (nation == null || (nationFilter != null && !nationFilter.contains(nation))) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            row.add(nation.getUserDiscriminator());
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getOff() +"|" + nation.getDef());
@@ -2469,7 +2471,7 @@ public class BankCommands {
             }
         }
 
-        if (root.isOffshore() && (offshoreDB == null || !offshoreDB.isOffshore() || offshoreDB == root)) {
+        if (root.isOffshore() && (offshoreDB == null || !offshoreDB.isOffshore() || (offshoreDB == root))) {
             if (nation.getAlliance_id() != alliance.getAlliance_id()) {
                 throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
@@ -2647,9 +2649,13 @@ public class BankCommands {
                         response.append("Reset deposit for " + root.getGuild() + "\n");
                     }
                 }
+
                 response.append("Registered " + alliance + " as an offshore. See: https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit");
                 if (aaId == null) {
                     response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
+                }
+                if (offshoreDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
+                    response.append("\nNote: Disable war alerts using: " + CM.settings.cmd.create(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES.name(), "false"));
                 }
             } catch (Throwable e) {
                 root.removeCoalition(alliance.getAlliance_id(), Coalition.OFFSHORE);

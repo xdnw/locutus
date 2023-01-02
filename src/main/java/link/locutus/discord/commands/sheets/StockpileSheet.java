@@ -51,6 +51,7 @@ public class StockpileSheet extends Command {
 
         List<String> header = new ArrayList<>();
         header.add("nation");
+        header.add("discord");
         header.add("cities");
         header.add("avg_infra");
         header.add("off|def");
@@ -71,6 +72,7 @@ public class StockpileSheet extends Command {
             DBNation nation = entry.getKey();
             if (nation == null) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            row.add(nation.getUserDiscriminator());
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getOff() +"|" + nation.getDef());

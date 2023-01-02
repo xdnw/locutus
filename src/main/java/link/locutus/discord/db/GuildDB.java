@@ -1715,7 +1715,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         Integer aaId = getOrNull(Key.ALLIANCE_ID);
         if (aaId == null) return false;
-        if (getAuth(aaId, AlliancePermission.WITHDRAW_BANK) == null) {
+        if (getAuth(aaId, AlliancePermission.WITHDRAW_BANK) == null && (getOrNull(Key.API_KEY) == null || !isValidAlliance())) {
             System.out.println("remove:|| no auth");
             return false; // TODO api based transfer
         }
@@ -4574,7 +4574,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private Map<String, String> info;
-    private Map<Key, Object> infoParsed = new HashMap<>();
+    private final Map<Key, Object> infoParsed = new HashMap<>();
     private final Object nullInstance = new Object();
 
     public String getInfo(String key) {
@@ -4596,6 +4596,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void deleteInfo(Key key) {
+        synchronized (infoParsed) {
+            infoParsed.remove(key);
+        }
         deleteInfo(key.name());
     }
 
