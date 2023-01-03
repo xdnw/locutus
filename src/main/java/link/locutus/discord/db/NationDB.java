@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
+import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -31,6 +32,7 @@ import link.locutus.discord.event.city.*;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.position.PositionCreateEvent;
 import link.locutus.discord.event.position.PositionDeleteEvent;
+import link.locutus.discord.event.treasure.TreasureUpdateEvent;
 import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -54,7 +56,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.*;
@@ -73,6 +77,9 @@ public class NationDB extends DBMainV2 {
     private final Map<Integer, Map<Integer, Treaty>> treatiesByAlliance = new Int2ObjectOpenHashMap<>();
     private final Set<Integer> dirtyCities = Collections.synchronizedSet(new LinkedHashSet<>());
     private final Set<Integer> dirtyNations = Collections.synchronizedSet(new LinkedHashSet<>());
+
+    private final Map<Integer, DBTreasure> treasuresByNation = new Int2ObjectOpenHashMap<>();
+    private final Map<String, DBTreasure> treasuresByName = new ConcurrentHashMap<>();
 
     public NationDB() throws SQLException, ClassNotFoundException {
         super("nations");
@@ -689,7 +696,7 @@ public class NationDB extends DBMainV2 {
                             } else {
                                 eventConsumer.accept(new TreatyDowngradeEvent(previous, current));
                             }
-                        } else if (current.getTurnEnds() > previous.getTurnEnds() + 1) {
+                        } else if (current.getTurnEnds() > previous.getTurnEnds() + 2) {
                             eventConsumer.accept(new TreatyExtendEvent(previous, current));
                         }
                     }
@@ -2159,7 +2166,124 @@ public class NationDB extends DBMainV2 {
 
         executeStmt("CREATE TABLE IF NOT EXISTS NATION_DESCRIPTIONS (id INT NOT NULL PRIMARY KEY, description TEXT NOT NULL)");
 
+        executeStmt("CREATE TABLE IF NOT EXISTS TREASURES4 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, color INT, continent INT, bonus INT NOT NULL, spawn_date BIGINT NOT NULL, nation_id INT NOT NULL, respawn_alert BIGINT NOT NULL)");
+
         purgeOldBeigeReminders();
+    }
+
+    public void updateTreasures(Consumer<Event> eventConsumer) {
+        // get api v3 instance
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+
+        // get treasures fetchTreasures
+        Set<DBTreasure> treasuresToSave = new HashSet<>();
+        List<Treasure> newTreasures = v3.fetchTreasures();
+        for (Treasure newTreasure : newTreasures) {
+            String name = newTreasure.getName();
+            DBTreasure existing = treasuresByName.get(name);
+            if (existing == null) {
+                existing = new DBTreasure().set(newTreasure);
+                treasuresToSave.add(existing);
+                treasuresByName.put(existing.getName(), existing);
+                if (existing.getNation_id() > 0) {
+                    treasuresByNation.put(existing.getNation_id(), existing);
+                }
+            }
+            DBTreasure copy = existing.copy();
+            existing.set(newTreasure);
+
+            if (copy != null && !copy.equalsExact(existing)) {
+                if (copy.getNation_id() != existing.getNation_id()) {
+                    if (copy.getNation_id() > 0) {
+                        treasuresByNation.remove(copy.getNation_id(), existing);
+                    }
+                    if (existing.getNation_id() > 0) {
+                        treasuresByNation.put(existing.getNation_id(), existing);
+                    }
+                }
+
+                treasuresToSave.add(existing);
+
+                // new treasure event
+                if (eventConsumer != null) eventConsumer.accept(new TreasureUpdateEvent(copy, existing));
+            }
+        }
+        saveTreasures(treasuresToSave);
+    }
+
+    public void saveTreasures(Collection<DBTreasure> treasures) {
+        String insert = "INSERT OR REPLACE INTO TREASURES4 (id, name, color, continent, bonus, spawn_date, nation_id, respawn_alert) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        for (DBTreasure treasure : treasures) {
+            try (PreparedStatement stmt = getConnection().prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
+                if (treasure.getId() >= 0) {
+                    stmt.setInt(1, treasure.getId());
+                } else {
+                    stmt.setNull(1, Types.INTEGER);
+                }
+                stmt.setString(2, treasure.getName());
+                if (treasure.getColor() == null) {
+                    stmt.setNull(3, Types.INTEGER);
+                } else {
+                    stmt.setInt(3, treasure.getColor().ordinal());
+                }
+                if (treasure.getContinent() == null) {
+                    stmt.setNull(4, Types.INTEGER);
+                } else {
+                    stmt.setInt(4, treasure.getContinent().ordinal());
+                }
+                stmt.setInt(5, treasure.getBonus());
+                stmt.setLong(6, treasure.getSpawnDate());
+                stmt.setInt(7, treasure.getNation_id());
+                stmt.setLong(8, treasure.getRespawnAlertDate());
+                stmt.executeUpdate();
+
+                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        treasure.setId(generatedKeys.getInt(1));
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public DBTreasure getTreasure(int nationId) {
+        return treasuresByNation.get(nationId);
+    }
+
+    public Map<String, DBTreasure> getTreasuresByName() {
+        return Collections.unmodifiableMap(treasuresByName);
+    }
+
+    public void loadTreasures() {
+        treasuresByName.clear();
+        treasuresByNation.clear();
+        String select = "SELECT * FROM TREASURES4";
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String name = rs.getString("name");
+
+                Integer colorOrd = getInt(rs, "color");
+                NationColor color = colorOrd != null ? NationColor.values[colorOrd] : null;
+                Integer continentOrd = getInt(rs, "continent");
+                Continent continent = continentOrd != null ? Continent.values[continentOrd] : null;
+                int bonus = rs.getInt("bonus");
+                long spawnDate = rs.getLong("spawn_date");
+                int nation_id = rs.getInt("nation_id");
+                long respawnAlert = rs.getLong("respawn_alert");
+                DBTreasure treasure = new DBTreasure(id, name, color, bonus, continent, nation_id, spawnDate, respawnAlert);
+                treasuresByName.put(treasure.getName(), treasure);
+                if (nation_id > 0) {
+                    treasuresByNation.put(nation_id, treasure);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public void addDescription(int id, String description) {

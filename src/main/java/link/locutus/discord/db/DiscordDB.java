@@ -185,8 +185,9 @@ public class DiscordDB extends DBMainV2 {
             long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
             stmt.setLong(1, keyId);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("nation_id");
+                while (rs.next()) {
+                    int id = rs.getInt("nation_id");
+                    if (id > 0) return id;
                 }
             }
         } catch (SQLException e) {
@@ -194,9 +195,13 @@ public class DiscordDB extends DBMainV2 {
         }
         ApiKeyDetails keyStats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
         if (keyStats != null && keyStats.getNation() != null && keyStats.getNation().getId() != null) {
-            int natId = keyStats.getNation().getId();
-            addApiKey(natId, keyStats.getKey());
-            return natId;
+            if (keyStats.getNation().getId() > 0) {
+                int natId = keyStats.getNation().getId();
+                addApiKey(natId, keyStats.getKey());
+                return natId;
+            } else {
+                System.out.println("Invalid nation id " + keyStats);
+            }
         }
         return null;
     }

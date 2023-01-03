@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -50,6 +51,7 @@ public class StockpileSheet extends Command {
 
         List<String> header = new ArrayList<>();
         header.add("nation");
+        header.add("discord");
         header.add("cities");
         header.add("avg_infra");
         header.add("off|def");
@@ -70,6 +72,7 @@ public class StockpileSheet extends Command {
             DBNation nation = entry.getKey();
             if (nation == null) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            row.add(nation.getUserDiscriminator());
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getOff() +"|" + nation.getDef());
@@ -95,6 +98,7 @@ public class StockpileSheet extends Command {
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
         DiscordUtil.createEmbedCommand(event.getChannel(), "AA Total", totalStr);
 
-        return sheet.getURL(true, true);
+        sheet.attach(new DiscordChannelIO(event).create()).send();
+        return null;
     }
 }

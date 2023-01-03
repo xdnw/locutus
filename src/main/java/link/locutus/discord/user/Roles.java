@@ -129,8 +129,13 @@ public enum Roles {
     BLOCKADED_ALERTS("Gets alerts when you are blockaded", GuildDB.Key.BLOCKADED_ALERTS),
     UNBLOCKADED_ALERTS("Gets alerts when you are unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS),
 
-    UNBLOCKADED_GOV_ROLE_ALERTS("Gets alerts when any member is fully unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS)
+    UNBLOCKADED_GOV_ROLE_ALERTS("Gets alerts when any member is fully unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS),
+
+
+    TREASURE_ALERTS("Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildDB.Key.TREASURE_ALERT_CHANNEL),
+    TREASURE_ALERTS_OPT_OUT("Does not receive treasure alerts (even with the treasure alert role)", GuildDB.Key.TREASURE_ALERT_CHANNEL)
     ;
+
 
     public static Roles[] values = values();
     private final String desc;

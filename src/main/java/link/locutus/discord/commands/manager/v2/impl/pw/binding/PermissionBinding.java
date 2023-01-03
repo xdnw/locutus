@@ -19,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.offshore.Auth;
@@ -27,6 +28,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 public class PermissionBinding extends BindingHelper {
@@ -65,10 +67,29 @@ public class PermissionBinding extends BindingHelper {
 
     @Binding
     @HasOffshore
-    public boolean hasOffshore(@Me GuildDB db, HasOffshore perm) {
+    public static boolean hasOffshore(@Me GuildDB db, HasOffshore perm) {
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore == null) throw new IllegalArgumentException("No offshore set");
-        if (perm.value() != null && perm.value().length > 0) {
+        if (offshore == null) {
+            StringBuilder response = new StringBuilder("No offshore is set.");
+            response.append("\nSee: ").append(CM.offshore.add.cmd.toSlashMention());
+            if (db.isValidAlliance()) {
+                response.append("\nNote: Use this alliance id to use the alliance bank for withdrawals (or to create an offshoring point for other alliances you control)");
+            } else if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
+                response.append("\nNote: Set the alliance for this guild using: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "");
+            }
+            Set<String> publicOffshores = new HashSet<>();
+            for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
+                if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
+                    publicOffshores.add(otherDB.getAlliance().getMarkdownUrl());
+                }
+            }
+            if (!publicOffshores.isEmpty()) {
+                response.append("\nPublic offshores:\n - ").append(String.join("\n - ", publicOffshores));
+            }
+
+            throw new IllegalArgumentException(response.toString());
+        }
+        if (perm != null && perm.value() != null && perm.value().length > 0) {
             long offshoreDBId = offshore.getGuildDB().getIdLong();
             for (long id : perm.value()) {
                 if (id == offshoreDBId) return true;

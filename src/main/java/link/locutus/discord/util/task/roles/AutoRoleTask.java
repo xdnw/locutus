@@ -79,11 +79,9 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     public synchronized void syncDB() {
-        String nickOptStr = db.getInfo(GuildDB.Key.AUTONICK);
-        if (nickOptStr != null) {
-            try {
-                setNickname(GuildDB.AutoNickOption.valueOf(nickOptStr.toUpperCase()));
-            } catch (IllegalArgumentException e) {}
+        GuildDB.AutoNickOption nickOpt = db.getOrNull(GuildDB.Key.AUTONICK);
+        if (nickOpt != null) {
+            setNickname(nickOpt);
         }
 
         GuildDB.AutoRoleOption roleOpt = db.getOrNull(GuildDB.Key.AUTOROLE);

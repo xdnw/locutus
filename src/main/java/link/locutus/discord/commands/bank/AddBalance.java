@@ -85,7 +85,7 @@ public class AddBalance extends Command {
         AddBalanceBuilder builder = guildDb.addBalanceBuilder();
 
         String arg = args.get(0);
-        if (arg.contains("https://docs.google.com/spreadsheets/d/") || arg.startsWith("sheet:")) {
+        if (arg.contains("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             boolean negative = false;
             if (arg.charAt(0) == '-') {
                 negative = true;

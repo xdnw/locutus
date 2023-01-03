@@ -77,6 +77,12 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncTreasures() {
+        Locutus.imp().getNationDB().updateTreasures(Event::post);
+        return "Done!";
+    }
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
     public String deleteAllInaccessibleChannels(@Switch("f") boolean force) {
         Map<GuildDB, List<GuildDB.Key>> toUnset = new LinkedHashMap<>();
 

@@ -8,6 +8,7 @@ import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.util.AuditType;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -228,12 +229,18 @@ public class IACheckup {
     }
 
     private void audit(AuditType type, DBNation nation, List<Transaction2> transactions, Map<Integer, JavaCity> cities, Map<ResourceType, Double> stockpile, Map<AuditType, Map.Entry<Object, String>> results, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
+        if (results.containsKey(type)) {
+            return;
+        }
         if (type.required != null) {
             if (!results.containsKey(type.required)) {
                 audit(type.required, nation, transactions, cities, stockpile, results, individual, fast);
             }
             Map.Entry<Object, String> requiredResult = results.get(type.required);
-            if (requiredResult != null) return;
+            if (requiredResult != null) {
+                results.put(type, null);
+                return;
+            }
         }
         Map.Entry<Object, String> value = checkup(type, nation, cities, transactions, stockpile, individual, fast);
         results.put(type, value);
@@ -321,21 +328,8 @@ public class IACheckup {
     private Map<Integer, Alliance> alliances = new HashMap<>();
 
     private Map.Entry<Object, String> checkup(AuditType type, DBNation nation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, Map<ResourceType, Double> stockpile, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
-        Alliance alliance = fast ? null : alliances.computeIfAbsent(nation.getAlliance_id(), new Function<Integer, Alliance>() {
-            @Override
-            public Alliance apply(Integer id) {
-                try {
-                    return Locutus.imp().getPnwApi().getAlliance(id);
-                } catch (IOException e) {
-                    return null;
-                }
-            }
-        });
-        Map<NationFilterString, MMRMatcher> requiredMmrMap = db.getOrNull(GuildDB.Key.REQUIRED_MMR);
-
+        System.out.println("remove:|| running checkup " + type + " | " + nation.getNation());
         boolean updateNation = individual && !fast;
-
-        ROI.ROIResult roi;
 
         switch (type) {
             case CHECK_RANK: {
@@ -390,6 +384,7 @@ public class IACheckup {
                 return new AbstractMap.SimpleEntry<>(nation.getMMR(), desc);
             }
             case INCORRECT_MMR:
+                Map<NationFilterString, MMRMatcher> requiredMmrMap = db.getOrNull(GuildDB.Key.REQUIRED_MMR);
                 return requiredMmrMap != null ? checkMMR(nation, cities, requiredMmrMap) : null;
             case BUY_SOLDIERS:
                 return checkSoldierBuy(nation, cities);
@@ -1145,7 +1140,7 @@ public class IACheckup {
     private Map.Entry<Object, String> checkSpies(DBNation nation) {
         int maxSpies = nation.getSpyCap() - 1;
         Integer currentSpies = nation.getSpies();
-        if (currentSpies == null || currentSpies >= maxSpies) return null;
+        if (currentSpies == null || currentSpies >= maxSpies - 1) return null;
 
 
         long cutoff = TimeUtil.getDay() - 2;
@@ -1265,14 +1260,14 @@ public class IACheckup {
         String myMMR = null;
         for (Map.Entry<NationFilterString, MMRMatcher> entry : requiredMmrMap.entrySet()) {
             NationFilterString nationMatcher = entry.getKey();
-            if (nationMatcher.test(nation)) {
-                if (myMMR == null) {
-                    myMMR = nation.getMMRBuildingStr();
-                }
-                MMRMatcher required = entry.getValue();
-                if (required.test(myMMR)) {
-                    return null;
-                } else {
+            if (myMMR == null) {
+                myMMR = nation.getMMRBuildingStr();
+            }
+            MMRMatcher required = entry.getValue();
+            if (required.test(myMMR)) {
+                return null;
+            } else {
+                if (nationMatcher.toCached(10000).test(nation)) {
                     allowedMMr.add(required.getRequired());
                 }
             }

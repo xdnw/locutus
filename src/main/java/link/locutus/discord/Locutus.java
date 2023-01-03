@@ -730,9 +730,14 @@ public final class Locutus extends ListenerAdapter {
 
             checkMailTasks();
 
-            addTaskSeconds(() -> Locutus.imp().getWarDb().updateBountiesV3(), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS);
-
-            addTaskSeconds(() -> getNationDB().updateTreaties(Event::post), Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS);
+            if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
+                addTaskSeconds(() -> Locutus.imp().getWarDb().updateBountiesV3(), Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS);
+            }
+            if (Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS > 0) {
+                addTaskSeconds(() -> {
+                    runEventsAsync(Locutus.imp().getNationDB()::updateTreasures);
+                }, Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS);
+            }
 
             if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
                 addTaskSeconds(() -> {

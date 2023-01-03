@@ -717,7 +717,7 @@ public class IACommands {
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
             "e.g. `{prefix}lootValueSheet #cities<10,#position>1,#active_m<2880,someAlliance`")
     @RolePermission(Roles.MILCOM)
-    public String lootValueSheet(@Me GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String lootValueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         attackers.removeIf(f -> f.getActive_m() > 10000);
         attackers.removeIf(f -> f.getVm_turns() > 0);
         if (attackers.size() > 200) return "Too many nations";
@@ -776,7 +776,8 @@ public class IACommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command
@@ -1033,7 +1034,7 @@ public class IACommands {
 
                 if (db.getOffshore() != null) {
                     String title = "Disburse 3 days";
-                    String body = "Use this once they have a suitable city build & color to send resources for the next 5 days";
+                    String body = "Use this once they have a suitable city build & color to send resources for the next 3 days";
 
                     CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, null, "true");
                     channel.create().embed(title, body)

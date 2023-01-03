@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -88,6 +89,53 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class UtilityCommands {
+//    @Command(desc = "List the color blocs")
+//    public String calculateColorRevenue(@Me IMessageIO io,
+//                             @Default Set<DBNation> forceAqua,
+//                             @Default Set<DBNation> forceBlack,
+//                             @Default Set<DBNation> forceBlue,
+//                             @Default Set<DBNation> forceBrown,
+//                            @Default Set<DBNation> forceGreen,
+//                             @Default Set<DBNation> forceLime,
+//                             @Default Set<DBNation> forceMaroon,
+//                             @Default Set<DBNation> forceOlive,
+//                             @Default Set<DBNation> forceOrange,
+//                             @Default Set<DBNation> forcePink,
+//                             @Default Set<DBNation> forcePurple,
+//                             @Default Set<DBNation> forceRed,
+//                             @Default Set<DBNation> forceWhite,
+//                             @Default Set<DBNation> forceYellow,
+//                             @Default Set<DBNation> forceGrayOrBeige
+//    ) {
+//        Map<NationColor, Set<DBNation>> changeColors = new HashMap<>();
+//        changeColors.put(NationColor.AQUA, forceAqua);
+//        changeColors.put(NationColor.BLACK, forceBlack);
+//        changeColors.put(NationColor.BLUE, forceBlue);
+//        changeColors.put(NationColor.BROWN, forceBrown);
+//        changeColors.put(NationColor.GREEN, forceGreen);
+//        changeColors.put(NationColor.LIME, forceLime);
+//        changeColors.put(NationColor.MAROON, forceMaroon);
+//        changeColors.put(NationColor.OLIVE, forceOlive);
+//        changeColors.put(NationColor.ORANGE, forceOrange);
+//        changeColors.put(NationColor.PINK, forcePink);
+//        changeColors.put(NationColor.PURPLE, forcePurple);
+//        changeColors.put(NationColor.RED, forceRed);
+//        changeColors.put(NationColor.WHITE, forceWhite);
+//        changeColors.put(NationColor.YELLOW, forceYellow);
+//        changeColors.put(NationColor.GRAY, forceGrayOrBeige);
+//
+//        Map<DBNation, NationColor> newColors = new HashMap<>();
+//
+//        StringBuilder response = new StringBuilder();
+//        Map<NationColor, Long> newRevenue = new HashMap<>();
+//        for (NationColor color : NationColor.values()) {
+//
+//        }
+//
+//
+//
+//    }
+
     @Command(desc = "list channels")
     @RolePermission(Roles.ADMIN)
     public String channelCount(@Me IMessageIO channel, @Me Guild guild) {
@@ -956,11 +1004,11 @@ public class UtilityCommands {
         if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
             response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
         }
-        else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
+        else response.append("\n - AutoRole Mode: ").append((Object) db.getOrNull(GuildDB.Key.AUTOROLE));
         if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
             response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
         }
-        else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
+        else response.append("\n - AutoNick Mode: ").append((Object) db.getOrNull(GuildDB.Key.AUTONICK));
         if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + "");
         return response.toString();
     }
@@ -1032,7 +1080,8 @@ public class UtilityCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
@@ -1069,7 +1118,8 @@ public class UtilityCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @Command(desc = "Check if a nation shares networks with others")
@@ -1473,7 +1523,7 @@ public Map<ParametricCallable, String> getEndpoints() {
 
     @Command(aliases = {"setloot"})
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String setLoot(@Me IMessageIO channel, @Me DBNation me, DBNation nation, Map<ResourceType, Double> resources, @Default("OTHER") NationLootType type, @Default("1") double fraction) {
+    public String setLoot(@Me IMessageIO channel, @Me DBNation me, DBNation nation, Map<ResourceType, Double> resources, @Default("ESPIONAGE") NationLootType type, @Default("1") double fraction) {
         resources = PnwUtil.multiply(resources, 1d / fraction);
         Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), TimeUtil.getTurn(), PnwUtil.resourcesToArray(resources), type);
         return "Set " + nation.getNation() + " to " + PnwUtil.resourcesToString(resources) + " worth: ~$" + PnwUtil.convertedTotal(resources);

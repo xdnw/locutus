@@ -1,8 +1,10 @@
+
 package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.GameInfo;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -33,10 +35,13 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
+import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -437,8 +443,8 @@ public class OffshoreInstance {
 
     public boolean isDisabled(long guild) {
         // dont disable self
-        if (guild == this.getGuildDB().getGuild().getIdLong()) return false;
-        if (disabledGuilds.contains(guild)) {
+        if (guild == this.getGuildDB().getIdLong()) return false;
+        if (disabledGuilds.containsKey(guild)) {
             return true;
         }
         Set<Long> coalition = getGuildDB().getCoalitionRaw(Coalition.FROZEN_FUNDS);
@@ -453,7 +459,7 @@ public class OffshoreInstance {
         return false;
     }
 
-    public Set<Long> disabledGuilds = new HashSet<>();
+    public Map<Long, Boolean> disabledGuilds = new ConcurrentHashMap<>();
 
     public Map.Entry<TransferStatus, String> transferFromDeposits(DBNation banker, GuildDB senderDB, NationOrAlliance receiver, double[] amount, String note) {
         GuildDB delegate = senderDB.getDelegateServer();
@@ -528,7 +534,7 @@ public class OffshoreInstance {
             if (offshoreDB == null) throw new IllegalArgumentException("No guild is registered with this offshore");
 
             if (isDisabled(senderDB.getGuild().getIdLong())) {
-                throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.toSlashMention() + " in the offshore server");
+                throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.toSlashMention() + " in the offshore server (" + getGuildDB().getIdLong() + ")");
             }
 
             boolean hasAdmin = false;
@@ -539,6 +545,7 @@ public class OffshoreInstance {
             boolean valid = senderDB == offshoreDB;
             double[] deposits = getDeposits(senderDB);
 
+            
             if (!valid) {
                 deposits = PnwUtil.normalize(deposits); // normalize
                 for (int i = 0; i < amount.length; i++) {
@@ -552,7 +559,7 @@ public class OffshoreInstance {
             }
 
             Integer aaId = senderDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            disabledGuilds.add(senderDB.getGuild().getIdLong());
+            disabledGuilds.put(senderDB.getGuild().getIdLong(), true);
 
             Map<ResourceType, Double> transfer = PnwUtil.resourcesToMap(amount);
 
@@ -565,6 +572,7 @@ public class OffshoreInstance {
             try {
                 offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
             } catch (Throwable e) {
+                e.printStackTrace();
                 if (logChannel != null) {
                     String msg = "Transfer error " + e.getMessage() + " | " + PnwUtil.resourcesToString(amount) + " | " + transfer + " | " + senderDB.getGuild().toString() + "/" + aaId + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + ">";
                     RateLimitUtil.queue(logChannel.sendMessage(msg));
@@ -596,7 +604,6 @@ public class OffshoreInstance {
                                 if (amt > newDeposits[type.ordinal()]) valid = true;
                             }
                         }
-                        logChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                         if (logChannel != null) {
                             String msg = "New Deposits for: " + senderDB.getGuild().toString() + "/" + aaId + ": `" + PnwUtil.resourcesToString(newDeposits) + ("`");
                             RateLimitUtil.queue(logChannel.sendMessage(msg));
@@ -605,7 +612,7 @@ public class OffshoreInstance {
                         valid = false;
                     }
                     if (valid) {
-                        disabledGuilds.remove(senderDB.getGuild().getIdLong());
+                        disabledGuilds.remove(senderDB.getIdLong());
                     } else {
                         String title = "Reimburse";
                         StringBuilder body = new StringBuilder();
@@ -617,10 +624,9 @@ public class OffshoreInstance {
                         String cmd = CM.deposits.add.cmd.create("AA:" + id, PnwUtil.resourcesToString(transfer), null, null).toSlashCommand();
                         body.append("\n" + cmd);
 
-                        GuildMessageChannel txChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-                        if (txChannel != null) {
-                            DiscordUtil.createEmbedCommand(txChannel, title, body.toString());
-                            RateLimitUtil.queue(txChannel.sendMessage("^ <@" + Settings.INSTANCE.ADMIN_USER_ID + (">")));
+                        if (logChannel != null) {
+                            DiscordUtil.createEmbedCommand(logChannel, title, body.toString());
+                            RateLimitUtil.queue(logChannel.sendMessage("^ <@" + Settings.INSTANCE.ADMIN_USER_ID + (">")));
                         }
                     }
                     break;
@@ -632,10 +638,13 @@ public class OffshoreInstance {
                 case INSUFFICIENT_FUNDS:
                 case INVALID_DESTINATION:
                 case NOTHING_WITHDRAWN:
+                case INVALID_API_KEY:
+                    disabledGuilds.remove(senderDB.getIdLong());
                     double[] negative = ResourceType.negative(amount.clone());
                     offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, negative);
-                    disabledGuilds.remove(senderDB.getGuild().getIdLong());
                     break;
+//                default:
+//                    throw new IllegalStateException("Unknown result: " + result);
             }
             return result;
         }
@@ -664,14 +673,16 @@ public class OffshoreInstance {
                         response.append("\nTransferring to nation...");
                         Auth auth = OffshoreInstance.this.auth;
                         DBAlliancePosition position = nation.getAlliancePosition();
-                        if (nation.getPosition() > Rank.MEMBER.id || position.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
-                            Auth nationAuth = nation.getAuth(null);
-                            if (nationAuth != null) auth = nationAuth;
+                        if (nation.getPositionEnum().id >= Rank.MEMBER.id || position != null && position.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
+                            try {
+                                Auth nationAuth = nation.getAuth(null);
+                                if (nationAuth != null) auth = nationAuth;
+                            } catch (IllegalArgumentException ignore) {}
                         }
                         try {
                             result = bank.transfer(auth, nation, transfer, note);
                         } catch (Throwable e) {
-
+                            e.printStackTrace();
                         }
                         if (result.getKey() != TransferStatus.SUCCESS) {
                             result = new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, result.getValue());
@@ -705,7 +716,7 @@ public class OffshoreInstance {
 //                    return note;
 //                }
 //            });
-            Map.Entry<TransferStatus, String> result = transferUnsafe(nation, transfer, note);//categorize(task);
+            Map.Entry<TransferStatus, String> result = transferUnsafe(auth, nation, transfer, note);//categorize(task);
             String msg = "`" + PnwUtil.resourcesToString(transfer) + "` -> " + nation.getUrl() + "\n**" + result.getKey() + "**: " + result.getValue();
 
             GuildMessageChannel logChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
@@ -720,7 +731,7 @@ public class OffshoreInstance {
         return transfer(alliance, transfer, "#deposit");
     }
 
-    public Map.Entry<TransferStatus, String> transferUnsafe(NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
+    public Map.Entry<TransferStatus, String> transferUnsafe(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
         if (Settings.USE_V2) {
             // todo test if game is still down
             WebRoot web = WebRoot.getInstance();
@@ -738,6 +749,21 @@ public class OffshoreInstance {
                 return categorize(response);
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
                 return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, "Timeout: " + e.getMessage());
+            }
+        }
+
+        if (auth == null || !auth.isValid()) {
+            // get api
+            try {
+                PoliticsAndWarV3 api = getAlliance().getApi(false, AlliancePermission.WITHDRAW_BANK);
+                Bankrec result = api.transferFromBank(PnwUtil.resourcesToArray(transfer), receiver, note);
+                return new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, result.toString());
+            } catch (HttpClientErrorException.Unauthorized e) {
+                return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "Invalid API key");
+
+            } catch (RuntimeException e) {
+                String msg = e.getMessage();
+                return categorize(msg);
             }
         }
 
@@ -767,6 +793,7 @@ public class OffshoreInstance {
     }
 
     public Map.Entry<TransferStatus, String> transfer(DBAlliance alliance, Map<ResourceType, Double> transfer, String note) {
+        if (alliance.getAlliance_id() == allianceId) return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "You can't send funds to yourself");
         if (!TimeUtil.checkTurnChange()) return new AbstractMap.SimpleEntry<>(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
         if (!alliance.exists()) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "The alliance does not exist");
@@ -775,7 +802,7 @@ public class OffshoreInstance {
             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "The alliance has no members");
         }
         synchronized (BANK_LOCK) {
-            Map.Entry<TransferStatus, String> result = transferUnsafe(alliance, transfer, note);
+            Map.Entry<TransferStatus, String> result = transferUnsafe(this.auth, alliance, transfer, note);
             String msg = "`" + PnwUtil.resourcesToString(transfer) + "` -> " + alliance.getUrl() + "\n**" + result.getKey() + "**: " + result.getValue();
 
             GuildMessageChannel logChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
@@ -826,6 +853,8 @@ public class OffshoreInstance {
         ALLIANCE_BANK,
         VACATION_MODE,
         NOTHING_WITHDRAWN,
+
+        INVALID_API_KEY,
     }
 
     private Map.Entry<TransferStatus, String> categorize(BankWithTask task) {
@@ -845,23 +874,45 @@ public class OffshoreInstance {
         if (msg.contains("You successfully transferred funds from the alliance bank.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, msg);
         }
-        if (msg.contains("You can't send funds to this nation because they are in Vacation Mode")) {
+        if (msg.contains("You can't send funds to this nation because they are in Vacation Mode") || msg.contains("You can't withdraw resources to a nation in vacation mode")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.VACATION_MODE, msg);
         }
-        if (msg.contains("There was an Error with your Alliance Bank Withdrawal: You can't withdraw funds to that nation because they are under a naval blockade. When the naval blockade ends they will be able to receive funds.")) {
+        if (msg.contains("There was an Error with your Alliance Bank Withdrawal: You can't withdraw funds to that nation because they are under a naval blockade. When the naval blockade ends they will be able to receive funds.")
+        || msg.contains("You can't withdraw resources to a blockaded nation.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.BLOCKADE, msg);
         }
         if (msg.contains("This player has been flagged for using the same network as you.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.MULTI, msg);
         }
-        if (msg.contains("Insufficient funds") || msg.contains("You don't have that much")) {
+        if (msg.contains("Insufficient funds") || msg.contains("You don't have that much") || msg.contains("You don't have enough resources.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.INSUFFICIENT_FUNDS, msg);
         }
         if (msg.contains("You did not enter a valid recipient name.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, msg);
         }
-        if (msg.contains("You did not withdraw anything.")) {
+        if (msg.contains("You did not withdraw anything.") || msg.contains("You can't withdraw no resources.")) {
             return new AbstractMap.SimpleEntry<>(TransferStatus.NOTHING_WITHDRAWN, msg);
+        }
+        boolean whitelistedError = msg.contains("The API key you provided does not allow whitelisted access.");
+        if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
+            String[] keys = getGuildDB().getOrNull(GuildDB.Key.API_KEY);
+            if (keys == null) {
+                msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention();
+            } else {
+                Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
+                if (nation == null) {
+                    msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
+                } else {
+                    msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access";
+                }
+            }
+            if (whitelistedError) {
+                msg += "\nEnsure Whitelisted access is enabled in " + Settings.INSTANCE.PNW_URL() + "/account";
+            }
+            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
+        }
+        if (msg.contains("You need provide the X-Bot-Key header with the key for a verified bot to use this endpoint.")) {
+            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
         }
         if (msg.isEmpty()) msg = "Unknown Error (Captcha?)";
         return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, msg);

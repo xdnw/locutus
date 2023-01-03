@@ -245,20 +245,37 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public <T> T getOrThrow(Key key) {
-        String value = getInfo(key);
+        T value = getOrNull(key);
         if (value == null) {
             throw new UnsupportedOperationException("No " + key + " registered. Use " + CM.settings.cmd.create(key.name(), null));
         }
-        return (T) key.parse(this, value);
+        return value;
     }
 
     public <T> T getOrNull(Key key, boolean allowDelegate) {
-        String value = getInfo(key, allowDelegate);
-        if (value == null) {
-            return null;
+        Object parsed;
+        synchronized (infoParsed) {
+            parsed = infoParsed.getOrDefault(key, nullInstance);
         }
+        if (parsed != nullInstance) return (T) parsed;
+
+        boolean isDelegate = false;
+        String value = getInfo(key, false);
+        if (value == null) {
+            isDelegate = true;
+            if (allowDelegate) {
+                value = getInfo(key, true);
+            }
+        }
+        if (value == null) return null;
         try {
-            return (T) key.parse(this, value);
+            parsed =  (T) key.parse(this, value);
+            if (!isDelegate) {
+                synchronized (infoParsed) {
+                    infoParsed.put(key, parsed);
+                }
+            }
+            return (T) parsed;
         } catch (IllegalArgumentException e) {
             return null;
         }
@@ -1698,7 +1715,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         Integer aaId = getOrNull(Key.ALLIANCE_ID);
         if (aaId == null) return false;
-        if (getAuth(aaId, AlliancePermission.WITHDRAW_BANK) == null) {
+        if (getAuth(aaId, AlliancePermission.WITHDRAW_BANK) == null && (getOrNull(Key.API_KEY) == null || !isValidAlliance())) {
             System.out.println("remove:|| no auth");
             return false; // TODO api based transfer
         }
@@ -3406,6 +3423,34 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
+
+        TREASURE_ALERT_CHANNEL(true, null, CommandCategory.MILCOM) {
+            @Override
+            public String validate(GuildDB db, String value) {
+                return Key.validateChannel(db, value);
+            }
+
+            @Override
+            public Object parse(GuildDB db, String input) {
+                return DiscordUtil.getChannel(db.getGuild(), input);
+            }
+
+            @Override
+            public String toString(Object value) {
+                return ((IMentionable) value).getAsMention();
+            }
+
+            @Override
+            public <T> boolean hasPermission(GuildDB db, User author, T value) {
+                return db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS);
+            }
+
+            @Override
+            public String help() {
+                return "The channel to receive alerts when a bounty is placed";
+            }
+        },
+
         MEMBER_REBUY_INFRA_ALERT(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
             @Override
             public String validate(GuildDB db, String value) {
@@ -4452,9 +4497,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<DBNation> nations = alliance.getNations();
         for (DBNation gov : nations) {
             if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id) continue;
-            DBAlliancePosition position = gov.getAlliancePosition();
-            if (permissions != null && permissions.length > 0 && (position == null || !position.hasAllPermission(permissions))) {
-                continue;
+            if (gov.getPositionEnum().id < Rank.HEIR.id) {
+                DBAlliancePosition position = gov.getAlliancePosition();
+                if (permissions != null && permissions.length > 0 && (position == null || !position.hasAllPermission(permissions))) {
+                    continue;
+                }
             }
             try {
                 Auth auth = gov.getAuth(null);
@@ -4509,19 +4556,26 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return info;
     }
 
+    @Deprecated
     public String getInfo(Key key, boolean allowDelegate) {
         return getInfo(key.name(), allowDelegate);
     }
 
+    @Deprecated
     public String getInfo(Key key) {
         return getInfo(key, true);
     }
 
     public void setInfo(Key key, String value) {
+        synchronized (infoParsed) {
+            infoParsed.remove(key);
+        }
         setInfo(key.name(), key.validate(this, value));
     }
 
     private Map<String, String> info;
+    private final Map<Key, Object> infoParsed = new HashMap<>();
+    private final Object nullInstance = new Object();
 
     public String getInfo(String key) {
         return getInfo(key, true);
@@ -4542,6 +4596,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void deleteInfo(Key key) {
+        synchronized (infoParsed) {
+            infoParsed.remove(key);
+        }
         deleteInfo(key.name());
     }
 

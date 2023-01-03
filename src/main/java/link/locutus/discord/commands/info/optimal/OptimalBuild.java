@@ -128,9 +128,6 @@ public class OptimalBuild extends Command {
     }
 
     public String onCommand(IMessageIO io, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty()) {
-            return usage(null, io);
-        }
         if (me == null) {
             return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
@@ -265,6 +262,9 @@ public class OptimalBuild extends Command {
                         break;
                 }
             }
+        }
+        if (args.isEmpty()) {
+            return usage(null, io);
         }
 
         Integer cityId = null;

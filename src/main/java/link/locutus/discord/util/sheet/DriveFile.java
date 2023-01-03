@@ -14,6 +14,7 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.Permission;
+import link.locutus.discord.config.Settings;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
@@ -63,7 +64,7 @@ public class DriveFile {
                     .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                     .setAccessType("offline")
                     .build();
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(Settings.INSTANCE.WEB.GOOGLE_DRIVE_VALIDATION_PORT).build();
             return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         }
     }

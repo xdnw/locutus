@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -192,9 +193,6 @@ public class DepositsSheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        StringBuilder response = new StringBuilder();
-        response.append(sheet.getURL(true, true));
-
         StringBuilder footer = new StringBuilder();
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
 
@@ -222,7 +220,7 @@ public class DepositsSheet extends Command {
 
         DiscordUtil.createEmbedCommand(event.getChannel(), "AA Total", footer.toString());
 
-
-        return response.toString();
+        sheet.attach(new DiscordChannelIO(event).create(), footer.toString()).send();
+        return null;
     }
 }

@@ -45,16 +45,16 @@ public class Settings extends Config {
     public long ROOT_SERVER = 0;
 
     @Comment({"The guild id of the root coalition server (e.g. for spheres)",
-            "Defaults to the root server server"})
+            "Defaults to the root-server"})
     public long ROOT_COALITION_SERVER = 0;
 
     @Comment({"The guild id to post the forum feed in",
             "Set to 0 to disable (default 0)"})
     public long FORUM_FEED_SERVER = 0;
 
-    @Comment("Your P&W username (optional)")
+    @Comment("Your P&W username (optional, but recommended)")
     public String USERNAME = "";
-    @Comment("Your P&W password (optional)")
+    @Comment("Your P&W password (optional, but recommended)")
     public String PASSWORD = "";
 
     @Comment("Your P&W verified bot key (optional)")
@@ -64,7 +64,7 @@ public class Settings extends Config {
     public String API_KEY_PRIMARY = "";
 
     @Comment({"A list of api keys the bot can use for requests (optional)",
-            "See: `$validateApiKeys`"})
+            "See: `/admin validateApiKeys`"})
     public List<String> API_KEY_POOL = Arrays.asList();
 
     @Comment({"The discord id of the bot (generated)",
@@ -74,7 +74,7 @@ public class Settings extends Config {
     @Comment("The discord user id of the admin user. (generated)")
     public long ADMIN_USER_ID = -1;
 
-    @Comment("The nation id of the admin. (generated)")
+    @Comment("The nation id of the admin. (generated from login or api key)")
     public int NATION_ID = 0; // generated
 
     ////////////////////////////////////////////////////////////////////////////
@@ -120,7 +120,9 @@ public class Settings extends Config {
         public boolean MESSAGE_COMMANDS = true;
         @Comment("If slash `/` commands are enabled (WIP)")
         public boolean SLASH_COMMANDS = true;
-        @Comment("If the web interface is enabled")
+        @Comment({"If the web interface is enabled",
+                " - If enabled, also configure the web section below"
+        })
         public boolean WEB = false;
 
         @Comment({"Should databases be initialized on startup",
@@ -131,8 +133,8 @@ public class Settings extends Config {
                 " - See the task section to disable/adjust individual tasks"})
         public boolean REPEATING_TASKS = true;
 
-        @Comment({"Should any repeating tasks be enabled",
-                " - See the task section to disable/adjust individual tasks"})
+        @Comment({"Should any subscriptions be enabled",
+                " - See the task section to disable/adjust individual subscriptions"})
         public boolean SUBSCRIPTIONS = true;
 
         @Comment("If P&W events should be enabled")
@@ -219,6 +221,10 @@ public class Settings extends Config {
 
         @Comment("Fetches the bounties (default 7 minutes)")
         public int BOUNTY_UPDATE_SECONDS = 60 * 7;
+
+
+        @Comment("Fetches the bounties (default 13 minutes)")
+        public int TREASURE_UPDATE_SECONDS = 60 * 13;
 
         @Comment("Fetches the treaties (default 6 minutes)")
         public int TREATY_UPDATE_SECONDS = 60 * 6;
@@ -479,6 +485,12 @@ public class Settings extends Config {
         public int PORT_HTTPS = 443;
         @Comment("If set to true, web content is not compressed/minified")
         public boolean DEVELOPMENT = true;
+
+        @Comment("The port google sheets uses to validate your credentials")
+        public int GOOGLE_SHEET_VALIDATION_PORT = 8889;
+
+        @Comment("The port google drive uses to validate your credentials")
+        public int GOOGLE_DRIVE_VALIDATION_PORT = 8890;
     }
 
     public static class DATABASE {

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -147,15 +148,14 @@ public class ROI extends Command {
         }
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
-        if (guildDb == null || guildDb.getInfo(GuildDB.Key.ALLIANCE_ID) == null) {
+        if (guildDb == null || guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
             return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<value>") + "";
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
 
-        String allianceStr = guildDb.getInfo(GuildDB.Key.ALLIANCE_ID);
-        if (allianceStr == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>") + "";
-        int allianceId = Integer.parseInt(allianceStr);
+        Integer allianceId = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        if (allianceId == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>") + "";
 
         List<ROIResult> roiMap = new ArrayList<>();
         boolean useSheet = false;
@@ -314,7 +314,8 @@ public class ROI extends Command {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            return sheet.getURL(true, true);
+            sheet.attach(new DiscordChannelIO(event).create()).send();
+            return null;
         } else {
             StringBuilder output = new StringBuilder("Weekly ROI (" + days + " days):\n");
             List<DBNation> nations = new ArrayList<>();

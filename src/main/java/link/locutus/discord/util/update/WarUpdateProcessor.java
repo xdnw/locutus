@@ -708,9 +708,17 @@ public class WarUpdateProcessor {
                         return Map.entry(AttackTypeSubCategory.NAVAL_MAX_VS_NONE, message);
                     }
                 }
-                if (defender.getBlockadedBy().contains(attacker.getNation_id()) && !defender.isBlockader()) {
-                    if (defender.getActive_m() < 1440 && root.defcas1 == 0 && (defender.getAircraft() > 0 && defender.getAircraft() < attacker.getAircraft() * 0.8) || (defender.getAircraft() < attacker.getAircraft() && defender.getGroundStrength(true, false) > 0 && defender.getGroundStrength(true, false) < attacker.getGroundStrength(true, true))) {
-                        return AttackTypeSubCategory.NAVAL_ALREADY_BLOCKADED.toPair();
+                if (defender.getBlockadedBy().contains(attacker.getNation_id()) && !defender.getBlockadedBy().contains(root.defender_nation_id)) {
+                    if (defender.getActive_m() < 1440 && root.defcas1 == 0 &&
+                            ((defender.getAircraft() > 0 && defender.getAircraft() < attacker.getAircraft() * 0.8) ||
+                            (defender.getAircraft() < attacker.getAircraft() && defender.getGroundStrength(true, false) > 0 && defender.getGroundStrength(true, false) < attacker.getGroundStrength(true, true)))) {
+
+                        attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.war_id, root.epoch);
+                        for (DBAttack attack : attacks) {
+                            if (attack.attack_type == NAVAL && attack.war_attack_id != root.war_attack_id) {
+                                return AttackTypeSubCategory.NAVAL_ALREADY_BLOCKADED.toPair();
+                            }
+                        }
                     }
                 }
                 break;

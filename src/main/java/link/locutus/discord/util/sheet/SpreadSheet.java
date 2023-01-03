@@ -4,7 +4,9 @@ import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.Transaction2;
@@ -53,6 +55,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
@@ -119,7 +123,7 @@ public class SpreadSheet {
         this.clear("A:Z");
         try {
             this.set(0, 0);
-            return channel.send(getURL(true, true));
+            return attach(channel.create()).send();
         } catch (Throwable e) {
             e.printStackTrace();
             return channel.create().file("transactions.csv", this.toCsv())
@@ -145,6 +149,7 @@ public class SpreadSheet {
 
         Sheets api = null;
 
+        System.out.println("Credentials " + credentialsExists());
         if (credentialsExists()) {
             if (sheetId == null) {
                 Spreadsheet spreadsheet = new Spreadsheet()
@@ -211,22 +216,20 @@ public class SpreadSheet {
     public static String parseId(String id) {
         if (id.startsWith("sheet:")) {
             id = id.split(":")[1];
-        } else if (id.startsWith("https://docs.google.com/spreadsheets/d/")){
-            id = id.split("/")[5];
+        } else if (id.startsWith("https://docs.google.com/spreadsheets/")){
+            String regex = "([a-zA-Z0-9-_]{30,})";
+            Matcher m = Pattern.compile(regex).matcher(id);
+            m.find();
+            id = m.group();
         }
         return id.split("/")[0];
     }
 
     private SpreadSheet(String id, Sheets api) throws GeneralSecurityException, IOException {
         if (id != null) {
-            if (id.startsWith("sheet:")) {
-                id = id.split(":")[1];
-            } else if (id.startsWith("https://docs.google.com/spreadsheets/d/")) {
-                id = id.split("/")[5];
-            }
             if (api == null && credentialsExists()) api = getServiceAPI();
             this.service = api;
-            this.spreadsheetId = id;
+            this.spreadsheetId = parseId(id);
         }
     }
 
@@ -272,7 +275,7 @@ public class SpreadSheet {
 
     public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative, String defaultNote) {
         Map<String, Boolean> result = new LinkedHashMap<String, Boolean>();
-        List<List<Object>> rows = get("A:Z");
+        List<List<Object>> rows = getAll();
         List<Object> header = rows.get(0);
 
         Integer noteI = null;
@@ -339,20 +342,28 @@ public class SpreadSheet {
         return getURL(false, false);
     }
 
+    public IMessageBuilder attach(IMessageBuilder msg, String append) {
+        return attach(msg).append(append);
+    }
+
+    public IMessageBuilder attach(IMessageBuilder msg) {
+        return attach(msg, null, false, 0);
+    }
+
     public IMessageBuilder attach(IMessageBuilder msg, StringBuilder output, boolean allowInline, int currentLength) {
         String append = null;
         if (service == null) {
             String csv = toCsv();
-            if (csv.length() + currentLength + 9 < 4000 && allowInline) {
+            if (csv.length() + currentLength + 9 < 2000 && allowInline) {
                 append = "```csv\n" + csv + "```";
             } else {
-                append = "[see attached sheet.csv]";
+                append = "(`sheet:" + spreadsheetId + "`)";
                 msg.file("sheet.csv", csv);
             }
         } else {
             append = ("\n" + getURL(false, true));
         }
-        if (append != null) output.append(append);
+        if (output != null) output.append(append);
         else msg.append(append);
         return msg;
     }
@@ -362,7 +373,7 @@ public class SpreadSheet {
         if (footer == null) footer = "";
         if (service == null) {
             String csv = toCsv();
-            if (csv.length() + header.length() + footer.length() < 3994) {
+            if (csv.length() + header.length() + footer.length() < 2000) {
                 return io.create().append(header + "```" + csv + "```" + footer);
             } else {
                 return io.create()
@@ -387,7 +398,7 @@ public class SpreadSheet {
             }
             if (markdown) {
                 String csv = toCsv();
-                if (csv.length() < 3000) {
+                if (csv.length() < 2000) {
                     return "```" + csv + "```";
                 }
                 return csv;
@@ -433,7 +444,7 @@ public class SpreadSheet {
                     .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                     .setAccessType("offline")
                     .build();
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(Settings.INSTANCE.WEB.GOOGLE_SHEET_VALIDATION_PORT).build();
             return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         }
     }
@@ -532,12 +543,18 @@ public class SpreadSheet {
         return this.values;
     }
 
+    public List<List<Object>> getAll() {
+        if (service == null) return loadValues();
+        return get("A:ZZ");
+    }
+
     public List<List<Object>> get(String range) {
         return get(range, null);
     }
 
     public List<List<Object>> get(String range, Consumer<Sheets.Spreadsheets.Values.Get> onGet) {
         try {
+            System.out.println("Service " + service + " | " + spreadsheetId);
             Sheets.Spreadsheets.Values.Get query = service.spreadsheets().values().get(spreadsheetId, range);
             if (onGet != null) onGet.accept(query);
             ValueRange result = query.execute();

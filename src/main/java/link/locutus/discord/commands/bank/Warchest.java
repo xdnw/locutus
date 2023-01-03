@@ -44,7 +44,8 @@ public class Warchest extends Command {
 
     @Override
     public String desc() {
-        return "Determine how much to send to each member to meet their warchest requirements (per city)";
+        return "Determine how much to send to each member to meet their warchest requirements (per city)\n" +
+                "Add `-s` to skip checking stockpile";
     }
 
     @Override
@@ -86,20 +87,22 @@ public class Warchest extends Command {
             return "No nations in bracket";
         }
 
-        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-
         Map<ResourceType, Double> perCity = PnwUtil.parseResources(args.get(1));
         if (perCity.isEmpty()) return "Invalid amount: `" + args.get(1) + "`";
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
 
-        Map<DBNation, Map<ResourceType, Double>> memberResources2 = DBAlliance.getOrCreate(aaId).getMemberStockpile();
-        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : memberResources2.entrySet()) {
-            DBNation nation = entry.getKey();
-            if (!nationIds.contains(nation.getNation_id())) continue;
-            if (PnwUtil.convertedTotal(entry.getValue()) < 0) continue;
+        Map<DBNation, Map<ResourceType, Double>> memberResources2 = new HashMap<>();
+        boolean skipStockpile = flags.contains('s');
+        if (!flags.contains('s')) {
+            if (aaId == null) return "No alliance found for this guild. Add `-s` to skip checking stockpile";
+            memberResources2 = DBAlliance.getOrCreate(aaId).getMemberStockpile();
+        }
+        for (DBNation nation : nations) {
+            Map<ResourceType, Double> stockpile = memberResources2.getOrDefault(nation, skipStockpile ? Collections.emptyMap() : null);
 
-            Map<ResourceType, Double> stockpile = entry.getValue();
+            if (PnwUtil.convertedTotal(stockpile) < 0) continue;
+
             Map<ResourceType, Double> toSendCurrent = new HashMap<>();
             for (ResourceType type : perCity.keySet()) {
                 double required = perCity.getOrDefault(type, 0d) * nation.getCities();

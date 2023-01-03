@@ -1,11 +1,14 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
+import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -19,6 +22,7 @@ import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transfer;
@@ -28,7 +32,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -38,11 +41,9 @@ import link.locutus.discord.util.trade.TradeManager;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -354,7 +355,7 @@ public class TradeCommands {
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public String trending(@Me GuildDB db, @Timestamp long time) throws GeneralSecurityException, IOException {
+    public String trending(@Me IMessageIO channel, @Me GuildDB db, @Timestamp long time) throws GeneralSecurityException, IOException {
         Map<ResourceType, Map<Integer, LongAdder>> sold = new EnumMap<>(ResourceType.class);
         Map<ResourceType, Map<Integer, LongAdder>> bought = new EnumMap<>(ResourceType.class);
 
@@ -444,7 +445,8 @@ public class TradeCommands {
 
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(channel.create()).send();
+        return null;
     }
 
     @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.")
@@ -1003,9 +1005,12 @@ public class TradeCommands {
 
     @Command(desc = "List nations who have bought/sold the most of a resource over a period")
     @RolePermission(value = Roles.MEMBER)
-    public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch("a") boolean groupByAlliance) {
+    public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch("a") boolean groupByAlliance, @Switch("p") boolean includeMoneyTrades) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<DBTrade> offers = db.getTrades(cutoff);
+        if (!includeMoneyTrades) {
+            offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
+        }
         int findsign = isBuy ? 1 : -1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
@@ -1048,5 +1053,105 @@ public class TradeCommands {
                 .build()
         ).commandButton(command, "Refresh").send();
         return null;
+    }
+
+    @Command
+    @RolePermission(Roles.TRADE_ALERT)
+    @WhitelistPermission
+    public String tradeAlertAbsolute(TradeDB db, @Me User  author, ResourceType resource, @ArgChoice(value={"BUY", "SELL"}) String buyOrSell, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+        boolean isBuy = buyOrSell.equalsIgnoreCase("buy");
+        if (!isBuy && !buyOrSell.equalsIgnoreCase("sell")) {
+            return "Invalid category `" + buyOrSell + "`" + ". Must be either `buy` or `sell`";
+        }
+
+        boolean above = aboveOrBelow.contains(">");
+        int offset = aboveOrBelow.contains("=") ? (above ? -1 : 1) : 0;
+        ppu += offset;
+
+        long date = System.currentTimeMillis() + duration;
+        if (duration > TimeUnit.DAYS.toMillis(30)) {
+            return "You can only subscribe for a maximum of 30 days";
+        }
+
+        db.subscribe(author, resource, date, isBuy, above, ppu, TradeDB.TradeAlertType.ABSOLUTE);
+
+        return "Subscribed to `ABSOLUTE: " + resource + " " + buyOrSell + " PPU " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`" +
+                "\nCheck your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`";
+    }
+
+    @Command
+    @RolePermission(Roles.MEMBER)
+    @WhitelistPermission
+    public String tradeAlertMistrade(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+        long date = System.currentTimeMillis() + duration;
+        if (duration > TimeUnit.DAYS.toMillis(30)) {
+            return "You can only subscribe for a maximum of 30 days";
+        }
+        boolean above = aboveOrBelow.contains(">");
+        int offset = aboveOrBelow.contains("=") ? (above ? -1 : 1) : 0;
+        ppu += offset;
+        StringBuilder response = new StringBuilder();
+        for (ResourceType resource : resources) {
+            db.subscribe(author, resource, date, true, above, ppu, TradeDB.TradeAlertType.MISTRADE);
+            response.append("Subscribed to `MISTRADE: " + resource + " disparity " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
+        }
+        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        return response.toString();
+    }
+
+    @Command
+    @RolePermission(Roles.MEMBER)
+    @WhitelistPermission
+    public String tradeAlertDisparity(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+        long date = System.currentTimeMillis() + duration;
+        if (duration > TimeUnit.DAYS.toMillis(30)) {
+            return "You can only subscribe for a maximum of 30 days";
+        }
+        boolean above = aboveOrBelow.contains(">");
+        int offset = aboveOrBelow.contains("=") ? (above ? -1 : 1) : 0;
+        ppu += offset;
+        StringBuilder response = new StringBuilder();
+        for (ResourceType resource : resources) {
+            db.subscribe(author, resource, date, true, above, ppu, TradeDB.TradeAlertType.DISPARITY);
+            response.append("Subscribed to `DISPARITY: " + resource + " ppu " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
+        }
+        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        return response.toString();
+    }
+
+    @Command
+    @RolePermission(Roles.MEMBER)
+    @WhitelistPermission
+    public String tradeAlertNoOffer(TradeDB db, @Me User  author, List<ResourceType> resources, @Timediff long duration) {
+        long date = System.currentTimeMillis() + duration;
+        if (duration > TimeUnit.DAYS.toMillis(30)) {
+            return "You can only subscribe for a maximum of 30 days";
+        }
+        StringBuilder response = new StringBuilder();
+        for (ResourceType resource : resources) {
+            db.subscribe(author, resource, date, true, true, 0, TradeDB.TradeAlertType.NO_OFFER);
+            response.append("Subscribed to `NO_OFFER: " + resource + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
+        }
+        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        return response.toString();
+    }
+
+    @Command
+    @RolePermission(Roles.MEMBER)
+    @WhitelistPermission
+    public String tradeAlertUndercut(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={"BUY", "SELL", "*"}) String buyOrSell, @Timediff long duration) {
+        long date = System.currentTimeMillis() + duration;
+        if (duration > TimeUnit.DAYS.toMillis(30)) {
+            return "You can only subscribe for a maximum of 30 days";
+        }
+        boolean isBuy = buyOrSell.equalsIgnoreCase("buy");
+        StringBuilder response = new StringBuilder();
+        for (ResourceType resource : resources) {
+            db.subscribe(author, resource, date, isBuy, true, 0, TradeDB.TradeAlertType.UNDERCUT);
+            response.append("Subscribed to `UNDERCUT: " + resource + " " + buyOrSell + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
+        }
+        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        return response.toString();
+
     }
 }

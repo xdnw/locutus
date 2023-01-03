@@ -702,6 +702,53 @@ public class DBNation implements NationOrAlliance {
         return getAuth(Roles.ADMIN);
     }
 
+    public double getStrongestOffEnemyOfScore(Predicate<Double> filter) {
+        List<DBWar> wars = getActiveOffensiveWars();
+        double strongest = -1;
+        for (DBWar war : wars) {
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other == null || other.active_m() > 2440 || other.getVm_turns() > 0) continue;
+            if (filter.test(other.getScore())) {
+                strongest = Math.max(strongest, other.getStrength());
+            }
+        }
+        return strongest;
+    }
+
+    @Command
+    public double getStrongestEnemy() {
+        double val = getStrongestEnemyOfScore((score) -> true);
+        return val == -1 ? 0 : val;
+    }
+
+    @Command
+    public double getStrongestEnemyRelative() {
+        double enemyStr = getStrongestEnemy();
+        double myStrength = getStrength();
+        return myStrength == 0 ? 0 : enemyStr / myStrength;
+    }
+
+    public double getStrongestEnemyOfScore(Predicate<Double> filter) {
+        List<DBWar> wars = getActiveWars();
+        double strongest = -1;
+        for (DBWar war : wars) {
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other == null || other.active_m() > 2440 || other.getVm_turns() > 0) continue;
+            if (filter.test(other.getScore())) {
+                strongest = Math.max(strongest, other.getStrength());
+            }
+        }
+        return strongest;
+    }
+
+    public boolean isFightingOffEnemyOfScore(Predicate<Double> filter) {
+        return getStrongestOffEnemyOfScore(filter) != -1;
+    }
+
+    public boolean isFightingEnemyOfScore(Predicate<Double> filter) {
+        return getStrongestEnemyOfScore(filter) != -1;
+    }
+
     public Auth getAuth(Roles role) {
         if (this.auth != null && !this.auth.isValid()) this.auth = null;
         if (this.auth != null) return auth;
@@ -1490,7 +1537,7 @@ public class DBNation implements NationOrAlliance {
         boolean update = updateThreshold == 0;
         if (!update && updateThreshold > 0) {
             Transaction2 tx = Locutus.imp().getBankDB().getLatestTransaction();
-            if (tx.tx_datetime < last_active) update = true;
+            if (tx == null || tx.tx_datetime < last_active) update = true;
             else if (System.currentTimeMillis() - tx.tx_datetime > updateThreshold) update = true;
         }
         if (update) {
@@ -2078,6 +2125,15 @@ public class DBNation implements NationOrAlliance {
     public void setNukes(int nukes) {
         getCache().processUnitChange(this, MilitaryUnit.NUKE, this.nukes, nukes);
         this.nukes = nukes;
+    }
+
+    @Command(desc = "Number of turns since entering VM")
+    public int getVacationTurnsElapsed() {
+        long turn = TimeUtil.getTurn();
+        if (entered_vm > 0 && entered_vm < turn) {
+            return (int) (turn - entered_vm);
+        }
+        return 0;
     }
 
     @Command(desc = "Number of turns in Vacation Mode")

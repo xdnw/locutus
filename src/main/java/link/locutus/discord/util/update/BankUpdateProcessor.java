@@ -60,23 +60,20 @@ public class BankUpdateProcessor {
             if (guildDb != null) {
                 GuildDB.Key key = transfer.isReceiverAA() ? DEPOSIT_ALERT_CHANNEL : WITHDRAW_ALERT_CHANNEL;
                 Roles locrole = transfer.isReceiverAA() ? Roles.ECON_DEPOSIT_ALERTS : Roles.ECON_WITHDRAW_ALERTS;
-                String channelId = guildDb.getInfo(key);
+                MessageChannel channel = guildDb.getOrNull(key);
 
-                if (channelId != null) {
+                if (channel != null) {
                     Guild guild = guildDb.getGuild();
                     if (guild != null) {
-                        MessageChannel channel = DiscordUtil.getChannel(guild, channelId);
-                        if (channel != null) {
-                            Map.Entry<String, String> card = createCard(transfer, nationId);
-                            if (card != null) {
-                                try {
-                                    DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
-                                    Role role = locrole.toRole(guild);
-                                    if (role != null) {
-                                        AlertUtil.bufferPing(channel, role.getAsMention());
-                                    }
-                                } catch (InsufficientPermissionException ignore) {
+                        Map.Entry<String, String> card = createCard(transfer, nationId);
+                        if (card != null) {
+                            try {
+                                DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
+                                Role role = locrole.toRole(guild);
+                                if (role != null) {
+                                    AlertUtil.bufferPing(channel, role.getAsMention());
                                 }
+                            } catch (InsufficientPermissionException ignore) {
                             }
                         }
                     }
@@ -105,12 +102,7 @@ public class BankUpdateProcessor {
                 Map.Entry<String, String> card = createCard(transfer, nationId);
 
                 for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
-                    String channelId = guildDB.getInfo(BANK_ALERT_CHANNEL, false);
-                    if (channelId == null) {
-                        continue;
-                    }
-
-                    GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(Long.parseLong(channelId));
+                    GuildMessageChannel channel = guildDB.getOrNull(BANK_ALERT_CHANNEL, false);
                     if (channel == null) {
                         continue;
                     }

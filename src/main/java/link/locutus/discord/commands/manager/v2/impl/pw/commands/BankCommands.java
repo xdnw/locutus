@@ -311,8 +311,9 @@ public class BankCommands {
             nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
         }
 
+        List<String> errorList = new ArrayList<>();
         Consumer<String> updateTask = io::send;
-        Consumer<String> errors = io::send;
+        Consumer<String> errors = errorList::add;
 
         fundsToSendNations = new DepositRawTask(nations, aaId != null ? aaId : 0, updateTask, daysDefault, true, ignoreInactives, errors).setForce(force).call();
         if (nations.isEmpty()) {
@@ -333,6 +334,9 @@ public class BankCommands {
         String result = Disperse.disperse(db, fundsToSendNations, fundsToSendAAs, note, io, title);
         if (fundsToSendNations.size() > 1 || fundsToSendAAs.size() > 0) {
             result += "\n" + author.getAsMention();
+        }
+        if (!errorList.isEmpty()) {
+            result += "\nErrors:\n - " + StringMan.join(errorList, "\n - ");
         }
         return result;
     }
@@ -368,7 +372,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of members and their revenue (compared to optimal)")
     @RolePermission(value = {Roles.ECON_LOW_GOV, Roles.ECON})
     @IsAlliance
-    public String revenueSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+    public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.REVENUE_SHEET);
         }
@@ -486,7 +490,9 @@ public class BankCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        return sheet.getURL(true, true);
+
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Get a sheet of members and their saved up warchest (can include deposits and potential revenue)")
@@ -659,7 +665,7 @@ public class BankCommands {
         response.append("Total Warchest: `" + PnwUtil.resourcesToString(totalWarchest) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalWarchest)) + "\n");
         response.append("Net Warchest Req (warchest - requirements): `" + PnwUtil.resourcesToString(totalNet) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalNet)));
 
-        sheet.attach(io.create(), response, false, 0).send();
+        sheet.attach(io.create(), response, false, 0).append(response.toString()).send();
         return null;
     }
 
@@ -885,9 +891,8 @@ public class BankCommands {
                             .embed(title, body.toString())
                                     .append("See also:\n" +
                                             "> https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8\n" +
-                                            "To add an offshore:\n" +
-                                            "1. (int this server) " + CM.coalition.add.cmd.create(null, Coalition.OFFSHORE.name()) + "\n" +
-                                            "2. (in the offshore) " + CM.coalition.add.cmd.create(null, Coalition.OFFSHORING.name()) + "")
+                                            "To add an offshore:" + CM.offshore.add.cmd.toSlashMention() + "\n" +
+                                            "(Set this alliance as the offshore to use the local bank)")
                                             .send();
             return null;
         }
@@ -1027,7 +1032,7 @@ public class BankCommands {
 
     @Command(desc = "Sheet of projects each nation has")
     @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
-    public String ProjectSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String ProjectSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.PROJECT_SHEET);
         }
@@ -1064,7 +1069,8 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
@@ -1209,9 +1215,6 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        StringBuilder response = new StringBuilder();
-        response.append(sheet.getURL(true, true));
-
         StringBuilder footer = new StringBuilder();
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
 
@@ -1237,9 +1240,8 @@ public class BankCommands {
             footer.append("\n**Net " + type + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
 
-        channel.create().embed("AA Total", footer.toString())
-                        .append(response.toString())
-                                .send();
+        sheet.attach(channel.create()).embed("AA Total", footer.toString())
+                .send();
         return null;
     }
 
@@ -1581,7 +1583,7 @@ public class BankCommands {
             }
         }
 
-        io.create().file("transfer-results.csv", output.toString()).append("Done!\nTotal sent: `" + PnwUtil.resourcesToString(totalSent) + "`").send();
+        io.create().file("transfer-results.csv", output.toString()).append("Done!\nTotal sent: `" + PnwUtil.resourcesToString(totalSent) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalSent))).send();
         return null;
     }
 
@@ -1603,11 +1605,11 @@ public class BankCommands {
         }
 
         if (alliance.isGuild()) {
-            offshore.disabledGuilds.remove(alliance.asGuild().getGuild().getIdLong());
+            offshore.disabledGuilds.remove(alliance.asGuild().getIdLong());
         } else if (alliance.isAlliance()) {
             GuildDB guild = alliance.asAlliance().getGuildDB();
             if (guild == null) return "No guild found for AA:" + alliance;
-            offshore.disabledGuilds.remove(guild.getGuild().getIdLong());
+            offshore.disabledGuilds.remove(guild.getIdLong());
         } else {
            return alliance + " must be a guild or alliance";
         }
@@ -1652,7 +1654,7 @@ public class BankCommands {
             "Note: this command does set nations brackets. See: `{prefix}setNationTaxBrackets` and `{prefix}setNationInternalTaxRates` ")
     @IsAlliance
     @RolePermission(Roles.ECON_LOW_GOV)
-    public String listRequiredTaxRates(@Me GuildDB db, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String listRequiredTaxRates(@Me IMessageIO io, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -1700,7 +1702,8 @@ public class BankCommands {
 
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
 
@@ -1768,7 +1771,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of a nation tax deposits over a period")
     @RolePermission(value = Roles.ECON)
-    public String taxDeposits(@Me GuildDB db, Set<DBNation> nations, @Arg("Set to 0/0 to include all taxes") @Default() TaxRate baseTaxRate, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String taxDeposits(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Arg("Set to 0/0 to include all taxes") @Default() TaxRate baseTaxRate, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         if (startDate == null) startDate = 0L;
@@ -1807,12 +1810,14 @@ public class BankCommands {
             transfers.put(DBNation.byId(entry.getKey()), entry.getValue());
         }
         txSheet.write(transfers).build();
-        return txSheet.getSheet().getURL(true, true);
+
+        txSheet.getSheet().attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Get a sheet of a nation tax deposits over a period")
     @RolePermission(value = Roles.ECON)
-    public String taxRecords(@Me GuildDB db, DBNation nation, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String taxRecords(@Me IMessageIO io, @Me GuildDB db, DBNation nation, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         if (startDate == null) startDate = 0L;
@@ -1842,7 +1847,8 @@ public class BankCommands {
         }
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Send from your alliance offshore account to another account (internal transfer)")
@@ -2301,13 +2307,14 @@ public class BankCommands {
             "Add `-n` to normalize it per city")
     @RolePermission(any = true, value = {Roles.ECON_LOW_GOV, Roles.ECON})
     @IsAlliance
-    public String stockpileSheet(@Me GuildDB db, @Switch("n") boolean normalize, @Switch("e") boolean onlyShowExcess, @Switch("f") boolean forceUpdate, @Me IMessageIO channel) throws IOException, GeneralSecurityException {
+    public String stockpileSheet(@Me GuildDB db, @Default Set<DBNation> nationFilter, @Switch("n") boolean normalize, @Switch("e") boolean onlyShowExcess, @Switch("f") boolean forceUpdate, @Me IMessageIO channel) throws IOException, GeneralSecurityException {
         DBAlliance alliance = db.getAlliance();
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 
         List<String> header = new ArrayList<>();
         header.add("nation");
+        header.add("discord");
         header.add("cities");
         header.add("avg_infra");
         header.add("off|def");
@@ -2335,8 +2342,9 @@ public class BankCommands {
             List<Object> row = new ArrayList<>();
 
             DBNation nation = entry.getKey();
-            if (nation == null) continue;
+            if (nation == null || (nationFilter != null && !nationFilter.contains(nation))) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            row.add(nation.getUserDiscriminator());
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getOff() +"|" + nation.getDef());
@@ -2365,9 +2373,7 @@ public class BankCommands {
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        channel.create().embed("AA TOTAL", totalStr)
-                        .append(sheet.getURL(true, true))
-                                .send();
+        sheet.attach(channel.create().embed("AA TOTAL", totalStr)).send();
         return null;
     }
 
@@ -2376,7 +2382,7 @@ public class BankCommands {
             "Add `-f` to force an update of deposits\n" +
             "`note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`")
     @RolePermission(any = true, value = {Roles.ECON, Roles.ECON_LOW_GOV})
-    public String taxBracketSheet(@Me GuildDB db, @Switch("f") boolean force, @Switch("a") boolean includeApplicants) throws Exception {
+    public String taxBracketSheet(@Me IMessageIO io, @Me GuildDB db, @Switch("f") boolean force, @Switch("a") boolean includeApplicants) throws Exception {
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -2441,20 +2447,33 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        StringBuilder response = new StringBuilder(sheet.getURL(true, true));
+        StringBuilder response = new StringBuilder();
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
-        return response.toString();
+
+        sheet.attach(io.create(), response.toString()).send();
+        return null;
     }
 
     @Command
     @RolePermission(value = Roles.ADMIN)
-    public String addOffshore(@Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance alliance) throws IOException {
+    public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance alliance, @Switch("f") boolean force) throws IOException {
         if (root.isDelegateServer()) return "Cannot enable offshoring for delegate server (run this command in the root server)";
 
-        if (root.isOffshore()) {
+        IMessageBuilder confirmButton = io.create().confirmation(CM.offshore.add.cmd.create(alliance.getId() + ""));
+        GuildDB offshoreDB = alliance.getGuildDB();
+
+        if (offshoreDB != null) {
+            if (offshoreDB.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
+                return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
+            }
+            if (offshoreDB.getOrNull(GuildDB.Key.API_KEY) == null) {
+                return "Please set the key " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + " in " + offshoreDB.getGuild();
+            }
+        }
+
+        if (root.isOffshore() && (offshoreDB == null || !offshoreDB.isOffshore() || (offshoreDB == root))) {
             if (nation.getAlliance_id() != alliance.getAlliance_id()) {
-                throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore\n" +
-                        "Note: If this is not a locutus managed offshore, please use `coalition add alliances:<alliance> coalition:offshore`");
+                throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
 
             Set<Long> announceChannels = new HashSet<>();
@@ -2462,8 +2481,6 @@ public class BankCommands {
             if (nation.getNation_id() == Settings.INSTANCE.NATION_ID) {
                 announceChannels.add(Settings.INSTANCE.DISCORD.CHANNEL.ADMIN_ALERTS);
             }
-
-            root.setInfo(GuildDB.Key.ALLIANCE_ID, alliance.getAlliance_id() + "");
 
             Set<Long> alliancesOrGuilds = root.getCoalitionRaw(Coalition.OFFSHORING);
             for (Long alliancesOrGuild : alliancesOrGuilds) {
@@ -2473,6 +2490,22 @@ public class BankCommands {
                 }
                 serverIds.add(alliancesOrGuild);
             }
+
+
+            if (!force) {
+                int priorAAId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
+                String title = "Change offshore to: " + alliance.getName() + "/" + alliance.getId();
+                StringBuilder body = new StringBuilder();
+                body.append("The current alliance to this guild will be unregistered: `(`" + root.getOrNull(GuildDB.Key.ALLIANCE_ID) + "`)`\n");
+                        body.append("The new alliance: `" + alliance.getId() + " will be set ` (See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null) + ")\n");
+                        body.append("All other guilds using the prior alliance (" + priorAAId + ") will be changed to use the new offshore");
+
+
+                confirmButton.embed(title, body.toString()).send();
+                return null;
+            }
+
+            root.setInfo(GuildDB.Key.ALLIANCE_ID, alliance.getAlliance_id() + "");
 
             for (Long serverId : serverIds) {
                 GuildDB db = Locutus.imp().getGuildDB(serverId);
@@ -2519,27 +2552,65 @@ public class BankCommands {
             return "Done";
         }
 
-        GuildDB offshoreDB = alliance.getGuildDB();
         if (offshoreDB == null) {
-            return "No guild found for alliance: " + alliance.getAlliance_id();
+            return "No guild found for alliance: " + alliance.getAlliance_id() + ". To register a guild to an alliance: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), alliance.getAlliance_id() + "");
         }
+
+        OffshoreInstance currentOffshore = root.getOffshore();
+        if (currentOffshore != null) {
+            if (currentOffshore.getAllianceId() == alliance.getAlliance_id()) {
+                return "This guild is already the offshore for this server";
+            }
+            Integer aaId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            long id = aaId != null ? aaId.longValue() : root.getIdLong();
+
+            if (!force) {
+                String title = "Replace current offshore";
+                StringBuilder body = new StringBuilder();
+                body.append("Changing offshores will close the account with your previous offshore provider\n");
+                body.append("Your current offshore is set to: " + currentOffshore.getAllianceId() + "\n");
+                body.append("To check your funds with the current offshore, use " +
+                        CM.deposits.check.cmd.create(id + "", null, null, null, null, null, null));
+                body.append("\nIt is recommended to withdraw all funds from the current offshore before changing, as Locutus may not be able to access the account after closing it`");
+
+                confirmButton.embed(title, body.toString()).send();
+                return null;
+            }
+            if (aaId != null) {
+                offshoreDB.removeCoalition(aaId, Coalition.OFFSHORING);
+            }
+            offshoreDB.removeCoalition(root.getIdLong(), Coalition.OFFSHORING);
+
+            root.removeCoalition(currentOffshore.getAllianceId(), Coalition.OFFSHORE);
+            root.removeCoalition(currentOffshore.getGuildDB().getIdLong(), Coalition.OFFSHORE);
+        }
+
+        if (offshoreDB == root) {
+            if (!force) {
+                String title = "Designate " + alliance.getName() + "/" + alliance.getId() + " as the bank";
+                StringBuilder body = new StringBuilder();
+                body.append("Withdraw commands will use this alliance bank\n");
+                body.append("To have another alliance/corporation use this bank as an offshore:\n");
+                body.append(" - You must be admin or econ on both discord servers\n");
+                body.append(" - On the other guild, use: " + CM.offshore.add.cmd.create(alliance.getAlliance_id() + "") + "\n\n");
+                body.append("If this is an offshore, and you create a new alliance, you may use this command to set the new alliance (all servers offshoring here will be updated)");
+
+                confirmButton.embed(title, body.toString()).send();
+                return null;
+            }
+            root.addCoalition(alliance.getAlliance_id(), Coalition.OFFSHORE);
+            root.addCoalition(alliance.getAlliance_id(), Coalition.OFFSHORING);
+            return "Done! Set " + alliance.getName() + "/" + alliance.getId() + " as the designated bank for this server";
+        }
+
         if (!offshoreDB.isOffshore()) {
             return "No offshore found for alliance: " + alliance.getAlliance_id() + ". Are you sure that's a valid offshore setup with locutus?";
         }
-        OffshoreInstance currentOffshore = root.getOffshore();
-        if (currentOffshore != null) {
-            return "This guild already has an offshore. If you would like to set a different offshore, use " + CM.coalition.delete.cmd.create(Coalition.OFFSHORE.name()) + " to remove it.\n" +
-                    "Note: Removing offshores will remove deposits tracked from it.";
-        }
         Boolean enabled = offshoreDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING);
         if (enabled != Boolean.TRUE && !Roles.ECON.has(user, offshoreDB.getGuild())) {
-            return "You do not have ECON on " + offshoreDB.getGuild() + " AND " + CM.settings.cmd.create(GuildDB.Key.PUBLIC_OFFSHORING.name(), null) + " is not enabled on that guild.";
-        }
-        if (offshoreDB.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
-            return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
-        }
-        if (offshoreDB.getOrNull(GuildDB.Key.API_KEY) == null) {
-            return "Please set the key " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + " in " + offshoreDB.getGuild();
+            Role role = Roles.ECON.toRole(offshoreDB);
+            String roleName = role == null ? "ECON" : role.getName();
+            return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + CM.settings.cmd.create(GuildDB.Key.PUBLIC_OFFSHORING.name(), null) + " is not enabled on that guild.";
         }
 
         StringBuilder response = new StringBuilder();
@@ -2578,7 +2649,14 @@ public class BankCommands {
                         response.append("Reset deposit for " + root.getGuild() + "\n");
                     }
                 }
+
                 response.append("Registered " + alliance + " as an offshore. See: https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit");
+                if (aaId == null) {
+                    response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
+                }
+                if (offshoreDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
+                    response.append("\nNote: Disable war alerts using: " + CM.settings.cmd.create(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES.name(), "false"));
+                }
             } catch (Throwable e) {
                 root.removeCoalition(alliance.getAlliance_id(), Coalition.OFFSHORE);
                 offshoreDB.removeCoalition(sender.getIdLong(), Coalition.OFFSHORING);

@@ -15,9 +15,7 @@ public class SheetBindings extends BindingHelper {
     public SpreadSheet sheet(String input) throws GeneralSecurityException, IOException {
         String spreadsheetId;
         if (input.startsWith("sheet:")) {
-            spreadsheetId = input.split(":")[1];
-        } else if (input.startsWith("https://docs.google.com/spreadsheets/d/")){
-            spreadsheetId = input.split("/")[5];
+        } else if (input.startsWith("https://docs.google.com/spreadsheets/")){
         } else {
             throw new IllegalArgumentException("Invalid sheet: `" + input + "`");
         }

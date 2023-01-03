@@ -81,6 +81,8 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.parseFilter;
@@ -659,6 +661,13 @@ public class DiscordUtil {
             }
         }
         if (!MathMan.isInteger(arg)) {
+            if (arg.contains("=HYPERLINK") && arg.contains("nation/id=")) {
+                String regex = "nation/id=([0-9]+)";
+                Matcher m = Pattern.compile(regex).matcher(arg);
+                m.find();
+                arg = m.group(1);
+                return Integer.parseInt(arg);
+            }
             return null;
         }
         try {
@@ -819,14 +828,8 @@ public class DiscordUtil {
                     int taxId = PnwUtil.parseTaxId(name);
                     nations.addAll(Locutus.imp().getNationDB().getNationsMatching(f -> f.getTax_id() == taxId));
                     continue;
-                } else if (name.startsWith("https://docs.google.com/spreadsheets/d/") || name.startsWith("sheet:")) {
-                    String key;
-                    if (name.startsWith("sheet:")) {
-                        key = name.split(":")[1];
-                    } else {
-                        key = name.split("/")[5];
-                    }
-
+                } else if (name.startsWith("https://docs.google.com/spreadsheets/") || name.startsWith("sheet:")) {
+                    String key = SpreadSheet.parseId(name);
                     SpreadSheet sheet = null;
                     try {
                         sheet = SpreadSheet.create(key);
@@ -834,7 +837,7 @@ public class DiscordUtil {
                         throw new RuntimeException(e);
                     }
 
-                    List<List<Object>> rows = sheet.get("A:Z");
+                    List<List<Object>> rows = sheet.getAll();
                     if (rows == null || rows.isEmpty()) continue;
 
                     List<DBNation> toAdd = new ArrayList<>();
@@ -956,6 +959,8 @@ public class DiscordUtil {
             Set<Integer> defIds = null;
             Set<Integer> fightingIds = null;
 
+            if (filters.size() > 0) {
+                GuildDB db = Locutus.imp().getGuildDB(guild);
             int depth = 0;
             Iterator<String> iter = filters.iterator();
             while (iter.hasNext()) {
@@ -964,8 +969,6 @@ public class DiscordUtil {
                 if (strFilter != null) {
                     switch (strFilter.getKey().toLowerCase()) {
                         case "#enemies": {
-                            GuildDB db = Locutus.imp().getGuildDB(guild);
-
                             Set<Integer> allies;
                             String[] argSplit = filterArg.split("=", 2);
                             if (argSplit.length == 2) {
@@ -1154,6 +1157,63 @@ public class DiscordUtil {
                         nations.removeIf(n -> !filter.getValue().apply(n.isPowered() ? 1d : 0d));
                         continue;
                     }
+                    case "#fightingenemyofscore": {
+                        nations.removeIf(n -> !n.isFightingEnemyOfScore(filter.getValue()::apply));
+                        continue;
+                    }
+                    case "#attackingenemyofscore": {
+                        nations.removeIf(n -> !n.isFightingOffEnemyOfScore(filter.getValue()::apply));
+                        continue;
+                    }
+                    case "#attacking1/2strengthenemyofscore": {
+                        nations.removeIf(n -> {
+                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+                            return value < n.getStrength() * 0.5;
+                        });
+                        continue;
+                    }
+                    case "#attacking2/3strengthenemyofscore": {
+                        nations.removeIf(n -> {
+                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+                            return value < n.getStrength() * 2 / 3;
+                        });
+                        continue;
+                    }
+                    case "#attacking3/4strengthenemyofscore": {
+                        nations.removeIf(n -> {
+                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+                            return value < n.getStrength() * 3 / 4;
+                        });
+                        continue;
+                    }
+                    case "#attacking4/5strengthenemyofscore": {
+                        nations.removeIf(n -> {
+                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+                            return value < n.getStrength() * 4 / 5;
+                        });
+                        continue;
+                    }
+                    case "#fighting4/5strengthenemyofscore": {
+                        nations.removeIf(n -> {
+                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
+                            return value < n.getStrength() * 4 / 5;
+                        });
+                        continue;
+                    }
+                    case "#attackingstrongerenemyofscore": {
+                        nations.removeIf(n -> {
+                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+                            return value < n.getStrength();
+                        });
+                        continue;
+                    }
+                    case "#fightingstrongerenemyofscore": {
+                        nations.removeIf(n -> {
+                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
+                            return value < n.getStrength();
+                        });
+                        continue;
+                    }
                     case "#spyrange":
                     case "#warrange": {
                         continue;
@@ -1330,6 +1390,7 @@ public class DiscordUtil {
                         throw new IllegalArgumentException("Invalid filter (3): `" + filterArg + "`");
                     }
                 }
+            }
             }
 
             if (inactiveTurns != 0) {

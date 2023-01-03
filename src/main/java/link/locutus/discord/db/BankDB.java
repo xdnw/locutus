@@ -1274,41 +1274,46 @@ public class BankDB extends DBMainV3 {
 
         List<Transaction2> list = new ArrayList<>();
 
-        if (includeLegacy) {
+        try {
+            if (includeLegacy && tableExists("TRANSACTIONS_ALLIANCE_2")) {
 
-            String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
+                String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
 
-            queryLegacy(query, new ThrowingConsumer<PreparedStatement>() {
-                @Override
-                public void acceptThrows(PreparedStatement stmt) throws Exception {
-                    stmt.setLong(1, senderOrReceiverId);
-                    stmt.setInt(2, type);
-                    stmt.setLong(3, senderOrReceiverId);
-                    stmt.setInt(4, type);
+                queryLegacy(query, new ThrowingConsumer<PreparedStatement>() {
+                    @Override
+                    public void acceptThrows(PreparedStatement stmt) throws Exception {
+                        stmt.setLong(1, senderOrReceiverId);
+                        stmt.setInt(2, type);
+                        stmt.setLong(3, senderOrReceiverId);
+                        stmt.setInt(4, type);
 
-                    if (type == 3) stmt.setString(5, "%#guild=" + senderOrReceiverId + "%");
-                    else if (type == 2) stmt.setString(5, "%#alliance=" + senderOrReceiverId + "%");
+                        if (type == 3) stmt.setString(5, "%#guild=" + senderOrReceiverId + "%");
+                        else if (type == 2) stmt.setString(5, "%#alliance=" + senderOrReceiverId + "%");
 
-                }
-            }, (ThrowingConsumer<ResultSet>) rs -> {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            });
-        }
+                    }
+                }, (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        list.add(new Transaction2(rs));
+                    }
+                });
+            }
 
-        // ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
+            // ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?) OR (lower(note) like ?))";
 
-        if (includeModern) {
-            Condition noteCondition;
-            if (type == 3) {
-                noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#guild=" + senderOrReceiverId + "%");
-            } else if (type == 2) {
-                noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#alliance=" + senderOrReceiverId + "%");
-            } else throw new InvalidResultException("Invalid type " + type);
-            list.addAll(getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.SENDER_TYPE.eq(type)),
-                    TRANSACTIONS_2.RECEIVER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(type)),
-                    noteCondition)));
+            if (includeModern) {
+                Condition noteCondition;
+                if (type == 3) {
+                    noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#guild=" + senderOrReceiverId + "%");
+                } else if (type == 2) {
+                    noteCondition = TRANSACTIONS_2.NOTE.likeIgnoreCase("%#alliance=" + senderOrReceiverId + "%");
+                } else throw new InvalidResultException("Invalid type " + type);
+                list.addAll(getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.SENDER_TYPE.eq(type)),
+                        TRANSACTIONS_2.RECEIVER_ID.eq(senderOrReceiverId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(type)),
+                        noteCondition)));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
         return list;
