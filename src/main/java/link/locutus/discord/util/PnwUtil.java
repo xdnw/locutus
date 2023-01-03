@@ -547,6 +547,13 @@ public class PnwUtil {
                 return Integer.parseInt(arg);
             } catch (NumberFormatException e) {}
         }
+        if (arg.contains("=HYPERLINK") && arg.contains("alliance/id=")) {
+            String regex = "alliance/id=([0-9]+)";
+            Matcher m = Pattern.compile(regex).matcher(arg);
+            m.find();
+            arg = m.group(1);
+            return Integer.parseInt(arg);
+        }
         return null;
     }
 
@@ -996,15 +1003,10 @@ public class PnwUtil {
             profitBuffer = build.profit(continent, rads, date, nation::hasProject, profitBuffer, numCities, grossModifier, turns);
         }
 
-        System.out.println("Profit " + MathMan.format(profitBuffer[0]) + " | food: " + MathMan.format(profitBuffer[ResourceType.FOOD.ordinal()]));
-
         // trade revenue
         if (tradeBonus) {
             profitBuffer[0] += nation.getColor().getTurnBonus() * turns * grossModifier;
         }
-
-        System.out.println("Turn bonus " + MathMan.format(nation.getColor().getTurnBonus() * turns * grossModifier));
-        System.out.println("Gross modifier " + MathMan.format(grossModifier) + " | " + MathMan.format(rads));
 
         // Add military upkeep
         if (militaryUpkeep && !nation.hasUnsetMil()) {
@@ -1230,6 +1232,7 @@ public class PnwUtil {
         double b1 = defStrength * 0.4;
         double b2 = defStrength;
 
+        // Skip formula for common cases (for performance)
         if (attStrength <= 0) return 0;
         if (defStrength * 2.5 <= attStrength) return success == 3 ? 1 : 0;
         if (a2 <= b1 || b2 <= a1) return 0;

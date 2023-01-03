@@ -11,7 +11,6 @@ import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.entities.DBNation;
 
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.DBNation;
 import link.locutus.discord.user.Roles;
 
 import link.locutus.discord.util.FileUtil;
@@ -23,7 +22,6 @@ import link.locutus.discord.db.entities.NationMeta;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import views.grant.cities;
 
 import java.io.IOException;
 import java.util.ArrayList;

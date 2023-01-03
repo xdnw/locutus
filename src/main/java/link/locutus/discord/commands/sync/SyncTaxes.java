@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -61,7 +62,7 @@ public class SyncTaxes extends Command {
             switch (args.get(0).toLowerCase()) {
                 default:
                     SpreadSheet sheet = SpreadSheet.create(args.get(0));
-                    if (!args.get(0).startsWith("sheet:") && !args.get(0).startsWith("https://docs.google.com/spreadsheets/d/")) return Settings.commandPrefix(true) + "synctaxes <sheet-url>";
+                    if (!args.get(0).startsWith("sheet:") && !args.get(0).startsWith("https://docs.google.com/spreadsheets/")) return Settings.commandPrefix(true) + "synctaxes <sheet-url>";
                     return updateTaxesLegacy(db, sheet);
                 case "sheet": {
                     if (args.size() != 1) return usage();

@@ -113,15 +113,9 @@ public class Disperse extends Command {
         Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
 
         String arg = args.get(0);
-        if (arg.startsWith("https://docs.google.com/spreadsheets/d/") || arg.startsWith("sheet:")) {
+        if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
 
-            String key;
-            if (arg.startsWith("sheet:")) {
-                key = arg.split(":")[1];
-            } else {
-                key = arg.split("/")[5];
-            }
-
+            String key = arg;
             SpreadSheet sheet = SpreadSheet.create(key);
             AddBalanceBuilder task = new AddBalanceBuilder(db);
             Map<String, Boolean> result = sheet.parseTransfers(task, false, note);

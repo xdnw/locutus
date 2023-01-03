@@ -46,12 +46,7 @@ public class AlertUtil {
         for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
             try {
                 if (!hasPerm.apply(guildDB)) continue;
-                String channelId = guildDB.getInfo(key, false);
-                if (channelId == null) {
-                    continue;
-                }
-
-                GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(Long.parseLong(channelId));
+                GuildMessageChannel channel = guildDB.getOrNull(key, false);
                 if (channel == null) {
                     continue;
                 }

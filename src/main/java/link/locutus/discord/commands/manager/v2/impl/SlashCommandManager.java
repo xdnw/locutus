@@ -4,7 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Step;
@@ -15,7 +15,6 @@ import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.interactions.commands.Command.*;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -24,18 +23,12 @@ import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autoparse;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.interactions.commands.Command.Choice;
-import net.dv8tion.jda.api.MessageBuilder;
-import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Channel;
 import net.dv8tion.jda.api.entities.ChannelType;
@@ -45,7 +38,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildChannel;
 import net.dv8tion.jda.api.entities.IMentionable;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.NewsChannel;
 import net.dv8tion.jda.api.entities.PrivateChannel;
@@ -64,20 +56,16 @@ import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
-import net.dv8tion.jda.api.interactions.commands.SlashCommandInteraction;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandGroupData;
-import net.dv8tion.jda.api.interactions.commands.privileges.CommandPrivilege;
 import net.dv8tion.jda.api.utils.WidgetUtil;
 import net.dv8tion.jda.api.utils.data.SerializableData;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
-import java.awt.Color;
 import java.lang.reflect.Type;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -390,6 +378,7 @@ public class SlashCommandManager extends ListenerAdapter {
             Step step = param.getAnnotation(Step.class);
             Timestamp timestamp = param.getAnnotation(Timestamp.class);
             Timediff timediff = param.getAnnotation(Timediff.class);
+            ArgChoice choiceAnn = param.getAnnotation(ArgChoice.class);
 
             OptionType optionType = (timestamp != null || timediff != null) ? OptionType.STRING : createType(type);
             OptionData option = new OptionData(optionType, id, desc);
@@ -414,6 +403,12 @@ public class SlashCommandManager extends ListenerAdapter {
                                 String name = value.toString();
                                 option.addChoice(name, name);
                             }
+                        }
+                    }
+                    if (choiceAnn != null && choiceAnn.value().length <= OptionData.MAX_CHOICES) {
+                        isEnumChoice = true;
+                        for (String name : choiceAnn.value()) {
+                            option.addChoice(name, name);
                         }
                     }
                 }

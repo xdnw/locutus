@@ -1447,8 +1447,8 @@ public class WarCommands {
         Set<Integer> alliesCoalition = db.getCoalition("allies");
         if (alliesCoalition != null) allies.addAll(alliesCoalition);
         if (me.getAlliance_id() != 0) allies.add(me.getAlliance_id());
-        String allianceId = db.getInfo(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) allies.add(Integer.parseInt(allianceId));
+        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        if (allianceId != null) allies.add(allianceId);
 
         Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id()).stream()
                 .map(dbWar -> dbWar.attacker_id == me.getNation_id() ? dbWar.defender_id : dbWar.attacker_id)
@@ -1591,7 +1591,7 @@ public class WarCommands {
             "Add `-d` to list targets currently on the dnr\n\n" +
             "e.g. `{prefix}IntelOpSheet 10d 'Error 404' 25`")
     @RolePermission(Roles.MILCOM)
-    public String IntelOpSheet(@Me GuildDB db, @Timestamp long time, Set<DBNation> attackers, @Default() Integer dnrTopX,
+    public String IntelOpSheet(@Me IMessageIO io, @Me GuildDB db, @Timestamp long time, Set<DBNation> attackers, @Default() Integer dnrTopX,
                                @Switch("l") boolean ignoreWithLootHistory, @Switch("d") boolean ignoreDNR, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
@@ -1694,7 +1694,8 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Convert hidude's sheet format to locutus")
@@ -1917,17 +1918,17 @@ public class WarCommands {
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation activity from a nation id\n" +
             "(use normal activity sheet unless you need the activity of a deleted nation)   ")
-    public String ActivitySheetFromId(@Me GuildDB db, int nationId, @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String ActivitySheetFromId(@Me IMessageIO io, @Me GuildDB db, int nationId, @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         DBNation nation = new DBNation();
         nation.setNation_id(nationId);
-        return ActivitySheet(db, Collections.singleton(nation), trackTime, sheet);
+        return ActivitySheet(io, db, Collections.singleton(nation), trackTime, sheet);
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation activity\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in")
-    public String ActivitySheet(@Me GuildDB db, Set<DBNation> nations, @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String ActivitySheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVITY_SHEET);
         }
@@ -1985,14 +1986,15 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of alliance/nation/city MMR\n" +
             "Add `-f` to force an update\n" +
             "Add `-c` to list it by cities")
-    public String MMRSheet(@Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet,
+    public String MMRSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet,
                            @Switch("f") boolean forceUpdate, @Switch("c") boolean showCities) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.MMR_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -2139,9 +2141,10 @@ public class WarCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        String response = sheet.getURL(true, true);
+        String response = "";
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
-        return response;
+        sheet.attach(io.create(), response).send();
+        return null;
     }
 
     private void setRowMMRSheet(String name, List<Object> row, DBNation nation, Integer lastSpies, double barracks, double factories, double hangars, double drydocks, double soldierBuy, double tankBuy, double airBuy, double navyBuy) {
@@ -2182,7 +2185,7 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command
-    public String DeserterSheet(@Me GuildDB db, Set<DBAlliance> alliances, @Timestamp long cuttOff,
+    public String DeserterSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBAlliance> alliances, @Timestamp long cuttOff,
                                 @Default("*") Set<DBNation> filter,
                                 @Switch("a") boolean ignoreInactive,
                                 @Switch("v") boolean ignoreVM,
@@ -2283,13 +2286,13 @@ public class WarCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @RolePermission(Roles.MILCOM)
     @Command(desc = "List of nations and their relative military")
-    public String combatantSheet(@Me GuildDB db, Set<DBAlliance> alliances) {
+    public String combatantSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBAlliance> alliances) {
         Set<Integer> alliancesIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliancesIds, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
         wars.removeIf(w -> {
@@ -2403,7 +2406,8 @@ public class WarCommands {
 
             sheet.set(0, 0);
 
-            return sheet.getURL(true, true);
+            sheet.attach(io.create()).send();
+            return null;
         } catch (Throwable e) {
             e.printStackTrace();
             return null;
@@ -2538,7 +2542,7 @@ public class WarCommands {
         String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
         String subject = "Targets-" + date + "/" + channel.getIdLong();
 
-        String blurb = "BE ACTIVE ON DISCORD. Your attack instructions are in your war room\n" +
+        String blurb = "BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room\n" +
                 "\n" +
                 "This is an alliance war, not a counter. The goal is battlefield control:\n" +
                 "1. Try to declare raid wars just before day change (day change if possible)\n" +
@@ -2875,7 +2879,7 @@ public class WarCommands {
     @Command(desc = "List active wars\n" +
             "Add `-i` to list concluded wars")
     @RolePermission(Roles.MILCOM)
-    public String warSheet(@Me GuildDB db, Set<DBNation> allies, Set<DBNation> enemies, @Default("5d") @Timestamp long cutoff, @Switch("i") boolean includeConcludedWars, @Switch("s") String sheetId) throws GeneralSecurityException, IOException {
+    public String warSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> allies, Set<DBNation> enemies, @Default("5d") @Timestamp long cutoff, @Switch("i") boolean includeConcludedWars, @Switch("s") String sheetId) throws GeneralSecurityException, IOException {
         long now = System.currentTimeMillis();
 
         WarParser parser1 = WarParser.ofAANatobj(null, allies, null, enemies, cutoff, now);
@@ -2982,7 +2986,8 @@ public class WarCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @RolePermission(value = Roles.MILCOM)
@@ -2992,7 +2997,7 @@ public class WarCommands {
             "Add `-a` to filter out applicants\n" +
             "Add `-i` to filter out inactive members\n" +
             "Add `-e` to include enemies not attacking")
-    public String counterSheet(@Me GuildDB db, @Default() Set<DBNation> enemyFilter, @Default() Set<DBAlliance> allies, @Switch("a") boolean excludeApplicants, @Switch("i") boolean excludeInactives, @Switch("e") boolean includeAllEnemies, @Switch("s") String sheetUrl) throws IOException, GeneralSecurityException {
+    public String counterSheet(@Me IMessageIO io, @Me GuildDB db, @Default() Set<DBNation> enemyFilter, @Default() Set<DBAlliance> allies, @Switch("a") boolean excludeApplicants, @Switch("i") boolean excludeInactives, @Switch("e") boolean includeAllEnemies, @Switch("s") String sheetUrl) throws IOException, GeneralSecurityException {
         boolean includeProtectorates = true;
         boolean includeCoalition = true;
         boolean includeMDP = true;
@@ -3085,7 +3090,7 @@ public class WarCommands {
         ));
 
         Map<Integer, String> notes = new HashMap<>();
-        List<List<Object>> rows = sheet.get("A:Z");
+        List<List<Object>> rows = sheet.getAll();
 
         if (rows != null && !rows.isEmpty()) {
             for (int i = 1; i < rows.size(); i++) {
@@ -3209,7 +3214,8 @@ public class WarCommands {
 
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Show the war card for a war by id")

@@ -721,7 +721,7 @@ public class TradeManager {
 
                 // if it's a mixup
                 {
-                    TradeSubscription mixupAlert = new TradeSubscription(Roles.TRADE_ALERT.ordinal(), type, Long.MAX_VALUE, true, true, 1, TradeDB.TradeAlertType.MIXUP).setRole(true);
+                    TradeSubscription mixupAlert = new TradeSubscription(Roles.TRADE_ALERT.ordinal(), type, Long.MAX_VALUE, true, true, 1, TradeDB.TradeAlertType.MISTRADE).setRole(true);
                     if (mixupAlert.applies(topBuy, topSell, topBuyOld, topSellOld)) {
                         subscriptionsToCall.add(mixupAlert);
                     }
@@ -885,5 +885,17 @@ public class TradeManager {
             dbColor.setVotedName(color.getBloc_name());
         }
         tradeDb.saveColorBlocs();
+    }
+
+    public boolean isTradeOutsideNormPrice(int ppu, ResourceType resource) {
+        if (resource != ResourceType.CREDITS) {
+            if (resource != ResourceType.FOOD) {
+                return ppu < 1000 || ppu > 5000;
+            } else {
+                return ppu < 50 || ppu > 150;
+            }
+        } else {
+            return ppu < 15000000 || ppu >= 30000000;
+        }
     }
 }

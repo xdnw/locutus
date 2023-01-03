@@ -387,6 +387,7 @@ type Nation {
 
   # This field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
   food: Float
+  credits: Int
   projects: Int
   project_bits: Long
   ironw: Boolean @deprecated(reason: "Use iron_works instead")
@@ -469,6 +470,7 @@ type Nation {
   spy_kills: Int
   spy_attacks: Int
   money_looted: Float
+  vip: Boolean
 }
 
 enum AlliancePositionEnum {
@@ -589,7 +591,10 @@ type Alliance {
   ): [Bankrec]
 
   # This field will return null unless you are an officer or higher in this alliance
-  tax_brackets: [TaxBracket]
+  tax_brackets(
+    id: [Int]
+    orderBy: [AllianceTaxBracketsOrderByOrderByClause!]
+  ): [TaxBracket]
 
   # All wars within the last 14 days
   wars(
@@ -785,6 +790,24 @@ enum AllianceTaxrecsOrderByColumn {
   STEEL
   ALUMINUM
   FOOD
+}
+
+# Order by clause for Alliance.tax_brackets.orderBy.
+input AllianceTaxBracketsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceTaxBracketsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.tax_brackets.orderBy.
+enum AllianceTaxBracketsOrderByColumn {
+  ID
+  DATE
+  DATE_MODIFIED
+  TAX_RATE
+  RESOURCE_RAX_RATE
 }
 
 type TaxBracket {
@@ -1721,7 +1744,6 @@ input QueryTreasureTradesOrderByOrderByClause {
 # Allowed column names for Query.treasure_trades.orderBy.
 enum QueryTreasureTradesOrderByColumn {
   ID
-  DATE
 }
 
 # A paginated list of TreasureTrade items.
@@ -1825,6 +1847,27 @@ type Mutation {
     food: Float = 0.0
     note: String
   ): Bankrec!
+  approveTreaty(id: Int!): Treaty!
+  cancelTreaty(id: Int!): Treaty!
+  proposeTreaty(
+    alliance_id: Int!
+    length: Int!
+    type: String!
+    url: String
+  ): Treaty!
+  assignTaxBracket(id: Int!, target_id: Int!): TaxBracket!
+  createTaxBracket(
+    name: String!
+    money_tax_rate: Int!
+    resource_tax_rate: Int!
+  ): TaxBracket!
+  deleteTaxBracket(id: Int!): TaxBracket!
+  editTaxBracket(
+    id: Int!
+    name: String
+    money_tax_rate: Int
+    resource_tax_rate: Int
+  ): TaxBracket!
 }
 
 # A datetime and timezone string in ISO 8601 format `Y-m-dTH:i:sO`, e.g. `2020-04-20T13:53:12+02:00`.

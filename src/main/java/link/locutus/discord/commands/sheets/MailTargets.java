@@ -112,7 +112,7 @@ public class MailTargets extends Command {
         String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
         String subject = "Targets-" + date + "/" + event.getChannel().getIdLong();
 
-        String blurb = "BE ACTIVE ON DISCORD. Your attack instructions are in your war room\n" +
+        String blurb = "BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room\n" +
                 "\n" +
                 "This is an alliance war, not a counter. The goal is battlefield control:\n" +
                 "1. Try to declare raid wars just before day change (day change if possible)\n" +

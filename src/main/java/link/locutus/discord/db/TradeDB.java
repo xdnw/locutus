@@ -9,7 +9,6 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
@@ -29,10 +28,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class TradeDB extends DBMainV2 {
     public TradeDB() throws SQLException, ClassNotFoundException {
@@ -185,7 +182,7 @@ public class TradeDB extends DBMainV2 {
     }
 
     public enum TradeAlertType {
-        MIXUP,
+        MISTRADE,
         UNDERCUT,
         DISPARITY,
         ABSOLUTE,

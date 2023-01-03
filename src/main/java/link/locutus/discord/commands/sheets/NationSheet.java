@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -18,6 +19,8 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -94,7 +97,16 @@ public class NationSheet extends Command implements Noformat {
             }
         }
 
-        for (DBNation nation : nations) {
+        List<DBNation> nationsSorted = new ArrayList<>(nations);
+        Collections.sort(nationsSorted, new Comparator<DBNation>() {
+            @Override
+            public int compare(DBNation o1, DBNation o2) {
+                if (o1.getAlliance_id() != o2.getAlliance_id()) return Integer.compare(o1.getAlliance_id(), o2.getAlliance_id());
+                if (o1.getCities() != o2.getCities()) return Integer.compare(o2.getCities(), o1.getCities());
+                return Double.compare(o2.getScore(), o1.getScore());
+            }
+        });
+        for (DBNation nation : nationsSorted) {
             for (int i = 1; i < args.size(); i++) {
                 String arg = args.get(i);
                 String formatted = DiscordUtil.format(guild, event.getGuildChannel(), author, nation, arg);
@@ -108,7 +120,8 @@ public class NationSheet extends Command implements Noformat {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        return sheet.getURL(true, true);
+        sheet.attach(new DiscordChannelIO(event).create()).send();
+        return null;
 //        I need, Nation name, nation link, score, war range, offensive/defensive slots open, military count (planes/tanks/ships/soldiers)
     }
 }

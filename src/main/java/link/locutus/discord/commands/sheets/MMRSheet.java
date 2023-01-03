@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -206,9 +207,11 @@ public class MMRSheet extends Command {
 
             sheet.clearAll();
             sheet.set(0, 0);
-            String response = sheet.getURL(true, true);
+            String response = "";
             if (!flags.contains('f')) response += "\nNote: Results may be outdated, add `-f` to update.";
-            return response;
+
+            sheet.attach(new DiscordChannelIO(event).create(), response).send();
+            return null;
         } catch (Throwable e) {
             e.printStackTrace();
             throw e;
