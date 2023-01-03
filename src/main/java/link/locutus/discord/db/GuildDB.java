@@ -4568,9 +4568,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public void setInfo(Key key, String value) {
         synchronized (infoParsed) {
+            setInfo(key.name(), key.validate(this, value));
             infoParsed.remove(key);
         }
-        setInfo(key.name(), key.validate(this, value));
     }
 
     private Map<String, String> info;
@@ -4597,9 +4597,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public void deleteInfo(Key key) {
         synchronized (infoParsed) {
+            deleteInfo(key.name());
             infoParsed.remove(key);
         }
-        deleteInfo(key.name());
     }
 
     public void deleteInfo(String key) {
