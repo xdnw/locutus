@@ -169,7 +169,7 @@ public class NationUpdateProcessor {
         }
     }
 
-    private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(120, TimeUnit.MINUTES);
+    private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
 
     public static void onActivityCheck() {
         Map<Integer, Integer> membersByAA = new HashMap<>(); // only <7d non vm nations
@@ -222,7 +222,7 @@ public class NationUpdateProcessor {
                     }
 
                     Integer previous = ACTIVITY_ALERTS.get(aaId);
-                    if (previous != null && previous + 2 >= active) continue;
+                    if (previous != null && previous + 10 >= active) continue;
                     ACTIVITY_ALERTS.put(aaId, active);
 
                     DBAlliance alliance = Locutus.imp().getNationDB().getOrCreateAlliance(aaId);
