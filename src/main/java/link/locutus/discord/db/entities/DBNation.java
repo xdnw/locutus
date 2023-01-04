@@ -342,7 +342,7 @@ public class DBNation implements NationOrAlliance {
                 }
             } else {
                 if (Roles.ADMIN.has(user, db.getGuild())) {
-                    output.append("No role mapping found.");
+                    output.append("No REGISTERED role mapping found.");
                     output.append("\nCreate a role mapping with " + CM.role.setAlias.cmd.toSlashMention() + "");
                 }
             }
