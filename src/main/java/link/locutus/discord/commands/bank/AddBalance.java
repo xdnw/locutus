@@ -116,9 +116,6 @@ public class AddBalance extends Command {
             } else {
                 Map<ResourceType, Double> transfer = new HashMap<>();
                 if ((args.size() == 2 || args.size() == 3) && args.get(1).equalsIgnoreCase("*")) {
-                    Integer allianceId = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                    if (allianceId == null) allianceId = nation.getAlliance_id();
-
                     Set<Long> tracked = null;
                     if (args.size() == 3) {
                         tracked = new LinkedHashSet<>();

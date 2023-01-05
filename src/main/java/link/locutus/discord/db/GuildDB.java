@@ -4969,6 +4969,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return new LinkedHashSet<>(result);
     }
 
+    public Set<Integer> getAllianceids() {
+        return getAllianceIds(true);
+    }
+
+    public boolean isAllianceId(int id) {
+        Integer aaId = getOrNull(Key.ALLIANCE_ID);
+        return (aaId != null && aaId == id);
+    }
+
     /**
      * @param onlyVerified - If only verified alliances are returned
      * @return the alliance ids associated with the guild

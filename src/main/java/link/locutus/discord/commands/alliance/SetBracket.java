@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -8,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
@@ -66,12 +68,10 @@ public class SetBracket extends Command {
         TaxRate taxBase = db.getHandler().getInternalTaxrate(nation.getNation_id());
         if (isGov) taxBase = new TaxRate(-1, -1);
 
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != nation.getAlliance_id()) return nation.getNation() + " is not in " + aaId;
-        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
-        if (auth == null) return "No authentication enabled for this guild";
+        DBAlliance alliance = nation.getAlliance();
+        if (!db.isAllianceId(alliance.getId())) return nation.getNation() + " is not in " + alliance;
 
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
+        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
 
         if (args.size() == 1) {
             StringBuilder response = new StringBuilder();
@@ -137,7 +137,7 @@ public class SetBracket extends Command {
             response.append("Set internal taxrate to " + internalRate + "\n");
         }
 
-        response.append(nation.setTaxBracket(bracket, auth));
+        response.append(alliance.setTaxBracket(nation, bracket));
         return response.toString();
     }
 }

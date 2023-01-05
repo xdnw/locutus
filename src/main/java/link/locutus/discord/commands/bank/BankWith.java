@@ -235,7 +235,7 @@ public class BankWith extends Command {
         String receiverStr = receiver.isAlliance() ? receiver.getName() :  receiver.asNation().getNation();
         String note = primaryNote;
 
-        Integer aaId3 = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Integer aaId3 = ((Integer[]) guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID))[0];
         long senderId = aaId3 == null ? guild.getIdLong() : aaId3;
         if (!flags.contains('n')) note += "=" + senderId;
         if (!otherNotes.isEmpty()) note += " " + StringMan.join(otherNotes, " ");

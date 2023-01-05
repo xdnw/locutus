@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -1179,6 +1180,82 @@ public class PoliticsAndWarV3 {
         return request(mutation, projection, Bankrec.class);
     }
 
+    private TreatyResponseProjection treatyResponseProjection() {
+        return new TreatyResponseProjection()
+        .id()
+        .alliance1_id()
+        .alliance2_id()
+        .treaty_type()
+        .treaty_url()
+        .turns_left();
+    }
+
+    public Treaty approveTreaty(int id) {
+        ApproveTreatyMutationRequest mutation = new ApproveTreatyMutationRequest();
+        mutation.setId(id);
+        return request(mutation, treatyResponseProjection(), Treaty.class);
+    }
+
+    public Treaty cancelTreaty(int id) {
+        CancelTreatyMutationRequest mutation = new CancelTreatyMutationRequest();
+        mutation.setId(id);
+        return request(mutation, treatyResponseProjection(), Treaty.class);
+    }
+
+    public Treaty proposeTreaty(int alliance_id, int length, TreatyType type, String url) {
+        ProposeTreatyMutationRequest mutation = new ProposeTreatyMutationRequest();
+        mutation.setAlliance_id(alliance_id);
+        mutation.setLength(length);
+        mutation.setType(type.getId());
+        mutation.setUrl(url);
+        return request(mutation, treatyResponseProjection(), Treaty.class);
+    }
+
+    private TaxBracketResponseProjection createTaxBracketProjection() {
+        TaxBracketResponseProjection projection = new TaxBracketResponseProjection()
+                .id()
+                .alliance_id()
+                .date()
+                .date_modified()
+                .last_modifier_id()
+                .tax_rate()
+                .resource_tax_rate()
+                .bracket_name();
+        return projection;
+    }
+
+    public TaxBracket assignTaxBracket(int taxId, int nationId) {
+        AssignTaxBracketMutationRequest mutation = new AssignTaxBracketMutationRequest();
+        mutation.setId(taxId);
+        mutation.setTarget_id(nationId);
+        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
+    }
+
+    public TaxBracket createTaxBracket(String name, Integer moneyRate, Integer rssRate) {
+        CreateTaxBracketMutationRequest mutation = new CreateTaxBracketMutationRequest();
+        mutation.setName(name);
+        mutation.setMoney_tax_rate(moneyRate);
+        mutation.setResource_tax_rate(rssRate);
+
+        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
+    }
+
+    public void deleteTaxBracket(int id) {
+        DeleteTaxBracketMutationRequest request = new DeleteTaxBracketMutationRequest();
+        request.setId(id);
+        request(request, createTaxBracketProjection(), TaxBracket.class);
+    }
+
+    public TaxBracket editTaxBracket(int id, String name, Integer moneyRate, Integer rssRate) {
+        EditTaxBracketMutationRequest mutation = new EditTaxBracketMutationRequest();
+        mutation.setId(id);
+        if (name != null) mutation.setName(name);
+        if (moneyRate != null) mutation.setMoney_tax_rate(moneyRate);
+        if (rssRate != null) mutation.setResource_tax_rate(rssRate);
+
+        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
+    }
+
     public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId) {
         Map<Integer, TaxBracket> taxBracketMap = new HashMap<>();
         List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
@@ -1217,7 +1294,6 @@ public class PoliticsAndWarV3 {
         }
     }
     public List<Trade> fetchTradesWithInfo(Consumer<TradesQueryRequest> filter, Predicate<Trade> tradeResults) {
-        TradesQueryRequest test = new TradesQueryRequest();
         return fetchTrades(TRADES_PER_PAGE, filter, new Consumer<TradeResponseProjection>() {
             @Override
             public void accept(TradeResponseProjection projection) {

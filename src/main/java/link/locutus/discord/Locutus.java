@@ -453,9 +453,8 @@ public final class Locutus extends ListenerAdapter {
         if (allianceId == 0) return null;
         for (Map.Entry<Long, GuildDB> entry : initGuildDB().entrySet()) {
             GuildDB db = entry.getValue();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
-            if (aaId != null && aaId == allianceId && db.getOrNull(GuildDB.Key.DELEGATE_SERVER, false) == null) {
-                return entry.getValue();
+            if (db.isAllianceId(allianceId)) {
+                return db;
             }
         }
 //        if (Locutus.imp().getNationDB().getAllianceName(allianceId) != null) {
@@ -873,8 +872,7 @@ public final class Locutus extends ListenerAdapter {
     public void onGuildMemberRoleAdd(@Nonnull GuildMemberRoleAddEvent event) {
         Guild guild = event.getGuild();
         GuildDB db = getGuildDB(guild);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId == null) return;
+        if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) return;
 
         executor.submit(() -> db.getHandler().onGuildMemberRoleAdd(event));
     }

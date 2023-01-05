@@ -30,7 +30,7 @@ public class EditAlliance extends Command {
 
     @Override
     public String help() {
-        return Settings.commandPrefix(true) + "editalliance [attr] [value]";
+        return Settings.commandPrefix(true) + "editalliance <alliance> [attr] [value]";
     }
 
     @Override
@@ -49,12 +49,14 @@ public class EditAlliance extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty()) return usage();
         StringBuilder response = new StringBuilder();
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Auth auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
         if (auth == null) return "No authorization set";
-        int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+        int allianceId = Integer.parseInt(args.get(0));
+        if (!db.isAllianceId(allianceId)) return "Alliance: " + allianceId + " is not registered to this guild.";
 
         EditAllianceTask task = new EditAllianceTask(auth.getNation(), new Consumer<Map<String, String>>() {
             @Override
