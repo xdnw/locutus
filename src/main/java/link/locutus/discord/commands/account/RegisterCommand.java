@@ -80,7 +80,7 @@ public class RegisterCommand extends Command {
                         DBNation mentionNation = DBNation.byId(nationId);
                         if (mentionNation == null) return "Invalid nation";
                         if (mentionNation.getUser() != null) return "Nation already registered: " + mentionNation.getNation() + " = " + mentionNation.getUser();
-                        if (guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) return "This guild is not registered to an alliance";
+                        if (!guildDb.hasAlliance()) return "This guild is not registered to an alliance";
                         if (!guildDb.isAllianceId(mentionNation.getAlliance_id())) return "Nation has not applied ingame";
                     }
                 }

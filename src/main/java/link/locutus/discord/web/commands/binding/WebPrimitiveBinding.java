@@ -37,6 +37,7 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.json.CityBuild;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.scheduler.QuadConsumer;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -196,8 +197,8 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getIdLong());
 
             String sub = "<img class='guild-icon-inline' src='" + obj.getIconUrl() + "'>";
-            Integer aaId = Locutus.imp().getGuildDB(obj).getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) sub += aaId;
+            Set<Integer> alliances = Locutus.imp().getGuildDB(obj).getAllianceids();
+            if (!alliances.isEmpty()) sub += "AA:" + StringMan.join(alliances, ",AA:");
             subtext.add(sub);
         });
     }

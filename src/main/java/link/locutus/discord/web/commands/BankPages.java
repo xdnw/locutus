@@ -63,9 +63,8 @@ public class BankPages {
 
         Collection<DBNation> nations;
 
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) {
-            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+        if (db.hasAlliance()) {
+            nations = Locutus.imp().getNationDB().getNations(db.getAllianceids());
             nations.removeIf(n -> n.getPosition() <= 1);
         } else {
             Role role = Roles.MEMBER.toRole(guild);

@@ -333,11 +333,12 @@ public class IACheckup {
 
         switch (type) {
             case CHECK_RANK: {
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (aaId == null) return null;
+                Set<Integer> aaIds = db.getAllianceids();
+                if (aaIds.isEmpty()) return null;
 
-                if (nation.getAlliance_id() != aaId) {
-                    return new AbstractMap.SimpleEntry<>("APPLY", "Please apply to the alliance ingame: https://politicsandwar.com/alliance/join/id=" + aaId);
+                if (!aaIds.contains(nation.getAlliance_id())) {
+                    int id = aaIds.iterator().next();
+                    return new AbstractMap.SimpleEntry<>("APPLY", "Please apply to the alliance ingame: https://politicsandwar.com/alliance/join/id=" + id);
                 }
                 if (nation.getPosition() <= 1) {
                     return new AbstractMap.SimpleEntry<>("MEMBER", "Please discuss with your mentor about becoming a member");
@@ -491,10 +492,10 @@ public class IACheckup {
 //                return null;
 //            }
             case DEPOSIT_RESOURCES: {
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (aaId != null) {
+                Set<Integer> aaIds = db.getAllianceids();
+                if (!aaIds.isEmpty()) {
                     for (Transaction2 transaction : transactions) {
-                        if (aaId.longValue() == transaction.receiver_id) return null;
+                        if (aaIds.contains((int) transaction.receiver_id)) return null;
                     }
                 }
                 String desc = "Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:\n" +
@@ -511,9 +512,7 @@ public class IACheckup {
             }
             case WITHDRAW_DEPOSITS: {
                 GuildMessageChannel channel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-                if (channel == null) return null;
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (aaId == null) return null;
+                if (channel == null || !db.hasAlliance()) return null;
                 for (Transaction2 transaction : transactions) {
                     if (transaction.receiver_id == (long) nation.getNation_id()) return null;
                 }

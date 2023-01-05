@@ -54,8 +54,8 @@ public class WarPages {
     @RolePermission(Roles.MILCOM)
     public String counter(@Me GuildDB db) {
         Set<Integer> offshore = db.getCoalition(Coalition.OFFSHORE);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
         Set<Integer> allies = db.getAllies();
+        Set<integer> aaIds = db.getAllianceids();
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allies, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
@@ -205,7 +205,7 @@ public class WarPages {
                 members.add(war);
                 continue;
             }
-            if (aaId != null && defender.getAlliance_id() == aaId) {
+            if (aaIds.contains(defender.getAlliance_id())) {
                 if (defender.getPosition() >= Rank.MEMBER.id) {
                     members.add(war);
                     continue;

@@ -148,7 +148,7 @@ public class ROI extends Command {
         }
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
-        if (guildDb == null || guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
+        if (guildDb == null || !guildDb.hasAlliance()) {
             return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<value>") + "";
         }
 

@@ -265,7 +265,7 @@ public class IndexPages {
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (5)");
 
         Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = new HashMap<>();
-        if (db.isWhitelisted() && db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
+        if (db.isWhitelisted() && db.hasAlliance()) {
             System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (5.1)");
             try {
                 IACheckup checkup = new IACheckup(db, db.getAlliance_id(), true);

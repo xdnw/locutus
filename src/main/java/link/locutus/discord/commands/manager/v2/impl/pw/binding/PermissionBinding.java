@@ -74,7 +74,7 @@ public class PermissionBinding extends BindingHelper {
             response.append("\nSee: ").append(CM.offshore.add.cmd.toSlashMention());
             if (db.isValidAlliance()) {
                 response.append("\nNote: Use this alliance id to use the alliance bank for withdrawals (or to create an offshoring point for other alliances you control)");
-            } else if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
+            } else if (!db.hasAlliance()) {
                 response.append("\nNote: Set the alliance for this guild using: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "");
             }
             Set<String> publicOffshores = new HashSet<>();

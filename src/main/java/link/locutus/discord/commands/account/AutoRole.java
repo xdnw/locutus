@@ -86,7 +86,7 @@ public class AutoRole extends Command {
                 return "No permission";
             }
 
-            if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
+            if (db.hasAlliance()) {
                 for (Map.Entry<Member, GuildDB.UnmaskedReason> entry : db.getMaskedNonMembers().entrySet()) {
                     response.append(entry.getKey().getAsMention());
                     DBNation nation = DiscordUtil.getNation(entry.getKey().getUser());

@@ -2463,7 +2463,7 @@ public class BankCommands {
         GuildDB offshoreDB = alliance.getGuildDB();
 
         if (offshoreDB != null) {
-            if (offshoreDB.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
+            if (!offshoredb.hasAlliance()) {
                 return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
             }
             if (offshoreDB.getOrNull(GuildDB.Key.API_KEY) == null) {

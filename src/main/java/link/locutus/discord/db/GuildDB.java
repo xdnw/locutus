@@ -18,6 +18,7 @@ import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -563,6 +564,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public int getAlliance_id() {
         Integer aaId = getOrNull(Key.ALLIANCE_ID);
         return aaId != null ? aaId : 0;
+    }
+
+    public boolean hasAlliance() {
+        return getOrNull(Key.ALLIANCE_ID) != null;
+    }
+
+    /**
+     * @return the alliances registered, or null
+     */
+    public AllianceList getAllianceList() {
+        Set<Integer> ids = getAllianceids();
+        if (ids.isEmpty()) return null;
+        return new AllianceList(ids);
     }
 
     @Override

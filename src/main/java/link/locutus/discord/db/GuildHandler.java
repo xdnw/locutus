@@ -128,7 +128,7 @@ public class GuildHandler {
     }
 
     public synchronized OffshoreInstance getBank() {
-        if (!bankInit && db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
+        if (!bankInit && db.hasAlliance()) {
             Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
             bankInit = true;
             {

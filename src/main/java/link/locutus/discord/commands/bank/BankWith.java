@@ -141,7 +141,7 @@ public class BankWith extends Command {
             }
         }
 
-        if (primaryNote.isEmpty() && (!flags.contains('n') || guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID) == null)) { //  && !grant
+        if (primaryNote.isEmpty() && (!flags.contains('n') || !guildDb.hasAlliance())) { //  && !grant
             return "Please use `" + Settings.commandPrefix(true) + "grant`, or one of the following labels: " + StringMan.getString(allowedLabels) + "\n" +
                     "note: You can add extra information after the label e.g. `\"#deposit blah\"`";
         }

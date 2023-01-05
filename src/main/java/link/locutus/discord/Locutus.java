@@ -872,7 +872,7 @@ public final class Locutus extends ListenerAdapter {
     public void onGuildMemberRoleAdd(@Nonnull GuildMemberRoleAddEvent event) {
         Guild guild = event.getGuild();
         GuildDB db = getGuildDB(guild);
-        if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) return;
+        if (!db.hasAlliance()) return;
 
         executor.submit(() -> db.getHandler().onGuildMemberRoleAdd(event));
     }
