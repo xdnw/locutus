@@ -3036,7 +3036,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public boolean allowed(GuildDB db) {
-                if (db.getIdLong() == 940788925209923584L) return true;
                 Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
                 if (aaId == null) return false;
                 return DBAlliance.get(aaId) != null;

@@ -18,6 +18,7 @@ import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
@@ -241,6 +242,13 @@ public class PoliticsAndWarV3 {
                 (pair.getBotKey() != null && StringUtils.containsIgnoreCase(e.getMessage(), pair.getBotKey())))) {
             String msg = StringUtils.replaceIgnoreCase(e.getMessage(), pair.getKey(), "XXX");
             if (pair.getBotKey() != null) msg = StringUtils.replaceIgnoreCase(msg, pair.getBotKey(), "XXX");
+            if (pair.getKey() != null) {
+                Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(pair.getKey());
+                if (nation != null) {
+                    msg = msg + " (using key from: " + nation + ")";
+                }
+            }
+
             throw new RuntimeException(msg);
         }
         if (throwRuntime) throw new RuntimeException(e.getMessage());

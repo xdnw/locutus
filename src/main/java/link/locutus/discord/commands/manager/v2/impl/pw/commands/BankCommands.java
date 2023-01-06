@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.bank.Disperse;
@@ -115,7 +116,7 @@ public class BankCommands {
     @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_LOW_GOV})
     @HasOffshore
     @IsAlliance
-    public String offshore(@Me Member member, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default("") String note) {
+    public String offshore(@Me Member member, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default("") String note) throws IOException {
         if (!Roles.ECON_LOW_GOV.has(member)) {
             if ((!Roles.MEMBER.has(member) || db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) != Boolean.TRUE)) {
                 throw new IllegalArgumentException("You need ECON to offshore or to enable " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_OFFSHORE.name(), "true") + "");
@@ -124,10 +125,8 @@ public class BankCommands {
                 throw new IllegalArgumentException("You need ECON to use a custom note");
             }
         }
-        Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
-        if (auth == null) return "No authentication enabled for this guild";
         OffshoreInstance offshore = db.getOffshore();
-        int from = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+        DBAlliance from = db.getAlliance();
 
         if (to == null) {
             to = offshore.getAlliance();
@@ -138,25 +137,18 @@ public class BankCommands {
         Set<Integer> offshores = db.getCoalition("offshore");
         if (!offshores.contains(toId)) return "Please add the offshore using " + CM.coalition.add.cmd.create("AA:" + toId, Coalition.OFFSHORE.name()) + "";
 
-        double[] amountSent = ResourceType.getBuffer();
+        OffshoreInstance bank = db.getHandler().getBank();
+        Map<ResourceType, Double> resources = from.getStockpile();
+        Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<ResourceType, Double> entry = iterator.next();
+            double newAmount = Math.max(0, entry.getValue() - warchest.getOrDefault(entry.getKey(), 0d));
+            entry.setValue(newAmount);
+        }
 
-        new BankWithTask(auth, from, toId, resources -> {
-            Map<ResourceType, Double> sent = new HashMap<>(resources);
+        Map.Entry<OffshoreInstance.TransferStatus, String> response = bank.transferUnsafe(bank.getAuth(), to, resources, note);
 
-            Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<ResourceType, Double> entry = iterator.next();
-                entry.setValue(warchest.getOrDefault(entry.getKey(), 0d));
-            }
-            sent = PnwUtil.subResourcesToA(sent, resources);
-            for (int i = 0; i < amountSent.length; i++) amountSent[i] = sent.getOrDefault(ResourceType.values[i], 0d);
-
-            Locutus.imp().getRootBank().sync();
-
-            return note.isEmpty() ? note : null;
-        }).call();
-
-        return "Sent " + PnwUtil.resourcesToString(amountSent) + " to " + to.getName();
+        return "Sending " + PnwUtil.resourcesToString(resources) + " to " + to.getName() + "\n -> " + response.toString();
     }
 
     @Command(desc = "Generate csv of war cost by nation between alliances (for reimbursement)\n" +
