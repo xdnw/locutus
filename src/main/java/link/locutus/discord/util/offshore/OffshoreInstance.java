@@ -38,7 +38,6 @@ import net.dv8tion.jda.api.entities.User;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
-import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -732,7 +731,7 @@ public class OffshoreInstance {
     }
 
     public Map.Entry<TransferStatus, String> transferUnsafe(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
-        if (Settings.USE_V2) {
+        if (Settings.USE_V2 && auth != null) {
             // todo test if game is still down
             WebRoot web = WebRoot.getInstance();
 
