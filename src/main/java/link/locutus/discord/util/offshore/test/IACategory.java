@@ -9,6 +9,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
@@ -59,7 +60,7 @@ import java.util.stream.Collectors;
 
 public class IACategory {
     private final GuildDB db;
-    private final DBAlliance alliance;
+    private final AllianceList alliance;
     private final Map<DBNation, IAChannel> channelMap = new HashMap<>();
     private final Guild guild;
     private IMessageIO output;
@@ -91,7 +92,8 @@ public class IACategory {
             this.output = null;
         }
         this.guild = db.getGuild();
-        this.alliance = DBAlliance.getOrCreate((Integer) db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
+        this.alliance = db.getAllianceList();
+        if (this.alliance == null) throw new IllegalArgumentException("No ALLIANCE_ID set. See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null));
         fetchChannels();
     }
 
@@ -369,7 +371,7 @@ public class IACategory {
                 } catch (Exception e) {}
             } else {
                 DBNation nation = iaChannel.getNation();
-                if (nation.getActive_m() > 20000 || (nation.getActive_m() > 10000) && nation.getAlliance_id() != alliance.getAlliance_id()) {
+                if (nation.getActive_m() > 20000 || (nation.getActive_m() > 10000) && !alliance.isInAlliance(nation)) {
                    if (output != null) output.send("Deleted channel " + channel.getName() + " (nation is (inactive)");
                     RateLimitUtil.queue(channel.delete());
                 }
