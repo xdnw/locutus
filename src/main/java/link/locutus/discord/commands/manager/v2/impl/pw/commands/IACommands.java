@@ -991,6 +991,7 @@ public class IACommands {
         List<AlliancePermission> requiredPermissions = new ArrayList<>();
         if (position.hasAnyOfficerPermissions() || nationPosition != null) requiredPermissions.add(AlliancePermission.CHANGE_PERMISSIONS);
         if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
+        if (position == DBAlliancePosition.REMOVE || position == DBAlliancePosition.APPLICANT) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
         Auth auth = db.getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
         if (auth == null) return "No auth for this guild found for: " + StringMan.getString(requiredPermissions);
 
@@ -1066,6 +1067,7 @@ public class IACommands {
         if (result.contains("Set player rank ingame.") && nationPosition == null) {
             db.getHandler().onSetRank(author, channel, nation, position);
         }
+        response.append("\n(Via Account: " + auth.getNation().getNation() + ")");
         response.append(result);
         response.append("\nSee also " + CM.self.list.cmd.toSlashMention() + " / " + CM.role.add.cmd.toSlashMention());
         return response.toString();

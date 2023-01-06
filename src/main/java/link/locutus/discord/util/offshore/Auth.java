@@ -374,7 +374,7 @@ public class Auth {
 
     public String setRank(DBNation nation, DBAlliancePosition position) {
         return PnwUtil.withLogin(() -> {
-            String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAllianceId() + "&display=acp";
+            String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAllianceId() + "&display=acp#assign_positions";
             String result = readStringFromURL(url, Collections.emptyMap());
 
 
@@ -406,6 +406,10 @@ public class Auth {
             dom = Jsoup.parse(result);
 
             String token = dom.select("input[name=validation_token]").attr("value");
+            if (token == null || token.isEmpty()) {
+                System.out.println(dom);
+                throw new IllegalArgumentException("No token found");
+            }
 
             Map<String, String> post = new HashMap<>();
             post.put("alliance_positions_member", nation.getNation_id() + "");
