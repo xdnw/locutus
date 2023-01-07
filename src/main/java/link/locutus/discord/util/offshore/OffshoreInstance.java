@@ -49,6 +49,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -606,8 +607,10 @@ public class OffshoreInstance {
             String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
 
             try {
-                offshoreDB.addBalanceMulti(depositsByAA, amount, -1, banker.getNation_id(), offshoreNote);
+                if (!valid) {
+                    offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, -1, banker.getNation_id(), offshoreNote);
 //                offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
+                }
             } catch (Throwable e) {
                 e.printStackTrace();
                 if (logChannel != null) {
@@ -676,8 +679,10 @@ public class OffshoreInstance {
                 case INVALID_DESTINATION:
                 case NOTHING_WITHDRAWN:
                 case INVALID_API_KEY:
-                    disabledGuilds.remove(senderDB.getIdLong());
-                    offshoreDB.addBalanceMulti(depositsByAA, amount, 1, banker.getNation_id(), offshoreNote);
+                    if (!valid) {
+                        disabledGuilds.remove(senderDB.getIdLong());
+                        offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, 1, banker.getNation_id(), offshoreNote);
+                    }
 //                    double[] negative = ResourceType.negative(amount.clone());
 //                    offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, negative);
                     break;
@@ -856,7 +861,7 @@ public class OffshoreInstance {
     }
 
     public Map<NationOrAllianceOrGuild, double[]> getDepositsByAA(GuildDB guildDb, boolean update) {
-        Map<NationOrAllianceOrGuild, double[]> result = new HashMap<>();
+        Map<NationOrAllianceOrGuild, double[]> result = new LinkedHashMap<>();
 
         GuildDB delegate = guildDb.getDelegateServer();
         if (delegate != null) {

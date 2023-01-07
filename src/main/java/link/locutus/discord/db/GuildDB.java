@@ -1389,6 +1389,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return warchest;
     }
 
+    public void addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, double sign, int banker, String offshoreNote) {
+        // throw error if any amount values is not positive
+        for (int i = 0; i < amount.length; i++) {
+            if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + PnwUtil.resourcesToString(amount));
+        }
+
+        Map<NationOrAllianceOrGuild, double[]> ammountEach = new LinkedHashMap<>();
+        addTransfer(dateTime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
+
+    }
+
     public void addBalanceTaxId(long tx_datetime, int taxId, int banker, String note, double[] amount) {
         long taxIdInternal = - (taxId << 20);
         addTransfer(tx_datetime, taxIdInternal, 4, 0, 0, banker, note, amount);
