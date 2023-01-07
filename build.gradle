@@ -362,6 +362,11 @@ sourceSets {
             srcDirs "$buildDir/generated"
             srcDirs "$buildDir/generated-src"
         }
+        resources {
+            srcDirs "src/main/resources/css"
+            srcDirs "src/main/resources/js"
+            srcDirs "src/main/resources/img"
+        }
     }
 }
 

@@ -3,6 +3,7 @@
 @import link.locutus.discord.db.entities.Announcement
 @import link.locutus.discord.db.entities.DBNation
 @import java.util.List
+@import link.locutus.discord.config.Settings
 @import java.util.Date
 
 @args (GuildDB db, Announcement announcement, List<Announcement.PlayerAnnouncement> announcements)
@@ -29,7 +30,7 @@ bg-secondary border-dark
     Filter: <kbd>@(announcement.filter)</kbd><br>
     Replacements: <kbd>@(announcement.replacements)</kbd><br>
 
-    <a href="@(WebRoot.REDIRECT)/@(db.getIdLong())/manageannouncements" type="button" class="btn btn-primary">View All Announcements</a>
+    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/@(db.getIdLong())/manageannouncements" type="button" class="btn btn-primary">View All Announcements</a>
 </div>
 <div class="container-fluid input-group input-group-lg">
     <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">

@@ -31,7 +31,9 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -39,6 +41,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
 import link.locutus.discord.util.update.NationUpdateProcessor;
 import com.google.gson.JsonObject;
@@ -80,6 +83,44 @@ public class AdminCommands {
     public String syncTreasures() {
         Locutus.imp().getNationDB().updateTreasures(Event::post);
         return "Done!";
+    }
+
+    @Command(desc = "Pull registered nations from locutus\n" +
+            "(or a provided url)")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncDiscordWithLocutus(@Default String url) throws IOException {
+        if (url == null) {
+            url = "https://locutus.link/discordids";
+        }
+        int count = 0;
+        // read string from url
+        String csvTabSeparated = FileUtil.readStringFromURL(url);
+        // split into lines
+        String[] lines = csvTabSeparated.split("\n");
+        // iterate each line
+        for (String line : lines) {
+            String[] columns = line.split("\t");
+            int nationId = Integer.parseInt(columns[0]);
+            long discordId = Long.parseLong(columns[1]);
+            PNWUser existing = Locutus.imp().getDiscordDB().getUserFromDiscordId(discordId);
+            if (existing != null && existing.getNationId() == nationId && existing.getDiscordId() == discordId) {
+                continue;
+            }
+
+            String username = null;
+            if (columns.length > 2) {
+                username = columns[2];
+                if (username.isEmpty()) {
+                    username = null;
+                }
+            }
+            if (username == null) username = discordId + "";
+
+            // register the user
+            count++;
+            Locutus.imp().getDiscordDB().addUser(new PNWUser(nationId, discordId, username));
+        }
+        return "Done! Imported " + count + "/" + lines.length + " users from " + url;
     }
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)

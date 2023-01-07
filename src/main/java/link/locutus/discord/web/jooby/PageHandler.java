@@ -492,7 +492,7 @@ public class PageHandler implements Handler {
             DBNation nation = DiscordUtil.getNation(id);
             if (nation == null) {
                 ctx.result("Please use <b>" + CM.register.cmd.toSlashMention() + "</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
-                        "You are currently signed in as " + user.getName() + "#" + user.getDiscriminator() + ": " + MarkupUtil.htmlUrl("Logout", WebRoot.REDIRECT + "/logout"));
+                        "You are currently signed in as " + user.getName() + "#" + user.getDiscriminator() + ": " + MarkupUtil.htmlUrl("Logout", Settings.INSTANCE.WEB.REDIRECT + "/logout"));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;
             }
@@ -548,7 +548,7 @@ public class PageHandler implements Handler {
                 cmd.validatePermissions(stack.getStore(), permisser);
 
                 if (cmd != null) {
-                    String endpoint = WebRoot.REDIRECT + "/cmd_page";
+                    String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/cmd_page";
                     ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
                 } else {
                     throw e2;
@@ -662,7 +662,7 @@ public class PageHandler implements Handler {
         }
 
         GuildDB db = (GuildDB) locals.getProvided(Key.of(GuildDB.class, Me.class));
-        String redirectBase = WebRoot.REDIRECT + "/" + (db != null ? db.getIdLong() + "/" : "") + cmd.getFullPath("/").toLowerCase() + "/";
+        String redirectBase = Settings.INSTANCE.WEB.REDIRECT + "/" + (db != null ? db.getIdLong() + "/" : "") + cmd.getFullPath("/").toLowerCase() + "/";
 
         Map<String, String> combined = parseQueryMap(locals, sse, ctx.queryParamMap());
         ParametricCallable parametric = (ParametricCallable) cmd;

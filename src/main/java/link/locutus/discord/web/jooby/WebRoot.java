@@ -4,6 +4,7 @@ package link.locutus.discord.web.jooby;
 import io.javalin.http.Handler;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.web.jooby.handler.LocutusSSLHandler;
 import link.locutus.discord.web.jooby.handler.SseClient2;
@@ -82,9 +83,9 @@ public class WebRoot {
         this.legacyBankHandler = new BankRequestHandler();
 
         Map<String, String> staticFileMap = new LinkedHashMap<>();
-        staticFileMap.put("src/views/rocker/css", "/css");
-        staticFileMap.put("src/views/rocker/js", "/js");
-        staticFileMap.put("src/views/rocker/img", "/");
+        staticFileMap.put("/css", "/css");
+        staticFileMap.put("/js", "/js");
+        staticFileMap.put("/img", "/");
 
         this.app = Javalin.create(config -> {
             config.server(() -> {
@@ -96,7 +97,7 @@ public class WebRoot {
                 config.addStaticFiles(staticFiles -> {
                     staticFiles.hostedPath = entry.getValue();                   // change to host files on a subpath, like '/assets'
                     staticFiles.directory = entry.getKey();              // the directory where your files are located
-                    staticFiles.location = Location.EXTERNAL;      // Location.CLASSPATH (jar) or Location.EXTERNAL (file system)
+                    staticFiles.location = Location.CLASSPATH;      // Location.CLASSPATH (jar) or Location.EXTERNAL (file system)
                     staticFiles.precompress = !Settings.INSTANCE.WEB.DEVELOPMENT;                // if the files should be pre-compressed and cached in memory (optimization)
 //                staticFiles.aliasCheck = null;                  // you can configure this to enable symlinks (= ContextHandler.ApproveAliases())
 //                staticFiles.headers = Map.of(...);              // headers that will be set for the files
@@ -183,14 +184,18 @@ public class WebRoot {
             }
         }));
 
-//        this.app.sse("/{guild_id}/sse/**", sse -> {
-//            try {
-//
-//            } catch (Throwable e) {
-//                e.printStackTrace();
-//            } finally {
-//            }
-//        });
+        this.app.get("/discordids", new Handler() {
+            @Override
+            public void handle(@NotNull Context context) throws Exception {
+                Map<Long, PNWUser> users = Locutus.imp().getDiscordDB().getRegisteredUsers();
+                StringBuilder result = new StringBuilder();
+                for (Map.Entry<Long, PNWUser> entry : users.entrySet()) {
+                    PNWUser user = entry.getValue();
+                    result.append(user.getNationId() + "\t" + user.getDiscordId() + "\t" + user.getDiscordName() + "\n");
+                }
+                context.result(result.toString().trim());
+            }
+        });
 
         for (String cmd : pageHandler.getCommands().getSubCommandIds()) {
             List<String> patterns = Arrays.asList(
