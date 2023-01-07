@@ -4,6 +4,7 @@ package link.locutus.discord.web.jooby;
 import io.javalin.http.Handler;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.web.jooby.handler.LocutusSSLHandler;
 import link.locutus.discord.web.jooby.handler.SseClient2;
@@ -183,14 +184,18 @@ public class WebRoot {
             }
         }));
 
-//        this.app.sse("/{guild_id}/sse/**", sse -> {
-//            try {
-//
-//            } catch (Throwable e) {
-//                e.printStackTrace();
-//            } finally {
-//            }
-//        });
+        this.app.get("/discordids", new Handler() {
+            @Override
+            public void handle(@NotNull Context context) throws Exception {
+                Map<Long, PNWUser> users = Locutus.imp().getDiscordDB().getRegisteredUsers();
+                StringBuilder result = new StringBuilder();
+                for (Map.Entry<Long, PNWUser> entry : users.entrySet()) {
+                    PNWUser user = entry.getValue();
+                    result.append(user.getNationId() + "\t" + user.getDiscordId() + "\t" + user.getDiscordName() + "\n");
+                }
+                context.result(result.toString().trim());
+            }
+        });
 
         for (String cmd : pageHandler.getCommands().getSubCommandIds()) {
             List<String> patterns = Arrays.asList(
