@@ -83,9 +83,9 @@ public class WebRoot {
         this.legacyBankHandler = new BankRequestHandler();
 
         Map<String, String> staticFileMap = new LinkedHashMap<>();
-        staticFileMap.put("src/main/css", "/css");
-        staticFileMap.put("src/main/js", "/js");
-        staticFileMap.put("src/main/img", "/");
+        staticFileMap.put("/css", "/css");
+        staticFileMap.put("/js", "/js");
+        staticFileMap.put("/img", "/");
 
         this.app = Javalin.create(config -> {
             config.server(() -> {
