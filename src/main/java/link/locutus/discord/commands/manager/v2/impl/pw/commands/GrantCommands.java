@@ -39,7 +39,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.config;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Member;

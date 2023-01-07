@@ -39,7 +39,7 @@ import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.config;
+import link.locutus.discord.config.Settings;
 import com.google.common.eventbus.EventBus;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import net.dv8tion.jda.api.JDA;

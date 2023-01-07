@@ -83,9 +83,9 @@ public class WebRoot {
         this.legacyBankHandler = new BankRequestHandler();
 
         Map<String, String> staticFileMap = new LinkedHashMap<>();
-        staticFileMap.put("src/views/rocker/css", "/css");
-        staticFileMap.put("src/views/rocker/js", "/js");
-        staticFileMap.put("src/views/rocker/img", "/");
+        staticFileMap.put("src/main/css", "/css");
+        staticFileMap.put("src/main/js", "/js");
+        staticFileMap.put("src/main/img", "/");
 
         this.app = Javalin.create(config -> {
             config.server(() -> {
@@ -97,7 +97,7 @@ public class WebRoot {
                 config.addStaticFiles(staticFiles -> {
                     staticFiles.hostedPath = entry.getValue();                   // change to host files on a subpath, like '/assets'
                     staticFiles.directory = entry.getKey();              // the directory where your files are located
-                    staticFiles.location = Location.EXTERNAL;      // Location.CLASSPATH (jar) or Location.EXTERNAL (file system)
+                    staticFiles.location = Location.CLASSPATH;      // Location.CLASSPATH (jar) or Location.EXTERNAL (file system)
                     staticFiles.precompress = !Settings.INSTANCE.WEB.DEVELOPMENT;                // if the files should be pre-compressed and cached in memory (optimization)
 //                staticFiles.aliasCheck = null;                  // you can configure this to enable symlinks (= ContextHandler.ApproveAliases())
 //                staticFiles.headers = Map.of(...);              // headers that will be set for the files

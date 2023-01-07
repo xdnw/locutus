@@ -362,6 +362,11 @@ sourceSets {
             srcDirs "$buildDir/generated"
             srcDirs "$buildDir/generated-src"
         }
+        resources {
+            srcDirs "views/rocker/css", "src/main/css"
+            srcDirs "views/rocker/js", "src/main/js"
+            srcDirs "views/rocker/img", "src/main/img"
+        }
     }
 }
 
