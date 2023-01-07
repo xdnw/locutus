@@ -1,9 +1,7 @@
 package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.Nation;
-import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
-import com.ptsmods.mysqlw.query.SelectResults;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.entities.ApiRecord;
@@ -30,7 +28,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -572,6 +569,11 @@ public class DiscordDB extends DBMainV2 {
             updated++;
         }
         return updated;
+    }
+
+    public Map<Long, PNWUser> getRegisteredUsers() {
+        updateUserCache();
+        return userCache;
     }
 
     public void addUser(PNWUser user) {

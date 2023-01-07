@@ -22,6 +22,7 @@ import link.locutus.discord.web.commands.search.SearchResult;
 import link.locutus.discord.web.commands.search.SearchType;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -53,7 +54,7 @@ public class IndexPages {
 
         String termLow = term.toLowerCase();
 
-        String urlBase = WebRoot.REDIRECT + "/" + db.getIdLong() + "/";
+        String urlBase = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
         String cmdUrl = urlBase + "command/";
 
         List<SearchResult> results = new ArrayList<>();
@@ -185,8 +186,8 @@ public class IndexPages {
         CommandGroup pages = WebRoot.getInstance().getPageHandler().getCommands();
 
         StringBuilder result = new StringBuilder();
-        String cmdEndpoint = WebRoot.REDIRECT + "/" + db.getIdLong() + "/command/";
-        String pageEndpoint = WebRoot.REDIRECT + "/" + db.getIdLong() + "/";
+        String cmdEndpoint = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/command/";
+        String pageEndpoint = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
 
         result.append(
                 commands.toHtml(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint)
@@ -211,7 +212,7 @@ public class IndexPages {
     @Command()
     public Object logout(Context context) throws IOException {
         WebRoot.getInstance().logout(context);
-        return "Logging out. If you are not redirected, please visit <a href=\"" + WebRoot.REDIRECT + "\">" + WebRoot.REDIRECT + "</a>";
+        return "Logging out. If you are not redirected, please visit <a href=\"" + Settings.INSTANCE.WEB.REDIRECT + "\">" + Settings.INSTANCE.WEB.REDIRECT + "</a>";
     }
 
     @Command()
