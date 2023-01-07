@@ -9,6 +9,7 @@ import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.web.jooby.WebRoot;
+import link.locutus.discord.config;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.MessageReaction;

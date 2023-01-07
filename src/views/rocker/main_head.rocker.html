@@ -62,7 +62,7 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-primary bg-gradient shadow p-0 mb-3 border-bottom border-3 border-dark text-white">
     <div class="container-fluid">
         <img src="https://cdn.discordapp.com/avatars/672237266940198960/0d78b819d401a8f983ab16242de195da.webp" width="30" height="30" class="d-inline-block" alt="">
-        <a class="navbar-brand text-white bold" href="@(WebRoot.REDIRECT)">
+        <a class="navbar-brand text-white bold" href="@(Settings.INSTANCE.WEB.REDIRECT)">
             Locutus-web
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -71,7 +71,7 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 <!--                <li class="nav-item">-->
-<!--                    <a class="nav-link active" aria-current="page" href="@(WebRoot.REDIRECT)">Home</a>-->
+<!--                    <a class="nav-link active" aria-current="page" href="@(Settings.INSTANCE.WEB.REDIRECT)">Home</a>-->
 <!--                </li>-->
 <!--                <li class="nav-item">-->
 <!--                    <a class="nav-link" href="#">Link</a>-->
@@ -112,7 +112,7 @@ if (guild_id == "") document.getElementById("navbar-search-form").remove();
 
 function search() {
     var value = document.getElementById("navbar-search").value;
-    var url = "@(WebRoot.REDIRECT)/" + guild_id + "/search/" + value;
+    var url = "@(Settings.INSTANCE.WEB.REDIRECT)/" + guild_id + "/search/" + value;
     window.location.href = url;
     return false;
 }

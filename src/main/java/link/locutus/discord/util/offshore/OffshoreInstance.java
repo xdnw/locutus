@@ -31,6 +31,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.jooby.BankRequestHandler;
 import link.locutus.discord.web.jooby.WebRoot;
+import link.locutus.discord.config;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;

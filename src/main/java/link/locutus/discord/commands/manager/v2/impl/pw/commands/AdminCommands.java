@@ -120,7 +120,7 @@ public class AdminCommands {
             count++;
             Locutus.imp().getDiscordDB().addUser(new PNWUser(nationId, discordId, username));
         }
-        return "Done! Imported " + count + " users from " + url;
+        return "Done! Imported " + count + "/" + lines.length + " users from " + url;
     }
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)

@@ -12,6 +12,7 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.jooby.BankRequestHandler;
 import link.locutus.discord.web.jooby.WebRoot;
+import link.locutus.discord.config;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
