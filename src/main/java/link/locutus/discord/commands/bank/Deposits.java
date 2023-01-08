@@ -202,7 +202,6 @@ public class Deposits extends Command {
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
 
         boolean largest = flags.contains('l');
 

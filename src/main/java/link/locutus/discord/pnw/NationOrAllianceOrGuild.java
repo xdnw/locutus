@@ -81,8 +81,7 @@ public interface NationOrAllianceOrGuild {
                 sender_type = 3;
             }
         } else if (isAlliance()) {
-            sender_id = getAlliance_id();
-            sender_type = 2;
+            throw new IllegalArgumentException("Alliance cannot be a sender");
         } else if (isNation()) {
             sender_id = getId();
             sender_type = 1;
@@ -108,9 +107,9 @@ public interface NationOrAllianceOrGuild {
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(true, 0, true));
+            AllianceList aaList = db.getAllianceList();
+            if (aaList != null) {
+                nations.addAll(aaList.getNations(true, 0, true));
             } else {
                 Guild guild = db.getGuild();
                 Role role = Roles.MEMBER.toRole(guild);
@@ -138,9 +137,9 @@ public interface NationOrAllianceOrGuild {
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(false, 0, false));
+            Set<Integer> ids = db.getAllianceids();
+            if (!ids.isEmpty()) {
+                nations.addAll(Locutus.imp().getNationDB().getNations(ids));
             }
             Guild guild = db.getGuild();
             for (Member member : guild.getMembers()) {

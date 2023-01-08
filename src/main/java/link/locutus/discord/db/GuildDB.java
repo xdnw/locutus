@@ -21,6 +21,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.util.AuditType;
@@ -1389,15 +1390,53 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return warchest;
     }
 
-    public void addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, double sign, int banker, String offshoreNote) {
-        // throw error if any amount values is not positive
+    public void addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> amounts, long dateTime, int banker, String offshoreNote) {
+        for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : amounts.entrySet()) {
+            NationOrAllianceOrGuild account = entry.getKey();
+            double[] amount = entry.getValue();
+            addTransfer(dateTime, 0, 0, account, banker, offshoreNote, amount);
+        }
+    }
+
+    public Map<NationOrAllianceOrGuild, double[]> addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, double sign, int banker, String offshoreNote) {
+        if (sign != -1 && sign != 1) throw new IllegalArgumentException("Sign must be -1 or 1");
         for (int i = 0; i < amount.length; i++) {
             if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + PnwUtil.resourcesToString(amount));
         }
 
-        Map<NationOrAllianceOrGuild, double[]> ammountEach = new LinkedHashMap<>();
-        addTransfer(dateTime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
+        double[] amountLeft = amount.clone();
 
+        Map<NationOrAllianceOrGuild, double[]> ammountEach = new LinkedHashMap<>();
+        for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : depositsByAA.entrySet()) {
+            NationOrAllianceOrGuild account = entry.getKey();
+            double[] subDeposits = entry.getValue();
+
+            double[] toSubtract = null;
+            for (int i = 0; i < amountLeft.length; i++) {
+                double subDepositsI = subDeposits[i];
+                double amountI = amountLeft[i];
+                if (subDepositsI > 0 && amountI > 0) {
+                    double subtract = Math.min(subDepositsI, amountI);
+                    if (subtract < 0.01) continue;
+                    if (toSubtract == null) toSubtract = ResourceType.getBuffer();
+                    toSubtract[i] = subtract;
+                    amountLeft[i] -= subtract;
+                }
+            }
+            if (toSubtract != null) {
+                ammountEach.put(account, toSubtract);
+
+                double[] amountSigned = toSubtract.clone();
+                if (sign != 1) {
+                    for (int i = 0; i < amountSigned.length; i++) {
+                        amountSigned[i] *= sign;
+                    }
+                }
+
+                addTransfer(dateTime, 0, 0, account, banker, offshoreNote, amountSigned);
+            }
+        }
+        return ammountEach;
     }
 
     public void addBalanceTaxId(long tx_datetime, int taxId, int banker, String note, double[] amount) {
@@ -1410,31 +1449,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         addTransfer(tx_datetime, taxIdInternal, 4, nation, 1, banker, note, amount);
     }
 
-    public void subBalance(long tx_datetime, NationOrAllianceOrGuild account, int banker, String note, double[] amount) {
+    public void subBalance(long tx_datetime, NationOrAlliance account, int banker, String note, double[] amount) {
         double[] copy = ResourceType.getBuffer();
         for (int i = 0; i < copy.length; i++) copy[i] = -amount[i];
         addBalance(tx_datetime, account, banker, note, copy);
     }
 
-    public void addBalance(long tx_datetime, NationOrAllianceOrGuild account, int banker, String note, double[] amount) {
+    public void addBalance(long tx_datetime, NationOrAlliance account, int banker, String note, double[] amount) {
         addTransfer(tx_datetime, account, 0, 0, banker, note, amount);
     }
 
-    public void subtractBalance(long tx_datetime, NationOrAllianceOrGuild account, int banker, String note, double[] amount) {
+    public void subtractBalance(long tx_datetime, NationOrAlliance account, int banker, String note, double[] amount) {
         addTransfer(tx_datetime, 0, 0, account, banker, note, amount);
     }
 
-    public void addTransfer(long tx_datetime, NationOrAllianceOrGuild sender, long receiver_id, int receiver_type, int banker, String note, double[] amount) {
+    public void addTransfer(long tx_datetime, NationOrAlliance sender, long receiver_id, int receiver_type, int banker, String note, double[] amount) {
         Map.Entry<Long, Integer> idType = sender.getTransferIdAndType();
         addTransfer(tx_datetime, idType.getKey(), idType.getValue(), receiver_id, receiver_type, banker, note, amount);
     }
 
-    public void addTransfer(long tx_datetime, NationOrAllianceOrGuild sender, NationOrAllianceOrGuild receiver2, int banker, String note, double[] amount) {
+    public void addTransfer(long tx_datetime, NationOrAlliance sender, NationOrAlliance receiver2, int banker, String note, double[] amount) {
         Map.Entry<Long, Integer> idType = sender.getTransferIdAndType();
         addTransfer(tx_datetime, idType.getKey(), idType.getValue(), receiver2, banker, note, amount);
     }
 
-    public void addTransfer(long tx_datetime, long sender_id, int sender_type, NationOrAllianceOrGuild receiver, int banker, String note, double[] amount) {
+    public void addTransfer(long tx_datetime, long sender_id, int sender_type, NationOrAlliance receiver, int banker, String note, double[] amount) {
         Map.Entry<Long, Integer> idType = receiver.getTransferIdAndType();
         addTransfer(tx_datetime, sender_id, sender_type, idType.getKey(), idType.getValue(), banker, note, amount);
     }
@@ -4956,14 +4995,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public Set<Long> getTrackedBanks() {
-        Set<Long> tracked = new LinkedHashSet<>();
-        tracked.addAll(getCoalitionRaw(Coalition.OFFSHORE));
+        Set<Long> tracked = new LinkedHashSet<>(getCoalitionRaw(Coalition.OFFSHORE));
         tracked.add(getGuild().getIdLong());
         tracked.addAll(getCoalitionRaw(Coalition.TRACK_DEPOSITS));
-
-        Integer allianceId = getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) tracked.add(allianceId.longValue());
-
+        for (Integer id : getAllianceids()) tracked.add(id.longValue());
         tracked = PnwUtil.expandCoalition(tracked);
         return tracked;
     }
@@ -5007,19 +5042,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
      * @return the alliance ids associated with the guild
      */
     public Set<Integer> getAllianceIds(boolean onlyVerified) {
+        Integer aaId = getOrNull(Key.ALLIANCE_ID);
+        if (aaId == null && !onlyVerified) return Collections.emptySet();
+
         Set<Integer> alliances = new LinkedHashSet<>();
+        if (aaId != null) {
+            alliances.add(aaId);
+        }
         if (!onlyVerified) {
             alliances.addAll(getCoalition(Coalition.OFFSHORE));
             Iterator<Integer> iter = alliances.iterator();
             while (iter.hasNext()) {
-                Integer aaId = iter.next();
-                GuildDB otherGuild = Locutus.imp().getGuildDBByAA(aaId);
+                Integer offshoreId = iter.next();
+                GuildDB otherGuild = Locutus.imp().getGuildDBByAA(offshoreId);
                 if (otherGuild != null) iter.remove();
             }
-        }
-        Integer aaId = getOrNull(Key.ALLIANCE_ID);
-        if (aaId != null) {
-            alliances.add(aaId);
         }
         return alliances;
     }

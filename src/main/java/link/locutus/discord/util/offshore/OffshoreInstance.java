@@ -487,9 +487,11 @@ public class OffshoreInstance {
         if (coalition.contains(guild)) return true;
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db != null) {
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null && coalition.contains((long) aaId)) {
-                return true;
+            Set<Integer> ids = db.getAllianceids();
+            for (Integer id : ids) {
+                if (coalition.contains(id.longValue())) {
+                    return true;
+                }
             }
         }
         return false;
@@ -607,9 +609,10 @@ public class OffshoreInstance {
             long tx_datetime = System.currentTimeMillis();
             String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
 
+            Map<NationOrAllianceOrGuild, double[]> addBalanceResult = null;
             try {
                 if (!valid) {
-                    offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, -1, banker.getNation_id(), offshoreNote);
+                    addBalanceResult = offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, -1, banker.getNation_id(), offshoreNote);
 //                offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
                 }
             } catch (Throwable e) {
@@ -680,9 +683,11 @@ public class OffshoreInstance {
                 case INVALID_DESTINATION:
                 case NOTHING_WITHDRAWN:
                 case INVALID_API_KEY:
+                    disabledGuilds.remove(senderDB.getIdLong());
                     if (!valid) {
-                        disabledGuilds.remove(senderDB.getIdLong());
-                        offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, 1, banker.getNation_id(), offshoreNote);
+                        if (addBalanceResult != null) {
+                            offshoreDB.addBalanceMulti(addBalanceResult, tx_datetime, banker.getNation_id(), offshoreNote);
+                        }
                     }
 //                    double[] negative = ResourceType.negative(amount.clone());
 //                    offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, negative);

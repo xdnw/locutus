@@ -813,9 +813,9 @@ public class DiscordUtil {
                             if (ignoreErrors) continue;
                             throw new IllegalArgumentException("Not in guild.");
                         }
-                        Integer allianceId = Locutus.imp().getGuildDB(guild).getOrNull(GuildDB.Key.ALLIANCE_ID);
-                        if (allianceId != null) {
-                            nations.addAll(Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId)));
+                        Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceids();
+                        if (!aaIds.isEmpty()) {
+                            nations.addAll(Locutus.imp().getNationDB().getNations(aaIds));
                         } else {
                             nations.addAll(Locutus.imp().getNationDB().getNations(Locutus.imp().getGuildDB(guild).getCoalition(Coalition.ALLIES)));
                         }

@@ -102,8 +102,9 @@ public class PnwUtil {
                 other = Locutus.imp().getGuildDBByAA(id.intValue());
             }
             if (other != null) {
-                Integer allianceId = other.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (allianceId != null) extra.add(allianceId.longValue());
+                for (Integer allianceId : other.getAllianceids()) {
+                    extra.add(allianceId.longValue());
+                }
                 extra.add(other.getGuild().getIdLong());
             }
         }
@@ -144,12 +145,7 @@ public class PnwUtil {
         if (forceIncludeExpired) allowExpiry = f -> false;
 
         if (tracked == null) {
-            tracked = new HashSet<>();
-            tracked.addAll(guildDB.getCoalitionRaw(Coalition.TRACK_DEPOSITS));
-            tracked.add(guildDB.getGuild().getIdLong());
-            Integer aaId = guildDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) tracked.add(aaId.longValue());
-            tracked = expandCoalition(tracked);
+            tracked = guildDB.getTrackedBanks();
         }
 
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
@@ -257,12 +253,7 @@ public class PnwUtil {
         allowConversion sender is nation and alliance has conversion enabled
          */
         if (tracked == null) {
-            tracked = new HashSet<>();
-            tracked.addAll(guildDB.getCoalitionRaw(Coalition.TRACK_DEPOSITS));
-            tracked.add(guildDB.getGuild().getIdLong());
-            Integer aaId = guildDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) tracked.add(aaId.longValue());
-            tracked = expandCoalition(tracked);
+            tracked = guildDB.getTrackedBanks();
         }
         // TODO also update Grant.isNoteFromDeposits if this code is updated
 
