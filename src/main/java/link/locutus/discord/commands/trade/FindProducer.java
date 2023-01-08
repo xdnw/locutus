@@ -46,7 +46,8 @@ public class FindProducer extends Command {
                 "Use `-t` to not include trade bonus\n" +
                 "Use `-n` to not include new nation bonus\n" +
                 "Use `-a` to list by nation instead of alliance\n" +
-                "Use `-s` to list the average instead of the sum";
+                "Use `-s` to list the average instead of the sum\n" +
+                "Use `-i` to include gray/beige";
     }
 
     @Override
@@ -81,13 +82,10 @@ public class FindProducer extends Command {
             nations.removeIf(f -> !allowedAAs.contains(f.getAlliance_id()) || f.getPosition() <= 1);
 
             nations.removeIf(n -> n.getAlliance_id() == 0 || n.getVm_turns() != 0 ||
-                    n.getPosition() <= 1 ||
-                    n.isGray() ||
-                    n.isBeige());
-        } else if (flags.contains('i')) {
-            nations.removeIf(n -> n.getAlliance_id() == 0 || n.getVm_turns() != 0 ||
-                    n.getPosition() <= 1 ||
-                    n.getActive_m() > 2440);
+                    n.getPosition() <= 1);
+        }
+            if (!flags.contains('i')) {
+            nations.removeIf(f -> !f.isTaxable());
         }
 
         Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching cities for " + nations.size() + " nations. Please wait..."));
