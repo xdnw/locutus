@@ -139,8 +139,6 @@ public class BlitzSheet extends Command {
             sheet = SpreadSheet.create(guildDB, GuildDB.Key.ACTIVITY_SHEET);
         }
 
-        List<RowData> rowData = new ArrayList<RowData>();
-
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "alliance",
                 "nation",
@@ -161,7 +159,7 @@ public class BlitzSheet extends Command {
                 "att3"
         ));
 
-        rowData.add(SheetUtil.toRowData(header));
+        sheet.addRow(header);
 
         for (Map.Entry<DBNation, List<DBNation>> entry : targets.entrySet()) {
             DBNation defender = entry.getKey();
@@ -209,11 +207,12 @@ public class BlitzSheet extends Command {
             }
             myRow.setValues(myRowData);
 
-            rowData.add(myRow);
+            sheet.addRow(row);
         }
 
         sheet.clear("A:Z");
-        sheet.write(rowData);
+        sheet.set(0, 0);
+
 
         sheet.attach(new DiscordChannelIO(event).create()).send();
         return null;
