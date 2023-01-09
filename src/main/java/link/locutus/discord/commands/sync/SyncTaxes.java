@@ -1,10 +1,9 @@
 package link.locutus.discord.commands.sync;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -15,7 +14,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -72,19 +70,30 @@ public class SyncTaxes extends Command {
                     return updateTaxesLegacy(db, null);
                 }
                 case "legacy": {
+                    Set<Integer> ids = db.getAllianceIds();
+                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null);
+                    int aaId;
+                    int offset = 0;
+                    if (ids.size() > 1) {
+                        if (args.size() != 2) return "!synctaxes legacy <alliance> [time]";
+                        aaId = Integer.parseInt(args.get(1));
+                        offset = 1;
+                    } else {
+                        aaId = ids.iterator().next();
+                    }
                     Long latestDate = null;
-                    if (args.size() >= 2)
-                        latestDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1)) * 1000L;
-                    if (args.size() > 2) return usage();
+                    if (args.size() >= 2 + offset)
+                        latestDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1 + offset)) * 1000L;
+                    if (args.size() > 2 + offset) return usage();
 
                     CompletableFuture<Message> msgFuture = event.getChannel().sendMessage("Syncing taxes for " + db.getAlliance_id() + ". Please wait...").submit();
 
-                    List<BankDB.TaxDeposit> taxes = db.getHandler().updateTaxesLegacy(latestDate);
+                    int taxesCount = db.getHandler().updateTaxesLegacy(aaId, latestDate);
 
                     Message msg = msgFuture.get();
                     RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
 
-                    return "Updated " + taxes.size() + " records.\n"
+                    return "Updated " + taxesCount + " records.\n"
                             + "<" + updateTurnGraph(db) + ">";
                 }
                 case "auto": {

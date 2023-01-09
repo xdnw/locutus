@@ -1,12 +1,9 @@
 package link.locutus.discord.db;
 
-import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -24,6 +21,7 @@ import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.guild.NewApplicantOnDiscordEvent;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.war.WarPeaceStatusEvent;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.user.Roles;
@@ -127,12 +125,12 @@ public class GuildHandler {
         if (bank == null) bankInit = false;
     }
 
-    public synchronized OffshoreInstance getBank() {
+    public synchronized OffshoreInstance getBank(int allianceId) {
         if (!bankInit && db.hasAlliance()) {
             Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
             bankInit = true;
             {
-                bank = new OffshoreInstance(auth, db, db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
+                bank = new OffshoreInstance(auth, db, allianceId);
             }
         }
         return bank;
@@ -193,11 +191,12 @@ public class GuildHandler {
     }
 
     public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Map<NationFilterString, Integer> requiredTaxBracket, Consumer<String> responses) throws Exception {
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        nations.removeIf(f -> f.getAlliance_id() != aaId || f.isGray() || f.getVm_turns() > 0 || f.getPosition() <= 1 || f.isBeige());
+        Set<Integer> aaIds = db.getAllianceIds();
+        nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
 
-        Auth auth = getDb().getAuth(AlliancePermission.TAX_BRACKETS);
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets(false);
+        AllianceList allianceList = db.getAllianceList();
+
+        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(false);
         Map<DBNation, TaxBracket> bracketsByNation = new HashMap<>();
 
         Map<DBNation, Map.Entry<TaxBracket, String>> nationsMovedBracket = new HashMap<>();
@@ -224,7 +223,7 @@ public class GuildHandler {
                 }
             }
             if (required != null && (current == null || current.taxId != required.taxId)) {
-                String response = nation.setTaxBracket(required, auth);
+                String response = allianceList.setTaxBracket(required, nation);
                 responses.accept(nation.getNation() + ": " + response);
                 nationsMovedBracket.put(nation, new AbstractMap.SimpleEntry<>(required, reason));
                 Locutus.imp().getNationDB().markNationDirty(nation.getId());
@@ -239,8 +238,8 @@ public class GuildHandler {
     }
 
     public Map<DBNation, Map.Entry<TaxRate, String>> setNationInternalTaxRate(Set<DBNation> nations, Map<NationFilterString, TaxRate> requiredTaxRates, Consumer<String> responses) throws Exception {
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        nations.removeIf(f -> f.getAlliance_id() != aaId || f.isGray() || f.getVm_turns() > 0 || f.getPosition() <= 1 || f.isBeige());
+        Set<Integer> aaIds = db.getAllianceIds();
+        nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
 
         Map<DBNation, Map.Entry<TaxRate, String>> nationsMovedRate = new HashMap<>();
 
@@ -287,7 +286,7 @@ public class GuildHandler {
 
         Guild guild = getGuild();
         GuildDB db = getDb();
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
 
         GuildMessageChannel alertChannel = db.getOrNull(GuildDB.Key.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return false;
@@ -312,13 +311,13 @@ public class GuildHandler {
             if (nation.getActive_m() > 7200) return false;
 
             body.append("nation: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + "\n");
-            if (nation.getPosition() > 1 && nation.getAlliance_id() == aaId) {
+            if (nation.getPosition() > 1 && aaIds.contains(nation.getAlliance_id())) {
                 body.append("\n\n**ALREADY MEMBER OF " + nation.getAllianceName() + "**\n\n");
                 mentionInterviewer = false;
             }
-            if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
+            if (nation.getAlliance_id() != 0 && !aaIds.contains(nation.getAlliance_id())) {
                 Locutus.imp().getNationDB().updateNations(List.of(nation.getNation_id()), Event::post);
-                if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
+                if (nation.getAlliance_id() != 0 && !aaIds.contains(nation.getAlliance_id())) {
                     body.append("\n\n**Already member of AA: " + nation.getAllianceName() + "**\n\n");
                     mentionInterviewer = false;
                     RateLimitUtil.queueWhenFree(author.openPrivateChannel().complete().sendMessage("As you're already a member of another alliance, message or ping @" + interviewerRole.getName() + " to (proceed"));
@@ -491,11 +490,11 @@ public class GuildHandler {
     }
 
     private void onNewApplicant(DBNation current) {
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
 
             // New applicant
-            if (current.getPositionEnum() == Rank.APPLICANT && current.getAlliance_id() == aaId) {
+            if (current.getPositionEnum() == Rank.APPLICANT && aaIds.contains(current.getAlliance_id())) {
                 MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
                     String type = "New Applicant Ingame";
@@ -557,11 +556,11 @@ public class GuildHandler {
         DBNation previous = event.getPrevious();
 
         onNewApplicant(current);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
 
             // member leave
-            if (previous.getAlliance_id() == aaId && current.getAlliance_id() != aaId) {
+            if (aaIds.contains(previous.getAlliance_id()) && current.getAlliance_id() != previous.getAlliance_id()) {
                 MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
                     Rank rank = Rank.byId(previous.getPosition());
@@ -1366,21 +1365,21 @@ public class GuildHandler {
 //    }
 
     public void onAttack(DBNation memberNation, DBAttack root) {
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
             if (root.attack_type == AttackType.VICTORY) {
                 DBNation attacker = Locutus.imp().getNationDB().getNation(root.attacker_nation_id);
-                handleLostWars(attacker, allianceId, root, memberNation);
+                handleLostWars(attacker, aaIds, root, memberNation);
 
                 DBNation defender = Locutus.imp().getNationDB().getNation(root.defender_nation_id);
-                handleWonWars(defender, allianceId, root, memberNation);
+                handleWonWars(defender, aaIds, root, memberNation);
 
             }
         }
     }
 
-    private void handleWonWars(DBNation enemy, Integer allianceId, DBAttack root, DBNation memberNation) {
-        if (enemy == null || enemy.getAlliance_id() == allianceId || enemy.getNation_id() == memberNation.getNation_id()) return;
+    private void handleWonWars(DBNation enemy, Set<Integer> aaIds, DBAttack root, DBNation memberNation) {
+        if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
         GuildMessageChannel channel = db.getOrNull(GuildDB.Key.WON_WAR_CHANNEL);
         if (enemy.getActive_m() > 1440 || enemy.getVm_turns() > 0) return;
 
@@ -1392,8 +1391,8 @@ public class GuildHandler {
         createWarInfoEmbed(title, war, enemy, memberNation, channel);
     }
 
-    private void handleLostWars(DBNation enemy, Integer allianceId, DBAttack root, DBNation memberNation) {
-        if (enemy == null || enemy.getAlliance_id() == allianceId || enemy.getNation_id() == memberNation.getNation_id()) return;
+    private void handleLostWars(DBNation enemy, Set<Integer> aaIds, DBAttack root, DBNation memberNation) {
+        if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
         GuildMessageChannel channel = db.getOrNull(GuildDB.Key.LOST_WAR_CHANNEL);
 
         if (channel == null) return;
@@ -1481,7 +1480,7 @@ public class GuildHandler {
         Role milcomRole = Roles.MILCOM.toRole(guild);
         Role faRole = Roles.FOREIGN_AFFAIRS.toRole(guild);
 
-        Integer aaId = getDb().getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
         WarCategory warCat = db.getWarChannel();
 
         for (Map.Entry<DBWar, DBWar> entry : wars) {
@@ -1520,7 +1519,7 @@ public class GuildHandler {
                 }
             } else {
                 if (defender != null) {
-                    boolean pingMilcom = defender.getPosition() >= Rank.MEMBER.id || defender.getActive_m() < 2440 || (aaId != null && defender.getAlliance_id() == aaId && defender.getActive_m() < 7200);
+                    boolean pingMilcom = defender.getPosition() >= Rank.MEMBER.id || defender.getActive_m() < 2440 || (aaIds.contains(defender.getAlliance_id()) && defender.getActive_m() < 7200);
                     if (pingMilcom && milcomRole != null) {
                         CounterStat counterStat = war.getCounterStat();
                         if (counterStat != null && counterStat.type == CounterType.IS_COUNTER && !enemies.contains(attacker.getAlliance_id())) {
@@ -1591,7 +1590,7 @@ public class GuildHandler {
                                 DBNation nation = war.getNation(true);
                                 if (nation == null) continue;
                                 User user = nation.getUser();
-                                if ((aaId == null || war.attacker_aa != aaId) && (user == null || guild.getMember(user) == null))
+                                if ((!aaIds.contains(war.attacker_aa)) && (user == null || guild.getMember(user) == null))
                                     continue;
 
                                 String title = "Do Not Raid/" + channel.getIdLong();
@@ -1831,8 +1830,7 @@ public class GuildHandler {
                     return false;
                 }
                 Boolean hideApps = db.getOrNull(GuildDB.Key.HIDE_APPLICANT_WARS);
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (hideApps == null && aaId == null) {
+                if (hideApps == null && !db.hasAlliance()) {
                     hideApps = true;
                 }
 
@@ -1855,15 +1853,17 @@ public class GuildHandler {
             tracked.addAll(db.getCoalition("offshore"));
         }
 
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null && allianceId != 0) {
-            tracked.add(allianceId);
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            for (int id : db.getAllianceIds()) {
+                if (id != 0) tracked.add(id);
+            }
         }
 
-        if (offensive && (allianceId == null || db.getOrNull(GuildDB.Key.SHOW_ALLY_OFFENSIVE_WARS) == Boolean.TRUE)) {
+        if (offensive && (aaIds.isEmpty() || db.getOrNull(GuildDB.Key.SHOW_ALLY_OFFENSIVE_WARS) == Boolean.TRUE)) {
             tracked.addAll(db.getCoalition(Coalition.ALLIES));
         }
-        if (!offensive && (allianceId == null || db.getOrNull(GuildDB.Key.SHOW_ALLY_DEFENSIVE_WARS) == Boolean.TRUE)) {
+        if (!offensive && (aaIds.isEmpty() || db.getOrNull(GuildDB.Key.SHOW_ALLY_DEFENSIVE_WARS) == Boolean.TRUE)) {
             tracked.addAll(db.getCoalition(Coalition.ALLIES));
         }
 
@@ -1887,8 +1887,11 @@ public class GuildHandler {
         return allowed;
     }
 
-    public List<BankDB.TaxDeposit> updateTaxesLegacy(Long latestDate) {
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+    public int updateTaxesLegacy(int aaId, Long latestDate) {
+        int count = 0;
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.contains(aaId)) throw new IllegalArgumentException("Guild is not registered to alliance: " + aaId +". See " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null));
+
         List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(aaId);
         int latestId = 1;
         if (latestDate == null) {
@@ -1926,7 +1929,7 @@ public class GuildHandler {
                 Locutus.imp().getBankDB().addTaxDeposits(taxes);
             }
         }
-        return taxes;
+        return count;
     }
 
     /**
@@ -2352,10 +2355,10 @@ public class GuildHandler {
             GuildMessageChannel output = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT, false);
             if (output == null) return;
 
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
-            if (aaId == null) return;
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (aaIds.isEmpty()) return;
 
-            Set<DBNation> members = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
+            Set<DBNation> members = Locutus.imp().getNationDB().getNations(aaIds);
             members.removeIf(f -> f.getPosition() < Rank.LEADER.id);
             members.removeIf(f -> f.getActive_m() > 2880);
             members.removeIf(f -> f.getVm_turns() > 0);
@@ -2438,8 +2441,8 @@ public class GuildHandler {
     public void onRefer(DBNation nation) {
         if (nation.getVm_turns() > 0 || nation.getActive_m() > 2880 || nation.isGray() || nation.isBeige()) return;
 
-        Integer aaId = getDb().getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null && nation != null && nation.getAlliance_id() == aaId && nation.getPosition() > Rank.APPLICANT.id) {
+        Set<Integer> aaIds = getDb().getAllianceIds();
+        if (!aaIds.isEmpty() && nation != null && aaIds.contains(nation.getAlliance_id()) && nation.getPosition() > Rank.APPLICANT.id) {
             Map<ResourceType, Double> amtMap = getDb().getOrNull(GuildDB.Key.REWARD_REFERRAL);
             if (amtMap == null) return;
             double[] amt = PnwUtil.resourcesToArray(amtMap);

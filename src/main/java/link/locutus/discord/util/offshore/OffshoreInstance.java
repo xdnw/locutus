@@ -2,9 +2,7 @@
 package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
-import com.politicsandwar.graphql.model.GameInfo;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -25,14 +23,12 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.balance.BankWithTask;
-import link.locutus.discord.util.task.balance.GetDepositTask;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.jooby.BankRequestHandler;
 import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.config.Settings;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
@@ -42,14 +38,12 @@ import org.springframework.web.client.HttpServerErrorException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -487,7 +481,7 @@ public class OffshoreInstance {
         if (coalition.contains(guild)) return true;
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db != null) {
-            Set<Integer> ids = db.getAllianceids();
+            Set<Integer> ids = db.getAllianceIds();
             for (Integer id : ids) {
                 if (coalition.contains(id.longValue())) {
                     return true;
@@ -876,7 +870,7 @@ public class OffshoreInstance {
         if (guildDb.getOffshore() != this) return result;
 
 
-        Set<Integer> ids = guildDb.getAllianceids();
+        Set<Integer> ids = guildDb.getAllianceIds();
 
         if (!ids.isEmpty()) {
 

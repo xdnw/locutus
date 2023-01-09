@@ -72,14 +72,11 @@ public interface NationOrAllianceOrGuild {
         int sender_type;
         if (isGuild()) {
             GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                sender_id = aaId;
-                sender_type = 2;
-            } else {
-                sender_id = db.getGuild().getIdLong();
-                sender_type = 3;
+            if (db.hasAlliance()) {
+                throw new IllegalStateException("Alliance Guilds cannot be used as sender. Specify the alliance instead: " + db.getGuild());
             }
+            sender_id = db.getGuild().getIdLong();
+            sender_type = 3;
         } else if (isAlliance()) {
             throw new IllegalArgumentException("Alliance cannot be a sender");
         } else if (isNation()) {
@@ -137,7 +134,7 @@ public interface NationOrAllianceOrGuild {
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            Set<Integer> ids = db.getAllianceids();
+            Set<Integer> ids = db.getAllianceIds();
             if (!ids.isEmpty()) {
                 nations.addAll(Locutus.imp().getNationDB().getNations(ids));
             }

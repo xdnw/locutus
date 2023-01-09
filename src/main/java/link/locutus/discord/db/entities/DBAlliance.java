@@ -909,4 +909,10 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
         return nations;
     }
+
+    public boolean setTaxBracket(TaxBracket required, DBNation nation) {
+        PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
+        com.politicsandwar.graphql.model.TaxBracket result = api.assignTaxBracket(required.taxId, nation.getNation_id());
+        return result != null;
+    }
 }

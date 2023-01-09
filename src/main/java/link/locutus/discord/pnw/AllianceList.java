@@ -1,14 +1,18 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class AllianceList {
@@ -43,4 +47,22 @@ public class AllianceList {
         return nations;
     }
 
+    public Map<Integer, TaxBracket> getTaxBrackets(boolean useCache) {
+        Map<Integer, TaxBracket> brackets = new HashMap<>();
+        for (int id : ids) {
+            DBAlliance alliance = DBAlliance.get(id);
+            if (alliance != null) {
+                brackets.putAll(alliance.getTaxBrackets(useCache));
+            }
+        }
+        return brackets;
+    }
+
+    public String setTaxBracket(TaxBracket required, DBNation nation) {
+        if (required.getAllianceId() != nation.getAlliance_id()) {
+            throw new IllegalArgumentException(nation.getNation() + " is not in the alliance: " + required.getAllianceId() + " for bracket: #" + required.taxId);
+        }
+        DBAlliance.get(required.getAllianceId()).setTaxBracket(required, nation);
+        return null;
+    }
 }

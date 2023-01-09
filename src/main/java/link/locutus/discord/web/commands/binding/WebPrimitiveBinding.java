@@ -2,7 +2,6 @@ package link.locutus.discord.web.commands.binding;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -44,11 +43,9 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
-import com.google.common.collect.BiMap;
 import com.google.gson.JsonArray;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -197,7 +194,7 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getIdLong());
 
             String sub = "<img class='guild-icon-inline' src='" + obj.getIconUrl() + "'>";
-            Set<Integer> alliances = Locutus.imp().getGuildDB(obj).getAllianceids();
+            Set<Integer> alliances = Locutus.imp().getGuildDB(obj).getAllianceIds();
             if (!alliances.isEmpty()) sub += "AA:" + StringMan.join(alliances, ",AA:");
             subtext.add(sub);
         });

@@ -1,6 +1,5 @@
 package link.locutus.discord.util;
 
-import com.google.gson.stream.MalformedJsonException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.stock.Exchange;
@@ -17,13 +16,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import org.json.JSONObject;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import rocker.grant.nation;
 
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -102,7 +99,7 @@ public class PnwUtil {
                 other = Locutus.imp().getGuildDBByAA(id.intValue());
             }
             if (other != null) {
-                for (Integer allianceId : other.getAllianceids()) {
+                for (Integer allianceId : other.getAllianceIds()) {
                     extra.add(allianceId.longValue());
                 }
                 extra.add(other.getGuild().getIdLong());
