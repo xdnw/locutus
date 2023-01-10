@@ -669,10 +669,11 @@ public class UnsortedCommands {
                                @Switch("n") boolean ignoreNationBonus,
                                @Switch("a") boolean listByNation,
                                @Switch("s") boolean listAverage,
-                               @Switch("u") boolean uploadFile) throws Exception {
+                               @Switch("u") boolean uploadFile,
+                               @Switch("i") boolean includeInactive) throws Exception {
         if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNations().values());
         ArrayList<DBNation> nations = new ArrayList<>(nationList.getNations());
-        nations.removeIf(n -> !n.isTaxable());
+        if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
 
         Map<DBNation, Number> profitByNation = new HashMap<>();
 
@@ -680,6 +681,7 @@ public class UnsortedCommands {
 
         Map<Integer, Map<Integer, DBCity>> allCities = Locutus.imp().getNationDB().getCitiesV3(nationIds);
         double[] profitBuffer = ResourceType.getBuffer();
+
         for (DBNation nation : nations) {
             Map<Integer, DBCity> v3Cities = allCities.get(nation.getNation_id());
             if (v3Cities == null || v3Cities.isEmpty()) continue;
