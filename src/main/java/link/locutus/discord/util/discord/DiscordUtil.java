@@ -238,6 +238,11 @@ public class DiscordUtil {
         paginate(io, title, command, page, perPage, results, footer, inline);
     }
 
+    public static String timestamp(long timestamp, String type) {
+        if (type == null) type = "R";
+        return "<T:" + timestamp + ":" + type + ">";
+    }
+
     public static void paginate(IMessageIO io, String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
         if (results.isEmpty()) {
             System.out.println("Results are empty");
