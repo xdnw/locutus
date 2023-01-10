@@ -168,9 +168,9 @@ public class IntelOpSheet extends Command {
             sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
         }
 
+        sheet.clearAll();
         SpySheet.generateSpySheet(sheet, targets);
 
-        sheet.clearAll();
         sheet.set(0, 0);
 
         sheet.attach(new DiscordChannelIO(event).create()).send();

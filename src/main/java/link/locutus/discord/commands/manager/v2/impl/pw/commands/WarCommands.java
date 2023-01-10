@@ -1689,9 +1689,8 @@ public class WarCommands {
             }
         }
 
-        SpySheet.generateSpySheet(sheet, targets);
-
         sheet.clearAll();
+        SpySheet.generateSpySheet(sheet, targets);
         sheet.set(0, 0);
 
         sheet.attach(io.create()).send();
