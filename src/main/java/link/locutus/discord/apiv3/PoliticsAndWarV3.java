@@ -1351,7 +1351,8 @@ public class PoliticsAndWarV3 {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        if (api != null) {
+
+        if (api != null && bot != null && !bot.isEmpty()) {
             headers.set("X-Api-Key", api);
         } else {
             headers.set("X-Api-Key", Settings.INSTANCE.API_KEY_PRIMARY);
