@@ -580,7 +580,6 @@ public class SpreadSheet {
 
     public void clearAll() throws IOException {
         if (service == null) {
-            reset();
             return;
         }
         UpdateCellsRequest updateCellsRequest = new UpdateCellsRequest();
