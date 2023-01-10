@@ -154,8 +154,8 @@ public class ROI extends Command {
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
 
-        Integer allianceId = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>") + "";
+        Set<Integer> aaIds = guildDb.getAllianceIds();
+        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>") + "";
 
         List<ROIResult> roiMap = new ArrayList<>();
         boolean useSheet = false;
@@ -164,8 +164,7 @@ public class ROI extends Command {
             if (!Roles.ECON.has(event.getAuthor(), guildDb.getGuild())) {
                 return "You do not have the role: " + Roles.ECON;
             }
-            DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
-            Set<DBNation> nations = alliance.getNations();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNations(aaIds);
             try {
                 for (DBNation nation : nations) {
                     if (nation.getPosition() <= 1) continue;
@@ -190,7 +189,7 @@ public class ROI extends Command {
             Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
             nations.removeIf(n -> n.getActive_m() > 10000 || n.getVm_turns() > 0);
             if (nations.size() > 1 && !Roles.ADMIN.hasOnRoot(event.getAuthor())) {
-                nations.removeIf(n -> n.getAlliance_id() != allianceId);
+                nations.removeIf(n -> !aaIds.contains(n.getAlliance_id()));
                 if (nations.isEmpty()) {
                     return "You are only allowed to find grants for other alliances";
                 }

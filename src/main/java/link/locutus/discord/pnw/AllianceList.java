@@ -1,10 +1,12 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -64,5 +66,23 @@ public class AllianceList {
         }
         DBAlliance.get(required.getAllianceId()).setTaxBracket(required, nation);
         return null;
+    }
+
+    public Set<DBAlliance> getAlliances() {
+        Set<DBAlliance> alliances = new HashSet<>();
+        for (int id : ids) {
+            DBAlliance alliance = DBAlliance.get(id);
+            if (alliance != null) {
+                alliances.add(alliance);
+            }
+        }
+        return alliances; }
+
+    public List<BankDB.TaxDeposit> updateTaxes() {
+        List<BankDB.TaxDeposit> deposits = new ArrayList<>();
+        for (DBAlliance alliance : getAlliances()) {
+            deposits.addAll(alliance.updateTaxes());
+        }
+        return deposits;
     }
 }

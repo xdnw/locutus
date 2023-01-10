@@ -795,7 +795,6 @@ public class CommandManager {
 
         this.register(new Login());
         this.register(new Logout());
-        this.register(new AAMembers());
         this.register(new ClearRoles());
         this.register(new ClearNicks());
         this.register(new Revenue());
