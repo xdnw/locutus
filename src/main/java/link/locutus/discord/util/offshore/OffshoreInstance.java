@@ -487,9 +487,8 @@ public class OffshoreInstance {
         if (coalition.contains(guild)) return true;
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db != null) {
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null && coalition.contains((long) aaId)) {
-                return true;
+            for (Integer aaId : db.getAllianceids()) {
+                if (coalition.contains(aaId.longValue())) return true;
             }
         }
         return false;

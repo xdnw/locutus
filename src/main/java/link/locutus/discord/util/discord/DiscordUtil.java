@@ -974,8 +974,7 @@ public class DiscordUtil {
                             if (argSplit.length == 2) {
                                 allies = parseAlliances(guild, argSplit[1]);
                             } else {
-                                allies = new HashSet<>();
-                                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+                                allies = new HashSet<>(db.getAllianceids());
                                 if (aaId != null) {
                                     allies.add(aaId);
                                     Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(aaId);
