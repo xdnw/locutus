@@ -2333,8 +2333,9 @@ public class BankCommands {
             if (!offshoreDB.hasAlliance()) {
                 return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
             }
-            if (offshoreDB.getOrNull(GuildDB.Key.API_KEY) == null) {
-                return "Please set the key " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + " in " + offshoreDB.getGuild();
+            PoliticsAndWarV3 api = alliance.getApi(false, AlliancePermission.WITHDRAW_BANK, AlliancePermission.VIEW_BANK);
+            if (api == null) {
+                return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.API_KEY.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
             }
         }
 
@@ -2359,8 +2360,8 @@ public class BankCommands {
             }
 
 
+            Set<Integer> priorAAId = root.getAllianceIds();
             if (!force) {
-                int priorAAId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
                 String title = "Change offshore to: " + alliance.getName() + "/" + alliance.getId();
                 StringBuilder body = new StringBuilder();
                 body.append("The current alliance to this guild will be unregistered: `(`" + root.getOrNull(GuildDB.Key.ALLIANCE_ID) + "`)`\n");
@@ -2483,7 +2484,7 @@ public class BankCommands {
         StringBuilder response = new StringBuilder();
         // check public offshoring is enabled
         synchronized (OffshoreInstance.BANK_LOCK) {
-            Integer aaId = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            Set<Integer> aaIds = root.getAllianceIds();
             NationOrAllianceOrGuild sender;
             if (aaId != null) {
                 sender = DBAlliance.getOrCreate(aaId);

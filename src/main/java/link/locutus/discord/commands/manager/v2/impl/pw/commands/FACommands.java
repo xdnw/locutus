@@ -237,8 +237,7 @@ public class FACommands {
         StringBuilder response = new StringBuilder();
         if (alliances.size() == 1) {
             DBAlliance alliance = alliances.iterator().next();
-            alliance.getTreaties();
-            Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
+            Auth auth = alliance.getAuth(AlliancePermission.MANAGE_TREATIES);
             if (auth != null) {
                 List<PendingTreaty> treaties = auth.getTreaties();
                 if (!listExpired) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
