@@ -32,6 +32,7 @@ import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
+import link.locutus.discord.util.offshore.Auth;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
@@ -195,6 +196,27 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return Locutus.imp().getNationDB().getAlliance(aaId);
     }
 
+    public Auth getAuth(AlliancePermission... permissions) {
+        Set<DBNation> nations = getNations();
+        for (DBNation gov : nations) {
+            if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id) continue;
+            if (gov.getPositionEnum().id < Rank.HEIR.id) {
+                DBAlliancePosition position = gov.getAlliancePosition();
+                if (permissions != null && permissions.length > 0 && (position == null || !position.hasAllPermission(permissions))) {
+                    continue;
+                }
+            }
+            try {
+                Auth auth = gov.getAuth(null);
+                if (auth != null && auth.getAllianceId() == allianceId && auth.isValid()) {
+                    return auth;
+                }
+            } catch (IllegalArgumentException ignore) {
+            }
+        }
+        return null;
+    }
+
     public static DBAlliance getOrCreate(int aaId) {
         return Locutus.imp().getNationDB().getOrCreateAlliance(aaId);
     }
@@ -260,9 +282,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             }
             if (!isOutdated) return BRACKETS_CACHED;
         }
-        GuildDB db = getGuildDB();
-        if (db == null) throw new IllegalArgumentException("No db found for " + db);
-        PoliticsAndWarV3 api = db.getApi(allianceId, false, AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
         BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
@@ -339,7 +359,12 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public boolean updateSpies(boolean updateManually) {
-        GuildDB db = getGuildDB();
+        PoliticsAndWarV3 api = getApi(false, AlliancePermission.SEE_SPIES);
+        if (api != null) {
+            api.fetchAlliances()
+        }
+        return false;
+
         if (db != null && db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null) {
             PoliticsAndWarV2 api = db.getApi();
             if (api != null) {
@@ -391,6 +416,16 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Map<Integer, Treaty> getTreaties() {
+        return getTreaties(false);
+    }
+    public Map<Integer, Treaty> getTreaties(boolean update) {
+        if (update) {
+            PoliticsAndWarV3 api = getApi(false, AlliancePermission.MANAGE_TREATIES);
+            if (api != null) {
+                List<com.politicsandwar.graphql.model.Treaty> treaties = api.fetchTreaties(f -> f.setId(List.of(allianceId)));
+                Locutus.imp().getNationDB().updateTreaties(treaties, Event::post, true);
+            }
+        }
         return Locutus.imp().getNationDB().getTreaties(allianceId);
     }
 
@@ -908,5 +943,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
             if (filter.test(nation)) nations.add(nation);
         }
         return nations;
+    }
+
+    public boolean setTaxBracket(TaxBracket required, DBNation nation) {
+        PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
+        com.politicsandwar.graphql.model.TaxBracket result = api.assignTaxBracket(required.taxId, nation.getNation_id());
+        return result != null;
     }
 }

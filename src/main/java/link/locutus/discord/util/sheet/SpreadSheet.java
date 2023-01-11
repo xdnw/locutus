@@ -2,6 +2,8 @@ package link.locutus.discord.util.sheet;
 
 import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.services.sheets.v4.model.CellData;
+import com.google.api.services.sheets.v4.model.ExtendedValue;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -483,6 +485,18 @@ public class SpreadSheet {
     }
 
     public void write(List<RowData> rowData) throws IOException {
+        if (service == null) {
+            reset();
+            for (RowData row : rowData) {
+                List<Object> dataSimple = new ArrayList<>();
+                for (CellData cell : row.getValues()) {
+                    ExtendedValue value = cell.getUserEnteredValue();
+                    dataSimple.add(value.toString());
+                }
+                addRow(dataSimple);
+            }
+            return;
+        }
         UpdateCellsRequest appendCellReq = new UpdateCellsRequest();
         appendCellReq.setRows( rowData );
         appendCellReq.setFields("userEnteredValue,note");
@@ -566,7 +580,6 @@ public class SpreadSheet {
 
     public void clearAll() throws IOException {
         if (service == null) {
-            reset();
             return;
         }
         UpdateCellsRequest updateCellsRequest = new UpdateCellsRequest();

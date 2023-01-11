@@ -2,9 +2,7 @@
 package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
-import com.politicsandwar.graphql.model.GameInfo;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -25,14 +23,12 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.balance.BankWithTask;
-import link.locutus.discord.util.task.balance.GetDepositTask;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.jooby.BankRequestHandler;
 import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.config.Settings;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
@@ -42,14 +38,12 @@ import org.springframework.web.client.HttpServerErrorException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -606,9 +600,10 @@ public class OffshoreInstance {
             long tx_datetime = System.currentTimeMillis();
             String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
 
+            Map<NationOrAllianceOrGuild, double[]> addBalanceResult = null;
             try {
                 if (!valid) {
-                    offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, -1, banker.getNation_id(), offshoreNote);
+                    addBalanceResult = offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, -1, banker.getNation_id(), offshoreNote);
 //                offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
                 }
             } catch (Throwable e) {
@@ -679,9 +674,11 @@ public class OffshoreInstance {
                 case INVALID_DESTINATION:
                 case NOTHING_WITHDRAWN:
                 case INVALID_API_KEY:
+                    disabledGuilds.remove(senderDB.getIdLong());
                     if (!valid) {
-                        disabledGuilds.remove(senderDB.getIdLong());
-                        offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, 1, banker.getNation_id(), offshoreNote);
+                        if (addBalanceResult != null) {
+                            offshoreDB.addBalanceMulti(addBalanceResult, tx_datetime, banker.getNation_id(), offshoreNote);
+                        }
                     }
 //                    double[] negative = ResourceType.negative(amount.clone());
 //                    offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, negative);
@@ -870,7 +867,7 @@ public class OffshoreInstance {
         if (guildDb.getOffshore() != this) return result;
 
 
-        Set<Integer> ids = guildDb.getAllianceids();
+        Set<Integer> ids = guildDb.getAllianceIds();
 
         if (!ids.isEmpty()) {
 

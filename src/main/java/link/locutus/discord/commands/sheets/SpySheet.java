@@ -314,9 +314,8 @@ public class SpySheet extends Command {
             sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
         }
 
-        generateSpySheet(sheet, opsAgainstNations);
-
         sheet.clearAll();
+        generateSpySheet(sheet, opsAgainstNations);
         sheet.set(0, 0);
 
         sheet.attach(new DiscordChannelIO(event).create()).send();

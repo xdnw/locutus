@@ -1130,19 +1130,19 @@ public class WarCategory {
     }
 
     private synchronized void syncAlliances() {
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
         allianceIds.clear();
-        if (allianceId != null) {
-            allianceIds.add(allianceId);
+        if (!aaIds.isEmpty()) {
+            allianceIds.addAll(aaIds);
         } else {
             allianceIds.addAll(db.getAllies(false));
         }
         for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
-            Integer aaId = otherDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
+            aaIds = otherDB.getAllianceIds();
+            if (!aaIds.isEmpty()) {
                 Guild warServer = otherDB.getOrNull(GuildDB.Key.WAR_SERVER);
                 if (warServer != null && warServer.getIdLong() == this.db.getIdLong()) {
-                    allianceIds.add(aaId);
+                    allianceIds.addAll(aaIds);
                 }
             }
         }

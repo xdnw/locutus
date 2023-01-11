@@ -381,18 +381,6 @@ public class Settings extends Config {
         public List<Long> WHITELISTED_BANK_USERS = Arrays.asList();
     }
 
-    public int getAlliance(MessageReceivedEvent event) {
-        if (event.isFromGuild()) {
-            return getAlliance((Guild) event.getGuild());
-        } else {
-            return getAlliance((Guild) null);
-        }
-    }
-
-    public int getAlliance(Guild guild) {
-        return Locutus.imp().getGuildDB(guild).getOrThrow(GuildDB.Key.ALLIANCE_ID);
-    }
-
 
     @Comment({
             "Prevent users, nations, alliances from using the bot"

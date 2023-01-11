@@ -3,7 +3,6 @@ package link.locutus.discord.util.task.roles;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -31,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -570,7 +568,7 @@ public class AutoRoleTask implements IAutoRoleTask {
     public void autoRoleCities(Member member, Supplier<DBNation> nationSup, Consumer<String> output, Consumer<Future> tasks) {
         if (cityRoles.isEmpty()) return;
         Role memberRole = Roles.MEMBER.toRole(member.getGuild());
-        Set<Integer> allianceIds = db.getAllianceids();
+        Set<Integer> allianceIds = db.getAllianceIds();
         if (!allianceIds.isEmpty() || memberRole != null) {
             DBNation nation = nationSup.get();
             if (nation == null) {

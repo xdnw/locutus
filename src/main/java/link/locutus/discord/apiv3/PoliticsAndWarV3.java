@@ -1123,6 +1123,10 @@ public class PoliticsAndWarV3 {
     }
 
     public Bankrec transferFromBank(double[] amount, NationOrAlliance destination, String note) {
+        return transferFromBank(amount, destination.getReceiverType(), destination.getId(), note);
+    }
+
+    public Bankrec transferFromBank(double[] amount, int receiverType, int receiverId, String note) {
         BankWithdrawMutationRequest mutation = new BankWithdrawMutationRequest();
         mutation.setMoney(amount[ResourceType.MONEY.ordinal()]);
         mutation.setCoal(amount[ResourceType.COAL.ordinal()]);
@@ -1138,8 +1142,8 @@ public class PoliticsAndWarV3 {
         mutation.setFood(amount[ResourceType.FOOD.ordinal()]);
 
         if (note != null) mutation.setNote(note);
-        mutation.setReceiver_type(destination.getReceiverType());
-        mutation.setReceiver(destination.getId());
+        mutation.setReceiver_type(receiverType);
+        mutation.setReceiver(receiverId);
 
         BankrecResponseProjection projection = new BankrecResponseProjection();
         projection.id();
@@ -1423,7 +1427,8 @@ public class PoliticsAndWarV3 {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        if (api != null) {
+
+        if (api != null && bot != null && !bot.isEmpty()) {
             headers.set("X-Api-Key", api);
         } else {
             headers.set("X-Api-Key", Settings.INSTANCE.API_KEY_PRIMARY);

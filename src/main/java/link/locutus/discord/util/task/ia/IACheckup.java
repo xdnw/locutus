@@ -3,12 +3,11 @@ package link.locutus.discord.util.task.ia;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.sheets.ROI;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.util.AuditType;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -24,7 +23,6 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.AServiceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -47,7 +45,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -97,12 +94,12 @@ public class IACheckup {
     private Map<DBNation, Map<ResourceType, Double>> memberStockpile;
     private final GuildDB db;
 
-    private final DBAlliance alliance;
+    private final AllianceList alliance;
 
-    public IACheckup(GuildDB db, int allianceId, boolean useCache) throws IOException {
-        if (db == null) throw new IllegalStateException("No database found for: " + allianceId);
+    public IACheckup(GuildDB db, AllianceList alliance, boolean useCache) throws IOException {
+        if (db == null || alliance == null) throw new IllegalStateException("No database found");
         this.db = db;
-        this.alliance = db.getAlliance();
+        this.alliance = db.getAllianceList();
         memberStockpile = new HashMap<>();
         if (!useCache) {
             memberStockpile = alliance.getMemberStockpile();
@@ -110,7 +107,7 @@ public class IACheckup {
     }
 
     public IACheckup(int allianceId) throws IOException, ExecutionException, InterruptedException {
-        this(Locutus.imp().getGuildDBByAA(allianceId), allianceId, false);
+        this(Locutus.imp().getGuildDBByAA(allianceId), new AllianceList(allianceId), false);
     }
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Consumer<DBNation> onEach, boolean fast) throws InterruptedException, ExecutionException, IOException {
@@ -333,7 +330,7 @@ public class IACheckup {
 
         switch (type) {
             case CHECK_RANK: {
-                Set<Integer> aaIds = db.getAllianceids();
+                Set<Integer> aaIds = db.getAllianceIds();
                 if (aaIds.isEmpty()) return null;
 
                 if (!aaIds.contains(nation.getAlliance_id())) {
@@ -492,7 +489,7 @@ public class IACheckup {
 //                return null;
 //            }
             case DEPOSIT_RESOURCES: {
-                Set<Integer> aaIds = db.getAllianceids();
+                Set<Integer> aaIds = db.getAllianceIds();
                 if (!aaIds.isEmpty()) {
                     for (Transaction2 transaction : transactions) {
                         if (aaIds.contains((int) transaction.receiver_id)) return null;

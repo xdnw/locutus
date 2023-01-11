@@ -6,7 +6,6 @@ import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.CounterStat;
@@ -55,7 +54,7 @@ public class WarPages {
     public String counter(@Me GuildDB db) {
         Set<Integer> offshore = db.getCoalition(Coalition.OFFSHORE);
         Set<Integer> allies = db.getAllies();
-        Set<integer> aaIds = db.getAllianceids();
+        Set<integer> aaIds = db.getAllianceIds();
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allies, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
