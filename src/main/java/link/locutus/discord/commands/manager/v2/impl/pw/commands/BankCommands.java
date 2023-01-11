@@ -2339,7 +2339,7 @@ public class BankCommands {
             }
         }
 
-        if (root.isOffshore() && (offshoreDB == null || !offshoreDB.isOffshore() || (offshoreDB == root))) {
+        if (root.isOffshore() && (offshoreDB == null || (offshoreDB == root))) {
             if (nation.getAlliance_id() != alliance.getAlliance_id()) {
                 throw new IllegalArgumentException("You must be in the provided alliance: " + alliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
@@ -2360,20 +2360,34 @@ public class BankCommands {
             }
 
 
-            Set<Integer> priorAAId = root.getAllianceIds();
+            Set<Integer> aaIds = root.getAllianceIds();
+            Set<Integer> toUnregister = new HashSet<>();
+
+            // check which ids are are set in offshore and offshoring coalition
+            Set<Integer> offshoringIds = root.getCoalition(Coalition.OFFSHORING);
+            Set<Integer> offshoreIds = root.getCoalition(Coalition.OFFSHORE);
+            for (int aaId : aaIds) {
+                if (offshoreIds.contains(aaId) && offshoringIds.contains(aaId)) {
+                    toUnregister.add(aaId);
+                }
+            }
+
             if (!force) {
                 String title = "Change offshore to: " + alliance.getName() + "/" + alliance.getId();
                 StringBuilder body = new StringBuilder();
-                body.append("The current alliance to this guild will be unregistered: `(`" + root.getOrNull(GuildDB.Key.ALLIANCE_ID) + "`)`\n");
-                        body.append("The new alliance: `" + alliance.getId() + " will be set ` (See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null) + ")\n");
-                        body.append("All other guilds using the prior alliance (" + priorAAId + ") will be changed to use the new offshore");
+                body.append("The alliances to this guild will be unregistered: `" + StringMan.getString(toUnregister) + "`\n");
 
+                body.append("The new alliance: `" + alliance.getId() + " will be set ` (See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null) + ")\n");
+                body.append("All other guilds using the prior alliance `" + StringMan.getString(toUnregister) + "` will be changed to use the new offshore");
 
                 confirmButton.embed(title, body.toString()).send();
                 return null;
             }
 
-            root.setInfo(GuildDB.Key.ALLIANCE_ID, alliance.getAlliance_id() + "");
+            Set<Integer> newIds = new HashSet<>(aaIds);
+            newIds.removeAll(toUnregister);
+            newIds.add(alliance.getAlliance_id());
+            root.setInfo(GuildDB.Key.ALLIANCE_ID, StringMan.join(newIds, ","));
 
             for (Long serverId : serverIds) {
                 GuildDB db = Locutus.imp().getGuildDB(serverId);
