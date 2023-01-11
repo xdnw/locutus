@@ -235,7 +235,9 @@ public class FACommands {
     @Command
     public String treaties(@Me IMessageIO channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch("f") boolean listExpired) {
         StringBuilder response = new StringBuilder();
-        if (alliances.size() == 1 && alliances.iterator().next().equals(db.getOrNull(GuildDB.Key.ALLIANCE_ID))) {
+        if (alliances.size() == 1) {
+            DBAlliance alliance = alliances.iterator().next();
+            alliance.getTreaties();
             Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
             if (auth != null) {
                 List<PendingTreaty> treaties = auth.getTreaties();

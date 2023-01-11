@@ -98,9 +98,9 @@ public class DepositsSheet extends Command {
 
         Set<DBNation> nations;
         if (args.isEmpty()) {
-            Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (allianceId != null) {
-                nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (!aaIds.isEmpty()) {
+                nations = Locutus.imp().getNationDB().getNations(aaIds);
                 nations.removeIf(n -> n.getPosition() <= 1);
             } else {
                 Role role = Roles.MEMBER.toRole(guild);

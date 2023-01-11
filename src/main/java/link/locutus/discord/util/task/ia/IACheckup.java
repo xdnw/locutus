@@ -7,6 +7,7 @@ import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -93,12 +94,12 @@ public class IACheckup {
     private Map<DBNation, Map<ResourceType, Double>> memberStockpile;
     private final GuildDB db;
 
-    private final DBAlliance alliance;
+    private final AllianceList alliance;
 
-    public IACheckup(GuildDB db, int allianceId, boolean useCache) throws IOException {
-        if (db == null) throw new IllegalStateException("No database found for: " + allianceId);
+    public IACheckup(GuildDB db, AllianceList alliance, boolean useCache) throws IOException {
+        if (db == null || alliance == null) throw new IllegalStateException("No database found");
         this.db = db;
-        this.alliance = db.getAlliance();
+        this.alliance = db.getAllianceList();
         memberStockpile = new HashMap<>();
         if (!useCache) {
             memberStockpile = alliance.getMemberStockpile();
@@ -106,7 +107,7 @@ public class IACheckup {
     }
 
     public IACheckup(int allianceId) throws IOException, ExecutionException, InterruptedException {
-        this(Locutus.imp().getGuildDBByAA(allianceId), allianceId, false);
+        this(Locutus.imp().getGuildDBByAA(allianceId), new AllianceList(allianceId), false);
     }
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Consumer<DBNation> onEach, boolean fast) throws InterruptedException, ExecutionException, IOException {

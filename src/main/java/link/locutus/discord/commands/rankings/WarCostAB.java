@@ -150,14 +150,14 @@ public class WarCostAB extends Command {
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId == null) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (aaIds.isEmpty()) {
             return;
         }
 
         DBNation nation = null;
-        if (warUrl.attacker_aa == aaId) nation = Locutus.imp().getNationDB().getNation(warUrl.attacker_id);
-        else if (warUrl.defender_aa == aaId) nation = Locutus.imp().getNationDB().getNation(warUrl.defender_id);
+        if (aaIds.contains(warUrl.attacker_aa)) nation = Locutus.imp().getNationDB().getNation(warUrl.attacker_id);
+        else if (aaIds.contains(warUrl.defender_aa)) nation = Locutus.imp().getNationDB().getNation(warUrl.defender_id);
         else {
             return;
         }

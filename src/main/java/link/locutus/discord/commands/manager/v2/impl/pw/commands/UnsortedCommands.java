@@ -387,7 +387,7 @@ public class UnsortedCommands {
                 return "Cleared unused AA roles!";
             }
             case ALLIANCE: {
-                int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+                Set<Integer> aaIds = db.getAllianceIds();
 
                 Role memberRole = Roles.MEMBER.toRole(guild);
 
@@ -397,7 +397,7 @@ public class UnsortedCommands {
                     DBNation nation = DiscordUtil.getNation(member.getIdLong());
                     List<Role> roles = member.getRoles();
                     if (roles.contains(memberRole)) {
-                        if (nation == null || nation.getAlliance_id() != aaId) {
+                        if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
                             response.append("\nRemove member from " + member.getEffectiveName());
                             RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, memberRole));
                         }
@@ -1019,8 +1019,15 @@ public class UnsortedCommands {
 
         Collection<String> allowedLabels = Arrays.asList("#warchest", "#grant", "#deposit", "#trade", "#ignore", "#tax", "#account");
         if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
-        Integer aaId = Locutus.imp().getGuildDB(guild).getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) note += "=" + aaId;
+        Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            if (aaIds.contains(me.getAlliance_id())) {
+                note += "=" + me.getAlliance_id();
+            } else {
+                note += "=" + aaIds.iterator().next();
+            }
+
+        }
         else {
             note += "=" + guild.getIdLong();
         }

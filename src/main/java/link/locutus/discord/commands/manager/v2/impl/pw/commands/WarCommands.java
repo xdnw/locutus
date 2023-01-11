@@ -25,6 +25,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.Spyop;
@@ -1447,8 +1448,8 @@ public class WarCommands {
         Set<Integer> alliesCoalition = db.getCoalition("allies");
         if (alliesCoalition != null) allies.addAll(alliesCoalition);
         if (me.getAlliance_id() != 0) allies.add(me.getAlliance_id());
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) allies.add(allianceId);
+        Set<Integer> aaIds = db.getAllianceIds();
+        allies.addAll(aaIds);
 
         Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id()).stream()
                 .map(dbWar -> dbWar.attacker_id == me.getNation_id() ? dbWar.defender_id : dbWar.attacker_id)
@@ -3005,17 +3006,19 @@ public class WarCommands {
         Set<Integer> alliesIds = db.getAllies();
         Set<Integer> protectorates = new HashSet<>();
 
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) {
-            protectorates = Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.PROTECTORATE).keySet();
-            if (includeProtectorates) {
-                alliesIds.addAll(protectorates);
-            }
-            if (includeMDP) {
-                alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP).keySet());
-            }
-            if (includeODP) {
-                alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.ODP, TreatyType.ODOAP).keySet());
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            for (int aaId : aaIds) {
+                protectorates = Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.PROTECTORATE).keySet();
+                if (includeProtectorates) {
+                    alliesIds.addAll(protectorates);
+                }
+                if (includeMDP) {
+                    alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP).keySet());
+                }
+                if (includeODP) {
+                    alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.ODP, TreatyType.ODOAP).keySet());
+                }
             }
         }
 
@@ -3145,7 +3148,7 @@ public class WarCommands {
 
                 active_m = Math.min(active_m, defender.getActive_m());
 
-                if (Integer.valueOf(war.defender_aa).equals(aaId)) {
+                if (aaIds.contains(Integer.valueOf(war.defender_aa))) {
                     action = Math.min(action, 0);
                 } else if (protectorates.contains(war.defender_aa)) {
                     action = Math.min(action, 1);
@@ -3310,18 +3313,18 @@ public class WarCommands {
     public String counter(@Me DBNation me, @Me GuildDB db, DBNation target, @Default Set<DBNation> counterWith, @Switch("o")
             boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping, @Switch("s") boolean allowSameAlliance) {
         if (counterWith == null) {
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId == null) {
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (aaIds.isEmpty()) {
                 Set<Integer> allies = db.getAllies(true);
                 if (allies.isEmpty()) {
-                    aaId = me.getAlliance_id();
-                    if (aaId == 0) return "No alliance or allies are set.\n" + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance>") + "\nOR\n " + CM.coalition.create.cmd.create(null, Coalition.ALLIES.name()) + "";
-                    counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
+                    if (me.getAlliance_id() == 0) return "No alliance or allies are set.\n" + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance>") + "\nOR\n " + CM.coalition.create.cmd.create(null, Coalition.ALLIES.name()) + "";
+                    aaIds = new HashSet<>(Arrays.asList(me.getAlliance_id()));
+                    counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 10000, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));
                 }
             } else {
-                counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
+                counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 10000, true));
             }
         }
         counterWith.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= Rank.APPLICANT.id || (f.getCities() < 10 && f.getActive_m() > 4880));

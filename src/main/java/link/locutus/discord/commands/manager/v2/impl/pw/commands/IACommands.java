@@ -848,6 +848,7 @@ public class IACommands {
     @IsAlliance
     @IsAuthenticated
     public String setBracket(@Me GuildDB db, @Me User author, @Me DBNation me, @Filter("{guild_alliance_id}") Set<DBNation> nations, @Default TaxBracket bracket, @Default TaxRate internalRate) throws IOException {
+        if (nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
         DBNation single = nations.size() == 1 ? nations.iterator().next() : null;
 
         boolean isGov = Roles.ECON_LOW_GOV.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
@@ -858,12 +859,18 @@ public class IACommands {
         if (internalRate != null && !isGov) {
             return "You are only allowed to set your tax bracket";
         }
-
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
-        if (auth == null) {
-            return "No authentication with TAX_BRACKETS enabled for this guild";
+        Integer aaId = null;
+        for (DBNation nation : nations) {
+            if (nation.getAlliance_id() == 0) throw new IllegalArgumentException(nation.getName() + " is not in an alliance");
+            if (aaId == null) aaId = nation.getAlliance_id();
+            if (aaId != nation.getAlliance_id()) throw new IllegalArgumentException("All nations must be in the same alliance. " + aaId + " != " + nation.getAlliance_id());
         }
+
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.contains(aaId)) {
+            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), aaId + "") + " to register it.";
+        }
+        DBAlliance alliance = DBAlliance.getOrCreate(aaId);
 
         if (internalRate != null) {
             if (internalRate.money < -1 || internalRate.money > 100) {
@@ -874,7 +881,7 @@ public class IACommands {
             }
         }
 
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
+        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
 
         if (bracket == null) {
             StringBuilder response = new StringBuilder();
@@ -919,7 +926,8 @@ public class IACommands {
                 response.append("Set internal taxrate to " + internalRate + "\n");
             }
 
-            response.append(nation.setTaxBracket(bracket, auth));
+            boolean result = alliance.setTaxBracket(bracket, nation);
+            response.append("Set bracket to " + bracket + " for " + nation.getNation() + ": " + result).append("\n");
         }
         response.append("\nDone!");
         return response.toString();
@@ -1293,14 +1301,14 @@ public class IACommands {
         return "Done!\n - " + StringMan.join(response, "\n - ");
     }
 
-    private String channelMemberInfo(Integer aaId, Role memberRole, Member member) {
+    private String channelMemberInfo(Set<Integer> aaIds, Role memberRole, Member member) {
         DBNation nation = DiscordUtil.getNation(member.getUser());
 
         StringBuilder response = new StringBuilder(member.getUser().getName() + "#" + member.getUser().getDiscriminator());
         response.append(" | `" + member.getAsMention() + "`");
         if (nation != null) {
             response.append(" | N:" + nation.getNation());
-            if (aaId != null && aaId != nation.getNation_id()) {
+            if (!aaIds.isEmpty() && !aaIds.contains(nation.getNation_id())) {
                 response.append(" | AA:" + nation.getAllianceName());
             }
             if (nation.getPosition() <= 1) {
@@ -1313,7 +1321,7 @@ public class IACommands {
                 response.append(" | inactive=" + TimeUtil.minutesToTime(nation.getActive_m()));
             }
         }
-        if (aaId == null && !member.getRoles().contains(memberRole)) {
+        if (aaIds.isEmpty() && !member.getRoles().contains(memberRole)) {
             response.append(" | No Member Role");
         }
         return response.toString();
@@ -1322,7 +1330,7 @@ public class IACommands {
     @Command(desc = "List members in a channel")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ADMIN}, any = true)
     public String channelMembers(@Me GuildDB db, MessageChannel channel) {
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
         Role memberRole = Roles.MEMBER.toRole(db.getGuild());
 
         List<Member> members = (channel instanceof IMemberContainer) ? ((IMemberContainer) channel).getMembers() : Collections.emptyList();
@@ -1330,7 +1338,7 @@ public class IACommands {
 
         List<String> results = new ArrayList<>();
         for (Member member : members) {
-            results.add(channelMemberInfo(aaId, memberRole, member));
+            results.add(channelMemberInfo(aaIds, memberRole, member));
         }
         if (results.isEmpty()) return "No users found";
         return StringMan.join(results, "\n");
@@ -1339,7 +1347,7 @@ public class IACommands {
     @Command(desc = "List all channels and what members have access to each")
     @RolePermission(value = {Roles.ADMIN}, any = true)
     public String allChannelMembers(@Me GuildDB db) {
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
         Role memberRole = Roles.MEMBER.toRole(db.getGuild());
 
         StringBuilder result = new StringBuilder();
@@ -1350,7 +1358,7 @@ public class IACommands {
                 result.append(GuildMessageChannel.getAsMention() + "\n");
 
                 for (Member member : GuildMessageChannel.getMembers()) {
-                    result.append(channelMemberInfo(aaId, memberRole, member) + "\n");
+                    result.append(channelMemberInfo(aaIds, memberRole, member) + "\n");
                 }
             }
         }
@@ -1536,8 +1544,8 @@ public class IACommands {
             if (!filter.isEmpty()) filter += ",*";
             Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, filter);
 
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId == null) return "No alliance set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "";
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (aaIds.isEmpty()) return "No alliance set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "";
 
             IACategory cat = db.getIACategory();
             if (cat.getCategories().isEmpty()) return "No `interview` categories found";
@@ -1549,7 +1557,7 @@ public class IACommands {
                 DBNation nation = entry.getKey();
 
                 if (!allowedNations.contains(nation)) continue;
-                if (nation.getAlliance_id() != aaId || nation.getActive_m() > 10000 || nation.getVm_turns() > 0) continue;
+                if (!aaIds.contains(nation.getAlliance_id()) || nation.getActive_m() > 10000 || nation.getVm_turns() > 0) continue;
                 User user = nation.getUser();
                 if (user == null) continue;
 

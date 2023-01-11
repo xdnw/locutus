@@ -642,22 +642,19 @@ public class TradeCommands {
                 otherDb = Locutus.imp().getGuildDBByAA(coalition.intValue());
             }
             if (otherDb != null) {
-                Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (aaId != null) {
+                Set<Integer> otherAAIds = otherDb.getAllianceIds();
+                for (Integer aaId : otherAAIds) {
                     if (!testedIds.add(aaId.longValue())) {
-                        Set<Long> guildsMatchingAAId = new HashSet<>();
+                        Set<Long> guildsMatching = new HashSet<>();
                         for (GuildDB value : Locutus.imp().getGuildDatabases().values()) {
-                            if (value != otherDb && Objects.equals(value.getOrNull(GuildDB.Key.ALLIANCE_ID), aaId)) {
-                                guildsMatchingAAId.add(value.getIdLong());
-                            }
+                            if (value.isAllianceId(aaId)) guildsMatching.add(value.getIdLong());
                         }
-
-                        errors.add("Duplicate guild: " + otherDb.getGuild() + " |> " + aaId + " | " + StringMan.getString(guildsMatchingAAId));
+                        errors.add("Duplicate aa: " + otherDb.getGuild() + " <| " + aaId + " | " + StringMan.getString(guildsMatching));
                         continue;
                     }
                 }
                 if (!testedIds.add(otherDb.getIdLong())) {
-                    errors.add("Duplicate guild: " + otherDb.getGuild() + " <| " + aaId);
+                    errors.add("Duplicate guild: " + otherDb.getGuild());
                     continue;
                 }
                 deposits = PnwUtil.resourcesToMap(offshore.getDeposits(otherDb, false));

@@ -21,8 +21,8 @@ public class CountererSheet extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Set<DBNation> nations;
         if (args.isEmpty()) {
-            int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+            Set<Integer> aaIds = db.getAllianceIds();
+            nations = Locutus.imp().getNationDB().getNations(aaIds);
             nations.removeIf(n -> n.getPosition() <= 1);
         } else if (args.size() == 1) {
             nations = (DiscordUtil.parseNations(guild, args.get(0)));
