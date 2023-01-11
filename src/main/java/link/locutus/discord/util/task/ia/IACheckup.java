@@ -652,7 +652,9 @@ public class IACheckup {
                     allowedContinents.add(continent);
                 }
             }
-            StringBuilder message = new StringBuilder("If you do not have a damaged build, and can easily switch, consider moving to a continent with Uranium. This would allow you to produce the resources needed to power your cities, which is useful under blockade.\n" +
+            StringBuilder message = new StringBuilder("If you do not have a damaged build, and can easily switch, consider moving to a continent with Uranium. " +
+                    "This would allow you to produce the resources needed to power your cities, which is useful under blockade. " +
+                    "The AFRICA continent would allow you to be self sufficient for nuke production\n" +
                     "Options: " + StringMan.join(allowedContinents, ", ") +"\n" +
                     "Edit: <https://politicsandwar.com/nation/edit/>\n" +
                     "<https://politicsandwar.fandom.com/wiki/Resources#Natural_Resource_Availability_by_Continent>");
