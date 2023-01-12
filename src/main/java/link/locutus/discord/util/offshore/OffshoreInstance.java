@@ -796,7 +796,7 @@ public class OffshoreInstance {
         if (auth == null || !auth.isValid()) {
             // get api
             try {
-                PoliticsAndWarV3 api = getAlliance().getApi(false, AlliancePermission.WITHDRAW_BANK);
+                PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
                 Bankrec result = api.transferFromBank(PnwUtil.resourcesToArray(transfer), receiver, note);
                 return new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, result.toString());
             } catch (HttpClientErrorException.Unauthorized e) {

@@ -949,51 +949,53 @@ public class IACommands {
         // Cannot promote above your own permissions
         DBAlliancePosition myPosition = me.getAlliancePosition();
         DBAlliancePosition nationPosition = nation.getAlliancePosition();
-        if (me.getAlliance_id() != allianceId || myPosition == null) {
-            // cannot promote above officer unless admin
-            if (!Roles.ADMIN.has(author, db.getGuild())) {
-                if (position.hasAnyOfficerPermissions()) {
-                    return "You do not have permission to grant permissions you currently do not posses in the alliance";
+        if (!Roles.ADMIN.hasOnRoot(author)) {
+            if (me.getAlliance_id() != allianceId || myPosition == null) {
+                // cannot promote above officer unless admin
+                if (!Roles.ADMIN.has(author, db.getGuild())) {
+                    if (position.hasAnyOfficerPermissions()) {
+                        return "You do not have permission to grant permissions you currently do not posses in the alliance";
+                    }
                 }
-            }
-        } else {
-            if (position.getPosition_level() > myPosition.getPosition_level()) {
-                return "You do not have permission to promote above your level. (" + position.getPosition_level() + " is above " + myPosition.getPosition_level() + ")";
-            }
-            for (AlliancePermission perm : position.getPermissions()) {
-                if (!myPosition.hasPermission(perm) && (nationPosition == null || !nationPosition.hasAllPermission(perm))) {
-                    return "You can not grant permissions you do not posses (lacking " + perm + ")";
+            } else {
+                if (position.getPosition_level() > myPosition.getPosition_level()) {
+                    return "You do not have permission to promote above your level. (" + position.getPosition_level() + " is above " + myPosition.getPosition_level() + ")";
                 }
-            }
-            if (nationPosition != null) {
-                for (AlliancePermission perm : nationPosition.getPermissions()) {
-                    if (!myPosition.hasPermission(perm) && !position.hasPermission(perm)) {
-                        return "You can not remove permissions you do not posses (lacking " + perm + ")";
+                for (AlliancePermission perm : position.getPermissions()) {
+                    if (!myPosition.hasPermission(perm) && (nationPosition == null || !nationPosition.hasAllPermission(perm))) {
+                        return "You can not grant permissions you do not posses (lacking " + perm + ")";
+                    }
+                }
+                if (nationPosition != null) {
+                    for (AlliancePermission perm : nationPosition.getPermissions()) {
+                        if (!myPosition.hasPermission(perm) && !position.hasPermission(perm)) {
+                            return "You can not remove permissions you do not posses (lacking " + perm + ")";
+                        }
                     }
                 }
             }
-        }
-        if (nationPosition != null && nationPosition.hasAnyAdminPermission()) {
-            return "You cannot adjust the position of admins (do that ingame)";
-        }
+            if (nationPosition != null && nationPosition.hasAnyAdminPermission()) {
+                return "You cannot adjust the position of admins (do that ingame)";
+            }
 
-        if (position == DBAlliancePosition.REMOVE) {
-            if (!Roles.ADMIN.has(author, db.getGuild())) {
-                if (nation.active_m() < 2880) {
-                    return "You do not have the permission (`ADMIN`) to remove active members (set them to applicant first)";
-                }
-                if (nation.active_m() < 10000) {
-                    int currentDemotions = demotions.getOrDefault(author.getIdLong(), 0);
-                    if (currentDemotions > 2) {
-                        return "Please get an admin to demote multiple nations, or do so ingame. " + Roles.ADMIN.toRole(db.getGuild());
+            if (position == DBAlliancePosition.REMOVE) {
+                if (!Roles.ADMIN.has(author, db.getGuild())) {
+                    if (nation.active_m() < 2880) {
+                        return "You do not have the permission (`ADMIN`) to remove active members (set them to applicant first)";
                     }
-                    demotions.put(author.getIdLong(), currentDemotions + 1);
+                    if (nation.active_m() < 10000) {
+                        int currentDemotions = demotions.getOrDefault(author.getIdLong(), 0);
+                        if (currentDemotions > 2) {
+                            return "Please get an admin to demote multiple nations, or do so ingame. " + Roles.ADMIN.toRole(db.getGuild());
+                        }
+                        demotions.put(author.getIdLong(), currentDemotions + 1);
+                    }
                 }
             }
-        }
-        // Cannot promote to leader, or any leader perms -> done
-        if (position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) {
-            return "You cannot promote to leadership positions (do this ingame)";
+            // Cannot promote to leader, or any leader perms -> done
+            if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && !Roles.ADMIN.hasOnRoot(author)) {
+                return "You cannot promote to leadership positions (do this ingame)";
+            }
         }
 
         List<AlliancePermission> requiredPermissions = new ArrayList<>();
