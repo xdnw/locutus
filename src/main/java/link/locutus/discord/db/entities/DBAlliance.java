@@ -664,6 +664,16 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return result;
     }
 
+    public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
+        PoliticsAndWarV3 api = getApi(true, permissions);
+        if (api == null) {
+            String msg = "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
+            if (permissions.length > 0) msg += " and ensure you have in-game access to: " + StringMan.getString(permissions);
+            throw new IllegalArgumentException(msg);
+        }
+        return api;
+    }
+
     public PoliticsAndWarV3 getApi(boolean requireBotToken, AlliancePermission... permissions) {
         ApiKeyPool pool = getApiKeys(requireBotToken, permissions);
         if (pool == null) return null;
