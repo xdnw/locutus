@@ -103,11 +103,12 @@ public class Disperse extends Command {
         if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) note += "=" + aaId;
-        else {
-            note += "=" + guild.getIdLong();
+        Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            if (aaIds.contains(me.getAlliance_id())) note += "=" + me.getAlliance_id();
+            else note += "=" + aaIds.iterator().next();
         }
+        else note += "=" + guild.getIdLong();
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
         Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();

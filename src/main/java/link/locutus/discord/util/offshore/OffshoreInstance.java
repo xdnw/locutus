@@ -57,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class OffshoreInstance {
@@ -490,7 +491,7 @@ public class OffshoreInstance {
 
     public Map<Long, Boolean> disabledGuilds = new ConcurrentHashMap<>();
 
-    public Map.Entry<TransferStatus, String> transferFromDeposits(DBNation banker, GuildDB senderDB, NationOrAlliance receiver, double[] amount, String note) {
+    public Map.Entry<TransferStatus, String> transferFromDeposits(DBNation banker, GuildDB senderDB, Predicate<Integer> allowedAlliances, NationOrAlliance receiver, double[] amount, String note) {
         GuildDB delegate = senderDB.getDelegateServer();
         if (delegate != null) senderDB = delegate;
 

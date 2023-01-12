@@ -1,17 +1,21 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.util.StringMan;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -84,5 +88,24 @@ public class AllianceList {
             deposits.addAll(alliance.updateTaxes());
         }
         return deposits;
+    }
+
+    public AllianceList subList(Collection<DBNation> nations) {
+        Set<Integer> ids = new HashSet<>();
+        for (DBNation nation : nations) {
+            if (!this.ids.contains(nation.getAlliance_id())) {
+                throw new IllegalArgumentException("Nation " + nation.getNation() + " is not in the alliance: " + StringMan.getString(this.ids));
+            }
+            ids.add(nation.getAlliance_id());
+        }
+        return new AllianceList(ids);
+    }
+
+    public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
+        Map<DBNation, Map<ResourceType, Double>> result = new LinkedHashMap<>();
+        for (DBAlliance alliance : getAlliances()) {
+            result.putAll(alliance.getMemberStockpile());
+        }
+        return result;
     }
 }

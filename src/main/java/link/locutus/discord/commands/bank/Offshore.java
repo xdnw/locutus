@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -22,6 +23,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -55,8 +57,8 @@ public class Offshore extends Command {
         if (db != null && nation != null) {
             if (db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) == Boolean.TRUE) return true;
 
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            return (aaId != null && nation.getPosition() >= Rank.OFFICER.id && nation.getAlliance_id() == aaId);
+            Set<Integer> aaIds = db.getAllianceIds();
+            return (!aaIds.isEmpty() && nation.getPosition() >= Rank.OFFICER.id && aaIds.contains(nation.getAlliance_id()));
         }
         return false;
     }
@@ -73,19 +75,46 @@ public class Offshore extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         OffshoreInstance offshore = db.getOffshore();
-        int from = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        Integer to = offshore == null || offshore.getAllianceId() == from ? null : offshore.getAllianceId();
+
+        Set<Integer> from = db.getAllianceIds();
+        if (from.isEmpty()) return "This server has no alliance set up for it. See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null);
+
+        Integer to = offshore == null ? null : offshore.getAllianceId();
         if (to == null && args.isEmpty()) {
             return usage();
         } else {
             Set<Integer> offshores = db.getCoalition("offshore");
             to = PnwUtil.parseAllianceId(args.get(0));
             if (to == null) return "Invalid alliance: " + args.get(0);
-            if (!offshores.contains(to)) return "Please add the offshore using `" + Settings.commandPrefix(true) + "setcoalition " + to + " offshore";
+            if (!offshores.contains(to)) return "Please add the offshore using `" + CM.coalition.add.cmd.create(to + "", Coalition.OFFSHORE.name());
         }
+        if (from.size() == 1 && from.contains(to)) return "You can't offshore to yourself!";
 
-        Integer finalTo = to;
+        DBAlliance toAA = DBAlliance.get(to);
         double[] amountSent = ResourceType.getBuffer();
+
+        List<String> response = new ArrayList<>();
+
+        for (int id : from) {
+            if (id != to) {
+                DBAlliance alliance = DBAlliance.get(id);
+                if (alliance == null) continue;
+
+                Map<ResourceType, Double> resources = alliance.getStockpile();
+                double[] amtToSend = ResourceType.getBuffer();
+                for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
+                    double amt = entry.getValue() - warchest.getOrDefault(entry.getKey(), 0d);
+                    if (amt > 0.01) amtToSend[entry.getKey().ordinal()] = amt;
+                }
+                if (ResourceType.isEmpty(amtToSend)) {
+                    response.add("No funds need to be sent");
+                    continue;
+                }
+                PoliticsAndWarV3 api = alliance.getApi(false, AlliancePermission.WITHDRAW_BANK);
+                if (api == null) response.add()
+                api.transferFromBank(amtToSend, toAA, note);
+            }
+        }
 
         DBAlliance alliance = db.getAlliance();
         Auth auth = null;
@@ -102,7 +131,7 @@ public class Offshore extends Command {
             }
             if (ResourceType.isEmpty(amtToSend)) return "No funds need to be sent";
 
-            return "Offshored: " + api.transferFromBank(amtToSend, DBAlliance.get(to), note);
+            return "Offshored: " + ;
         } else {
             if (auth == null) {
                 return "Please authenticate with locutus. Options:\n" +

@@ -1021,16 +1021,10 @@ public class UnsortedCommands {
         if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
         Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
         if (!aaIds.isEmpty()) {
-            if (aaIds.contains(me.getAlliance_id())) {
-                note += "=" + me.getAlliance_id();
-            } else {
-                note += "=" + aaIds.iterator().next();
-            }
-
+            if (aaIds.contains(me.getAlliance_id())) note += "=" + me.getAlliance_id();
+            else note += "=" + aaIds.iterator().next();
         }
-        else {
-            note += "=" + guild.getIdLong();
-        }
+        else note += "=" + guild.getIdLong();
 
         Collection<DBNation> nationSet = new HashSet<>(nations.getNations());
 

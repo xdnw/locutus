@@ -59,11 +59,12 @@ public class Warchest extends Command {
         if (args.size() >= 3) note = args.get(2);
         Collection<String> allowedLabels = Arrays.asList("#warchest", "#grant", "#deposit", "#trade", "#ignore", "#tax", "#account");
         if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
-        Integer aaId = Locutus.imp().getGuildDB(guild).getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) note += "=" + aaId;
-        else {
-            note += "=" + guild.getIdLong();
+        Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            if (aaIds.contains(me.getAlliance_id())) note += "=" + me.getAlliance_id();
+            else note += "=" + aaIds.iterator().next();
         }
+        else note += "=" + guild.getIdLong();
 
         boolean hasEcon = Roles.ECON.has(author, guild);
         Collection<DBNation> nations;
@@ -71,7 +72,7 @@ public class Warchest extends Command {
             if (!hasEcon) {
                 return "No permission: " + Roles.ECON.name();
             }
-            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
+            nations = Locutus.imp().getNationDB().getNations(aaIds);
         } else {
             nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         }
@@ -95,8 +96,8 @@ public class Warchest extends Command {
         Map<DBNation, Map<ResourceType, Double>> memberResources2 = new HashMap<>();
         boolean skipStockpile = flags.contains('s');
         if (!flags.contains('s')) {
-            if (aaId == null) return "No alliance found for this guild. Add `-s` to skip checking stockpile";
-            memberResources2 = DBAlliance.getOrCreate(aaId).getMemberStockpile();
+            if (aaIds.isEmpty()) return "No alliance found for this guild. Add `-s` to skip checking stockpile";
+            memberResources2 = guildDb.getAllianceList().subList(nations).getMemberStockpile();
         }
         for (DBNation nation : nations) {
             Map<ResourceType, Double> stockpile = memberResources2.getOrDefault(nation, skipStockpile ? Collections.emptyMap() : null);
