@@ -30,6 +30,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -194,7 +195,7 @@ public class AdminCommands {
     public String announce(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch("v") @Default("0") Integer requiredVariation, @Switch("r") @Default("0") Integer requiredDepth, @Switch("s") Long seed, @Switch("m") boolean sendMail, @Switch("d") boolean sendDM, @Switch("f") boolean force) throws IOException {
         ApiKeyPool keys = db.getMailKey();
         if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
 
         List<String> errors = new ArrayList<>();
         Collection<DBNation> nations = nationList.getNations();
@@ -207,7 +208,7 @@ public class AdminCommands {
             } else {
                 continue;
             }
-            if (aaId != null && nation.getAlliance_id() != aaId) {
+            if (!aaIds.isEmpty() && !aaIds.contains(nation.getAlliance_id())) {
                 throw new IllegalArgumentException("Cannot send to nation not in alliance: " + nation.getNation() + " | " + user);
             }
             if (!force) {
@@ -597,19 +598,19 @@ public class AdminCommands {
             Member owner = db.getGuild().getOwner();
             DBNation nation = DiscordUtil.getNation(owner.getUser());
 
-            Integer alliance = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            Set<Integer> aaIds = db.getAllianceIds();
 
             if (nation != null && nation.getActive_m() > 30000) {
-                response.append(guild + "/AA:" + alliance + ": owner (nation:" + nation.getNation_id() + ") is inactive " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()) + "\n");
+                response.append(guild + "/" + StringMan.getString(aaIds) + ": owner (nation:" + nation.getNation_id() + ") is inactive " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()) + "\n");
                 continue;
             }
             // In an alliance with inactive leadership (1 month)
-            if (alliance != null && !db.isValidAlliance()) {
-                response.append(guild + "/AA:" + alliance + ": alliance is invalid (nation:" + (nation == null ? "" : nation.getNation_id() + ")\n"));
+            if (!aaIds.isEmpty() && !db.isValidAlliance()) {
+                response.append(guild + "/" + StringMan.getString(aaIds) + ": alliance is invalid (nation:" + (nation == null ? "" : nation.getNation_id() + ")\n"));
                 continue;
             }
 
-            if (alliance == null && nation == null && checkMessages) {
+            if (aaIds.isEmpty() && nation == null && checkMessages) {
                 long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
                 boolean error = false;
                 long last = 0;
@@ -667,11 +668,11 @@ public class AdminCommands {
                 response.append("\nOther db is null: " + id);
                 continue;
             }
-            Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            Set<Integer> aaIds = otherDb.getAllianceIds();
 
             List<Transaction2> transactions;
-            if (aaId != null) {
-                transactions = offshore.getTransactionsAA(aaId, false);
+            if (!aaIds.isEmpty()) {
+                transactions = offshore.getTransactionsAA(aaIds, false);
             } else {
                 transactions = offshore.getTransactionsGuild(id, false);
             }
@@ -692,15 +693,15 @@ public class AdminCommands {
             if (id > Integer.MAX_VALUE) {
                 Member owner = otherDb.getGuild().getOwner();
 
-                if (aaId != null) {
-                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
+                if (!aaIds.isEmpty()) {
+                    AllianceList alliance = new AllianceList(aaIds);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
                     nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                     nations.removeIf(f -> f.getActive_m() > 10000);
 
                     if (nations.isEmpty()) {
                         inactiveIds.add(id);
-                        response.append("Inactive alliance (as guild) " + aaId + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong());
+                        response.append("Inactive alliance (as guild) " + StringMan.getString(aaIds) + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong());
                     }
                 }
 

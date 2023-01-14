@@ -137,9 +137,13 @@ public class PermissionBinding extends BindingHelper {
         Coalition requiredCoalition = perm.value();
         Guild root = Locutus.imp().getServer();
         GuildDB rootDb = Locutus.imp().getGuildDB(root);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
         Set<Long> coalitionMembers = rootDb.getCoalitionRaw(requiredCoalition);
-        return coalitionMembers.contains(db.getIdLong()) || (aaId != null && coalitionMembers.contains((long) aaId));
+        if (coalitionMembers.contains(db.getIdLong())) return true;
+        Set<Integer> aaIds = db.getAllianceIds();
+        for (int aaId : aaIds) {
+            if (coalitionMembers.contains((long) aaId)) return true;
+        }
+        throw new IllegalCallerException("Guild is lacking permission: " + perm.value());
     }
 
     @Binding

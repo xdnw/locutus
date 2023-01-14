@@ -235,9 +235,14 @@ public class BankWith extends Command {
         String receiverStr = receiver.isAlliance() ? receiver.getName() :  receiver.asNation().getNation();
         String note = primaryNote;
 
-        Integer aaId3 = ((Integer[]) guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID))[0];
-        long senderId = aaId3 == null ? guild.getIdLong() : aaId3;
-        if (!flags.contains('n')) note += "=" + senderId;
+        Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            if (aaIds.contains(me.getAlliance_id())) note += "=" + me.getAlliance_id();
+            else note += "=" + aaIds.iterator().next();
+        }
+        else note += "=" + guild.getIdLong();
+
+
         if (!otherNotes.isEmpty()) note += " " + StringMan.join(otherNotes, " ");
         note = note.trim();
 
@@ -250,8 +255,8 @@ public class BankWith extends Command {
                 return "Please include `#ignore` in note when transferring to alliances";
             }
             if (receiver.isNation() && !note.contains("#deposit=") && !note.contains("#grant=") && !note.contains("#ignore")) {
-                if (aaId3 == null) return "Please *include* `#ignore` or `#deposit` or `#grant` in note when transferring to nations";
-                if (aaId3 != receiver.asNation().getAlliance_id()) return "Please include `#ignore` or `#deposit` or `#grant` in note when transferring to nations not in your alliance";
+                if (!aaIds.isEmpty()) return "Please *include* `#ignore` or `#deposit` or `#grant` in note when transferring to nations";
+                if (!aaIds.contains(receiver.asNation().getAlliance_id())) return "Please include `#ignore` or `#deposit` or `#grant` in note when transferring to nations not in your alliance";
             }
         }
 

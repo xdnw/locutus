@@ -456,8 +456,7 @@ public class CommandManager {
         if (db == null) return;
         if (!db.isWhitelisted() && db.getOrNull(GuildDB.Key.ENABLE_WAR_ROOMS) != Boolean.TRUE) return;
 
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId == null || aaId == 0) return;
+        if (!db.hasAlliance()) return;
 
         WarCategory.WarRoom room = WarCategory.getGlobalWarRoom(channel);
         if (room == null || room.target == null) return;

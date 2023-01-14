@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.bank;
 
+import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -110,9 +111,13 @@ public class Offshore extends Command {
                     response.add("No funds need to be sent");
                     continue;
                 }
-                PoliticsAndWarV3 api = alliance.getApi(false, AlliancePermission.WITHDRAW_BANK);
-                if (api == null) response.add()
-                api.transferFromBank(amtToSend, toAA, note);
+                try {
+                    PoliticsAndWarV3 api = alliance.getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
+                    Bankrec result = api.transferFromBank(amtToSend, toAA, note);
+                } catch (Exception e) {
+                    response.add("Unable to access bank for " + alliance.getName() + ": " + e.getMessage());
+                    continue;
+                }
             }
         }
 

@@ -71,8 +71,8 @@ public class CheckCities extends Command {
         if (args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.INTERNAL_AFFAIRS_STAFF.has(event.getAuthor(), event.getGuild())) return "No permission to use *";
 
-            int allianceId = Locutus.imp().getGuildDB(event).getOrThrow(GuildDB.Key.ALLIANCE_ID);
-            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+            Set<Integer> aaIds = Locutus.imp().getGuildDB(event).getAllianceIds();
+            nations = Locutus.imp().getNationDB().getNations(aaIds);
             nations.removeIf(n -> n.getPosition() <= 1 ||
                     n.getVm_turns() > 0 ||
                     n.getActive_m() > 10000

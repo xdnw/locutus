@@ -2,12 +2,16 @@ package link.locutus.discord.commands.external.account;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -45,11 +49,16 @@ public class Login extends Command {
             if (guild != null) {
                 return "This command must be used via private message with Locutus. DO NOT USE THIS COMMAND HERE";
             }
-            GuildDB db = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
+            DBAlliance alliance = me.getAlliance();
+            GuildDB db = alliance.getGuildDB();
             if (db == null) return "Your alliance " + me.getAlliance_id() + " is not registered with Locutus";
-            db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
             if (args.size() < 2) return usage(event);
-            Auth existingAuth = db.getAuth();
+            Auth existingAuth = alliance.getAuth(AlliancePermission.WITHDRAW_BANK);
+            if (existingAuth != null) return "A nation: " + existingAuth.getNationId() + " is already authenticated with locutus";
+            DBAlliancePosition position = me.getAlliancePosition();
+            if (me.getPositionEnum().id < Rank.HEIR.id && (position == null || !position.hasAllPermission(AlliancePermission.WITHDRAW_BANK, AlliancePermission.ACCEPT_APPLICANTS, AlliancePermission.MANAGE_EMBARGOES, AlliancePermission.REMOVE_MEMBERS, AlliancePermission.MANAGE_MARKET_SHARE, AlliancePermission.EDIT_ALLIANCE_INFO, AlliancePermission.CHANGE_PERMISSIONS))) {
+                return "You must be an alliance admin or heir to use this command";
+            }
 
 //            if (!Roles.MEMBER.has(author, Locutus.imp().getServer())) {
 //                OffshoreInstance offshore = db.getOffshore();

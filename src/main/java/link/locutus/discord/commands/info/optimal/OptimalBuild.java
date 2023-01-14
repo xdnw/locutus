@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -532,11 +533,9 @@ public class OptimalBuild extends Command {
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId == null) aaId = 0;
         Guild root = Locutus.imp().getServer();
         GuildDB rootDb = Locutus.imp().getGuildDB(root);
-        long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || rootDb.getCoalition("raidperms").contains(aaId)) ? 15000 : 5000;
+        long timeout = db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) ? 15000 : 5000;
 
         JavaCity optimized;
         if (days == null) {

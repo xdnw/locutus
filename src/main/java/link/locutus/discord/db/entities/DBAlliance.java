@@ -682,10 +682,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.SEE_SPIES);
-        if (api == null) {
-            throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
-        }
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.SEE_SPIES);
         List<Integer> ids = getNations().stream()
                 .filter(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.APPLICANT.id)
                 .map(f -> f.getNation_id()).collect(Collectors.toList());
@@ -700,10 +697,10 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
-        PoliticsAndWarV3 api = getApi(true, permissions);
+        PoliticsAndWarV3 api = getApi(false, permissions);
         if (api == null) {
-            String msg = "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
-            if (permissions.length > 0) msg += " and ensure you have in-game access to: " + StringMan.getString(permissions);
+            String msg = "No api key found for " + getQualifiedName() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
+            if (permissions.length > 0) msg += " and ensure your in-game position grants: " + StringMan.getString(permissions);
             throw new IllegalArgumentException(msg);
         }
         return api;
@@ -716,10 +713,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Map<ResourceType, Double> getStockpile() throws IOException {
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.VIEW_BANK);
-        if (api == null) {
-            throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
-        }
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.VIEW_BANK);
         double[] stockpile = api.getAllianceStockpile(allianceId);
         return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
     }
