@@ -1291,4 +1291,25 @@ public class PnwUtil {
         Map<MilitaryUnit, Long> result = new Gson().fromJson(arg, type);
         return result;
     }
+
+    public static double[] capManuFromRaws(double[] revenue, double[] totalRss) {
+        for (ResourceType type : ResourceType.values) {
+            double amt = revenue[type.ordinal()];
+            if (amt > 0 && type.isManufactured()) {
+                double required = amt * type.getBaseInput();
+                for (ResourceType input : type.getInputs()) {
+                    double inputAmt = totalRss[input.ordinal()];
+                    double revenueAmt = revenue[input.ordinal()];
+                    if (revenueAmt > -required) {
+                        inputAmt += revenueAmt + required;
+                    }
+                    double cap = inputAmt / type.getBaseInput();
+                    if (amt > cap) {
+                        revenue[type.ordinal()] = cap;
+                    }
+                }
+            }
+        }
+        return revenue;
+    }
 }
