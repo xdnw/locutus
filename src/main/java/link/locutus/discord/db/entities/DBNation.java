@@ -4339,4 +4339,20 @@ public class DBNation implements NationOrAlliance {
         }
         return factor;
     }
+
+    /**
+     *
+     * @return
+     */
+    @Command
+    public double lootModifier() {
+        if (getWarPolicy() == WarPolicy.TURTLE) {
+            return 1.2;
+        } else if (getWarPolicy() == WarPolicy.MONEYBAGS) {
+            return 0.6;
+        } else if (getWarPolicy() == WarPolicy.GUARDIAN) {
+            return 1.2;
+        }
+        return 1;
+    }
 }
