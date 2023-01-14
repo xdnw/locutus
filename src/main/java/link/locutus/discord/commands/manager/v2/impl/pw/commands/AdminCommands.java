@@ -726,22 +726,22 @@ public class AdminCommands {
 
                 Member owner = otherDb.getGuild().getOwner();
 
-                if (aaId != null) {
-                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
+                if (!aaIds.isEmpty()) {
+                    AllianceList alliance = new AllianceList(aaIds);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
                     nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                     nations.removeIf(f -> f.getActive_m() > 10000);
 
                     if (nations.isEmpty()) {
                         inactiveIds.add(id);
-                        response.append("Inactive alliance (as guild) " + aaId + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong() + " | (" + timeStr + ")");
+                        response.append("Inactive alliance (as guild) " + StringMan.getString(aaIds) + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong() + " | (" + timeStr + ")");
                     }
                 }
 
                 DBNation nation = DiscordUtil.getNation(owner.getUser());
                 if (nation == null) {
-                    if (aaId != null) {
-                        DBAlliance alliance = DBAlliance.get(aaId);
+                    if (aaIds.isEmpty()) {
+                        AllianceList alliance = new AllianceList(aaIds);
                         if (alliance != null) {
                             Set<DBNation> nations = alliance.getNations(f -> {
                                 if (f.active_m() > 10000) return false;
@@ -950,7 +950,7 @@ public class AdminCommands {
             if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);
         }
         channel.send("Syncing banks for " + db.getGuild() + "...");
-        OffshoreInstance bank = db.getHandler().getBank();
+        OffshoreInstance bank = db.getHandler().getBank(alliance.getAlliance_id());
         bank.sync(timestamp, false);
 
         Locutus.imp().getBankDB().updateBankRecs(Event::post);

@@ -20,6 +20,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class AllianceList {
     private final Set<Integer> ids;
@@ -50,6 +51,14 @@ public class AllianceList {
         if (removeVM) nations.removeIf(f -> f.getVm_turns() != 0);
         if (removeInactiveM > 0) nations.removeIf(f -> f.getActive_m() > removeInactiveM);
         if (removeApps) nations.removeIf(f -> f.getPosition() <= 1);
+        return nations;
+    }
+
+    public Set<DBNation> getNations(Predicate<DBNation> filter) {
+        Set<DBNation> nations = new HashSet<>();
+        for (DBNation nation : getNations()) {
+            if (filter.test(nation)) nations.add(nation);
+        }
         return nations;
     }
 
