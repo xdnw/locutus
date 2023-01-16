@@ -281,17 +281,20 @@ public class BankCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     @HasOffshore
-    public String disburse(@Me User author, @Me GuildDB db, @Me IMessageIO io, NationList nationList, @Range(min=0, max=7) double daysDefault, @Default("#tax") String note, @Switch("d") boolean noDailyCash, @Switch("c") boolean noCash, @Switch("f") boolean force, @Switch("i") boolean ignoreInactives) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+    public String disburse(@Me User author, @Me GuildDB db, @Me IMessageIO io, @Me DBNation me, NationList nationList, @Range(min=0, max=7) double daysDefault, @Default("#tax") String note, @Switch("d") boolean noDailyCash, @Switch("c") boolean noCash, @Switch("f") boolean force, @Switch("i") boolean ignoreInactives) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
 
         Collection<String> allowedLabels = Arrays.asList("#grant", "#deposit", "#trade", "#ignore", "#tax", "#warchest", "#account");
         if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
 
 
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) note += "=" + aaId;
-        else {
-            note += "=" + db.getIdLong();
+        long allianceId;
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            if (aaIds.contains(me.getAlliance_id())) allianceId = me.getAlliance_id();
+            else allianceId = aaIds.iterator().next();
         }
+        else allianceId = db.getIdLong();
+        note += "=" + allianceId;
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
         Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
@@ -309,6 +312,7 @@ public class BankCommands {
         Consumer<String> updateTask = io::send;
         Consumer<String> errors = errorList::add;
 
+        Integer allianceId = me.getAlliance_id();
         fundsToSendNations = new DepositRawTask(nations, aaId != null ? aaId : 0, updateTask, daysDefault, true, ignoreInactives, errors).setForce(force).call();
         if (nations.isEmpty()) {
             return "No nations found (1)";

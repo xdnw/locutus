@@ -904,19 +904,66 @@ public class OffshoreInstance {
     }
 
     public enum TransferStatus {
-        SUCCESS,
-        BLOCKADE,
-        MULTI,
-        TURN_CHANGE,
-        INSUFFICIENT_FUNDS,
-        INVALID_DESTINATION,
-        OTHER,
-        ALLIANCE_BANK,
-        VACATION_MODE,
-        NOTHING_WITHDRAWN,
+        SUCCESS("You successfully transferred funds from the alliance bank."),
+        BLOCKADE("You can't withdraw resources to a blockaded nation."),
+        MULTI("This player has been flagged for using the same network as you."),
+        TURN_CHANGE("You cannot transfer close to turn change. (DC = 10m, TC = 1m)"),
+        INSUFFICIENT_FUNDS("Insufficient funds"),
+        INVALID_DESTINATION("You did not enter a valid recipient name."),
+        OTHER("Unspecified error. (Is it turn change? Is there a captcha?)"),
+        ALLIANCE_BANK("Tranferring via alliance bank"),
+        VACATION_MODE("You can't send funds to this nation because they are in Vacation Mode"),
+        NOTHING_WITHDRAWN("You did not withdraw anything."),
 
-        INVALID_API_KEY,
+        INVALID_API_KEY("The API key you provided does not allow whitelisted access."),
+
+        ALLIANCE_ACCESS("Has disabled alliance access to resource information (account page)"),
+
+        APPLICANT("is an applicant"),
+
+        INACTIVE("Is inactive (4+ days)"),
+
+        BEIGE("Is beige"),
+
+        GRAY("Is gray"),
+
+        NOT_MEMBER("is not a member of the alliance"),
+        ;
+
+        private final String msg;
+
+        TransferStatus(String msg) {
+            this.msg = msg;
+        }
     }
+
+    /**
+     *         boolean whitelistedError = msg.contains("The API key you provided does not allow whitelisted access.");
+     *         if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
+     *             String[] keys = getGuildDB().getOrNull(GuildDB.Key.API_KEY);
+     *             if (keys == null) {
+     *                 msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention();
+     *             } else {
+     *                 Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
+     *                 if (nation == null) {
+     *                     msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
+     *                 } else {
+     *                     msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + allianceId;
+     *                 }
+     *             }
+     *             if (whitelistedError) {
+     *                 msg += "\nEnsure Whitelisted access is enabled in " + Settings.INSTANCE.PNW_URL() + "/account";
+     *             }
+     *             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
+     *         }
+     *         if (msg.contains("You need provide the X-Bot-Key header with the key for a verified bot to use this endpoint.")) {
+     *             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
+     *         }
+     *         if (msg.isEmpty()) msg = "Unknown Error (Captcha?)";
+     *         return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, msg);
+     * @param task
+     * @return
+     */
 
     private Map.Entry<TransferStatus, String> categorize(BankWithTask task) {
         try {

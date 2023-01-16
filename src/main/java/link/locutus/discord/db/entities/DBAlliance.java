@@ -21,6 +21,7 @@ import link.locutus.discord.event.alliance.*;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.util.JsonUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -33,6 +34,8 @@ import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.task.GetResourceNeeded;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
@@ -41,6 +44,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -939,6 +943,50 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
         Locutus.imp().getBankDB().addTaxDeposits(taxes);
         return taxes;
+    }
+
+    public Map<DBNation, Map<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean force) {
+
+    }
+
+
+
+    public Map<DBNation, Map<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, int allianceId, Consumer<String> update, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean force, Consumer<String> errors) throws IOException, ExecutionException, InterruptedException {
+        Map<DBNation, Map<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
+        GetResourceNeeded rssTask = new GetResourceNeeded(nations, allianceId, update, daysDefault, useExisting, errors).setForce(force);
+        nationResourcesNeed = rssTask.call();
+
+        Map<ResourceType, Double> total = new HashMap<>();
+        Map<DBNation, Map<ResourceType, Double>> toSend = new HashMap<>();
+
+        List<String> postScript = new ArrayList<>();
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : nationResourcesNeed.entrySet()) {
+            DBNation nation = entry.getKey();
+            Map<ResourceType, Double> resources = entry.getValue();
+            if (resources.getOrDefault(ResourceType.CREDITS, 0d) != 0) {
+                errors.accept(nation.getNation() + " has disabled alliance access to resource information (account page)");
+                continue;
+            }
+            if (((nation.isGray() && nation.getOff() == 0) || nation.getActive_m() > TimeUnit.DAYS.toMinutes(4)) && ignoreInactives) {
+                errors.accept(nation.getNation() + " is inactive");
+                continue;
+            }
+            if (nation.isBeige() && nation.getCities() <= 4 && !force) {
+                errors.accept(nation.getNation() + " is beige");
+                continue;
+            }
+            Map<ResourceType, Double> nationTotal = entry.getValue();
+            if (PnwUtil.convertedTotal(nationTotal) == 0) {
+                errors.accept(nation.getNation() + " Does not need to be sent any funds");
+                continue;
+            }
+
+            postScript.add(PnwUtil.getPostScript(nation.getNation(), true, entry.getValue(), "#raws not for resale"));
+            total = PnwUtil.add(total, nationTotal);
+            toSend.put(nation, entry.getValue());
+        }
+
+        return toSend;
     }
 
     public Set<DBNation> getNations(Predicate<DBNation> filter) {
