@@ -952,44 +952,80 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return taxes;
     }
 
-    public Map<DBNation, Map<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean force) {
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean force) throws IOException {
+        Map<DBNation, Map<ResourceType, Double>> existing;
+        if (useExisting) {
+            existing = getMemberStockpile();
+        } else {
+            existing = new HashMap<>();
+            for (DBNation nation : nations) {
+                existing.put(nation, new HashMap<>());
+            }
+        }
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new HashMap<>();
+        for (DBNation nation : nations) {
+            Map<ResourceType, Double> stockpile = existing.get(nation);
+            if (stockpile == null) {
+                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
+                continue;
+            }
+            Map<ResourceType, Double> needed = nation.getResourcesNeeded(stockpile, daysDefault, force);
+            if (!needed.isEmpty()) {
+                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.SUCCESS, PnwUtil.resourcesToArray(needed)));
+            } else {
+                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
+            }
+        }
 
+        return result;
     }
 
 
 
-    public Map<DBNation, Map<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, int allianceId, Consumer<String> update, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean force, Consumer<String> errors) throws IOException, ExecutionException, InterruptedException {
-        Map<DBNation, Map<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
-        GetResourceNeeded rssTask = new GetResourceNeeded(nations, allianceId, update, daysDefault, useExisting, errors).setForce(force);
-        nationResourcesNeed = rssTask.call();
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean force) throws IOException, ExecutionException, InterruptedException {
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
+        nationResourcesNeed = getResourcesNeeded(nations, daysDefault, useExisting, force);
 
-        Map<ResourceType, Double> total = new HashMap<>();
-        Map<DBNation, Map<ResourceType, Double>> toSend = new HashMap<>();
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> toSend = new HashMap<>();
 
-        List<String> postScript = new ArrayList<>();
-        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : nationResourcesNeed.entrySet()) {
+        for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : nationResourcesNeed.entrySet()) {
             DBNation nation = entry.getKey();
-            Map<ResourceType, Double> resources = entry.getValue();
-            if (resources.getOrDefault(ResourceType.CREDITS, 0d) != 0) {
-                errors.accept(nation.getNation() + " has disabled alliance access to resource information (account page)");
+            Map.Entry<OffshoreInstance.TransferStatus, double[]> value = entry.getValue();
+            if (nation.getPositionEnum() == Rank.APPLICANT) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.APPLICANT, ResourceType.getBuffer()));
                 continue;
             }
-            if (((nation.isGray() && nation.getOff() == 0) || nation.getActive_m() > TimeUnit.DAYS.toMinutes(4)) && ignoreInactives) {
-                errors.accept(nation.getNation() + " is inactive");
+            if (nation.getAlliance_id() != allianceId) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOT_MEMBER, ResourceType.getBuffer()));
                 continue;
             }
-            if (nation.isBeige() && nation.getCities() <= 4 && !force) {
-                errors.accept(nation.getNation() + " is beige");
+            if (nation.getVm_turns() > 0) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.VACATION_MODE, ResourceType.getBuffer()));
+            }
+            if (nation.isGray() && !ignoreInactives && !force) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.GRAY, ResourceType.getBuffer()));
                 continue;
             }
-            Map<ResourceType, Double> nationTotal = entry.getValue();
-            if (PnwUtil.convertedTotal(nationTotal) == 0) {
-                errors.accept(nation.getNation() + " Does not need to be sent any funds");
+            if (nation.active_m() > TimeUnit.DAYS.toMinutes(4) && !ignoreInactives && !force) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.INACTIVE, ResourceType.getBuffer()));
+            }
+            if (nation.isBeige() && !allowBeige && !force) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.BEIGE, ResourceType.getBuffer()));
+            }
+            if (value.getKey() != OffshoreInstance.TransferStatus.SUCCESS) {
+                toSend.put(nation, value);
+                continue;
+            }
+            double[] resources = value.getValue();
+            if (resources[ResourceType.CREDITS.ordinal()] != 0) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
+                continue;
+            }
+            if (ResourceType.isEmpty(resources)) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
                 continue;
             }
 
-            postScript.add(PnwUtil.getPostScript(nation.getNation(), true, entry.getValue(), "#raws not for resale"));
-            total = PnwUtil.add(total, nationTotal);
             toSend.put(nation, entry.getValue());
         }
 

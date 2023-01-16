@@ -7,6 +7,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.offshore.OffshoreInstance;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 
 public class AllianceList {
@@ -114,6 +116,22 @@ public class AllianceList {
         Map<DBNation, Map<ResourceType, Double>> result = new LinkedHashMap<>();
         for (DBAlliance alliance : getAlliances()) {
             result.putAll(alliance.getMemberStockpile());
+        }
+        return result;
+    }
+
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean force) throws IOException {
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new LinkedHashMap<>();
+        for (DBAlliance alliance : getAlliances()) {
+            result.putAll(alliance.getResourcesNeeded(nations, daysDefault, useExisting, force));
+        }
+        return result;
+    }
+
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean force) throws IOException, ExecutionException, InterruptedException {
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new LinkedHashMap<>();
+        for (DBAlliance alliance : getAlliances()) {
+            result.putAll(alliance.calculateDisburse(nations, daysDefault, useExisting, ignoreInactives, allowBeige, force));
         }
         return result;
     }

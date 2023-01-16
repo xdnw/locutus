@@ -1204,7 +1204,7 @@ public class GuildHandler {
                 break;
             case RESOURCES:
                 // disburse up to 5 days?
-                    GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    Map<Long, MessageChannel> channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (channel != null) {
                         throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.raws.cmd.toSlashMention() + " in " + channel.getAsMention() + " to request funds from your deposits");
                     }

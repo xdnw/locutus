@@ -1,8 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.Alliance;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.bank.Disperse;
@@ -49,7 +47,6 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.DepositRawTask;
-import link.locutus.discord.util.task.balance.BankWithTask;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -61,7 +58,6 @@ import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -87,7 +83,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -928,7 +923,7 @@ public class BankCommands {
 
             if (!isAdmin) {
                 if (offshore.isDisabled(guildDb.getGuild().getIdLong())) {
-                    MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    Map<Long, MessageChannel> logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (logChannel != null) {
                         String msg = "Transfer error: " + guildDb.getGuild().toString() + " | " + aaId2 + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + (">");
                         RateLimitUtil.queue(logChannel.sendMessage(msg));
@@ -947,7 +942,7 @@ public class BankCommands {
                     }
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) != Boolean.TRUE)
                         return "`MEMBER_CAN_WITHDRAW` is false (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true") + " )";
-                    GuildMessageChannel rssChannel = guildDb.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    Map<Long, MessageChannel> rssChannel = guildDb.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                     if (rssChannel == null)
                         return "Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + "";
                     if (channel.getIdLong() != rssChannel.getIdLong())
@@ -1001,7 +996,7 @@ public class BankCommands {
             }
             double[] deposits = offshore.getDeposits(guildDb);
 
-            MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+            Map<Long, MessageChannel> logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
             if (logChannel != null) {
                 String msg = "Prior Deposits for: " + guildDb.getGuild().toString() + "/" + aaId2 + ": `" + PnwUtil.resourcesToString(deposits) + ("`");
                 RateLimitUtil.queue(logChannel.sendMessage(msg));
@@ -1018,7 +1013,7 @@ public class BankCommands {
             }
 
             double[] amount = PnwUtil.resourcesToArray(transfer);
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromDeposits(me, guildDb, receiver, amount, note);
+            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(me, guildDb, receiver, amount, note);
 
             if (result.getKey() == OffshoreInstance.TransferStatus.SUCCESS) {
                 banker.setMeta(NationMeta.INTERVIEW_TRANSFER_SELF, (byte) 1);
@@ -1567,7 +1562,7 @@ public class BankCommands {
 
             Map.Entry<OffshoreInstance.TransferStatus, String> result = null;
             try {
-                result = offshore.transferFromDeposits(me, db, natOrAA, amount, note);
+                result = offshore.transferFromAllianceDeposits(me, db, natOrAA, amount, note);
             } catch (IllegalArgumentException e) {
                 result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
             }
@@ -2399,7 +2394,7 @@ public class BankCommands {
                 db.addCoalition(alliance.getAlliance_id(), "offshore");
 
                 // Find the most stuited channel to post the announcement in
-                MessageChannel channel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                Map<Long, MessageChannel> channel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                 if (channel == null) channel = db.getOrNull(GuildDB.Key.ADDBALANCE_ALERT_CHANNEL);
                 if (channel == null) channel = db.getOrNull(GuildDB.Key.BANK_ALERT_CHANNEL);
                 if (channel == null) channel = db.getOrNull(GuildDB.Key.DEPOSIT_ALERT_CHANNEL);
@@ -2530,7 +2525,7 @@ public class BankCommands {
                         for (int i = 0; i < amount.length; i++) amount[i] = -amount[i];
                         offshoreDB.addTransfer(tx_datetime, account, receiver_id, receiver_type, banker, note, amount);
 
-                        MessageChannel output = offshoreDB.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                        Map<Long, MessageChannel> output = offshoreDB.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                         if (output != null) {
                             String msg = "Added " + PnwUtil.resourcesToString(amount) + " to " + account.getTypePrefix() + ":" + account.getName() + "/" + account.getIdLong();
                             RateLimitUtil.queue(output.sendMessage(msg));

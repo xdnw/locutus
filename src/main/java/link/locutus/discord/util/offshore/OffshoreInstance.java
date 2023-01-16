@@ -20,6 +20,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.balance.BankWithTask;
@@ -489,9 +490,26 @@ public class OffshoreInstance {
         return false;
     }
 
+    public Map.Entry<TransferStatus, String> transferFromAllianceDeposits(DBNation banker, GuildDB senderDB, NationOrAlliance receiver, double[] amount, String note) {
+
+    }
+
+    public Map.Entry<TransferStatus, String> transferFromNationDeposits(DBNation banker, GuildDB senderDB, NationOrAlliance receiver, double[] amount, String note) {
+
+    }
+
+    public void validateNotes(String note) {
+        Map<String, String> notes = PnwUtil.parseTransferHashNotes(note);
+        if (notes.containsKey("#alliance") || notes.containsKey("#guild") || notes.containsKey("#account")) throw new IllegalArgumentException("You cannot send with #alliance #guild or #account as the note");
+
+        return;
+    }
+
     public Map<Long, Boolean> disabledGuilds = new ConcurrentHashMap<>();
 
-    public Map.Entry<TransferStatus, String> transferFromDeposits(DBNation banker, GuildDB senderDB, Predicate<Integer> allowedAlliances, NationOrAlliance receiver, double[] amount, String note) {
+    public Map.Entry<TransferStatus, String> transferFromAllianceDeposits(DBNation banker, GuildDB senderDB, Predicate<Integer> allowedAlliances, NationOrAlliance receiver, double[] amount, String note) {
+        validateNotes(note);
+
         GuildDB delegate = senderDB.getDelegateServer();
         if (delegate != null) senderDB = delegate;
 
@@ -858,7 +876,7 @@ public class OffshoreInstance {
         return getDeposits(guildDb, true);
     }
 
-    public Map<NationOrAllianceOrGuild, double[]> getDepositsByAA(GuildDB guildDb, boolean update) {
+    public Map<NationOrAllianceOrGuild, double[]> getDepositsByAA(GuildDB guildDb, Predicate<Integer> allowedAlliances, boolean update) {
         Map<NationOrAllianceOrGuild, double[]> result = new LinkedHashMap<>();
 
         GuildDB delegate = guildDb.getDelegateServer();
@@ -871,11 +889,18 @@ public class OffshoreInstance {
         Set<Integer> ids = guildDb.getAllianceIds();
 
         if (!ids.isEmpty()) {
-
+            boolean allowedAny = false;
             for (int id : ids) {
+                if (!allowedAlliances.test(id)) {
+                    continue;
+                }
+                allowedAny = true;
                 double[] rss = PnwUtil.resourcesToArray(getDepositsAA(ids, update));
                 update = false;
                 result.put(DBAlliance.getOrCreate(id), rss);
+            }
+            if (!allowedAny) {
+                throw new IllegalArgumentException("Not allowed to withdraw funds from any alliance: " + StringMan.getString(ids));
             }
         } else {
             GuildDB offshoreDb = getGuildDB();
@@ -889,7 +914,7 @@ public class OffshoreInstance {
     }
 
     public double[] getDeposits(GuildDB guildDb, boolean update) {
-        Map<NationOrAllianceOrGuild, double[]> byAA = getDepositsByAA(guildDb, update);
+        Map<NationOrAllianceOrGuild, double[]> byAA = getDepositsByAA(guildDb, f -> true, update);
         double[] deposits = ResourceType.getBuffer();
         byAA.forEach((a, b) -> ResourceType.add(deposits, b));
         return deposits;

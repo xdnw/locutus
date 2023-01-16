@@ -8,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBindin
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceMeta;
-import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
@@ -203,7 +202,7 @@ public class BankWith extends Command {
         {
             String name = author.getName();
             String msg = name + ": " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " in " + "<#" + event.getChannel().getId() + "> " + event.getGuild().getName();
-            MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+            MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(null);
             if (logChannel != null) {
                 RateLimitUtil.queue(logChannel.sendMessage(msg));
             }
@@ -362,7 +361,7 @@ public class BankWith extends Command {
 
             if (!isAdmin) {
                 if (offshore.isDisabled(guildDb.getGuild().getIdLong())) {
-                    MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(null);
                     if (logChannel != null) {
                         String msg = "Transfer error: " + guild.toString() + " | " + aaId2 + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + (">");
                         RateLimitUtil.queue(logChannel.sendMessage(msg));
@@ -381,7 +380,7 @@ public class BankWith extends Command {
                     }
                     if (guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) != Boolean.TRUE)
                         return "`MEMBER_CAN_WITHDRAW` is false (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true") + " )";
-                    GuildMessageChannel channel = guildDb.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    MessageChannel channel = guildDb.getResourceChannel(null);
                     if (channel == null)
                         return "Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + "";
                     if (event.getChannel().getIdLong() != channel.getIdLong())
@@ -455,7 +454,7 @@ public class BankWith extends Command {
             }
 
             double[] amount = PnwUtil.resourcesToArray(transfer);
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromDeposits(me, guildDb, receiver, amount, note);
+            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(me, guildDb, receiver, amount, note);
 
             if (result.getKey() == OffshoreInstance.TransferStatus.SUCCESS) {
                 banker.setMeta(NationMeta.INTERVIEW_TRANSFER_SELF, (byte) 1);

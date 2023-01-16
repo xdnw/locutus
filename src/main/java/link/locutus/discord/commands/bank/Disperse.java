@@ -13,6 +13,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -20,6 +21,7 @@ import link.locutus.discord.util.JsonUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.DepositRawTask;
@@ -103,14 +105,6 @@ public class Disperse extends Command {
         if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        Set<Integer> aaIds = db.getAllianceIds();
-        long allianceId;
-        if (!aaIds.isEmpty()) {
-            if (aaIds.contains(me.getAlliance_id())) allianceId = me.getAlliance_id();
-            else allianceId = aaIds.iterator().next();
-        }
-        else allianceId = db.getIdLong();
-        note += "=" + allianceId;
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
         Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
@@ -140,7 +134,6 @@ public class Disperse extends Command {
             } else {
                 message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching city information:"));
             }
-            Integer allianceId = me.getAlliance_id();
             List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(event.getGuild(), arg));
             if (nations.size() != 1 || !flags.contains('f')) {
                 nations.removeIf(n -> n.getPosition() <= 1);
@@ -152,6 +145,10 @@ public class Disperse extends Command {
             if (nations.isEmpty()) {
                 return "No nations found (add `-f` to force send)";
             }
+
+            AllianceList allianeList = db.getAllianceList();
+            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = allianeList.calculateDisburse(nations, daysDefault, true, ignoreInactives, false, force);
+
             if (nations != null && !nations.isEmpty()) allianceId = nations.get(0).getAlliance_id();
 
             Consumer<String> updateTask = s -> RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), s));

@@ -523,7 +523,7 @@ public class WarCategory {
 
                             Role econRole = Roles.ECON.toRole(guild);
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
-                            GuildMessageChannel rssChannel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                            Map<Long, MessageChannel> rssChannel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
                             GuildMessageChannel grantChannel = db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL);
 
                             if (rssChannel != null) {

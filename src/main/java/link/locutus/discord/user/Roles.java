@@ -181,18 +181,16 @@ public enum Roles {
         return toRole(Locutus.imp().getGuildDB(guild));
     }
 
+    public Role toRole(int alliance) {
+        GuildDB db = Locutus.imp().getGuildDBByAA(alliance);
+        if (db == null) return null;
+        return db.getRole(this, (long) alliance);
+    }
+
+    @Deprecated
     public Role toRole(GuildDB db) {
         if (db == null) return null;
-        Long alias = db.getRoleAlias(this);
-        if (alias == null) {
-            List<Role> roles = db.getGuild().getRolesByName(this.name(), true);
-            if (!roles.isEmpty()) {
-                return roles.get(0);
-            }
-        } else {
-            return db.getGuild().getRoleById(alias);
-        }
-        return null;
+        return db.getRole(this, null);
     }
 
     public boolean hasOnRoot(User user) {
@@ -201,6 +199,21 @@ public enum Roles {
             return false;
         }
         return has(user, Locutus.imp().getServer());
+    }
+
+    public boolean has(User user, GuildDB server, int alliance) {
+        return has(user, server.getGuild(), alliance);
+    }
+
+    public boolean has(User user, Guild server, int alliance) {
+        Member member = server.getMember(user);
+        return member != null && has(member, alliance);
+    }
+
+    public boolean has(Member member, int alliance) {
+        if (has(member)) return true;
+        Role role = toRole(alliance);
+        return role != null && member.getRoles().contains(role);
     }
 
     public boolean has(Member member) {

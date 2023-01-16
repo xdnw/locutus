@@ -1,34 +1,14 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.MMRDouble;
-import link.locutus.discord.db.entities.MMRInt;
-import link.locutus.discord.db.entities.MMRMatcher;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -36,30 +16,14 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import rocker.grant.city;
-import rocker.grant.infra;
-import rocker.grant.land;
-import rocker.grant.nation;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class GrantCommands {
 
@@ -1070,7 +1034,7 @@ public class GrantCommands {
 
             disabledNations.add(receiver.getNation_id());
 
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = db.getOffshore().transferFromDeposits(banker, db, receiver, grant.cost(), grant.getNote());
+            Map.Entry<OffshoreInstance.TransferStatus, String> result = db.getOffshore().transferFromAllianceDeposits(banker, db, receiver, grant.cost(), grant.getNote());
             OffshoreInstance.TransferStatus status = result.getKey();
 
             StringBuilder response = new StringBuilder();

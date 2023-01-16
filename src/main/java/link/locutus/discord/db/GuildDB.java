@@ -813,7 +813,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         };
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `ROLES` (`role` VARCHAR NOT NULL, `alias` BIGINT NOT NULL, PRIMARY KEY(role))";
+            String create = "CREATE TABLE IF NOT EXISTS `ROLES` (`role` VARCHAR NOT NULL, `alias` BIGINT NOT NULL, `alliance` BIGINT NOT NULL, PRIMARY KEY(role))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
@@ -821,6 +821,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            try {
+            try (PreparedStatement close = prepareQuery("ALTER TABLE ROLES ADD COLUMN `alliance` BIGINT NOT NULL DEFAULT 0" )) {close.execute();}
+            } catch (SQLException ignore) {}
         };
         {
             String create = "CREATE TABLE IF NOT EXISTS `COALITIONS` (`alliance_id` BIGINT NOT NULL, `coalition` VARCHAR NOT NULL, PRIMARY KEY(alliance_id, coalition))";
@@ -1613,8 +1616,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention() + "). Member withdrawals are not enabled, see: " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), null));
             }
 
-            GuildMessageChannel senderChannel = senderDB.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-            GuildMessageChannel receiverChannel = receiverDB.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+            Map<Long, MessageChannel> receiverChannel = receiverDB.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
 
 //        if (senderChannel == null) throw new IllegalArgumentException("Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in " + senderDB);
             if (receiverChannel == null)
@@ -3952,7 +3954,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         RESOURCE_REQUEST_CHANNEL(true, null, CommandCategory.ECON) {
             @Override
             public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
+                Map<Long, MessageChannel> parsed = (Map<Long, MessageChannel>) parse(db, value);
+                if (!parsed.containsKey(0L)) throw new IllegalArgumentException("You must specify a default channel (id 0)");
+                return toString(parsed);
+
             }
 
             @Override
@@ -3962,16 +3967,35 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
+                Map<Long, MessageChannel> parsed = new HashMap<>();
+                for (String line : input.split("[\n;,]")) {
+                    String[] split = line.split("[:=]", 2);
+                    long id = split.length == 1 ? 0 : Long.parseLong(split[0]);
+                    MessageChannel channel = DiscordUtil.getChannel(db.getGuild(), split[split.length - 1]);
+                    if (channel != null) {
+                        parsed.put((long) id, channel);
+                    }
+                }
+                return parsed.isEmpty() ? null : parsed;
             }
 
             @Override
             public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
+                Map<Long, MessageChannel> parsed = (Map<Long, MessageChannel>)value;
+                List<String> mentions = new ArrayList<>();
+                for (Map.Entry<Long, MessageChannel> entry : parsed.entrySet()) {
+                    if (entry.getKey() == 0) mentions.add(entry.getValue().getAsMention());
+                    else mentions.add(entry.getKey() + ":" + entry.getValue().getAsMention());
+                }
+                return StringMan.join(mentions, "\n");
             }
             @Override
             public String help() {
-                return "The #channel for users to request resources in";
+                return "The #channel for users to request resources in.\n" +
+                        "For multiple alliances, use the form:```" +
+                        "#defaultChannel\n" +
+                        "alliance1:#channel\n" +
+                        "```";
             }
         },
 
@@ -4858,6 +4882,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return getInfo(key, true);
     }
 
+    public MessageChannel getResourceChannel(Integer allianceId) {
+        Map<Long, MessageChannel> channels = getOrNull(Key.RESOURCE_REQUEST_CHANNEL);
+        if (channels == null) return null;
+        MessageChannel channel = channels.get(allianceId.longValue());
+        if (channel == null) channel = channels.get(0L);
+        return channel;
+    }
+
     public String getInfo(String key, boolean allowDelegate) {
         if (info == null) {
             initInfo();
@@ -5328,26 +5360,60 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private volatile boolean cachedRoleAliases = false;
-    private final Map<Roles, Long> roleAliases = new ConcurrentHashMap<>();
+    private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord = new ConcurrentHashMap<>();
 
-    public void addRole(Roles role, long roleId) {
-        roleAliases.put(role, roleId);
-        update("INSERT OR REPLACE INTO `ROLES`(`role`, `alias`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+    public void addRole(Roles locutusRole, Role discordRole, long allianceId) {
+        roleToAccountToDiscord.computeIfAbsent(locutusRole, f -> new ConcurrentHashMap<>()).put(allianceId, discordRole.getIdLong());
+        update("INSERT OR REPLACE INTO `ROLES`(`role`, `alias`, `alliance`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, locutusRole.name().toLowerCase());
+            stmt.setLong(2, discordRole.getIdLong());
+            stmt.setLong(3, allianceId);
+        });
+    }
+
+    public void deleteRole(Roles role, long alliance) {
+        Map<Long, Long> existing = roleToAccountToDiscord.get(role);
+        if (existing != null) {
+            existing.remove(alliance);
+        }
+        update("DELETE FROM `ROLES` WHERE `role` = ? AND `alliance` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, role.name().toLowerCase());
-            stmt.setLong(2, roleId);
+            stmt.setLong(2, alliance);
         });
     }
 
     public void deleteRole(Roles role) {
-        roleAliases.remove(role);
+        roleToAccountToDiscord.remove(role);
         update("DELETE FROM `ROLES` WHERE `role` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, role.name().toLowerCase());
         });
     }
 
-    public List<Map.Entry<Roles, Long>> getRoles() {
-        if (roleAliases.isEmpty() && !cachedRoleAliases) {
-            synchronized (roleAliases) {
+    public Map<Long, Role> getAccountMapping(Roles role) {
+        loadRoles();
+        Map<Long, Long> existing = roleToAccountToDiscord.get(role);
+        if (existing == null || existing.isEmpty()) return Collections.emptyMap();
+
+        Map<Long, Role> result = new HashMap<>();
+        for (Map.Entry<Long, Long> entry : existing.entrySet()) {
+            Role discordRole = guild.getRoleById(entry.getValue());
+            if (discordRole != null) {
+                result.put(entry.getKey(), discordRole);
+            }
+        }
+        return result;
+    }
+
+    public Role getRole(Roles role, long alliance) {
+        loadRoles();
+        if (role == null) return null;
+        return getRole(role.getName(), alliance);
+    }
+
+    private void loadRoles() {
+        if (roleToAccountToDiscord.isEmpty() && !cachedRoleAliases) {
+            synchronized (roleToAccountToDiscord) {
+                if (cachedRoleAliases) return;
                 cachedRoleAliases = true;
                 try (PreparedStatement stmt = prepareQuery("select * FROM ROLES")) {
                     try (ResultSet rs = stmt.executeQuery()) {
@@ -5355,23 +5421,33 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                             try {
                                 Roles role = Roles.valueOf(rs.getString("role").toUpperCase());
                                 long alias = rs.getLong("alias");
-
-                                roleAliases.putIfAbsent(role, alias);
+                                long alliance = rs.getLong("alliance");
+                                roleToAccountToDiscord.computeIfAbsent(role, f -> new ConcurrentHashMap<>()).put(alliance, alias);
                             } catch (IllegalArgumentException ignore) {
                             }
                         }
                     }
                 } catch (SQLException e) {
                     e.printStackTrace();
-                    return null;
                 }
             }
         }
-        return new ArrayList<>(roleAliases.entrySet());
     }
 
-    public Long getRoleAlias(Roles role) {
-        if (!cachedRoleAliases) getRoles();
-        return roleAliases.get(role);
+    public Role getRole(Roles role, Long allianceOrNull) {
+        loadRoles();
+        Map<Long, Long> roleIds = roleToAccountToDiscord.get(role);
+        if (roleIds == null) return null;
+        Long mapping = null;
+        if (allianceOrNull != null) {
+            mapping = roleIds.get(allianceOrNull);
+        }
+        if (mapping == null) {
+            mapping = roleIds.get(0);
+        }
+        if (mapping != null) {
+            return guild.getRoleById(mapping);
+        }
+        return null;
     }
 }
