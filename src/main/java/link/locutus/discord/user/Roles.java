@@ -206,6 +206,7 @@ public enum Roles {
     public boolean has(Member member) {
         if (member == null) return false;
         if (member.getIdLong() == Settings.INSTANCE.APPLICATION_ID) return true;
+        if (member.getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) return true;
 
         if (member.isOwner()) return true;
         Role role = toRole(member.getGuild());
