@@ -921,10 +921,14 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Shows the cost of a project")
-    public String ProjectCost(Project project, @Default("false") boolean technologicalAdvancement) {
+    public String ProjectCost(Project project, @Default("false") boolean technologicalAdvancement, @Default("false") boolean governmentSupportAgency) {
         Map<ResourceType, Double> cost = project.cost();
         if (technologicalAdvancement) {
-            cost = PnwUtil.multiply(cost, 0.95);
+            double factor = 0.05;
+            if (governmentSupportAgency) {
+                factor *= 1.5;
+            }
+            cost = PnwUtil.multiply(cost, 1 - factor);
         }
         return project.name() + ":\n```" + PnwUtil.resourcesToString(cost) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(cost));
     }
