@@ -607,8 +607,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 List<String> newKeys = new ArrayList<>(Arrays.asList(apiKeys));
                 for (String key : apiKeys) {
                     try {
-                        ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
-                        Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
+                        Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+                        if (nationId == null) {
+                            ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
+                            Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
+                        }
 //                    deleteInfo(Key.API_KEY);
                     } catch (HttpClientErrorException.Unauthorized e) {
                         newKeys.remove(key);
@@ -629,16 +632,20 @@ public class DBAlliance implements NationList, NationOrAlliance {
         Set<DBNation> nations = getNations();
         for (DBNation gov : nations) {
             if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id || gov.getAlliance_id() != allianceId) continue;
-            DBAlliancePosition position = gov.getAlliancePosition();
-            if (permissions != null && permissions.length > 0 && (position == null || (!position.hasAllPermission(permissions)))) {
-                continue;
+            if (gov.getPositionEnum() != Rank.LEADER && gov.getPositionEnum() != Rank.HEIR) {
+                DBAlliancePosition position = gov.getAlliancePosition();
+                if (permissions != null && permissions.length > 0 && (position == null || (!position.hasAllPermission(permissions)))) {
+                    continue;
+                }
             }
             try {
                 ApiKeyPool.ApiKey key = gov.getApiKey(false);
                 if (key == null) continue;
                 if (requireBotToken && key.getBotKey() == null) continue;
                 builder.addKey(key);
-            } catch (IllegalArgumentException ignore) {}
+            } catch (IllegalArgumentException ignore) {
+                ignore.printStackTrace();
+            }
         }
         if (!builder.isEmpty()) {
             return builder.build();
@@ -665,7 +672,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
-        PoliticsAndWarV3 api = getApi(true, permissions);
+        PoliticsAndWarV3 api = getApi(false, permissions);
         if (api == null) {
             String msg = "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
             if (permissions.length > 0) msg += " and ensure you have in-game access to: " + StringMan.getString(permissions);
