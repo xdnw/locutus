@@ -327,15 +327,15 @@ public class DBNation implements NationOrAlliance {
             Role role = Roles.REGISTERED.toRole(db);
             if (role != null) {
                 try {
-                    db.getGuild().addRoleToMember(user.getIdLong(), role).complete();
-
-                    output.append("You have been assigned the role: " + role.getName());
-
                     Member member = db.getGuild().getMember(user);
                     if (member != null) {
+                        db.getGuild().addRoleToMember(user.getIdLong(), role).complete();
+                        output.append("You have been assigned the role: " + role.getName());
                         db.getAutoRoleTask().autoRole(member, s -> {
                             output.append("\n").append(s);
                         });
+                    } else {
+                        output.append("Member " + user.getName() + "#" + user.getDiscriminator() + " not found in guild: " + db.getGuild());
                     }
                 } catch (InsufficientPermissionException e) {
                     output.append(e.getMessage() + "\n");
