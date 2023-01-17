@@ -1440,7 +1440,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
 
         Set<Integer> aaIds = getAllianceIds();
-        if (bankerNation != null && receiver.isNation() && receiver.getId() == bankerNation.getId()) {
+        if (bankerNation != null) {
             if (getOrNull(Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                 if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
                     if (throwError) {

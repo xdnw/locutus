@@ -3,9 +3,11 @@ package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceMeta;
@@ -45,9 +47,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -490,12 +494,146 @@ public class OffshoreInstance {
         return false;
     }
 
-    public Map.Entry<TransferStatus, String> transferFromAllianceDeposits(DBNation banker, GuildDB senderDB, NationOrAlliance receiver, double[] amount, String note) {
+    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, GuildDB senderDB, Long senderChannel, Long requiredAccountOrNull, NationOrAlliance receiver, double[] amount, DepositType depositType, Long expire, UUID grantToken, boolean convertCash, boolean force) {
+        if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
+            return Map.entry(TransferStatus.INVALID_DESTINATION, "Alliance: " + receiver.getUrl() + " has no receivable nations");
+        }
+        if (!receiver.isNation() && depositType != DepositType.IGNORE) {
+            return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to alliances");
+        }
 
-    }
+        if (!force && receiver.isNation()) {
+            DBNation nation = receiver.asNation();
+            if (nation.getVm_turns() > 0) return Map.entry(TransferStatus.VACATION_MODE, TransferStatus.VACATION_MODE.msg + " (set the `force` parameter to bypass)");
+            if (nation.isGray()) return Map.entry(TransferStatus.GRAY, TransferStatus.GRAY.msg + " (set the `force` parameter to bypass)");
+            if (nation.getNumWars() > 0 && nation.isBlockaded()) return Map.entry(TransferStatus.BLOCKADE, TransferStatus.BLOCKADE.msg + " (set the `force` parameter to bypass)");
+            if (nation.getActive_m() > 11520) return Map.entry(TransferStatus.INACTIVE, TransferStatus.INACTIVE.msg + " (set the `force` parameter to bypass)");
+        }
 
-    public Map.Entry<TransferStatus, String> transferFromNationDeposits(DBNation banker, GuildDB senderDB, NationOrAlliance receiver, double[] amount, String note) {
+        Set<Grant.Requirement> failedRequirements = new HashSet<>();
+        boolean isGrant = false;
+        if (grantToken != null) {
+            Grant authorized = BankCommands.AUTHORIZED_TRANSFERS.get(grantToken);
+            if (authorized == null) {
+                return Map.entry(TransferStatus.INVALID_TOKEN, "Invalid grant token (try again)");
+            }
+            if (!receiver.isNation()) {
+                return Map.entry(TransferStatus.INVALID_DESTINATION, "Grants can only be used to sent to nations");
+            }
 
+            for (Grant.Requirement requirement : authorized.getRequirements()) {
+                if (!requirement.apply(receiver.asNation())) {
+                    failedRequirements.add(requirement);
+                    if (requirement.canOverride()) continue;
+                    else {
+                        return Map.entry(TransferStatus.GRANT_REQUIREMENT, requirement.getMessage());
+                    }
+                }
+            }
+
+            isGrant = true;
+        }
+
+        if (!force && !failedRequirements.isEmpty()) {
+            StringBuilder msg = new StringBuilder();
+            msg.append("The following grant requirements were not met: ");
+            for (Grant.Requirement requirement : failedRequirements) {
+                msg.append(" - " + requirement.getMessage() + "\n");
+            }
+            return Map.entry(TransferStatus.GRANT_REQUIREMENT, msg + "\n(set the `force` parameter to bypass)");
+        }
+
+        List<String> otherNotes = new ArrayList<>();
+
+        if (expire != null) {
+            // Requires econ role for the alliance to send expire
+
+            if (expire < 1000) {
+                return Map.entry(TransferStatus.INVALID_NOTE, "Expire time must be at least 1 second (e.g. `3d` for three days)");
+            }
+            otherNotes.add("#expire=" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
+        }
+
+        if (convertCash) {
+            if (!receiver.isNation()) {
+                return Map.entry(TransferStatus.INVALID_DESTINATION, "Cash conversion is only to alliances");
+            }
+
+            if (!Roles.ECON.has(banker, senderDB.getGuild())) {
+                if (senderDB.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) != Boolean.TRUE) {
+                    return Map.entry(TransferStatus.INVALID_NOTE, "Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()) +
+                            "\nMembers do not have permission to convert resources to cash. See " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.RESOURCE_CONVERSION);
+                }
+                return Map.entry(TransferStatus.INVALID_NOTE, "You do not have permission to convert cash to resources. Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()));
+
+            }
+            otherNotes.add("#cash=" + MathMan.format(PnwUtil.convertedTotal(amount)));
+        }
+
+        DBNation bankerNation = DiscordUtil.getNation(banker);
+
+        Set<Integer> guildAllianceIds = senderDB.getAllianceIds();
+        Set<Long> allowedIds;
+        try {
+            allowedIds = senderDB.getAllowedBankAccountsOrThrow(banker, bankerNation, receiver, senderChannel);
+        } catch (IllegalArgumentException e) {
+            return Map.entry(TransferStatus.AUTHORIZATION, e.getMessage());
+        }
+
+        {
+            if (allianceAccount != null) {
+                if (!allowedIds.contains((long) allianceAccount.getId())) {
+                    return Map.entry(TransferStatus.AUTHORIZATION, "You attempted to withdraw from the alliance account: " + allianceAccount.getId() + " but are only authorized for " + StringMan.getString(allowedIds) + " (did you use the correct channel?)");
+                }
+                allowedIds.removeIf(f -> f != (long) allianceAccount.getId());
+            }
+
+            Set<Long> econAllowedAccounts = Roles.ECON.getAllowedAccounts(banker, senderDB);
+
+            if (nationAccount == null) {
+                Set<Long> allowedIdsCopy = new HashSet<>(allowedIds);
+                allowedIds.retainAll(econAllowedAccounts);
+
+                if (allowedIds.isEmpty()) {
+                    StringBuilder response = new StringBuilder();
+                    if (econAllowedAccounts.isEmpty()) {
+                        response.append("You do not have permission to send directly ANY alliance account (did you instead mean to do a personal withdrawal?)\n");
+                    } else {
+                        response.append("You have permission to withdraw from the alliance accounts: " + StringMan.getString(econAllowedAccounts) + " but attempted to withdraw from: " + StringMan.getString(allowedIdsCopy) + "\n" +
+                                "(did you use the right channel?)");
+                    }
+                    return Map.entry(TransferStatus.AUTHORIZATION, response.toString());
+                }
+            }
+
+            boolean addInternalTransfer = false;
+            if (nationAccount != null) {
+                if (bankerNation == null || nationAccount.getId() != bankerNation.getId()) {
+
+                }
+
+                if (!receiver.isNation() || nationAccount.getNation_id() != receiver.asNation().getNation_id()) {
+                    addInternalTransfer = true;
+                    if (depositType != DepositType.IGNORE) {
+                        return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to another nation");
+                    }
+                }
+
+                // check deposits
+
+                // check resource conversion
+
+
+            }
+
+
+        }
+
+        long primaryAccountId = allowedIds.iterator().next();
+        String note = "#" + depositType.name().toLowerCase(Locale.ROOT) + "=" + primaryAccountId;
+        if (otherNotes.size() > 0) {
+            note += " " + String.join(" ", otherNotes);
+        }
     }
 
     public void validateNotes(String note) {
@@ -510,12 +648,16 @@ public class OffshoreInstance {
     public Map.Entry<TransferStatus, String> transferFromAllianceDeposits(DBNation banker, GuildDB senderDB, Predicate<Integer> allowedAlliances, NationOrAlliance receiver, double[] amount, String note) {
         validateNotes(note);
 
+        if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
+            throw new IllegalArgumentException("Alliance: " + receiver.getUrl() + " has no receivable nations");
+        }
+
         GuildDB delegate = senderDB.getDelegateServer();
         if (delegate != null) senderDB = delegate;
 
         boolean hasAmount = false;
         for (double amt : amount) if (amt >= 0.01) hasAmount = true;
-        if (!hasAmount) return new AbstractMap.SimpleEntry<>(TransferStatus.NOTHING_WITHDRAWN, "You did not withdraw anything.");
+        if (!hasAmount) return Map.entry(TransferStatus.NOTHING_WITHDRAWN, "You did not withdraw anything.");
 
 
         if (banker != null) {
@@ -563,7 +705,7 @@ public class OffshoreInstance {
                                 RateLimitUtil.queue(alertChannel.sendMessage("^ " + adminRole.getAsMention()));
                             }
                         }
-                        return new AbstractMap.SimpleEntry<>(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit ($" + MathMan.format(withdrawLimit) + ")");
+                        return Map.entry(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit ($" + MathMan.format(withdrawLimit) + ")");
                     }
                 }
             }
@@ -691,6 +833,7 @@ public class OffshoreInstance {
                 case MULTI:
                 case INSUFFICIENT_FUNDS:
                 case INVALID_DESTINATION:
+                case INVALID_NOTE:
                 case NOTHING_WITHDRAWN:
                 case INVALID_API_KEY:
                     disabledGuilds.remove(senderDB.getIdLong());
@@ -762,7 +905,7 @@ public class OffshoreInstance {
     }
 
     public Map.Entry<TransferStatus, String> transfer(Auth auth, DBNation nation, Map<ResourceType, Double> transfer, String note) {
-        if (!TimeUtil.checkTurnChange()) return new AbstractMap.SimpleEntry<>(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
+        if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
         synchronized (BANK_LOCK) {
 //            BankWithTask task = new BankWithTask(auth, allianceId, 0, nation, new Function<Map<ResourceType, Double>, String>() {
 //                @Override
@@ -791,7 +934,7 @@ public class OffshoreInstance {
     }
 
     public Map.Entry<TransferStatus, String> transferUnsafe(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
-        if (!TimeUtil.checkTurnChange()) return new AbstractMap.SimpleEntry<>(TransferStatus.TURN_CHANGE, TransferStatus.TURN_CHANGE.msg);
+        if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, TransferStatus.TURN_CHANGE.msg);
         if (receiver.isAlliance()) {
             DBAlliance alliance = receiver.asAlliance();
             if (alliance.getNations(true, (int) TimeUnit.DAYS.toMinutes(30), true).isEmpty()) {
@@ -823,7 +966,7 @@ public class OffshoreInstance {
                 String response = request.get(20, TimeUnit.SECONDS);
                 return categorize(response);
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, "Timeout: " + e.getMessage());
+                return Map.entry(TransferStatus.OTHER, "Timeout: " + e.getMessage());
             }
         }
 
@@ -832,9 +975,9 @@ public class OffshoreInstance {
             try {
                 PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
                 Bankrec result = api.transferFromBank(PnwUtil.resourcesToArray(transfer), receiver, note);
-                return new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, result.toString());
+                return Map.entry(TransferStatus.SUCCESS, result.toString());
             } catch (HttpClientErrorException.Unauthorized e) {
-                return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "Invalid API key");
+                return Map.entry(TransferStatus.INVALID_DESTINATION, "Invalid API key");
 
             } catch (RuntimeException e) {
                 String msg = e.getMessage();
@@ -868,13 +1011,13 @@ public class OffshoreInstance {
     }
 
     public Map.Entry<TransferStatus, String> transfer(DBAlliance alliance, Map<ResourceType, Double> transfer, String note) {
-        if (alliance.getAlliance_id() == allianceId) return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "You can't send funds to yourself");
-        if (!TimeUtil.checkTurnChange()) return new AbstractMap.SimpleEntry<>(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
+        if (alliance.getAlliance_id() == allianceId) return Map.entry(TransferStatus.INVALID_DESTINATION, "You can't send funds to yourself");
+        if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
         if (!alliance.exists()) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "The alliance does not exist");
+            return Map.entry(TransferStatus.INVALID_DESTINATION, "The alliance does not exist");
         }
         if (alliance.getNations(true, 10000, true).isEmpty()) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, "The alliance has no members");
+            return Map.entry(TransferStatus.INVALID_DESTINATION, "The alliance has no members");
         }
         synchronized (BANK_LOCK) {
             Map.Entry<TransferStatus, String> result = transferUnsafe(this.auth, alliance, transfer, note);
@@ -969,6 +1112,14 @@ public class OffshoreInstance {
         GRAY("Is gray"),
 
         NOT_MEMBER("is not a member of the alliance"),
+
+        INVALID_NOTE("You did not enter a valid note."),
+
+        INVALID_TOKEN("Invalid token"),
+
+        GRANT_REQUIREMENT("Failed grant requirement"),
+
+        AUTHORIZATION("You are not authorized to make that request")
         ;
 
         private final String msg;
@@ -995,13 +1146,13 @@ public class OffshoreInstance {
      *             if (whitelistedError) {
      *                 msg += "\nEnsure Whitelisted access is enabled in " + Settings.INSTANCE.PNW_URL() + "/account";
      *             }
-     *             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
+     *             return Map.entry(TransferStatus.INVALID_API_KEY, msg);
      *         }
      *         if (msg.contains("You need provide the X-Bot-Key header with the key for a verified bot to use this endpoint.")) {
-     *             return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
+     *             return Map.entry(TransferStatus.INVALID_API_KEY, msg);
      *         }
      *         if (msg.isEmpty()) msg = "Unknown Error (Captcha?)";
-     *         return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, msg);
+     *         return Map.entry(TransferStatus.OTHER, msg);
      * @param task
      * @return
      */
@@ -1012,35 +1163,35 @@ public class OffshoreInstance {
             return categorize(msg);
         } catch (IndexOutOfBoundsException e) {
             if (new Date().getMinutes() <= 1) {
-                return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, "Resources cannot be transferred during turn change");
+                return Map.entry(TransferStatus.OTHER, "Resources cannot be transferred during turn change");
             }
             e.printStackTrace();
-            return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, "Unspecified authentication error.");
+            return Map.entry(TransferStatus.OTHER, "Unspecified authentication error.");
         }
     }
 
     private Map.Entry<TransferStatus, String> categorize(String msg) {
         if (msg.contains("You successfully transferred funds from the alliance bank.")) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.SUCCESS, msg);
+            return Map.entry(TransferStatus.SUCCESS, msg);
         }
         if (msg.contains("You can't send funds to this nation because they are in Vacation Mode") || msg.contains("You can't withdraw resources to a nation in vacation mode")) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.VACATION_MODE, msg);
+            return Map.entry(TransferStatus.VACATION_MODE, msg);
         }
         if (msg.contains("There was an Error with your Alliance Bank Withdrawal: You can't withdraw funds to that nation because they are under a naval blockade. When the naval blockade ends they will be able to receive funds.")
         || msg.contains("You can't withdraw resources to a blockaded nation.")) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.BLOCKADE, msg);
+            return Map.entry(TransferStatus.BLOCKADE, msg);
         }
         if (msg.contains("This player has been flagged for using the same network as you.")) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.MULTI, msg);
+            return Map.entry(TransferStatus.MULTI, msg);
         }
         if (msg.contains("Insufficient funds") || msg.contains("You don't have that much") || msg.contains("You don't have enough resources.")) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.INSUFFICIENT_FUNDS, msg);
+            return Map.entry(TransferStatus.INSUFFICIENT_FUNDS, msg);
         }
         if (msg.contains("You did not enter a valid recipient name.")) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_DESTINATION, msg);
+            return Map.entry(TransferStatus.INVALID_DESTINATION, msg);
         }
         if (msg.contains("You did not withdraw anything.") || msg.contains("You can't withdraw no resources.")) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.NOTHING_WITHDRAWN, msg);
+            return Map.entry(TransferStatus.NOTHING_WITHDRAWN, msg);
         }
         boolean whitelistedError = msg.contains("The API key you provided does not allow whitelisted access.");
         if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
@@ -1058,12 +1209,12 @@ public class OffshoreInstance {
             if (whitelistedError) {
                 msg += "\nEnsure Whitelisted access is enabled in " + Settings.INSTANCE.PNW_URL() + "/account";
             }
-            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
+            return Map.entry(TransferStatus.INVALID_API_KEY, msg);
         }
         if (msg.contains("You need provide the X-Bot-Key header with the key for a verified bot to use this endpoint.")) {
-            return new AbstractMap.SimpleEntry<>(TransferStatus.INVALID_API_KEY, msg);
+            return Map.entry(TransferStatus.INVALID_API_KEY, msg);
         }
         if (msg.isEmpty()) msg = "Unknown Error (Captcha?)";
-        return new AbstractMap.SimpleEntry<>(TransferStatus.OTHER, msg);
+        return Map.entry(TransferStatus.OTHER, msg);
     }
 }

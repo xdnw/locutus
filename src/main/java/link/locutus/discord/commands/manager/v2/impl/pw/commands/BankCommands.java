@@ -768,14 +768,27 @@ public class BankCommands {
         if (receiver.isAlliance() && onlyMissingFunds) {
             return "Option `-o` only applicable for nations";
         }
+        if (onlyMissingFunds) {
+            // todo
+        }
+
+
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
             throw new IllegalArgumentException("Alliance: " + receiver.getUrl() + " has no receivable nations");
         }
         if (!receiver.isNation() && depositType != DepositType.IGNORE) {
             return "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to alliances";
         }
+        if (!force && receiver.isNation()) {
+            DBNation nation = receiver.asNation();
+            if (nation.getVm_turns() > 0) return "Receiver is in Vacation Mode (use " + CM.admin.sync.syncNations.cmd.create(receiver.getName()) + " to force an update, add `-f` to bypass)";
+            if (nation.isGray()) return "Receiver is Gray (use " + CM.admin.sync.syncNations.cmd.create(receiver.getName()) + " to force an update, add `-f` to bypass)";
+            if (nation.getNumWars() > 0 && nation.isBlockaded()) return "Receiver is blockaded (use " + CM.admin.sync.syncNations.cmd.create(receiver.getName()) + " to force an update, add `-f` to bypass)";
+            if (nation.getActive_m() > 10000) channel.send("!! **WARN**: Receiver is inactive  (use " + CM.admin.sync.syncNations.cmd.create(receiver.getName()) + " to force an update, add `-f` to bypass)");
+        }
 
         OffshoreInstance offshore = guildDb.getOffshore();
+        // todo allow sending from aa bank
 
         List<String> otherNotes = new ArrayList<>();
 
@@ -785,7 +798,6 @@ public class BankCommands {
         }
 
         Set<Grant.Requirement> failedRequirements = new HashSet<>();
-
         boolean isGrant = false;
         if (token != null) {
             Grant authorized = AUTHORIZED_TRANSFERS.get(token);
@@ -812,7 +824,7 @@ public class BankCommands {
                 && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BANK_USERS.contains(userId)
                 && !isGrant
         ) {
-            return "No permission (1)";
+            return "Transfer too large. Please specify a smaller amount";
         }
 
         if (convertCash) {
@@ -824,12 +836,12 @@ public class BankCommands {
         DBNation banker = me;
 
         Set<Long> allowedIds = guildDb.getAllowedBankAccountsOrThrow(author, me, receiver, channel.getIdLong());
-        long senderNoteId;
-        if (aaIds.isEmpty()) {
-            senderNoteId = guildDb.getIdLong();
-        } else {
-            senderNoteId = allowedIds.iterator().next();
+        long primaryAccountId = allowedIds.iterator().next();
+        String note = "#" + depositType.name().toLowerCase(Locale.ROOT) + "=" + primaryAccountId;
+        if (otherNotes.size() > 0) {
+            note += " " + String.join(" ", otherNotes);
         }
+
 
 
 
@@ -866,12 +878,7 @@ public class BankCommands {
             return null;
         }
 
-        if (!force) {
-            if (receiver.isNation() && receiver.asNation().getVm_turns() > 0) return "Receiver is in Vacation Mode (use " + CM.admin.sync.syncNations.cmd.create(receiver.getName()) + " to force an update, add `-f` to bypass)";
-            if (receiver.isNation() && receiver.asNation().isGray()) return "Receiver is Gray (use " + CM.admin.sync.syncNations.cmd.create(receiver.getName()) + " to force an update, add `-f` to bypass)";
-            if (receiver.isNation() && receiver.asNation().getNumWars() > 0 && receiver.asNation().isBlockaded()) return "Receiver is blockaded (use " + CM.admin.sync.syncNations.cmd.create(receiver.getName()) + " to force an update, add `-f` to bypass)";
-            if (receiver.isNation() && receiver.asNation().getActive_m() > 10000) channel.send("!! **WARN**: Receiver is inactive  (use " + CM.admin.sync.syncNations.cmd.create(receiver.getName()) + " to force an update, add `-f` to bypass)");
-        }
+
 
         // confirmation prompt
         if (!force) {
@@ -885,9 +892,19 @@ public class BankCommands {
             }
             title += " to " + (receiver.isAlliance() ? "AA " : "") + receiver.getName();
             if (receiver.isNation()) title += " | " + receiver.asNation().getAllianceName();
-            String body = note + (note.isEmpty() ? "" : "\n") + "Press `Confirm` to confirm";
 
-            channel.create().confirmation(title, body, command).send();
+            StringBuilder body = new StringBuilder();
+            body.append("Note: `" + note + "`").append("\n");
+            if (!failedRequirements.isEmpty()) {
+                body.append("Failed requirements:\n");
+                for (Grant.Requirement requirement : failedRequirements) {
+                    body.append(" -  ").append(requirement.getMessage()).append("\n");
+                }
+                body.append("\n");
+            }
+            body.append("\nPress `Confirm` to confirm");
+
+            channel.create().confirmation(title, body.toString(), command).send();
             return null;
         }
 

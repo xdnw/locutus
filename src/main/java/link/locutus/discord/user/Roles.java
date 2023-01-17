@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -178,10 +179,21 @@ public enum Roles {
         return key;
     }
 
-    public Set<Integer> getAllowedAlliances(User user, GuildDB db) {
-        Set<Integer> aaIds = new HashSet<>(db.getAllianceIds());
-        aaIds.removeIf(f -> !has(user, db, f));
-        return aaIds;
+    public Set<Long> getAllowedAccounts(User user, GuildDB db) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        Set<Long> allowed = new HashSet<>();
+        if (aaIds.isEmpty()) {
+            if (has(user, db.getGuild())) {
+                allowed.add(db.getIdLong());
+            }
+            return allowed;
+        }
+        for (Integer aaId : aaIds) {
+            if (has(user, db.getGuild(), aaId)) {
+                allowed.add(aaId.longValue());
+            }
+        }
+        return allowed;
     }
 
     @Override
