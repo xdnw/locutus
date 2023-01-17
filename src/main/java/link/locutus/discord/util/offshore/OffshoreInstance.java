@@ -591,7 +591,7 @@ public class OffshoreInstance {
 
             // Ensure sufficient deposits
             boolean valid = senderDB == offshoreDB;
-            Map<NationOrAllianceOrGuild, double[]> depositsByAA = getDepositsByAA(senderDB, true);
+            Map<NationOrAllianceOrGuild, double[]> depositsByAA = getDepositsByAA(senderDB, allowedAlliances, true);
             double[] deposits = ResourceType.getBuffer();
             double[] finalDeposits = deposits;
             depositsByAA.forEach((a, b) -> ResourceType.add(finalDeposits, b));
@@ -791,6 +791,22 @@ public class OffshoreInstance {
     }
 
     public Map.Entry<TransferStatus, String> transferUnsafe(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
+        if (!TimeUtil.checkTurnChange()) return new AbstractMap.SimpleEntry<>(TransferStatus.TURN_CHANGE, TransferStatus.TURN_CHANGE.msg);
+        if (receiver.isAlliance()) {
+            DBAlliance alliance = receiver.asAlliance();
+            if (alliance.getNations(true, (int) TimeUnit.DAYS.toMinutes(30), true).isEmpty()) {
+                return Map.entry(TransferStatus.VACATION_MODE, "The alliance: " + receiver.getQualifiedName() + " has no active members (> 30 days)");
+            }
+        } else if (receiver.isNation()) {
+            DBNation nation = receiver.asNation();
+            if (nation.getVm_turns() > 0) {
+                return Map.entry(TransferStatus.VACATION_MODE, TransferStatus.VACATION_MODE.msg);
+            }
+            if (nation.active_m() > TimeUnit.DAYS.toMinutes(30)) {
+                return Map.entry(TransferStatus.VACATION_MODE, "Nation is inactive (>30 days)");
+            }
+        }
+
         if (Settings.USE_V2 && auth != null) {
             // todo test if game is still down
             WebRoot web = WebRoot.getInstance();
@@ -937,7 +953,7 @@ public class OffshoreInstance {
         INVALID_DESTINATION("You did not enter a valid recipient name."),
         OTHER("Unspecified error. (Is it turn change? Is there a captcha?)"),
         ALLIANCE_BANK("Tranferring via alliance bank"),
-        VACATION_MODE("You can't send funds to this nation because they are in Vacation Mode"),
+        VACATION_MODE("You can't send funds to this nation because they are inactive or in Vacation Mode"),
         NOTHING_WITHDRAWN("You did not withdraw anything."),
 
         INVALID_API_KEY("The API key you provided does not allow whitelisted access."),

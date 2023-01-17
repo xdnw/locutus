@@ -1,6 +1,7 @@
 package link.locutus.discord.user;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.StringMan;
@@ -11,8 +12,10 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public enum Roles {
     REGISTERED("auto role for anyone who is verified with the bot"),
@@ -163,8 +166,22 @@ public enum Roles {
         this.key = key;
     }
 
+    public String toDiscordRoleNameElseInstructions(Guild guild) {
+        Role role = toRole(guild);
+        if (role != null) {
+            return role.getName();
+        }
+        return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.create(name(), null);
+    }
+
     public GuildDB.Key getKey() {
         return key;
+    }
+
+    public Set<Integer> getAllowedAlliances(User user, GuildDB db) {
+        Set<Integer> aaIds = new HashSet<>(db.getAllianceIds());
+        aaIds.removeIf(f -> !has(user, db, f));
+        return aaIds;
     }
 
     @Override

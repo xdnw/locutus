@@ -667,13 +667,12 @@ public class BankCommands {
     @Command(desc = "Withdraw from the alliance bank (your deposits)")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, any=true)
     public String withdraw(@Me IMessageIO channel, @Me JSONObject command,
-                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, @NationDepositLimit Map<ResourceType, Double> transfer, @Default("#deposit") String primaryNote,
+                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, @NationDepositLimit Map<ResourceType, Double> transfer, @Default("#deposit") DepositType depositType,
                            @Switch("f") boolean force, @Switch("o") boolean onlyMissingFunds,
                            @Switch("e") @Timediff Long expire,
-                           @Switch("n") String secondaryNotes,
                            @Switch("g") UUID token,
                            @Switch("c") boolean convertCash) throws IOException {
-        return transfer(channel, command, author, me, guildDb, me, transfer, primaryNote, force, onlyMissingFunds, expire, secondaryNotes, token, convertCash);
+        return transfer(channel, command, author, me, guildDb, me, transfer, depositType, force, onlyMissingFunds, expire, token, convertCash);
     }
 
     @Command(desc = "Bulk shift resources in a nations `{prefix}depo <nation> -t` to another category")
@@ -761,22 +760,24 @@ public class BankCommands {
     @Command(desc = "Transfer from the alliance bank (alliance deposits)")
     @RolePermission(Roles.ECON)
     public String transfer(@Me IMessageIO channel, @Me JSONObject command,
-                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, String primaryNote,
+                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType depositType,
                            @Switch("f") boolean force, @Switch("o") boolean onlyMissingFunds,
                            @Switch("e") @Timediff Long expire,
-                           @Switch("n") String secondaryNotes,
                            @Switch("g") UUID token,
                            @Switch("c") boolean convertCash) throws IOException {
-        boolean isAdmin = Roles.ECON.hasOnRoot(author);
+        if (receiver.isAlliance() && onlyMissingFunds) {
+            return "Option `-o` only applicable for nations";
+        }
+        if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
+            throw new IllegalArgumentException("Alliance: " + receiver.getUrl() + " has no receivable nations");
+        }
+        if (!receiver.isNation() && depositType != DepositType.IGNORE) {
+            return "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to alliances";
+        }
+
         OffshoreInstance offshore = guildDb.getOffshore();
 
-        if (primaryNote.isEmpty()) throw new IllegalArgumentException("Note must not be empty");
-        if (primaryNote.contains(" ")) throw new IllegalArgumentException("Primary not cannot contain spaces");
-
         List<String> otherNotes = new ArrayList<>();
-        if (secondaryNotes != null) {
-            otherNotes.addAll(StringMan.split(secondaryNotes, ' '));
-        }
 
         if (expire != null) {
             if (expire < 1000) throw new IllegalArgumentException("Invalid amount of time (maybe add `d` otherwise it uses seconds): `" + expire + "`");
@@ -804,26 +805,7 @@ public class BankCommands {
             isGrant = true;
         }
 
-        Collection<String> allowedLabels = Arrays.asList("#grant", "#deposit", "#trade", "#ignore", "#tax", "#warchest", "#account");
-        if (!allowedLabels.contains(primaryNote.split("=")[0].toLowerCase())) {
-            return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
-        }
-
-        if (!isAdmin) {
-            GuildDB offshoreGuild = Locutus.imp().getGuildDBByAA(offshore.getAllianceId());
-            if (offshoreGuild != null) {
-                isAdmin = Roles.ECON.has(author, offshoreGuild.getGuild());
-            }
-        }
-
-        if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
-            throw new IllegalArgumentException("Alliance: " + receiver.getUrl() + " has no receivable nations");
-        }
-
-        if (receiver.isAlliance() && onlyMissingFunds) {
-            return "Option `-o` only applicable for nations";
-        }
-
+        // transfer limit
         long userId = author.getIdLong();
         if (PnwUtil.convertedTotal(transfer) > 1000000000L
                 && userId != Settings.INSTANCE.ADMIN_USER_ID
@@ -834,34 +816,28 @@ public class BankCommands {
         }
 
         if (convertCash) {
+            if (!receiver.isNation()) return "Cash conversion is only applicable for nations";
             otherNotes.add("#cash=" + MathMan.format(PnwUtil.convertedTotal(transfer)));
         }
 
         String receiverStr = receiver.isAlliance() ? receiver.getName() : receiver.asNation().getNation();
-        String note = primaryNote;
         DBNation banker = me;
 
-        Integer aaId3 = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        long senderId = aaId3 == null ? guildDb.getIdLong() : aaId3;
-        note += "=" + senderId;
-        if (!otherNotes.isEmpty()) note += " " + StringMan.join(otherNotes, " ");
-        note = note.trim();
-
-        if (note.contains("#cash") && !Roles.ECON.has(author, guildDb.getGuild())) {
-            return "You must have `ECON` Role to send with `#cash`";
+        Set<Long> allowedIds = guildDb.getAllowedBankAccountsOrThrow(author, me, receiver, channel.getIdLong());
+        long senderNoteId;
+        if (aaIds.isEmpty()) {
+            senderNoteId = guildDb.getIdLong();
+        } else {
+            senderNoteId = allowedIds.iterator().next();
         }
 
-        {
-            if (receiver.isAlliance() && !note.contains("#ignore") && !force) {
-                return "Please include `#ignore` in note when transferring to alliances";
-            }
-            if (receiver.isNation() && !note.contains("#deposit=") && !note.contains("#grant=") && !note.contains("#ignore")) {
-                if (aaId3 == null) return "Please *include* `#ignore` or `#deposit` or `#grant` in note when transferring to nations";
-                if (aaId3 != receiver.asNation().getAlliance_id()) {
-                    return "Please include `#ignore` or `#deposit` or `#grant` in note when transferring to nations not in your alliance";
-                }
-            }
-        }
+
+
+
+
+        /*
+        "#" + depositType.name().toLowerCase(Locale.ROOT)
+         */
 
         // transfer json if they dont have perms to do the transfer
         if (offshore == null) {

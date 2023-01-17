@@ -5,5 +5,6 @@ public enum DepositType {
     TAX,
     LOAN,
     GRANT,
+    IGNORE,
     ;
 }

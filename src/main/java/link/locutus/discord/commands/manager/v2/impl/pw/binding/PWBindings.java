@@ -472,6 +472,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding
     public DepositType DepositType(String input) {
+        if (input.startsWith("#")) input = input.substring(1);
         return StringMan.parseUpper(DepositType.class, input);
     }
 

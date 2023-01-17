@@ -1399,6 +1399,146 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return warchest;
     }
 
+    public Set<Long> getResourceChannelAccounts(Long messageChannelIdOrNull) {
+        if (messageChannelIdOrNull == null) return null;
+        Map<Long, MessageChannel> channels = getOrNull(Key.RESOURCE_REQUEST_CHANNEL);
+        if (channels != null) {
+            if (messageChannelIdOrNull == 0) {
+                MessageChannel channel = channels.get(0L);
+                if (channel != null) messageChannelIdOrNull = channel.getIdLong();
+            }
+            Set<Integer> guildAAIds = null;
+            Set<Long> allowedIds = new HashSet<>();
+            for (Map.Entry<Long, MessageChannel> entry : channels.entrySet()) {
+                if (entry.getValue().getIdLong() == messageChannelIdOrNull) {
+                    if (guildAAIds == null) guildAAIds = getAllianceIds();
+                    if (entry.getKey() == 0L) {
+                        if (guildAAIds.isEmpty()) {
+                            return Collections.singleton(getIdLong());
+                        }
+                        for (Integer aaId : guildAAIds) allowedIds.add(aaId.longValue());
+                        return allowedIds;
+                    } else if (guildAAIds.contains(entry.getKey().intValue())) {
+                        allowedIds.add(entry.getKey().longValue());
+                    }
+                }
+            }
+            return allowedIds;
+        }
+        return null;
+    }
+
+    public long getMemberWithdrawAccount(User banker, DBNation bankerNation, NationOrAlliance receiver, Long messageChannelIdOrNull, Set<Long> channelWithdrawAccounts, boolean throwError) {
+        if (!Roles.MEMBER.has(banker, guild)) {
+            if (throwError) throw new IllegalArgumentException("You must have the member role to withdraw resources: " + Roles.MEMBER.toDiscordRoleNameElseInstructions(guild));
+            return 0;
+        }
+
+        if (!Roles.ECON_WITHDRAW_SELF.has(banker, guild)) {
+            if (throwError) throw new IllegalArgumentException("You must have the withdraw role to withdraw resources: " + Roles.ECON_WITHDRAW_SELF.toDiscordRoleNameElseInstructions(guild));
+            return 0;
+        }
+
+        Set<Integer> aaIds = getAllianceIds();
+        if (bankerNation != null && receiver.isNation() && receiver.getId() == bankerNation.getId()) {
+            if (getOrNull(Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
+                if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
+                    if (throwError) {
+                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + Key.MEMBER_CAN_WITHDRAW_WARTIME + "` is false (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true") + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
+                    }
+                } else if (aaIds.isEmpty()) {
+                    if (channelWithdrawAccounts.isEmpty() || !channelWithdrawAccounts.contains(getIdLong())) {
+                        MessageChannel defaultChannel = getResourceChannel(0);
+                        if (defaultChannel == null) {
+                            String channelMention = messageChannelIdOrNull == null ? null : "<#" + messageChannelIdOrNull + ">";
+                            throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), channelMention));
+                        } else {
+                            throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
+                        }
+                    }
+                    return getIdLong();
+                } else {
+                    int aaId = bankerNation.getAlliance_id();
+                    if (!channelWithdrawAccounts.contains((long) aaId)) {
+                        if (throwError) {
+                            throw new IllegalArgumentException("You cannot withdraw as you are not in the alliance: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")");
+                        }
+                    } else if (bankerNation.getPositionEnum().id <= Rank.APPLICANT.id) {
+                        if (throwError) {
+                            throw new IllegalArgumentException("You cannot withdraw as you are not a member in game (only applicant)");
+                        }
+                    } else {
+                        return aaId;
+                    }
+                }
+
+            } else {
+                if (throwError) {
+                    throw new IllegalArgumentException("MEMBER_CAN_WITHDRAW is disabled. See " + CM.settings.cmd.toSlashMention());
+                }
+            }
+        } else if (bankerNation == null) {
+            throw new IllegalArgumentException("You are not registered. See: " + CM.register.cmd.toSlashMention());
+        } else if (throwError) {
+            String msg = "You need the econ role to withdraw to other nations";
+            MessageChannel channel = getResourceChannel(aaIds.isEmpty() ? 0 : bankerNation.getAlliance_id());
+            if (channel != null && (messageChannelIdOrNull == null || messageChannelIdOrNull != channel.getIdLong())) msg += ". The channel for alliance withdrawals is: " + channel.getAsMention();
+            throw new IllegalArgumentException(msg);
+        }
+        return 0L;
+    }
+
+    public Set<Long> getAllowedBankAccountsOrThrow(User banker, DBNation bankerNation, NationOrAlliance receiver, Long messageChannelIdOrNull) {
+        Set<Integer> aaIds = getAllianceIds();
+        Set<Long> channelAccountIds = getResourceChannelAccounts(messageChannelIdOrNull);
+        boolean isResourceChannel = channelAccountIds != null;
+        if (channelAccountIds == null) {
+            channelAccountIds = new HashSet<>();
+            if (!aaIds.isEmpty()) {
+                for (Integer aaId : aaIds) channelAccountIds.add(aaId.longValue());
+            } else {
+                channelAccountIds.add(getIdLong());
+            }
+        }
+
+        if (!aaIds.isEmpty()) {
+            channelAccountIds.removeIf(f -> !aaIds.contains(f.intValue()));
+        } else {
+            channelAccountIds.removeIf(f -> f != getIdLong());
+        }
+        if (channelAccountIds.isEmpty()) {
+            throw new IllegalArgumentException("The resource channel: <#" + messageChannelIdOrNull + ">" +
+                    " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
+                    " but the server is only registered to the following alliances: " + StringMan.getString(aaIds) +
+                    "\nSee: " + CM.settings.cmd.toSlashMention() + " with keys: " + Key.ALLIANCE_ID + " and " + Key.RESOURCE_REQUEST_CHANNEL);
+        }
+
+
+        Set<Long> allowedIds = new HashSet<>();
+        if (Roles.ECON.has(banker, guild)) {
+            allowedIds.addAll(channelAccountIds);
+        } else if (!aaIds.isEmpty()) {
+            for (Long aaId : channelAccountIds) {
+                if (Roles.ECON.has(banker, guild, aaId.intValue())) {
+                    allowedIds.add(aaId);
+                }
+            }
+            long withdrawAccount = getMemberWithdrawAccount(banker, bankerNation, receiver, messageChannelIdOrNull, channelAccountIds, allowedIds.isEmpty());
+            if (withdrawAccount > 0) {
+                allowedIds.add(withdrawAccount);
+            }
+        }
+        if (allowedIds.isEmpty()) {
+            if (isResourceChannel) {
+                throw new IllegalArgumentException("You are not authorized to withdraw from this resource channel. (Do you have the econ role for the alliance?: " + StringMan.getString(channelAAIds) + ")");
+            } else {
+                throw new IllegalArgumentException("You are not authorized to withdraw resources. Do you have the econ role for the alliance?");
+            }
+
+        }
+        return allowedIds;
+    }
+
     public void addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> amounts, long dateTime, int banker, String offshoreNote) {
         for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : amounts.entrySet()) {
             NationOrAllianceOrGuild account = entry.getKey();
