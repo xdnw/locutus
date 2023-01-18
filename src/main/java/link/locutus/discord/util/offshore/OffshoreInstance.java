@@ -494,11 +494,11 @@ public class OffshoreInstance {
         return false;
     }
 
-    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, GuildDB senderDB, Long senderChannel, Long requiredAccountOrNull, NationOrAlliance receiver, double[] amount, DepositType depositType, Long expire, UUID grantToken, boolean convertCash, boolean force) {
+    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, GuildDB senderDB, Long senderChannel, Long requiredAccountOrNull, NationOrAlliance receiver, double[] amount, DepositType depositType, Long expire, UUID grantToken, boolean convertCash, boolean force) throws IOException {
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
             return Map.entry(TransferStatus.INVALID_DESTINATION, "Alliance: " + receiver.getUrl() + " has no receivable nations");
         }
-        if (!receiver.isNation() && depositType != DepositType.IGNORE) {
+        if (!receiver.isNation() && nationAccount == null && depositType != DepositType.IGNORE) {
             return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to alliances");
         }
 
@@ -546,6 +546,9 @@ public class OffshoreInstance {
         List<String> otherNotes = new ArrayList<>();
 
         if (expire != null) {
+            if (!receiver.isNation()) {
+                return Map.entry(TransferStatus.INVALID_NOTE, "Expire can only be used with nations");
+            }
             // Requires econ role for the alliance to send expire
 
             if (expire < 1000) {
@@ -572,7 +575,6 @@ public class OffshoreInstance {
 
         DBNation bankerNation = DiscordUtil.getNation(banker);
 
-        Set<Integer> guildAllianceIds = senderDB.getAllianceIds();
         Set<Long> allowedIds;
         try {
             allowedIds = senderDB.getAllowedBankAccountsOrThrow(banker, bankerNation, receiver, senderChannel);
@@ -580,6 +582,7 @@ public class OffshoreInstance {
             return Map.entry(TransferStatus.AUTHORIZATION, e.getMessage());
         }
 
+        boolean isInternalTransfer = !receiver.isNation();
         {
             if (allianceAccount != null) {
                 if (!allowedIds.contains((long) allianceAccount.getId())) {
@@ -589,41 +592,80 @@ public class OffshoreInstance {
             }
 
             Set<Long> econAllowedAccounts = Roles.ECON.getAllowedAccounts(banker, senderDB);
+            Set<Long> allowedIdsCopy = new HashSet<>(allowedIds);
 
             if (nationAccount == null) {
-                Set<Long> allowedIdsCopy = new HashSet<>(allowedIds);
                 allowedIds.retainAll(econAllowedAccounts);
+            }
 
+            Set<Integer> guildAllianceIds = senderDB.getAllianceIds();
+
+            if (expire != null) {
+                allowedIds.retainAll(econAllowedAccounts);
                 if (allowedIds.isEmpty()) {
-                    StringBuilder response = new StringBuilder();
-                    if (econAllowedAccounts.isEmpty()) {
-                        response.append("You do not have permission to send directly ANY alliance account (did you instead mean to do a personal withdrawal?)\n");
-                    } else {
-                        response.append("You have permission to withdraw from the alliance accounts: " + StringMan.getString(econAllowedAccounts) + " but attempted to withdraw from: " + StringMan.getString(allowedIdsCopy) + "\n" +
-                                "(did you use the right channel?)");
-                    }
-                    return Map.entry(TransferStatus.AUTHORIZATION, response.toString());
+                    return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSITS + " but attempted to do " + depositType);
                 }
             }
 
-            boolean addInternalTransfer = false;
             if (nationAccount != null) {
-                if (bankerNation == null || nationAccount.getId() != bankerNation.getId()) {
+                if (depositType != DepositType.DEPOSITS) {
+                    allowedIds.retainAll(econAllowedAccounts);
+                    if (allowedIds.isEmpty()) {
+                        return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSITS + " but attempted to do " + depositType);
+                    }
+                }
 
+                if (bankerNation == null || nationAccount.getId() != bankerNation.getId()) {
+                    allowedIds.retainAll(econAllowedAccounts);
+
+                    if (!allowedIds.isEmpty() && !guildAllianceIds.isEmpty() && !Roles.ECON.has(banker, senderDB, nationAccount.getAlliance_id())) {
+                        return Map.entry(TransferStatus.AUTHORIZATION, "You attempted to access a nation's account in alliance: " + nationAccount.getAlliance_id() + " but are only authorized for " + StringMan.getString(econAllowedAccounts));
+                    }
                 }
 
                 if (!receiver.isNation() || nationAccount.getNation_id() != receiver.asNation().getNation_id()) {
-                    addInternalTransfer = true;
+                    isInternalTransfer = true;
                     if (depositType != DepositType.IGNORE) {
                         return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to another nation");
                     }
                 }
 
+                boolean ignoreGrants = senderDB.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.TRUE;
                 // check deposits
 
-                // check resource conversion
+                double[] myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants);
+                myDeposits = PnwUtil.normalize(myDeposits);
+                double myDepoValue = PnwUtil.convertedTotal(myDeposits, false);
+                double txValue = PnwUtil.convertedTotal(amount);
 
+                if (myDepoValue <= 0) {
+                    return "Your deposits value (market min of $" + MathMan.format(myDepoValue) + ") is insufficient (transfer value $" + MathMan.format(txValue) + ")";
+                }
 
+                boolean rssConversion = senderDB.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) == Boolean.TRUE;
+                boolean hasExactResources = true;
+                for (ResourceType type : ResourceType.values) {
+                    if (Math.round(myDeposits[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                        if (!rssConversion) {
+                            return "You do not have `" + MathMan.format(amount[type.ordinal()]) + "x" + type + "`. (see " + CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null) + " ). RESOURCE_CONVERSION is disabled (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true") + ")";
+                        }
+                        hasExactResources = false;
+                    }
+                }
+                if (!hasExactResources && myDepoValue < txValue) {
+                    return "Your deposits are worth $" + MathMan.format(myDepoValue) + "(market min) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
+                }
+            }
+
+            if (allowedIds.isEmpty()) {
+                StringBuilder response = new StringBuilder();
+                if (econAllowedAccounts.isEmpty()) {
+                    response.append("You do not have permission to send directly from ANY alliance account (did you instead mean to do a personal withdrawal?)\n");
+                } else {
+                    response.append("You have permission to withdraw from the alliance accounts: " + StringMan.getString(econAllowedAccounts) + " but attempted to withdraw from: " + StringMan.getString(allowedIdsCopy) + "\n" +
+                            "(did you use the right channel?)");
+                }
+                return Map.entry(TransferStatus.AUTHORIZATION, response.toString());
             }
 
 
@@ -634,22 +676,26 @@ public class OffshoreInstance {
         if (otherNotes.size() > 0) {
             note += " " + String.join(" ", otherNotes);
         }
-    }
 
-    public void validateNotes(String note) {
-        Map<String, String> notes = PnwUtil.parseTransferHashNotes(note);
-        if (notes.containsKey("#alliance") || notes.containsKey("#guild") || notes.containsKey("#account")) throw new IllegalArgumentException("You cannot send with #alliance #guild or #account as the note");
+        String transferNote = isInternalTransfer ? "#" + DepositType.IGNORE.name().toLowerCase(Locale.ROOT) : note;
 
-        return;
+        if (isInternalTransfer) {
+            // addbalance
+        }
+
+        Map.Entry<TransferStatus, String> result = transferFromAllianceDeposits();
     }
 
     public Map<Long, Boolean> disabledGuilds = new ConcurrentHashMap<>();
 
     public Map.Entry<TransferStatus, String> transferFromAllianceDeposits(DBNation banker, GuildDB senderDB, Predicate<Integer> allowedAlliances, NationOrAlliance receiver, double[] amount, String note) {
-        validateNotes(note);
+        Map<String, String> notes = PnwUtil.parseTransferHashNotes(note);
+        if (notes.containsKey("#alliance") || notes.containsKey("#guild") || notes.containsKey("#account")) {
+            return Map.entry(TransferStatus.INVALID_NOTE, "You cannot send with #alliance #guild or #account as the note");
+        }
 
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
-            throw new IllegalArgumentException("Alliance: " + receiver.getUrl() + " has no receivable nations");
+            return Map.entry(TransferStatus.INVALID_DESTINATION, "Alliance: " + receiver.getUrl() + " has no receivable nations");
         }
 
         GuildDB delegate = senderDB.getDelegateServer();
@@ -657,6 +703,7 @@ public class OffshoreInstance {
 
         boolean hasAmount = false;
         for (double amt : amount) if (amt >= 0.01) hasAmount = true;
+        for (ResourceType type : ResourceType.values) if (amount[type.ordinal()] < 0) return Map.entry(TransferStatus.NOTHING_WITHDRAWN, "You cannot withdraw negative " + type);
         if (!hasAmount) return Map.entry(TransferStatus.NOTHING_WITHDRAWN, "You did not withdraw anything.");
 
 
@@ -710,7 +757,9 @@ public class OffshoreInstance {
                 }
             }
         }
-        if (DISABLE_TRANSFERS && banker.getNation_id() != Settings.INSTANCE.NATION_ID) throw new IllegalArgumentException("Error: Maintenance");
+        if (DISABLE_TRANSFERS && banker.getNation_id() != Settings.INSTANCE.NATION_ID) {
+            return Map.entry(TransferStatus.AUTHORIZATION, "Error: Maintenance. Transfers are currently disabled");
+        }
 
         synchronized (BANK_LOCK) {
             boolean isZero = true;
