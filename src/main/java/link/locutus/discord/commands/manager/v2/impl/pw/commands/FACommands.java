@@ -222,47 +222,41 @@ public class FACommands {
     }
 
     @Command
-    public String treaties(@Me IMessageIO channel, @Me GuildDB db, Set<DBAlliance> alliances, @Switch("f") boolean listExpired) {
+    public String treaties(@Me IMessageIO channel, @Me User user, Set<DBAlliance> alliances, @Switch("f") boolean listExpired) {
         StringBuilder response = new StringBuilder();
+        Set<Treaty> allTreaties = new LinkedHashSet<>();
+
         if (alliances.size() == 1) {
             DBAlliance alliance = alliances.iterator().next();
-            Auth auth = alliance.getAuth(AlliancePermission.MANAGE_TREATIES);
-            if (auth != null) {
-                List<PendingTreaty> treaties = auth.getTreaties();
-                if (!listExpired) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
-                for (PendingTreaty treaty : treaties) {
-                    long turnsLeft = treaty.getTurnEnds() - TimeUtil.getTurn();
-                    response.append("#" + treaty.getId() + ": " + PnwUtil.getName(treaty.getFromId(), true) + " | " + treaty.getType() + " -> " + PnwUtil.getName(treaty.getToId(), true) + " (" + turnsLeft + " turns |" + treaty.status + ")").append("\n");
-                }
-                return response.toString();
+            boolean update = false;
+            GuildDB aaDb = alliance.getGuildDB();
+            if (aaDb != null) {
+                update = (Roles.FOREIGN_AFFAIRS.getAllowedAccounts(user, aaDb).contains(alliance.getIdLong()));
             }
-        }
-
-        long now = System.currentTimeMillis();
-        long turn = TimeUtil.getTurn();
-        Set<Treaty> allTreaties = new LinkedHashSet<>();
-        for (DBAlliance alliance : alliances) {
-            Map<Integer, Treaty> treaties = alliance.getTreaties();
-
-            for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
-                Treaty treaty = entry.getValue();
-                if (allTreaties.contains(treaty)) continue;
-                String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
-                String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
-                TreatyType type = treaty.getType();
-
-                response.append(from + " | " + type + " -> " + to);
-                if (treaty.getTurnEnds() > turn) {
-                    String expires = TimeUtil.secToTime(TimeUnit.MILLISECONDS, TimeUtil.getTimeFromTurn(treaty.getTurnEnds() - turn));
-                    response.append(" (" + expires + ")");
-                }
-                response.append("\n");
+            allTreaties.addAll(alliance.getTreaties(update).values());
+        } else {
+            for (DBAlliance alliance : alliances) {
+                Map<Integer, Treaty> treaties = alliance.getTreaties();
+                allTreaties.addAll(treaties.values());
             }
-
-            allTreaties.addAll(treaties.values());
         }
 
         if (allTreaties.isEmpty()) return "No treaties";
+
+        long now = System.currentTimeMillis();
+        long turn = TimeUtil.getTurn();
+        for (Treaty treaty : allTreaties) {
+            String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
+            String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
+            TreatyType type = treaty.getType();
+
+            response.append(from + " | " + type + " -> " + to);
+            if (treaty.getTurnEnds() > turn) {
+                String expires = TimeUtil.secToTime(TimeUnit.MILLISECONDS, TimeUtil.getTimeFromTurn(treaty.getTurnEnds() - turn));
+                response.append(" (" + expires + ")");
+            }
+            response.append("\n");
+        }
 
         String title = allTreaties.size() + " treaties";
         channel.create().embed(title, response.toString()).send();
