@@ -166,4 +166,50 @@ public class AllianceList {
         }
         return treatiesBySender;
     }
+
+    public boolean contains(DBAlliance to) {
+        return ids.contains(to.getAlliance_id());
+    }
+
+    public List<Treaty> approveTreaty(Set<DBAlliance> senders) {
+        Map<Integer, Set<Treaty>> treaties = getTreaties(true);
+
+        List<Treaty> changed = new ArrayList<>();
+
+        for (Map.Entry<Integer, Set<Treaty>> entry : treaties.entrySet()) {
+            if (!senders.contains(DBAlliance.getOrCreate(entry.getKey()))) {
+                continue;
+            }
+            for (Treaty treaty : entry.getValue()) {
+                DBAlliance to = treaty.getTo();
+                if (!treaty.isPending() || !contains(to)) continue;
+
+                changed.add(to.approveTreaty(treaty.getId()));
+            }
+        }
+        return changed;
+    }
+
+    public List<Treaty> cancelTreaty(Set<DBAlliance> senders) {
+        Map<Integer, Set<Treaty>> treaties = getTreaties(true);
+
+        List<Treaty> changed = new ArrayList<>();
+
+        for (Map.Entry<Integer, Set<Treaty>> entry : treaties.entrySet()) {
+            for (Treaty treaty : entry.getValue()) {
+                if ((contains(treaty.getTo()) && senders.contains(treaty.getFrom())) ||
+                        contains(treaty.getFrom()) && senders.contains(treaty.getTo())) {
+                    DBAlliance self;
+                    if (contains(treaty.getTo())) {
+                        self = treaty.getTo();
+                    } else if (contains(treaty.getFrom())) {
+                        self = treaty.getFrom();
+                    } else continue;
+
+                    changed.add(self.cancelTreaty(treaty.getId()));
+                }
+            }
+        }
+        return changed;
+    }
 }

@@ -685,6 +685,7 @@ type Treaty {
   alliance1: Alliance
   alliance2_id: Int
   alliance2: Alliance
+  approved: Boolean
 }
 
 scalar DateTime

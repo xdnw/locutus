@@ -69,69 +69,40 @@ public class FACommands {
 
     @Command(desc = "Send a treaty to an alliance")
     @IsAlliance
-    @RolePermission(value = Roles.FOREIGN_AFFAIRS, allowAlliance = true)
+    @RolePermission(value = Roles.FOREIGN_AFFAIRS, alliance = true)
     public String sendTreaty(@Me User user, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList sender, DBAlliance alliance, TreatyType type, int days, @Default String message) {
         if (message != null && !message.isEmpty() && !Roles.ADMIN.has(user, db.getGuild())) {
             return "Admin is required to send a treaty with a message";
         }
         if (message == null) message = "";
         Set<Treaty> result = sender.sendTreaty(alliance.getAlliance_id(), type, message, days);
-        return "Done!\n - " + StringMan.join(result, "\n - ");
+        return "Sent:\n - " + StringMan.join(result, "\n - ");
     }
 
     @Command
     @IsAlliance
-    @RolePermission(value = Roles.FOREIGN_AFFAIRS, allowAlliance = true)
+    @RolePermission(value = Roles.FOREIGN_AFFAIRS, alliance = true)
     public String approveTreaty(@Me User user, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, Set<DBAlliance> senders) {
-        Map<Integer, Set<Treaty>> treaties = receiver.getTreaties(true);
+        List<Treaty> changed = receiver.approveTreaty(senders);
 
-
-
-        for (Map.Entry<Integer, Set<Treaty>> entry : treaties.entrySet()) {
-            if (!senders.contains(DBAlliance.getOrCreate(entry.getKey()))) {
-                continue;
-            }
-            for (Treaty treaty : entry.getValue()) {
-                if (treaty.getType() != TreatyType.PENDING) continue;
-
-                receiver.approveTreaty(treaty.getId());
-            }
+        if (changed.isEmpty()) {
+            return "No treaties to approve";
         }
 
-
-        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
-        List<PendingTreaty> treaties = auth.getTreaties();
-        treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);
-        treaties.removeIf(treaty -> treaty.getFromId() != alliance.getAlliance_id() && treaty.getToId() != alliance.getAlliance_id());
-        if (treaties.isEmpty()) return "There are no pending treaties";
-        for (PendingTreaty treaty : treaties) {
-            return auth.modifyTreaty(treaty.getId(), true);
-        }
-        return "No treaty found for: `" + alliance.getName() +
-                "`. Options:\n - " + StringMan.join(treaties, "\n - ");
+        return "Approved:\n - " + StringMan.join(changed, "\n - ");
     }
 
     @Command
-    @IsAuthenticated
+    @IsAlliance
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String cancelTreaty(@Me User user, @Me DBNation me, @Me GuildDB db, DBAlliance alliance) {
+    public String cancelTreaty(@Me User user, @Me DBNation me, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, Set<DBAlliance> senders) {
+        List<Treaty> changed = receiver.cancelTreaty(senders);
 
-        Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
-        List<PendingTreaty> treaties = auth.getTreaties();
-        treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
-        treaties.removeIf(treaty -> treaty.getFromId() != alliance.getAlliance_id() && treaty.getToId() != alliance.getAlliance_id());
-        if (treaties.isEmpty()) return "There are no active treaties";
-
-        boolean admin = Roles.ADMIN.has(user, db.getGuild()) || (me.getAlliance_id() == db.getAlliance_id() && me.getPosition() >= Rank.HEIR.id);
-
-        for (PendingTreaty treaty : treaties) {
-            if (!admin && treaty.getType().getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
-                return "You need to be an admin to cancel a defensive treaty";
-            }
-            return auth.modifyTreaty(treaty.getId(), false);
+        if (changed.isEmpty()) {
+            return "No treaties to cancel";
         }
-        return "No treaty found for: `" + alliance.getName() +
-                "`. Options:\n - " + StringMan.join(treaties, "\n - ");
+
+        return "Cancelled:\n - " + StringMan.join(changed, "\n - ");
     }
 
     @Command(desc = "List the coalitions")

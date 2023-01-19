@@ -12,6 +12,7 @@ public class Treaty {
     private final int from;
     private final int to;
     private final long turn_ends;
+    private final boolean pending;
 
     public Treaty(com.politicsandwar.graphql.model.Treaty v3) {
         this.id = v3.getId();
@@ -20,6 +21,7 @@ public class Treaty {
         this.type = TreatyType.valueOf(v3.getTreaty_type().toUpperCase(Locale.ROOT));
         this.turn_ends = TimeUtil.getTurn() + v3.getTurns_left() + 1;
         this.date = v3.getDate().toEpochMilli();
+        this.pending = !v3.getApproved();
     }
 
     public Treaty(int id, long date, TreatyType type, int from, int to, long turn_ends) {
@@ -29,6 +31,11 @@ public class Treaty {
         this.from = from;
         this.to = to;
         this.turn_ends = turn_ends;
+        this.pending = false;
+    }
+
+    public boolean isPending() {
+        return pending;
     }
 
     public long getTurnEnds() {

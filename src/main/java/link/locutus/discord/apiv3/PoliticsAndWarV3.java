@@ -969,6 +969,23 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
+    public List<Treaty> fetchTreaties(int allianceId) {
+        List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+            @Override
+            public void accept(AllianceResponseProjection proj) {
+                proj.id();
+                proj.treaties(treatyResponseProjection());
+            }
+        });
+        List<Treaty> result = new ArrayList<>();
+        for (Alliance alliance : alliances) {
+            if (alliance.getTreaties() != null) {
+                result.addAll(alliance.getTreaties());
+            }
+        }
+        return result;
+    }
+
     public List<Treaty> fetchTreaties(Consumer<TreatiesQueryRequest> filter) {
         return fetchTreaties(filter, r -> {
             r.id();

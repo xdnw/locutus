@@ -426,8 +426,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
         if (update) {
             PoliticsAndWarV3 api = getApi(false, AlliancePermission.MANAGE_TREATIES);
             if (api != null) {
-                List<com.politicsandwar.graphql.model.Treaty> treaties = api.fetchTreaties(f -> f.setId(List.of(allianceId)));
+                List<com.politicsandwar.graphql.model.Treaty> treaties = api.fetchTreaties(allianceId);
                 Locutus.imp().getNationDB().updateTreaties(treaties, Event::post, true);
+                Map<Integer, Treaty> result = new HashMap<>();
+                for (com.politicsandwar.graphql.model.Treaty v3 : treaties) {
+                    Treaty treaty = new Treaty(v3);
+                    result.put(treaty.getFromId() == allianceId ? treaty.getToId() : treaty.getFromId(), treaty);
+                }
+                return result;
             }
         }
         return Locutus.imp().getNationDB().getTreaties(allianceId);
@@ -1068,4 +1074,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
 
+    public Treaty cancelTreaty(int id) {
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        com.politicsandwar.graphql.model.Treaty result = api.cancelTreaty(id);
+        return new Treaty(result);
+    }
 }
