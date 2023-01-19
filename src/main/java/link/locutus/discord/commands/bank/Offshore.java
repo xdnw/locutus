@@ -53,7 +53,7 @@ public class Offshore extends Command {
         DBNation nation = DiscordUtil.getNation(user);
         GuildDB db = Locutus.imp().getGuildDB(server);
         if (db != null && nation != null) {
-            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) == Boolean.TRUE) return true;
+            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) == Boolean.TRUE && Roles.MEMBER.has(user, server)) return true;
 
             Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
             return (aaId != null && nation.getPosition() >= Rank.OFFICER.id && nation.getAlliance_id() == aaId);
