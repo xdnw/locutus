@@ -8,7 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.SphereGenerator;
@@ -16,6 +16,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -67,20 +68,37 @@ public class FACommands {
     }
 
     @Command(desc = "Send a treaty to an alliance")
-    @IsAuthenticated
-    @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String sendTreaty(@Me User user, @Me GuildDB db, DBAlliance alliance, TreatyType type, int days, @Default String message) {
+    @IsAlliance
+    @RolePermission(value = Roles.FOREIGN_AFFAIRS, allowAlliance = true)
+    public String sendTreaty(@Me User user, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList sender, DBAlliance alliance, TreatyType type, int days, @Default String message) {
         if (message != null && !message.isEmpty() && !Roles.ADMIN.has(user, db.getGuild())) {
             return "Admin is required to send a treaty with a message";
         }
         if (message == null) message = "";
-        return db.getAuth(AlliancePermission.MANAGE_TREATIES).sendTreaty(alliance.getAlliance_id(), type, message, days) + "\nDone!";
+        Set<Treaty> result = sender.sendTreaty(alliance.getAlliance_id(), type, message, days);
+        return "Done!\n - " + StringMan.join(result, "\n - ");
     }
 
     @Command
-    @IsAuthenticated
-    @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String approveTreaty(@Me User user, @Me GuildDB db, DBAlliance alliance) {
+    @IsAlliance
+    @RolePermission(value = Roles.FOREIGN_AFFAIRS, allowAlliance = true)
+    public String approveTreaty(@Me User user, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, Set<DBAlliance> senders) {
+        Map<Integer, Set<Treaty>> treaties = receiver.getTreaties(true);
+
+
+
+        for (Map.Entry<Integer, Set<Treaty>> entry : treaties.entrySet()) {
+            if (!senders.contains(DBAlliance.getOrCreate(entry.getKey()))) {
+                continue;
+            }
+            for (Treaty treaty : entry.getValue()) {
+                if (treaty.getType() != TreatyType.PENDING) continue;
+
+                receiver.approveTreaty(treaty.getId());
+            }
+        }
+
+
         Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
         List<PendingTreaty> treaties = auth.getTreaties();
         treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);

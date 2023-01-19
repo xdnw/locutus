@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
@@ -17,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public enum Roles {
     REGISTERED("auto role for anyone who is verified with the bot"),
@@ -177,6 +179,21 @@ public enum Roles {
 
     public GuildDB.Key getKey() {
         return key;
+    }
+
+    public Set<Long> getAllowedAccounts(User user, Guild guild) {
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        if (db == null) return Collections.emptySet();
+        return getAllowedAccounts(user, db);
+    }
+
+    public AllianceList getAllianceList(User user, GuildDB db) {
+        AllianceList list = db.getAllianceList();
+        if (list == null) return null;
+        return list.subList(getAllowedAccounts(user, db).stream()
+                .map(Long::intValue)
+                .collect(Collectors.toSet()));
+
     }
 
     public Set<Long> getAllowedAccounts(User user, GuildDB db) {

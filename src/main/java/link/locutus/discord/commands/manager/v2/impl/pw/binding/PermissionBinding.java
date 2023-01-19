@@ -158,21 +158,27 @@ public class PermissionBinding extends BindingHelper {
 
     @Binding
     @RolePermission
-    public boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user) {
+    public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user) {
+        return checkRole(guild, perm, user, null);
+    }
+
+    public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user, Integer allianceId) {
         if (perm.root()) {
             guild = Locutus.imp().getServer();
         } else if (perm.guild() > 0) {
             guild = Locutus.imp().getDiscordApi().getGuildById(perm.guild());
-            if (guild == null) throw new IllegalCallerException("Guild " + perm.guild() + " does not exist" + " " + user.getAsMention());
+            if (guild == null) throw new IllegalCallerException("Guild " + perm.guild() + " does not exist" + " " + user.getAsMention() + " (are you sure Locutus is invited?)");
         }
+        boolean hasAny = false;
         for (Roles requiredRole : perm.value()) {
-            if (!requiredRole.has(user, guild)) {
+            if (allianceId != null && !requiredRole.has(user, guild, allianceId) ||
+                    (!requiredRole.has(user, guild) && (!perm.allowAlliance() || requiredRole.getAllowedAccounts(user, guild).isEmpty()))) {
                 if (perm.any()) continue;
                 throw new IllegalCallerException("You do not have " + requiredRole.name() + " on " + guild + " " + user.getAsMention());
-            } else if (perm.any()) {
-                return true;
+            } else {
+                hasAny = true;
             }
         }
-        return !perm.any();
+        return hasAny;
     }
 }

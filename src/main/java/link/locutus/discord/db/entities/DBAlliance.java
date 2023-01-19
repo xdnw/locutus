@@ -991,8 +991,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return bank;
     }
 
-
-
     public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean force) throws IOException, ExecutionException, InterruptedException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
         nationResourcesNeed = getResourcesNeeded(nations, daysDefault, useExisting, force);
@@ -1052,8 +1050,22 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public boolean setTaxBracket(TaxBracket required, DBNation nation) {
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.TAX_BRACKETS);
         com.politicsandwar.graphql.model.TaxBracket result = api.assignTaxBracket(required.taxId, nation.getNation_id());
         return result != null;
     }
+
+    public Treaty sendTreaty(int allianceId, TreatyType type, String message, int days) {
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        com.politicsandwar.graphql.model.Treaty result = api.proposeTreaty(allianceId, days, type, message);
+        return new Treaty(result);
+    }
+
+    public Treaty approveTreaty(int id) {
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        com.politicsandwar.graphql.model.Treaty result = api.approveTreaty(id);
+        return new Treaty(result);
+    }
+
+
 }

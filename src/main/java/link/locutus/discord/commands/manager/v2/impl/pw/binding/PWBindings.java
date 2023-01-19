@@ -7,7 +7,9 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -33,6 +35,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -694,6 +697,30 @@ public class PWBindings extends BindingHelper {
                         "Create it via " + CM.coalition.create.cmd.toSlashMention()
         );
         return input;
+    }
+
+    @Binding
+    public AllianceList allianceList(ParameterData param, @Me User user, @Me GuildDB db) {
+        AllianceList list = db.getAllianceList();
+        if (list == null) {
+            throw new IllegalArgumentException("This guild has no registered alliance. See " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.ALLIANCE_ID);
+        }
+        RolePermission perms = param.getAnnotation(RolePermission.class);
+        if (perms != null) {
+            Set<Integer> allowedIds = new HashSet<>();
+            for (int aaId : list.getIds()) {
+                try {
+                    PermissionBinding.checkRole(db.getGuild(), perms, user, aaId);
+                    allowedIds.add(aaId);
+                } catch (IllegalArgumentException ignore) {}
+            }
+            if (allowedIds.isEmpty()) {
+                throw new IllegalArgumentException("You are lacking role permissions for the alliance ids: " + StringMan.getString(list.getIds()));
+            }
+            return new AllianceList(allowedIds);
+        } else {
+            throw new IllegalArgumentException("TODO: disable this error once i verify it works (see console for debug info)");
+        }
     }
 
     @Me

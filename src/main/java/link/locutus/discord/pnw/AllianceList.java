@@ -2,10 +2,12 @@ package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 
@@ -100,6 +102,11 @@ public class AllianceList {
         }
         return deposits;
     }
+    public AllianceList subList(Set<Integer> aaIds) {
+        Set<Integer> copy = new LinkedHashSet<>(ids);
+        copy.retainAll(aaIds);
+        return new AllianceList(copy);
+    }
 
     public AllianceList subList(Collection<DBNation> nations) {
         Set<Integer> ids = new HashSet<>();
@@ -134,5 +141,29 @@ public class AllianceList {
             result.putAll(alliance.calculateDisburse(nations, daysDefault, useExisting, ignoreInactives, allowBeige, force));
         }
         return result;
+    }
+
+    public Set<Treaty> sendTreaty(int allianceId, TreatyType type, String message, int days) {
+        Set<Treaty> treaties = new HashSet<>();
+        for (DBAlliance alliance : getAlliances()) {
+            if (alliance.getAlliance_id() != allianceId) {
+                treaties.add(alliance.sendTreaty(allianceId, type, message, days));
+            }
+        }
+        return treaties;
+    }
+
+    public Set<Integer> getIds() {
+        return Collections.unmodifiableSet(ids);
+    }
+
+    public Map<Integer, Set<Treaty>> getTreaties(boolean update) {
+        Map<Integer, Set<Treaty>> treatiesBySender = new HashMap<>();
+        for (DBAlliance alliance : getAlliances()) {
+            for (Map.Entry<Integer, Treaty> entry : alliance.getTreaties(update).entrySet()) {
+                treatiesBySender.computeIfAbsent(entry.getKey(), f -> new HashSet<>()).add(entry.getValue());
+            }
+        }
+        return treatiesBySender;
     }
 }

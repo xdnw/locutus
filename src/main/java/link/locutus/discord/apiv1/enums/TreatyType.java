@@ -12,6 +12,8 @@ public enum TreatyType {
 
     NPT(3),
 
+    PENDING(-1),
+
     ;
 
     private final int strength;
