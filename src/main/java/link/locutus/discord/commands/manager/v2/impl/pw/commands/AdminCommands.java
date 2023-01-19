@@ -493,14 +493,16 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String rootApiUsageStats() {
         PoliticsAndWarV2 api = Locutus.imp().getRootPnwApi();
-        return printApiStats(api);
+        System.out.println(printApiStats(api));
+        return "Done! (see console)";
     }
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String apiUsageStats(@Me Guild guild, boolean cached) {
         PoliticsAndWarV2 api = Locutus.imp().getGuildDB(guild).getApi(cached);
-        return printApiStats(api);
+        System.out.println(printApiStats(api));
+        return "Done! (see console)";
     }
 
     @Command(desc = "Check if current api keys are valid")

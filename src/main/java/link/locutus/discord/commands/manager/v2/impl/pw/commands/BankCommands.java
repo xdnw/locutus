@@ -1466,7 +1466,7 @@ public class BankCommands {
     @Command(desc = "Send multiple transfers to nations/alliances according to a sheet",
             help = "The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url), " +
                     "and then there must be a column named for each resource type you wish to transfer")
-    @RolePermission(value = Roles.ECON)
+    @RolePermission(value = Roles.ECON, alliance = true)
     public String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me User user, @Me DBNation me, TransferSheet sheet, String note, @Switch("f") boolean force, @Switch("k") UUID key) {
         double totalVal = 0;
 

@@ -143,7 +143,8 @@ public class PermissionBinding extends BindingHelper {
         for (int aaId : aaIds) {
             if (coalitionMembers.contains((long) aaId)) return true;
         }
-        throw new IllegalCallerException("Guild is lacking permission: " + perm.value());
+
+//            || (aaId != null && coalitionMembers.contains((long) aaId));
     }
 
     @Binding

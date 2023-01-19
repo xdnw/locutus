@@ -94,9 +94,6 @@ public class GuildHandler {
     private final Set<Long> ignorePermanentInvitesFrom = new HashSet<>();
     private final Set<Integer> ignoreIncentivesForNations = new HashSet<>();
 
-    protected OffshoreInstance bank;
-    private boolean bankInit = false;
-
     public GuildHandler(Guild guild, GuildDB db) {
         this(guild, db, false);
     }

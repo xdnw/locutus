@@ -14,4 +14,5 @@ public @interface RolePermission {
     boolean root() default false;
     long guild() default 0;
     boolean any() default false;
+    boolean alliance() default false;
 }

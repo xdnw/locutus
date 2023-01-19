@@ -60,8 +60,8 @@ public class DBAlliance implements NationList, NationOrAlliance {
     private String wiki_link;
     private long dateCreated;
     private NationColor color;
-
     private volatile long lastUpdated = 0;
+    private OffshoreInstance bank;
 
     public DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
         this.allianceId = alliance.getId();
@@ -978,6 +978,17 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
 
         return result;
+    }
+
+    public OffshoreInstance getBank() {
+        if (bank == null) {
+            synchronized (this) {
+                if (bank == null) {
+                    bank = new OffshoreInstance(null, )
+                }
+            }
+        }
+        return bank;
     }
 
 
