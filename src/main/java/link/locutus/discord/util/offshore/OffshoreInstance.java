@@ -457,7 +457,7 @@ public class OffshoreInstance {
         return false;
     }
 
-    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, GuildDB senderDB, Long senderChannel, Long requiredAccountOrNull, NationOrAlliance receiver, double[] amount, DepositType depositType, Long expire, UUID grantToken, boolean convertCash, boolean force) throws IOException {
+    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType depositType, Long expire, UUID grantToken, boolean convertCash, boolean force) throws IOException {
         if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
 
         if (nationAccount != null) nationAccount = new DBNation(nationAccount); // Copy to avoid external mutation
@@ -1146,7 +1146,7 @@ public class OffshoreInstance {
 
         APPLICANT("is an applicant"),
 
-        INACTIVE("Is inactive (4+ days)"),
+        INACTIVE("Is inactive"),
 
         BEIGE("Is beige"),
 
@@ -1167,6 +1167,10 @@ public class OffshoreInstance {
 
         TransferStatus(String msg) {
             this.msg = msg;
+        }
+
+        public String getMessage() {
+            return msg;
         }
     }
 

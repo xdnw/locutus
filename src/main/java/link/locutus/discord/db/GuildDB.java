@@ -1429,7 +1429,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return null;
     }
 
-    public long getMemberWithdrawAccount(User banker, DBNation bankerNation, NationOrAlliance receiver, Long messageChannelIdOrNull, Set<Long> channelWithdrawAccounts, boolean throwError) {
+    public long getMemberWithdrawAccount(User banker, NationOrAlliance receiver, Long messageChannelIdOrNull, Set<Long> channelWithdrawAccounts, boolean throwError) {
         if (!Roles.MEMBER.has(banker, guild)) {
             if (throwError) throw new IllegalArgumentException("You must have the member role to withdraw resources: " + Roles.MEMBER.toDiscordRoleNameElseInstructions(guild));
             return 0;
@@ -1441,6 +1441,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
 
         Set<Integer> aaIds = getAllianceIds();
+        DBNation bankerNation = DiscordUtil.getNation(banker);
         if (bankerNation != null) {
             if (getOrNull(Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                 if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
@@ -1489,7 +1490,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return 0L;
     }
 
-    public Set<Long> getAllowedBankAccountsOrThrow(User banker, DBNation bankerNation, NationOrAlliance receiver, Long messageChannelIdOrNull) {
+    public Set<Long> getAllowedBankAccountsOrThrow(User banker, NationOrAlliance receiver, Long messageChannelIdOrNull) {
         Set<Integer> aaIds = getAllianceIds();
         Set<Long> channelAccountIds = getResourceChannelAccounts(messageChannelIdOrNull);
         boolean isResourceChannel = channelAccountIds != null;
@@ -1524,7 +1525,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     allowedIds.add(aaId);
                 }
             }
-            long withdrawAccount = getMemberWithdrawAccount(banker, bankerNation, receiver, messageChannelIdOrNull, channelAccountIds, allowedIds.isEmpty());
+            long withdrawAccount = getMemberWithdrawAccount(banker, receiver, messageChannelIdOrNull, channelAccountIds, allowedIds.isEmpty());
             if (withdrawAccount > 0) {
                 allowedIds.add(withdrawAccount);
             }

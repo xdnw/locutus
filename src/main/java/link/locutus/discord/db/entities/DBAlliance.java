@@ -990,14 +990,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
         if (bank == null) {
             synchronized (this) {
                 if (bank == null) {
-                    bank = new OffshoreInstance(null, )
+                    bank = new OffshoreInstance(allianceId);
                 }
             }
         }
         return bank;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean force) throws IOException, ExecutionException, InterruptedException {
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
         nationResourcesNeed = getResourcesNeeded(nations, daysDefault, useExisting, force);
 
@@ -1006,6 +1006,13 @@ public class DBAlliance implements NationList, NationOrAlliance {
         for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : nationResourcesNeed.entrySet()) {
             DBNation nation = entry.getKey();
             Map.Entry<OffshoreInstance.TransferStatus, double[]> value = entry.getValue();
+            double[] resources = value.getValue();
+
+            if (noDailyCash) {
+                resources[ResourceType.MONEY.ordinal()] = Math.max(0, resources[ResourceType.MONEY.ordinal()] - daysDefault * 500000);
+            }
+            if (noCash) resources[ResourceType.MONEY.ordinal()] = 0;
+
             if (nation.getPositionEnum() == Rank.APPLICANT) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.APPLICANT, ResourceType.getBuffer()));
                 continue;
@@ -1031,7 +1038,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 toSend.put(nation, value);
                 continue;
             }
-            double[] resources = value.getValue();
             if (resources[ResourceType.CREDITS.ordinal()] != 0) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
                 continue;

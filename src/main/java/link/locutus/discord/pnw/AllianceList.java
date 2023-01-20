@@ -135,10 +135,10 @@ public class AllianceList {
         return result;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean force) throws IOException, ExecutionException, InterruptedException {
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new LinkedHashMap<>();
         for (DBAlliance alliance : getAlliances()) {
-            result.putAll(alliance.calculateDisburse(nations, daysDefault, useExisting, ignoreInactives, allowBeige, force));
+            result.putAll(alliance.calculateDisburse(nations, daysDefault, useExisting, ignoreInactives, allowBeige, noDailyCash, noCash, force));
         }
         return result;
     }
@@ -165,6 +165,10 @@ public class AllianceList {
             }
         }
         return treatiesBySender;
+    }
+
+    public boolean isEmpty() {
+        return ids.isEmpty();
     }
 
     public boolean contains(DBAlliance to) {

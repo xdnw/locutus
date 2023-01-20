@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
@@ -189,10 +190,11 @@ public class Disperse extends Command {
         }
     }
 
-    public static String disperse(GuildDB db, Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs, String note, IMessageIO channel, String title) throws GeneralSecurityException, IOException {
+    public static String disperse(GuildDB db, Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs, DepositType type, IMessageIO channel, String title) throws GeneralSecurityException, IOException {
         if (fundsToSendNations.isEmpty() && fundsToSendAAs.isEmpty()) {
             return "No funds need to be sent";
         }
+        String note = "#" + type.name();
         Map<ResourceType, Double> total = new LinkedHashMap<>();
         List<String> postScript = new ArrayList<>();
         for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : fundsToSendNations.entrySet()) {
@@ -233,12 +235,12 @@ public class Disperse extends Command {
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, fundsToSendAAs).build();
 
             String emoji = "Confirm";
-            String cmd = Settings.commandPrefix(false) + "transfer Bulk " + sheet.getSheet().getURL() + " " + note;
+            String cmd = Settings.commandPrefix(false) + "transfer Bulk " + sheet.getSheet().getURL() + " " + type;
 
             StringBuilder response = new StringBuilder();
             response.append("Total: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ": `" + PnwUtil.resourcesToString(total)).append("`\n");
             response.append("Info: Use the extension to disburse from offshore or Press `" + emoji + "` to run:\n" +
-                    "`" + Settings.commandPrefix(false) + "transfer Bulk <sheet> " + note + "`");
+                    "`" + Settings.commandPrefix(false) + "transfer Bulk <sheet> " + type + "`");
 
 
             IMessageBuilder msg = channel.create();

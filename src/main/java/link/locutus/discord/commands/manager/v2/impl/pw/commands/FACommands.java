@@ -243,7 +243,6 @@ public class FACommands {
 
         if (allTreaties.isEmpty()) return "No treaties";
 
-        long now = System.currentTimeMillis();
         long turn = TimeUtil.getTurn();
         for (Treaty treaty : allTreaties) {
             String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
