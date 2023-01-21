@@ -1924,6 +1924,54 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
+        ESPIONAGE_ALERT_CHANNEL(false, API_KEY, CommandCategory.MILCOM) {
+            @Override
+            public String validate(GuildDB db, String value) {
+                db.getOrThrow(Key.ALLIANCE_ID);
+                Set<Integer> aaIds = db.getAllianceIds(true);
+                if (aaIds.isEmpty()) {
+                    throw new IllegalArgumentException("Guild not registered to an alliance. See: " + CM.settings.cmd.toSlashMention() + " with key `" + ALLIANCE_ID.name() + "`");
+                }
+                String msg = "Invalid api key set. See " + CM.settings.cmd.toSlashMention() + " with key `" + API_KEY.name() + "`";
+                for (String key : ((String[]) db.getOrThrow(Key.API_KEY))) {
+                    Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+                    if (nationId == null) throw new IllegalArgumentException(msg);
+                    DBNation nation = DBNation.byId(nationId);
+                    if (nation.getAlliancePosition() == null) throw new IllegalArgumentException(msg + " (no position found for nation: " + nationId + ")");
+                    if (!nation.getAlliancePosition().hasPermission(AlliancePermission.SEE_SPIES)) throw new IllegalArgumentException(msg + " (nation: " + nationId + " does not have permission " + AlliancePermission.SEE_SPIES + ")");
+                    if (!aaIds.contains(nation.getAlliance_id())) throw new IllegalArgumentException(msg + " (nation: " + nationId + " is not in your alliance: " + StringMan.getString(aaIds) + ")");
+
+                    PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.create(nationId, key));
+                    try {
+                        api.testBotKey();
+                    } catch (IllegalArgumentException e) {
+                        throw new IllegalArgumentException(e.getMessage() + " (for nation: " + nationId + ")");
+                    }
+                }
+                return Key.validateChannel(db, value);
+            }
+
+            @Override
+            public Object parse(GuildDB db, String input) {
+                return DiscordUtil.getChannel(db.getGuild(), input);
+            }
+
+            @Override
+            public String toString(Object value) {
+                return ((IMentionable) value).getAsMention();
+            }
+
+            @Override
+            public <T> boolean hasPermission(GuildDB db, User author, T value) {
+                return db.isWhitelisted();
+            }
+
+            @Override
+            public String help() {
+                return "The channel to get alerts when a member is spied";
+            }
+        },
+
         EMBASSY_CATEGORY(true, ALLIANCE_ID, CommandCategory.FOREIGN_AFFAIRS) {
             @Override
             public String validate(GuildDB db, String value) {

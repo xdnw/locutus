@@ -2,10 +2,9 @@ package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
-import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
+import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.Noformat;
@@ -39,7 +38,6 @@ import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.config.Settings;
 import com.google.common.eventbus.EventBus;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import net.dv8tion.jda.api.JDA;
@@ -76,7 +74,6 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
@@ -86,7 +83,7 @@ public final class Locutus extends ListenerAdapter {
     private final CommandManager commandManager;
     private final Logger logger;
     private final StockDB stockDB;
-    private PnwPusherHandler pusher;
+    private PnwPusherShardManager pusher;
     private ForumDB forumDb;
 
     private GuildShardManager manager = new GuildShardManager();
@@ -143,7 +140,7 @@ public final class Locutus extends ListenerAdapter {
         }
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
-            this.pusher = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY);
+            this.pusher = new PnwPusherShardManager();
         }
 
         this.logger = Logger.getLogger("LOCUTUS");
@@ -321,13 +318,6 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
             }
-            if (Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
-                try {
-                    initSubscriptions();
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }
 
             for (long guildId : Settings.INSTANCE.MODERATION.BANNED_GUILDS) {
                 Guild guild = getDiscordApi().getGuildById(guildId);
@@ -347,6 +337,14 @@ public final class Locutus extends ListenerAdapter {
                             link.locutus.discord.util.RateLimitUtil.queue(guild.leave());
                         }
                     }
+                }
+            }
+
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
+                try {
+                    initSubscriptions();
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
             }
         }
@@ -592,16 +590,14 @@ public final class Locutus extends ListenerAdapter {
         });
     }
 
-    public PnwPusherHandler getPusher() {
+    public PnwPusherShardManager getPusher() {
         return pusher;
     }
 
     public void initSubscriptions() {
         if (pusher == null) return;
 
-        if (Settings.INSTANCE.TASKS.SUBSCRIPTIONS.CITIES) {
-            nationDB.subscribeCities(pusher);
-        }
+        pusher.subscribeDefaultEvents();
     }
 
     public void initRepeatingTasks() {
