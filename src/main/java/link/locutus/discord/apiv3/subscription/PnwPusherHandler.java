@@ -21,8 +21,10 @@ import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
 import com.pusher.client.util.HttpChannelAuthorizer;
 import com.pusher.client.util.HttpUserAuthenticator;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
@@ -46,12 +48,6 @@ public class PnwPusherHandler {
     private final String key;
     private Pusher pusher;
     private final ObjectMapper objectMapper;
-
-    public static void main(String[] args) {
-        String i = "2022-03-06T22:21:25.000+00:00";
-        Instant t = Instant.parse(i);
-        System.out.println(t);
-    }
     public PnwPusherHandler(String key) {
         this.key = key;
 
@@ -86,6 +82,14 @@ public class PnwPusherHandler {
     public <T> PnwPusherBuilder<T> subscribeBuilder(Class<T> clazz, PnwPusherEvent event) {
         PnwPusherModel model = PnwPusherModel.valueOf(clazz);
         return new PnwPusherBuilder<T>(clazz, model, event, key);
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public Integer getNationId() {
+        return Locutus.imp().getDiscordDB().getNationFromApiKey(key);
     }
 
 
