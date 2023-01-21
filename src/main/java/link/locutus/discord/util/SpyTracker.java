@@ -36,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -85,33 +86,36 @@ public class SpyTracker {
                 }
             }
         });
-        System.out.println(" - Fetched nations");
+        System.out.println(" - Fetched nations " + nations.size());
         try {
             updateCasualties(nations);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println(" - updated casualties");
+        System.out.println(" - updated casualties " + killTracker.size() + " | " + casualtyTracker.size());
     }
 
-    Map<Integer, Map<MilitaryUnit, Integer>> casualtyTracker = new HashMap<>();
-    Map<Integer, Map<MilitaryUnit, Integer>> killTracker = new HashMap<>();
-    ConcurrentLinkedQueue<SpyActivity> queue = new ConcurrentLinkedQueue<>();
+    private final Map<Integer, Map<MilitaryUnit, Integer>> casualtyTracker = new ConcurrentHashMap<>();
+    private final Map<Integer, Map<MilitaryUnit, Integer>> killTracker = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<SpyActivity> queue = new ConcurrentLinkedQueue<>();
 
     private AtomicLong lastRun = new AtomicLong();
 
     public void updateCasualties(List<Nation> nations) throws IOException {
         System.out.println("Called update casualties " + nations.size());
+        long timestamp = System.currentTimeMillis();
         for (Nation nation : nations) {
-            updateCasualties(nation);
+            updateCasualties(nation, timestamp);
         }
+        System.out.println(" queue1 " + queue.size());
         checkActive();
+        System.out.println(" queue2 " + queue.size());
         if (queue.isEmpty()) return;
 
         long now = System.currentTimeMillis();
         synchronized (lastRun) {
             long lastRunMs = lastRun.get();
-            if (lastRunMs - TimeUnit.MILLISECONDS.toMillis(1) < now) {
+            if (lastRunMs - TimeUnit.MINUTES.toMillis(1) < now) {
                 long timeToRun = lastRunMs + TimeUnit.MINUTES.toMillis(1);
                 long delay = timeToRun - now;
                 lastRun.set(timeToRun);
@@ -137,12 +141,12 @@ public class SpyTracker {
     }
 
     public class SpyActivity {
-        private int nationId;
-        private MilitaryUnit unit;
-        private int change;
-        private long timestamp;
-        private double score;
-        private boolean isKill;
+        private final int nationId;
+        private final MilitaryUnit unit;
+        private final int change;
+        private final long timestamp;
+        private final double score;
+        private final boolean isKill;
         private List<Nation> nationActiveInfo;
 
         public SpyActivity(int nationId, MilitaryUnit unit, int change, long timestamp, double score, boolean isKill) {
@@ -159,15 +163,19 @@ public class SpyTracker {
 
     public void addStat(int nationId, MilitaryUnit unit, int value, long timestamp, double score, boolean isKill) {
         Map<Integer, Map<MilitaryUnit, Integer>> map = isKill ? killTracker : casualtyTracker;
-        Map<MilitaryUnit, Integer> nationStats = map.computeIfAbsent(nationId, k -> new HashMap<>());
+        Map<MilitaryUnit, Integer> nationStats = map.computeIfAbsent(nationId, k -> new ConcurrentHashMap<>());
         Integer current = nationStats.get(unit);
         if (current == null || value > current) {
             nationStats.put(unit, value);
 
-            if (current == null) return;
+            if (current == null) {
+                System.out.println("New stat " + nationId + " " + unit + " " + value);
+                return;
+            }
 
             int change = value - current;
             SpyActivity activity = new SpyActivity(nationId, unit, change, timestamp, score, isKill);
+            System.out.println("Add activity " + nationId + " " + unit + " " + change + " " + timestamp + " " + score + " " + isKill);
 
             queue.add(activity);
 
@@ -181,7 +189,7 @@ public class SpyTracker {
 
     public synchronized long removeMatchingAttacks() {
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15);
-        long requiredProximityMs = TimeUnit.MINUTES.toMillis(1);
+        long requiredProximityMs = TimeUnit.SECONDS.toMillis(1);
         List<DBAttack> allAttacks = Locutus.imp().getWarDb().getAttacks(cutoff);
 
         Map<Integer, List<DBAttack>> attacksByNation = new HashMap<>();
@@ -191,12 +199,8 @@ public class SpyTracker {
             if (attack.epoch > latestAttackMs) {
                 latestAttackMs = attack.epoch;
             }
-            if (attack.attcas1 > 0 || attack.attcas2 > 0) {
-                attacksByNation.computeIfAbsent(attack.attacker_nation_id, k -> new LinkedList<>()).add(attack);
-            }
-            if (attack.defcas1 > 0 || attack.defcas2 > 0 || attack.defcas3 > 0) {
-                attacksByNation.computeIfAbsent(attack.defender_nation_id, k -> new LinkedList<>()).add(attack);
-            }
+            attacksByNation.computeIfAbsent(attack.attacker_nation_id, k -> new ArrayList<>()).add(attack);
+            attacksByNation.computeIfAbsent(attack.defender_nation_id, k -> new ArrayList<>()).add(attack);
         }
         Iterator<SpyActivity> iter = queue.iterator();
         while (iter.hasNext()) {
@@ -237,11 +241,11 @@ public class SpyTracker {
         checkActive();
         long latestAttackMs = removeMatchingAttacks();
         if (queue.isEmpty()) return;
-        System.out.println("Processing queue: " + queue.size());
+        System.out.println("Processing queue1: " + queue.size());
 
         long checkDefensiveMaxMs = latestAttackMs - TimeUnit.MINUTES.toMillis(2);
-        long deleteOffensiveBelowMs = checkDefensiveMaxMs - TimeUnit.MINUTES.toMillis(10);
-        long maxActivityDiffMs = TimeUnit.SECONDS.toMillis(20);
+        long deleteOffensiveBelowMs = checkDefensiveMaxMs - TimeUnit.MINUTES.toMillis(15);
+        long maxActivityDiffMs = TimeUnit.SECONDS.toMillis(60);
 
         Map<MilitaryUnit, List<SpyActivity>> offensiveByUnit = new HashMap<>();
         Map<MilitaryUnit, List<SpyActivity>> defensiveByUnit = new HashMap<>();
@@ -249,18 +253,20 @@ public class SpyTracker {
         Iterator<SpyActivity> iter = queue.iterator();
         while (iter.hasNext()) {
             SpyActivity activity = iter.next();
-            if (activity.timestamp < checkDefensiveMaxMs) {
-                if (activity.isKill) {
-                    offensiveByUnit.computeIfAbsent(activity.unit, k -> new ArrayList<>()).add(activity);
-                    if (activity.timestamp < deleteOffensiveBelowMs) {
-                        iter.remove();
-                    }
-                } else {
+            if (activity.isKill) {
+                offensiveByUnit.computeIfAbsent(activity.unit, k -> new ArrayList<>()).add(activity);
+                if (activity.timestamp < deleteOffensiveBelowMs) {
                     iter.remove();
-                    defensiveByUnit.computeIfAbsent(activity.unit, k -> new ArrayList<>()).add(activity);
                 }
+            } else if (activity.timestamp < checkDefensiveMaxMs) {
+                defensiveByUnit.computeIfAbsent(activity.unit, k -> new ArrayList<>()).add(activity);
+                iter.remove();
             }
         }
+
+        if (offensiveByUnit.isEmpty() && defensiveByUnit.isEmpty()) return;
+
+        System.out.println("Processing queue2 " + offensiveByUnit.size() + " | " + defensiveByUnit.size() + " | " + checkDefensiveMaxMs);
 
         // sort defensives
         for (Map.Entry<MilitaryUnit, List<SpyActivity>> entry : defensiveByUnit.entrySet()) {
@@ -443,8 +449,7 @@ public class SpyTracker {
     }
 
 
-    public void updateCasualties(Nation nation) {
-        long timestamp = System.currentTimeMillis();
+    public void updateCasualties(Nation nation, long timestamp) {
         double score = nation.getScore();
         // soldiers
         if (nation.getSoldier_casualties() != null) {

@@ -1200,7 +1200,7 @@ public class PoliticsAndWarV3 {
             if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
                 throw new IllegalArgumentException(e.getMessage() + "\n - Please go to <https://politicsandwar.com/account/> and at the bottom enable `Whitelisted Access`");
             }
-            if (!e.getMessage().contains("You can't deposit no resources.")) {
+            if (!e.getMessage().contains("You can't deposit no resources.") && !e.getMessage().contains("You can't deposit resources while blockaded.")) {
                 throw e;
             }
         }
