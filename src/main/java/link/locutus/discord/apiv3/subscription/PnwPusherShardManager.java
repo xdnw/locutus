@@ -29,7 +29,7 @@ public class PnwPusherShardManager {
     private final SpyTracker spyTracker;
 
     public PnwPusherShardManager() {
-        this.root = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY);
+        this.root = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY).connect();
         this.allianceHandlers = new ConcurrentHashMap<>();
 
         this.spyTracker = new SpyTracker();
@@ -169,7 +169,7 @@ public class PnwPusherShardManager {
             }
             if (lastError != null) throw lastError;
 
-            PnwPusherHandler pusher = new PnwPusherHandler(validKey);
+            PnwPusherHandler pusher = new PnwPusherHandler(validKey).connect();
 
             allianceHandlers.put(allianceId, existing = pusher);
         }
