@@ -365,7 +365,7 @@ public class NationDB extends DBMainV2 {
         return fetched;
     }
 
-    private void deleteAlliances(Set<Integer> ids, Consumer<Event> eventConsumer) {
+    public void deleteAlliances(Set<Integer> ids, Consumer<Event> eventConsumer) {
         Set<Treaty> treatiesToDelete = new LinkedHashSet<>();
         Set<Integer> positionsToDelete = new LinkedHashSet<>();
         Set<DBNation> dirtyNations = new HashSet<>();
@@ -439,7 +439,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private Set<Integer> processUpdatedAlliances(List<Alliance> alliances, Consumer<Event> eventConsumer) {
+    public Set<Integer> processUpdatedAlliances(List<Alliance> alliances, Consumer<Event> eventConsumer) {
         if (alliances.isEmpty()) return Collections.emptySet();
 
         List<DBAlliance> dirtyAlliances = new ArrayList<>();
@@ -1338,7 +1338,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
+    public void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
         DBCity buffer = new DBCity();
         List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
@@ -1776,7 +1776,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public Set<Integer> updateNations(Set<Nation> nations, Consumer<Event> eventConsumer) {
+    public Set<Integer> updateNations(Collection<Nation> nations, Consumer<Event> eventConsumer) {
         Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
         Set<Integer> nationsFetched = new HashSet<>();
         for (Nation nation : nations) {
@@ -3778,7 +3778,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private void deleteNations(Set<Integer> ids, Consumer<Event> eventConsumer) {
+    public void deleteNations(Set<Integer> ids, Consumer<Event> eventConsumer) {
         Set<Integer> citiesToDelete = new HashSet<>();
         Set<Integer> deleteInDb = new HashSet<>();
         for (int id : new HashSet<>(ids)) {

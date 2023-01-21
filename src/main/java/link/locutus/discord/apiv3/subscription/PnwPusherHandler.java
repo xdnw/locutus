@@ -99,7 +99,9 @@ public class PnwPusherHandler {
         String typeStr = channelName.split("-")[0];
         try {
             type = PusherChannelType.valueOf(typeStr.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ignore) {}
+        } catch (IllegalArgumentException ignore) {
+            ignore.printStackTrace();
+        }
 
         Channel channel = type.subscribe(pusher, channelName);
         type.bind(channel, model, event, bulk, listener, new BiConsumer<String, Exception>() {
@@ -132,7 +134,10 @@ public class PnwPusherHandler {
 
                 @Override
                 public void onError(String message, String code, Exception e) {
-                    System.out.println("There was a problem connecting!");
+                    if (e != null) {
+                        e.printStackTrace();
+                    }
+                    System.out.println("There was a problem connecting! " + message + " | " + code);
                 }
             }, ConnectionState.ALL);
         } else {
@@ -196,6 +201,7 @@ public class PnwPusherHandler {
                                 StringMan.join(entry.getValue(), ",")).collect(Collectors.toList());
                 url += "&" + StringMan.join(filterParams, ",");
             }
+            System.out.println("Connecting on URL " + url);
             return url;
         }
 
@@ -203,10 +209,10 @@ public class PnwPusherHandler {
             PnwPusherHandler handler = PnwPusherHandler.this;
             String channelName = getChannel();
             handler.bind(channelName, model, event, bulk, event -> {
+                try {
                 String data = event.getData();
                 if (data.isEmpty()) return;
-//                System.out.println("Received on " + channelName + ": " + data);
-                try {
+                System.out.println("Received on " + channelName + ": " + data);
                     if (data.charAt(0) == '[') {
                         CollectionType listTypeRef = objectMapper.getTypeFactory().constructCollectionType(List.class, type);
                         List<T> value = objectMapper.readValue(data, listTypeRef);
@@ -217,6 +223,9 @@ public class PnwPusherHandler {
                     }
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    throw e;
                 }
             });
             return handler;
