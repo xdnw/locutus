@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
@@ -1948,7 +1949,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         throw new IllegalArgumentException(e.getMessage() + " (for nation: " + nationId + ")");
                     }
                 }
-                return Key.validateChannel(db, value);
+                PnwPusherShardManager pusher = Locutus.imp().getPusher();
+                if (pusher == null) {
+                    throw new IllegalArgumentException("Pusher is not enabled. Please contact the bot owner.");
+                }
+                String channelName = Key.validateChannel(db, value);
+                MessageChannel channel = DiscordUtil.getChannel(db.getGuild(), channelName);
+                for (int aaId : aaIds) {
+                    pusher.setupSpySubscriptions(db, DBAlliance.getOrCreate(aaId), channel);
+                }
+
+                return channelName;
             }
 
             @Override

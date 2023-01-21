@@ -18,6 +18,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -45,16 +46,26 @@ public class PnwPusherShardManager {
     public void setupSubscriptions(DBAlliance alliance) {
         GuildDB db = alliance.getGuildDB();
 
-        setupSpySubscriptions(db, alliance);
+        if (db != null) {
+            setupSpySubscriptions(db, alliance);
+        }
     }
 
-    public void setupSpySubscriptions(GuildDB db, DBAlliance alliance) {
-        if (db == null) return;
+    private Set<Integer> runningAlliances = new HashSet<>();
+
+    public boolean setupSpySubscriptions(GuildDB db, DBAlliance alliance) {
         MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-        if (channel == null) return;
+        if (channel == null) return false;
+        return setupSpySubscriptions(db, alliance, channel);
+    }
+    public synchronized boolean setupSpySubscriptions(GuildDB db, DBAlliance alliance, MessageChannel channel) {
+        if (runningAlliances.contains(alliance.getAlliance_id())) {
+            return true;
+        }
+        if (channel == null) return false;
         if (!channel.canTalk() || !db.isWhitelisted()) {
             db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-            return;
+            return false;
         }
         PnwPusherHandler pusher;
         try {
@@ -62,8 +73,9 @@ public class PnwPusherShardManager {
         } catch (IllegalArgumentException ignore) {
             RateLimitUtil.queueMessage(channel, "Disabling " + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + ": " + ignore.getMessage(), false);
             db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-            return;
+            return false;
         }
+        runningAlliances.add(alliance.getAlliance_id());
         pusher.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).addFilter(PnwPusherFilter.ALLIANCE_ID, alliance.getAlliance_id()).build(nations -> {
             try {
                 spyTracker.updateCasualties(nations);
@@ -72,6 +84,7 @@ public class PnwPusherShardManager {
             }
         });
         pusher.connect();
+        return true;
     }
 
     public void subscribeDefaultEvents() {
