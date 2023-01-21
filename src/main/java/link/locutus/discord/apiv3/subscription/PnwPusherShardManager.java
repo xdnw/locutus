@@ -15,6 +15,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyTracker;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,8 +65,13 @@ public class PnwPusherShardManager {
             return;
         }
         pusher.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).addFilter(PnwPusherFilter.ALLIANCE_ID, alliance.getAlliance_id()).build(nations -> {
-            spyTracker.updateCasualties(nations);
+            try {
+                spyTracker.updateCasualties(nations);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         });
+        pusher.connect();
     }
 
     public void subscribeDefaultEvents() {
@@ -84,7 +90,11 @@ public class PnwPusherShardManager {
                 for (Nation nation : nations) {
                     nationDB.markNationDirty(nation.getId());
                 }
-                spyTracker.updateCasualties(nations);
+                try {
+                    spyTracker.updateCasualties(nations);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 Locutus.imp().runEventsAsync(events -> nationDB.updateNations(nations, events));
 
                 // loop alliances
@@ -116,6 +126,8 @@ public class PnwPusherShardManager {
                 Locutus.imp().runEventsAsync(events -> nationDB.deleteAlliances(alliances.stream().map(Alliance::getId).collect(Collectors.toSet()), events));
             });
         }
+
+        root.connect();
     }
 
     public PnwPusherHandler getAlliancePusher(int allianceId, boolean create) {
