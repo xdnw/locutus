@@ -212,7 +212,7 @@ public class PnwPusherHandler {
                 try {
                 String data = event.getData();
                 if (data.isEmpty()) return;
-                System.out.println("Received on " + channelName + ": " + data);
+//                System.out.println("Received on " + channelName + ": " + data);
                     if (data.charAt(0) == '[') {
                         CollectionType listTypeRef = objectMapper.getTypeFactory().constructCollectionType(List.class, type);
                         List<T> value = objectMapper.readValue(data, listTypeRef);

@@ -139,10 +139,6 @@ public final class Locutus extends ListenerAdapter {
             throw new IllegalStateException("LEGACY_COMMAND_PREFIX cannot be `.` or `_` or `~` in " + Settings.INSTANCE.getDefaultFile());
         }
 
-        if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
-            this.pusher = new PnwPusherShardManager();
-        }
-
         this.logger = Logger.getLogger("LOCUTUS");
         this.eventBus = new AsyncEventBus("locutus", Runnable::run);
 
@@ -339,21 +335,24 @@ public final class Locutus extends ListenerAdapter {
                     }
                 }
             }
-
-            if (Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
-                try {
-                    initSubscriptions();
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }
         }
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && (Settings.INSTANCE.WEB.PORT_HTTP > 0 || Settings.INSTANCE.WEB.PORT_HTTPS > 0)) {
             new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
         }
-
-
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
+            this.pusher = new PnwPusherShardManager();
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    System.out.println("Loading pusher");
+                    pusher.load();
+                    System.out.println("Loaded pusher");
+                    pusher.subscribeDefaultEvents();
+                    System.out.println("Subscribed to default events");
+                }
+            });
+        }
 
         return this;
     }
@@ -592,12 +591,6 @@ public final class Locutus extends ListenerAdapter {
 
     public PnwPusherShardManager getPusher() {
         return pusher;
-    }
-
-    public void initSubscriptions() {
-        if (pusher == null) return;
-
-        pusher.subscribeDefaultEvents();
     }
 
     public void initRepeatingTasks() {

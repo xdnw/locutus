@@ -1,16 +1,22 @@
 package link.locutus.discord.util;
 
 import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.NationResponseProjection;
+import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
 import link.locutus.discord.apiv3.subscription.PnwPusherFilter;
 import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.FileUtil;
@@ -18,6 +24,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.TimeUtil;
+import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,13 +40,58 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 public class SpyTracker {
     public SpyTracker() {
+
     }
 
-    public void run(Set<DBAlliance> alliances) {
-        // initialize by fetching all kills/casualties at start
+    public void loadCasualties(Integer allianceId) {
+        System.out.println("Loading casualties " + allianceId);
+        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        if (allianceId != null) {
+            DBAlliance.getOrCreate(allianceId).getApi(false, AlliancePermission.SEE_SPIES);
+        }
+        List<Nation> nations = api.fetchNations(new Consumer<NationsQueryRequest>() {
+            @Override
+            public void accept(NationsQueryRequest f) {
+                f.setVmode(false);
+                if (allianceId != null) {
+                    f.setAlliance_id(List.of(allianceId));
+                }
+            }
+        }, new Consumer<NationResponseProjection>() {
+            @Override
+            public void accept(NationResponseProjection f) {
+                f.id();
+                f.score();
+                f.last_active();
+                f.soldier_kills();
+                f.soldier_casualties();
+                f.tank_kills();
+                f.tank_casualties();
+                f.aircraft_kills();
+                f.aircraft_casualties();
+                f.ship_kills();
+                f.ship_casualties();
+                f.missile_kills();
+                f.missile_casualties();
+                f.nuke_kills();
+                f.nuke_casualties();
+                if (allianceId != null) {
+                    f.spy_casualties();
+                    f.spy_kills();
+                }
+            }
+        });
+        System.out.println(" - Fetched nations");
+        try {
+            updateCasualties(nations);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println(" - updated casualties");
     }
 
     Map<Integer, Map<MilitaryUnit, Integer>> casualtyTracker = new HashMap<>();
@@ -49,6 +101,7 @@ public class SpyTracker {
     private AtomicLong lastRun = new AtomicLong();
 
     public void updateCasualties(List<Nation> nations) throws IOException {
+        System.out.println("Called update casualties " + nations.size());
         for (Nation nation : nations) {
             updateCasualties(nation);
         }
@@ -65,6 +118,7 @@ public class SpyTracker {
                 Locutus.imp().getCommandManager().getExecutor().schedule(new Runnable() {
                     @Override
                     public void run() {
+                        System.out.println("Process queue start");
                         long start = System.currentTimeMillis();
                         try {
                             processQueue();
@@ -151,8 +205,9 @@ public class SpyTracker {
                 List<DBAttack> attacks = attacksByNation.get(activity.nationId);
                 if (attacks != null) {
                     for (DBAttack attack : attacks) {
-                        boolean attacker = attack.attacker_nation_id == activity.nationId;
-                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attacker);
+                        boolean isAttacker = attack.attacker_nation_id == activity.nationId;
+                        boolean checkNation = activity.isKill != isAttacker;
+                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(checkNation);
                         Integer loss = losses.get(activity.unit);
                         if (loss != null) {
                             if (loss == activity.change) {
@@ -166,6 +221,8 @@ public class SpyTracker {
                         } else {
                             if (Math.abs(attack.epoch - activity.timestamp) < requiredProximityMs) {
                                 System.out.println("Ignore loss " + attack.war_id + " " + activity.unit + " " + activity.change + " | " + attack.attack_type + " | " + Math.abs(attack.epoch - activity.timestamp));
+//                                iter.remove();
+//                                break;
                             }
                         }
                     }
@@ -182,8 +239,8 @@ public class SpyTracker {
         if (queue.isEmpty()) return;
         System.out.println("Processing queue: " + queue.size());
 
-        long checkDefensiveMaxMs = latestAttackMs - TimeUnit.MINUTES.toMillis(1);
-        long deleteOffensiveBelowMs = checkDefensiveMaxMs - TimeUnit.MINUTES.toMillis(2);
+        long checkDefensiveMaxMs = latestAttackMs - TimeUnit.MINUTES.toMillis(2);
+        long deleteOffensiveBelowMs = checkDefensiveMaxMs - TimeUnit.MINUTES.toMillis(10);
         long maxActivityDiffMs = TimeUnit.SECONDS.toMillis(20);
 
         Map<MilitaryUnit, List<SpyActivity>> offensiveByUnit = new HashMap<>();
@@ -227,6 +284,8 @@ public class SpyTracker {
                 DBNation defender = DBNation.byId(defensive.nationId);
                 if (defender == null) continue;
 
+                System.out.println("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
+
                 SpyAlert alert = new SpyAlert(defender, unit, defensive.change, defensive.timestamp);
 
                 if (unit == MilitaryUnit.SPIES) {
@@ -266,7 +325,10 @@ public class SpyTracker {
                         }
                     }
                 }
-                if (alert.exact.isEmpty() && alert.close.isEmpty() && alert.online.isEmpty()) continue;
+                if (alert.exact.isEmpty() && alert.close.isEmpty() && alert.online.isEmpty()) {
+                    System.out.println("Failed to find op for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
+                    continue;
+                }
 
                 alerts.add(alert);
             }
@@ -304,7 +366,19 @@ public class SpyTracker {
                 }
             }
 
-            System.out.println(body.toString());
+            System.out.println(body);
+
+            GuildDB db = defender.getGuildDB();
+            if (db == null) continue;
+            MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
+            if (channel == null) {
+//                channel = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL);
+                body.append("\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + "`");
+            }
+            if (channel == null) continue;
+
+            body.append("\n---");
+            new DiscordChannelIO(channel).send(body.toString());
         }
     }
 
@@ -354,6 +428,7 @@ public class SpyTracker {
             }
         }
         if (activitiesToFlag.isEmpty()) return;
+        System.out.println(":||remove SpyTracker Checking active");
 
         String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
         String html = FileUtil.readStringFromURL(url);

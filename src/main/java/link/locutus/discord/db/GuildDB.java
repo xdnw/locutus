@@ -1973,11 +1973,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
 
             @Override
-            public <T> boolean hasPermission(GuildDB db, User author, T value) {
-                return db.isWhitelisted();
-            }
-
-            @Override
             public String help() {
                 return "The channel to get alerts when a member is spied";
             }

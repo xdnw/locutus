@@ -24,15 +24,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class PnwPusherShardManager {
-    private final PnwPusherHandler root;
     private final Map<Integer, PnwPusherHandler> allianceHandlers;
-    private final SpyTracker spyTracker;
+    private PnwPusherHandler root;
+    private SpyTracker spyTracker;
 
     public PnwPusherShardManager() {
-        this.root = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY).connect();
         this.allianceHandlers = new ConcurrentHashMap<>();
 
-        this.spyTracker = new SpyTracker();
 
         /**
          * Spy tracker in Locutus class
@@ -41,6 +39,12 @@ public class PnwPusherShardManager {
          * run spy tracker at interval
          *
          */
+    }
+
+    public void load() {
+        this.root = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY).connect();
+        this.spyTracker = new SpyTracker();
+        this.spyTracker.loadCasualties(null);
     }
 
     public void setupSubscriptions(DBAlliance alliance) {
@@ -63,7 +67,7 @@ public class PnwPusherShardManager {
             return true;
         }
         if (channel == null) return false;
-        if (!channel.canTalk() || !db.isWhitelisted()) {
+        if (!channel.canTalk()) {
             db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
             return false;
         }
@@ -75,15 +79,20 @@ public class PnwPusherShardManager {
             db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
             return false;
         }
+        System.out.println("Enabling pusher for " + alliance.getAlliance_id());
         runningAlliances.add(alliance.getAlliance_id());
-        pusher.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).addFilter(PnwPusherFilter.ALLIANCE_ID, alliance.getAlliance_id()).build(nations -> {
+        pusher = pusher.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).addFilter(PnwPusherFilter.ALLIANCE_ID, alliance.getAlliance_id()).build(nations -> {
             try {
                 spyTracker.updateCasualties(nations);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
+        System.out.println("Subscribed to " + alliance.getAlliance_id());
         pusher.connect();
+        System.out.println("Connected to " + alliance.getAlliance_id());
+        spyTracker.loadCasualties(alliance.getAlliance_id());
+        System.out.println("Loaded casualties for " + alliance.getAlliance_id());
         return true;
     }
 
@@ -109,13 +118,12 @@ public class PnwPusherShardManager {
                     e.printStackTrace();
                 }
                 Locutus.imp().runEventsAsync(events -> nationDB.updateNations(nations, events));
-
-                // loop alliances
-                for (DBAlliance alliance : nationDB.getAlliances()) {
-                    setupSubscriptions(alliance);
-                }
             });
-
+            System.out.println("Loading alliances");
+            for (DBAlliance alliance : nationDB.getAlliances()) {
+                setupSubscriptions(alliance);
+            }
+            System.out.println("Done loading alliances");
             // register alliances
         }
 
@@ -163,11 +171,12 @@ public class PnwPusherShardManager {
                 try {
                     api.testBotKey();
                     validKey = key.getKey();
+                    break;
                 } catch (IllegalArgumentException e) {
                     lastError = e;
                 }
             }
-            if (lastError != null) throw lastError;
+            if (lastError != null && validKey == null) throw lastError;
 
             PnwPusherHandler pusher = new PnwPusherHandler(validKey).connect();
 

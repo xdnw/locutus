@@ -1825,7 +1825,13 @@ public class NationDB extends DBMainV2 {
         boolean fetchPositionsIfOutdated = true;
         boolean fetchMostActiveIfNoneOutdated = true;
 
-        saveNations(nationChanges.keySet());
+        Set<DBNation> nationsToSave = new LinkedHashSet<>();
+        for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
+            DBNation nation = entry.getKey();
+            if (nation == null) nation = entry.getValue();
+            nationsToSave.add(nation);
+        }
+        saveNations(nationsToSave);
 
         Set<Integer> fetchCitiesOfNations = new HashSet<>();
 

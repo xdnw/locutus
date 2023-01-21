@@ -1193,14 +1193,14 @@ public class PoliticsAndWarV3 {
         try {
             request(mutation, projection, Bankrec.class);
             return false;
-        } catch (IllegalArgumentException e) {
+        } catch (RuntimeException e) {
             if (e.getMessage().contains("The bot key you provided is not valid.")) {
                 throw new IllegalArgumentException(e.getMessage() + "\n - Please fill out <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to receive a working bot key");
             }
             if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
                 throw new IllegalArgumentException(e.getMessage() + "\n - Please go to <https://politicsandwar.com/account/> and at the bottom enable `Whitelisted Access`");
             }
-            if (!e.getMessage().equalsIgnoreCase("You can't deposit no resources.")) {
+            if (!e.getMessage().contains("You can't deposit no resources.")) {
                 throw e;
             }
         }
