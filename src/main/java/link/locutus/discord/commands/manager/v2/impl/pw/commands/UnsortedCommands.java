@@ -260,19 +260,7 @@ public class UnsortedCommands {
         Locutus.imp().getDiscordDB().addApiKey(nationId, apiKey);
 
         if (verifiedBotKey != null && !verifiedBotKey.isEmpty()) {
-            try {
-                api.testBotKey();
-            } catch (IllegalArgumentException e) {
-                if (e.getMessage().contains("The bot key you provided is not valid.")) {
-                    return e.getMessage() + "\n - Please fill out <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to receive a working bot key";
-                }
-                if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
-                    return e.getMessage() + "\n - Please go to <https://politicsandwar.com/account/> and at the bottem enable `Whitelisted Access`";
-                }
-                if (!e.getMessage().contains("You can't deposit no resources.")) {
-                    return "Error: " + e.getMessage();
-                }
-            }
+            api.testBotKey();
             Locutus.imp().getDiscordDB().addBotKey(nationId, verifiedBotKey);
         }
 

@@ -21,8 +21,10 @@ import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
 import com.pusher.client.util.HttpChannelAuthorizer;
 import com.pusher.client.util.HttpUserAuthenticator;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
@@ -46,12 +48,6 @@ public class PnwPusherHandler {
     private final String key;
     private Pusher pusher;
     private final ObjectMapper objectMapper;
-
-    public static void main(String[] args) {
-        String i = "2022-03-06T22:21:25.000+00:00";
-        Instant t = Instant.parse(i);
-        System.out.println(t);
-    }
     public PnwPusherHandler(String key) {
         this.key = key;
 
@@ -88,6 +84,14 @@ public class PnwPusherHandler {
         return new PnwPusherBuilder<T>(clazz, model, event, key);
     }
 
+    public String getKey() {
+        return key;
+    }
+
+    public Integer getNationId() {
+        return Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+    }
+
 
 
     private void bind(String channelName, PnwPusherModel model, PnwPusherEvent event, boolean bulk, SubscriptionEventListener listener) {
@@ -95,7 +99,9 @@ public class PnwPusherHandler {
         String typeStr = channelName.split("-")[0];
         try {
             type = PusherChannelType.valueOf(typeStr.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ignore) {}
+        } catch (IllegalArgumentException ignore) {
+            ignore.printStackTrace();
+        }
 
         Channel channel = type.subscribe(pusher, channelName);
         type.bind(channel, model, event, bulk, listener, new BiConsumer<String, Exception>() {
@@ -128,7 +134,10 @@ public class PnwPusherHandler {
 
                 @Override
                 public void onError(String message, String code, Exception e) {
-                    System.out.println("There was a problem connecting!");
+                    if (e != null) {
+                        e.printStackTrace();
+                    }
+                    System.out.println("There was a problem connecting! " + message + " | " + code);
                 }
             }, ConnectionState.ALL);
         } else {
@@ -192,6 +201,7 @@ public class PnwPusherHandler {
                                 StringMan.join(entry.getValue(), ",")).collect(Collectors.toList());
                 url += "&" + StringMan.join(filterParams, ",");
             }
+            System.out.println("Connecting on URL " + url);
             return url;
         }
 
@@ -199,10 +209,10 @@ public class PnwPusherHandler {
             PnwPusherHandler handler = PnwPusherHandler.this;
             String channelName = getChannel();
             handler.bind(channelName, model, event, bulk, event -> {
+                try {
                 String data = event.getData();
                 if (data.isEmpty()) return;
 //                System.out.println("Received on " + channelName + ": " + data);
-                try {
                     if (data.charAt(0) == '[') {
                         CollectionType listTypeRef = objectMapper.getTypeFactory().constructCollectionType(List.class, type);
                         List<T> value = objectMapper.readValue(data, listTypeRef);
@@ -213,6 +223,9 @@ public class PnwPusherHandler {
                     }
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    throw e;
                 }
             });
             return handler;

@@ -147,7 +147,7 @@ public class BankWithTask implements Callable<String> {
                 if (response.length() == 1) {
                     System.err.println("Invalid bank transfer " + auth.getNationId() + " | " + fromBank + " | " + result);
                 } else {
-                    System.out.println("Response " + auth.getNationId() + " | " + fromBank + " | " + result);
+                    System.out.println("Response " + auth.getNationId() + " | " + fromBank + " | " + response);
                 }
 //                response.append('\n').append("Current alliance totals: ").append("```" + StringMan.getString(copy) + "```");
                 return response.toString();

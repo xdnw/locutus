@@ -2,6 +2,9 @@ package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Bankrec;
+import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.NationResponseProjection;
+import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
@@ -365,22 +368,26 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public boolean updateSpies(boolean updateManually) {
         PoliticsAndWarV3 api = getApi(false, AlliancePermission.SEE_SPIES);
         if (api != null) {
-            api.fetchAlliances()
-        }
-        return false;
-
-        if (db != null && db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null) {
-            PoliticsAndWarV2 api = db.getApi();
-            if (api != null) {
-                try {
-                    api.getAllianceMembers(allianceId);
-                    return true;
-                } catch (Throwable e) {
-                    e.printStackTrace();
+            List<Nation> nations = api.fetchNations(f -> {
+                f.setAlliance_id(List.of(allianceId));
+                f.setVmode(false);
+            }, f -> {
+                f.id();
+                f.spies();
+            });
+            Set<DBNation> toSave = new HashSet<>();
+            for (Nation nation : nations) {
+                Integer spies = nation.getSpies();
+                if (spies != null) {
+                    DBNation locutusNation = DBNation.byId(nation.getId());
+                    if (locutusNation != null) {
+                        locutusNation.setSpies(spies, true);
+                        toSave.add(locutusNation);
+                    }
                 }
             }
+            Locutus.imp().getNationDB().saveNations(toSave);
         }
-
         if (!updateManually) return false;
         for (DBNation nation : getNations(true, 1440, true)) {
             nation.updateSpies();

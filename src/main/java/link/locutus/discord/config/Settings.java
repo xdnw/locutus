@@ -273,7 +273,6 @@ public class Settings extends Config {
         }
 
         public static class SUBSCRIPTIONS {
-            public boolean CITIES = true;
         }
 
         public static class TURN_TASKS {

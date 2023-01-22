@@ -15,7 +15,6 @@ public class ApiKeyPool {
         private final String key;
         private String botKey;
         private boolean valid;
-
         private int usage;
         public ApiKey(int nationId, String key, String botKey) {
             this.nationId = nationId;

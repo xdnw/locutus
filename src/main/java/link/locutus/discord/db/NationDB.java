@@ -365,7 +365,7 @@ public class NationDB extends DBMainV2 {
         return fetched;
     }
 
-    private void deleteAlliances(Set<Integer> ids, Consumer<Event> eventConsumer) {
+    public void deleteAlliances(Set<Integer> ids, Consumer<Event> eventConsumer) {
         Set<Treaty> treatiesToDelete = new LinkedHashSet<>();
         Set<Integer> positionsToDelete = new LinkedHashSet<>();
         Set<DBNation> dirtyNations = new HashSet<>();
@@ -439,7 +439,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private Set<Integer> processUpdatedAlliances(List<Alliance> alliances, Consumer<Event> eventConsumer) {
+    public Set<Integer> processUpdatedAlliances(List<Alliance> alliances, Consumer<Event> eventConsumer) {
         if (alliances.isEmpty()) return Collections.emptySet();
 
         List<DBAlliance> dirtyAlliances = new ArrayList<>();
@@ -1339,7 +1339,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
+    public void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
         DBCity buffer = new DBCity();
         List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
@@ -1777,7 +1777,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public Set<Integer> updateNations(Set<Nation> nations, Consumer<Event> eventConsumer) {
+    public Set<Integer> updateNations(Collection<Nation> nations, Consumer<Event> eventConsumer) {
         Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
         Set<Integer> nationsFetched = new HashSet<>();
         for (Nation nation : nations) {
@@ -1826,7 +1826,13 @@ public class NationDB extends DBMainV2 {
         boolean fetchPositionsIfOutdated = true;
         boolean fetchMostActiveIfNoneOutdated = true;
 
-        saveNations(nationChanges.keySet());
+        Set<DBNation> nationsToSave = new LinkedHashSet<>();
+        for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
+            DBNation nation = entry.getKey();
+            if (nation == null) nation = entry.getValue();
+            nationsToSave.add(nation);
+        }
+        saveNations(nationsToSave);
 
         Set<Integer> fetchCitiesOfNations = new HashSet<>();
 
@@ -2801,7 +2807,7 @@ public class NationDB extends DBMainV2 {
 
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new HashMap<>();
 
-        String query = "SELECT TOP " + allianceIds.size() + " * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric = ? and turn <= ? GROUP BY alliance_id";
+        String query = "SELECT * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric = ? and turn <= ? GROUP BY alliance_id ORDER BY turn DESC LIMIT " + allianceIds.size();
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
             public void acceptThrows(PreparedStatement stmt) throws Exception {
@@ -3779,7 +3785,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private void deleteNations(Set<Integer> ids, Consumer<Event> eventConsumer) {
+    public void deleteNations(Set<Integer> ids, Consumer<Event> eventConsumer) {
         Set<Integer> citiesToDelete = new HashSet<>();
         Set<Integer> deleteInDb = new HashSet<>();
         for (int id : new HashSet<>(ids)) {

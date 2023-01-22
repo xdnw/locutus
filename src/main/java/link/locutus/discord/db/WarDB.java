@@ -1251,19 +1251,21 @@ public class WarDB extends DBMainV2 {
             if (pct == 0) pct = 0.1;
             double factor = 1/pct;
 
+            double[] lootCopy;
             if (attack.loot != null) {
-                double[] lootCopy = attack.loot.clone();
+                lootCopy = attack.loot.clone();
                 for (int i = 0; i < lootCopy.length; i++) {
                     lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
                 }
-
-                if (attack.attack_type == AttackType.VICTORY) {
-                    Locutus.imp().getNationDB().saveLoot(attack.defender_nation_id, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
-                } else if (attack.attack_type == AttackType.A_LOOT) {
-                    Integer allianceId = attack.getLooted();
-                    if (allianceId != null) {
-                        Locutus.imp().getNationDB().saveAllianceLoot(allianceId, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
-                    }
+            } else {
+                lootCopy = ResourceType.getBuffer();
+            }
+            if (attack.attack_type == AttackType.VICTORY) {
+                Locutus.imp().getNationDB().saveLoot(attack.defender_nation_id, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
+            } else if (attack.attack_type == AttackType.A_LOOT) {
+                Integer allianceId = attack.getLooted();
+                if (allianceId != null) {
+                    Locutus.imp().getNationDB().saveAllianceLoot(allianceId, attack.epoch, lootCopy, NationLootType.WAR_LOSS);
                 }
             }
         }

@@ -120,6 +120,18 @@ public class SpyCount {
         OP_DISTR.put(10, 772);
     }
 
+    public static boolean isInScoreRange(double attackerScore, double defenderScore) {
+        double min = attackerScore * 0.4;
+        double max = attackerScore * 2.5;
+        if (defenderScore < min || defenderScore > max) {
+//            if (other.getRank() < getRank() || other.getRank() >= getRank() + 10)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static int guessSpyCount(DBNation nation) throws IOException {
         int current = nation.getSpies();
 
@@ -425,6 +437,15 @@ public class SpyCount {
         }
 
         public static final Operation[] values = values();
+
+        public static Operation getByUnit(MilitaryUnit unit) {
+            for (Operation op : values) {
+                if (op.unit == unit) {
+                    return op;
+                }
+            }
+            return null;
+        }
     }
 
     private static double[][] LOSSES_DEF_LOWER = {
