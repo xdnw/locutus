@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -18,6 +19,7 @@ import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
@@ -1180,7 +1182,7 @@ public class PoliticsAndWarV3 {
      * Try sending an empty transaction
      * @return
      */
-    public Bankrec testBotKey() {
+    public boolean testBotKey() {
         BankDepositMutationRequest mutation = new BankDepositMutationRequest();
         mutation.setNote("test 123");
 
@@ -1188,7 +1190,21 @@ public class PoliticsAndWarV3 {
         projection.id();
         projection.date();
 
-        return request(mutation, projection, Bankrec.class);
+        try {
+            request(mutation, projection, Bankrec.class);
+            return false;
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("The bot key you provided is not valid.")) {
+                throw new IllegalArgumentException(e.getMessage() + "\n - Please fill out <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to receive a working bot key");
+            }
+            if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
+                throw new IllegalArgumentException(e.getMessage() + "\n - Please go to <https://politicsandwar.com/account/> and at the bottom enable `Whitelisted Access`");
+            }
+            if (!e.getMessage().contains("You can't deposit no resources.") && !e.getMessage().contains("You can't deposit resources while blockaded.")) {
+                throw e;
+            }
+        }
+        return true;
     }
 
     public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId) {
@@ -1315,6 +1331,82 @@ public class PoliticsAndWarV3 {
         });
 
         return allResults;
+    }
+
+    private TreatyResponseProjection treatyResponseProjection() {
+        return new TreatyResponseProjection()
+                .id()
+                .alliance1_id()
+                .alliance2_id()
+                .treaty_type()
+                .treaty_url()
+                .turns_left();
+    }
+
+    public Treaty approveTreaty(int id) {
+        ApproveTreatyMutationRequest mutation = new ApproveTreatyMutationRequest();
+        mutation.setId(id);
+        return request(mutation, treatyResponseProjection(), Treaty.class);
+    }
+
+    public Treaty cancelTreaty(int id) {
+        CancelTreatyMutationRequest mutation = new CancelTreatyMutationRequest();
+        mutation.setId(id);
+        return request(mutation, treatyResponseProjection(), Treaty.class);
+    }
+
+    public Treaty proposeTreaty(int alliance_id, int length, TreatyType type, String url) {
+        ProposeTreatyMutationRequest mutation = new ProposeTreatyMutationRequest();
+        mutation.setAlliance_id(alliance_id);
+        mutation.setLength(length);
+        mutation.setType(type.getId());
+        mutation.setUrl(url);
+        return request(mutation, treatyResponseProjection(), Treaty.class);
+    }
+
+    public void deleteTaxBracket(int id) {
+        DeleteTaxBracketMutationRequest request = new DeleteTaxBracketMutationRequest();
+        request.setId(id);
+        request(request, createTaxBracketProjection(), TaxBracket.class);
+    }
+
+    public TaxBracket editTaxBracket(int id, String name, Integer moneyRate, Integer rssRate) {
+        EditTaxBracketMutationRequest mutation = new EditTaxBracketMutationRequest();
+        mutation.setId(id);
+        if (name != null) mutation.setName(name);
+        if (moneyRate != null) mutation.setMoney_tax_rate(moneyRate);
+        if (rssRate != null) mutation.setResource_tax_rate(rssRate);
+
+        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
+    }
+
+    private TaxBracketResponseProjection createTaxBracketProjection() {
+        TaxBracketResponseProjection projection = new TaxBracketResponseProjection()
+                .id()
+                .alliance_id()
+                .date()
+                .date_modified()
+                .last_modifier_id()
+                .tax_rate()
+                .resource_tax_rate()
+                .bracket_name();
+        return projection;
+    }
+
+    public TaxBracket assignTaxBracket(int taxId, int nationId) {
+        AssignTaxBracketMutationRequest mutation = new AssignTaxBracketMutationRequest();
+        mutation.setId(taxId);
+        mutation.setTarget_id(nationId);
+        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
+    }
+
+    public TaxBracket createTaxBracket(String name, Integer moneyRate, Integer rssRate) {
+        CreateTaxBracketMutationRequest mutation = new CreateTaxBracketMutationRequest();
+        mutation.setName(name);
+        mutation.setMoney_tax_rate(moneyRate);
+        mutation.setResource_tax_rate(rssRate);
+
+        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
     }
 
     public List<Color> getColors() {

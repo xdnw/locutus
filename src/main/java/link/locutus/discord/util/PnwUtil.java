@@ -8,6 +8,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
@@ -21,8 +22,10 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import rocker.grant.nation;
 
 import java.lang.reflect.Type;
@@ -44,6 +47,30 @@ public class PnwUtil {
             entry.setValue(Math.round(entry.getValue() * 100.0) / 100.0);
         }
         return copy;
+    }
+
+    public static List<Integer> getNationsFromTable(String html, int tableIndex) {
+        List<Integer> results = new ArrayList<>();
+
+        Document dom = Jsoup.parse(html);
+        Elements tables = dom.getElementsByClass("nationtable");
+        int finalTableIndex = tableIndex == -1 ? tables.size() - 1 : tableIndex;
+        if (finalTableIndex < 0 || finalTableIndex >= tables.size()) {
+            throw new IllegalArgumentException("Unable to fetch table" + "\n" + html);
+        }
+        Element table = tables.get(finalTableIndex);
+        Elements rows = table.getElementsByTag("tr");
+
+        List<Element> subList = rows.subList(1, rows.size());
+
+        for (Element element : subList) {
+            Elements row = element.getElementsByTag("td");
+            String url = row.get(1).selectFirst("a").attr("href");
+            int id = Integer.parseInt(url.split("=")[1]);
+            results.add(id);
+        }
+
+        return results;
     }
 
 //    @Deprecated

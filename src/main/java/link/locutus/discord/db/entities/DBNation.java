@@ -1345,6 +1345,11 @@ public class DBNation implements NationOrAlliance {
 
         if (lastTurn == null ||  lastTurn.getLong() != currentTurn || force) {
             try {
+                if (getPositionEnum().id > Rank.APPLICANT.id) {
+                    if (getAlliance().updateSpies(false)) {
+                        return spies;
+                    }
+                }
                 SpyCount.guessSpyCount(this);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -1395,6 +1400,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void setSpies(int spies, boolean events) {
+        setMeta(NationMeta.UPDATE_SPIES, TimeUtil.getTurn());
         if (events && this.spies != spies) {
             DBNation copyOriginal = new DBNation(this);
             this.spies = spies;
@@ -2385,15 +2391,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command
     public boolean isInSpyRange(DBNation other) {
-        double min = getScore() * 0.4;
-        double max = getScore() * 2.5;
-        if (other.getScore() < min || other.getScore() > max) {
-//            if (other.getRank() < getRank() || other.getRank() >= getRank() + 10)
-            {
-                return false;
-            }
-        }
-        return true;
+        return SpyCount.isInScoreRange(getScore(), other.getScore());
     }
 
     @Command(desc = "If they have undefined military values")
