@@ -2,7 +2,6 @@ package link.locutus.discord.apiv3.subscription;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -14,7 +13,6 @@ import com.google.gson.JsonParser;
 import com.pusher.client.Pusher;
 import com.pusher.client.PusherOptions;
 import com.pusher.client.channel.Channel;
-import com.pusher.client.channel.PusherEvent;
 import com.pusher.client.channel.SubscriptionEventListener;
 import com.pusher.client.connection.ConnectionEventListener;
 import com.pusher.client.connection.ConnectionState;
@@ -24,7 +22,6 @@ import com.pusher.client.util.HttpUserAuthenticator;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
@@ -79,9 +76,9 @@ public class PnwPusherHandler {
         objectMapper.registerModule(module);
     }
 
-    public <T> PnwPusherBuilder<T> subscribeBuilder(Class<T> clazz, PnwPusherEvent event) {
+    public <T> PnwPusherBuilder<T> subscribeBuilder(String pnwApiKey, Class<T> clazz, PnwPusherEvent event) {
         PnwPusherModel model = PnwPusherModel.valueOf(clazz);
-        return new PnwPusherBuilder<T>(clazz, model, event, key);
+        return new PnwPusherBuilder<T>(pnwApiKey, clazz, model, event);
     }
 
     public String getKey() {
@@ -114,8 +111,11 @@ public class PnwPusherHandler {
         });
     }
 
-
     public PnwPusherHandler connect() {
+        return connect(null, null);
+    }
+
+    public PnwPusherHandler connect(BiConsumer<String, Exception> onError, Consumer<ConnectionStateChange> onChange) {
         if (pusher == null) {
 
             PusherOptions options = new PusherOptions()
@@ -130,10 +130,12 @@ public class PnwPusherHandler {
                 public void onConnectionStateChange(ConnectionStateChange change) {
                     System.out.println("State changed to " + change.getCurrentState() +
                             " from " + change.getPreviousState());
+                    if (onChange != null) onChange.accept(change);
                 }
 
                 @Override
                 public void onError(String message, String code, Exception e) {
+                    if (onError != null) onError.accept(message, e);
                     if (e != null) {
                         e.printStackTrace();
                     }
@@ -159,20 +161,20 @@ public class PnwPusherHandler {
         private final PnwPusherEvent event;
 
         private final Map<PnwPusherFilter, List<Object>> filters;
-        private final String key;
         private final JsonParser parser;
         private final Class<T> type;
+        private final String pnwKey;
 
         private boolean bulk;
 
-        protected PnwPusherBuilder(Class<T> type, PnwPusherModel model, PnwPusherEvent event, String apiKey) {
+        protected PnwPusherBuilder(String pnwKey, Class<T> type, PnwPusherModel model, PnwPusherEvent event) {
             this.model = model;
             this.event = event;
             this.filters = new LinkedHashMap<>();
-            this.key = apiKey;
             this.parser = new JsonParser();
             this.type = type;
             this.bulk = true;
+            this.pnwKey = pnwKey;
         }
 
         /**
@@ -194,7 +196,7 @@ public class PnwPusherHandler {
             String url = CHANNEL_ENDPOINT
                     .replace("{model}", model.name().toLowerCase(Locale.ROOT))
                     .replace("{event}", event.name().toLowerCase(Locale.ROOT))
-                    .replace("{key}", key);
+                    .replace("{key}", pnwKey);
             if (!filters.isEmpty()) {
                 List<String> filterParams = filters.entrySet().stream().map(entry ->
                         entry.getKey().name().toLowerCase() + "=" +
@@ -241,7 +243,7 @@ public class PnwPusherHandler {
                         return channel.getAsString();
                     }
                 }
-                String msg = channelInfo.replace(key, "XXX");
+                String msg = channelInfo.replace(pnwKey, "XXX");
                 throw new PnwPusherError(msg);
             } catch (IOException e) {
                 throw new RuntimeException(e);

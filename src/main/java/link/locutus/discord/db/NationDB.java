@@ -1189,65 +1189,6 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public void subscribeCities(PnwPusherHandler pusher) {
-        PnwPusherHandler connection = pusher.connect();
-        { // cities
-            connection.subscribeBuilder(City.class, PnwPusherEvent.CREATE).build(cities ->
-                    Locutus.imp().runEventsAsync(events -> updateCities(cities, events)));
-            connection.subscribeBuilder(City.class, PnwPusherEvent.UPDATE).build(cities ->
-                    Locutus.imp().runEventsAsync(events -> updateCities(cities, events)));
-            connection.subscribeBuilder(City.class, PnwPusherEvent.DELETE).build(cities ->
-                    Locutus.imp().runEventsAsync(events -> deleteCities(cities, events)));
-        }
-        { // nations
-            connection.subscribeBuilder(Nation.class, PnwPusherEvent.CREATE).build(nations -> {
-                for (Nation nation : nations) markNationDirty(nation.getId());
-//                Locutus.imp().runEventsAsync(events -> updateNations(nations, events));
-            });
-            connection.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
-                for (Nation nation : nations) markNationDirty(nation.getId());
-//                Locutus.imp().runEventsAsync(events -> updateNations(nations, events));
-            });
-            connection.subscribeBuilder(Nation.class, PnwPusherEvent.DELETE).build(nations -> {
-                Locutus.imp().runEventsAsync(events -> deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
-            });
-        }
-//        { // nations
-//            connection.subscribeBuilder(Nation.class, PnwPusherEvent.CREATE).build(nations -> {
-//                for (Nation nation : nations) markNationDirty(nation.getId());
-//                Locutus.imp().runEventsAsync(events -> updateNations(nations, events));
-//            });
-//            connection.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
-//                for (Nation nation : nations) markNationDirty(nation.getId());
-//                Locutus.imp().runEventsAsync(events -> updateNations(nations, events));
-//            });
-//            connection.subscribeBuilder(Nation.class, PnwPusherEvent.DELETE).build(nations -> {
-//                Locutus.imp().runEventsAsync(events -> deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
-//            });
-//        }
-        { // alliance
-            connection.subscribeBuilder(Alliance.class, PnwPusherEvent.CREATE).build(alliances -> {
-                Locutus.imp().runEventsAsync(events -> processUpdatedAlliances(alliances, events));
-            });
-            connection.subscribeBuilder(Alliance.class, PnwPusherEvent.UPDATE).build(alliances -> {
-                Locutus.imp().runEventsAsync(events -> processUpdatedAlliances(alliances, events));
-            });
-            connection.subscribeBuilder(Alliance.class, PnwPusherEvent.DELETE).build(alliances -> {
-                Locutus.imp().runEventsAsync(events -> deleteAlliances(alliances.stream().map(Alliance::getId).collect(Collectors.toSet()), events));
-            });
-        }
-//        { // treaty
-//            connection.subscribeBuilder(com.politicsandwar.graphql.model.Treaty.class, PnwPusherEvent.CREATE).build(treaties -> {
-//                Locutus.imp().runEventsAsync(events -> updateTreaties(treaties, events, false));
-//            });
-//            connection.subscribeBuilder(com.politicsandwar.graphql.model.Treaty.class, PnwPusherEvent.UPDATE).build(treaties -> {
-//                Locutus.imp().runEventsAsync(events -> updateTreaties(treaties, events, false));
-//            });
-//            connection.subscribeBuilder(com.politicsandwar.graphql.model.Treaty.class, PnwPusherEvent.DELETE).build(treaties -> {
-//                Locutus.imp().runEventsAsync(events -> deleteTreaties(treaties.stream().map(Treaty::new).collect(Collectors.toSet()), events));
-//            });
-//        }
-    }
 
     public boolean deleteCities(Set<Integer> cityIds, Consumer<Event> eventConsumer) {
         Map<Integer, Integer> cityIdNationId = new HashMap<>();

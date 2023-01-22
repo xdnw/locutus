@@ -3,6 +3,8 @@ package link.locutus.discord.apiv3.subscription;
 import com.politicsandwar.graphql.model.Alliance;
 import com.politicsandwar.graphql.model.City;
 import com.politicsandwar.graphql.model.Nation;
+import com.pusher.client.connection.ConnectionState;
+import com.pusher.client.connection.ConnectionStateChange;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -21,15 +23,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class PnwPusherShardManager {
-    private final Map<Integer, PnwPusherHandler> allianceHandlers;
     private PnwPusherHandler root;
     private SpyTracker spyTracker;
 
     public PnwPusherShardManager() {
-        this.allianceHandlers = new ConcurrentHashMap<>();
+//        this.allianceHandlers = new ConcurrentHashMap<>();
 
 
         /**
@@ -42,58 +45,73 @@ public class PnwPusherShardManager {
     }
 
     public void load() {
-        this.root = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY).connect();
+        this.root = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY).connect(null, new Consumer<ConnectionStateChange>() {
+            @Override
+            public void accept(ConnectionStateChange connectionStateChange) {
+                if (spyTracker != null && connectionStateChange.getPreviousState() == ConnectionState.RECONNECTING) {
+                    synchronized (runningAlliances) {
+                        for (int aaId : runningAlliances) {
+                            DBAlliance alliance = DBAlliance.get(aaId);
+                            if (alliance == null) continue;
+                            spyTracker.loadCasualties(aaId);
+                        }
+                    }
+                }
+            }
+        });
         this.spyTracker = new SpyTracker();
         this.spyTracker.loadCasualties(null);
     }
 
     public void setupSubscriptions(DBAlliance alliance) {
         GuildDB db = alliance.getGuildDB();
-
         if (db != null) {
             setupSpySubscriptions(db, alliance);
         }
     }
 
-    private Set<Integer> runningAlliances = new HashSet<>();
+    private final Set<Integer> runningAlliances = new HashSet<>();
 
     public boolean setupSpySubscriptions(GuildDB db, DBAlliance alliance) {
         MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
         if (channel == null) return false;
         return setupSpySubscriptions(db, alliance, channel);
     }
-    public synchronized boolean setupSpySubscriptions(GuildDB db, DBAlliance alliance, MessageChannel channel) {
-        if (runningAlliances.contains(alliance.getAlliance_id())) {
+    public boolean setupSpySubscriptions(GuildDB db, DBAlliance alliance, MessageChannel channel) {
+        synchronized (runningAlliances) {
+            int allianceId = alliance.getAlliance_id();
+            if (runningAlliances.contains(allianceId)) {
+                return true;
+            }
+            if (channel == null) return false;
+            if (!channel.canTalk()) {
+                db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
+                return false;
+            }
+            String key;
+            try {
+                key = getAllianceKey(allianceId);
+            } catch (IllegalArgumentException ignore) {
+                RateLimitUtil.queueMessage(channel, "Disabling " + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + ": " + ignore.getMessage(), false);
+                db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
+                return false;
+            }
+            System.out.println("Enabling pusher for " + allianceId);
+            runningAlliances.add(allianceId);
+            this.root.subscribeBuilder(key, Nation.class, PnwPusherEvent.UPDATE).addFilter(PnwPusherFilter.ALLIANCE_ID, allianceId).build(nations -> {
+                try {
+                    System.out.println("Subscription alert " + allianceId);
+                    spyTracker.updateCasualties(nations);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            });
+            System.out.println("Subscribed to " + allianceId);
+            spyTracker.loadCasualties(allianceId);
+            System.out.println("Loaded casualties for " + allianceId);
+            this.root.connect();
             return true;
         }
-        if (channel == null) return false;
-        if (!channel.canTalk()) {
-            db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-            return false;
-        }
-        PnwPusherHandler pusher;
-        try {
-            pusher = getAlliancePusher(alliance.getAlliance_id(), true);
-        } catch (IllegalArgumentException ignore) {
-            RateLimitUtil.queueMessage(channel, "Disabling " + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + ": " + ignore.getMessage(), false);
-            db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-            return false;
-        }
-        System.out.println("Enabling pusher for " + alliance.getAlliance_id());
-        runningAlliances.add(alliance.getAlliance_id());
-        pusher = pusher.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).addFilter(PnwPusherFilter.ALLIANCE_ID, alliance.getAlliance_id()).build(nations -> {
-            try {
-                spyTracker.updateCasualties(nations);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-        System.out.println("Subscribed to " + alliance.getAlliance_id());
-        pusher.connect();
-        System.out.println("Connected to " + alliance.getAlliance_id());
-        spyTracker.loadCasualties(alliance.getAlliance_id());
-        System.out.println("Loaded casualties for " + alliance.getAlliance_id());
-        return true;
     }
 
     public void subscribeDefaultEvents() {
@@ -108,14 +126,14 @@ public class PnwPusherShardManager {
 //            root.subscribeBuilder(Nation.class, PnwPusherEvent.DELETE).build(nations -> {
 //                Locutus.imp().runEventsAsync(events -> nationDB.deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
 //            });
-            root.subscribeBuilder(Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
-                System.out.println("Receive nation events");
-                for (Nation nation : nations) {
-                    nationDB.markNationDirty(nation.getId());
-                }
+            root.subscribeBuilder(Settings.INSTANCE.API_KEY_PRIMARY, Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
                 try {
+                    System.out.println("Receive nation events");
+                    for (Nation nation : nations) {
+                        nationDB.markNationDirty(nation.getId());
+                    }
                     spyTracker.updateCasualties(nations);
-                } catch (IOException e) {
+                } catch (Throwable e) {
                     e.printStackTrace();
                 }
 //                Locutus.imp().runEventsAsync(events -> nationDB.updateNations(nations, events));
@@ -148,52 +166,39 @@ public class PnwPusherShardManager {
 //                Locutus.imp().runEventsAsync(events -> nationDB.deleteAlliances(alliances.stream().map(Alliance::getId).collect(Collectors.toSet()), events));
 //            });
 //        }
-
+//
         root.connect();
     }
 
-    public PnwPusherHandler getAlliancePusher(int allianceId, boolean create) {
-        PnwPusherHandler existing = allianceHandlers.get(allianceId);
-        if (existing != null || !create) return existing;
-        synchronized (this) {
-            existing = allianceHandlers.get(allianceId);
-            if (existing != null) return existing;
+    public void onAllianceError(int allianceId){
+        System.out.println("Alliance error " + allianceId);
+        spyTracker.loadCasualties(allianceId);
+    }
 
-            DBAlliance alliance = DBAlliance.get(allianceId);
+    public String getAllianceKey(int allianceId) {
+        DBAlliance alliance = DBAlliance.get(allianceId);
 
-            // get api (see spies)
-            ApiKeyPool keys = alliance.getApiKeys(false, AlliancePermission.SEE_SPIES);
-            if (keys == null || keys.size() == 0) return null;
+        // get api (see spies)
+        ApiKeyPool keys = alliance.getApiKeys(false, AlliancePermission.SEE_SPIES);
+        if (keys == null || keys.size() == 0) return null;
 
-            String validKey = null;
-            IllegalArgumentException lastError = null;
-            for (ApiKeyPool.ApiKey key : keys.getKeys()) {
-                PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.create(key));
-                try {
-                    api.testBotKey();
-                    validKey = key.getKey();
-                    break;
-                } catch (IllegalArgumentException e) {
-                    lastError = e;
-                }
+        String validKey = null;
+        IllegalArgumentException lastError = null;
+        for (ApiKeyPool.ApiKey key : keys.getKeys()) {
+            PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.create(key));
+            try {
+                api.testBotKey();
+                validKey = key.getKey();
+                break;
+            } catch (IllegalArgumentException e) {
+                lastError = e;
             }
-            if (lastError != null && validKey == null) throw lastError;
-
-            PnwPusherHandler pusher = new PnwPusherHandler(validKey).connect();
-
-            allianceHandlers.put(allianceId, existing = pusher);
         }
-        return existing;
+        if (lastError != null && validKey == null) throw lastError;
+        return validKey;
     }
 
-    public void disableAlliancePusher(int allianceId) {
-        PnwPusherHandler handler = allianceHandlers.remove(allianceId);
-        if (handler != null) {
-            handler.disconnect();
-        }
-    }
-
-    public PnwPusherHandler getRoot() {
+    public PnwPusherHandler getHandler() {
         return root;
     }
 }
