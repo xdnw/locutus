@@ -45,7 +45,7 @@ public class PnwPusherShardManager {
     }
 
     public void load() {
-        this.root = new PnwPusherHandler(Settings.INSTANCE.API_KEY_PRIMARY).connect(null, new Consumer<ConnectionStateChange>() {
+        this.root = new PnwPusherHandler().connect(null, new Consumer<ConnectionStateChange>() {
             @Override
             public void accept(ConnectionStateChange connectionStateChange) {
                 if (spyTracker != null && connectionStateChange.getPreviousState() == ConnectionState.RECONNECTING) {
