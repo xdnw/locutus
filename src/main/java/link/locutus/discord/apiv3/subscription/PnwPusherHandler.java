@@ -2,7 +2,6 @@ package link.locutus.discord.apiv3.subscription;
 
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -14,7 +13,6 @@ import com.google.gson.JsonParser;
 import com.pusher.client.Pusher;
 import com.pusher.client.PusherOptions;
 import com.pusher.client.channel.Channel;
-import com.pusher.client.channel.PusherEvent;
 import com.pusher.client.channel.SubscriptionEventListener;
 import com.pusher.client.connection.ConnectionEventListener;
 import com.pusher.client.connection.ConnectionState;
@@ -24,7 +22,6 @@ import com.pusher.client.util.HttpUserAuthenticator;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
@@ -45,12 +42,9 @@ public class PnwPusherHandler {
 
     public static final String CHANNEL_ENDPOINT = "https://api.politicsandwar.com/subscriptions/v1/subscribe/{model}/{event}?api_key={key}";
 
-    private final String key;
     private Pusher pusher;
     private final ObjectMapper objectMapper;
-    public PnwPusherHandler(String key) {
-        this.key = key;
-
+    public PnwPusherHandler() {
         DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         DateFormat df2 = new SimpleDateFormat("yyyy-MM-dd");
         this.objectMapper = Jackson2ObjectMapperBuilder.json().featuresToEnable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS).dateFormat(df).build();
@@ -79,20 +73,10 @@ public class PnwPusherHandler {
         objectMapper.registerModule(module);
     }
 
-    public <T> PnwPusherBuilder<T> subscribeBuilder(Class<T> clazz, PnwPusherEvent event) {
+    public <T> PnwPusherBuilder<T> subscribeBuilder(String pnwApiKey, Class<T> clazz, PnwPusherEvent event) {
         PnwPusherModel model = PnwPusherModel.valueOf(clazz);
-        return new PnwPusherBuilder<T>(clazz, model, event, key);
+        return new PnwPusherBuilder<T>(this, pnwApiKey, clazz, model, event);
     }
-
-    public String getKey() {
-        return key;
-    }
-
-    public Integer getNationId() {
-        return Locutus.imp().getDiscordDB().getNationFromApiKey(key);
-    }
-
-
 
     private void bind(String channelName, PnwPusherModel model, PnwPusherEvent event, boolean bulk, SubscriptionEventListener listener) {
         PusherChannelType type = PusherChannelType.DEFAULT;
@@ -114,8 +98,11 @@ public class PnwPusherHandler {
         });
     }
 
-
     public PnwPusherHandler connect() {
+        return connect(null, null);
+    }
+
+    public PnwPusherHandler connect(BiConsumer<String, Exception> onError, Consumer<ConnectionStateChange> onChange) {
         if (pusher == null) {
 
             PusherOptions options = new PusherOptions()
@@ -130,10 +117,12 @@ public class PnwPusherHandler {
                 public void onConnectionStateChange(ConnectionStateChange change) {
                     System.out.println("State changed to " + change.getCurrentState() +
                             " from " + change.getPreviousState());
+                    if (onChange != null) onChange.accept(change);
                 }
 
                 @Override
                 public void onError(String message, String code, Exception e) {
+                    if (onError != null) onError.accept(message, e);
                     if (e != null) {
                         e.printStackTrace();
                     }
@@ -154,25 +143,27 @@ public class PnwPusherHandler {
         return this;
     }
 
-    public class PnwPusherBuilder<T> {
+    public static class PnwPusherBuilder<T> {
         private final PnwPusherModel model;
         private final PnwPusherEvent event;
 
         private final Map<PnwPusherFilter, List<Object>> filters;
-        private final String key;
         private final JsonParser parser;
         private final Class<T> type;
+        private final String pnwKey;
+        private final PnwPusherHandler parent;
 
         private boolean bulk;
 
-        protected PnwPusherBuilder(Class<T> type, PnwPusherModel model, PnwPusherEvent event, String apiKey) {
+        protected PnwPusherBuilder(PnwPusherHandler parent, String pnwKey, Class<T> type, PnwPusherModel model, PnwPusherEvent event) {
+            this.parent = parent;
             this.model = model;
             this.event = event;
             this.filters = new LinkedHashMap<>();
-            this.key = apiKey;
             this.parser = new JsonParser();
             this.type = type;
             this.bulk = true;
+            this.pnwKey = pnwKey.toLowerCase(Locale.ROOT);
         }
 
         /**
@@ -194,7 +185,7 @@ public class PnwPusherHandler {
             String url = CHANNEL_ENDPOINT
                     .replace("{model}", model.name().toLowerCase(Locale.ROOT))
                     .replace("{event}", event.name().toLowerCase(Locale.ROOT))
-                    .replace("{key}", key);
+                    .replace("{key}", pnwKey);
             if (!filters.isEmpty()) {
                 List<String> filterParams = filters.entrySet().stream().map(entry ->
                         entry.getKey().name().toLowerCase() + "=" +
@@ -206,19 +197,18 @@ public class PnwPusherHandler {
         }
 
         public PnwPusherHandler build(Consumer<List<T>> listener) {
-            PnwPusherHandler handler = PnwPusherHandler.this;
             String channelName = getChannel();
-            handler.bind(channelName, model, event, bulk, event -> {
+            parent.bind(channelName, model, event, bulk, event -> {
                 try {
                 String data = event.getData();
                 if (data.isEmpty()) return;
 //                System.out.println("Received on " + channelName + ": " + data);
                     if (data.charAt(0) == '[') {
-                        CollectionType listTypeRef = objectMapper.getTypeFactory().constructCollectionType(List.class, type);
-                        List<T> value = objectMapper.readValue(data, listTypeRef);
+                        CollectionType listTypeRef = parent.objectMapper.getTypeFactory().constructCollectionType(List.class, type);
+                        List<T> value = parent.objectMapper.readValue(data, listTypeRef);
                         listener.accept(value);
                     } else {
-                        T value = objectMapper.readValue(data, type);
+                        T value = parent.objectMapper.readValue(data, type);
                         listener.accept(List.of(value));
                     }
                 } catch (JsonProcessingException e) {
@@ -228,7 +218,7 @@ public class PnwPusherHandler {
                     throw e;
                 }
             });
-            return handler;
+            return parent;
         }
 
         private String getChannel() {
@@ -241,7 +231,7 @@ public class PnwPusherHandler {
                         return channel.getAsString();
                     }
                 }
-                String msg = channelInfo.replace(key, "XXX");
+                String msg = channelInfo.replace(pnwKey, "XXX");
                 throw new PnwPusherError(msg);
             } catch (IOException e) {
                 throw new RuntimeException(e);

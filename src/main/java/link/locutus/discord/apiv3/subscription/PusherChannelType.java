@@ -24,7 +24,23 @@ public enum PusherChannelType {
     PRIVATE {
         @Override
         public Channel subscribe(Pusher pusher, String channelName) {
-            return pusher.subscribePrivate(channelName);
+            return pusher.subscribePrivate(channelName, new PrivateChannelEventListener() {
+                @Override
+                public void onAuthenticationFailure(String message, Exception e) {
+                    e.printStackTrace();
+                    System.out.println("Pusher: Private channel authentication failure: " + message + " | " + e);
+                }
+
+                @Override
+                public void onSubscriptionSucceeded(String channelName) {
+                    System.out.println("Pusher: Private channel subscription succeeded: " + channelName);
+                }
+
+                @Override
+                public void onEvent(PusherEvent event) {
+
+                }
+            });
         }
 
         @Override

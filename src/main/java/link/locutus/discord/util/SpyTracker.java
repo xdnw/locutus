@@ -19,6 +19,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -28,9 +29,11 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -52,7 +55,8 @@ public class SpyTracker {
         System.out.println("Loading casualties " + allianceId);
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         if (allianceId != null) {
-            DBAlliance.getOrCreate(allianceId).getApi(false, AlliancePermission.SEE_SPIES);
+            api = DBAlliance.getOrCreate(allianceId).getApi(false, AlliancePermission.SEE_SPIES);
+            if (api == null) return;
         }
         List<Nation> nations = api.fetchNations(new Consumer<NationsQueryRequest>() {
             @Override
@@ -67,6 +71,15 @@ public class SpyTracker {
             public void accept(NationResponseProjection f) {
                 f.id();
                 f.score();
+
+                f.soldiers();
+                f.tanks();
+                f.aircraft();
+                f.ships();
+                f.missiles();
+                f.aircraft();
+                f.spies();
+
                 f.last_active();
                 f.soldier_kills();
                 f.soldier_casualties();
@@ -96,6 +109,7 @@ public class SpyTracker {
     }
 
     private final Map<Integer, Map<MilitaryUnit, Integer>> casualtyTracker = new ConcurrentHashMap<>();
+    private final Map<Integer, Map<MilitaryUnit, Integer>> unitTotalTracker = new ConcurrentHashMap<>();
     private final Map<Integer, Map<MilitaryUnit, Integer>> killTracker = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<SpyActivity> queue = new ConcurrentLinkedQueue<>();
 
@@ -161,34 +175,59 @@ public class SpyTracker {
 
     private AtomicBoolean checkActiveFlag = new AtomicBoolean();
 
-    public void addStat(int nationId, MilitaryUnit unit, int value, long timestamp, double score, boolean isKill) {
-        Map<Integer, Map<MilitaryUnit, Integer>> map = isKill ? killTracker : casualtyTracker;
-        Map<MilitaryUnit, Integer> nationStats = map.computeIfAbsent(nationId, k -> new ConcurrentHashMap<>());
-        Integer current = nationStats.get(unit);
-        if (current == null || value > current) {
-            nationStats.put(unit, value);
+    public void addStat(int nationId, MilitaryUnit unit, int kills, int losses, int currentUnits, long timestamp, double score) {
+        Map<MilitaryUnit, Integer> nationKills = killTracker.computeIfAbsent(nationId, k -> new ConcurrentHashMap<>());
+        Map<MilitaryUnit, Integer> nationLosses = casualtyTracker.computeIfAbsent(nationId, k -> new ConcurrentHashMap<>());
+        Map<MilitaryUnit, Integer> nationUnits = unitTotalTracker.computeIfAbsent(nationId, k -> new ConcurrentHashMap<>());
 
-            if (current == null) {
-                System.out.println("New stat " + nationId + " " + unit + " " + value);
-                return;
-            }
+        Integer previousKills = nationKills.get(unit);
+        Integer previousLosses = nationLosses.get(unit);
+        Integer previousUnits = nationUnits.get(unit);
 
-            int change = value - current;
-            SpyActivity activity = new SpyActivity(nationId, unit, change, timestamp, score, isKill);
-            System.out.println("Add activity " + nationId + " " + unit + " " + change + " " + timestamp + " " + score + " " + isKill);
+        if (previousKills == null || kills > previousKills) nationKills.put(unit, kills);
+        if (previousLosses == null || losses > previousLosses) nationLosses.put(unit, losses);
+        nationUnits.put(unit, currentUnits);
 
-            queue.add(activity);
+        if (previousKills != null && kills > previousKills) {
+            int change = kills - previousKills;
+            queue.add(new SpyActivity(nationId, unit, change, timestamp, score, true));
+            System.out.println("Add activity kill " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
+        }
 
+        if (previousLosses != null && losses > previousLosses) {
+            int change = losses - previousLosses;
             if (unit == MilitaryUnit.SPIES) {
-                if (!isKill) {
-                    checkActiveFlag.set(true);
+                SpyActivity activity = new SpyActivity(nationId, unit, change, timestamp, score, false);
+                System.out.println("Add activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
+                queue.add(activity);
+
+                checkActiveFlag.set(true);
+            } else {
+                System.out.println("Ignore activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
+            }
+        }
+
+        if (previousUnits != null && currentUnits < previousUnits && (previousLosses != null && previousLosses == losses)) {
+            // unit sold or spied
+            if (unit != MilitaryUnit.SPIES) {
+                int change = previousUnits - currentUnits;
+                if (unit != MilitaryUnit.MISSILE && unit != MilitaryUnit.NUKE) {
+                    int max = (int) Math.ceil(previousUnits * 0.99);
+                    int min = (int) Math.floor(previousUnits * 0.85);
+
+                    // 1 spy op kills minimum 1% and 3 spy ops kill maximum of 15%
+                    if (currentUnits < min || currentUnits > max) return;
                 }
+
+                SpyActivity activity = new SpyActivity(nationId, unit, change, timestamp, score, false);
+                System.out.println("Add activity sold " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
+                queue.add(activity);
             }
         }
     }
 
     public synchronized long removeMatchingAttacks() {
-        long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15);
+        long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(20);
         long requiredProximityMs = TimeUnit.SECONDS.toMillis(1);
         List<DBAttack> allAttacks = Locutus.imp().getWarDb().getAttacks(cutoff);
 
@@ -223,10 +262,10 @@ public class SpyTracker {
                                 break;
                             }
                         } else {
-                            if (Math.abs(attack.epoch - activity.timestamp) < requiredProximityMs) {
+                            if (Math.abs(attack.epoch - activity.timestamp) < requiredProximityMs && !activity.isKill) {
                                 System.out.println("Ignore loss " + attack.war_id + " " + activity.unit + " " + activity.change + " | " + attack.attack_type + " | " + Math.abs(attack.epoch - activity.timestamp));
-//                                iter.remove();
-//                                break;
+                                iter.remove();
+                                break;
                             }
                         }
                     }
@@ -243,9 +282,10 @@ public class SpyTracker {
         if (queue.isEmpty()) return;
         System.out.println("Processing queue1: " + queue.size());
 
-        long checkDefensiveMaxMs = latestAttackMs - TimeUnit.MINUTES.toMillis(2);
-        long deleteOffensiveBelowMs = checkDefensiveMaxMs - TimeUnit.MINUTES.toMillis(15);
+        long checkDefensiveMaxMs = latestAttackMs - TimeUnit.MINUTES.toMillis(5);
+        long deleteOffensiveBelowMs = checkDefensiveMaxMs - TimeUnit.MINUTES.toMillis(20);
         long maxActivityDiffMs = TimeUnit.SECONDS.toMillis(60);
+        long maxActivitySpiesDiffMs = TimeUnit.SECONDS.toMillis(60 * 5);
 
         Map<MilitaryUnit, List<SpyActivity>> offensiveByUnit = new HashMap<>();
         Map<MilitaryUnit, List<SpyActivity>> defensiveByUnit = new HashMap<>();
@@ -284,6 +324,10 @@ public class SpyTracker {
             List<SpyActivity> defensives = entry.getValue();
             // get offensives
             List<SpyActivity> offensives = offensiveByUnit.get(unit);
+            if (offensives == null) {
+                if (unit == MilitaryUnit.SPIES) offensives = Collections.emptyList();
+                else continue;
+            }
 
             // iterate
             for (SpyActivity defensive : defensives) {
@@ -296,7 +340,7 @@ public class SpyTracker {
 
                 if (unit == MilitaryUnit.SPIES) {
                     for (SpyActivity offensive : offensives) {
-                        if (Math.abs(offensive.timestamp - defensive.timestamp) > maxActivityDiffMs) continue;
+                        if (Math.abs(offensive.timestamp - defensive.timestamp) > maxActivitySpiesDiffMs) continue;
                         if (!SpyCount.isInScoreRange(offensive.score, defensive.score)) continue;
                         if (offensive.nationId == defensive.nationId) continue;
 
@@ -329,6 +373,16 @@ public class SpyTracker {
                         } else {
                             alert.close.add(offensive);
                         }
+                    }
+
+                    Set<Integer> enemies = new HashSet<>();
+                    for (DBWar war : defender.getActiveWars()) {
+                        enemies.add(war.attacker_id);
+                        enemies.add(war.defender_id);
+                    }
+                    if (!enemies.isEmpty() && (alert.exact.removeIf(o -> enemies.contains(o.nationId)) || alert.close.removeIf(o -> enemies.contains(o.nationId)))) {
+                        alert.exact.clear();
+                        alert.close.clear();
                     }
                 }
                 if (alert.exact.isEmpty() && alert.close.isEmpty() && alert.online.isEmpty()) {
@@ -377,8 +431,8 @@ public class SpyTracker {
             GuildDB db = defender.getGuildDB();
             if (db == null) continue;
             MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-            if (channel == null) {
-//                channel = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL);
+            if (channel == null && (!alert.exact.isEmpty() || unit == MilitaryUnit.SPIES)) {
+                channel = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL);
                 body.append("\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + "`");
             }
             if (channel == null) continue;
@@ -440,65 +494,49 @@ public class SpyTracker {
         String html = FileUtil.readStringFromURL(url);
 
         List<Integer> nationIds = PnwUtil.getNationsFromTable(html, 0);
+        Map<Integer, Integer> nationIdIndex = new HashMap<>();
+        for (int i = 0; i < nationIds.size(); i++) {
+            nationIdIndex.put(nationIds.get(i), i);
+        }
 
-        List<Nation> nationActiveData = Locutus.imp().getV3().fetchNationActive(nationIds);
+        List<Nation> nationActiveData = new ArrayList<>(Locutus.imp().getV3().fetchNationActive(nationIds));
+        // sort by order in nationIds
+        nationActiveData.sort(Comparator.comparingInt(o -> nationIdIndex.get(o.getId())));
 
         for (SpyActivity activity : activitiesToFlag) {
-            activity.nationActiveInfo = new ArrayList<>(nationActiveData);
+            activity.nationActiveInfo = nationActiveData;
         }
     }
 
-
     public void updateCasualties(Nation nation, long timestamp) {
         double score = nation.getScore();
-        // soldiers
-        if (nation.getSoldier_casualties() != null) {
-            addStat(nation.getId(), MilitaryUnit.SOLDIER, nation.getSoldier_casualties(), timestamp, score, false);
-        }
-        if (nation.getSoldier_kills() != null) {
-            addStat(nation.getId(), MilitaryUnit.SOLDIER, nation.getSoldier_kills(), timestamp, score, true);
-        }
-        // tanks
-        if (nation.getTank_casualties() != null) {
-            addStat(nation.getId(), MilitaryUnit.TANK, nation.getTank_casualties(), timestamp, score, false);
-        }
-        if (nation.getTank_kills() != null) {
-            addStat(nation.getId(), MilitaryUnit.TANK, nation.getTank_kills(), timestamp, score, true);
-        }
-        // aircraft
-        if (nation.getAircraft_casualties() != null) {
-            addStat(nation.getId(), MilitaryUnit.AIRCRAFT, nation.getAircraft_casualties(), timestamp, score, false);
-        }
-        if (nation.getAircraft_kills() != null) {
-            addStat(nation.getId(), MilitaryUnit.AIRCRAFT, nation.getAircraft_kills(), timestamp, score, true);
-        }
-        // ships
-        if (nation.getShip_casualties() != null) {
-            addStat(nation.getId(), MilitaryUnit.SHIP, nation.getShip_casualties(), timestamp, score, false);
-        }
-        if (nation.getShip_kills() != null) {
-            addStat(nation.getId(), MilitaryUnit.SHIP, nation.getShip_kills(), timestamp, score, true);
-        }
         // missiles
-        if (nation.getMissile_casualties() != null) {
-            addStat(nation.getId(), MilitaryUnit.MISSILE, nation.getMissile_casualties(), timestamp, score, false);
-        }
-        if (nation.getMissile_kills() != null) {
-            addStat(nation.getId(), MilitaryUnit.MISSILE, nation.getMissile_kills(), timestamp, score, true);
+        if (nation.getMissile_casualties() != null && nation.getMissile_kills() != null && nation.getMissiles() != null) {
+            addStat(nation.getId(), MilitaryUnit.MISSILE, nation.getMissile_kills(), nation.getMissile_casualties(), nation.getMissiles(), timestamp, score);
         }
         // nukes
-        if (nation.getNuke_casualties() != null) {
-            addStat(nation.getId(), MilitaryUnit.NUKE, nation.getNuke_casualties(), timestamp, score, false);
+        if (nation.getNuke_casualties() != null && nation.getNuke_kills() != null && nation.getNukes() != null) {
+            addStat(nation.getId(), MilitaryUnit.NUKE, nation.getNuke_kills(), nation.getNuke_casualties(), nation.getNukes(), timestamp, score);
         }
-        if (nation.getNuke_kills() != null) {
-            addStat(nation.getId(), MilitaryUnit.NUKE, nation.getNuke_kills(), timestamp, score, true);
+        // soldiers
+        if (nation.getSoldier_casualties() != null && nation.getSoldier_kills() != null && nation.getSoldiers() != null) {
+            addStat(nation.getId(), MilitaryUnit.SOLDIER, nation.getSoldier_kills(), nation.getSoldier_casualties(), nation.getSoldiers(), timestamp, score);
+        }
+        // tanks
+        if (nation.getTank_casualties() != null && nation.getTank_kills() != null && nation.getTanks() != null) {
+            addStat(nation.getId(), MilitaryUnit.TANK, nation.getTank_kills(), nation.getTank_casualties(), nation.getTanks(), timestamp, score);
+        }
+        // aircraft
+        if (nation.getAircraft_casualties() != null && nation.getAircraft_kills() != null && nation.getAircraft() != null) {
+            addStat(nation.getId(), MilitaryUnit.AIRCRAFT, nation.getAircraft_kills(), nation.getAircraft_casualties(), nation.getAircraft(), timestamp, score);
+        }
+        // ships
+        if (nation.getShip_casualties() != null && nation.getShip_kills() != null && nation.getShips() != null) {
+            addStat(nation.getId(), MilitaryUnit.SHIP, nation.getShip_kills(), nation.getShip_casualties(), nation.getShips(), timestamp, score);
         }
         // spies
-        if (nation.getSpy_casualties() != null) {
-            addStat(nation.getId(), MilitaryUnit.SPIES, nation.getSpy_casualties(), timestamp, score, false);
-        }
-        if (nation.getSpy_kills() != null) {
-            addStat(nation.getId(), MilitaryUnit.SPIES, nation.getSpy_kills(), timestamp, score, true);
+        if (nation.getSpy_kills() != null && nation.getSpy_casualties() != null && nation.getSpies() != null) {
+            addStat(nation.getId(), MilitaryUnit.SPIES, nation.getSpy_kills(), nation.getSpy_casualties(), nation.getSpies(), timestamp, score);
         }
     }
 }
