@@ -56,6 +56,7 @@ public class SpyTracker {
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         if (allianceId != null) {
             api = DBAlliance.getOrCreate(allianceId).getApi(false, AlliancePermission.SEE_SPIES);
+            if (api == null) return;
         }
         List<Nation> nations = api.fetchNations(new Consumer<NationsQueryRequest>() {
             @Override
@@ -430,8 +431,8 @@ public class SpyTracker {
             GuildDB db = defender.getGuildDB();
             if (db == null) continue;
             MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-            if (channel == null && !alert.exact.isEmpty()) {
-//                channel = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL);
+            if (channel == null && (!alert.exact.isEmpty() || unit == MilitaryUnit.SPIES)) {
+                channel = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL);
                 body.append("\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + "`");
             }
             if (channel == null) continue;
@@ -509,6 +510,14 @@ public class SpyTracker {
 
     public void updateCasualties(Nation nation, long timestamp) {
         double score = nation.getScore();
+        // missiles
+        if (nation.getMissile_casualties() != null && nation.getMissile_kills() != null && nation.getMissiles() != null) {
+            addStat(nation.getId(), MilitaryUnit.MISSILE, nation.getMissile_kills(), nation.getMissile_casualties(), nation.getMissiles(), timestamp, score);
+        }
+        // nukes
+        if (nation.getNuke_casualties() != null && nation.getNuke_kills() != null && nation.getNukes() != null) {
+            addStat(nation.getId(), MilitaryUnit.NUKE, nation.getNuke_kills(), nation.getNuke_casualties(), nation.getNukes(), timestamp, score);
+        }
         // soldiers
         if (nation.getSoldier_casualties() != null && nation.getSoldier_kills() != null && nation.getSoldiers() != null) {
             addStat(nation.getId(), MilitaryUnit.SOLDIER, nation.getSoldier_kills(), nation.getSoldier_casualties(), nation.getSoldiers(), timestamp, score);
@@ -524,14 +533,6 @@ public class SpyTracker {
         // ships
         if (nation.getShip_casualties() != null && nation.getShip_kills() != null && nation.getShips() != null) {
             addStat(nation.getId(), MilitaryUnit.SHIP, nation.getShip_kills(), nation.getShip_casualties(), nation.getShips(), timestamp, score);
-        }
-        // missiles
-        if (nation.getMissile_casualties() != null && nation.getMissile_kills() != null && nation.getMissiles() != null) {
-            addStat(nation.getId(), MilitaryUnit.MISSILE, nation.getMissile_kills(), nation.getMissile_casualties(), nation.getMissiles(), timestamp, score);
-        }
-        // nukes
-        if (nation.getNuke_casualties() != null && nation.getNuke_kills() != null && nation.getNukes() != null) {
-            addStat(nation.getId(), MilitaryUnit.NUKE, nation.getNuke_kills(), nation.getNuke_casualties(), nation.getNukes(), timestamp, score);
         }
         // spies
         if (nation.getSpy_kills() != null && nation.getSpy_casualties() != null && nation.getSpies() != null) {

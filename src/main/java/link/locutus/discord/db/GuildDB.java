@@ -1954,9 +1954,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     throw new IllegalArgumentException("Pusher is not enabled. Please contact the bot owner.");
                 }
                 String channelName = Key.validateChannel(db, value);
-                MessageChannel channel = DiscordUtil.getChannel(db.getGuild(), channelName);
                 for (int aaId : aaIds) {
-                    pusher.setupSpySubscriptions(db, DBAlliance.getOrCreate(aaId), channel);
+                    pusher.setupSpySubscriptions(db, DBAlliance.getOrCreate(aaId));
                 }
 
                 return channelName;
