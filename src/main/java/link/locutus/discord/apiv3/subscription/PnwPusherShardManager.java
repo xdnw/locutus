@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.City;
 import com.politicsandwar.graphql.model.Nation;
 import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
+import graphql.GraphQLException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -46,15 +47,21 @@ public class PnwPusherShardManager {
 
     public void load() {
         this.root = new PnwPusherHandler().connect(null, new Consumer<ConnectionStateChange>() {
+            private long lastFetch = System.currentTimeMillis();
             @Override
             public void accept(ConnectionStateChange connectionStateChange) {
                 if (spyTracker != null && connectionStateChange.getPreviousState() == ConnectionState.RECONNECTING) {
+                    if (System.currentTimeMillis() - lastFetch > TimeUnit.MINUTES.toMillis(5)) {
+                        lastFetch = System.currentTimeMillis();
+                    }
+                    Set<Integer> aasToUpdate;
                     synchronized (runningAlliances) {
-                        for (int aaId : runningAlliances) {
-                            DBAlliance alliance = DBAlliance.get(aaId);
-                            if (alliance == null) continue;
-                            spyTracker.loadCasualties(aaId);
-                        }
+                        aasToUpdate = new HashSet<>(runningAlliances);
+                    }
+                    for (int aaId : aasToUpdate) {
+                        DBAlliance alliance = DBAlliance.get(aaId);
+                        if (alliance == null) continue;
+                        spyTracker.loadCasualties(aaId);
                     }
                 }
             }
@@ -73,26 +80,22 @@ public class PnwPusherShardManager {
     private final Set<Integer> runningAlliances = new HashSet<>();
 
     public boolean setupSpySubscriptions(GuildDB db, DBAlliance alliance) {
-        MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-        if (channel == null) return false;
-        return setupSpySubscriptions(db, alliance, channel);
-    }
-    public boolean setupSpySubscriptions(GuildDB db, DBAlliance alliance, MessageChannel channel) {
         synchronized (runningAlliances) {
             int allianceId = alliance.getAlliance_id();
             if (runningAlliances.contains(allianceId)) {
                 return true;
             }
-            if (channel == null) return false;
-            if (!channel.canTalk()) {
-                db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
-                return false;
-            }
-            String key;
+            String key = null;
             try {
                 key = getAllianceKey(allianceId);
-            } catch (IllegalArgumentException ignore) {
-                RateLimitUtil.queueMessage(channel, "Disabling " + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + ": " + ignore.getMessage(), false);
+            } catch (IllegalArgumentException ignore) {}
+            if (key == null) {
+                MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
+                if (channel != null && channel.canTalk()) {
+                    try {
+                        RateLimitUtil.queueMessage(channel, "Disabling " + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + " (invalid key)", false);
+                    } catch (Throwable ignore2) {}
+                }
                 db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
                 return false;
             }
@@ -140,7 +143,11 @@ public class PnwPusherShardManager {
             });
             System.out.println("Loading alliances");
             for (DBAlliance alliance : nationDB.getAlliances()) {
-                setupSubscriptions(alliance);
+                try {
+                    setupSubscriptions(alliance);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
             }
             System.out.println("Done loading alliances");
             // register alliances
@@ -183,14 +190,15 @@ public class PnwPusherShardManager {
         if (keys == null || keys.size() == 0) return null;
 
         String validKey = null;
-        IllegalArgumentException lastError = null;
+
+        RuntimeException lastError = null;
         for (ApiKeyPool.ApiKey key : keys.getKeys()) {
             PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.create(key));
             try {
-                api.testBotKey();
+                api.getApiKeyStats();
                 validKey = key.getKey();
                 break;
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException | GraphQLException e) {
                 lastError = e;
             }
         }

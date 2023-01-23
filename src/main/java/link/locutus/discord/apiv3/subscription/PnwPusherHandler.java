@@ -163,7 +163,7 @@ public class PnwPusherHandler {
             this.parser = new JsonParser();
             this.type = type;
             this.bulk = true;
-            this.pnwKey = pnwKey;
+            this.pnwKey = pnwKey.toLowerCase(Locale.ROOT);
         }
 
         /**
