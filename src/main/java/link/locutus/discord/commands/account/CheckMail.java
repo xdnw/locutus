@@ -11,20 +11,14 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.mail.SearchMailTask;
 import link.locutus.discord.util.task.mail.Mail;
+import link.locutus.discord.util.task.mail.SearchMailTask;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.*;
 
 public class CheckMail extends Command {
     public CheckMail() {
@@ -43,9 +37,10 @@ public class CheckMail extends Command {
 
     @Override
     public String desc() {
-        return "Search inbox for messages.\n" +
-                "Add -g to group responses by nation\n" +
-                "Add -c to count responses";
+        return """
+                Search inbox for messages.
+                Add -g to group responses by nation
+                Add -c to count responses""";
     }
 
     @Override
@@ -62,11 +57,11 @@ public class CheckMail extends Command {
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.MAIL_RESPONSES_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
-            "nation",
-            "alliance",
-            "mail-id",
-            "subject",
-            "response"
+                "nation",
+                "alliance",
+                "mail-id",
+                "subject",
+                "response"
         ));
 
         sheet.setHeader(header);
@@ -77,13 +72,10 @@ public class CheckMail extends Command {
 
         Map<DBNation, Map<Mail, List<String>>> results = new LinkedHashMap<>();
 
-        SearchMailTask task = new SearchMailTask(me.getAuth(null), query, checkUnread, checkRead, readContent, new BiConsumer<Mail, List<String>>() {
-            @Override
-            public void accept(Mail mail, List<String> strings) {
-                DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
-                if (nation != null) {
-                    results.computeIfAbsent(nation, f -> new LinkedHashMap<>()).put(mail, strings);
-                }
+        SearchMailTask task = new SearchMailTask(me.getAuth(null), query, checkUnread, checkRead, readContent, (mail, strings) -> {
+            DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
+            if (nation != null) {
+                results.computeIfAbsent(nation, f -> new LinkedHashMap<>()).put(mail, strings);
             }
         });
         task.call();

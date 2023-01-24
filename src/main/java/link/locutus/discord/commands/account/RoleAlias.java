@@ -7,8 +7,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -47,13 +47,12 @@ public class RoleAlias extends Command {
         User user = event.getAuthor();
 
         if (!event.isFromGuild()) {
-            return "Can only run in a guild";
+            return "Can only run in a guild.";
         }
         Guild server = event.getGuild();
         GuildDB db = Locutus.imp().getGuildDB(event);
 
         if (args.size() != 2) {
-            int invalidRoles = 0;
             List<Map.Entry<Roles, Long>> roles = db.getRoles();
             StringBuilder response = new StringBuilder("Current aliases:").append('\n');
             for (Map.Entry<Roles, Long> role : roles) {
@@ -62,15 +61,15 @@ public class RoleAlias extends Command {
 
                 Role discordRole = server.getRoleById(role.getValue());
                 String roleName = discordRole == null ? "null" : discordRole.getName();
-                response.append(" - " + role.getKey().name().toLowerCase() + " > " + roleName);
+                response.append(" - ").append(role.getKey().name().toLowerCase()).append(" > ").append(roleName);
 
                 if (key != null && db.getOrNull(key) == null) {
-                    response.append(" (missing: " + key.name() + ")");
+                    response.append(" (missing: ").append(key.name()).append(")");
                 }
                 response.append('\n');
             }
-            response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Usage: `" + Settings.commandPrefix(true) + "aliasrole <" + StringMan.join(Arrays.asList(Roles.values()).stream().map(r -> r.name()).collect(Collectors.toList()), "|") + "> <discord-role>`");
+            response.append("Available aliases: ").append(Roles.getValidRolesStringList()).append('\n');
+            response.append("Usage: `").append(Settings.commandPrefix(true)).append("aliasrole <").append(StringMan.join(Arrays.stream(Roles.values()).map(Enum::name).collect(Collectors.toList()), "|")).append("> <discord-role>`");
             return response.toString().trim();
         }
         Roles role;
@@ -91,8 +90,11 @@ public class RoleAlias extends Command {
 
         Member member = server.getMember(user);
 
-        if (!Roles.ADMIN.hasOnRoot(user) && !PermissionUtil.checkPermission(member, Permission.ADMINISTRATOR) && !PermissionUtil.checkPermission(member, Permission.MANAGE_SERVER) && !PermissionUtil.checkPermission(member, Permission.MANAGE_ROLES)) {
-            return "You are not allowed to manage the role: " + discordRole.getName();
+        if (!Roles.ADMIN.hasOnRoot(user)) {
+            assert member != null;
+            if (!PermissionUtil.checkPermission(member, Permission.ADMINISTRATOR) && !PermissionUtil.checkPermission(member, Permission.MANAGE_SERVER) && !PermissionUtil.checkPermission(member, Permission.MANAGE_ROLES)) {
+                return "You are not allowed to manage the role: " + discordRole.getName();
+            }
         }
 
         db.addRole(role, discordRole.getIdLong());

@@ -9,11 +9,7 @@ import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import javax.annotation.Nonnull;
@@ -43,7 +39,7 @@ public class RunAllNations extends Command implements Noformat {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
 
         if (nations.size() == 0) return "No nations found for `" + args.get(0) + "`";
-        if (nations.size() > 200 && !Roles.ADMIN.hasOnRoot(author)) return ">200 nations";
+        if (nations.size() > 200 && !Roles.ADMIN.hasOnRoot(author)) return "Too many nations.";
 
         String cmd = args.get(1);
         MessageChannel channel = event.getChannel();
