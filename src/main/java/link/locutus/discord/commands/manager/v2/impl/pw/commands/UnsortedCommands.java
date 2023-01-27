@@ -269,11 +269,13 @@ public class UnsortedCommands {
 
     @Command(desc="Login to allow locutus to run scripts through your account (Avoid using if possible)")
     @RankPermission(Rank.OFFICER)
-    public String login(DiscordDB discordDB, @Me User author, @Me DBNation me, @Me Guild guild, String username, String password) {
+    public String login(@Me IMessageIO io, DiscordDB discordDB, @Me User author, @Me DBNation me, String username, String password) {
+        IMessageBuilder msg = io.getMessage();
+        try {
+            if (msg != null) io.delete(msg.getId());
+        } catch (Throwable ignore) {};
+
         if (me == null || me.getPosition() < Rank.OFFICER.id) return "You are not an officer of an alliance";
-        if (guild != null) {
-            return "This command must be used via private message with Locutus. DO NOT USE THIS COMMAND HERE";
-        }
         GuildDB db = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
         if (db == null) return "Your alliance " + me.getAlliance_id() + " is not registered with Locutus";
         Auth existingAuth = db.getAuth();;
@@ -654,7 +656,8 @@ public class UnsortedCommands {
                                List<ResourceType> resources, @Default NationList nationList,
                                @Switch("m") boolean ignoreMilitaryUpkeep,
                                @Switch("t") boolean ignoreTradeBonus,
-                               @Switch("n") boolean ignoreNationBonus,
+                               @Switch("b") boolean ignoreNationBonus,
+                               @Switch("n") boolean includeNegative,
                                @Switch("a") boolean listByNation,
                                @Switch("s") boolean listAverage,
                                @Switch("u") boolean uploadFile,
@@ -687,7 +690,7 @@ public class UnsortedCommands {
                     value += PnwUtil.convertedTotal(type, profit[type.ordinal()]);
                 }
             }
-            if (value > 0) {
+            if (value > 0 || includeNegative) {
                 profitByNation.put(nation, value);
             }
         }
