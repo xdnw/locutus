@@ -363,6 +363,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 }
             }
             Locutus.imp().getNationDB().saveNations(toSave);
+            return true;
         }
         if (!updateManually) return false;
         for (DBNation nation : getNations(true, 1440, true)) {

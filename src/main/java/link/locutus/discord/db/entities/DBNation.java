@@ -1340,10 +1340,14 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Integer updateSpies(boolean force) {
+        return updateSpies(force ? Integer.MIN_VALUE : 0);
+    }
+
+    public Integer updateSpies(int turns) {
         ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
         long currentTurn = TimeUtil.getTurn();
 
-        if (lastTurn == null ||  lastTurn.getLong() != currentTurn || force) {
+        if (lastTurn == null || (currentTurn - lastTurn.getLong() > turns)) {
             try {
                 if (getPositionEnum().id > Rank.APPLICANT.id) {
                     if (getAlliance().updateSpies(false)) {
