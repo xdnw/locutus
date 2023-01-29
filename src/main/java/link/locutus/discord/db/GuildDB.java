@@ -1945,7 +1945,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
                     PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.create(nationId, key));
                     try {
-                        api.testBotKey();
+                        api.getApiKeyStats();
                     } catch (IllegalArgumentException e) {
                         throw new IllegalArgumentException(e.getMessage() + " (for nation: " + nationId + ")");
                     }
@@ -4292,7 +4292,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public String help() {
-                return "A map of rewards to give members";
+                return "A map of rewards to give members e.g.\n" +
+                        "```\n" +
+                        "#wars_won>50:{food=5,munitions=1}\n" +
+                        "#cities>5,#correctalliancemmr=1:{coal=1}\n" +
+                        "" +
+                        "```";
             }
         }
 
