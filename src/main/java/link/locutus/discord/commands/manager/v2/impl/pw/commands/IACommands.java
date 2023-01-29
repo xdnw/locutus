@@ -331,7 +331,7 @@ public class IACommands {
 
         boolean result = new SimpleNationList(nations).updateSpies(false);
         if (!result) {
-            return "Could not update spies (see `" + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + " <key>`";
+            return "Could not update spies (see " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + ")";
         }
 
         long dayCutoff = TimeUtil.getDay() - 2;

@@ -380,8 +380,7 @@ public class SpyTracker {
                         enemies.add(war.attacker_id);
                         enemies.add(war.defender_id);
                     }
-                    if (!enemies.isEmpty() && (alert.exact.removeIf(o -> enemies.contains(o.nationId)) || alert.close.removeIf(o -> enemies.contains(o.nationId)))) {
-                        alert.exact.clear();
+                    if (!enemies.isEmpty() && alert.close.removeIf(o -> enemies.contains(o.nationId))) {
                         alert.close.clear();
                     }
                 }
@@ -468,7 +467,7 @@ public class SpyTracker {
         public String entryToString(DBNation attacker, long diff) {
             StringBuilder message = new StringBuilder(attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true));
             int defSpies = defender.getSpies();
-            int attSpies = attacker.updateSpies();
+            int attSpies = attacker.updateSpies(24);
             double odds = SpyCount.getOdds(attSpies, defSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
             message.append(MathMan.format(odds) + "%");
             if (attacker.hasProject(Projects.SPY_SATELLITE)) message.append(" | SAT");

@@ -10,6 +10,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -4254,6 +4255,44 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String help() {
                 return "List of channels to whitelist Locutus in";
+            }
+        },
+
+        MEMBER_REWARDS(false, ALLIANCE_ID, CommandCategory.ECON) {
+
+            @Override
+            public Object parse(GuildDB db, String input) {
+                Map<NationFilterString, double[]> result = new LinkedHashMap<>();
+                for (String line : input.trim().split("[\n|;]")) {
+                    String[] split = line.split("[:=]", 2);
+                    String filterStr = split[0];
+                    boolean containsNation = false;
+                    for (String arg : filterStr.split(",")) {
+                        if (!arg.startsWith("#")) containsNation = true;
+                    }
+                    if (!containsNation) filterStr += ",*";
+                    DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
+                    NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+
+                    double[] resources = PnwUtil.resourcesToArray(PnwUtil.parseResources(split[1]));
+                    result.put(filter, resources);
+                }
+                return result;
+            }
+
+            @Override
+            public String toString(Object value) {
+                Map<NationFilterString, double[]> filterToResources = (Map<NationFilterString, double[]>) value;
+                StringBuilder result = new StringBuilder();
+                for (Map.Entry<NationFilterString, double[]> entry : filterToResources.entrySet()) {
+                    result.append(entry.getKey().getFilter() + ":" + PnwUtil.resourcesToString(entry.getValue()) + "\n");
+                }
+                return result.toString().trim();
+            }
+
+            @Override
+            public String help() {
+                return "A map of rewards to give members";
             }
         }
 

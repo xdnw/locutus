@@ -60,6 +60,12 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     public Category category(ParameterData param, Guild guild, String category) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild");
+        if (category.charAt(0) == '<' && category.charAt(category.length() - 1) == '>') {
+            category = category.substring(1, category.length() - 1);
+        }
+        if (category.charAt(0) == '#') {
+            category = category.substring(1);
+        }
         List<Category> categories = guild.getCategoriesByName(category, true);
         Filter filter = param.getAnnotation(Filter.class);
         if (filter != null) {
