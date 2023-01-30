@@ -44,7 +44,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         IACategory iaCat = db.getIACategory();
         if (iaCat == null) {
-            throw new IllegalArgumentException("No interview category found");
+            throw new IllegalArgumentException("No interview category found.");
         }
         if (iaCat.getCategories().isEmpty()) {
             return "No categories found starting with: `interview`";
@@ -82,17 +82,17 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
 
         GuildMessageChannel channel = iaCat.getOrCreate(user, true);
         if (channel == null) {
-            String reason = "";
+            String reason;
 
             Member member = guild.getMember(user);
             if (member == null) {
-                reason = "Member not found on discord";
+                reason = "Member not found on discord.";
             } else if (iaCat.getActiveCategories().isEmpty()) {
-                reason = "No interview category found";
+                reason = "No interview category found.";
             } else if (iaCat.getFreeCategory(iaCat.getActiveCategories()) == null) {
-                reason = "Interview category is full";
+                reason = "Interview category is full.";
             } else {
-                reason = "Uknown reason";
+                reason = "Unknown reason.";
             }
             return "Unable to find or create channel: " + reason;
         }
@@ -128,7 +128,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
 //                if (alertChannel != null) {
 //                    String title = "New applicant";
 //
-//                    String emoji = "\u2705";
+//                    String emoji = "✅";
 //
 //                    StringBuilder body = new StringBuilder();
 //                    body.append("User: " + author.getAsMention() + "\n");

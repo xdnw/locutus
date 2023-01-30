@@ -2,7 +2,6 @@ package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
@@ -11,16 +10,10 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Consumer;
+import java.util.*;
 
 public class Dm extends Command {
     public Dm() {
@@ -65,31 +58,25 @@ public class Dm extends Command {
         }
 
         if (mentions.size() > 1 && !flags.contains('f')) {
-            String title = "Send " + mentions.size() + " messages";
+            String title = "Send " + mentions.size() + " messages.";
             String pending = Settings.commandPrefix(true) + "pending " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
 
-            String embedTitle = title + " to nations";
-            if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances";
+            String embedTitle = title + " to nations.";
+            if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances.";
 
-            StringBuilder dmMsg = new StringBuilder();
-            dmMsg.append("content: ```" + body + "```");
+            String dmMsg = "content: ```" + body + "```";
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, dmMsg.toString(), "Next", pending);
+            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, dmMsg, "Next", pending);
             return null;
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
 
         for (User mention : mentions) {
-            mention.openPrivateChannel().queue(new Consumer<PrivateChannel>() {
-                @Override
-                public void accept(PrivateChannel channel) {
-                    RateLimitUtil.queue(channel.sendMessage(event.getAuthor().getAsMention() + " said: " + body + "\n\n(no reply)"));
-                }
-            });
+            mention.openPrivateChannel().queue(channel -> RateLimitUtil.queue(channel.sendMessage(event.getAuthor().getAsMention() + " said: " + body + "\n\n(no reply)")));
         }
         RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), "Sent " + mentions.size() + " messages"));
         return null;

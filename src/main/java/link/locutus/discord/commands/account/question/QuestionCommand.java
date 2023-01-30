@@ -27,7 +27,7 @@ public class QuestionCommand<T extends Question> extends Command { private final
 
     @Override
     public String usage() {
-        return super.usage() + " <user> <step>";
+        return super.usage() + " <user> <steps>";
     }
 
     @Override
@@ -48,7 +48,7 @@ public class QuestionCommand<T extends Question> extends Command { private final
         }
 
         String input = null;
-        Integer index = 0;
+        int index = 0;
         switch (args.size()) {
             case 2:
                 input = args.get(1);

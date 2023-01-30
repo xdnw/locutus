@@ -36,7 +36,7 @@ public class Unregister extends Command {
 
         DBNation selfNation = DiscordUtil.getNation(author);
         if (selfNation == null) {
-            return "You aren't registered";
+            return "You aren't registered.";
         }
         if (!selfNation.equals(nation) && !Roles.ADMIN.hasOnRoot(author)) {
             return "You can only unregister yourself.";
@@ -48,6 +48,6 @@ public class Unregister extends Command {
             if (mentions.size() != 1) return usage(event);
             Locutus.imp().getDiscordDB().unregister(null, mentions.get(0).getIdLong());
         }
-        return "Unregistered user";
+        return "Unregistered user.";
     }
 }

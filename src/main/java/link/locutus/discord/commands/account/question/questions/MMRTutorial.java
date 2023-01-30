@@ -14,7 +14,7 @@ public enum MMRTutorial implements Question {
             "0 barracks\n" +
             "2 factories\n" +
             "5 hangars\n" +
-            "1 drydock\n", false),
+            "0 drydock\n", false),
 
     DONE("That's all  for now. Check back later.", true) {
         @Override

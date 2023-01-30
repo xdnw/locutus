@@ -35,7 +35,7 @@ public class SendTreaty extends Command {
 
     @Override
     public String desc() {
-        return "Send a treaty to an alliance";
+        return "Send a treaty to an alliance.";
     }
 
     @Override
@@ -44,10 +44,9 @@ public class SendTreaty extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
-        if (auth == null) return "No authentication enabled for this guild";
+        if (auth == null) return "No authentication enabled for this guild.";
 
         Integer aaId = PnwUtil.parseAllianceId(args.get(0));
-        if (aaId == null) return "Invalid alliance: `" + args.get(0) + "`";
         TreatyType type;
         try {
             type = TreatyType.parse(args.get(1));
@@ -55,10 +54,10 @@ public class SendTreaty extends Command {
             return "Invalid treaty type: `" + args.get(1) + "`. Options: " + StringMan.getString(TreatyType.values());
         }
         int days = Integer.parseInt(args.get(2));
-        for (int i = 0; i < 3; i++) args.remove(0);
+        args.subList(0, 3).clear();
         String message = StringMan.join(args, " ");
         if (message.isEmpty() && !Roles.ADMIN.has(author, guild)) {
-            return "Admin is required to send a treaty with a message";
+            return "Admin is required to send a treaty with a message.";
         }
         return auth.sendTreaty(aaId, type, message, days);
     }

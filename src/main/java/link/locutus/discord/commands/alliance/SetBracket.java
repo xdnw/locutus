@@ -42,7 +42,7 @@ public class SetBracket extends Command {
                 "Notes:\n" +
                 " - Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
                 " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildDB.Key.TAX_BASE.name(), null) + " (retroactive)\n" +
-                " - This command is not retroactive and overrides the alliance internal taxrate";
+                " - This command is not retroactive and overrides the alliance internal taxrate.";
     }
 
     @Override
@@ -61,7 +61,7 @@ public class SetBracket extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         boolean isGov = Roles.ECON_LOW_GOV.has(author, guild) || Roles.INTERNAL_AFFAIRS.has(author, guild);
         if (!isGov) {
-            if (me != nation) return "You are only allowed to set your own tax rate";
+            if (me != nation) return "You are only allowed to set your own tax rate.";
         }
         TaxRate taxBase = db.getHandler().getInternalTaxrate(nation.getNation_id());
         if (isGov) taxBase = new TaxRate(-1, -1);
@@ -69,7 +69,7 @@ public class SetBracket extends Command {
         int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
         if (aaId != nation.getAlliance_id()) return nation.getNation() + " is not in " + aaId;
         Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
-        if (auth == null) return "No authentication enabled for this guild";
+        if (auth == null) return "No authentication enabled for this guild.";
 
         Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
 
@@ -79,7 +79,7 @@ public class SetBracket extends Command {
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 String url = bracket.getUrl();
-                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations) - " + bracket.getName());
+                response.append("\n - ").append(MarkupUtil.markdownUrl("#" + bracket.taxId, url)).append(": ").append(bracket.moneyRate).append("/").append(bracket.rssRate).append(" (").append(bracket.getNations().size()).append(" nations) - ").append(bracket.getName());
             }
             return usage(event, response.toString());
         }
@@ -119,7 +119,7 @@ public class SetBracket extends Command {
             double depo = me.getNetDepositsConverted(db);
             if (depo < -200_000_000) {
                 if (bracket.moneyRate < 100 || bracket.rssRate < 100) {
-                    return "Nations in >200m debt must have a gov change their tax rate";
+                    return "Nations in >200m debt must have a gov change their tax rate.";
                 }
             }
         }
@@ -128,13 +128,13 @@ public class SetBracket extends Command {
 
         if (args.size() >= 3) {
             if (!isGov) {
-                return "You are only allowed to set your ingame taxrate";
+                return "You are only allowed to set your ingame taxrate.";
             }
             TaxRate internalRate = new TaxRate(args.get(2));
             if (internalRate.money < -1 || internalRate.money > 100) return "Invalid taxrate: " + internalRate;
             if (internalRate.resources < -1 || internalRate.resources > 100) return "Invalid taxrate: " + internalRate;
             db.setMeta(nation.getNation_id(), NationMeta.TAX_RATE, new byte[]{(byte) internalRate.money, (byte) internalRate.resources});
-            response.append("Set internal taxrate to " + internalRate + "\n");
+            response.append("Set internal taxrate to ").append(internalRate).append("\n");
         }
 
         response.append(nation.setTaxBracket(bracket, auth));
