@@ -21,9 +21,10 @@ public class HasRole extends Command {
     public HasRole() {
         super(CommandCategory.INTERNAL_AFFAIRS, CommandCategory.USER_INFO);
     }
+
     @Override
     public String usage() {
-        return super.usage() + " @user <role>";
+        return super.usage() + " @user <role>.";
     }
 
     @Override
@@ -50,7 +51,7 @@ public class HasRole extends Command {
             }
         }
 
-        if (guildIds.isEmpty()) return "User does not have that role on any server";
+        if (guildIds.isEmpty()) return "User does not have that role in any server.";
 
         return user.getName() + " has " + role.name() + " on " + StringMan.getString(guild);
     }

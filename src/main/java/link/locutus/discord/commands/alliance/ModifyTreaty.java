@@ -40,7 +40,7 @@ public class ModifyTreaty extends Command {
 
     @Override
     public String desc() {
-        return "Use `" + Settings.commandPrefix(true) + "treaties` to list the current treaties";
+        return "Use `" + Settings.commandPrefix(true) + "treaties` to list the current treaties.";
     }
 
     @Override
@@ -50,22 +50,22 @@ public class ModifyTreaty extends Command {
         int treatyOrAAId = PnwUtil.parseAllianceId(args.get(0));
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
-        if (auth == null) return "No authentication enabled for this guild";
+        if (auth == null) return "No authentication enabled for this guild.";
 
         List<PendingTreaty> treaties = auth.getTreaties();
         if (!value) treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.ACTIVE);
         if (value) treaties.removeIf(treaty -> treaty.status != PendingTreaty.TreatyStatus.PENDING);
         treaties.removeIf(treaty -> treaty.getFromId() != treatyOrAAId && treaty.getToId() != treatyOrAAId && treaty.getId() != treatyOrAAId);
-        if (treaties.isEmpty()) return "There are no active treaties";
+        if (treaties.isEmpty()) return "There are no active treaties.";
 
         boolean admin = Roles.ADMIN.has(author, db.getGuild()) || (me.getAlliance_id() == db.getAlliance_id() && me.getPosition() >= Rank.HEIR.id);
 
         for (PendingTreaty treaty : treaties) {
             if (!admin && treaty.getType().getStrength() >= TreatyType.PROTECTORATE.getStrength()) {
-                return "You need to be an admin to cancel a defensive treaty";
+                return "You need to be an admin to cancel a defensive treaty.";
             }
             return auth.modifyTreaty(treaty.getId(), value);
         }
-        return "No treaty found";
+        return "No treaty found.";
     }
 }

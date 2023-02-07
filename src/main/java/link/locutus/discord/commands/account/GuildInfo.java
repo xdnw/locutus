@@ -7,19 +7,17 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class GuildInfo extends Command {
     public GuildInfo() {
         super(CommandCategory.INTERNAL_AFFAIRS, CommandCategory.GUILD_MANAGEMENT);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return super.checkPermission(server, user) && Roles.INTERNAL_AFFAIRS_STAFF.has(user, server);
@@ -36,11 +34,10 @@ public class GuildInfo extends Command {
         long id = Long.parseLong(args.get(0));
 
         guild = Locutus.imp().getDiscordApi().getGuildById(id);
-        if (guild == null) return "Guild not found";
+        if (guild == null) return "Guild not found.";
 
-        String title = guild.getName() + "/" + guild.getIdLong() + "\n" +
+        return guild.getName() + "/" + guild.getIdLong() + "\n" +
                 "Owner: " + guild.getOwner() + "\n" +
                 "Members: " + StringMan.getString(guild.getMembers());
-        return title;
     }
 }
