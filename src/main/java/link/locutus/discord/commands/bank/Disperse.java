@@ -1,9 +1,9 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -14,33 +14,19 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.JsonUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.DepositRawTask;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class Disperse extends Command {
@@ -60,10 +46,11 @@ public class Disperse extends Command {
 
     @Override
     public String desc() {
-        return "Disburse funds.\n" +
-                "add `-d` to assume daily cash login bonus\n" +
-                "add `-c` to skip sending cash\n" +
-                "Add `-f` to force it through";
+        return """
+                Disburse funds.
+                add `-d` to assume daily cash login bonus.
+                add `-c` to skip sending cash.
+                Add `-f` to force it through.""";
     }
 
     @Override
@@ -85,8 +72,6 @@ public class Disperse extends Command {
         while (iter.hasNext()) {
             String arg = iter.next();
             if (arg.equalsIgnoreCase("-a")) {
-                // unused
-//                admin = false;
                 iter.remove();
             } else if (arg.equalsIgnoreCase("true")) {
                 disperse = true;
@@ -100,28 +85,25 @@ public class Disperse extends Command {
         if (args.size() > 3) return usage(event);
 
         Collection<String> allowedLabels = Arrays.asList("#grant", "#deposit", "#trade", "#ignore", "#tax", "#warchest", "#account");
-        if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
+        if (!allowedLabels.contains(note.split("=")[0]))
+            return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) note += "=" + aaId;
-        else {
-            note += "=" + guild.getIdLong();
-        }
+        note += "=" + Objects.requireNonNullElseGet(aaId, guild::getIdLong);
 
-        Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
+        Map<DBNation, Map<ResourceType, Double>> fundsToSendNations;
         Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
 
         String arg = args.get(0);
         if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
 
-            String key = arg;
-            SpreadSheet sheet = SpreadSheet.create(key);
+            SpreadSheet sheet = SpreadSheet.create(arg);
             AddBalanceBuilder task = new AddBalanceBuilder(db);
             Map<String, Boolean> result = sheet.parseTransfers(task, false, note);
             fundsToSendNations = task.getTotalForNations();
             fundsToSendAAs = task.getTotalForAAs();
-            if (!task.getTotalForGuilds().isEmpty()) return "Cannot disperse to guilds";
+            if (!task.getTotalForGuilds().isEmpty()) return "Cannot disperse to guilds.";
 
             List<String> invalid = new ArrayList<>();
             for (Map.Entry<String, Boolean> entry : result.entrySet()) {
@@ -129,15 +111,16 @@ public class Disperse extends Command {
                     invalid.add(entry.getKey());
                 }
             }
-            if (!invalid.isEmpty() && !force) return "Invalid nations/alliance:\n - " + StringMan.join(invalid, "\n - ");
+            if (!invalid.isEmpty() && !force)
+                return "Invalid nations/alliance:\n - " + StringMan.join(invalid, "\n - ");
         } else {
             Message message;
             if (!disperse) {
-                message = RateLimitUtil.complete(event.getChannel().sendMessage("The following is a preview. Each disbursement must be authorized by a banker via"));
+                message = RateLimitUtil.complete(event.getChannel().sendMessage("The following is a preview, Each disbursement must be authorized by a banker via."));
             } else {
                 message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching city information:"));
             }
-            Integer allianceId = me.getAlliance_id();
+            int allianceId;
             List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(event.getGuild(), arg));
             if (nations.size() != 1 || !flags.contains('f')) {
                 nations.removeIf(n -> n.getPosition() <= 1);
@@ -147,22 +130,17 @@ public class Disperse extends Command {
                 nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
             }
             if (nations.isEmpty()) {
-                return "No nations found (add `-f` to force send)";
+                return "No nations found, add `-f` to force send.";
             }
-            if (nations != null && !nations.isEmpty()) allianceId = nations.get(0).getAlliance_id();
+            allianceId = nations.get(0).getAlliance_id();
 
             Consumer<String> updateTask = s -> RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), s));
-            Consumer<String> errors = new Consumer<String>() {
-                @Override
-                public void accept(String s) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage(s));
-                }
-            };
-            if (nations.isEmpty()) return "No nations in tax bracket";
+            Consumer<String> errors = s -> RateLimitUtil.queue(event.getChannel().sendMessage(s));
+            if (nations.isEmpty()) return "No nations in this tax bracket.";
             daysDefault = Integer.parseInt(args.get(args.size() - 1));
             fundsToSendNations = new DepositRawTask(nations, allianceId, updateTask, daysDefault, true, ignoreInactives, errors).setForce(force).call();
             if (nations.isEmpty()) {
-                return "No nations found (1)";
+                return "No nations found.";
             }
         }
 
@@ -191,7 +169,7 @@ public class Disperse extends Command {
 
     public static String disperse(GuildDB db, Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs, String note, IMessageIO channel, String title) throws GeneralSecurityException, IOException {
         if (fundsToSendNations.isEmpty() && fundsToSendAAs.isEmpty()) {
-            return "No funds need to be sent";
+            return "No funds need to be sent.";
         }
         Map<ResourceType, Double> total = new LinkedHashMap<>();
         List<String> postScript = new ArrayList<>();
@@ -217,14 +195,12 @@ public class Disperse extends Command {
 
             String command = "_" + Settings.commandPrefix(true) + "transfer \"" + note + "\" " + nation.getNationUrl() + " " + StringMan.getString(total) + " " + token;
 
-            StringBuilder body = new StringBuilder("```" + post + "```\n");
-            body.append(nation.getNationUrlMarkup(true) + "\n");
-            body.append("Worth: $" + MathMan.format(PnwUtil.convertedTotal(total)));
-            channel.create().embed(title, body.toString())
-                            .commandButton(command, "Confirm")
-                            .cancelButton()
-                            .send();
-            return null;
+            String body = "```" + post + "```\n" + nation.getNationUrlMarkup(true) + "\n" +
+                    "Worth: $" + MathMan.format(PnwUtil.convertedTotal(total));
+            channel.create().embed(title, body)
+                    .commandButton(command, "Confirm")
+                    .cancelButton()
+                    .send();
         } else {
 
             String arr = JsonUtil.toPrettyFormat("[" + StringMan.join(postScript, ",") + "]");
@@ -232,13 +208,12 @@ public class Disperse extends Command {
 
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, fundsToSendAAs).build();
 
-            String emoji = "Confirm";
+            String emoji = "Confirm.";
             String cmd = Settings.commandPrefix(false) + "transfer Bulk " + sheet.getSheet().getURL() + " " + note;
 
             StringBuilder response = new StringBuilder();
-            response.append("Total: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ": `" + PnwUtil.resourcesToString(total)).append("`\n");
-            response.append("Info: Use the extension to disburse from offshore or Press `" + emoji + "` to run:\n" +
-                    "`" + Settings.commandPrefix(false) + "transfer Bulk <sheet> " + note + "`");
+            response.append("Total: $").append(MathMan.format(PnwUtil.convertedTotal(total))).append(": `").append(PnwUtil.resourcesToString(total)).append("`\n");
+            response.append("Info: Use the extension to disburse from offshore or Press `").append(emoji).append("` to run:\n").append("`").append(Settings.commandPrefix(false)).append("transfer Bulk <sheet> ").append(note).append("`");
 
 
             IMessageBuilder msg = channel.create();
@@ -248,7 +223,7 @@ public class Disperse extends Command {
             msg.commandButton(cmd, emoji);
 
             msg.send();
-            return null;
         }
+        return null;
     }
 }

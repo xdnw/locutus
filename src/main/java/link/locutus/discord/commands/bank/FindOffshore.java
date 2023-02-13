@@ -5,8 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -16,7 +16,6 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 public class FindOffshore extends Command {
     public FindOffshore() {
@@ -30,7 +29,7 @@ public class FindOffshore extends Command {
 
     @Override
     public String desc() {
-        return "Find potential offshores used by an alliance";
+        return "Find potential offshores used by an alliance.";
     }
 
     @Override
@@ -50,8 +49,6 @@ public class FindOffshore extends Command {
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
-
         List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
         long now = System.currentTimeMillis();
         transactions.removeIf(t -> {
@@ -69,12 +66,7 @@ public class FindOffshore extends Command {
             valueTransferred.put((int) t.getSender(), valueTransferred.getOrDefault((int) t.getSender(), 0d) + value);
         }
 
-        new SummedMapRankBuilder<>(numTransactions).sort().name(new Function<Map.Entry<Integer, Integer>, String>() {
-            @Override
-            public String apply(Map.Entry<Integer, Integer> e) {
-                return PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey()));
-            }
-        }).build(event, "Potential offshores");
+        new SummedMapRankBuilder<>(numTransactions).sort().name(e -> PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey()))).build(event, "Potential offshores");
 
         return null;
     }

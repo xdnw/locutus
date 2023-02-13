@@ -19,6 +19,7 @@ public class Dm extends Command {
     public Dm() {
         super(CommandCategory.LOCUTUS_ADMIN);
     }
+
     @Override
     public String help() {
         return super.help() + " <user> <message>";

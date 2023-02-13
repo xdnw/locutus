@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -11,9 +12,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;

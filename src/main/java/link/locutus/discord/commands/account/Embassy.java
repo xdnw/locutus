@@ -8,14 +8,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import net.dv8tion.jda.api.entities.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
@@ -25,6 +21,7 @@ public class Embassy extends Command {
     public Embassy() {
         super(CommandCategory.FOREIGN_AFFAIRS, CommandCategory.USER_COMMANDS);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;

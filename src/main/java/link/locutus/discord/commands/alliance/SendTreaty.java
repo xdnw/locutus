@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -10,7 +11,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;

@@ -13,8 +13,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.MailRespondTask;
 import net.dv8tion.jda.api.entities.Guild;
@@ -105,7 +105,7 @@ public class MailCommand extends Command implements Noformat {
             } else {
                 key = ApiKeyPool.builder().addKey(myKey).build();
             }
-            if (key == null){
+            if (key == null) {
                 return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey.`";
             }
 
