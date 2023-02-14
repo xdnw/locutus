@@ -163,6 +163,7 @@ public class Settings extends Config {
 
             Settings.INSTANCE.ENABLED_COMPONENTS.WEB = false;
             Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS = false;
+            Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS = false;
 
             Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS = false;
 

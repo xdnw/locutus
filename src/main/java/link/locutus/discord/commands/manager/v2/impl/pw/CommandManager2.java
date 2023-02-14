@@ -30,6 +30,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -138,6 +139,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertDisparity", "margin");
         this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertNoOffer", "no_offers");
         this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertUndercut", "undercut");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "removeInvalidOffshoring", "removeinvalidoffshoring");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveServer", "leaveServer");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
@@ -210,10 +213,21 @@ public class CommandManager2 {
     }
 
     private LocalValueStore createLocals(Guild guild, MessageChannel channel, User user, Message message, IMessageIO io, Map<String, String> fullCmdStr) {
+        if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.contains(guild.getIdLong())) throw new IllegalArgumentException("Unsupported");
+
         LocalValueStore<Object> locals = new LocalValueStore<>(store);
 
         locals.addProvider(Key.of(PermissionHandler.class), permisser);
         locals.addProvider(Key.of(ValidatorStore.class), validators);
+
+        if (Settings.INSTANCE.MODERATION.BANNED_USERS.contains(user.getIdLong())) throw new IllegalArgumentException("Unsupported");
+        DBNation nation = DiscordUtil.getNation(user);
+        if (nation != null) {
+            if (Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation.getId())
+            || Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id())) {
+                throw new IllegalArgumentException("Unsupported");
+            }
+        }
 
         locals.addProvider(Key.of(User.class, Me.class), user);
         locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
@@ -224,7 +238,13 @@ public class CommandManager2 {
             Member member = guild.getMember(user);
             if (member != null) locals.addProvider(Key.of(Member.class, Me.class), member);
             locals.addProvider(Key.of(Guild.class, Me.class), guild);
-            locals.addProvider(Key.of(GuildDB.class, Me.class), Locutus.imp().getGuildDB(guild));
+            GuildDB db = Locutus.imp().getGuildDB(guild);
+            if (db != null) {
+                for (int id : db.getAllianceIds(true)) {
+                    if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(id)) throw new IllegalArgumentException("Unsupported");
+                }
+            }
+            locals.addProvider(Key.of(GuildDB.class, Me.class), db);
         }
         return locals;
     }

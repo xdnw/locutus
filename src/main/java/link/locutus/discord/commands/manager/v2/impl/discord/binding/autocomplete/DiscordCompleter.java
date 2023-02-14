@@ -96,7 +96,7 @@ public class DiscordCompleter extends BindingHelper {
                         return StringMan.autocompleteComma(input.toString(), options, new Function<String, Member>() {
                             @Override
                             public Member apply(String s) {
-                                return DiscordBindings.member(guild, s);
+                                return DiscordBindings.member(guild, null, s);
                             }
                         }, Member::getEffectiveName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
                     }));

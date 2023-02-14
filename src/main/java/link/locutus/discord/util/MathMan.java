@@ -1,5 +1,7 @@
 package link.locutus.discord.util;
 
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+
 import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.util.AbstractMap;
@@ -98,11 +100,13 @@ public class MathMan {
             if (arg.contains(splitBy)) {
                 String[] split = arg.split(splitBy, 2);
                 if (split.length == 2) {
-                    Double b = MathMan.parseDouble(split[1]);
-                    if (b != null) {
-                        BiFunction<Double, Double, Boolean> comparator = splitComparators[i];
-                        return new AbstractMap.SimpleEntry<>(split[0], a -> comparator.apply(a, b));
-                    }
+                    try {
+                        Double b = PrimitiveBindings.Double(split[1]);
+                        if (b != null) {
+                            BiFunction<Double, Double, Boolean> comparator = splitComparators[i];
+                            return new AbstractMap.SimpleEntry<>(split[0], a -> comparator.apply(a, b));
+                        }
+                    } catch (IllegalArgumentException ignore) {}
                 }
                 return null;
             }

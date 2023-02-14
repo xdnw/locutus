@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
@@ -54,7 +55,7 @@ public class GrantCmd extends Command {
 
     @Override
     public String help() {
-        return super.help() + " <nation> <city|infra|land|build|project|unit|warchest> [amount]";
+        return super.help() + " <nation> <city|infra|land|build|project|unit|warchest|mmr=5553|mmrbuy=5553> [amount]";
     }
 
     @Override
@@ -258,6 +259,18 @@ public class GrantCmd extends Command {
             grant.setAmount(amt);
             grant.setInstructions(grantLand(me, (int) amt, resources, force));
             grant.setAllCities();
+        } else if (arg.contains("mmrbuy=")) {
+            MMRDouble mmr = MMRDouble.fromString(arg.split("=")[1]);
+            grant = new Grant(me, Grant.Type.WARCHEST);
+            grant.setAmount(amt);
+            grant.setInstructions(grantMMRBuy(me, mmr, (int) amt, resources, force));
+            grant.setAllCities();
+        } else if (arg.contains("mmr=")) {
+            MMRDouble mmr = MMRDouble.fromString(arg.split("=")[1]);
+            grant = new Grant(me, Grant.Type.WARCHEST);
+            grant.setAmount(amt);
+            grant.setInstructions(grantMMR(me, mmr, (int) amt, resources, force));
+            grant.setAllCities();
         } else if (arg.startsWith("{")) {
             if (arg.contains("infra_needed")) {
                 grant = new Grant(me, Grant.Type.BUILD);
@@ -367,9 +380,18 @@ public class GrantCmd extends Command {
                 if (me.hasProject(project)) {
                     throw new IllegalArgumentException("You already have: " + project.name());
                 }
+                double factor = 1;
+
                 if (me.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
-                    resources = PnwUtil.multiply(resources, 0.95);
+                    factor -= 0.05;
+                    if (me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) {
+                        factor -= 0.025;
+                    }
                 }
+                if (factor != 1) {
+                    resources = PnwUtil.multiply(resources, factor);
+                }
+
                 grant = new Grant(me, Grant.Type.PROJECT);
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/projects/> and purchase " + project.name());
             }
@@ -400,6 +422,65 @@ public class GrantCmd extends Command {
         return grant;
     }
 
+    public String grantMMR(DBNation me, MMRDouble mmr, int numBuys, Map<ResourceType, Double> resources, boolean force) {
+        if (numBuys > 5 && !force) {
+            throw new IllegalArgumentException("You cannot grant more than 5 full buys");
+        }
+
+        StringBuilder response = new StringBuilder();
+        response.append(" - mmr[unit]=" + me.getMMR() + "\n");
+        response.append(" - mmr[build]=" + me.getMMRBuildingStr() + "\n");
+        response.append(" - Cities: " + me.getCities() + "\n\n");
+        response.append("Buy for mmr=" + mmr.toString() + " for " + numBuys + " full buys\n");
+
+        int cities = me.getCities();
+        for (MilitaryUnit unit : MilitaryUnit.values()) {
+            MilitaryBuilding building = unit.getBuilding();
+            if (building == null) continue;
+            double numBuildings = mmr.get(unit) * cities;
+            int numUnitsPerRebuy = (int) (Math.floor(building.max() * numBuildings));
+            int numUnits = numUnitsPerRebuy * numBuys;
+            resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
+            response.append(" - " + numUnits + " x " + unit);
+            if (numBuys != 1) {
+                response.append(" (" + numUnitsPerRebuy + " per full buy)");
+            }
+            response.append("\n");
+        }
+
+        return response.toString();
+    }
+
+    public String grantMMRBuy(DBNation me, MMRDouble mmr, int numBuys, Map<ResourceType, Double> resources, boolean force) {
+        if (numBuys > 5 && !force) {
+            throw new IllegalArgumentException("You cannot grant more than 5 days of buys");
+        }
+
+        StringBuilder response = new StringBuilder();
+        response.append("**Warchest for " + me.getNation() + "**:\n");
+        response.append(" - mmr[unit]=" + me.getMMR() + "\n");
+        response.append(" - mmr[build]=" + me.getMMRBuildingStr() + "\n");
+        response.append(" - Cities: " + me.getCities() + "\n\n");
+        response.append("Buy for mmr=" + mmr.toString() + " over " + numBuys + " days\n");
+
+        int cities = me.getCities();
+        for (MilitaryUnit unit : MilitaryUnit.values()) {
+            MilitaryBuilding building = unit.getBuilding();
+            if (building == null) continue;
+            double numBuildings = mmr.get(unit) * cities;
+            int numUnitsPerDay = (int) (Math.floor(building.perDay() * numBuildings));
+            int numUnits = numUnitsPerDay * numBuys;
+            resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
+            response.append(" - " + numUnits + " x " + unit);
+            if (numBuys != 1) {
+                response.append(" (" + numUnitsPerDay + " per day)");
+            }
+            response.append("\n");
+        }
+
+        return response.toString();
+    }
+
     public String grantLand(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws InterruptedException, ExecutionException, IOException {
         if (numBuy > 2000 && !force) {
             throw new IllegalArgumentException("Land grants >2000 are not approved as they are unprofitable.");
@@ -420,7 +501,12 @@ public class GrantCmd extends Command {
         boolean expansion = me.getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION;
         if (ala) factor -= 0.05;
         if (aec) factor -= 0.05;
-        if (expansion) factor -= 0.05;
+        if (expansion) {
+            factor -= 0.05;
+            if (me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) {
+                factor -= 0.025;
+            }
+        }
         totalCost *= factor;
 
         resources.put(ResourceType.MONEY, totalCost);
@@ -428,7 +514,8 @@ public class GrantCmd extends Command {
         StringBuilder response = new StringBuilder("Go to your cities page and enter `@" + numBuy + "` into the land field.\n" +
                 Projects.ARABLE_LAND_AGENCY + ": " + ala + "\n" +
                 Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec + "\n" +
-                DomesticPolicy.RAPID_EXPANSION + ": " + expansion);
+                DomesticPolicy.RAPID_EXPANSION + ": " + expansion + "\n" +
+                Projects.GOVERNMENT_SUPPORT_AGENCY +": " + me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
 
 //        if (numBuy > 2000) {
 //            JavaCity newCity = new JavaCity(myBuilds.values().iterator().next());
@@ -475,6 +562,7 @@ public class GrantCmd extends Command {
         if (totalCost <= 0) return "You already have " + numBuy + " in your cities";
 
         boolean urbanization = me.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
+        boolean gsa = me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
         boolean cce = me.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
         boolean aec = me.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
 
@@ -483,7 +571,10 @@ public class GrantCmd extends Command {
         }
 
         double factor = 1;
-        if (urbanization) factor -= 0.05;
+        if (urbanization) {
+            factor -= 0.05;
+            if (gsa) factor -= 0.025;
+        }
         if (cce) factor -= 0.05;
         if (aec) factor -= 0.05;
 
@@ -495,7 +586,8 @@ public class GrantCmd extends Command {
         response.append("Go to your cities page and enter `@" + numBuy + "` into the infrastructure field." +
                 "\nUrbanization: " + urbanization +
                 "\n" + Projects.CENTER_FOR_CIVIL_ENGINEERING + ": " + cce + "\n" +
-                Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec);
+                Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec + "\n" +
+                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + gsa);
 
 //        if (numBuy > 1500 && fetchROI) {
 //            JavaCity newCity = new JavaCity(myBuilds.values().iterator().next());

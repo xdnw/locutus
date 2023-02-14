@@ -481,9 +481,7 @@ public class JavaCity {
         };
         valueFunction = modifyValueFunc.apply(valueFunction);
 
-        boolean tradeCenter = hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER);
-
-        return optimalBuild(continent, tradeCenter, valueFunction, goal, finalHasProject, timeout);
+        return optimalBuild(continent, valueFunction, goal, finalHasProject, timeout);
     }
 
     public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout) {
@@ -521,16 +519,15 @@ public class JavaCity {
 
         valueFunction = modifyValueFunc.apply(valueFunction);
 
-        boolean tradeCenter = finalHasProject.test(Projects.INTERNATIONAL_TRADE_CENTER);
-        JavaCity optimal = zeroed.optimalBuild(continent, tradeCenter, valueFunction, goal, finalHasProject, timeout);
+        JavaCity optimal = zeroed.optimalBuild(continent, valueFunction, goal, finalHasProject, timeout);
         return optimal;
     }
 
-    public JavaCity optimalBuild(Continent continent, boolean tradeCenter, Function<JavaCity, Double> valueFunction, Predicate<Project> hasProject, long timeout) {
-        return optimalBuild(continent, tradeCenter, valueFunction, null, hasProject, timeout);
+    public JavaCity optimalBuild(Continent continent, Function<JavaCity, Double> valueFunction, Predicate<Project> hasProject, long timeout) {
+        return optimalBuild(continent, valueFunction, null, hasProject, timeout);
     }
 
-    public JavaCity optimalBuild(Continent continent, boolean tradeCenter, Function<JavaCity, Double> valueFunction, Function<JavaCity, Boolean> goal, Predicate<Project> hasProject, long timeout) {
+    public JavaCity optimalBuild(Continent continent, Function<JavaCity, Double> valueFunction, Function<JavaCity, Boolean> goal, Predicate<Project> hasProject, long timeout) {
         if (goal == null) {
             goal = javaCity -> javaCity.getFreeInfra() < 50;
         }
@@ -676,9 +673,12 @@ public class JavaCity {
 
         int commerce = getMetrics(hasProject).commerce;
         if (commerce > 100) {
-            boolean project = hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER);
-            if (project) {
-                commerce = Math.min(115, metrics.commerce);
+            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+                if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                    commerce = Math.min(125, metrics.commerce + 2);
+                } else {
+                    commerce = Math.min(115, metrics.commerce);
+                }
             } else {
                 commerce = Math.min(100, metrics.commerce);
             }
@@ -724,10 +724,13 @@ public class JavaCity {
                 }
             }
         }
-        boolean project = hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER);
         int commerce = getMetrics(hasProject).commerce;
-        if (project) {
-            commerce = Math.min(115, metrics.commerce);
+        if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+                commerce = Math.min(125, metrics.commerce + 2);
+            } else {
+                commerce = Math.min(115, metrics.commerce);
+            }
         } else {
             commerce = Math.min(100, metrics.commerce);
         }

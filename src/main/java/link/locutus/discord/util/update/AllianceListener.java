@@ -89,7 +89,7 @@ public class AllianceListener {
 
         DBAlliance parent = alliance.findParentOfThisOffshore();
         if (parent != null) {
-            body.append("*Potential offshore for**: " + parent.getMarkdownUrl()).append("\n");
+            body.append("**Potential offshore for**: " + parent.getMarkdownUrl()).append("\n");
         }
 
         body.append(PnwUtil.getUrl(aaId, true));

@@ -969,8 +969,9 @@ public class UtilityCommands {
 
         if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
             for (Map.Entry<Member, GuildDB.UnmaskedReason> entry : db.getMaskedNonMembers().entrySet()) {
-                response.append(entry.getKey().getAsMention());
-                DBNation nation = DiscordUtil.getNation(entry.getKey().getUser());
+                User user = entry.getKey().getUser();
+                response.append("`" + user.getName() + "#" + user.getDiscriminator() + "`" + "`<@" + user.getIdLong() + ">`");
+                DBNation nation = DiscordUtil.getNation(user);
                 if (nation != null) {
                     String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
                     if (nation.getActive_m() > 10000) active = "**" + active + "**";

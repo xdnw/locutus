@@ -101,6 +101,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public synchronized IACategory getIACategory() {
+        return getIACategory(false, false);
+    }
+    public synchronized IACategory getIACategory(boolean create, boolean throwError) {
         GuildDB delegate = getDelegateServer();
         if (delegate != null && delegate.iaCat != null) {
             return delegate.iaCat;
@@ -121,7 +124,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         if (iaCat == null && delegate != null) {
             iaCat = delegate.getIACategory();
         }
-        return iaCat;
+        if (iaCat == null && create) {
+            Category category = guild.createCategory("interview").complete();
+            this.iaCat = new IACategory(this);
+            this.iaCat.load();
+        }
+        if (iaCat == null && throwError) {
+            throw new IllegalStateException("No `interview` category found");
+        }
+        return this.iaCat;
     }
 
     private EventBus eventBus = null;
@@ -193,10 +204,34 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             ApiKeyPool.ApiKey key = nation.getApiKey(false);
             if (key != null) return ApiKeyPool.builder().addKey(key).build();
         }
-        ApiKeyPool pool = getApiPool(getAlliance_id(), false, AlliancePermission.POST_ANNOUNCEMENTS);
-        if (pool != null && pool.size() > 0) return pool;
-        pool = getApiPool(getAlliance_id(), false);
-        return pool != null && pool.size() > 0 ? pool : null;
+
+        Set<Integer> aaIds = getAllianceIds(true);
+        Map.Entry<Integer, String> mailKeysBackup = null;
+        String[] apiKeys = getOrNull(Key.API_KEY);
+        if (apiKeys != null) {
+            for (String key : apiKeys) {
+                Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+                if (nationId != null) {
+                    DBNation nation = DBNation.byId(nationId);
+                    if (nation != null) {
+                        if (aaIds.contains(nation.getAlliance_id())) {
+                            return ApiKeyPool.builder().addKey(nationId, key).build();
+                        } else if (mailKeysBackup == null) {
+                            mailKeysBackup = (Map.entry(nationId, key));
+                        }
+                    }
+                }
+            }
+        }
+        if (mailKeysBackup != null) {
+            return ApiKeyPool.builder().addKey(mailKeysBackup.getKey(), mailKeysBackup.getValue()).build();
+        }
+
+        return null;
+//        ApiKeyPool pool = getApiPool(getAlliance_id(), false, AlliancePermission.POST_ANNOUNCEMENTS);
+//        if (pool != null && pool.size() > 0) return pool;
+//        pool = getApiPool(getAlliance_id(), false);
+//        return pool != null && pool.size() > 0 ? pool : null;
     }
 
     public PoliticsAndWarV2 getApi() {
@@ -1583,9 +1618,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private Throwable warCatError = null;
 
     public WarCategory getWarChannel(boolean throwException) {
+        return getWarChannel(throwException, false);
+    }
+    public WarCategory getWarChannel(boolean throwException, boolean isWarServer) {
         Boolean enabled = getOrNull(Key.ENABLE_WAR_ROOMS, false);
         if (enabled == Boolean.FALSE || enabled == null) {
-            if (throwException) throw new IllegalArgumentException("War rooms are not enabled " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true").toSlashMention() + "");
+            if (throwException) throw new IllegalArgumentException("War rooms are not enabled " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true") + "");
             return null;
         }
         if (!isWhitelisted() && !isValidAlliance()) {
@@ -1607,10 +1645,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     if (throwException) throw new IllegalArgumentException("There is a null war server set " + CM.settings.cmd.create(GuildDB.Key.WAR_SERVER.name(), "null") + "");
                     return null;
                 }
-                return db.getWarChannel(throwException);
+                return db.getWarChannel(throwException, true);
             }
 
-            if (getOrNull(Key.ALLIANCE_ID) != null) {
+            if (getOrNull(Key.ALLIANCE_ID) != null || isWarServer) {
                 if (warChannel == null && !warChannelInit) {
                     warChannelInit = true;
                     boolean allowed = Boolean.TRUE.equals(enabled) || isWhitelisted() || isAllyOfRoot() || getPermission(WarCategory.class) > 0;
@@ -1635,7 +1673,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //            } else if (isWhitelisted()) {
 //                warChannel = new DebugWarChannel(guild, "warcat", "");
             } else if (warChannel == null) {
-                if (throwException) throw new IllegalArgumentException("Please set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + "");
+                if (throwException) throw new IllegalArgumentException("Please set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + " in " + guild);
             }
             return warChannel;
         } catch (Throwable e) {
@@ -2730,10 +2768,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        AUTOROLE_ALLY_ROLES() {
+        AUTOROLE_ALLY_ROLES(false, AUTOROLE_ALLY_GOV, CommandCategory.GUILD_MANAGEMENT) {
             @Override
             public String validate(GuildDB db, String value) {
-                return StringMan.join(((Set<Roles>) parse(db, value)).stream().map(f -> f.name()).collect(Collectors.toList()), ",");
+                return toString(parse(db, value));
             }
 
             @Override
@@ -2744,6 +2782,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 }
                 return roles;
             }
+
+            @Override
+            public String toString(Object value) {
+                return StringMan.join(((Set<Roles>) value).stream().map(f -> f.name()).collect(Collectors.toList()), ",");
+            }
+
             @Override
             public String help() {
                 return "List of roles to autorole from ally servers\n" +
@@ -4278,6 +4322,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     result.put(filter, resources);
                 }
                 return result;
+            }
+
+            @Override
+            public <T> boolean hasPermission(GuildDB db, User author, T value) {
+                return super.hasPermission(db, author, value) && db.getOrNull(Key.RESOURCE_REQUEST_CHANNEL) != null;
             }
 
             @Override

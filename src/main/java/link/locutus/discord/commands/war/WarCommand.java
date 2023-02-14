@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
@@ -49,6 +50,7 @@ public class WarCommand extends Command {
     public String desc() {
         return "Find a weaker war target that you can hit, who is in a specified alliance/coalition/none/*\n" +
                 "Defualts to `enemies` coalition\n" +
+                "Add `score:1234` to specify attacker score\n" +
                 "Add `-i` to include inactives\n" +
                 "Add `-a` to include applicants\n" +
                 "Add `-s` to include strong enemies\n" +
@@ -77,6 +79,11 @@ public class WarCommand extends Command {
         if (me == null) {
             return "Invalid nation? Are you sure you are registered?" + event.getAuthor().getAsMention();
         }
+
+        String scoreStr = DiscordUtil.parseArg(args, "score");
+        double score = scoreStr == null ? me.getScore() : PrimitiveBindings.Double(scoreStr);
+        double minScore = score * 0.75;
+        double maxScore = score * 1.75;
 
         MessageChannel channel;
         if (flags.contains('d')) {
@@ -117,9 +124,6 @@ public class WarCommand extends Command {
                 if (!includeInactives) nations.removeIf(n -> n.getActive_m() >= 2440);
                 nations.removeIf(n -> n.getVm_turns() != 0);
 //                nations.removeIf(n -> n.isBeige());
-
-                double minScore = me.getScore() * 0.75;
-                double maxScore = me.getScore() * 1.75;
 
                 ArrayList<DBNation> tmp = new ArrayList<>();
                 for (DBNation nation : nations) {
@@ -185,9 +189,9 @@ public class WarCommand extends Command {
 
                     GuildDB rootDB = Locutus.imp().getGuildDB(Locutus.imp().getServer());
 
-                    double scoreLow = me.getScore() * 0.75;
-                    double scoreHigh = me.getScore() * 1.25;
-                    double currentStrengthRatio = enemyGraph.apply(scoreLow, scoreHigh) / allyGraph.apply(scoreLow, scoreHigh);
+                    double scoreLow = score * 0.75;
+                    double scoreHigh = score * 1.25;
+                    double currentStrengthRatio = enemyGraph.apply(minScore, scoreHigh) / allyGraph.apply(minScore, scoreHigh);
                     double belowStrengthRatio = enemyGraph.apply(scoreLow * 0.24, scoreLow) / allyGraph.apply(scoreLow * 0.24, scoreLow);
                     double aboveStrengthRatio = enemyGraph.apply(scoreHigh, scoreHigh * 1.25) / allyGraph.apply(scoreHigh, scoreHigh * 1.25);
 
@@ -209,7 +213,7 @@ public class WarCommand extends Command {
                             if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
                             if (nation.getActive_m() > 1440) value *= 1 + Math.sqrt(nation.getActive_m() - 1440) / 250;
                             value /= (1 + nation.getOff() * 0.1);
-                            if (nation.getScore() > me.getScore() * 1.25) value /= 2;
+                            if (nation.getScore() > score * 1.25) value /= 2;
                             if (nation.getOff() > 0) value /= nation.getRelativeStrength();
 
                         }

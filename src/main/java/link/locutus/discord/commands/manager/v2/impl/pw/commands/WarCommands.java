@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -780,6 +781,7 @@ public class WarCommands {
                               @Switch("n") Set<DBNation> nationsToBlitzWith,
                               @Switch("s") @Default("1.2") Double maxRelativeTargetStrength,
                               @Switch("c") @Default("1.2") Double maxRelativeCounterStrength,
+                              @Switch("w") boolean withinAllAttackersRange,
                               @Switch("f") boolean force
     ) {
 
@@ -794,8 +796,20 @@ public class WarCommands {
         List<DBNation> nations = new ArrayList<>(targets);
         nations.removeIf(f -> f.getVm_turns() != 0);
         nations.removeIf(f -> f.getDef() >= 3);
-        nations.removeIf(f -> attScores.apply(f.getScore() / 1.75, f.getScore() * 1.25) <= 0);
         nations.removeIf(f -> f.isBeige());
+        if (withinAllAttackersRange) {
+            if (nationsToBlitzWith == null) {
+                throw new IllegalArgumentException("Please provide a list of nations for `nationsToBlitzWith`");
+            }
+            double minScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).max().orElse(0) * 0.75;
+            double maxScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).min().orElse(0) * 1.75;
+            if (minScore >= maxScore) {
+                throw new IllegalArgumentException("Nations `nationsToBlitzWith` do not share a score range.");
+            }
+            nations.removeIf(f -> f.getScore() < minScore || f.getScore() > maxScore);
+        } else {
+            nations.removeIf(f -> attScores.apply(f.getScore() / 1.75, f.getScore() * 1.25) <= 0);
+        }
 
         if (!ignoreDNR) {
             Function<DBNation, Boolean> dnr = db.getCanRaid();
@@ -987,6 +1001,7 @@ public class WarCommands {
             "Add `-c` to only list enemies with less cities")
     @RolePermission(Roles.MEMBER)
     public String war(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
+                      @Switch("r") Double attackerScore,
                       @Switch("i") boolean includeInactives,
                       @Switch("a") boolean includeApplicants,
                       @Switch("p") boolean onlyPriority,
@@ -998,6 +1013,7 @@ public class WarCommands {
             IMessageIO parent = channel;
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
+        if (attackerScore == null) attackerScore = me.getScore();
 
         String aa = null;
 
@@ -1006,8 +1022,8 @@ public class WarCommands {
         targets.removeIf(n -> n.getVm_turns() != 0);
 //                nations.removeIf(n -> n.isBeige());
 
-        double minScore = me.getScore() * 0.75;
-        double maxScore = me.getScore() * 1.75;
+        double minScore = attackerScore * 0.75;
+        double maxScore = attackerScore * 1.75;
 
         List<DBNation> strong = new ArrayList<>();
 
@@ -1061,7 +1077,7 @@ public class WarCommands {
             if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
             if (nation.getActive_m() > 1440) value *= 1 + Math.sqrt(nation.getActive_m() - 1440) / 250;
             value /= (1 + nation.getOff() * 0.1);
-            if (nation.getScore() > me.getScore() * 1.25) value /= 2;
+            if (nation.getScore() > attackerScore * 1.25) value /= 2;
             if (nation.getOff() > 0) value /= nation.getRelativeStrength();
 
             nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, value));
@@ -2499,7 +2515,7 @@ public class WarCommands {
     @RolePermission(Roles.MILCOM)
     @Command
     public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me IMessageIO channel,
-                              String warsheet, String spysheet,
+                              @Default String warsheet, @Default String spysheet,
                               @Default("*") Set<DBNation> allowedNations, @Default("") String header,
                               @Switch("l") boolean sendFromLocalAccount,
                               @Switch("f") boolean force,
@@ -2679,31 +2695,71 @@ public class WarCommands {
             return null;
         }
 
+        Map<DBNation, String> mailErrors = new LinkedHashMap<>();
+        Map<DBNation, String> dmErrors = new LinkedHashMap<>();
         CompletableFuture<IMessageBuilder> msgFuture = channel.send("Sending messages...");
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
             DBNation attacker = entry.getKey();
             subject = entry.getValue().getKey();
             String body = entry.getValue().getValue();
 
-            attacker.sendMail(keys, subject, body);
-
+            try {
+                attacker.sendMail(keys, subject, body);
+            } catch (Throwable e) {
+                mailErrors.put(attacker, (e.getMessage() + " ").split("\n")[0]);
+                continue;
+            }
             if (dm) {
                 String markup = MarkupUtil.htmlToMarkdown(body);
                 try {
                     attacker.sendDM("**" + subject + "**:\n" + markup);
                 } catch (Throwable e) {
-                    e.printStackTrace();
+                    dmErrors.put(attacker, (e.getMessage() + " ").split("\n")[0]);
                 }
             }
 
             if (System.currentTimeMillis() - start > 10000) {
                 start = System.currentTimeMillis();
-                IMessageBuilder tmp = msgFuture.getNow(null);
-                if (tmp != null) msgFuture = tmp.clear().append("Sending to " + attacker.getNation()).send();
+                if (msgFuture != null) {
+                    IMessageBuilder tmp = msgFuture.getNow(null);
+                    if (tmp != null) msgFuture = tmp.clear().append("Sending to " + attacker.getNation()).send();
+                }
             }
         }
 
-        return "Done, sent " + sent + " messages";
+        StringBuilder errorMsg = new StringBuilder();
+        if (!mailErrors.isEmpty()) {
+            errorMsg.append("Mail errors: ");
+            errorMsg.append(
+                    mailErrors.keySet()
+                            .stream()
+                            .map(f -> f.getNation_id() + "")
+                            .collect(Collectors.joining(","))
+            );
+            for (Map.Entry<DBNation, String> entry : mailErrors.entrySet()) {
+                errorMsg.append(" - " + entry.getKey().getNation_id() + ": " + entry.getValue() + "\n");
+            }
+        }
+
+        if (!dmErrors.isEmpty()) {
+            errorMsg.append("DM errors: ");
+            errorMsg.append(
+                    dmErrors.keySet()
+                            .stream()
+                            .map(f -> f.getNation_id() + "")
+                            .collect(Collectors.joining(","))
+            );
+            for (Map.Entry<DBNation, String> entry : dmErrors.entrySet()) {
+                errorMsg.append(" - " + entry.getKey().getNation_id() + ": " + entry.getValue() + "\n");
+            }
+        }
+
+        IMessageBuilder msg = channel.create();
+        if (!errorMsg.isEmpty()) {
+            msg = msg.file("Errors.txt", errorMsg.toString());
+        }
+        msg.append("Done, sent " + sent + " messages").send();
+        return null;
     }
 
     @RolePermission(Roles.MILCOM)
@@ -2754,7 +2810,7 @@ public class WarCommands {
     @RolePermission(Roles.MILCOM)
     public String blitzSheet(@Me IMessageIO io, @Me User author, @Me GuildDB db, Set<DBNation> attNations, Set<DBNation> defNations, @Default("3") @Range(min=1,max=5) int maxOff,
                              @Default("0") double sameAAPriority, @Default("0") double sameActivityPriority, @Default("-1") @Range(min=-1,max=11) int turn,
-                             @Default("0.5") double attActivity, @Default("0.5") double defActivity,
+                             @Default("0") double attActivity, @Default("0") double defActivity,
                              @Switch("w") boolean processActiveWars,
                              @Switch("e") boolean onlyEasyTargets,
                              @Switch("c") Double maxCityRatio,
@@ -2988,6 +3044,20 @@ public class WarCommands {
         sheet.attach(io.create()).send();
         return null;
     }
+
+//    @RolePermission(value = Roles.MILCOM)
+//    @Command(desc = "List war rooms")
+//    public String listWarRooms(@Me GuildDB db, NationFilter filter) {
+//        WarCategory warCat = db.getWarChannel(true);
+//        for (Map.Entry<Integer, WarCategory.WarRoom> entry : warCat.getWarRoomMap().entrySet()) {
+//            WarCategory.WarRoom room = entry.getValue();
+//            DBNation target = room.target;
+//            for (DBWar war : target.getActiveWars()) {
+//                DBNation other = war.getNation(!war.isAttacker(target));
+//            }
+//        }
+//
+//    }
 
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Generate a sheet with a list of nations attacking\n" +

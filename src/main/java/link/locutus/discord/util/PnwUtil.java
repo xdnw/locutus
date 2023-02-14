@@ -1019,8 +1019,8 @@ public class PnwUtil {
         // Project revenue
         if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.RESOURCE_PRODUCTION_CENTER)) {
             for (ResourceType type : ResourceType.values) {
-                if (type.isRaw()) {
-                    profitBuffer[type.ordinal()] += turns * nation.getCities();
+                if (type.isRaw() && type.getBuilding().canBuild(nation.getContinent())) {
+                    profitBuffer[type.ordinal()] += turns * (Math.min(nation.getCities(), 10));
                 }
             }
         }

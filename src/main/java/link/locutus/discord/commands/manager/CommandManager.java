@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.account.question.Interview;
 import link.locutus.discord.commands.external.account.Login;
 import link.locutus.discord.commands.external.account.Logout;
 import link.locutus.discord.commands.external.guild.CardCommand;
@@ -692,7 +693,7 @@ public class CommandManager {
         ///////// Added
         this.register(new WeeklyInterest()); //
         this.register(new ImportEmoji());
-//        this.register(new Interview());
+        this.register(new Interview());
         this.register(new DummyCommand());
         this.register(new HasRole());
         this.register(new FindTrader());
