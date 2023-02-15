@@ -40,7 +40,7 @@ public class SyncWarRooms extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (guild == null) return "No guild";
         GuildDB guildDB = Locutus.imp().getGuildDB(guild);
-        WarCategory warCat = guildDB.getWarChannel();
+        WarCategory warCat = guildDB.getWarChannel(true);
         if (warCat != null) {
             WarCategory.WarRoom room = warCat.getWarRoom(event.getGuildChannel());
             if (room != null) {

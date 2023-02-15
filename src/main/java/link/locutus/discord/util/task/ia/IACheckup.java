@@ -616,7 +616,7 @@ public class IACheckup {
                 if (nation.getMeta(NationMeta.INTERVIEW_ROI) != null) return null;
 
                 String desc = "National Projects provide nation level benefits:\n" +
-                        "https://politicsandwar.com/nation/projects/\n" +
+                        "<https://politicsandwar.com/nation/projects/>\n" +
                         "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
                         "To see which projects the bot recommends (for a 120 day period), use:\n" +
                         "> " + Settings.commandPrefix(true) + "roi %user% 120\n\n" +

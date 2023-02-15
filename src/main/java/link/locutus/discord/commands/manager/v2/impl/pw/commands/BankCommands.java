@@ -1846,6 +1846,9 @@ public class BankCommands {
     @Command(desc = "Send from your alliance offshore account to another account (internal transfer)")
     @RolePermission(value = Roles.ECON)
     public String sendAA(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me, NationOrAllianceOrGuild receiver, @AllianceDepositLimit Map<ResourceType, Double> amount, @Switch("f") boolean confirm) {
+        if (true) return "WIP";
+        if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
+
         if (!receiver.isAlliance() && !receiver.isGuild()) return "Alliance -> Nation is not supported. Please use " + CM.transfer.resources.cmd.toSlashMention() + " or " + CM.deposits.add.cmd.toSlashMention() + "";
         for (Map.Entry<ResourceType, Double> entry : amount.entrySet()) {
             if (entry.getValue() <= 0 || entry.getValue().isNaN()) return "You cannot send negative amounts for " + entry.getKey();
@@ -1927,6 +1930,8 @@ public class BankCommands {
     @HasOffshore
     @RolePermission(any = true, value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON})
     public String send(@Me JSONObject command, @Me IMessageIO channel, @Me GuildDB db, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me, @Me Map<ResourceType, Double> deposits, NationOrAllianceOrGuild receiver, @NationDepositLimit Map<ResourceType, Double> amount, @Switch("f") boolean confirm) {
+        if (true) return "WIP";
+        if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
 //        if (!receiver.isNation()) return "Nation -> Alliance transfers are not implemented yet";
 
         GuildDB receiverDb = null;
@@ -2449,6 +2454,7 @@ public class BankCommands {
     @Command
     @RolePermission(value = Roles.ADMIN)
     public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance alliance, @Switch("f") boolean force) throws IOException {
+        if (nation.getAgeDays() < 100) return "Please contact <@664156861033086987> | borg#5729";
         if (root.isDelegateServer()) return "Cannot enable offshoring for delegate server (run this command in the root server)";
 
         IMessageBuilder confirmButton = io.create().confirmation(CM.offshore.add.cmd.create(alliance.getId() + ""));

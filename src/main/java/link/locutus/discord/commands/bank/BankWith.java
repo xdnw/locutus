@@ -250,6 +250,7 @@ public class BankWith extends Command {
 
 
         if (!force) {
+
             if (receiver.isNation() && receiver.asNation().getVm_turns() > 0)
                 return "Receiver is in Vacation Mode, add `-f` to bypass.";
             if (receiver.isNation() && receiver.asNation().isGray()) return "Receiver is Gray, add `-f` to bypass.";
@@ -257,6 +258,17 @@ public class BankWith extends Command {
                 return "Receiver is blockaded, add `-f` to bypass.";
             if (receiver.isNation() && receiver.asNation().getActive_m() > 10000) {
                 RateLimitUtil.queue(event.getChannel().sendMessage("!! **WARN**: Receiver is inactive, add `-f` to bypass."));
+            String command = DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
+            List<String> forceErrors = new ArrayList<>();
+            if (receiver.isNation() && receiver.asNation().getVm_turns() > 0) forceErrors.add("Receiver is in Vacation Mode");
+            if (receiver.isNation() && receiver.asNation().isGray()) forceErrors.add("Receiver is Gray");
+            if (receiver.isNation() && receiver.asNation().getNumWars() > 0 && receiver.asNation().isBlockaded()) forceErrors.add("Receiver is blockaded");
+            if (receiver.isNation() && receiver.asNation().getActive_m() > 10000) forceErrors.add(("!! **WARN**: Receiver is inactive"));
+            if (!forceErrors.isEmpty()) {
+                String title = forceErrors.size() + " **ERRORS**!";
+                String body = StringMan.join(forceErrors, "\n");
+                DiscordUtil.createEmbedCommand(event.getChannel(), title, body, "Send Anyway", command);
+                return null;
             }
         }
 

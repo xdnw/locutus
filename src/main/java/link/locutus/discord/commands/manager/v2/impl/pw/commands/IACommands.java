@@ -833,7 +833,9 @@ public class IACommands {
         }
 
         for (DBNation nation : nations) {
-            channel.send(nation.sendMail(key, subject, message) + "");
+            String subjectF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, subject);
+            String messageF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, message);
+            channel.send(nation.sendMail(key, subjectF, messageF) + "");
         }
 
         return "Done sending mail.";
@@ -966,9 +968,6 @@ public class IACommands {
                     }
                 }
             }
-            if (nationPosition != null && nationPosition.hasAnyAdminPermission()) {
-                return "You cannot adjust the position of admins (do that ingame)";
-            }
 
             if (position == DBAlliancePosition.REMOVE) {
                 if (!Roles.ADMIN.has(author, db.getGuild())) {
@@ -984,10 +983,13 @@ public class IACommands {
                     }
                 }
             }
-            // Cannot promote to leader, or any leader perms -> done
-            if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && !Roles.ADMIN.hasOnRoot(author)) {
-                return "You cannot promote to leadership positions (do this ingame)";
-            }
+        }
+        // Cannot promote to leader, or any leader perms -> done
+        if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && !Roles.ADMIN.hasOnRoot(author)) {
+            return "You cannot promote to leadership positions (do this ingame)";
+        }
+        if (nationPosition != null && nationPosition.hasAnyAdminPermission()) {
+            return "You cannot adjust the position of admins (do that ingame)";
         }
 
         List<AlliancePermission> requiredPermissions = new ArrayList<>();
@@ -1481,9 +1483,9 @@ public class IACommands {
     }
 
     @Command(desc = "Create an interview channel")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String interview(User user, @Me GuildDB db) {
-        IACategory iaCat = db.getIACategory();
+    public String interview(@Me GuildDB db, @Me User selfUser, @Default("%user%") User user) {
+        IACategory iaCat = db.getIACategory(true, true);
+
         if (iaCat.getCategories().isEmpty()) {
             return "No categories found starting with: `interview`";
         }

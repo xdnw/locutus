@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -82,6 +83,9 @@ public class CheckCities extends Command {
             nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         }
 
+        Set<Integer> aaIds = db.getAllianceIds(true);
+        if (aaIds.isEmpty()) return "No alliance registered to this guild";
+
         if (nations.isEmpty()) {
             return "No nations found for: `" + args.get(0) + "`" + ". Have they used " + CM.register.cmd.toSlashMention() + " ?";
         }
@@ -91,6 +95,9 @@ public class CheckCities extends Command {
             if (allianceId == -1) allianceId = nation.getAlliance_id();
             if (nation.getAlliance_id() != allianceId) {
                 return "Nation is not in the same alliance: " + nation.getNation();
+            }
+            if (!aaIds.contains(nation.getAlliance_id())) {
+                return "Nation is not in the same alliance: " + nation.getNation() + " != " + StringMan.getString(aaIds);
             }
         }
 

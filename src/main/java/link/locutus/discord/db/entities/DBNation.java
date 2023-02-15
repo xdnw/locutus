@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.Nation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -3051,14 +3052,32 @@ public class DBNation implements NationOrAlliance {
 //            }
 //        }
 
+        long exponentialBackoff = 1000;
         while (true) {
+
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             Map<String, String> post = new HashMap<>();
             post.put("to", getNation_id() + "");
             post.put("subject", subject);
             post.put("message", message);
             String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
-            String result = FileUtil.readStringFromURL(url, post, null);
+            String result;
+            try {
+                result = FileUtil.readStringFromURL(url, post, null);
+            } catch (IOException e) {
+                if (e.getMessage().contains("Server returned HTTP response code: 429")) {
+                    if (exponentialBackoff >= 60000) throw e;
+                    try {
+                        Thread.sleep(exponentialBackoff);
+                    } catch (InterruptedException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    exponentialBackoff = Math.min(60000, exponentialBackoff * 2);
+                    continue;
+                } else {
+                    throw e;
+                }
+            }
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
                 pool.removeKey(pair);
@@ -3071,6 +3090,12 @@ public class DBNation implements NationOrAlliance {
                         return JsonParser.parseString(result).getAsJsonObject();
                     }
                 }
+            }
+            try {
+                return JsonParser.parseString(result).getAsJsonObject();
+            } catch (JsonSyntaxException e) {
+                System.out.println("Error sending mail to " + getNation_id() + " with key " + pair.getKey());
+                System.out.println(result);
             }
             System.out.println("Mail response " + result);
             break;
@@ -4356,5 +4381,9 @@ public class DBNation implements NationOrAlliance {
             return 1.2;
         }
         return 1;
+    }
+
+    public boolean isInWarRange(DBNation target) {
+        return target.getScore() > getScore() * 0.75 && target.getScore() < getScore() * 1.25;
     }
 }

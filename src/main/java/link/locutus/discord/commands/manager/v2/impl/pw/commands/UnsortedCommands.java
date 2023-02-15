@@ -33,6 +33,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasKey;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
@@ -912,8 +913,12 @@ public class UnsortedCommands {
                               NationList nationList, @Default Set<IACheckup.AuditType> audits, @Switch("u") boolean pingUser, @Switch("m") boolean mailResults, @Switch("c") boolean postInInterviewChannels, @Switch("s") boolean skipUpdate) throws Exception {
         Collection<DBNation> nations = nationList.getNations();
         Set<Integer> aaIds = nationList.getAllianceIds();
-        if (aaIds.size() > 1) {
-            return "Nations are not in the same alliance";
+        Set<Integer> allowedAAIds = db.getAllianceIds(true);
+        if (allowedAAIds.isEmpty()) return "No alliance registered to this guild";
+        for (int aaId : aaIds) {
+            if (!allowedAAIds.contains(aaId)) {
+                throw new IllegalArgumentException("You do not have permission to check the alliance `" + aaId + "`");
+            }
         }
 
         if (nations.size() > 1) {
@@ -1165,4 +1170,5 @@ public class UnsortedCommands {
         if (showAll) flags.add('a');
         return new KeyStore().onCommand(io, guild, author, me, cmd, flags);
     }
+
 }
