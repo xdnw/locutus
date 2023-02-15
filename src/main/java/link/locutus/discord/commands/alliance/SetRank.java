@@ -17,11 +17,9 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import org.apache.commons.collections4.map.PassiveExpiringMap;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 public class SetRank extends Command {
     public SetRank() {
@@ -44,8 +42,6 @@ public class SetRank extends Command {
         GuildDB db = Locutus.imp().getGuildDB(server);
         return db.isValidAlliance() && db.hasAuth() && (Roles.INTERNAL_AFFAIRS.has(user, server) || Roles.INTERNAL_AFFAIRS_STAFF.has(user, server));
     }
-
-    PassiveExpiringMap<Long, Integer> demotions = new PassiveExpiringMap<Long, Integer>(60, TimeUnit.MINUTES);
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {

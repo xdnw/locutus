@@ -15,9 +15,8 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.MMRDouble;
-import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -412,10 +411,10 @@ public class GrantCmd extends Command {
         }
 
         StringBuilder response = new StringBuilder();
-        response.append(" - mmr[unit]=" + me.getMMR() + "\n");
-        response.append(" - mmr[build]=" + me.getMMRBuildingStr() + "\n");
-        response.append(" - Cities: " + me.getCities() + "\n\n");
-        response.append("Buy for mmr=" + mmr.toString() + " for " + numBuys + " full buys\n");
+        response.append(" - mmr[unit]=").append(me.getMMR()).append("\n");
+        response.append(" - mmr[build]=").append(me.getMMRBuildingStr()).append("\n");
+        response.append(" - Cities: ").append(me.getCities()).append("\n\n");
+        response.append("Buy for mmr=").append(mmr.toString()).append(" for ").append(numBuys).append(" full buys\n");
 
         int cities = me.getCities();
         for (MilitaryUnit unit : MilitaryUnit.values()) {
@@ -424,10 +423,10 @@ public class GrantCmd extends Command {
             double numBuildings = mmr.get(unit) * cities;
             int numUnitsPerRebuy = (int) (Math.floor(building.max() * numBuildings));
             int numUnits = numUnitsPerRebuy * numBuys;
-            resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
-            response.append(" - " + numUnits + " x " + unit);
+            PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
+            response.append(" - ").append(numUnits).append(" x ").append(unit);
             if (numBuys != 1) {
-                response.append(" (" + numUnitsPerRebuy + " per full buy)");
+                response.append(" (").append(numUnitsPerRebuy).append(" per full buy)");
             }
             response.append("\n");
         }
@@ -441,11 +440,11 @@ public class GrantCmd extends Command {
         }
 
         StringBuilder response = new StringBuilder();
-        response.append("**Warchest for " + me.getNation() + "**:\n");
-        response.append(" - mmr[unit]=" + me.getMMR() + "\n");
-        response.append(" - mmr[build]=" + me.getMMRBuildingStr() + "\n");
-        response.append(" - Cities: " + me.getCities() + "\n\n");
-        response.append("Buy for mmr=" + mmr.toString() + " over " + numBuys + " days\n");
+        response.append("**Warchest for ").append(me.getNation()).append("**:\n");
+        response.append(" - mmr[unit]=").append(me.getMMR()).append("\n");
+        response.append(" - mmr[build]=").append(me.getMMRBuildingStr()).append("\n");
+        response.append(" - Cities: ").append(me.getCities()).append("\n\n");
+        response.append("Buy for mmr=").append(mmr.toString()).append(" over ").append(numBuys).append(" days\n");
 
         int cities = me.getCities();
         for (MilitaryUnit unit : MilitaryUnit.values()) {
@@ -454,10 +453,10 @@ public class GrantCmd extends Command {
             double numBuildings = mmr.get(unit) * cities;
             int numUnitsPerDay = (int) (Math.floor(building.perDay() * numBuildings));
             int numUnits = numUnitsPerDay * numBuys;
-            resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
-            response.append(" - " + numUnits + " x " + unit);
+            PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
+            response.append(" - ").append(numUnits).append(" x ").append(unit);
             if (numBuys != 1) {
-                response.append(" (" + numUnitsPerDay + " per day)");
+                response.append(" (").append(numUnitsPerDay).append(" per day)");
             }
             response.append("\n");
         }
@@ -498,32 +497,9 @@ public class GrantCmd extends Command {
         return "Go to your cities page and enter `@" + numBuy + "` into the land field.\n" +
                 Projects.ARABLE_LAND_AGENCY + ": " + ala + "\n" +
                 Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec + "\n" +
-                DomesticPolicy.RAPID_EXPANSION + ": " + expansion;
                 DomesticPolicy.RAPID_EXPANSION + ": " + expansion + "\n" +
-                Projects.GOVERNMENT_SUPPORT_AGENCY +": " + me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
+                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
 
-//        if (numBuy > 2000) {
-//            JavaCity newCity = new JavaCity(myBuilds.values().iterator().next());
-//            newCity.setLand((double) numBuy);
-//            JavaCity optimal = newCity.optimalBuild(pnwNation, me, 10000);
-//            double[] newProfit = new double[ResourceType.values.length];
-//            if (optimal != null) {
-//                newProfit = optimal.profit(me, pnwNation, newProfit);
-//            }
-//
-//            double[] oldProfit = new double[ResourceType.values.length];
-//            for (Map.Entry<Integer, JavaCity> entry : myBuilds.entrySet()) {
-//                oldProfit = entry.getValue().profit(me, pnwNation, oldProfit);
-//            }
-//
-//            double profit = PnwUtil.convertedTotal(newProfit) * pnwNation.getCities() - PnwUtil.convertedTotal(oldProfit);
-//            response.append("\nProfit/day: $").append(MathMan.format(profit));
-//            double roi =( ((profit * 120 - totalCost) / totalCost) * 7 * 100 / 120);
-//            response.append("\nROI/120d: ").append(MathMan.format(roi)).append("%");
-//
-//        }
-
-        return response.toString();
     }
 
     public String grantInfra(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws InterruptedException, ExecutionException, IOException {
@@ -571,37 +547,8 @@ public class GrantCmd extends Command {
         return "Go to your cities page and enter `@" + numBuy + "` into the infrastructure field." +
                 "\nUrbanization: " + urbanization +
                 "\n" + Projects.CENTER_FOR_CIVIL_ENGINEERING + ": " + cce + "\n" +
-                Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec;
                 Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec + "\n" +
-                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + gsa);
-
-//        if (numBuy > 1500 && fetchROI) {
-//            JavaCity newCity = new JavaCity(myBuilds.values().iterator().next());
-//            newCity.clear();
-//            newCity.setInfra(numBuy);
-//            JavaCity optimal = newCity.optimalBuild(pnwNation, me, 10000);
-//            double[] newProfit = new double[ResourceType.values.length];
-//            if (optimal != null) {
-//                for (Map.Entry<Integer, JavaCity> entry : myBuilds.entrySet()) {
-//                    JavaCity newCityX = new JavaCity(optimal);
-//                    JavaCity oldCityX = entry.getValue();
-//                    newCityX.setAge(oldCityX.getAge());
-//                    newProfit = newCityX.profit(me, pnwNation, newProfit);
-//                }
-//            }
-//
-//            double[] oldProfit = new double[ResourceType.values.length];
-//            for (Map.Entry<Integer, JavaCity> entry : myBuilds.entrySet()) {
-//                oldProfit = entry.getValue().profit(me, pnwNation, oldProfit);
-//            }
-//
-//            double profit = PnwUtil.convertedTotal(newProfit) - PnwUtil.convertedTotal(oldProfit);
-//            response.append("\nProfit/day: $").append(MathMan.format(profit));
-//            double roi =( ((profit * 120 - totalCost) / totalCost) * 7 * 100 / 120);
-//            response.append("\nROI/120d: ").append(MathMan.format(roi)).append("%");
-//        }
-
-        return response.toString();
+                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + gsa;
     }
 
     public String grantCity(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) {

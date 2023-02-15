@@ -174,24 +174,6 @@ public class RegisterCommand extends Command {
 
         if (!force) {
             try {
-//                String endpoint = "" + Settings.INSTANCE.PNW_URL() + "/api/discord/getDiscordFromNation.php?access_key=%s&nation_id=%s";
-//                endpoint = String.format(endpoint, Settings.INSTANCE.DISCORD.ACCESS_KEY, nationId);
-
-//                String json = FileUtil.readStringFromURL(endpoint);
-//                JsonObject obj = new JsonParser().parse(json).getAsJsonObject();
-//
-//                boolean success = obj.get("success").getAsBoolean();
-//                String error = null;
-//                if (!obj.has("discord_username")) return "Unknown nation: " + nationId;
-//
-//                String pnwDiscordName = obj.get("discord_username").getAsString();
-//                if (!success) {
-//                    errorMsg = obj.get("err_msg") + "\n\n" + errorMsg;
-//                }
-//                if (success && (pnwDiscordName == null || pnwDiscordName.isEmpty())) {
-//                    success = false;
-//                }
-
                 DBNation nation = new DBNation();
                 nation.setNation_id(nationId);
                 String pnwDiscordName = nation.fetchUsername();
@@ -216,9 +198,7 @@ public class RegisterCommand extends Command {
                     registerMessage += "\n" + "Error: " + errorMsg;
                 }
                 return registerMessage;
-            } catch (InsufficientPermissionException | HierarchyException e) {
-                return e.getMessage();
-            } catch (IOException e) {
+            } catch (InsufficientPermissionException | HierarchyException | IOException e) {
                 return e.getMessage();
             } catch (Throwable e) {
                 e.printStackTrace();

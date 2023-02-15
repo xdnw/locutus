@@ -143,29 +143,10 @@ public class Deposits extends Command {
                 double[] deposits = offshore.getDeposits(otherDb);
                 String name = otherDb.getGuild().getName();
                 accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSITS, deposits));
-                long id = Long.parseLong(arg);
-                GuildDB otherDb = Locutus.imp().getGuildDB(id);
-                if (otherDb != null) {
-                    OffshoreInstance offshore = otherDb.getOffshore();
-                    if (offshore == null)
-                        return "No offshore is set. In this server, use " + CM.coalition.add.cmd.create(otherDb.getIdLong() + "", Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create(otherDb.getIdLong() + "", Coalition.OFFSHORING.name()) + "";
-                    if (!Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_LOW_GOV.has(author, otherDb.getGuild()))
-                        return "You do not have permission to check another guild's deposits";
+                if (!Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_LOW_GOV.has(author, otherDb.getGuild()))
+                    return "You do not have permission to check another guild's deposits";
 
-                    double[] deposits = offshore.getDeposits(otherDb);
-                    String name = otherDb.getGuild().getName();
-                    accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSITS, deposits));
-                } else if (!guildDb.isOffshore()) {
-                    return "Unknown guild: : `" + arg + "`";
-                } else {
-                    if (!Roles.ECON.has(author, guildDb.getGuild())) {
-                        return "You do not have permission to check another guild's deposits";
-                    }
-                    OffshoreInstance offshore = guildDb.getOffshore();
-                    double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(id, true));
-                    String name = id + "";
-                    accountDeposits.put(name + "(removed guild)", Collections.singletonMap(DepositType.DEPOSITS, deposits));
-                }
+                accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSITS, deposits));
             } else if (nation == null && PnwUtil.parseAllianceId(arg) != null) {
                 Integer allianceId = PnwUtil.parseAllianceId(arg);
                 GuildDB otherDb = Locutus.imp().getGuildDBByAA(allianceId);
@@ -174,14 +155,8 @@ public class Deposits extends Command {
                     offshore = otherDb.getOffshore();
                     if (offshore == null) {
                         return "No offshore set.";
-                        if (flags.contains('f')) {
-                            offshore = guildDb.getHandler().getBank();
-                        }
-                        if (offshore == null) {
-                            return "No offshore set";
-                        }
                     }
-                } else if(!guildDb.isOffshore()) {
+                } else if (!guildDb.isOffshore()) {
                     return "Unknown guild for AA:" + allianceId;
                 } else {
                     offshore = guildDb.getOffshore();

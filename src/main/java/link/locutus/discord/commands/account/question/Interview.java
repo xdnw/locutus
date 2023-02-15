@@ -3,8 +3,8 @@ package link.locutus.discord.commands.account.question;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -98,63 +98,5 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
         }
 
         return channel.getAsMention();
-
-
-//        GuildDB db = Locutus.imp().getGuildDB(guild);
-//        if (args.isEmpty()) {
-//            Category category = db.getOrThrow(GuildDB.Key.INTERVIEW_CATEGORY);
-//            GuildMessageChannel alertChannel = db.getOrNull(GuildDB.Key.INTERVIEW_PENDING_ALERTS);
-//
-//            Role applicantRole = Roles.APPLICANT.toRole(guild);
-//            Role interviewerRole = Roles.INTERVIEWER.toRole(guild);
-//
-//            String channelName = author.getId();
-//            GuildMessageChannel interviewChannel = null;
-//
-//            Member member = guild.getMember(author);
-//
-//            for (GuildMessageChannel GuildMessageChannel : category.getTextChannels()) {
-//                if (GuildMessageChannel.getName().contains(channelName)) {
-//                    interviewChannel = GuildMessageChannel;
-//                    break;
-//                }
-//            }
-//
-//            if (interviewChannel == null) {
-//                interviewChannel = link.locutus.discord.util.RateLimitUtil.complete(category.createTextChannel(channelName));
-//
-//                guild.addRoleToMember(author.getIdLong(), link.locutus.discord.util.RateLimitUtil.queue(applicantRole));
-//
-//                if (alertChannel != null) {
-//                    String title = "New applicant";
-//
-//                    String emoji = "✅";
-//
-//                    StringBuilder body = new StringBuilder();
-//                    body.append("User: " + author.getAsMention() + "\n");
-//                    DBNation nation = DiscordUtil.getNation(author);
-//                    if (nation != null) {
-//                        body.append("nation: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + "\n");
-//                    }
-//                    body.append("Channel: " + interviewChannel.getAsMention() + "\n\n");
-//                    body.append("The first on the trigger, react with the " + emoji + " emoji");
-//
-//                    String pending = Settings.commandPrefix(true) + "pending 'Interview Assigned' '@%user% in " + interviewChannel.getAsMention() + "'";
-//
-//                    DiscordUtil.createEmbedCommand(alertChannel, title, body.toString(), emoji, pending);
-//
-//                    if (interviewerRole != null) {
-//                        interviewChannel.sendMessage("^ " + interviewerRole.getAsMention());
-//                    }
-//                }
-//                // ping interviewer
-//            }
-//
-//            link.locutus.discord.util.RateLimitUtil.queue(interviewChannel.sendMessage(author.getAsMention()).complete().delete());
-//            // ping the user in the c
-//
-//            return null;
-//        }
-
     }
 }

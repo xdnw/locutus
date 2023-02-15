@@ -34,6 +34,66 @@ public class Disperse extends Command {
         super("disburse", "disperse", CommandCategory.ECON);
     }
 
+    public static String disperse(GuildDB db, Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs, String note, IMessageIO channel, String title) throws GeneralSecurityException, IOException {
+        if (fundsToSendNations.isEmpty() && fundsToSendAAs.isEmpty()) {
+            return "No funds need to be sent.";
+        }
+        Map<ResourceType, Double> total = new LinkedHashMap<>();
+        List<String> postScript = new ArrayList<>();
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : fundsToSendNations.entrySet()) {
+            total = PnwUtil.add(total, entry.getValue());
+            postScript.add(PnwUtil.getPostScript(entry.getKey().getNation(), true, entry.getValue(), note));
+        }
+        for (Map.Entry<DBAlliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
+            postScript.add(PnwUtil.getPostScript(entry.getKey().getName(), false, entry.getValue(), note));
+        }
+
+        if (fundsToSendNations.size() == 1 && fundsToSendAAs.isEmpty()) {
+            Map.Entry<DBNation, Map<ResourceType, Double>> entry = fundsToSendNations.entrySet().iterator().next();
+            DBNation nation = entry.getKey();
+            title += " to " + nation.getNation() + " | " + nation.getAllianceName();
+
+            Map<ResourceType, Double> transfer = entry.getValue();
+            String post = JsonUtil.toPrettyFormat(PnwUtil.getPostScript(nation.getNation(), true, transfer, note));
+
+            UUID uuid = UUID.randomUUID();
+            BankWith.authorized.add(uuid);
+            String token = "-g:" + uuid;
+
+            String command = "_" + Settings.commandPrefix(true) + "transfer \"" + note + "\" " + nation.getNationUrl() + " " + StringMan.getString(total) + " " + token;
+
+            String body = "```" + post + "```\n" + nation.getNationUrlMarkup(true) + "\n" +
+                    "Worth: $" + MathMan.format(PnwUtil.convertedTotal(total));
+            channel.create().embed(title, body)
+                    .commandButton(command, "Confirm")
+                    .cancelButton()
+                    .send();
+        } else {
+
+            String arr = JsonUtil.toPrettyFormat("[" + StringMan.join(postScript, ",") + "]");
+
+
+            TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, fundsToSendAAs).build();
+
+            String emoji = "Confirm.";
+            String cmd = Settings.commandPrefix(false) + "transfer Bulk " + sheet.getSheet().getURL() + " " + note;
+
+            StringBuilder response = new StringBuilder();
+            response.append("Total: $").append(MathMan.format(PnwUtil.convertedTotal(total))).append(": `").append(PnwUtil.resourcesToString(total)).append("`\n");
+            response.append("Info: Use the extension to disburse from offshore or Press `").append(emoji).append("` to run:\n").append("`").append(Settings.commandPrefix(false)).append("transfer Bulk <sheet> ").append(note).append("`");
+
+
+            IMessageBuilder msg = channel.create();
+            sheet.getSheet().attach(msg, response, false, 0);
+            msg.file("transfer.json", arr);
+            msg.embed("Disperse", response.toString());
+            msg.commandButton(cmd, emoji);
+
+            msg.send();
+        }
+        return null;
+    }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.MEMBER.has(user, server) && (checkPermission(server, user, true) || Locutus.imp().getGuildDB(server).getOffshore() != null);
@@ -165,65 +225,5 @@ public class Disperse extends Command {
             e.printStackTrace();
             throw e;
         }
-    }
-
-    public static String disperse(GuildDB db, Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs, String note, IMessageIO channel, String title) throws GeneralSecurityException, IOException {
-        if (fundsToSendNations.isEmpty() && fundsToSendAAs.isEmpty()) {
-            return "No funds need to be sent.";
-        }
-        Map<ResourceType, Double> total = new LinkedHashMap<>();
-        List<String> postScript = new ArrayList<>();
-        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : fundsToSendNations.entrySet()) {
-            total = PnwUtil.add(total, entry.getValue());
-            postScript.add(PnwUtil.getPostScript(entry.getKey().getNation(), true, entry.getValue(), note));
-        }
-        for (Map.Entry<DBAlliance, Map<ResourceType, Double>> entry : fundsToSendAAs.entrySet()) {
-            postScript.add(PnwUtil.getPostScript(entry.getKey().getName(), false, entry.getValue(), note));
-        }
-
-        if (fundsToSendNations.size() == 1 && fundsToSendAAs.isEmpty()) {
-            Map.Entry<DBNation, Map<ResourceType, Double>> entry = fundsToSendNations.entrySet().iterator().next();
-            DBNation nation = entry.getKey();
-            title += " to " + nation.getNation() + " | " + nation.getAllianceName();
-
-            Map<ResourceType, Double> transfer = entry.getValue();
-            String post = JsonUtil.toPrettyFormat(PnwUtil.getPostScript(nation.getNation(), true, transfer, note));
-
-            UUID uuid = UUID.randomUUID();
-            BankWith.authorized.add(uuid);
-            String token = "-g:" + uuid;
-
-            String command = "_" + Settings.commandPrefix(true) + "transfer \"" + note + "\" " + nation.getNationUrl() + " " + StringMan.getString(total) + " " + token;
-
-            String body = "```" + post + "```\n" + nation.getNationUrlMarkup(true) + "\n" +
-                    "Worth: $" + MathMan.format(PnwUtil.convertedTotal(total));
-            channel.create().embed(title, body)
-                    .commandButton(command, "Confirm")
-                    .cancelButton()
-                    .send();
-        } else {
-
-            String arr = JsonUtil.toPrettyFormat("[" + StringMan.join(postScript, ",") + "]");
-
-
-            TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, fundsToSendAAs).build();
-
-            String emoji = "Confirm.";
-            String cmd = Settings.commandPrefix(false) + "transfer Bulk " + sheet.getSheet().getURL() + " " + note;
-
-            StringBuilder response = new StringBuilder();
-            response.append("Total: $").append(MathMan.format(PnwUtil.convertedTotal(total))).append(": `").append(PnwUtil.resourcesToString(total)).append("`\n");
-            response.append("Info: Use the extension to disburse from offshore or Press `").append(emoji).append("` to run:\n").append("`").append(Settings.commandPrefix(false)).append("transfer Bulk <sheet> ").append(note).append("`");
-
-
-            IMessageBuilder msg = channel.create();
-            sheet.getSheet().attach(msg, response, false, 0);
-            msg.file("transfer.json", arr);
-            msg.embed("Disperse", response.toString());
-            msg.commandButton(cmd, emoji);
-
-            msg.send();
-        }
-        return null;
     }
 }

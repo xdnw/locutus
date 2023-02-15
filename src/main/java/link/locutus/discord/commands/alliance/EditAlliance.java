@@ -52,7 +52,6 @@ public class EditAlliance extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Auth auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
         if (auth == null) return "No authorization set.";
-        int allianceId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
 
         EditAllianceTask task = new EditAllianceTask(auth.getNation(), post -> {
             if (args.size() == 0) {

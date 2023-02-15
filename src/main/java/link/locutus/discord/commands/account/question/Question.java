@@ -12,13 +12,16 @@ import java.io.IOException;
 import java.util.Map;
 
 public interface Question {
-    public String getContent();
-    public boolean isValidateOnInit();
-    public String[] getOptions();
+    String getContent();
+
+    boolean isValidateOnInit();
+
+    String[] getOptions();
 
     default boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
         return true;
     }
+
     default String format(Guild guild, User author, DBNation me, GuildMessageChannel channel, String message) {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         message = DiscordUtil.format(guild, channel, author, me, message);
