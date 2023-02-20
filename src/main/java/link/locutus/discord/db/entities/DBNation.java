@@ -29,7 +29,6 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -60,7 +59,6 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -657,7 +655,7 @@ public class DBNation implements NationOrAlliance {
     public Auth auth = null;
 
     public String setTaxBracket(TaxBracket bracket, Auth auth) {
-        if (bracket.getAllianceId() != alliance_id) throw new UnsupportedOperationException("Not in alliance");
+        if (bracket.getAlliance_id() != alliance_id) throw new UnsupportedOperationException("Not in alliance");
 
         Map<String, String> post = new HashMap<>();
         post.put("bracket_id", "" + bracket.taxId);
@@ -748,6 +746,38 @@ public class DBNation implements NationOrAlliance {
 
     public boolean isFightingEnemyOfScore(Predicate<Double> filter) {
         return getStrongestEnemyOfScore(filter) != -1;
+    }
+
+    public boolean isFightingEnemyOfCities(Predicate<Double> filter) {
+        for (DBWar war : getWars()) {
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other != null && filter.test((double) other.getCities())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isDefendingEnemyOfCities(Predicate<Double> filter) {
+        for (DBWar war : getWars()) {
+            if (war.defender_id != nation_id) continue;
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other != null && filter.test((double) other.getCities())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isAttackingEnemyOfCities(Predicate<Double> filter) {
+        for (DBWar war : getWars()) {
+            if (war.attacker_id != nation_id) continue;
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other != null && filter.test((double) other.getCities())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Auth getAuth(Roles role) {

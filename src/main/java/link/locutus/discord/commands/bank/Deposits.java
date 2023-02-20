@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.NationMeta;
@@ -14,6 +15,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -139,7 +141,12 @@ public class Deposits extends Command {
 
         for (String arg : split) {
             DBNation nation = DiscordUtil.parseNation(arg);
-            if (arg.equalsIgnoreCase("*")) {
+            if (arg.contains("tax_id=")) {
+                int taxId = PnwUtil.parseTaxId(arg);
+
+                Map<DepositType, double[]> deposits = guildDb.getTaxBracketDeposits(taxId, cutOff, includeExpired, includeIgnored);
+                accountDeposits.put("tax_id=" + taxId, deposits);
+            } else if (arg.equalsIgnoreCase("*")) {
                 OffshoreInstance offshore = guildDb.getOffshore();
                 if (offshore == null) return "No offshore found";
                 GuildDB offshoreDb = guildDb.getOffshoreDB();
