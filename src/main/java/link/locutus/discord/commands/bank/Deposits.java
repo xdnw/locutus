@@ -7,13 +7,9 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -55,16 +51,6 @@ public class Deposits extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;
-    }
-
-    public void largest(Map<ResourceType, Double> total, Map<ResourceType, Double> local) {
-        for (Map.Entry<ResourceType, Double> entry : local.entrySet()) {
-            ResourceType type = entry.getKey();
-            total.put(type, Math.max(entry.getValue(), total.getOrDefault(type, 0d)));
-            if (total.get(type) <= 0) {
-                total.remove(type);
-            }
-        }
     }
 
     @Override
