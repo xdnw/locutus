@@ -637,15 +637,15 @@ public class GuildHandler {
     }
 
     public Double getWithdrawLimit(int banker) {
+        ByteBuffer nationLimitBytes = db.getMeta(banker, NationMeta.BANKER_WITHDRAW_LIMIT);
+        if (nationLimitBytes != null) {
+            return nationLimitBytes.getDouble();
+        }
         Double defaultWithdrawLimit = getDb().getOrNull(GuildDB.Key.BANKER_WITHDRAW_LIMIT);
         if (defaultWithdrawLimit != null) {
-            ByteBuffer nationLimitBytes = db.getMeta(banker, NationMeta.BANKER_WITHDRAW_LIMIT);
-            if (nationLimitBytes != null) {
-                double nationLimit = nationLimitBytes.getDouble();
-                return nationLimit;
-            }
+            return defaultWithdrawLimit;
         }
-        return defaultWithdrawLimit;
+        return null;
     }
 
     public void setWithdrawLimit(int banker, double amt) {
@@ -1464,6 +1464,35 @@ public class GuildHandler {
         MessageChannel channel = getDb().getOrNull(GuildDB.Key.OFFENSIVE_WAR_CHANNEL);
         if (channel == null) return;
         onWarAlert(channel, wars, rateLimit, true);
+
+        // TODO audit for raiding inactive with terrible loot
+        handleBadLootAudit(wars);
+    }
+
+    public void handleBadLootAudit(List<Map.Entry<DBWar, DBWar>> wars) {
+        if (true) return;
+        for (Map.Entry<DBWar, DBWar> entry : wars) {
+            DBWar war = entry.getValue();
+            if (entry.getKey() != null || war == null) continue;
+            DBNation defender = war.getNation(false);
+            if (defender == null) continue;
+            DBNation attacker = war.getNation(true);
+            if (attacker == null) continue;
+
+            LootEntry lootInfo = defender.getBeigeLoot();
+            if (lootInfo == null) continue;
+            if (defender.lastActiveMs() > lootInfo.getDate()) continue;
+
+            Set<DBNation> targets = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() == 0 && attacker.isInWarRange(f));
+            if (targets.isEmpty()) continue;
+
+
+
+
+            double revenue = PnwUtil.convertedTotal(defender.getRevenue());
+
+
+        }
     }
 
     public void onWarAlert(MessageChannel channel, List<Map.Entry<DBWar, DBWar>> wars, boolean rateLimit, boolean offensive) {
@@ -2356,7 +2385,7 @@ public class GuildHandler {
             if (aaId == null) return;
 
             Set<DBNation> members = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
-            members.removeIf(f -> f.getPosition() < Rank.LEADER.id);
+            members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
             members.removeIf(f -> f.getActive_m() > 2880);
             members.removeIf(f -> f.getVm_turns() > 0);
             members.removeIf(DBNation::isGray);
@@ -2538,6 +2567,21 @@ public class GuildHandler {
         if (!blockaded) {
             nation.deleteMeta(NationMeta.UNBLOCKADE_REASON);
         }
+    }
+
+    public void procesRewards() {
+        if (!db.isAlliance()) return;
+        Map<NationFilterString, double[]> rewards = getDb().getOrNull(GuildDB.Key.MEMBER_REWARDS);
+        if (rewards == null || rewards.isEmpty()) return;
+        MessageChannel rssChannel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+        if (rssChannel == null) return;
+        Set<Integer> aaIds = db.getAllianceIds(true);
+        if (aaIds.isEmpty()) return;
+
+        if (true) throw new UnsupportedOperationException("TODO FIXME MULTI ALLIANCE SUPPORT");
+        Set<DBNation> nations = new HashSet<>(); // TODO fixme
+
+
     }
 
     public void processEscrow(DBNation receiver) {

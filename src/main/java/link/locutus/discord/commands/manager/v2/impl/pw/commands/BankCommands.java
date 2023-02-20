@@ -1,8 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.bank.Disperse;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
@@ -48,7 +46,6 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.DepositRawTask;
-import link.locutus.discord.util.task.balance.BankWithTask;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -60,7 +57,6 @@ import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -109,6 +105,19 @@ public class BankCommands {
 //            "Add `-r` to run it recursively for various infra levels")
 //    @RolePermission(Roles.MEMBER)
 //    public String roi()
+
+//    @Command(desc = "Deposit resources into the alliance bank")
+//    @RolePermission(Roles.MEMBER)
+//    @IsAlliance
+//    public String depositResources(@Me Member member, @Me GuildDB db, @Me DBNation nation, Set<DBNation> nations,
+//                                   @Default("5") Integer rawsDays,
+//                                   @Default("1") Double warchestFactor,
+//                                   @Default Map<ResourceType, Double> warchestPerCity,
+//                                   @Default Map<ResourceType, Double> warchestTotal,
+//                                   @Default Map<MilitaryUnit, Integer> unitResources,
+//                                   @Default String note) {
+//        //  <nations> <raws-days> <warchest-per-city> <warchest-total> <warchest-modifier> <unit-resources> <note>
+//    }
 
     @Command(desc = "Queue a transfer offshore (with authorization)\n" +
             "`aa-warchest` is how much to leave in the AA bank - in the form `{money=1,food=2}`\n" +
@@ -284,7 +293,6 @@ public class BankCommands {
         Collection<String> allowedLabels = Arrays.asList("#grant", "#deposit", "#trade", "#ignore", "#tax", "#warchest", "#account");
         if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
 
-
         Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
         if (aaId != null) note += "=" + aaId;
         else {
@@ -294,6 +302,7 @@ public class BankCommands {
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
         Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
 
+        List<String> errorList = new ArrayList<>();
         Collection<DBNation> nations = nationList.getNations();
         if (nations.size() != 1 || !force) {
             nations.removeIf(n -> n.getPosition() <= 1);
@@ -303,7 +312,6 @@ public class BankCommands {
             nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
         }
 
-        List<String> errorList = new ArrayList<>();
         Consumer<String> updateTask = io::send;
         Consumer<String> errors = errorList::add;
 
@@ -2405,7 +2413,7 @@ public class BankCommands {
             Map<Integer, TaxBracket> allAllianceBrackets = Locutus.imp().getBankDB().getTaxBracketsAndEstimates();
             for (Map.Entry<Integer, TaxBracket> entry : allAllianceBrackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
-                if (allianceIds.contains(bracket.getAllianceId(false))) {
+                if (allianceIds.contains(bracket.getAlliance_id(false))) {
                     brackets.put(entry.getKey(), bracket);
                 }
             }

@@ -1162,6 +1162,18 @@ public class DiscordUtil {
                         nations.removeIf(n -> !filter.getValue().apply(n.isPowered() ? 1d : 0d));
                         continue;
                     }
+                    case "#fightingenemyofcities": {
+                        nations.removeIf(n -> !n.isFightingEnemyOfCities(filter.getValue()::apply));
+                        continue;
+                    }
+                    case "#defendingenemyofcities": {
+                        nations.removeIf(n -> !n.isDefendingEnemyOfCities(filter.getValue()::apply));
+                        continue;
+                    }
+                    case "#attackingenemyofcities": {
+                        nations.removeIf(n -> !n.isAttackingEnemyOfCities(filter.getValue()::apply));
+                        continue;
+                    }
                     case "#fightingenemyofscore": {
                         nations.removeIf(n -> !n.isFightingEnemyOfScore(filter.getValue()::apply));
                         continue;

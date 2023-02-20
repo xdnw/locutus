@@ -1339,4 +1339,8 @@ public class PnwUtil {
         }
         return revenue;
     }
+
+    public static String getTaxUrl(int taxId) {
+        return String.format("" + Settings.INSTANCE.PNW_URL() + "/index.php?id=15&tax_id=%s", taxId);
+    }
 }
