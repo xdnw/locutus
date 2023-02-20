@@ -988,7 +988,7 @@ public class IACommands {
         if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && !Roles.ADMIN.hasOnRoot(author)) {
             return "You cannot promote to leadership positions (do this ingame)";
         }
-        if (nationPosition != null && nationPosition.hasAnyAdminPermission()) {
+        if ((nationPosition != null && nationPosition.hasAnyAdminPermission()) || nation.getPositionEnum().id >= Rank.HEIR.id) {
             return "You cannot adjust the position of admins (do that ingame)";
         }
 
@@ -998,6 +998,7 @@ public class IACommands {
         if (position == DBAlliancePosition.REMOVE || position == DBAlliancePosition.APPLICANT) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
         Auth auth = db.getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
         if (auth == null) return "No auth for this guild found for: " + StringMan.getString(requiredPermissions);
+        if (auth.getNationId() == nation.getNation_id()) return "You cannot change position of the nation connected to Locutus.";
 
         User discordUser = nation.getUser();
 
