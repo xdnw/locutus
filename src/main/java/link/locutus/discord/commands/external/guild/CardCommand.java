@@ -8,7 +8,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -60,10 +59,10 @@ public class CardCommand extends Command implements Noformat {
 
         if (commands.size() > 10) {
             return "Too many commands (max: 10, provided: " + commands.size() + ")\n" +
-                    "Note: Commands must be inside \"double quotes\", and each subsequent command separated by a space";
+                    "Note: Commands must be inside \"double quotes\", and each subsequent command separated by a space.";
         }
 
-        ArrayList<String> reactions = new ArrayList<String>();
+        ArrayList<String> reactions = new ArrayList<>();
         for (int i = 0; i < commands.size(); i++) {
             String cmd = commands.get(i);
             String codePoint = i + emoji;

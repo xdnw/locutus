@@ -13,23 +13,19 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class KeyStore extends Command implements Noformat {
     public KeyStore() {
         super(CommandCategory.GUILD_MANAGEMENT);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.hasAny(user, server, Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS);
@@ -44,7 +40,7 @@ public class KeyStore extends Command implements Noformat {
     public String desc() {
         return "Use `" + Settings.commandPrefix(true) + "KeyStore <key>` for info about a setting\n" +
                 "Use `" + Settings.commandPrefix(true) + "KeyStore <key> null` to remove a setting\n" +
-                "Add `-a` to list all settings (even unavailable ones)";
+                "Add `-a` to list all settings.";
     }
 
     @Override
@@ -57,7 +53,7 @@ public class KeyStore extends Command implements Noformat {
 
         Integer page = DiscordUtil.parseArgInt(args, "page");
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        if (db == null) return "Command must run in a guild";
+        if (db == null) return "Command must run in a guild.";
         if (args.size() != 2) {
             if (args.size() == 1) {
                 GuildDB.Key key = GuildDB.Key.valueOf(args.get(0).toUpperCase());
@@ -90,9 +86,9 @@ public class KeyStore extends Command implements Noformat {
                             if (setValueStr.length() > 21) {
                                 setValueStr = setValueStr.substring(0, 20) + "..";
                             }
-                            response.append(" - `" + key.name() + "`=" + setValueStr + "").append("\n");
+                            response.append(" - `").append(key.name()).append("`=").append(setValueStr).append("\n");
                         } else {
-                            response.append(" - `" + key.name()).append("`\n"); //  + "`: " + key.help()
+                            response.append(" - `").append(key.name()).append("`\n"); //  + "`: " + key.help()
                         }
                     }
                 }
@@ -124,8 +120,8 @@ public class KeyStore extends Command implements Noformat {
             return null;
         }
         GuildDB.Key key = GuildDB.Key.valueOf(args.get(0).toUpperCase());
-        if (!key.hasPermission(db, author, null)) return "No permission to modify that key";
-        if (!key.allowed(db)) return "This guild does not have permission to set this key";
+        if (!key.hasPermission(db, author, null)) return "No permission for modify that key.";
+        if (!key.allowed(db)) return "This guild does not have permission to set this key.";
 
         String value = args.get(1);
         if (key == GuildDB.Key.API_KEY) {
@@ -133,7 +129,8 @@ public class KeyStore extends Command implements Noformat {
                 try {
                     IMessageBuilder msg = io.getMessage();
                     if (msg != null) io.delete(msg.getId());
-                } catch (InsufficientPermissionException ignore) {}
+                } catch (InsufficientPermissionException ignore) {
+                }
                 value = "<redacted>";
             }
         }
@@ -150,7 +147,7 @@ public class KeyStore extends Command implements Noformat {
     }
 
     private Map<CommandCategory, Map<GuildDB.Key, String>> getSheets(GuildDB db) {
-        Map<CommandCategory, Map<GuildDB.Key,String>> map = new LinkedHashMap<>();
+        Map<CommandCategory, Map<GuildDB.Key, String>> map = new LinkedHashMap<>();
         for (GuildDB.Key key : GuildDB.Key.values()) {
             if (key.name().toLowerCase().endsWith("_sheet")) {
                 String value = db.getOrNull(key, false);
@@ -158,20 +155,20 @@ public class KeyStore extends Command implements Noformat {
                     String baseUrl = "https://tinyurl.com/nnfajjp/";
                     String fullUrl = baseUrl + value;
                     String formatted = MarkupUtil.markdownUrl(key.name(), fullUrl);
-                    map.computeIfAbsent(key.category, f->new LinkedHashMap<>()).put(key, formatted);
+                    map.computeIfAbsent(key.category, f -> new LinkedHashMap<>()).put(key, formatted);
                 }
             }
         }
         return map;
     }
 
-    private Map<CommandCategory, Map<GuildDB.Key,Object>> getKeys(GuildDB db, boolean listAll) {
-        Map<CommandCategory, Map<GuildDB.Key,Object>> map = new LinkedHashMap<>();
+    private Map<CommandCategory, Map<GuildDB.Key, Object>> getKeys(GuildDB db, boolean listAll) {
+        Map<CommandCategory, Map<GuildDB.Key, Object>> map = new LinkedHashMap<>();
         for (GuildDB.Key key : GuildDB.Key.values()) {
             if (!key.requiresSetup && !listAll) continue;
             if (key.requires != null && db.getOrNull(key.requires, false) == null) continue;
             if (!key.allowed(db)) continue;
-            map.computeIfAbsent(key.category, f->new LinkedHashMap<>()).put(key, db.getOrNull(key, false));
+            map.computeIfAbsent(key.category, f -> new LinkedHashMap<>()).put(key, db.getOrNull(key, false));
         }
         return map;
     }

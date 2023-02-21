@@ -1,9 +1,9 @@
 package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -11,12 +11,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.ICategorizableChannel;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
@@ -49,10 +44,10 @@ public class WarCat extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(event);
         WarCategory warChannels = db.getWarChannel();
-        if (warChannels == null) return "War channels are not enabled";
+        if (warChannels == null) return "War channels are not enabled.";
 
         WarCategory.WarRoom waRoom = warChannels.getWarRoom(event.getGuildChannel());
-        if (waRoom == null) return "This command must be run in a war room";
+        if (waRoom == null) return "This command must be run in a war room.";
 
         String categoryName = args.get(0);
         if (categoryName.startsWith("<")) {
@@ -67,7 +62,7 @@ public class WarCat extends Command {
 
         List<Category> categories = guild.getCategoriesByName(categoryName, true);
         Category category;
-        if (categories == null || categories.isEmpty()) {
+        if (categories.isEmpty()) {
             category = RateLimitUtil.complete(guild.createCategory(categoryName));
             Role milcomRole = Roles.MILCOM.toRole(guild);
             if (milcomRole != null) {
@@ -80,8 +75,7 @@ public class WarCat extends Command {
         }
 
         MessageChannel currentChannel = event.getChannel();
-        if (!(currentChannel instanceof ICategorizableChannel)) return "This channel cannot have a category";
-        ICategorizableChannel cc = (ICategorizableChannel) currentChannel;
+        if (!(currentChannel instanceof ICategorizableChannel cc)) return "This channel cannot have a category.";
         if (category.equals(cc.getParentCategory())) {
             return "Already in category: " + categoryName;
         }

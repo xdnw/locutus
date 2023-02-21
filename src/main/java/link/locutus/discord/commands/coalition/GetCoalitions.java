@@ -12,11 +12,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class GetCoalitions extends Command {
     public GetCoalitions() {
@@ -88,9 +84,9 @@ public class GetCoalitions extends Command {
                 }
             }
 
-            response.append('\n').append("**" + coalition + "**: " + StringMan.join(names, ","));
+            response.append('\n').append("**").append(coalition).append("**: ").append(StringMan.join(names, ","));
         }
-        if (response.length() == 0) return "No coalitions found";
+        if (response.length() == 0) return "No coalitions found.";
         return response.toString().trim();
     }
 }

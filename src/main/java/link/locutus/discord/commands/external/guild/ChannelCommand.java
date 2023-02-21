@@ -13,19 +13,11 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.IPermissionHolder;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.PermissionOverride;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -41,13 +33,14 @@ public class ChannelCommand extends Command {
 
     @Override
     public String desc() {
-        return "Create a channel in a category\n" +
-                "Add `-i` to add IA\n" +
-                "Add `-m` to add milcom\n" +
-                "Add `-f` to add FA\n" +
-                "Add `-e` to add econ\n" +
-                "Add `-a` to ping the author\n" +
-                "Add `-p` to ping the users added";
+        return """
+                Create a channel in a category
+                Add `-i` to add IA
+                Add `-m` to add milcom
+                Add `-f` to add FA
+                Add `-e` to add econ
+                Add `-a` to ping the author
+                Add `-p` to ping the users added""";
     }
 
     @Override
@@ -79,6 +72,7 @@ public class ChannelCommand extends Command {
 
         List<IPermissionHolder> holders = new ArrayList<>();
         holders.add(member);
+        assert member != null;
         holders.addAll(member.getRoles());
         holders.add(guild.getRolesByName("@everyone", false).get(0));
 
@@ -103,7 +97,7 @@ public class ChannelCommand extends Command {
         }
         if (createdChannel == null) {
             if (freeCategory == null) {
-                return "No free category";
+                return "No free category.";
             }
             if (!hasOverride) {
                 for (IPermissionHolder holder : holders) {

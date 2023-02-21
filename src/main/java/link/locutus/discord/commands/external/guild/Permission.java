@@ -63,6 +63,7 @@ public class Permission extends Command {
             db = Locutus.imp().getGuildDB(event);
         }
         int value = Integer.parseInt(args.get(1));
+        assert db != null;
         db.setPermission(cmd.getClass(), value);
         return "Set " + cmd.getAliases().get(0) + " to " + value + " for " + db.getGuild().getName();
     }

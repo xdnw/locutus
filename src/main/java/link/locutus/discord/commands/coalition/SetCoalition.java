@@ -31,7 +31,7 @@ public class SetCoalition extends Command {
 
     @Override
     public String desc() {
-        return "Set an alliance to be in a coalition";
+        return "Set an alliance to be in a coalition.";
     }
 
     @Override
@@ -49,12 +49,12 @@ public class SetCoalition extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         try {
             StringBuilder response = new StringBuilder();
-            if (!db.getCoalition(args.get(0)).isEmpty()){ // check
+            if (!db.getCoalition(args.get(0)).isEmpty()) { // check
                 return usage();
             }
             String coalition = args.get(1);
             if (coalition.equalsIgnoreCase(Coalition.OFFSHORE.name()) && !Roles.ADMIN.has(author, guild)) {
-                return "Only admin can set offshore coalitions";
+                return "Only admin can set offshore coalitions.";
             }
             Set<Long> alliancesOrGuilds = new HashSet<>();
             if (MathMan.isInteger(args.get(0)) && Long.parseLong(args.get(0)) > Integer.MAX_VALUE) {
@@ -67,7 +67,7 @@ public class SetCoalition extends Command {
             }
             for (Long allianceOrGuild : alliancesOrGuilds) {
                 Locutus.imp().getGuildDB(event).addCoalition(allianceOrGuild, coalition);
-                response.append('\n').append("Added " + allianceOrGuild + " to `" + args.get(1) + "`");
+                response.append('\n').append("Added ").append(allianceOrGuild).append(" to `").append(args.get(1)).append("`");
             }
             return response.toString().trim() + "\nDone!";
         } catch (Throwable e) {

@@ -7,23 +7,18 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.awt.Color;
+import java.awt.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public class UpdateEmbed extends Command {
     public UpdateEmbed() {
@@ -37,7 +32,7 @@ public class UpdateEmbed extends Command {
 
     @Override
     public String desc() {
-        return "Updates a Locutus embed title/body/reactions";
+        return "Updates a Locutus embed title/body/reactions.";
     }
 
     @Override
@@ -50,14 +45,15 @@ public class UpdateEmbed extends Command {
         if (args.isEmpty()) return usage();
 
         Message message = event.getMessage();
-        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) return "This command can only be run when bound to a Locutus embed";
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID)
+            return "This command can only be run when bound to a Locutus embed.";
 
         String requiredRole = DiscordUtil.parseArg(args, "role");
         if (requiredRole != null) {
             String roleRaw = requiredRole.replaceAll("[<@>]", "");
             if (MathMan.isInteger(roleRaw)) {
                 Role role = guild.getRoleById(roleRaw);
-                if (role == null || !event.getMember().getRoles().contains(role)) {
+                if (role == null || !Objects.requireNonNull(event.getMember()).getRoles().contains(role)) {
                     return null;
                 }
             }
@@ -80,16 +76,14 @@ public class UpdateEmbed extends Command {
 
         String setTitle = DiscordUtil.parseArg(args, "title");
         if (setTitle != null) {
-            builder.setTitle(parse(setTitle.replace(("{title}"), embed.getTitle()), embed, message));
+            builder.setTitle(parse(setTitle.replace(("{title}"), Objects.requireNonNull(embed.getTitle())), embed, message));
         }
 
         String setDesc = DiscordUtil.parseArg(args, "description");
         if (setDesc != null) {
-            builder.setDescription(parse(setDesc.replace(("{description}"), embed.getDescription()), embed, message));
+            builder.setDescription(parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message));
         }
 
-//        Map<String, String> reactions = DiscordUtil.getReactions(embed);
-//        if (reactions == null) reactions = new LinkedHashMap<>();
 
         if (!args.isEmpty()) {
             return "Invalid arguments: `" + StringMan.getString(args) + "`";

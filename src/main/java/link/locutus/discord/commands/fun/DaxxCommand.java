@@ -12,12 +12,13 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class DaxxCommand extends Command {
-    private final CommandManager manager;
-    private List<String> c0,c1,c2,c3;
+    private final List<String> c0;
+    private final List<String> c1;
+    private final List<String> c2;
+    private final List<String> c3;
 
     public DaxxCommand(CommandManager manager) {
         super("daxx");
-        this.manager = manager;
         this.c0 = Arrays.asList("You are a %s.", "You %s!", "Why you little %s!!!1", "Yo mamma is a %s.", "Look peasants, I found the %s!", "%s has more moxie than thou", "Is.. is that a... %s?");
         this.c3 = Arrays.asList("apple-john", "baggage", "barnacle", "bladder", "boar-pig", "bugbear", "bum-bailey", "canker-blossom", "clack-dish", "clotpole", "coxcomb", "codpiece", "death-token", "dewberry", "flap-dragon", "flax-wench", "flirt-gill", "foot-licker", "fustilarian", "giglet", "gudgeon", "haggard", "harpy", "hedge-pig", "horn-beast", "hugger-mugger", "joithead", "lewdster", "lout", "maggot-pie", "malt-worm", "mammet", "measle", "minnow", "miscreant", "moldwarp", "mumble-news", "nut-hook", "pigeon-egg", "pignut", "puttock", "pumpion", "ratsbane", "scut", "skainsmate", "strumpet", "varlot", "vassal", "whey-face", "wagtail");
         this.c2 = Arrays.asList("base-court", "bat-fowling", "beef-witted", "beetle-headed", "boil-brained", "clapper-clawed", "clay-brained", "common-kissing", "crook-pated", "dismal-dreaming", "dizzy-eyed", "doghearted", "dread-bolted", "earth-vexing", "elf-skinned", "fat-kidneyed", "fen-sucked", "flap-mouthed", "fly-bitten", "folly-fallen", "fool-born", "full-gorged", "guts-griping", "half-faced", "hasty-witted", "hedge-born", "hell-hated", "idle-headed", "ill-breeding", "ill-nurtured", "knotty-pated", "milk-livered", "motley-minded", "onion-eyed", "plume-plucked", "pottle-deep", "pox-marked", "reeling-ripe", "rough-hewn", "rude-growing", "rump-fed", "shard-borne", "sheep-biting", "spur-galled", "swag-bellied", "tardy-gaited", "tickle-brained", "toad-spotted", "unchin-snouted", "weather-bitten");

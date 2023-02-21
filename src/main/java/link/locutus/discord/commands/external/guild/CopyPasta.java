@@ -12,7 +12,6 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -37,7 +36,7 @@ public class CopyPasta extends Command implements Noformat {
     public String desc() {
         return "Use `" + Settings.commandPrefix(true) + "copypasta <key>` to post a premade response\n" +
                 "Use `" + Settings.commandPrefix(true) + "copypasta <key> <message>` to set the response\n" +
-                "Use e.g. `ECON.key` as the key to restrict use to the econ role";
+                "Use e.g. `ECON.key` as the key to restrict use to the econ role.";
     }
 
     @Override
@@ -72,21 +71,24 @@ public class CopyPasta extends Command implements Noformat {
 
                     value = entry.getValue();
                 }
-            } else if (!db.getMissingCopypastaPerms(key, guild.getMember(author)).isEmpty()) return "You do not have permission to use that key";
+            } else if (!db.getMissingCopypastaPerms(key, guild.getMember(author)).isEmpty())
+                return "You do not have permission to use that key.";
 
-            if (value == null) return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.commandPrefix(true) + "copypasta <key> <message>`";
+            if (value == null)
+                return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.commandPrefix(true) + "copypasta <key> <message>`";
             if (event.getMessage().getEmbeds().isEmpty()) {
                 RateLimitUtil.queue(event.getMessage().delete());
             }
             return DiscordUtil.format(guild, event.getGuildChannel(), author, me, value);
         } else {
-            if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission";
+            if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission.";
 
             String[] split = key.split("\\.");
             for (int i = 0; i < split.length - 1; i++) {
                 Roles role = Roles.parse(split[i]);
                 Role discRole = DiscordUtil.getRole(guild, split[i]);
-                if (role == null && discRole == null) return "Invalid role name: `" + split[i] + "` (note: Periods are used as a delimiter in the copypasta key)";
+                if (role == null && discRole == null)
+                    return "Invalid role name: `" + split[i] + "` (note: Periods are used as a delimiter in the copypasta key)";
             }
 
             String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());

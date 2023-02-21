@@ -5,15 +5,11 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -50,14 +46,6 @@ public class Login extends Command {
             db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
             if (args.size() < 2) return usage(event);
             Auth existingAuth = db.getAuth();
-
-//            if (!Roles.MEMBER.has(author, Locutus.imp().getServer())) {
-//                OffshoreInstance offshore = db.getOffshore();
-//                if (offshore == null) return "You have no offshore";
-//                if (!Roles.MEMBER.has(author, Locutus.imp().getServer()) && existingAuth != null && existingAuth.isValid() && existingAuth.getNation().getPosition() >= Rank.OFFICER.id && existingAuth.getNationId() != me.getNation_id())
-//                    return "An officer is already connected";
-//            }
-
             String[] split = DiscordUtil.trimContent(event.getMessage().getContentRaw()).split(" ", 3);
             String username = split[1];
             String password = split[2];

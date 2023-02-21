@@ -2,8 +2,8 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -49,22 +49,26 @@ public class Meta extends Command {
         }
 
         ByteBuffer buf = nation.getMeta(meta);
-        if (buf == null) return "No value set";
+        if (buf == null) return "No value set.";
 
         byte[] arr = new byte[buf.remaining()];
         buf.get(arr);
         buf = ByteBuffer.wrap(arr);
 
         switch (arr.length) {
-            case 0:
+            case 0 -> {
                 return "" + (buf.get() & 0xFF);
-            case 4:
+            }
+            case 4 -> {
                 return "" + (buf.getInt());
-            case 8:
+            }
+            case 8 -> {
                 ByteBuffer buf2 = ByteBuffer.wrap(arr);
                 return buf.getLong() + "/" + MathMan.format(buf2.getDouble());
-            default:
+            }
+            default -> {
                 return new String(arr, StandardCharsets.ISO_8859_1);
+            }
         }
     }
 }

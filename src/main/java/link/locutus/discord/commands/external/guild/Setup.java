@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static link.locutus.discord.db.GuildDB.Key.*;
+import static link.locutus.discord.db.GuildDB.Key.values;
 
 public class Setup extends Command {
     public Setup() {
