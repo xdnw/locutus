@@ -392,7 +392,7 @@ public class IACategory {
                             // nation is inactive vm app
                             (iaChannel.getNation().getActive_m() > 10000 && iaChannel.getNation().getPosition() <= 1) ||
                             // nation not in alliance
-                            iaChannel.getNation().getAlliance_id() != alliance.getAlliance_id() ||
+                            !alliance.contains(iaChannel.getNation().getAlliance_id()) ||
                             // user is null
                             iaChannel.getNation().getUser() == null ||
                             guild.getMember(iaChannel.getNation().getUser()) == null
@@ -429,7 +429,7 @@ public class IACategory {
                                     .commandButton(CM.channel.delete.current.cmd.create(channel.getAsMention()), emoji)
                                             .send();
 
-                    if (nation != null && ((nation.getActive_m() > 7200) || (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || nation.getAlliance_id() != alliance.getAlliance_id())))) {
+                    if (nation != null && ((nation.getActive_m() > 7200) || (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !alliance.contains(nation.getAlliance_id()))))) {
                         if (getFreeCategory(inactiveCategories) != null && !inactiveCategories.contains(channel.getParentCategory())) {
                             RateLimitUtil.queue(channel.getManager().setParent(getFreeCategory(inactiveCategories)));
                         }
@@ -482,7 +482,7 @@ public class IACategory {
                 channelMap.put(iaChannel.getNation(), iaChannel);
                 if (getFreeCategory(inactiveCategories) != null) {
                     if ((nation.getActive_m() > 7200) ||
-                            (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || nation.getAlliance_id() != alliance.getAlliance_id())) ||
+                            (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !alliance.contains(nation.getAlliance_id()))) ||
                             (nation.getActive_m() > 2880 && inactiveCategories.contains(channel.getParentCategory()))
                     ) {
                         if (!inactiveCategories.contains(channel.getParentCategory())) {
@@ -545,7 +545,7 @@ public class IACategory {
         ArrayList<DBNation> nations = new ArrayList<>(channelMap.keySet());
         ArrayList<DBNation> toCheckup = new ArrayList<>(nations);
         toCheckup.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 2880 || f.getPosition() <= 1);
-        IACheckup checkup = new IACheckup(alliance.getAlliance_id());
+        IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
 
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> result = checkup.checkup(toCheckup, f -> {}, true);
 
@@ -599,7 +599,7 @@ public class IACategory {
             for (SortedCategory sort : SortedCategory.values()) {
                 IAChannel iaCat = get(channel, true);
                 if (iaCat == null) continue;
-                if (sort.matches(this, db, alliance.getAlliance_id(), channel, iaCat)) {
+                if (sort.matches(this, db, alliance.getIds(), channel, iaCat)) {
                     SortedCategory currentSort = SortedCategory.parse(channel.getParentCategory().getName());
                     if (currentSort == sort) continue outer;
 
@@ -726,14 +726,14 @@ public class IACategory {
     public enum SortedCategory {
         INACTIVE("Inactive nations") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (!(channel instanceof TextChannel)) return false;
                 TextChannel tc = (TextChannel) channel;
                 DBNation nation = iaChan == null ? null : iaChan.getNation();
                 if (nation != null && Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (iaCat.inactiveCategories.contains(tc.getParentCategory())) {
                     if (iaChan == null ||
-                        (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || nation.getAlliance_id() != allianceId)) ||
+                        (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !allianceIds.contains(nation.getAlliance_id()))) ||
                         nation.getActive_m() > 7200 ||
                         db.getGuild().getMember(iaChan.getNation().getUser()) == null) {
                         return true;
@@ -742,16 +742,16 @@ public class IACategory {
                 if (iaChan == null) {
                     return false;
                 }
-                if (nation.getActive_m() > 7200 || (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || nation.getAlliance_id() != allianceId))) return true;
+                if (nation.getActive_m() > 7200 || (nation.getActive_m() > 2880 && (nation.getCities() < 10 || nation.getPosition() <= 1 || !allianceIds.contains(nation.getAlliance_id())))) return true;
                 return false;
             }
         },
         ENTRY("people still doing the initial interview / not a member yet") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return true;
                 DBNation nation = iaChan.getNation();
-                if (nation.getAlliance_id() != allianceId || nation.getPosition() <= 1) return true;
+                if (!allianceIds.contains(nation.getAlliance_id()) || nation.getPosition() <= 1) return true;
                 User user = nation.getUser();
                 if (user == null || db.getGuild().getMember(user) == null) return true;
                 return false;
@@ -759,7 +759,7 @@ public class IACategory {
         },
         RAIDS("haven't started their initial raids yet") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
@@ -777,12 +777,12 @@ public class IACategory {
         },
         BANK("hasn't deposited/withdrawn (using bot) from the alliance bank before\n") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null) return true;
-                if (db.getAuth(AlliancePermission.WITHDRAW_BANK) != null && db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
+                if (db.getOrNull(GuildDB.Key.API_KEY) != null && db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                     List<Transaction2> transactions = nation.getTransactions(-1);
                     for (Transaction2 transaction : transactions) {
                         if(transaction.receiver_id == nation.getNation_id() && transaction.note.contains("#deposit")) {
@@ -803,7 +803,7 @@ public class IACategory {
         },
         SPIES("hasn't used " + CM.nation.spies.cmd.toSlashCommand() + " and " + CM.spy.find.intel.cmd.toSlashCommand() + " (and posted spy report)") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
@@ -813,7 +813,7 @@ public class IACategory {
         },
         BUILD("has not gotten a grant for an optimal build") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
@@ -854,7 +854,7 @@ public class IACategory {
         },
         COUNTERS("hasn't done two of the following: countered someone, sniped a raid target, fought a defensive war") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
@@ -878,7 +878,7 @@ public class IACategory {
         },
         TEST("hasn't done the tests (and received the graduated role)") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;
                 DBNation nation = iaChan.getNation();
                 User user = nation.getUser();
@@ -891,7 +891,7 @@ public class IACategory {
 
         ARCHIVE("graduated nations") {
             @Override
-            public boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan) {
+            public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 return true;
             }
         }
@@ -920,6 +920,6 @@ public class IACategory {
             return null;
         }
 
-        public abstract boolean matches(IACategory iaCat, GuildDB db, int allianceId, GuildMessageChannel channel, IAChannel iaChan);
+        public abstract boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan);
     }
 }

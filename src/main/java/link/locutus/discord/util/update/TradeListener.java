@@ -17,6 +17,7 @@ import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.trade.BulkTradeSubscriptionEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -182,17 +183,30 @@ public class TradeListener {
         AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildDB.Key.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
-                DBAlliance alliance = db.getAlliance();
-                if (alliance == null || alliance.getColor() == null) return;
-                NationColor allianceColor = alliance.getColor();
-                long colorRev = allianceColor.getTurnBonus();
-                long colorRev5Days = colorRev * 12 * 5;
+                AllianceList allianceList = db.getAllianceList();
+                if (allianceList == null || allianceList.isEmpty()) return;
+                Set<DBAlliance> alliances = allianceList.getAlliances();
+//                NationColor allianceColor = alliance.getColor();
 
                 StringBuilder aaMessage = new StringBuilder(message);
 
-                aaMessage.append("\n\nAlliance Color: ").append(allianceColor);
-                aaMessage.append(" | Rev: $").append(MathMan.format(colorRev)).append("/turn OR $").append(MathMan.format(colorRev5Days)).append("/5day");
-                aaMessage.append("\n - To retain color income, wait for confirmation from a gov member, leave " + alliance.getName() + " ingame, make (or join) an alliance called e.g. `" + alliance.getName() + "-<color>`, and send a Protectorate treaty. Disband the alliance after 5 days");
+                aaMessage.append("\n\nAlliance Color: ");
+                if (alliances.size() == 1) {
+                    DBAlliance alliance = alliances.iterator().next();
+                    long colorRev = alliance.getColor().getTurnBonus();
+                    long colorRev5Days = colorRev * 12 * 5;
+                    aaMessage.append(alliance.getColor());
+                    aaMessage.append(" | Rev: $").append(MathMan.format(colorRev)).append("/turn OR $").append(MathMan.format(colorRev5Days)).append("/5day");
+                } else {
+                    for (DBAlliance alliance : alliances) {
+                        aaMessage.append("\n - ");
+                        long colorRev = alliance.getColor().getTurnBonus();
+                        long colorRev5Days = colorRev * 12 * 5;
+                        aaMessage.append(alliance.getColor());
+                        aaMessage.append(" | Rev: $").append(MathMan.format(colorRev)).append("/turn OR $").append(MathMan.format(colorRev5Days)).append("/5day");
+                    }
+                }
+                aaMessage.append("\n - To retain color income, wait for confirmation from a gov member, leave ingame, make (or join) an alliance called e.g. `" + db.getGuild().getName() + "-<color>`, and send a Protectorate treaty. Disband the alliance after 5 days");
 
                 Role optOut = Roles.TREASURE_ALERTS_OPT_OUT.toRole(db);
                 Role optIn = Roles.TREASURE_ALERTS.toRole(db);

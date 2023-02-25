@@ -202,9 +202,9 @@ public class DepositsSheet extends Command {
         if (offshore != null && offshore.getGuildDB() != db) {
             type = "offshored";
             aaDeposits = offshore.getDeposits(db);
-        } else if (db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null){
+        } else if (db.isValidAlliance()){
             type = "bank";
-            aaDeposits = PnwUtil.resourcesToArray(db.getAlliance().getStockpile());
+            aaDeposits = PnwUtil.resourcesToArray(db.getAllianceList().getStockpile());
         } else aaDeposits = null;
         if (aaDeposits != null) {
             if (PnwUtil.convertedTotal(aaDeposits) > 0) {

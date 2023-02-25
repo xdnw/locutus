@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -91,9 +92,14 @@ public class SyncTaxes extends Command {
                         latestDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1 + offset)) * 1000L;
                     if (args.size() > 2 + offset) return usage();
 
-                    CompletableFuture<Message> msgFuture = event.getChannel().sendMessage("Syncing taxes for " + db.getAlliance_id() + ". Please wait...").submit();
+                    DBAlliance aa = DBAlliance.get(aaId);
+                    if (aa == null) {
+                        throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + StringMan.getString(ids));
+                    }
 
-                    int taxesCount = db.getHandler().updateTaxesLegacy(aaId, latestDate);
+                    CompletableFuture<Message> msgFuture = event.getChannel().sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait...").submit();
+
+                    int taxesCount = aa.updateTaxesLegacy(latestDate);
 
                     Message msg = msgFuture.get();
                     RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));

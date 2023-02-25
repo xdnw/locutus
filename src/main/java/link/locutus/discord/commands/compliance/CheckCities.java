@@ -12,8 +12,10 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -77,22 +79,22 @@ public class CheckCities extends Command {
                     n.getVm_turns() > 0 ||
                     n.getActive_m() > 10000
                     );
-
         } else {
             nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         }
 
+
         if (nations.isEmpty()) {
             return "No nations found for: `" + args.get(0) + "`" + ". Have they used " + CM.register.cmd.toSlashMention() + " ?";
         }
-
-        int allianceId = -1;
         for (DBNation nation : nations) {
-            if (allianceId == -1) allianceId = nation.getAlliance_id();
-            if (nation.getAlliance_id() != allianceId) {
-                return "Nation is not in the same alliance: " + nation.getNation();
+            if (!db.isAllianceId(nation.getAlliance_id())) {
+                return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID + "`";
             }
         }
+
+        Set<Integer> aaIds = new SimpleNationList(nations).getAllianceIds();
 
         if (nations.size() > 1) {
             IACategory category = db.getIACategory();
@@ -108,7 +110,7 @@ public class CheckCities extends Command {
         StringBuilder output = new StringBuilder();
 
         boolean individual = flags.contains('f') || nations.size() == 1;
-        IACheckup checkup = new IACheckup(allianceId);
+        IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
 
         boolean mail = flags.contains('m');
         ApiKeyPool keys = mail ? db.getMailKey() : null;

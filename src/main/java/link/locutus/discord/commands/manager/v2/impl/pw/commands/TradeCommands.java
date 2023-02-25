@@ -607,17 +607,19 @@ public class TradeCommands {
     @Command
     @RolePermission(Roles.ECON)
     public String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db) throws IOException {
-        GuildDB offshoreDb = db.getOffshoreDB();
-        if (offshoreDb != db) throw new IllegalArgumentException("This command must be run in the offshore server");
+        Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
+        if (offshoreDb == null || offshoreDb.getKey() != db) throw new IllegalArgumentException("This command must be run in the offshore server");
 
         channel.send("Please wait...");
 
         OffshoreInstance offshore = db.getOffshore();
         offshore.sync();
-        Map<ResourceType, Double> stockpile = db.getAlliance().getStockpile();
+        Map<ResourceType, Double> stockpile = db.getAllianceList().getStockpile();
         Set<Long> coalitions = new LinkedHashSet<>(db.getCoalitionRaw(Coalition.OFFSHORING));
         coalitions.remove(db.getIdLong());
-        coalitions.remove((long) db.getAlliance_id());
+        for (int id : db.getAllianceIds()) {
+            coalitions.remove((long) id);
+        }
         coalitions.removeIf(f -> Locutus.imp().getGuildDB(f) == null && Locutus.imp().getGuildDBByAA(f.intValue()) == null);
 
         String title = "Compare Stockpile to Deposits (" + coalitions.size() + ")";

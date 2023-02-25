@@ -54,7 +54,7 @@ public class WarPages {
     public String counter(@Me GuildDB db) {
         Set<Integer> offshore = db.getCoalition(Coalition.OFFSHORE);
         Set<Integer> allies = db.getAllies();
-        Set<integer> aaIds = db.getAllianceIds();
+        Set<Integer> aaIds = db.getAllianceIds();
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allies, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);

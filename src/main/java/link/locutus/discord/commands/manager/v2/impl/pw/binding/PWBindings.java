@@ -380,7 +380,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "Cataclysm,790")
-    public Set<DBAlliance> alliances(@Me Guild guild, String input) {
+    public static Set<DBAlliance> alliances(@Me Guild guild, String input) {
         Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, input);
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
         Set<DBAlliance> alliances = new HashSet<>();
@@ -474,7 +474,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public DepositType DepositType(String input) {
+    public static DepositType DepositType(String input) {
         if (input.startsWith("#")) input = input.substring(1);
         return StringMan.parseUpper(DepositType.class, input);
     }
@@ -631,12 +631,30 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public static DBAlliancePosition position(@Me GuildDB db, String name) {
-        DBAlliancePosition result = DBAlliancePosition.parse(name, db.getAlliance_id(), true);
-        System.out.println("Position " + result + " | " + name);
-        if (result == null) throw new IllegalArgumentException("Unknown position: `" + name +
-                "`. Options: " + StringMan.getString(db.getAlliance().getPositions().stream().map(DBAlliancePosition::getName).collect(Collectors.toList()))
-                + " / Special: remove/applicant");
+    public static DBAlliancePosition position(@Me GuildDB db, @Me DBNation nation, String name) {
+        AllianceList alliances = db.getAllianceList();
+        if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.ALLIANCE_ID);
+
+        String[] split = name.split(":", 2);
+        Integer aaId = split.length == 2 ? PnwUtil.parseAllianceId(split[0]) : null;
+        String positionName = split[split.length - 1];
+
+        if (aaId != null && !alliances.contains(aaId)) throw new IllegalArgumentException("Alliance " + aaId + " is not in the list of alliances registered to this guild: " + StringMan.getString(alliances.getIds()));
+        Set<Integer> aaIds = new LinkedHashSet<>();
+        if (aaId != null) aaIds.add(aaId);
+        else {
+            if (alliances.contains(nation.getAlliance_id())) aaIds.add(nation.getAlliance_id());
+            aaIds.addAll(alliances.getIds());
+        }
+        DBAlliancePosition result = null;
+        for (int allianceId : aaIds) {
+            result = DBAlliancePosition.parse(positionName, allianceId, true);
+        }
+        if (result == null) {
+            throw new IllegalArgumentException("Unknown position: `" + name +
+                    "`. Options: " + StringMan.getString(alliances.getPositions().stream().map(DBAlliancePosition::getQualifiedName).collect(Collectors.toList()))
+                    + " / Special: remove/applicant");
+        }
         return result;
     }
 
@@ -789,13 +807,12 @@ public class PWBindings extends BindingHelper {
 
     @Binding
     public TaxBracket bracket(@Me GuildDB db, String input) {
+        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
         if (input.matches("[0-9]+/[0-9]+")) {
             String[] split = input.split("/");
             int moneyRate = Integer.parseInt(split[0]);
             int rssRate = Integer.parseInt(split[1]);
 
-            Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
-            Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 if (bracket.moneyRate == moneyRate && bracket.rssRate == rssRate) {
@@ -809,11 +826,9 @@ public class PWBindings extends BindingHelper {
         }
         String[] split = input.split("=");
         int taxId = Integer.parseInt(split[split.length - 1]);
-        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;
-        throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + db.getAlliance_id());
+        throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()));
     }
 
 //    @Binding(examples = "'Error 404' 'Arrgh' 45d")

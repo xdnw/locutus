@@ -194,6 +194,10 @@ public class DBAlliancePosition {
         return name;
     }
 
+    public String getQualifiedName() {
+        return alliance_id + ":" + name;
+    }
+
     public void setName(String name) {
         this.name = name;
     }

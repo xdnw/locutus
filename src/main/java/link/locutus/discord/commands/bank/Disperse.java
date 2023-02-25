@@ -9,12 +9,16 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -25,7 +29,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
-import link.locutus.discord.util.task.DepositRawTask;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -71,123 +74,47 @@ public class Disperse extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty()) return usage(event);
+        if (args.size() != 3) return usage(event);
         if (me == null) {
             return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
 
-        boolean disperse = false;
-        double daysDefault = 1;
+
+        double daysDefault = Integer.parseInt(args.get(1));
         boolean force = flags.contains('f');
         boolean ignoreInactives = !flags.contains('i');
-        String note = null;
-        if (args.size() >= 3) note = args.get(2);
-        if (note == null) return "Please provide a note: `" + help() + "` e.g. `#ignore` or `#tax`";
 
-        Iterator<String> iter = args.iterator();
-        while (iter.hasNext()) {
-            String arg = iter.next();
-            if (arg.equalsIgnoreCase("-a")) {
-                // unused
-//                admin = false;
-                iter.remove();
-            } else if (arg.equalsIgnoreCase("true")) {
-                disperse = true;
-                iter.remove();
-            } else if (arg.startsWith("#") && !arg.contains("=") && !arg.contains("<") && !arg.contains(">")) {
-                note = arg;
-                iter.remove();
-            }
-        }
-
-        if (args.size() > 3) return usage(event);
-
-        Collection<String> allowedLabels = Arrays.asList("#grant", "#deposit", "#trade", "#ignore", "#tax", "#warchest", "#account");
-        if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
-
-        GuildDB db = Locutus.imp().getGuildDB(guild);
-
-        Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
-        Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs = new LinkedHashMap<>();
+        DepositType type = PWBindings.DepositType(args.get(2));
 
         String arg = args.get(0);
-        if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
-
-            String key = arg;
-            SpreadSheet sheet = SpreadSheet.create(key);
-            AddBalanceBuilder task = new AddBalanceBuilder(db);
-            Map<String, Boolean> result = sheet.parseTransfers(task, false, note);
-            fundsToSendNations = task.getTotalForNations();
-            fundsToSendAAs = task.getTotalForAAs();
-            if (!task.getTotalForGuilds().isEmpty()) return "Cannot disperse to guilds";
-
-            List<String> invalid = new ArrayList<>();
-            for (Map.Entry<String, Boolean> entry : result.entrySet()) {
-                if (!entry.getValue()) {
-                    invalid.add(entry.getKey());
-                }
-            }
-            if (!invalid.isEmpty() && !force) return "Invalid nations/alliance:\n - " + StringMan.join(invalid, "\n - ");
-        } else {
-            Message message;
-            if (!disperse) {
-                message = RateLimitUtil.complete(event.getChannel().sendMessage("The following is a preview. Each disbursement must be authorized by a banker via"));
-            } else {
-                message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching city information:"));
-            }
-            List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(event.getGuild(), arg));
-            if (nations.size() != 1 || !flags.contains('f')) {
-                nations.removeIf(n -> n.getPosition() <= 1);
-                nations.removeIf(n -> n.getVm_turns() != 0);
-                nations.removeIf(n -> n.getActive_m() > 2880);
-                nations.removeIf(n -> n.isGray() && n.getOff() == 0);
-                nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
-            }
-            if (nations.isEmpty()) {
-                return "No nations found (add `-f` to force send)";
-            }
-
-            AllianceList allianeList = db.getAllianceList();
-            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = allianeList.calculateDisburse(nations, daysDefault, true, ignoreInactives, false, force);
-
-            if (nations != null && !nations.isEmpty()) allianceId = nations.get(0).getAlliance_id();
-
-            Consumer<String> updateTask = s -> RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), s));
-            Consumer<String> errors = new Consumer<String>() {
-                @Override
-                public void accept(String s) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage(s));
-                }
-            };
-            if (nations.isEmpty()) return "No nations in tax bracket";
-            daysDefault = Integer.parseInt(args.get(args.size() - 1));
-            fundsToSendNations = new DepositRawTask(nations, allianceId, updateTask, daysDefault, true, ignoreInactives, errors).setForce(force).call();
-            if (nations.isEmpty()) {
-                return "No nations found (1)";
-            }
+        List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(event.getGuild(), arg));
+        if (nations.size() != 1 || !flags.contains('f')) {
+            nations.removeIf(n -> n.getPosition() <= 1);
+            nations.removeIf(n -> n.getVm_turns() != 0);
+            nations.removeIf(n -> n.getActive_m() > 2880);
+            nations.removeIf(n -> n.isGray() && n.getOff() == 0);
+            nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
+        }
+        if (nations.isEmpty()) {
+            return "No nations found (add `-f` to force send)";
         }
 
-        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : fundsToSendNations.entrySet()) {
-            Map<ResourceType, Double> transfer = entry.getValue();
-            double cash = transfer.getOrDefault(ResourceType.MONEY, 0d);
-            if (flags.contains('d')) cash -= daysDefault * 500000;
-            if (flags.contains('c')) cash = 0;
-            cash = Math.max(0, cash);
-            transfer.put(ResourceType.MONEY, cash);
-        }
-
-        try {
-            String title = "Disperse raws " + "(" + daysDefault + " days)";
-
-            String result = disperse(db, fundsToSendNations, fundsToSendAAs, note, new DiscordChannelIO(event), title);
-            if (fundsToSendNations.size() > 1 || fundsToSendAAs.size() > 0) {
-                RateLimitUtil.queue(event.getGuildChannel().sendMessage(author.getAsMention()));
-            }
-            return result;
-        } catch (Throwable e) {
-            e.printStackTrace();
-            throw e;
-        }
+        return BankCommands.disburse(
+                author,
+                Locutus.imp().getGuildDB(guild),
+                new DiscordChannelIO(event.getChannel()),
+                me,
+                new SimpleNationList(nations),
+                daysDefault,
+                type,
+                flags.contains('d'),
+                flags.contains('c'),
+                null,
+                null,
+                null,
+                null,
+                false,
+                force);
     }
 
     public static String disperse(GuildDB db, Map<DBNation, Map<ResourceType, Double>> fundsToSendNations, Map<DBAlliance, Map<ResourceType, Double>> fundsToSendAAs, DepositType type, IMessageIO channel, String title) throws GeneralSecurityException, IOException {

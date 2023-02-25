@@ -310,7 +310,7 @@ public class AddBalanceBuilder {
                         GuildDB sender = entry.getKey();
                         String note = entry2.getKey();
                         double[] amount = entry2.getValue();
-                        db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
+                        db.addTransfer(tx_datetime, sender.getIdLong(), sender.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
                         totalAdded = PnwUtil.add(totalAdded, amount);
                         response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getGuild());
                     }

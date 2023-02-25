@@ -60,10 +60,9 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId == null || aaId.equals(me.getAlliance_id())) return true;
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (aaIds.isEmpty() || aaIds.contains(me.getAlliance_id())) return true;
 
-            if (aaId.equals(me.getAlliance_id())) return true;
             if (me.getAlliance_id() == 0) return false;
             throw new IllegalArgumentException("please leave your alliance first then " + getContent());
         }
@@ -167,8 +166,8 @@ public enum InterviewQuestion implements Question {
             Role ia = Roles.INTERVIEWER.toRole(guild);
             if (ia != null) {
                 GuildDB db = Locutus.imp().getGuildDB(guild);
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (aaId != null && me.getAlliance_id() != aaId || me.getPosition() <= 1) {
+                Set<Integer> aaIds = db.getAllianceIds();
+                if (!aaIds.isEmpty() && !aaIds.contains(me.getAlliance_id()) || me.getPosition() <= 1) {
                     String msg = ia.getAsMention() + " please conduct a short interview";
                     RateLimitUtil.queue(channel.sendMessage(msg));
                 }
@@ -181,9 +180,9 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                if (me.getAlliance_id() != aaId || me.getPosition() <= 1) {
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (!aaIds.isEmpty()) {
+                if (!aaIds.contains(me.getAlliance_id()) || me.getPosition() <= 1) {
                     Role iaRole = Roles.INTERVIEWER.toRole(guild);
                     User sudoUser = sudoer.getUser();
                     if (sudoer != null && sudoer.getPosition() > 2 && sudoUser != null) {
@@ -204,14 +203,15 @@ public enum InterviewQuestion implements Question {
                             }
                         }
                     } else {
-                        if (me.getAlliance_id() != aaId || me.getPosition() <= 1) return false;
+                        if (!aaIds.contains(me.getAlliance_id()) || me.getPosition() <= 1) return false;
                     }
                 }
             }
 
             Role memberRole = Roles.MEMBER.toRole(guild);
             if (memberRole != null) {
-                if (!guild.getMember(author).getRoles().contains(memberRole)) return false;
+                Member member = guild.getMember(author);
+                if (member == null || !member.getRoles().contains(memberRole)) return false;
             }
             return true;
         }
@@ -341,11 +341,11 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (!aaIds.isEmpty()) {
                 List<Transaction2> transactions = me.getTransactions(0);
                 for (Transaction2 transaction : transactions) {
-                    if (Objects.equals(transaction.receiver_id, aaId)) return true;
+                    if (aaIds.contains((int) transaction.receiver_id)) return true;
                 }
             }
             return false;
@@ -368,8 +368,7 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
+            if (db.hasAlliance()) {
                 List<Transaction2> transactions = me.getTransactions(0);
                 for (Transaction2 transaction : transactions) {
                     if (Objects.equals(transaction.receiver_id, me.getNation_id())) return true;

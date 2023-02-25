@@ -1,13 +1,17 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -55,16 +59,7 @@ public class Warchest extends Command {
             return usage(event, "Current warchest (per city): " + PnwUtil.resourcesToString(guildDb.getPerCityWarchest(me)));
         }
 
-        String note = "#warchest";
-        if (args.size() >= 3) note = args.get(2);
-        Collection<String> allowedLabels = Arrays.asList("#warchest", "#grant", "#deposit", "#trade", "#ignore", "#tax", "#account");
-        if (!allowedLabels.contains(note.split("=")[0])) return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
-        Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
-        if (!aaIds.isEmpty()) {
-            if (aaIds.contains(me.getAlliance_id())) note += "=" + me.getAlliance_id();
-            else note += "=" + aaIds.iterator().next();
-        }
-        else note += "=" + guild.getIdLong();
+        DepositType note = PWBindings.DepositType(args.get(2));
 
         boolean hasEcon = Roles.ECON.has(author, guild);
         Collection<DBNation> nations;
@@ -72,7 +67,11 @@ public class Warchest extends Command {
             if (!hasEcon) {
                 return "No permission: " + Roles.ECON.name();
             }
-            nations = Locutus.imp().getNationDB().getNations(aaIds);
+            AllianceList alliances = guildDb.getAllianceList();
+            if (alliances == null) {
+                return "No alliance list found. See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID + "`";
+            }
+            nations = alliances.getNations(true, 7200, true);
         } else {
             nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         }
@@ -96,7 +95,7 @@ public class Warchest extends Command {
         Map<DBNation, Map<ResourceType, Double>> memberResources2 = new HashMap<>();
         boolean skipStockpile = flags.contains('s');
         if (!flags.contains('s')) {
-            if (aaIds.isEmpty()) return "No alliance found for this guild. Add `-s` to skip checking stockpile";
+            if (!guildDb.isValidAlliance()) return "No alliance found for this guild. Add `-s` to skip checking stockpile";
             memberResources2 = guildDb.getAllianceList().subList(nations).getMemberStockpile();
         }
         for (DBNation nation : nations) {

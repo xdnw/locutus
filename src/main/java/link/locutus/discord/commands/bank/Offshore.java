@@ -7,6 +7,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -21,6 +22,7 @@ import link.locutus.discord.util.task.balance.BankWithTask;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -67,6 +69,7 @@ public class Offshore extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty() || args.size() > 3) return usage();
+
         Map<ResourceType, Double> warchest;
         String note;
         if (args.size() >= 2) warchest = PnwUtil.parseResources(args.get(1));
@@ -75,92 +78,9 @@ public class Offshore extends Command {
         else note = "#tx_id=" + UUID.randomUUID();
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        OffshoreInstance offshore = db.getOffshore();
 
-        Set<Integer> from = db.getAllianceIds();
-        if (from.isEmpty()) return "This server has no alliance set up for it. See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null);
-
-        Integer to = offshore == null ? null : offshore.getAllianceId();
-        if (to == null && args.isEmpty()) {
-            return usage();
-        } else {
-            Set<Integer> offshores = db.getCoalition("offshore");
-            to = PnwUtil.parseAllianceId(args.get(0));
-            if (to == null) return "Invalid alliance: " + args.get(0);
-            if (!offshores.contains(to)) return "Please add the offshore using `" + CM.coalition.add.cmd.create(to + "", Coalition.OFFSHORE.name());
-        }
-        if (from.size() == 1 && from.contains(to)) return "You can't offshore to yourself!";
-
-        DBAlliance toAA = DBAlliance.get(to);
-        double[] amountSent = ResourceType.getBuffer();
-
-        List<String> response = new ArrayList<>();
-
-        for (int id : from) {
-            if (id != to) {
-                DBAlliance alliance = DBAlliance.get(id);
-                if (alliance == null) continue;
-
-                Map<ResourceType, Double> resources = alliance.getStockpile();
-                double[] amtToSend = ResourceType.getBuffer();
-                for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-                    double amt = entry.getValue() - warchest.getOrDefault(entry.getKey(), 0d);
-                    if (amt > 0.01) amtToSend[entry.getKey().ordinal()] = amt;
-                }
-                if (ResourceType.isEmpty(amtToSend)) {
-                    response.add("No funds need to be sent");
-                    continue;
-                }
-                try {
-                    PoliticsAndWarV3 api = alliance.getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
-                    Bankrec result = api.transferFromBank(amtToSend, toAA, note);
-                } catch (Exception e) {
-                    response.add("Unable to access bank for " + alliance.getName() + ": " + e.getMessage());
-                    continue;
-                }
-            }
-        }
-
-        DBAlliance alliance = db.getAlliance();
-        Auth auth = null;
-        try {
-            auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
-        } catch (IllegalArgumentException ignore) {}
-        PoliticsAndWarV3 api = alliance.getApi(false, AlliancePermission.WITHDRAW_BANK);
-        if (api != null && auth == null) {
-            Map<ResourceType, Double> resources = alliance.getStockpile();
-            double[] amtToSend = ResourceType.getBuffer();
-            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-                double amt = entry.getValue() - warchest.getOrDefault(entry.getKey(), 0d);
-                if (amt > 0.01) amtToSend[entry.getKey().ordinal()] = amt;
-            }
-            if (ResourceType.isEmpty(amtToSend)) return "No funds need to be sent";
-
-            return "Offshored: " + ;
-        } else {
-            if (auth == null) {
-                return "Please authenticate with locutus. Options:\n" +
-                        "Option 1: Provide a bot key via `" + Settings.commandPrefix(false) + "credentials addApiKey`\n" +
-                        "Option 2: Provide P&W username/password via " + CM.credentials.login.cmd.toSlashMention() + "";
-            }
-            new BankWithTask(auth, from, to, resources -> {
-                Map<ResourceType, Double> sent = new HashMap<>(resources);
-
-                Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
-                while (iterator.hasNext()) {
-                    Map.Entry<ResourceType, Double> entry = iterator.next();
-                    entry.setValue(warchest.getOrDefault(entry.getKey(), 0d));
-                }
-                sent = PnwUtil.subResourcesToA(sent, resources);
-                for (int i = 0; i < amountSent.length; i++)
-                    amountSent[i] = sent.getOrDefault(ResourceType.values[i], 0d);
-
-                Locutus.imp().getRootBank().sync();
-
-                return note;
-            }).call();
-        }
-
-        return "Sent " + PnwUtil.resourcesToString(amountSent) + " to " + PnwUtil.getName(finalTo, true);
+        DBAlliance to = null;
+        if (args.size() > 0) to = DBAlliance.getOrCreate(PnwUtil.parseAllianceId(args.get(0)));
+        return BankCommands.offshore(author, db, to, warchest, note);
     }
 }

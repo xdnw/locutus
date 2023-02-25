@@ -1,9 +1,13 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -66,9 +70,38 @@ public class BankWith extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 2) {
-            return usage(event);
-        }
+        if (args.size() < 3) return usage();
+        /*
+        @Me IMessageIO channel,
+                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType depositType,
+
+                           @Switch("n") DBNation depositsAccount,
+                           @Switch("a") DBAlliance useAllianceBank,
+                           @Switch("o") DBAlliance useOffshoreAccount,
+
+                           @Switch("m") boolean onlyMissingFunds,
+                           @Switch("e") @Timediff Long expire,
+                           @Switch("g") UUID token,
+                           @Switch("c") boolean convertCash,
+                           @Switch("f") boolean force
+         */
+        IMessageIO channel = new DiscordChannelIO(event.getChannel());
+        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
+        NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0));
+        Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
+        DepositType depositType = PWBindings.DepositType(args.get(2));
+
+        boolean onlyMissingFunds = flags.contains('o');
+        boolean convertCash = flags.contains('c');
+        boolean force = flags.contains('f');
+
+        Long expire = null;
+        UUID token = null;
+        // token
+        // nationAccount
+        // allianceAccount
+        // senderAlliance
+
 
         final GuildDB guildDb = Locutus.imp().getGuildDB(event);
 

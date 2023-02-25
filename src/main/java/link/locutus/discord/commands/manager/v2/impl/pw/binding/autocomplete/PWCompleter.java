@@ -24,6 +24,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.SpyCount;
@@ -60,8 +61,8 @@ public class PWCompleter extends BindingHelper {
     @Autocomplete
     @Binding(types={DBAlliancePosition.class})
     public List<Map.Entry<String, String>> DBAlliancePosition(@Me GuildDB db, String input) {
-        DBAlliance alliance = DBAlliance.get(db.getAlliance_id());
-        List<DBAlliancePosition> options = new ArrayList<>(alliance.getPositions());
+        AllianceList alliances = db.getAllianceList();
+        List<DBAlliancePosition> options = new ArrayList<>(alliances.getPositions());
         options.add(DBAlliancePosition.REMOVE);
         options.add(DBAlliancePosition.APPLICANT);
 
@@ -69,7 +70,7 @@ public class PWCompleter extends BindingHelper {
         return options.stream().map(new Function<DBAlliancePosition, Map.Entry<String, String>>() {
             @Override
             public Map.Entry<String, String> apply(DBAlliancePosition f) {
-                return Map.entry(f.getName(), f.getInputName());
+                return Map.entry(f.getQualifiedName(), f.getInputName());
             }
         }).collect(Collectors.toList());
     }

@@ -1315,7 +1315,7 @@ public class WarCommands {
     public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch("s") @Range(min=0, max=100) Integer minSuccess) throws ExecutionException, InterruptedException, IOException {
         if (operations.isEmpty()) throw new IllegalArgumentException("Valid operations: " + StringMan.getString(SpyCount.Operation.values()));
         if (counterWith == null) {
-            counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(Collections.singleton(db.getAlliance_id())));
+            counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(db.getAllianceIds()));
         }
         counterWith.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
 
@@ -3408,7 +3408,7 @@ public class WarCommands {
                               DBNation enemy, @Default Set<DBNation> attackers, @Default("3") @Range(min=0) int max
             , @Switch("p") boolean pingMembers, @Switch("a") boolean skipAddMembers, @Switch("m") boolean sendMail) {
         if (attackers == null) {
-            DBAlliance alliance = db.getAlliance();
+            AllianceList alliance = db.getAllianceList();
             if (alliance != null) {
                 attackers = new HashSet<>(alliance.getNations(true, 2440, true));
             } else {

@@ -35,7 +35,7 @@ public enum Roles {
     MILCOM_ADVISOR("Access to milcom related commands - doesn't receive pings", GuildDB.Key.ALLIANCE_ID),
     ENEMY_BEIGE_ALERT_AUDITOR("Role to receive pings when an enemy gets beiged", GuildDB.Key.ENEMY_BEIGED_ALERT_VIOLATIONS),
 
-    ECON("Has access to econ gov commands", GuildDB.Key.ALLIANCE_ID),
+    ECON("Has access to econ gov commands", null),
     ECON_LOW_GOV("Has access to basic econ commands", GuildDB.Key.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
@@ -211,6 +211,10 @@ public enum Roles {
             }
         }
         return allowed;
+    }
+
+    public String getDesc() {
+        return desc;
     }
 
     @Override

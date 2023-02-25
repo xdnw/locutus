@@ -38,7 +38,7 @@ import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.util.task.GetResourceNeeded;
+import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
@@ -289,7 +289,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             }
             if (!isOutdated) return BRACKETS_CACHED;
         }
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = getApi(AlliancePermission.TAX_BRACKETS);
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
         BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
@@ -366,7 +366,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public boolean updateSpies(boolean updateManually) {
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.SEE_SPIES);
+        PoliticsAndWarV3 api = getApi(AlliancePermission.SEE_SPIES);
         if (api != null) {
             List<Nation> nations = api.fetchNations(f -> {
                 f.setAlliance_id(List.of(allianceId));
@@ -431,7 +431,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
     public Map<Integer, Treaty> getTreaties(boolean update) {
         if (update) {
-            PoliticsAndWarV3 api = getApi(false, AlliancePermission.MANAGE_TREATIES);
+            PoliticsAndWarV3 api = getApi(AlliancePermission.MANAGE_TREATIES);
             if (api != null) {
                 List<com.politicsandwar.graphql.model.Treaty> treaties = api.fetchTreaties(allianceId);
                 Locutus.imp().getNationDB().updateTreaties(treaties, Event::post, true);
@@ -650,7 +650,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         setMeta(key, value.getBytes(StandardCharsets.ISO_8859_1));
     }
 
-    public ApiKeyPool getApiKeys(boolean requireBotToken, AlliancePermission... permissions) {
+    public ApiKeyPool getApiKeys(AlliancePermission... permissions) {
         GuildDB db = getGuildDB();
         if (db != null) {
             String[] apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
@@ -693,7 +693,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
             try {
                 ApiKeyPool.ApiKey key = gov.getApiKey(false);
                 if (key == null) continue;
-                if (requireBotToken && key.getBotKey() == null) continue;
                 builder.addKey(key);
             } catch (IllegalArgumentException ignore) {
                 ignore.printStackTrace();
@@ -721,7 +720,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
-        PoliticsAndWarV3 api = getApi(false, permissions);
+        PoliticsAndWarV3 api = getApi( permissions);
         if (api == null) {
             String msg = "No api key found for " + getQualifiedName() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
             if (permissions.length > 0) msg += " and ensure your in-game position grants: " + StringMan.getString(permissions);
@@ -730,13 +729,13 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return api;
     }
 
-    public PoliticsAndWarV3 getApi(boolean requireBotToken, AlliancePermission... permissions) {
-        ApiKeyPool pool = getApiKeys(requireBotToken, permissions);
+    public PoliticsAndWarV3 getApi(AlliancePermission... permissions) {
+        ApiKeyPool pool = getApiKeys(permissions);
         if (pool == null) return null;
         return new PoliticsAndWarV3(pool);
     }
 
-    public Map<ResourceType, Double> getStockpile() throws IOException {
+    public Map<ResourceType, Double> getStockpile() {
         PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.VIEW_BANK);
         double[] stockpile = api.getAllianceStockpile(allianceId);
         return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
@@ -913,10 +912,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
 
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
-        if (api == null) {
-            api = getApi(false);
-        }
+        PoliticsAndWarV3 api = getApi( AlliancePermission.TAX_BRACKETS);
         if (api == null) return null;
 
         BankDB bankDb = Locutus.imp().getBankDB();
@@ -1002,6 +998,49 @@ public class DBAlliance implements NationList, NationOrAlliance {
             }
         }
         return bank;
+    }
+
+    public int updateTaxesLegacy(Long latestDate) {
+        int count = 0;
+
+        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(allianceId);
+        int latestId = 1;
+        if (latestDate == null) {
+            latestDate = 0L;
+        }
+
+        Auth auth = getAuth(AlliancePermission.TAX_BRACKETS);
+        if (auth == null) throw new IllegalArgumentException("Not auth found");
+
+
+        long now = System.currentTimeMillis();
+        if (!existing.isEmpty()) {
+
+            long date = existing.get(existing.size() - 1).date;
+            if (date < now) {
+                latestDate = Math.max(latestDate, date);
+            }
+            latestId = existing.get(existing.size() - 1).index;
+        }
+
+        List<BankDB.TaxDeposit> taxes = new GetTaxesTask(auth, latestDate).call();
+
+        synchronized (Locutus.imp().getBankDB()) {
+            long oldestFetched = Long.MAX_VALUE;
+            for (BankDB.TaxDeposit tax : taxes) {
+                tax.index = ++latestId;
+                oldestFetched = Math.min(oldestFetched, tax.date);
+            }
+            if (oldestFetched < latestDate - TimeUnit.DAYS.toMillis(7)) {
+                throw new IllegalArgumentException("Invalid fetch date: " + oldestFetched);
+            }
+
+            if (!taxes.isEmpty()) {
+                Locutus.imp().getBankDB().deleteTaxDeposits(auth.getAllianceId(), oldestFetched);
+                Locutus.imp().getBankDB().addTaxDeposits(taxes);
+            }
+        }
+        return count;
     }
 
     public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {

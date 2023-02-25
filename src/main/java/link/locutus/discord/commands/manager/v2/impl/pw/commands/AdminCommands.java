@@ -19,7 +19,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
@@ -174,7 +173,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncReferrals(@Me GuildDB db) {
         if (!db.isValidAlliance()) return "Not in an alliance";
-        Collection<DBNation> nations = db.getAlliance().getNations(true, 10000, true);
+        Collection<DBNation> nations = db.getAllianceList().getNations(true, 10000, true);
         for (DBNation nation : nations) {
             db.getHandler().onRefer(nation);
         }
@@ -373,11 +372,13 @@ public class AdminCommands {
 
     @Command
     @RolePermission(Roles.ADMIN)
-    @IsAuthenticated
-    public String editAlliance(@Me GuildDB db, @Me User author, @Default String attribute, @Default @TextArea String value) throws Exception {
+    public String editAlliance(@Me GuildDB db, @Me User author, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
+        if (!db.isAllianceId(alliance.getAlliance_id())) {
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
+        }
 
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
-        Auth auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
+        Auth auth = alliance.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
         if (auth == null) return "No authorization set";
 
         StringBuilder response = new StringBuilder();
@@ -428,35 +429,95 @@ public class AdminCommands {
         return response.toString();
     }
 
+    private static String mappingToString(Map<Long, Role> mapping) {
+        List<String> response = new ArrayList<>();
+        for (Map.Entry<Long, Role> entry : mapping.entrySet()) {
+            Role role = entry.getValue();
+            long aaId = entry.getKey();
+            if (aaId == 0) {
+                response.add("*:" + role.getName());
+            } else {
+                response.add(aaId + ": " + role.getName());
+            }
+        }
+        return " - " + StringMan.join(response, "\n - ");
+    }
+
     @Command(desc = "Set the discord roles Locutus uses")
     @RolePermission(Roles.ADMIN)
-    public String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, Roles locutusRole, @Default() Role discordRole) {
-        if (discordRole == null) {
-            int invalidRoles = 0;
-            List<Map.Entry<Roles, Long>> roles = db.getRoles();
-            StringBuilder response = new StringBuilder("Current aliases:").append('\n');
-            for (Map.Entry<Roles, Long> role : roles) {
-                Roles locRole = role.getKey();
-                GuildDB.Key key = locRole.getKey();
+    public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Default() DBAlliance alliance) {
+        if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
+        }
+        StringBuilder response = new StringBuilder();
 
-                discordRole = guild.getRoleById(role.getValue());
-                String roleName = discordRole == null ? "null" : discordRole.getName();
-                response.append(" - " + role.getKey().name().toLowerCase() + " > " + roleName);
-
-                if (key != null && db.getOrNull(key) == null) {
-                    response.append(" (missing: " + key.name() + ")");
+        if (locutusRole == null) {
+            if (discordRole != null) {
+                List<String> rolesListStr = new ArrayList<>();
+                Map<Roles, Map<Long, Long>> allMapping = db.getMappingRaw();
+                for (Map.Entry<Roles, Map<Long, Long>> locEntry : allMapping.entrySet()) {
+                    for (Map.Entry<Long, Long> discEntry : locEntry.getValue().entrySet()) {
+                        if (discEntry.getValue() == discordRole.getIdLong()) {
+                            Roles role = locEntry.getKey();
+                            long aaId = discEntry.getKey();
+                            if (aaId == 0) {
+                                rolesListStr.add("*:" + role.name());
+                            } else {
+                                rolesListStr.add(DBAlliance.getOrCreate((int) aaId).getName() + "/" + aaId + ":" + role.name());
+                            }
+                        }
+                    }
                 }
-                response.append('\n');
+                if (rolesListStr.isEmpty()) {
+                    return "No aliases found for " + discordRole.getName();
+                }
+                response.append("Aliases for " + discordRole.getName() + ":\n - ");
+                response.append(StringMan.join(rolesListStr, "\n - "));
+                return response.toString();
             }
-            response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Please provide `locutusRole` and `discordRole` to set an alias");
+
+            List<String> registeredRoles = new ArrayList<>();
+            List<String> unregisteredRoles = new ArrayList<>();
+            for (Roles role : Roles.values) {
+                Map<Long, Role> mapping = db.getAccountMapping(role);
+                if (mapping != null && !mapping.isEmpty()) {
+                    registeredRoles.add(role + ":\n" + mappingToString(mapping));
+                    continue;
+                }
+                if (db.getOrNull(role.getKey()) == null) continue;
+                unregisteredRoles.add(role + ":\n" + mappingToString(mapping));
+            }
+
+            if (!registeredRoles.isEmpty()) {
+                response.append("**Registered Roles**:\n" + StringMan.join(registeredRoles, "\n") + "\n");
+            }
+            if (!unregisteredRoles.isEmpty()) {
+                response.append("**Unregistered Roles**:\n" + StringMan.join(unregisteredRoles, "\n") + "\n");
+            }
+            response.append("Provide a value for `locutusRole` for specific role information.\n" +
+                    "Provide a value for `discordRole` to register a role.\n");
+
+            return response.toString();
+        }
+
+        if (discordRole == null) {
+            Map<Long, Role> mapping = db.getAccountMapping(locutusRole);
+            response.append("**" + locutusRole.name() + "**:\n");
+            response.append("`" + locutusRole.getDesc() + "`\n");
+            if (mapping.isEmpty()) {
+                response.append("No value set.");
+            } else {
+                response.append("```\n" + mappingToString(mapping) + "```\n");
+            }
+            response.append("Provide a value for `discordRole` to register a role.\n");
             return response.toString().trim();
         }
 
-        Member member = guild.getMember(author);
 
-        db.addRole(locutusRole, discordRole.getIdLong());
-        return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + "\n" +
+        int aaId = alliance == null ? 0 : alliance.getAlliance_id();
+        String allianceStr = alliance == null ? "*" : alliance.getName() + "/" + aaId;
+        db.addRole(locutusRole, discordRole, aaId);
+        return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + " for alliance " + allianceStr + "\n" +
                 "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name()).toSlashCommand() + "";
     }
 
@@ -499,8 +560,9 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String apiUsageStats(@Me Guild guild, boolean cached) {
-        PoliticsAndWarV2 api = Locutus.imp().getGuildDB(guild).getApi(cached);
+    public String apiUsageStats(@Me DBAlliance alliance, boolean cached) {
+        ApiKeyPool keys = alliance.getApiKeys();
+        PoliticsAndWarV2 api = new PoliticsAndWarV2(keys, Settings.INSTANCE.TEST, cached);
         System.out.println(printApiStats(api));
         return "Done! (see console)";
     }
@@ -952,7 +1014,7 @@ public class AdminCommands {
             if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);
         }
         channel.send("Syncing banks for " + db.getGuild() + "...");
-        OffshoreInstance bank = db.getHandler().getBank(alliance.getAlliance_id());
+        OffshoreInstance bank = alliance.getBank();
         bank.sync(timestamp, false);
 
         Locutus.imp().getBankDB().updateBankRecs(Event::post);

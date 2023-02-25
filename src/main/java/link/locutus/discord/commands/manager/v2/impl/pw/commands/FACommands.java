@@ -70,7 +70,7 @@ public class FACommands {
     @Command(desc = "Send a treaty to an alliance")
     @IsAlliance
     @RolePermission(value = Roles.FOREIGN_AFFAIRS, alliance = true)
-    public String sendTreaty(@Me User user, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList sender, DBAlliance alliance, TreatyType type, int days, @Default String message) {
+    public static String sendTreaty(@Me User user, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList sender, DBAlliance alliance, TreatyType type, int days, @Default String message) {
         if (message != null && !message.isEmpty() && !Roles.ADMIN.has(user, db.getGuild())) {
             return "Admin is required to send a treaty with a message";
         }
@@ -82,7 +82,7 @@ public class FACommands {
     @Command
     @IsAlliance
     @RolePermission(value = Roles.FOREIGN_AFFAIRS, alliance = true)
-    public String approveTreaty(@Me User user, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, Set<DBAlliance> senders) {
+    public static String approveTreaty(@RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, Set<DBAlliance> senders) {
         List<Treaty> changed = receiver.approveTreaty(senders);
 
         if (changed.isEmpty()) {
@@ -95,7 +95,7 @@ public class FACommands {
     @Command
     @IsAlliance
     @RolePermission(Roles.FOREIGN_AFFAIRS)
-    public String cancelTreaty(@Me User user, @Me DBNation me, @Me GuildDB db, @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, Set<DBAlliance> senders) {
+    public static String cancelTreaty(@RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, Set<DBAlliance> senders) {
         List<Treaty> changed = receiver.cancelTreaty(senders);
 
         if (changed.isEmpty()) {

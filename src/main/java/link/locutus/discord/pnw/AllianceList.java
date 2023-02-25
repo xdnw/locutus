@@ -4,14 +4,21 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.db.BankDB;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.event.Event;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class AllianceList {
     private final Set<Integer> ids;
@@ -36,6 +44,11 @@ public class AllianceList {
     public <T> AllianceList(Set<Integer> ids) {
         if (ids.isEmpty()) throw new IllegalArgumentException("Empty alliance list");
         this.ids = ids;
+    }
+
+    public AllianceList subList(Roles role, User user, GuildDB db) {
+        AllianceList allowed = role.getAllianceList(user, db);
+        return this.subList(allowed.getIds());
     }
 
     public <T> AllianceList(Collection<Integer> ids) {
@@ -138,6 +151,17 @@ public class AllianceList {
     public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new LinkedHashMap<>();
         for (DBAlliance alliance : getAlliances()) {
+            try {
+                alliance.updateCities();
+            } catch (ParseException e) {
+                for (DBNation nation : nations) {
+                    if (nation.getAlliance_id() == alliance.getAlliance_id()) {
+                        result.put(nation, Map.entry(OffshoreInstance.TransferStatus.INVALID_API_KEY, ResourceType.getBuffer()));
+                    }
+                }
+
+                continue;
+            }
             result.putAll(alliance.calculateDisburse(nations, daysDefault, useExisting, ignoreInactives, allowBeige, noDailyCash, noCash, force));
         }
         return result;
@@ -215,5 +239,36 @@ public class AllianceList {
             }
         }
         return changed;
+    }
+
+    public boolean contains(int aaId) {
+        return ids.contains(aaId);
+    }
+
+    public Map<ResourceType, Double> getStockpile() throws IOException {
+        Map<ResourceType, Double> stockpile = new HashMap<>();
+        for (DBAlliance alliance : getAlliances()) {
+            for (Map.Entry<ResourceType, Double> entry : alliance.getStockpile().entrySet()) {
+                stockpile.put(entry.getKey(), stockpile.getOrDefault(entry.getKey(), 0.0) + entry.getValue());
+            }
+        }
+        return stockpile;
+    }
+
+    public void updateCities() {
+        Set<Integer> nationIds = getNations(false, 0, true).stream().map(f -> f.getId()).collect(Collectors.toSet());
+        Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, Event::post);
+    }
+
+    public Set<DBAlliancePosition> getPositions() {
+        Set<DBAlliancePosition> positions = new LinkedHashSet<>();
+        for (DBAlliance alliance : getAlliances()) {
+            positions.addAll(alliance.getPositions());
+        }
+        return positions;
+    }
+
+    public int size() {
+        return ids.size();
     }
 }

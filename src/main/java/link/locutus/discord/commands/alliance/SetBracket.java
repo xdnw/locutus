@@ -137,7 +137,7 @@ public class SetBracket extends Command {
             response.append("Set internal taxrate to " + internalRate + "\n");
         }
 
-        response.append(alliance.setTaxBracket(nation, bracket));
+        response.append(alliance.setTaxBracket(bracket, nation));
         return response.toString();
     }
 }

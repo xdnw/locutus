@@ -12,6 +12,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -142,10 +143,8 @@ public class Deposits extends Command {
             if (arg.equalsIgnoreCase("*")) {
                 OffshoreInstance offshore = guildDb.getOffshore();
                 if (offshore == null) return "No offshore found";
-                GuildDB offshoreDb = guildDb.getOffshoreDB();
-                if (!Roles.ECON_LOW_GOV.has(author, guild) && !Roles.ECON_LOW_GOV.has(author, offshoreDb.getGuild()))
+                if (!Roles.ECON_LOW_GOV.has(author, guild) && !Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()))
                     return "You do not have permission to check this guild's deposits";
-
                 double[] deposits = offshore.getDeposits(guildDb);
                 accountDeposits.put("*", Collections.singletonMap(DepositType.DEPOSITS, deposits));
             } else if (nation == null && MathMan.isInteger(arg) && Long.parseLong(arg) > Integer.MAX_VALUE) {
@@ -161,17 +160,13 @@ public class Deposits extends Command {
                 accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSITS, deposits));
             } else if (nation == null && PnwUtil.parseAllianceId(arg) != null) {
                 Integer allianceId = PnwUtil.parseAllianceId(arg);
+                if (allianceId == null) return "Invalid alliance: `" + arg + "`";
                 GuildDB otherDb = Locutus.imp().getGuildDBByAA(allianceId);
                 if (otherDb == null) return "No guild found for AA:" + allianceId;
 
                 OffshoreInstance offshore = otherDb.getOffshore();
                 if (offshore == null) {
-                    if (flags.contains('f')) {
-                        offshore = guildDb.getHandler().getBank();
-                    }
-                    if (offshore == null) {
-                        return "No offshore set";
-                    }
+                    return "No offshore set";
                 }
                 if (!Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_LOW_GOV.has(author, otherDb.getGuild()))
                     return "You do not have permisssion to check another alliance's deposits";
@@ -312,50 +307,46 @@ public class Deposits extends Command {
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        List<String> tips2 = new ArrayList<>();
+                    List<String> tips2 = new ArrayList<>();
 
-                        {
-                            Map<ResourceType, Double> stockpile = finalNation.getStockpile();
-                            if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
-                                Map<ResourceType, Double> excess = finalNation.checkExcessResources(guildDb, stockpile);
-                                if (!excess.isEmpty()) {
-                                    tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
-                                    if (Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.DEPOSIT_INTEREST))) {
-                                        List<Transaction2> transactions = finalNation.getTransactions(-1);
-                                        long last = 0;
-                                        for (Transaction2 transaction : transactions) last = Math.max(transaction.tx_datetime, last);
-                                        if (System.currentTimeMillis() - last > TimeUnit.DAYS.toMillis(5)) {
-                                            tips2.add("Deposit frequently to be eligable for interest on your deposits");
-                                        }
+                    {
+                        Map<ResourceType, Double> stockpile = finalNation.getStockpile();
+                        if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
+                            Map<ResourceType, Double> excess = finalNation.checkExcessResources(guildDb, stockpile);
+                            if (!excess.isEmpty()) {
+                                tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
+                                if (Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.DEPOSIT_INTEREST))) {
+                                    List<Transaction2> transactions = finalNation.getTransactions(-1);
+                                    long last = 0;
+                                    for (Transaction2 transaction : transactions) last = Math.max(transaction.tx_datetime, last);
+                                    if (System.currentTimeMillis() - last > TimeUnit.DAYS.toMillis(5)) {
+                                        tips2.add("Deposit frequently to be eligable for interest on your deposits");
                                     }
                                 }
-                                Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
-                                if (!needed.isEmpty()) {
-                                    tips2.add("Missing resources for the next 3 days: " + PnwUtil.resourcesToString(needed));
+                            }
+                            Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
+                            if (!needed.isEmpty()) {
+                                tips2.add("Missing resources for the next 3 days: " + PnwUtil.resourcesToString(needed));
+                            }
+                        }
+                    }
+
+                    if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE)) && guildDb.isValidAlliance()) {
+                        AllianceList alliance = db.getAllianceList();
+                        if (alliance != null && alliance.contains(me.getAlliance_id())) {
+                            try {
+                                Map<ResourceType, Double> stockpile = me.getAlliance().getStockpile();
+                                if (PnwUtil.convertedTotal(stockpile) > 5000000) {
+                                    tips2.add("You MUST offshore funds after depositing `" + CM.offshore.send.cmd.toSlashMention() + "` ");
                                 }
-                            }
+                            } catch (Throwable ignore) {}
                         }
+                    }
 
-                        if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE)) && guildDb.isValidAlliance() && guildDb.hasAuth()) {
-                            DBAlliance alliance = guildDb.getAlliance();
-                            if (alliance != null && me.getAlliance_id() == alliance.getAlliance_id()) {
-                                try {
-                                    Map<ResourceType, Double> stockpile = alliance.getStockpile();
-                                    if (PnwUtil.convertedTotal(stockpile) > 5000000) {
-                                        tips2.add("You MUST offshore funds after depositing `" + CM.offshore.send.cmd.toSlashMention() + "` ");
-                                    }
-                                } catch (Throwable ignore) {}
-                            }
-                        }
+                    if (!tips2.isEmpty()) {
+                        for (String tip : tips2) response.append("\n`tip: " + tip + "`");
 
-                        if (!tips2.isEmpty()) {
-                            for (String tip : tips2) response.append("\n`tip: " + tip + "`");
-
-                            RateLimitUtil.queue(output.editMessageById(message.getIdLong(), response.toString()));
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        RateLimitUtil.queue(output.editMessageById(message.getIdLong(), response.toString()));
                     }
                 }
             });

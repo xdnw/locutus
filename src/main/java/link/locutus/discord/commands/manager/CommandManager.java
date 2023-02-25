@@ -100,7 +100,6 @@ import link.locutus.discord.commands.info.BeigeTurns;
 import link.locutus.discord.commands.info.ListMultisByAlliance;
 import link.locutus.discord.commands.info.Multi;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
-import link.locutus.discord.commands.rankings.AAMembers;
 import link.locutus.discord.commands.rankings.AllianceLootRanking;
 import link.locutus.discord.commands.bank.Inflows;
 import link.locutus.discord.commands.bank.SyncBanks;

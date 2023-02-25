@@ -186,7 +186,7 @@ public class PnwPusherShardManager {
         DBAlliance alliance = DBAlliance.get(allianceId);
 
         // get api (see spies)
-        ApiKeyPool keys = alliance.getApiKeys(false, AlliancePermission.SEE_SPIES);
+        ApiKeyPool keys = alliance.getApiKeys(AlliancePermission.SEE_SPIES);
         if (keys == null || keys.size() == 0) return null;
 
         String validKey = null;

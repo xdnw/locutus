@@ -9,6 +9,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -44,7 +45,7 @@ public class StockpileSheet extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        DBAlliance alliance = db.getAlliance();
+        AllianceList alliance = db.getAllianceList();
         if (alliance == null) return "Pleas set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "";
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();

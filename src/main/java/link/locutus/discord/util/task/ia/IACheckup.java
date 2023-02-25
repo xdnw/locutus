@@ -106,10 +106,6 @@ public class IACheckup {
         }
     }
 
-    public IACheckup(int allianceId) throws IOException, ExecutionException, InterruptedException {
-        this(Locutus.imp().getGuildDBByAA(allianceId), new AllianceList(allianceId), false);
-    }
-
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Consumer<DBNation> onEach, boolean fast) throws InterruptedException, ExecutionException, IOException {
         List<DBNation> nations = new ArrayList<>(alliance.getNations(true, 0, true));
         return checkup(nations, onEach, fast);

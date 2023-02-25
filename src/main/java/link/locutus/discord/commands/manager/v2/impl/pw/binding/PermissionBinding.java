@@ -9,7 +9,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.Coalitio
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.NotGuild;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
@@ -22,6 +21,7 @@ import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.entities.Guild;
@@ -29,6 +29,7 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class PermissionBinding extends BindingHelper {
@@ -49,18 +50,18 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding
-    @IsAuthenticated
-    public boolean isAuthenticated(@Me GuildDB db, IsAuthenticated perm) {
-        Auth auth = perm.value().length > 0 ? db.getAuth(perm.value()) : db.getAuth();
-        if (auth == null || !auth.isValid()) throw new IllegalArgumentException(db.getGuild() + " is not authenticaed. See: " + CM.credentials.login.cmd.toSlashMention() + "");
-        return true;
-    }
+//    @Binding
+//    @IsAuthenticated
+//    public boolean isAuthenticated(@Me GuildDB db, IsAuthenticated perm) {
+//        Auth auth = perm.value().length > 0 ? db.getAuth(perm.value()) : db.getAuth();
+//        if (auth == null || !auth.isValid()) throw new IllegalArgumentException(db.getGuild() + " is not authenticaed. See: " + CM.credentials.login.cmd.toSlashMention() + "");
+//        return true;
+//    }
 
     @Binding
     @HasApi
     public boolean hasApi(@Me GuildDB db, HasApi perm) {
-        if (db.getApi() == null) throw new IllegalArgumentException("No api key set: " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + "");
+        if (db.getOrNull(GuildDB.Key.API_KEY) == null) throw new IllegalArgumentException("No api key set: " + CM.settings.cmd.create(GuildDB.Key.API_KEY.name(), null).toSlashCommand() + "");
         return true;
     }
 
@@ -80,7 +81,8 @@ public class PermissionBinding extends BindingHelper {
             Set<String> publicOffshores = new HashSet<>();
             for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
                 if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
-                    publicOffshores.add(otherDB.getAlliance().getMarkdownUrl());
+                    Map.Entry<GuildDB, Integer> offshoreInfo = otherDB.getOffshoreDB();
+                    publicOffshores.add(PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true));
                 }
             }
             if (!publicOffshores.isEmpty()) {
@@ -143,8 +145,7 @@ public class PermissionBinding extends BindingHelper {
         for (int aaId : aaIds) {
             if (coalitionMembers.contains((long) aaId)) return true;
         }
-
-//            || (aaId != null && coalitionMembers.contains((long) aaId));
+        return false;
     }
 
     @Binding
@@ -172,7 +173,7 @@ public class PermissionBinding extends BindingHelper {
         boolean hasAny = false;
         for (Roles requiredRole : perm.value()) {
             if (allianceId != null && !requiredRole.has(user, guild, allianceId) ||
-                    (!requiredRole.has(user, guild) && (!perm.allowAlliance() || requiredRole.getAllowedAccounts(user, guild).isEmpty()))) {
+                    (!requiredRole.has(user, guild) && (!perm.alliance() || requiredRole.getAllowedAccounts(user, guild).isEmpty()))) {
                 if (perm.any()) continue;
                 throw new IllegalCallerException("You do not have " + requiredRole.name() + " on " + guild + " " + user.getAsMention());
             } else {

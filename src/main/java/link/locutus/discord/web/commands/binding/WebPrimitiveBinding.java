@@ -31,6 +31,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -468,7 +469,10 @@ public class WebPrimitiveBinding extends BindingHelper {
 
             filterStr = filterStr.replace("{alliance_id}", "AA:" + me.getAlliance_id());
             if (db != null) {
-                filterStr = filterStr.replace("{guild_alliance_id}", "AA:" + db.getAlliance_id());
+                Set<Integer> aaIds = db.getAllianceIds();
+                if (!aaIds.isEmpty()) {
+                    filterStr = filterStr.replace("{guild_alliance_id}", "AA:" + StringMan.join(aaIds, ",AA:"));
+                }
             }
             filterStr = DiscordUtil.format(guild, channel, user, me, filterStr);
             options = DiscordUtil.parseNations(guild, filterStr);
@@ -921,11 +925,11 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types=DBAlliancePosition.class)
     public String position(@Me GuildDB db, ParameterData param) {
-        DBAlliance alliance = DBAlliance.get(db.getAlliance_id());
-        Set<DBAlliancePosition> positions = new HashSet<>(alliance.getPositions());
+        AllianceList alliances = db.getAllianceList();
+        Set<DBAlliancePosition> positions = new HashSet<>(alliances.getPositions());
         positions.add(DBAlliancePosition.REMOVE);
         positions.add(DBAlliancePosition.APPLICANT);
-        return multipleSelect(param, positions, rank -> new AbstractMap.SimpleEntry<>(rank.getName(), rank.getInputName()));
+        return multipleSelect(param, positions, rank -> new AbstractMap.SimpleEntry<>(alliances.size() > 1 ? rank.getQualifiedName() : rank.getName(), rank.getInputName()));
     }
 
     @HtmlInput
@@ -1080,10 +1084,11 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= TaxBracket.class)
     public String bracket(@Me GuildDB db, ParameterData param) {
-        Map<Integer, TaxBracket> brackets = db.getAlliance().getTaxBrackets(true);
+        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
+            DBAlliance alliance = obj.getAlliance();
+            names.add(alliance.getName() + " - " + obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
             subtext.add("#" + obj.taxId + " (" + obj.getNations().size() + " nations)");
             values.add("tax_id=" + obj.taxId);
         });

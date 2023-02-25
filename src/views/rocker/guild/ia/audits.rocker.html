@@ -30,7 +30,7 @@
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
 
-@args (GuildDB db, DBAlliance alliance, Map<IACheckup.AuditType, Map<DBNation, String>> nationsByAudit)
+@args (GuildDB db, Map<IACheckup.AuditType, Map<DBNation, String>> nationsByAudit)
 @rocker.main.template("Alliance audit results") -> {
 <script>
 $(document).ready(function(){

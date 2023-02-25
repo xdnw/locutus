@@ -1682,7 +1682,7 @@ public class DBNation implements NationOrAlliance {
         return toSendNation;
     }
 
-    public Map<ResourceType, Double> getStockpile() throws IOException {
+    public Map<ResourceType, Double> getStockpile() {
         ApiKeyPool pool;
         ApiKeyPool.ApiKey myKey = getApiKey(false);
 
@@ -1694,7 +1694,7 @@ public class DBNation implements NationOrAlliance {
             throw new IllegalArgumentException("Nation " + nation + " is not member in an alliance");
         } else {
             System.out.println("remove:||Create with alliance key");
-            pool = alliance.getApiKeys(false, AlliancePermission.SEE_SPIES);
+            pool = alliance.getApiKeys(AlliancePermission.SEE_SPIES);
             if (pool == null) {
                 throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
             }
@@ -2945,6 +2945,10 @@ public class DBNation implements NationOrAlliance {
     @Command
     public String getAllianceUrl() {
         return "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAlliance_id();
+    }
+
+    public String getMarkdownUrl() {
+        return getNationUrlMarkup(true);
     }
 
     public String getNationUrlMarkup(boolean embed) {

@@ -118,21 +118,6 @@ public class GuildHandler {
         }
     }
 
-    public void resetBankCache() {
-        if (bank == null) bankInit = false;
-    }
-
-    public synchronized OffshoreInstance getBank(int allianceId) {
-        if (!bankInit && db.hasAlliance()) {
-            Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
-            bankInit = true;
-            {
-                bank = new OffshoreInstance(auth, db, allianceId);
-            }
-        }
-        return bank;
-    }
-
     @Subscribe
     public void testEvent(String evnet) {
         System.out.println("Guild " + guild + " received " + evnet);
@@ -742,13 +727,13 @@ public class GuildHandler {
         Member member = getGuild().getMember(user);
         if (member == null) throw new IllegalArgumentException("There was an error verifying the nation");
 
-        DBAlliance alliance = getDb().getAlliance();
+        AllianceList alliance = getDb().getAllianceList();
         Set<Grant.Requirement> baseRequirements = new HashSet<>();
 
         baseRequirements.add(new Grant.Requirement("This guild is not part of an alliance", false, f -> alliance != null));
         baseRequirements.add(new Grant.Requirement("Nation is not a member of an alliance", overrideUnsafe, f -> f.getPosition() > 1));
         baseRequirements.add(new Grant.Requirement("Nation is in VM", overrideUnsafe, f -> f.getVm_turns() == 0));
-        baseRequirements.add(new Grant.Requirement("Nation is not in the alliance: " + alliance.getAlliance_id(), overrideUnsafe, f -> f.getAlliance_id() == alliance.getAlliance_id()));
+        baseRequirements.add(new Grant.Requirement("Nation is not in the alliance: " + StringMan.getString(alliance.getIds()), overrideUnsafe, f -> alliance.isInAlliance(f)));
 
         Role temp = Roles.TEMP.toRole(getGuild());
         baseRequirements.add(new Grant.Requirement("Nation not eligible for grants", overrideSafe, f -> !member.getRoles().contains(temp)));
@@ -793,7 +778,7 @@ public class GuildHandler {
         // TODO 2d seniority and 5 won wars for initial 1.7k infra grants
         baseRequirements.add(new Grant.Requirement("Nation does not have 10d seniority", overrideSafe, f -> {
             Map.Entry<Integer, Rank> previousAA = f.getAlliancePosition(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
-            return previousAA.getKey() == alliance.getAlliance_id() && previousAA.getValue().id > Rank.APPLICANT.id;
+            return alliance.contains(previousAA.getKey()) && previousAA.getValue().id > Rank.APPLICANT.id;
         }));
 
         baseRequirements.add(new Grant.Requirement("Nation does not have 80% daily logins (past 1 weeks)", overrideSafe, f -> nation.avg_daily_login_week() > 0.8));
@@ -1201,7 +1186,7 @@ public class GuildHandler {
                 break;
             case RESOURCES:
                 // disburse up to 5 days?
-                    Map<Long, MessageChannel> channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    MessageChannel channel = getDb().getResourceChannel(nation.getAlliance_id());
                     if (channel != null) {
                         throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.raws.cmd.toSlashMention() + " in " + channel.getAsMention() + " to request funds from your deposits");
                     }
@@ -1884,51 +1869,6 @@ public class GuildHandler {
         return allowed;
     }
 
-    public int updateTaxesLegacy(int aaId, Long latestDate) {
-        int count = 0;
-        Set<Integer> aaIds = db.getAllianceIds();
-        if (!aaIds.contains(aaId)) throw new IllegalArgumentException("Guild is not registered to alliance: " + aaId +". See " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null));
-
-        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(aaId);
-        int latestId = 1;
-        if (latestDate == null) {
-            latestDate = 0L;
-        }
-
-        Auth auth = getDb().getAuth(AlliancePermission.TAX_BRACKETS);
-        if (auth == null) throw new IllegalArgumentException("Not auth found");
-
-
-        long now = System.currentTimeMillis();
-        if (!existing.isEmpty()) {
-
-            long date = existing.get(existing.size() - 1).date;
-            if (date < now) {
-                latestDate = Math.max(latestDate, date);
-            }
-            latestId = existing.get(existing.size() - 1).index;
-        }
-
-        List<BankDB.TaxDeposit> taxes = new GetTaxesTask(auth, latestDate).call();
-
-        synchronized (Locutus.imp().getBankDB()) {
-            long oldestFetched = Long.MAX_VALUE;
-            for (BankDB.TaxDeposit tax : taxes) {
-                tax.index = ++latestId;
-                oldestFetched = Math.min(oldestFetched, tax.date);
-            }
-            if (oldestFetched < latestDate - TimeUnit.DAYS.toMillis(7)) {
-                throw new IllegalArgumentException("Invalid fetch date: " + oldestFetched);
-            }
-
-            if (!taxes.isEmpty()) {
-                Locutus.imp().getBankDB().deleteTaxDeposits(auth.getAllianceId(), oldestFetched);
-                Locutus.imp().getBankDB().addTaxDeposits(taxes);
-            }
-        }
-        return count;
-    }
-
     /**
      * @param nation
      * @param type
@@ -2229,20 +2169,23 @@ public class GuildHandler {
     }
 
     public GuildDB getOffshoreDB() {
-        DBAlliance alliance = getDb().getAlliance();
+        Set<Integer> aaIds = getDb().getAllianceIds();
 
         Set<Integer> offshores = db.getCoalition(Coalition.OFFSHORE);
-        for (Integer aaId : offshores) {
-            DBAlliance aa = DBAlliance.get(aaId);
+        for (Integer offshoreId : offshores) {
+            DBAlliance aa = DBAlliance.get(offshoreId);
             if (aa == null || !aa.exists()) continue;
 
-            GuildDB otherDb = Locutus.imp().getGuildDBByAA(aaId);
+            GuildDB otherDb = Locutus.imp().getGuildDBByAA(offshoreId);
             if (otherDb == null) continue;
 
             Set<Long> offshoring = otherDb.getCoalitionRaw(Coalition.OFFSHORING);
-            if ((alliance != null && (offshoring.contains((long) alliance.getAlliance_id())))
-                    || offshoring.contains(getGuild().getIdLong())) {
-                return otherDb;
+            if (aaIds.isEmpty()) {
+                if (offshoring.contains(getDb().getIdLong())) return otherDb;
+            } else {
+                for (int aaId : aaIds) {
+                    if (offshoring.contains((long) aaId)) return otherDb;
+                }
             }
         }
         return null;
@@ -2318,7 +2261,7 @@ public class GuildHandler {
         Set<AuditType> disabledAudits = db.getOrNull(GuildDB.Key.DISABLED_MEMBER_AUDITS);
         if (disabledAudits != null && disabledAudits.contains(AuditType.INACTIVE)) return;
 
-        DBAlliance alliance = db.getAlliance();
+        AllianceList alliance = db.getAllianceList();
         if (alliance == null) return;
         long turnStart = TimeUtil.getTurn() - 12 * 3;
         long timeCheckStart = TimeUtil.getTimeFromTurn(turnStart - 1);

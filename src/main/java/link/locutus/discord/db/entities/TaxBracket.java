@@ -89,4 +89,8 @@ public class TaxBracket {
     public int getAllianceId(boolean fetchIfUnknown) {
         return fetchIfUnknown ? getAllianceId() : allianceId;
     }
+
+    public DBAlliance getAlliance() {
+        return DBAlliance.getOrCreate(allianceId);
+    }
 }

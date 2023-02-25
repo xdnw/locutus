@@ -16,7 +16,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -27,6 +26,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -324,9 +324,8 @@ public class IACommands {
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     @IsAlliance
     public String hasNotBoughtSpies(@Me IMessageIO channel, @Me GuildDB db, @Me Guild guild, Set<DBNation> nations) {
-        int aaId = db.getAlliance_id();
         for (DBNation nation : nations) {
-            if (nation.getAlliance_id() != aaId || nation.getPosition() < 1) return "Nation is not a member: " + nation.getNationUrl() + "(see `#position>1,<args>`,";
+            if (!db.isAllianceId(nation.getAlliance_id()) || nation.getPosition() < 1) return "Nation is not a member: " + nation.getNationUrl() + "(see `#position>1,<args>`,";
         }
 
         boolean result = new SimpleNationList(nations).updateSpies(false);
@@ -425,7 +424,7 @@ public class IACommands {
         IACategory iaCat = db.getIACategory();
         if (iaCat == null) return "No ia category is enabled";
 
-        IACheckup checkup = includeAudit ? new IACheckup(db, db.getAlliance_id(), true) : null;
+        IACheckup checkup = includeAudit ? new IACheckup(db, db.getAllianceList(), true) : null;
 
         Map<DBNation, List<DBNation>> mentorMenteeMap = new HashMap<>();
         Map<DBNation, DBNation> menteeMentorMap = new HashMap<>();
@@ -564,7 +563,7 @@ public class IACommands {
         }
 
         if (db.isValidAlliance()) {
-            DBAlliance alliance = db.getAlliance();
+            AllianceList alliance = db.getAllianceList();
             Set<DBNation> members = alliance.getNations(true, 2880, true);
             members.removeIf(f -> !mentees.contains(f));
 
@@ -700,7 +699,7 @@ public class IACommands {
 
         Auth auth;
         if (sender == null) {
-            auth = db.getAuth();
+            auth = me.getAuth();
         } else {
             auth = sender.getAuth(null);
             GuildDB authDB = Locutus.imp().getGuildDB(sender.getAlliance_id());
@@ -846,7 +845,6 @@ public class IACommands {
             " - This command is not retroactive and overrides the alliance internal taxrate", aliases = {"SetBracket", "SetTaxes", "SetTaxRate", "SetTaxBracket"})
     @RolePermission(Roles.MEMBER)
     @IsAlliance
-    @IsAuthenticated
     public String setBracket(@Me GuildDB db, @Me User author, @Me DBNation me, @Filter("{guild_alliance_id}") Set<DBNation> nations, @Default TaxBracket bracket, @Default TaxRate internalRate) throws IOException {
         if (nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
         DBNation single = nations.size() == 1 ? nations.iterator().next() : null;
@@ -940,8 +938,19 @@ public class IACommands {
     @IsAlliance
     public static String setRank(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation nation, DBAlliancePosition position, @Switch("f") boolean force, @Switch("d") boolean doNotUpdateDiscord) throws IOException {
         int allianceId = position.getAlliance_id();
-        if (allianceId <= 0) allianceId = db.getAlliance_id();
-        if (!db.getAllianceIds(true).contains(nation.getAlliance_id())) return "This guild is not in the same alliance as " + nation.getAllianceName();
+        if (allianceId <= 0) allianceId = nation.getAlliance_id();
+        if (nation.getAlliance_id() != position.getAlliance_id()) {
+            // Find position in same alliance
+            for (DBAlliancePosition aaPosition : DBAlliance.getOrCreate(nation.getAlliance_id()).getPositions()) {
+                if (aaPosition.getName().equalsIgnoreCase(position.getName())) {
+                    position = aaPosition;
+                    allianceId = position.getAlliance_id();
+                    break;
+                }
+            }
+        }
+
+        if (!db.isAllianceId(nation.getAlliance_id())) return "This guild is not in the same alliance as " + nation.getAllianceName();
 
         if ((nation.getAlliance_id() != allianceId || nation.getAlliance_id() != position.getAlliance_id()) && position != DBAlliancePosition.APPLICANT && position != DBAlliancePosition.REMOVE) {
             return "That nation is not in the alliance: " + PnwUtil.getName(allianceId, true);
@@ -1002,7 +1011,7 @@ public class IACommands {
         if (position.hasAnyOfficerPermissions() || nationPosition != null) requiredPermissions.add(AlliancePermission.CHANGE_PERMISSIONS);
         if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
         if (position == DBAlliancePosition.REMOVE || position == DBAlliancePosition.APPLICANT) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
-        Auth auth = db.getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
+        Auth auth = DBAlliance.getOrCreate(allianceId).getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
         if (auth == null) return "No auth for this guild found for: " + StringMan.getString(requiredPermissions);
 
         User discordUser = nation.getUser();
@@ -1516,7 +1525,7 @@ public class IACommands {
     @RolePermission(value = { Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERVIEWER, Roles.MENTOR, Roles.RECRUITER }, any = true)
     public String setReferrer(@Me GuildDB db, @Me DBNation me, User user) {
         if (!db.isValidAlliance()) return "Note: No alliance registered to guild";
-        if (me.getAlliance_id() != db.getAlliance_id()) {
+        if (!db.isAllianceId(me.getAlliance_id())) {
             return "Note: You are not in this alliance";
         }
         if (db.getMeta(user.getIdLong(), NationMeta.REFERRER) == null) {

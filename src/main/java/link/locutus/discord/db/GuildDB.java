@@ -4,6 +4,7 @@ import com.google.common.eventbus.AsyncEventBus;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -136,7 +137,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public EventBus getEventBus() {
         if (this.eventBus == null) {
-            if (getAlliance() != null) {
+            if (hasAlliance()) {
                 synchronized (this) {
                     if (this.eventBus == null) {
                         this.eventBus = new AsyncEventBus(getGuild().toString(), Runnable::run);
@@ -169,63 +170,42 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return guild;
     }
 
-    private PoliticsAndWarV2 api;
-    private PoliticsAndWarV2 apiUncached;
-    private String[] apiKeys = null;
-
-    public ApiKeyPool getApiPool(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
-        return DBAlliance.getOrCreate(allianceId).getApiKeys(requireBotToken, permissions);
-    }
-
-    public PoliticsAndWarV3 getApi(int allianceId, boolean requireBotToken, AlliancePermission... permissions) {
-        ApiKeyPool pool = getApiPool(allianceId, requireBotToken, permissions);
-        if (pool == null) {
-            StringBuilder message = new StringBuilder("`No api key set. Please use `$addApiKey`");
-            if (permissions.length > 0) message.append("\n - Required nation permissions: " + StringMan.getString(permissions));
-            throw new IllegalArgumentException(message + "");
-        }
-        return new PoliticsAndWarV3(pool);
-    }
-
     public ApiKeyPool getMailKey() {
-        int aaId = getAlliance_id();
+        Set<Integer> aaIds = getAllianceIds();
         Set<Integer> allowedNations = Settings.INSTANCE.TASKS.MAIL.getInstances().stream().map(f -> f.NATION_ID).collect(Collectors.toSet());
         for (int nationId : allowedNations) {
             DBNation nation = DBNation.byId(nationId);
-            if (nation == null || nation.getAlliance_id() != aaId) continue;
+            if (nation == null || !aaIds.contains(nation.getAlliance_id())) continue;
             ApiKeyPool.ApiKey key = nation.getApiKey(false);
             if (key != null) return ApiKeyPool.builder().addKey(key).build();
         }
-        ApiKeyPool pool = getApiPool(getAlliance_id(), false, AlliancePermission.POST_ANNOUNCEMENTS);
-        if (pool != null && pool.size() > 0) return pool;
-        pool = getApiPool(getAlliance_id(), false);
-        return pool != null && pool.size() > 0 ? pool : null;
-    }
-
-    public PoliticsAndWarV2 getApi() {
-        return getApi(true);
-    }
-    public PoliticsAndWarV2 getApi(boolean cached) {
-        String[] apiKeys = getOrNull(GuildDB.Key.API_KEY, false);
-        if (apiKeys == null) {
-            GuildDB delegate = getDelegateServer();
-            if (delegate != null) return delegate.getApi(cached);
-        }
-
-        if (apiKeys != null && (this.apiKeys == null || !Arrays.equals(apiKeys, this.apiKeys))) {
-            this.api = null;
-            this.apiKeys = null;
-            this.apiUncached = null;
-        }
-        if (this.api == null) {
-            if (apiKeys == null) {
-                throw new UnsupportedOperationException("No " + GuildDB.Key.API_KEY + " registered. Use `" + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + " <key>`");
+        Map.Entry<Integer, String> mailKeysBackup = null;
+        String[] apiKeys = getOrNull(Key.API_KEY);
+        if (apiKeys != null) {
+            for (String key : apiKeys) {
+                Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+                if (nationId != null) {
+                    DBNation nation = DBNation.byId(nationId);
+                    if (nation != null) {
+                        if (aaIds.contains(nation.getAlliance_id())) {
+                            return ApiKeyPool.builder().addKey(nationId, key).build();
+                        } else if (mailKeysBackup == null) {
+                            mailKeysBackup = (Map.entry(nationId, key));
+                        }
+                    }
+                }
             }
-            this.apiKeys = apiKeys;
-            this.api = new PoliticsAndWarBuilder().addApiKeys(apiKeys).setTestServerMode(Settings.INSTANCE.TEST).build();
-            this.apiUncached = this.api;
         }
-        return cached ? api : apiUncached;
+        if (mailKeysBackup != null) {
+            return ApiKeyPool.builder().addKey(mailKeysBackup.getKey(), mailKeysBackup.getValue()).build();
+        }
+        for (DBNation nation : getAllianceList().getNations(f -> f.getPositionEnum().id > Rank.HEIR.id)) {
+            ApiKeyPool.ApiKey key = nation.getApiKey(false);
+            if (key != null) {
+                return ApiKeyPool.create(key);
+            }
+        }
+        return null;
     }
 
     public boolean hasCoalitionPermsOnRoot(Coalition coalition) {
@@ -571,8 +551,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     @Override
     public int getAlliance_id() {
-        Integer aaId = getOrNull(Key.ALLIANCE_ID);
-        return aaId != null ? aaId : 0;
+        throw new UnsupportedOperationException("Not an alliance");
     }
 
     public boolean hasAlliance() {
@@ -590,8 +569,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     @Override
     public String getName() {
-        DBAlliance aa = getAlliance();
-        return aa != null ? aa.getName() : guild.getName() + "/" + guild.getIdLong();
+        return guild.getName() + "/" + guild.getIdLong();
     }
 
     public String getUrl() {
@@ -1430,7 +1408,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return null;
     }
 
-    public long getMemberWithdrawAccount(User banker, NationOrAlliance receiver, Long messageChannelIdOrNull, Set<Long> channelWithdrawAccounts, boolean throwError) {
+    public long getMemberWithdrawAccount(User banker, Long messageChannelIdOrNull, Set<Long> channelWithdrawAccounts, boolean throwError) {
         if (!Roles.MEMBER.has(banker, guild)) {
             if (throwError) throw new IllegalArgumentException("You must have the member role to withdraw resources: " + Roles.MEMBER.toDiscordRoleNameElseInstructions(guild));
             return 0;
@@ -1491,7 +1469,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return 0L;
     }
 
-    public Set<Long> getAllowedBankAccountsOrThrow(User banker, NationOrAlliance receiver, Long messageChannelIdOrNull) {
+    public Map<Long, AccessType> getAllowedBankAccountsOrThrow(User banker, NationOrAlliance receiver, Long messageChannelIdOrNull) {
+        Map<Long, AccessType> accessTypeMap = new LinkedHashMap<>();
         Set<Integer> aaIds = getAllianceIds();
         Set<Long> channelAccountIds = getResourceChannelAccounts(messageChannelIdOrNull);
         boolean isResourceChannel = channelAccountIds != null;
@@ -1517,23 +1496,25 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
 
 
-        Set<Long> allowedIds = new HashSet<>();
+//        Set<Long> allowedIds = new HashSet<>();
         if (Roles.ECON.has(banker, guild)) {
-            allowedIds.addAll(channelAccountIds);
+            for (long accountId : channelAccountIds) {
+                accessTypeMap.put(accountId, AccessType.ECON);
+            }
         } else if (!aaIds.isEmpty()) {
             for (Long aaId : channelAccountIds) {
                 if (Roles.ECON.has(banker, guild, aaId.intValue())) {
                     allowedIds.add(aaId);
                 }
             }
-            long withdrawAccount = getMemberWithdrawAccount(banker, receiver, messageChannelIdOrNull, channelAccountIds, allowedIds.isEmpty());
+            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, channelAccountIds, allowedIds.isEmpty());
             if (withdrawAccount > 0) {
                 allowedIds.add(withdrawAccount);
             }
         }
         if (allowedIds.isEmpty()) {
             if (isResourceChannel) {
-                throw new IllegalArgumentException("You are not authorized to withdraw from this resource channel. (Do you have the econ role for the alliance?: " + StringMan.getString(channelAAIds) + ")");
+                throw new IllegalArgumentException("You are not authorized to withdraw from this resource channel. (Do you have the econ role for the alliances?: " + StringMan.getString(channelAccountIds) + ")");
             } else {
                 throw new IllegalArgumentException("You are not authorized to withdraw resources. Do you have the econ role for the alliance?");
             }
@@ -1546,7 +1527,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : amounts.entrySet()) {
             NationOrAllianceOrGuild account = entry.getKey();
             double[] amount = entry.getValue();
-            addTransfer(dateTime, 0, 0, account, banker, offshoreNote, amount);
+            if (account.isGuild()) {
+                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amount);
+            } else {
+                addTransfer(dateTime, 0, 0, (NationOrAlliance) account, banker, offshoreNote, amount);
+            }
         }
     }
 
@@ -2127,17 +2112,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public boolean isValidAlliance() {
-        Integer aaId = getOrNull(Key.ALLIANCE_ID);
-        if (aaId == null) return false;
-        return Locutus.imp().getNationDB().getAlliance(aaId) != null;
-//        List<DBNation> nations = new Alliance(aaId).getNations(true, 10000, true);
-//        return !nations.isEmpty();
-    }
-
-    public DBAlliance getAlliance() {
-        Integer aaId = (Integer) getOrNull(Key.ALLIANCE_ID);
-        if (aaId == null) return null;
-        return Locutus.imp().getNationDB().getAlliance(aaId);
+        Set<Integer> aaIds = getOrNull(Key.ALLIANCE_ID);
+        if (aaIds.isEmpty()) return false;
+        for (int aaId : aaIds) {
+            if (DBAlliance.get(aaId) != null) return true;
+        }
+        return false;
     }
 
     public boolean hasRequiredMMR(DBNation nation) {
@@ -2302,12 +2282,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                             }
                         } catch(IOException e){
                             throw new RuntimeException(e);
-                        }
-                    }
-                    if (db.handler != null) {
-                        synchronized (OffshoreInstance.BANK_LOCK) {
-                            db.handler.bank = null;
-                            db.handler.resetBankCache();
                         }
                     }
 
@@ -3733,7 +3707,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             public String validate(GuildDB db, String value) {
                 Map<NationFilterString, Integer> parsed = (Map<NationFilterString, Integer>) parse(db, value);
 
-                DBAlliance alliance = db.getAlliance();
+                AllianceList alliance = db.getAllianceList();
                 if (alliance == null) throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
 
                 Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
@@ -4860,17 +4834,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         Set<Integer> offshores = getCoalition(Coalition.OFFSHORE);
         for (int offshoreId : offshores) {
-//            Alliance aa = new Alliance(aaId);
-//            if (!aa.exists()) continue;
+            DBAlliance aa = DBAlliance.get(offshoreId);
+            if (aa == null) continue;
 
-            GuildDB otherDb = Locutus.imp().getGuildDBByAA(offshoreId);
+            GuildDB otherDb = aa.getGuildDB();
             if (otherDb == null) continue;
-            Set<Integer> otherAAId = otherDb.getAllianceIds();
-            if (otherAAId.isEmpty()) continue;
-
             Set<Long> offshoring = otherDb.getCoalitionRaw(Coalition.OFFSHORING);
+            if (!offshoring.contains((long) offshoreId)) {
+                return null;
+            }
 
-            if (offshoring.contains((long) offshoreId)) {
+            if (aaIds.isEmpty()) {
+                if (offshoring.contains(getIdLong())) {
+                    return new AbstractMap.SimpleEntry<>(otherDb, offshoreId);
+                }
+            } else {
                 for (int aaId : aaIds) {
                     if (offshoring.contains((long) aaId)) {
                         return new AbstractMap.SimpleEntry<>(otherDb, offshoreId);
@@ -4891,11 +4869,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         if (otherDbAA == null) return null;
         GuildDB otherDb = otherDbAA.getKey();
         int aaId = otherDbAA.getValue();
-        Set<Integer> aaIds = otherDb.getAllianceIds();
-        if (aaIds.isEmpty()) return null;
-
-        otherDb.getHandler().resetBankCache();
-        return otherDb.getHandler().getBank(aaId);
+        DBAlliance aa = DBAlliance.get(aaId);
+        if (aa == null) return null;
+        return aa.getBank();
     }
 
     public enum AutoNickOption {
@@ -5583,6 +5559,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         update("DELETE FROM `ROLES` WHERE `role` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, role.name().toLowerCase());
         });
+    }
+
+    public  Map<Roles, Map<Long, Long>> getMappingRaw() {
+        return Collections.unmodifiableMap(roleToAccountToDiscord);
     }
 
     public Map<Long, Role> getAccountMapping(Roles role) {

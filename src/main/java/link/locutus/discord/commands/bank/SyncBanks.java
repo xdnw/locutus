@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.offshore.Auth;
@@ -29,21 +30,16 @@ public class SyncBanks extends Command {
 
     @Override
     public String help() {
-        return Settings.commandPrefix(true) + "syncbanks [epoch]";
+        return Settings.commandPrefix(true) + "syncbanks <alliance> [epoch]";
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() > 1) return usage();
-        Long latest = args.size() == 1 ? Long.parseLong(args.get(0)) : null;
+        if (args.size() < 2) return usage();
+        DBAlliance aa = DBAlliance.parse(args.get(0), true);
+        Long latest = args.size() == 2 ? Long.parseLong(args.get(1)) : null;
 
-        GuildDB db = Locutus.imp().getGuildDB(event);
-        Auth auth = db.getAuth(AlliancePermission.VIEW_BANK);
-        if (auth == null) return "No authentication found for this guild";
-
-        event.getChannel().sendMessage("Syncing bank for " + db.getGuild());
-        OffshoreInstance bank = db.getHandler().getBank();
-        bank.sync(latest, false);
+        aa.getBank().sync(latest, false);
         return "Done!";
     }
 }
