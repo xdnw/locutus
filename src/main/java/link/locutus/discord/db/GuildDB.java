@@ -104,10 +104,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public synchronized IACategory getIACategory() {
-        return getIACategory(false, false);
+        return getIACategory(false, true, false);
     }
-    public synchronized IACategory getIACategory(boolean create, boolean throwError) {
-        GuildDB delegate = getDelegateServer();
+    public synchronized IACategory getIACategory(boolean create, boolean allowDelegate, boolean throwError) {
+        GuildDB delegate = allowDelegate ? getDelegateServer() : null;
         if (delegate != null && delegate.iaCat != null) {
             return delegate.iaCat;
         }
@@ -125,7 +125,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         }
         if (iaCat == null && delegate != null) {
-            iaCat = delegate.getIACategory();
+            iaCat = delegate.getIACategory(false, false, throwError);
         }
         if (iaCat == null && create) {
             Category category = guild.createCategory("interview").complete();
@@ -238,13 +238,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public PoliticsAndWarV2 getApi() {
-        return getApi(true);
+        return getApi(true, true);
     }
-    public PoliticsAndWarV2 getApi(boolean cached) {
+    public PoliticsAndWarV2 getApi(boolean cached, boolean allowDelegate) {
         String[] apiKeys = getOrNull(GuildDB.Key.API_KEY, false);
-        if (apiKeys == null) {
+        if (apiKeys == null && allowDelegate) {
             GuildDB delegate = getDelegateServer();
-            if (delegate != null) return delegate.getApi(cached);
+            if (delegate != null) return delegate.getApi(cached, false);
         }
 
         if (apiKeys != null && (this.apiKeys == null || !Arrays.equals(apiKeys, this.apiKeys))) {
@@ -268,6 +268,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public boolean hasCoalitionPermsOnRoot(String coalition) {
+        return hasCoalitionPermsOnRoot(coalition, true);
+    }
+    public boolean hasCoalitionPermsOnRoot(String coalition, boolean allowDelegate) {
         Integer aaid = getOrNull(Key.ALLIANCE_ID);
 
         Guild rootServer = Locutus.imp().getServer();
@@ -277,9 +280,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         if (coalMembers.contains(getIdLong()) || (aaid != null && coalMembers.contains(aaid.longValue()))) {
             return true;
         }
-        GuildDB delegate = getDelegateServer();
-        if (delegate != null) {
-            return delegate.hasCoalitionPermsOnRoot(coalition);
+        if (allowDelegate) {
+            GuildDB delegate = getDelegateServer();
+            if (delegate != null) {
+                return delegate.hasCoalitionPermsOnRoot(coalition);
+            }
         }
         return false;
     }
@@ -478,6 +483,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void setMeta(long userId, NationMeta key, byte[] value) {
+        todo - get delegate checks aa id of both and returns the one with the aa id, if both have delegate;
+        todo - also prevent setting delegate and aaid at same time;
         GuildDB delegate = getDelegateServer();
         if (delegate != null) {
             delegate.setMeta(userId, key, value);
@@ -1276,6 +1283,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         double[] taxes = ResourceType.getBuffer();
 
         int[] aaBase = getOrNull(GuildDB.Key.TAX_BASE);
+        if (aaBase == null) aaBase = new int[]{100, 100};
         int[] baseBuffer = new int[2];
 
         for (BankDB.TaxDeposit record : records) {
@@ -1759,7 +1767,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public GuildDB getDelegateServer() {
-        return getOrNull(Key.DELEGATE_SERVER, false);
+        return getDelegateServer(false);
+    }
+    public GuildDB getDelegateServer(boolean getParent) {
+        GuildDB delegate = getOrNull(Key.DELEGATE_SERVER, false);
+        if (delegate != null && delegate.getIdLong() != getIdLong()) {
+            if (getParent) {
+                GuildDB delegateDelegate = delegate.getOrNull(Key.DELEGATE_SERVER, false);
+            }
+            return delegate;
+        }
+        return null;
     }
 
     public boolean isDelegateServer() {
@@ -4979,7 +4997,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public void addCoalition(long allianceId, String coalition) {
         GuildDB faServer = getOrNull(Key.FA_SERVER);
-        if (faServer != null) {
+        if (faServer != null && faServer.getIdLong() != getIdLong()) {
             faServer.addCoalition(allianceId, coalition);
             return;
         }
@@ -5001,7 +5019,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public void removeCoalition(long allianceId, String coalition) {
         GuildDB faServer = getOrNull(Key.FA_SERVER);
-        if (faServer != null) {
+        if (faServer != null && faServer.getIdLong() != getIdLong()) {
             faServer.removeCoalition(allianceId, coalition);
             return;
         }
@@ -5103,14 +5121,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public Map<String, Set<Long>> getCoalitionsRaw() {
         GuildDB faServer = getOrNull(Key.FA_SERVER);
-        if (faServer != null) return faServer.getCoalitionsRaw();
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionsRaw();
         getCoalitions();
         return Collections.unmodifiableMap(coalitions);
     }
 
     public Map<String, Set<Integer>> getCoalitions() {
         GuildDB faServer = getOrNull(Key.FA_SERVER);
-        if (faServer != null) return faServer.getCoalitions();
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitions();
         if (coalitions != null) return coalitionToAlliances(coalitions);
         synchronized (this) {
             if (coalitions != null) return coalitionToAlliances(coalitions);
@@ -5157,7 +5175,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
     public Set<Long> getCoalitionRaw(String coalition) {
         GuildDB faServer = getOrNull(Key.FA_SERVER);
-        if (faServer != null) return faServer.getCoalitionRaw(coalition);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionRaw(coalition);
         synchronized (this) {
             getCoalitions();
             Set<Long> raw = coalitions.getOrDefault(coalition, Collections.emptySet());
@@ -5239,7 +5257,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public void removeCoalition(String coalition) {
         GuildDB faServer = getOrNull(Key.FA_SERVER);
-        if (faServer != null) {
+        if (faServer != null && faServer.getIdLong() != getIdLong()) {
             faServer.removeCoalition(coalition);
             return;
         }

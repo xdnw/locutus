@@ -319,7 +319,7 @@ public class UnsortedCommands {
 
     @Command
     @IsAlliance
-    public String listAllianceMembers(@Me IMessageIO channel, @Me GuildDB db, int page) {
+    public String listAllianceMembers(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, int page) {
         Set<DBNation> nations = Locutus.imp().getNationDB().getNations(Collections.singleton(db.getAlliance_id()));
 
         int perPage = 5;
@@ -354,7 +354,7 @@ public class UnsortedCommands {
 
                 return response.toString();
             }
-        }).page(page - 1, perPage).build(channel, null, getClass().getSimpleName());
+        }).page(page - 1, perPage).build(channel, command, getClass().getSimpleName());
         return null;
     }
 

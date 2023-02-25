@@ -406,7 +406,7 @@ public class StatCommands {
         String title = "Top " + metric + " by alliance";
 
         RankBuilder<String> named = builder.nameKeys(f -> f.getName());
-        named.build(channel, null, title, uploadFile);
+        named.build(channel, command, title, uploadFile);
     }
     @Command(desc = "Rank alliances by a metric over a specified time period")
     public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
