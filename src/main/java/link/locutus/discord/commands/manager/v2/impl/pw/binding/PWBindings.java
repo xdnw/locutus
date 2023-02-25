@@ -112,7 +112,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
-    public DBNation nation(@Me User selfUser, String input) {
+    public static DBNation nation(@Me User selfUser, String input) {
         DBNation nation = DiscordUtil.parseNation(input);
         if (nation == null) {
             if (selfUser != null && input.equalsIgnoreCase("%user%")) {

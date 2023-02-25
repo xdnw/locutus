@@ -368,7 +368,9 @@ public class WarCommands {
     private static Map<Integer, Long> alreadySpied = new ConcurrentHashMap<>();
     @Command(desc = "Find nations to gather intel on (sorted by infra * days since last intel)")
     @RolePermission(Roles.MEMBER)
-    public String intel(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default Integer dnrTopX, @Switch("d") boolean useDNR) {
+    public String intel(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default Integer dnrTopX, @Switch("d") boolean useDNR, @Switch("n") DBNation attacker, @Switch("s") Double score) {
+        DBNation finalNation = attacker == null ? me : attacker;
+        double finalScore = score == null ? finalNation.getScore() : score;
         if (dnrTopX == null) {
             dnrTopX = db.getOrNull(GuildDB.Key.DO_NOT_RAID_TOP_X);
             if (dnrTopX == null) dnrTopX = 0;
@@ -390,26 +392,26 @@ public class WarCommands {
         enemies.removeIf(f -> f.getActive_m() < 4320);
         enemies.removeIf(f -> f.getVm_turns() > 0);
         enemies.removeIf(f -> f.isBeige());
-        if (me.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
+        if (finalNation.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
         enemies.removeIf(f -> f.getDef() == 3);
         enemies.removeIf(nation ->
                 nation.getActive_m() < 12000 &&
-                        nation.getGroundStrength(true, false) > me.getGroundStrength(true, false) &&
-                        nation.getAircraft() > me.getAircraft() &&
-                        nation.getShips() > me.getShips() + 2);
+                        nation.getGroundStrength(true, false) > finalNation.getGroundStrength(true, false) &&
+                        nation.getAircraft() > finalNation.getAircraft() &&
+                        nation.getShips() > finalNation.getShips() + 2);
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(30);
         enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
 
         if (false) {
-            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
+            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
             myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / 1.75, f.getScore() / 0.75) <= 0);
         } else {
             List<DBNation> tmp = new ArrayList<>(enemies);
-            tmp.removeIf(f -> f.getScore() < me.getScore() * 0.75 || f.getScore() > me.getScore() * 1.75);
+            tmp.removeIf(f -> f.getScore() < finalScore * 0.75 || f.getScore() > finalScore * 1.75);
             if (tmp.isEmpty()) {
-                enemies.removeIf(f -> !f.isInSpyRange(me));
+                enemies.removeIf(f -> !f.isInSpyRange(finalNation));
             } else {
                 enemies = tmp;
             }
@@ -1433,11 +1435,14 @@ public class WarCommands {
             "Use `success>80` to specify a cutoff for spyop success\n\n" +
             "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
     @RolePermission(Roles.MEMBER)
-    public String Spyops(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch("d") boolean directMesssage, @Switch("k") boolean prioritizeKills) throws ExecutionException, InterruptedException, IOException {
+    public String Spyops(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch("d") boolean directMesssage, @Switch("k") boolean prioritizeKills,
+                         @Switch("n") DBNation attacker) throws ExecutionException, InterruptedException, IOException {
+        DBNation finalNation = attacker == null ? me : attacker;
+
         targets.removeIf(f -> f.getActive_m() > 2880);
         targets.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         String title = "Recommended ops";
-        String body = runSpyOps(me, db, targets, operations, requiredSuccess, prioritizeKills);
+        String body = runSpyOps(finalNation, db, targets, operations, requiredSuccess, prioritizeKills);
 
         if (directMesssage) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
