@@ -1485,7 +1485,7 @@ public class IACommands {
 
     @Command(desc = "Create an interview channel")
     public String interview(@Me GuildDB db, @Me User selfUser, @Default("%user%") User user) {
-        IACategory iaCat = db.getIACategory(true, true);
+        IACategory iaCat = db.getIACategory(true,true,true);
 
         if (iaCat.getCategories().isEmpty()) {
             return "No categories found starting with: `interview`";

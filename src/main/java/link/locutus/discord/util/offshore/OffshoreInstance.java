@@ -83,7 +83,7 @@ public class OffshoreInstance {
     }
 
     public PoliticsAndWarV2 getApi() {
-        return getGuildDB().getApi(false);
+        return getGuildDB().getApi(false, true);
     }
 
     public Auth getAuth() {

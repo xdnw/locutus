@@ -4,7 +4,6 @@ import com.google.common.eventbus.AsyncEventBus;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -12,7 +11,6 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -483,8 +481,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void setMeta(long userId, NationMeta key, byte[] value) {
-        todo - get delegate checks aa id of both and returns the one with the aa id, if both have delegate;
-        todo - also prevent setting delegate and aaid at same time;
+        //todo - get delegate checks aa id of both and returns the one with the aa id, if both have delegate;
+        //todo - also prevent setting delegate and aaid at same time;
         GuildDB delegate = getDelegateServer();
         if (delegate != null) {
             delegate.setMeta(userId, key, value);
@@ -1887,6 +1885,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public AddBalanceBuilder addBalanceBuilder() {
         return new AddBalanceBuilder(this);
     }
+    
 
 //    public synchronized void addBalance(GuildDB guildDb, Map<ResourceType, Double> transfer) {
 //        addBalance(guildDb.getOrNull(Key.ALLIANCE_ID), guildDb, transfer);
