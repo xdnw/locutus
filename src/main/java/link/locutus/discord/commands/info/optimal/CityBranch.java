@@ -1,14 +1,13 @@
 package link.locutus.discord.commands.info.optimal;
 
+import it.unimi.dsi.fastutil.PriorityQueue;
+import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.*;
-import link.locutus.discord.apiv1.enums.city.building.imp.AServiceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import it.unimi.dsi.fastutil.PriorityQueue;
-import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 
 import java.util.AbstractMap;
 import java.util.Map;
@@ -20,22 +19,14 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
     private final Continent continent;
     private final Predicate<Project> hasProject;
     private final ObjectArrayFIFOQueue<Map.Entry<JavaCity, Integer>> pool;
-    private final double maxDisease;
-    private final double minPop;
-    private final boolean selfSufficient;
-
+    private boolean usedOrigin = false;
+    private Building originBuilding = null;
     public CityBranch(Continent continent, double maxDisease, double minPop, boolean selfSufficient, Predicate<Project> hasProject) {
         this.continent = continent;
         this.hasProject = hasProject;
-        this.maxDisease = maxDisease;
-        this.minPop = minPop;
-        this.selfSufficient = selfSufficient;
 
         this.pool = new ObjectArrayFIFOQueue<>(500000);
     }
-
-    private boolean usedOrigin = false;
-    private Building originBuilding = null;
 
     private Map.Entry<JavaCity, Integer> create(Map.Entry<JavaCity, Integer> originPair, Building building, int index) {
         JavaCity origin = originPair.getKey();
@@ -49,8 +40,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
 
             return originPair;
         }
-        if (this.pool.isEmpty())
-        {
+        if (this.pool.isEmpty()) {
             JavaCity newCity = new JavaCity(origin);
             newCity.remove(originBuilding);
             newCity.set(building);
@@ -104,18 +94,11 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
         boolean buildMoreRaws = true;
         boolean buildMoreManu = true;
         boolean buildMoreCommerce = true;
-//        for (int i = maxBuilding - 1; i >= minBuilding; i--) {
-//            if (origin.get(i) > 0) {
-//                minBuilding = i;
-//                break;
-//            }
-//        }
         {
             Building minBuildingType = Buildings.get(minBuilding);
             int amt = origin.get(minBuilding);
             if (amt != 0) {
-                if (minBuildingType instanceof ResourceBuilding) {
-                    ResourceBuilding rssBuild = (ResourceBuilding) minBuildingType;
+                if (minBuildingType instanceof ResourceBuilding rssBuild) {
                     if (amt < minBuildingType.cap(hasProject)) {
                         if (rssBuild.resource().isRaw()) {
                             buildMoreRaws = false;
@@ -124,9 +107,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
                         }
                     }
                 } else if (minBuildingType instanceof CommerceBuilding) {
-                    if (amt < minBuildingType.cap(hasProject)) {
-//                        buildMoreCommerce = false;
-                    }
+                    minBuildingType.cap(hasProject);
                 }
             }
         }
@@ -138,8 +119,7 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
             int amt = origin.get(i);
             if (amt >= building.cap(hasProject)) continue;
 
-            if (building instanceof ResourceBuilding) {
-                ResourceBuilding rssBuild = (ResourceBuilding) building;
+            if (building instanceof ResourceBuilding rssBuild) {
                 ResourceType rss = rssBuild.resource();
                 if (rss.isRaw()) {
                     if (buildMoreRaws || i == minBuilding) {
@@ -149,18 +129,9 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
                     cities.enqueue(create(originPair, building, i));
                 }
             } else if (building instanceof CommerceBuilding) {
-                // subway
-                // Find optimal commerce build (max slots)
-                // Remove buildings as you address pollution
 
                 if (origin.getCommerce(hasProject) >= maxCommerce) continue;
-//                if (buildMoreCommerce || i == minBuilding || true)
                 {
-//                    int previousAmt = origin.get(i - 1);
-//                    Building previousBuilding = Buildings.get(i - 1);
-//                    if (!(previousBuilding instanceof CommerceBuilding) || previousAmt >= previousBuilding.cap(nation::hasProject)) {
-//
-//                    }
                     cities.enqueue(create(originPair, building, i));
                 }
             } else if (building instanceof ServiceBuilding) {

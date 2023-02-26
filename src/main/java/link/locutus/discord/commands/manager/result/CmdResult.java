@@ -6,11 +6,9 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 public abstract class CmdResult {
     private final JsonObject obj;
-    private final boolean success;
 
     public CmdResult(boolean success) {
         this.obj = new JsonObject();
-        this.success = success;
         set("success", success);
     }
 

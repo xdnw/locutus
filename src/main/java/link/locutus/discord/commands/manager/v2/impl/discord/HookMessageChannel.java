@@ -217,7 +217,7 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageById(long messageId, Message message) {
+    public MessageAction editMessageById(long messageId, @NotNull Message message) {
         return new AdapterMessageUpdateAction(this, hook.editMessageById(messageId, message));
     }
 

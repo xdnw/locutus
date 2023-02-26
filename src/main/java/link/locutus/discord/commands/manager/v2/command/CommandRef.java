@@ -1,12 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
-import link.locutus.discord.config.Settings;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.json.JSONObject;
 
 import java.util.Arrays;
@@ -17,6 +12,7 @@ import java.util.Map;
 public class CommandRef {
     private final Map<String, String> arguments = new HashMap<>();
     private final String path;
+
     public CommandRef() {
         String[] split = getClass().getName().split("\\$");
         split = Arrays.copyOfRange(split, 1, split.length);
@@ -80,6 +76,7 @@ public class CommandRef {
     public JSONObject toJson() {
         return new JSONObject(toCommandArgs());
     }
+
     public String toCommandArgs() {
         Map<String, String> data = new HashMap<>(arguments);
         data.put("", path);
@@ -93,7 +90,7 @@ public class CommandRef {
             return null;
         }
         if (!(callable instanceof ParametricCallable)) {
-            if (throwError) throw new IllegalArgumentException("Command " + path + " is not parametric");
+            if (throwError) throw new IllegalArgumentException("Command " + path + " is not parametric.");
             return null;
         }
         return (ParametricCallable) callable;

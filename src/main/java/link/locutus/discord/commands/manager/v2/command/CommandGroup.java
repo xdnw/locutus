@@ -8,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
 
-import java.io.File;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
@@ -19,14 +18,18 @@ public class CommandGroup implements ICommandGroup {
     private final ValidatorStore validators;
     private final CommandCallable parent;
     private final List<String> aliases;
-    private Map<String, CommandCallable> subcommands = new LinkedHashMap<>();
-    private String help,desc;
+    private final Map<String, CommandCallable> subcommands = new LinkedHashMap<>();
+    private String help, desc;
 
     public CommandGroup(CommandCallable parent, String[] aliases, ValueStore store, ValidatorStore validators) {
         this.store = store;
         this.validators = validators;
         this.parent = parent;
         this.aliases = Arrays.asList(aliases);
+    }
+
+    public static CommandGroup createRoot(ValueStore store, ValidatorStore validators) {
+        return new CommandGroup(null, new String[0], store, validators);
     }
 
     @Override
@@ -50,11 +53,6 @@ public class CommandGroup implements ICommandGroup {
     @Override
     public String simpleHelp() {
         return help == null ? "" : help;
-    }
-
-    public static CommandGroup createRoot(ValueStore store, ValidatorStore validators) {
-        CommandGroup group = new CommandGroup(null, new String[0], store, validators);
-        return group;
     }
 
     @Override
@@ -125,7 +123,10 @@ public class CommandGroup implements ICommandGroup {
         if (found == null) throw new IllegalArgumentException("No method found for " + methodName);
 
         ParametricCallable parametric = ParametricCallable.generateFromMethod(parent, object, found, store);
-        if (commandName == null) commandName = parametric.getPrimaryCommandId();
+        if (commandName == null) {
+            assert parametric != null;
+            commandName = parametric.getPrimaryCommandId();
+        }
         registerWithPath(parametric, path, commandName);
     }
 
@@ -142,7 +143,7 @@ public class CommandGroup implements ICommandGroup {
 
     @Override
     public Object call(ArgumentStack stack) {
-        ValueStore store = stack.getStore();
+        ValueStore<?> store = stack.getStore();
         if (!stack.hasNext()) {
             throw new CommandUsageException(this, "No subcommand specified", help(store), desc(store));
         }
@@ -151,8 +152,7 @@ public class CommandGroup implements ICommandGroup {
         if (subcommand == null) {
             throw new CommandUsageException(this, "Invalid subcommand: `" + arg + "`", help(store), desc(store));
         }
-        Object result = subcommand.call(stack);
-        return result;
+        return subcommand.call(stack);
     }
 
     @Override
@@ -209,13 +209,13 @@ public class CommandGroup implements ICommandGroup {
     public void printCommandMap(StringBuilder output, String id, int indent) {
         String prefix = "";
         if (indent > 0) prefix = StringMan.repeat(" --", indent);
-        output.append(prefix + id).append("\n");
+        output.append(prefix).append(id).append("\n");
         for (String subId : primarySubCommandIds()) {
             CommandCallable command = get(subId);
             if (command instanceof CommandGroup) {
                 ((CommandGroup) command).printCommandMap(output, subId, indent + 1);
             } else {
-                output.append(prefix + " --<" + subId + ">").append("\n");
+                output.append(prefix).append(" --<").append(subId).append(">").append("\n");
             }
         }
     }
@@ -253,17 +253,18 @@ public class CommandGroup implements ICommandGroup {
 
             List<String> path = new ArrayList<>(Arrays.asList(split));
             path.remove(path.size() - 1);
-            if (path.size() > maxDepth) throw new IllegalArgumentException("Path " + StringMan.getString(path) + " is too deep");
+            if (path.size() > maxDepth)
+                throw new IllegalArgumentException("Path " + StringMan.getString(path) + " is too deep.");
 
             registerWithPath(callable, path, split[split.length - 1]);
         }
 
         if (!ignoreMissingMapping) {
-            Set<Method> legacyMethod = commands.getParametricCallables(f -> true).stream().map(f -> f.getMethod()).collect(Collectors.toSet());
-            Set<Method> currentMethods = getParametricCallables(f -> true).stream().map(f -> f.getMethod()).collect(Collectors.toSet());
+            Set<Method> legacyMethod = commands.getParametricCallables(f -> true).stream().map(ParametricCallable::getMethod).collect(Collectors.toSet());
+            Set<Method> currentMethods = getParametricCallables(f -> true).stream().map(ParametricCallable::getMethod).collect(Collectors.toSet());
             for (Method method : legacyMethod) {
                 if (!currentMethods.contains(method)) {
-                    throw new IllegalArgumentException("Could not find mapping for method " + method.getName() + " | " + StringMan.getString(method.getGenericParameterTypes()) + " please add it to the commands.yml file or register it after legacy remapping");
+                    throw new IllegalArgumentException("Could not find mapping for method " + method.getName() + " | " + StringMan.getString(method.getGenericParameterTypes()) + " please add it to the commands.yml file or register it after legacy remapping.");
                 }
             }
         }
@@ -308,7 +309,8 @@ public class CommandGroup implements ICommandGroup {
             Method found = null;
             for (Method method : methodInfo.clazz().getDeclaredMethods()) {
                 if (method.getName().equalsIgnoreCase(methodInfo.method()) && method.getAnnotation(Command.class) != null) {
-                    if (found != null) throw new IllegalStateException("Duplicate method found in " + methodInfo.clazz().getName() + " for " + methodInfo.method());
+                    if (found != null)
+                        throw new IllegalStateException("Duplicate method found in " + methodInfo.clazz().getName() + " for " + methodInfo.method());
                     found = method;
                 }
             }

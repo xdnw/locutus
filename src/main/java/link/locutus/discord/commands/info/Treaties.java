@@ -1,18 +1,18 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -26,6 +26,7 @@ public class Treaties extends Command {
     public Treaties() {
         super(CommandCategory.FOREIGN_AFFAIRS, CommandCategory.GAME_INFO_AND_TOOLS);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;
@@ -52,10 +53,11 @@ public class Treaties extends Command {
             Auth auth = db.getAuth(AlliancePermission.MANAGE_TREATIES);
             if (auth != null) {
                 List<PendingTreaty> treaties = auth.getTreaties();
-                if (!flags.contains('f')) treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
+                if (!flags.contains('f'))
+                    treaties.removeIf(f -> f.status == PendingTreaty.TreatyStatus.EXPIRED || f.status == PendingTreaty.TreatyStatus.WE_CANCELED || f.status == PendingTreaty.TreatyStatus.THEY_CANCELED);
                 for (PendingTreaty treaty : treaties) {
                     long turnsLeft = treaty.getTurnEnds() - TimeUtil.getTurn();
-                    response.append("#" + treaty.getId() + ": " + PnwUtil.getName(treaty.getFromId(), true) + " | " + treaty.getType() + " -> " + PnwUtil.getName(treaty.getToId(), true) + " (" + turnsLeft + " turns |" + treaty.status + ")").append("\n");
+                    response.append("#").append(treaty.getId()).append(": ").append(PnwUtil.getName(treaty.getFromId(), true)).append(" | ").append(treaty.getType()).append(" -> ").append(PnwUtil.getName(treaty.getToId(), true)).append(" (").append(turnsLeft).append(" turns |").append(treaty.status).append(")").append("\n");
                 }
                 return response.toString();
             }
@@ -72,13 +74,13 @@ public class Treaties extends Command {
                 String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
                 TreatyType type = treaty.getType();
 
-                response.append(from + " | " + type + " -> " + to).append("\n");
+                response.append(from).append(" | ").append(type).append(" -> ").append(to).append("\n");
             }
 
             allTreaties.addAll(treaties.values());
         }
 
-        if (allTreaties.isEmpty()) return "No treaties";
+        if (allTreaties.isEmpty()) return "No treaties.";
 
         String title = allTreaties.size() + " treaties";
         DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString());

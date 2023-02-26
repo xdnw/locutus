@@ -624,7 +624,7 @@ public class SlashCommandManager extends ListenerAdapter {
         // Option with current value
         List<String> args = new ArrayList<>(Arrays.asList(option.getValue()));
         ArgumentStack stack = new ArgumentStack(args, locals, commands.getValidators(), commands.getPermisser());
-        locals.addProvider(stack);
+        locals.addProvider(ParameterData.class, stack);
 
         List<Choice> choices = new ArrayList<>();
         if (autoParse) {

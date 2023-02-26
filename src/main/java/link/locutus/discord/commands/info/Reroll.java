@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -58,33 +57,13 @@ public class Reroll extends Command {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();
 
-            if (otherId > id && otherNation.getAgeDays() > me.getAgeDays() && Math.abs(otherNation.getDate()  - me.getDate()) > TimeUnit.DAYS.toMillis(3)) {
+            if (otherId > id && otherNation.getAgeDays() > me.getAgeDays() && Math.abs(otherNation.getDate() - me.getDate()) > TimeUnit.DAYS.toMillis(3)) {
                 return me.getNation() + "/" + me.getNation_id() + " is a reroll.";
             }
         }
 
-//        Map<Long, BigInteger> uuids = Locutus.imp().getDiscordDB().getUuids(me.getNation_id());
-        Set<String> multiNations = new HashSet<>();;
+        Set<String> multiNations = new HashSet<>();
         Set<Integer> deletedMulti = new HashSet<>();
-//        for (BigInteger uuid : uuids.values()) {
-//            Set<Integer> multis = Locutus.imp().getDiscordDB().getMultis(uuid);
-//            for (int nationId : multis) {
-//                if (nationId >= me.getNation_id()) continue;
-//                DBNation other = Locutus.imp().getNationDB().getNation(nationId);
-//                if (other == null) {
-//                    deletedMulti.add(nationId);
-//                } else if (other.getActive_m() > 10000 || other.getVm_turns() != 0) {
-//                    multiNations.add(other.getNation());
-//                }
-//            }
-//        }
-
-        if (!deletedMulti.isEmpty()) {
-            return me.getNation() + "/" + me.getNation_id() + " is a possible reroll of the following nation ids: " + StringMan.getString(deletedMulti);
-        }
-        if (!multiNations.isEmpty()) {
-            return me.getNation() + "/" + me.getNation_id() + " is a possible reroll of the following nations: " + StringMan.getString(multiNations);
-        }
 
         return me.getNation() + "/" + me.getNation_id() + " is not a reroll.";
     }

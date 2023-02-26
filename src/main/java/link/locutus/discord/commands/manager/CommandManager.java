@@ -47,7 +47,6 @@ import link.locutus.discord.commands.fun.Nev;
 import link.locutus.discord.commands.fun.SriCommand;
 import link.locutus.discord.commands.info.ChannelCount;
 import link.locutus.discord.commands.info.CityCost;
-import link.locutus.discord.commands.info.DummyCommand;
 import link.locutus.discord.commands.info.InfraCost;
 import link.locutus.discord.commands.info.Invite;
 import link.locutus.discord.commands.info.LandCost;
@@ -88,7 +87,6 @@ import link.locutus.discord.commands.sheets.NoteSheet;
 import link.locutus.discord.commands.sheets.ProjectSheet;
 import link.locutus.discord.commands.sheets.ROI;
 import link.locutus.discord.commands.bank.SafekeepCommand;
-import link.locutus.discord.commands.external.guild.Setup;
 import link.locutus.discord.commands.war.WarInfo;
 import link.locutus.discord.commands.external.guild.CheckPermission;
 import link.locutus.discord.commands.external.guild.KeyStore;
@@ -98,7 +96,6 @@ import link.locutus.discord.commands.account.Say;
 import link.locutus.discord.commands.bank.Warchest;
 import link.locutus.discord.commands.fun.Jokes;
 import link.locutus.discord.commands.info.BeigeTurns;
-import link.locutus.discord.commands.info.ListMultisByAlliance;
 import link.locutus.discord.commands.info.Multi;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.rankings.AAMembers;
@@ -694,7 +691,6 @@ public class CommandManager {
         this.register(new WeeklyInterest()); //
         this.register(new ImportEmoji());
         this.register(new Interview());
-        this.register(new DummyCommand());
         this.register(new HasRole());
         this.register(new FindTrader());
         this.register(new RegisterCommand(db));
@@ -781,8 +777,6 @@ public class CommandManager {
         this.register(new GlobalTradeVolume());
         this.register(new GlobalTradeAverage());
         BankWith bankWith = new BankWith();
-//        this.register(new NAPViolations());
-//        this.register(new NAPDown()); // Outdated
         this.register(new CounterStats());
         this.register(new FindSpyOp());
         this.register(new FindOffshore());

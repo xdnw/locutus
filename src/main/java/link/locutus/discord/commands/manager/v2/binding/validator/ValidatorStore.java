@@ -23,7 +23,7 @@ public class ValidatorStore extends SimpleValueStore {
             Parser parser = get(key);
             if (parser != null) {
                 LocalValueStore locals = new LocalValueStore<>(store);
-                locals.addProvider(data);
+                locals.addProvider(ParameterData.class, data);
                 locals.addProvider(Key.of(annotation.annotationType()), annotation);
                 return (T) parser.apply(locals, object);
             }

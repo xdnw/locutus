@@ -7,23 +7,22 @@ import org.json.JSONObject;
 import javax.annotation.CheckReturnValue;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 public interface IMessageIO {
-    public IMessageBuilder getMessage();
+    IMessageBuilder getMessage();
 
     @CheckReturnValue
-    public IMessageBuilder create();
+    IMessageBuilder create();
 
     default CompletableFuture<IMessageBuilder> send(String message) {
         return send(create().append(message));
     }
 
-    public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder);
+    CompletableFuture<IMessageBuilder> send(IMessageBuilder builder);
 
-    public IMessageIO update(IMessageBuilder builder, long id);
+    IMessageIO update(IMessageBuilder builder, long id);
 
-    public IMessageIO delete(long id);
+    IMessageIO delete(long id);
 
     @CheckReturnValue
     default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<String> results, String footer, boolean inline) {

@@ -1,36 +1,32 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.json.CityBuild;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.domains.City;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.json.CityBuild;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class Revenue extends Command {
     public Revenue() {
         super("revenue", "alliancerev", "income", CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.ECON);
     }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "revenue [json|city-link|nation-link]";
@@ -38,9 +34,10 @@ public class Revenue extends Command {
 
     @Override
     public String desc() {
-        return "Get revenue. Use `-bonus` to ignore new nation bonuses\n" +
-                "Add `-b` to exclude nation bonus\n" +
-                "Add `-i` to include inactive/beige/gray/vm/apps";
+        return """
+                Get revenue. Use `-bonus` to ignore new nation bonuses
+                Add `-b` to exclude nation bonus
+                Add `-i` to include inactive/beige/gray/vm/apps""";
     }
 
     @Override
@@ -59,9 +56,7 @@ public class Revenue extends Command {
 
         boolean force = flags.contains('f');
         boolean bonus = !flags.contains('b');
-        Iterator<String> iterator = args.iterator();
-        while (iterator.hasNext()) {
-            String next = iterator.next();
+        for (String next : args) {
             if (next.contains("http") || next.contains("{")) break;
         }
 
@@ -74,7 +69,6 @@ public class Revenue extends Command {
         StringBuilder response = new StringBuilder();
 
         Map<DBNation, Map<Integer, JavaCity>> cities = new HashMap<>();
-//        Collection<JavaCity> builds = new ArrayList<>();
         if (jsonStart != -1) {
             String buildJson = content.substring(jsonStart, jsonEnd + 1);
             CityBuild cityBuild = CityBuild.of(buildJson);
@@ -115,7 +109,7 @@ public class Revenue extends Command {
             }
 
             if (nations.size() > 250 && !Locutus.imp().getGuildDB(guild).isWhitelisted()) {
-                return ">250 nations. Please try using a filter";
+                return "Too many nations, Please try using a filter";
             }
 
             if (nations.size() == 0) {
@@ -144,13 +138,7 @@ public class Revenue extends Command {
         for (Map.Entry<DBNation, Map<Integer, JavaCity>> entry : cities.entrySet()) {
             DBNation nation = entry.getKey();
 
-            Predicate<Project> hasProject = new Predicate<Project>() {
-                @Override
-                public boolean test(Project project) {
-                    return nation.hasProject(project);
-//                    return project != null && project.get(pnwNation) > 0;
-                }
-            };
+            Predicate<Project> hasProject = nation::hasProject;
 
             double rads = nation.getRads();
 
@@ -194,14 +182,13 @@ public class Revenue extends Command {
             response.append('\n').append("Military upkeep:")
                     .append("```").append(PnwUtil.resourcesToString(milUp)).append("```");
 
-            response.append('\n').append("Trade bonus: ```" + tradeBonus + "```");
+            response.append('\n').append("Trade bonus: ```").append(tradeBonus).append("```");
 
             Map<ResourceType, Double> total = PnwUtil.add(PnwUtil.resourcesToMap(cityProfit), PnwUtil.resourcesToMap(milUp));
             total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + tradeBonus);
 
             response.append('\n').append("Combined Total:")
-                    .append("```").append(PnwUtil.resourcesToString(total)).append("```")
-                    .append("Converted total: $" + MathMan.format(PnwUtil.convertedTotal(total)));
+                    .append("```").append(PnwUtil.resourcesToString(total)).append("```").append("Converted total: $").append(MathMan.format(PnwUtil.convertedTotal(total)));
         }
 
         {
@@ -217,9 +204,9 @@ public class Revenue extends Command {
             }
             if (taxable > consumeCost) {
                 double requiredTax = 100 * consumeCost / taxable;
-                response.append("\nEquilibrium taxrate: `" + MathMan.format(requiredTax) + "%`");
+                response.append("\nEquilibrium taxrate: `").append(MathMan.format(requiredTax)).append("%`");
             } else {
-                response.append("\n`warn: Revenue is not sustainable`");
+                response.append("\n`warn: Revenue is not sustainable.`");
             }
         }
 

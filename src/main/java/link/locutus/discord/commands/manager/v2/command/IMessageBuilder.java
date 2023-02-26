@@ -1,15 +1,12 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import de.erichseifert.vectorgraphics2d.intermediate.CommandHandler;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import javax.annotation.CheckReturnValue;
 import java.nio.charset.StandardCharsets;
@@ -17,27 +14,26 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 public interface IMessageBuilder {
-    public long getId();
+    long getId();
 
-    public IMessageBuilder clear();
-
-    @CheckReturnValue
-    public IMessageBuilder append(String content);
+    IMessageBuilder clear();
 
     @CheckReturnValue
-    public IMessageBuilder embed(String title, String body);
+    IMessageBuilder append(String content);
 
     @CheckReturnValue
-    public IMessageBuilder embed(String title, String body, String footer);
+    IMessageBuilder embed(String title, String body);
 
     @CheckReturnValue
-    public IMessageBuilder commandInline(CommandRef ref);
+    IMessageBuilder embed(String title, String body, String footer);
 
     @CheckReturnValue
-    public IMessageBuilder commandLinkInline(CommandRef ref);
+    IMessageBuilder commandInline(CommandRef ref);
+
+    @CheckReturnValue
+    IMessageBuilder commandLinkInline(CommandRef ref);
 
     @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, CommandRef ref, String message) {
@@ -52,7 +48,7 @@ public interface IMessageBuilder {
     @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, Long outputChannel, CommandRef ref, String message) {
         StringBuilder cmd = new StringBuilder();
-        if (outputChannel != null) cmd.append("<#" + outputChannel + "> ");
+        if (outputChannel != null) cmd.append("<#").append(outputChannel).append("> ");
         if (behavior != null && behavior != CommandBehavior.DELETE_MESSAGE) cmd.append(behavior.getValue());
         cmd.append(ref.toCommandArgs());
         return commandButton(cmd.toString(), message);
@@ -88,7 +84,7 @@ public interface IMessageBuilder {
     @Deprecated
     default IMessageBuilder paginate(String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
         if (results.isEmpty()) {
-            System.out.println("Results are empty");
+            System.out.println("Results are empty.");
             return this;
         }
 
@@ -153,7 +149,7 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     @Deprecated
-    public IMessageBuilder commandButton(String command, String message);
+    IMessageBuilder commandButton(String command, String message);
 
     @CheckReturnValue
     default IMessageBuilder commandButton(JSONObject command, String message) {
@@ -192,18 +188,18 @@ public interface IMessageBuilder {
     }
 
     @CheckReturnValue
-    public IMessageBuilder linkButton(String url, String message);
+    IMessageBuilder linkButton(String url, String message);
 
     @CheckReturnValue
-    public IMessageBuilder image(String name, byte[] data);
+    IMessageBuilder image(String name, byte[] data);
 
     @CheckReturnValue
-    public IMessageBuilder file(String name, byte[] data);
+    IMessageBuilder file(String name, byte[] data);
 
     @CheckReturnValue
-    public IMessageBuilder graph(TimeNumericTable table);
+    IMessageBuilder graph(TimeNumericTable table);
 
-    public CompletableFuture<IMessageBuilder> send();
+    CompletableFuture<IMessageBuilder> send();
 
 
     User getAuthor();
@@ -222,8 +218,6 @@ public interface IMessageBuilder {
 
     /**
      * Key pair (name, command)
-     * @param reactions
-     * @return
      */
     @CheckReturnValue
     default IMessageBuilder addCommands(Map<String, String> reactions) {

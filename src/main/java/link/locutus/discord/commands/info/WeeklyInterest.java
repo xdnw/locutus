@@ -46,10 +46,10 @@ public class WeeklyInterest extends Command {
         double weeklyPayments = (totalInterest + amount) / weeks;
 
         StringBuilder result = new StringBuilder("```");
-        result.append("Principle Amount: $" + MathMan.format(amount)).append("\n");
-        result.append("Loan Interest Rate: " + MathMan.format(pct)).append("%\n");
-        result.append("Total Interest: $" + MathMan.format(totalInterest)).append("\n");
-        result.append("Weekly Payments: $" + MathMan.format(weeklyPayments)).append("\n");
+        result.append("Principle Amount: $").append(MathMan.format(amount)).append("\n");
+        result.append("Loan Interest Rate: ").append(MathMan.format(pct)).append("%\n");
+        result.append("Total Interest: $").append(MathMan.format(totalInterest)).append("\n");
+        result.append("Weekly Payments: $").append(MathMan.format(weeklyPayments)).append("\n");
 
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -57,26 +57,18 @@ public class WeeklyInterest extends Command {
 
         int dayOffset = 0;
         switch (day) {
-            case Calendar.MONDAY:
-            case Calendar.TUESDAY:
-                dayOffset = Calendar.FRIDAY - day;
-                break;
-            case Calendar.WEDNESDAY:
-            case Calendar.THURSDAY:
-            case Calendar.FRIDAY:
-            case Calendar.SATURDAY:
-            case Calendar.SUNDAY:
-                dayOffset += 7 + Calendar.FRIDAY - day;
-                break;
+            case Calendar.MONDAY, Calendar.TUESDAY -> dayOffset = Calendar.FRIDAY - day;
+            case Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY ->
+                    dayOffset += 7 + Calendar.FRIDAY - day;
         }
 
         ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
         ZonedDateTime due = now.plusDays(dayOffset);
         DateTimeFormatter pattern = DateTimeFormatter.ofPattern("EEEE dd MMMM", Locale.ENGLISH);
 
-        result.append("Today: " + pattern.format(now)).append("\n");
+        result.append("Today: ").append(pattern.format(now)).append("\n");
         String repeating = pattern.format(due) + " and every Friday thereafter for a total of " + weeks + " weeks.";
-        result.append("First Payment Due: " + repeating).append("```");
+        result.append("First Payment Due: ").append(repeating).append("```");
 
         return result.toString();
     }

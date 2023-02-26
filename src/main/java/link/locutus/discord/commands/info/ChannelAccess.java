@@ -4,7 +4,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -20,7 +19,7 @@ public class ChannelAccess extends Command {
 
     @Override
     public String desc() {
-        return "Get a list of channels a user has access to";
+        return "Get a list of channels a user has access to.";
     }
 
     @Override
@@ -28,10 +27,7 @@ public class ChannelAccess extends Command {
         if (args.size() != 1) return usage(event);
         User user = DiscordUtil.getUser(args.get(0));
         if (user == null) return "Invalid usage `" + args.get(0) + "`";
-        for (GuildChannel channel : guild.getChannels()) {
-
-        }
-
+        guild.getChannels();
         return super.onCommand(event, guild, author, me, args, flags);
     }
 }

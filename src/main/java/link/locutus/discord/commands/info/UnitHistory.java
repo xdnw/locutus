@@ -1,6 +1,9 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -8,19 +11,11 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class UnitHistory extends Command {
@@ -43,7 +38,7 @@ public class UnitHistory extends Command {
         Integer page = DiscordUtil.parseArgInt(args, "page");
         if (args.size() != 2) return usage(event);
         DBNation nation = DiscordUtil.parseNation(args.get(0));
-        if (nation == null) return "Invalid nation: `" + args.get(0) +"`";
+        if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
         MilitaryUnit unit = MilitaryUnit.valueOfVerbose(args.get(1).toUpperCase().replaceAll(" ", "_"));
 
         List<Map.Entry<Long, Integer>> history = nation.getUnitHistory(unit);
@@ -107,23 +102,23 @@ public class UnitHistory extends Command {
             results.add(dateStr + ": " + from + " -> " + to);
         }
 
-        if (results.isEmpty()) return "No unit history";
+        if (results.isEmpty()) return "No unit history.";
 
         StringBuilder footer = new StringBuilder();
 
         if (unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE) {
             if (purchasedToday) {
-                footer.append("\n**note: " + unit.name().toLowerCase() + " purchased in the past 24h**");
+                footer.append("\n**note: ").append(unit.name().toLowerCase()).append(" purchased in the past 24h.");
             }
         }
 
         CM.unit.history cmd = CM.unit.history.cmd.create(nation.getNation_id() + "", unit.name(), null);
 
         String title = "`" + nation.getNation() + "` " + unit.name() + " history";
-        int perPage =15;
+        int perPage = 15;
         int pages = (results.size() + perPage - 1) / perPage;
         if (page == null) page = 0;
-        title += " (" + (page + 1) + "/" + pages +")";
+        title += " (" + (page + 1) + "/" + pages + ")";
 
         new DiscordChannelIO(event).create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send();
         return null;

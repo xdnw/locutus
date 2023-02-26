@@ -3,8 +3,8 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.nation.MultiReport;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -16,6 +16,7 @@ public class Multi extends Command {
     public Multi() {
         super(CommandCategory.GAME_INFO_AND_TOOLS);
     }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + getClass().getSimpleName() + " <nation>";
@@ -23,7 +24,7 @@ public class Multi extends Command {
 
     @Override
     public String desc() {
-        return "Check if a nation has a multi";
+        return "Check if a nation has a multi account.";
     }
 
     @Override
@@ -53,14 +54,12 @@ public class Multi extends Command {
 
         DiscordUtil.createEmbedCommand(event.getChannel(), title, result);
 
-        String disclaimer = "```Disclaimer:\n" +
-                " - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)\n" +
-                " - A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
-                " - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
-                " - It is against game rules to use evidence to threaten or coerce others\n" +
-                "See: https://politicsandwar.com/rules/" +
-                "```";
-
-        return disclaimer;
+        return """
+                ```Disclaimer:
+                 - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)
+                 - A network not shared 'concurrently' or within a short timeframe may be a false positive
+                 - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)
+                 - It is against game rules to use evidence to threaten or coerce others
+                See: https://politicsandwar.com/rules/```""";
     }
 }

@@ -11,30 +11,26 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class Who extends Command {
-    private final SpyCommand spyCmd;
 
     public Who(SpyCommand spyCmd) {
         super("pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois", CommandCategory.GAME_INFO_AND_TOOLS);
-        this.spyCmd = spyCmd;
     }
 
     @Override
@@ -115,11 +111,11 @@ public class Who extends Command {
             DBNation total = DBNation.createFromList(arg0, nations, false);
             DBNation average = DBNation.createFromList(arg0, nations, true);
 
-            response.append("Total for " + arg0 + ":").append('\n');
+            response.append("Total for ").append(arg0).append(":").append('\n');
 
             printAA(response, total, isAdmin);
 
-            response.append("Average for " + arg0 + ":").append('\n');
+            response.append("Average for ").append(arg0).append(":").append('\n');
 
             printAA(response, average, isAdmin);
 
@@ -127,7 +123,7 @@ public class Who extends Command {
                 for (DBAlliance other : Locutus.imp().getNationDB().getAlliances()) {
                     DBAlliance parent = other.getCachedParentOfThisOffshore();
                     if (parent != null && parent.getAlliance_id() == allianceId) {
-                        response.append("\n - Offshore: " + other.getMarkdownUrl());
+                        response.append("\n - Offshore: ").append(other.getMarkdownUrl());
                     }
                 }
             }
@@ -195,34 +191,28 @@ public class Who extends Command {
 
             if (args.size() >= 2) {
                 String sortBy = args.get(1);
-                Collections.sort(sorted, (o1, o2) -> Double.compare(o2.getAttr(sortBy), o1.getAttr(sortBy)));
+                sorted.sort((o1, o2) -> Double.compare(o2.getAttr(sortBy), o1.getAttr(sortBy)));
             }
 
             List<String> results = new ArrayList<>();
 
             for (DBNation nation : sorted) {
-                StringBuilder entry = new StringBuilder();
-                entry.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
-                        .append(" | " + String.format("%16s", nation.getNation()))
-                        .append(" | " + String.format("%16s", nation.getAllianceName()))
-                        .append("\n```")
-//                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
-                        .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                        .append(String.format("%5s", nation.getAvg_infra())).append(" \uD83C\uDFD7").append(" | ")
-                        .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                        .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-                        .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-                        .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-                            .append(String.format("%1s", nation.getOff())).append(" \uD83D\uDDE1").append(" | ")
-                        .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1").append(" | ")
-                        .append(String.format("%2s", nation.getSpies())).append(" \uD83D\uDD0D").append(" | ");
-//                Activity activity = nation.getActivity(14 * 12);
-//                double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
-//                int loginPct = (int) (loginChance * 100);
-//                response.append("login=" + loginPct + "%").append(" | ");
-                entry.append("```");
+                String entry = "<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">" +
+                        " | " + String.format("%16s", nation.getNation()) +
+                        " | " + String.format("%16s", nation.getAllianceName()) +
+                        "\n```" +
+                        String.format("%2s", nation.getCities()) + " \uD83C\uDFD9" + " | " +
+                        String.format("%5s", nation.getAvg_infra()) + " \uD83C\uDFD7" + " | " +
+                        String.format("%6s", nation.getSoldiers()) + " \uD83D\uDC82" + " | " +
+                        String.format("%5s", nation.getTanks()) + " \u2699" + " | " +
+                        String.format("%5s", nation.getAircraft()) + " \u2708" + " | " +
+                        String.format("%4s", nation.getShips()) + " \u26F5" + " | " +
+                        String.format("%1s", nation.getOff()) + " \uD83D\uDDE1" + " | " +
+                        String.format("%1s", nation.getDef()) + " \uD83D\uDEE1" + " | " +
+                        String.format("%2s", nation.getSpies()) + " \uD83D\uDD0D" + " | " +
+                        "```";
 
-                results.add(entry.toString());
+                results.add(entry);
             }
 
             DiscordUtil.paginate(event.getGuildChannel(), "Nations", cmd, page, perpage, results);

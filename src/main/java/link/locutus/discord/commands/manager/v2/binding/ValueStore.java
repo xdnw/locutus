@@ -1,5 +1,8 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+
 import java.util.function.Function;
 
 public interface ValueStore<T> {
@@ -9,11 +12,11 @@ public interface ValueStore<T> {
 
     <V extends T> Parser<V> addParser(Key<V> key, Parser<V> parser);
 
-    default <V extends T> Parser<V> addProvider(Class<V> clazz, V value) {
+    default <V extends T> Parser<V> addProvider(Class<ParametricCallable> clazz, ParametricCallable value) {
         return addProvider(Key.of(clazz), value);
     }
 
-    default <V extends T> Parser<V> addProvider(V value) {
+    default <V extends T> Parser<V> addProvider(Class<ParameterData> parameterDataClass, V value) {
         Key<V> key = (Key) Key.of(value.getClass());
         return addProvider(key, value);
     }

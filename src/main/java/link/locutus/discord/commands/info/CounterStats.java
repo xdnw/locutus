@@ -3,23 +3,15 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class CounterStats extends Command {
     public CounterStats() {
@@ -28,7 +20,7 @@ public class CounterStats extends Command {
 
     @Override
     public String help() {
-        return super.help() +" <alliance-id>";
+        return super.help() + " <alliance-id>";
     }
 
     @Override
@@ -51,7 +43,7 @@ public class CounterStats extends Command {
         }
         List<Map.Entry<DBWar, CounterStat>> counters = Locutus.imp().getWarDb().getCounters(Collections.singleton(id));
 
-        if (counters.isEmpty()) return "No data (to include treatied alliances, append `-a`";
+        if (counters.isEmpty()) return "No data (to include treatied alliances, append `-a`)";
 
         int[] uncontested = new int[2];
         int[] countered = new int[2];
@@ -60,20 +52,15 @@ public class CounterStats extends Command {
             CounterStat stat = entry.getValue();
             DBWar war = entry.getKey();
             switch (stat.type) {
-                case ESCALATION:
-                case IS_COUNTER:
-                    countered[stat.isActive ? 1 : 0]++;
-                    continue;
-                case UNCONTESTED:
+                case ESCALATION, IS_COUNTER -> countered[stat.isActive ? 1 : 0]++;
+                case UNCONTESTED -> {
                     if (war.status == WarStatus.ATTACKER_VICTORY) {
                         uncontested[stat.isActive ? 1 : 0]++;
                     } else {
                         counter[stat.isActive ? 1 : 0]++;
                     }
-                    break;
-                case GETS_COUNTERED:
-                    counter[stat.isActive ? 1 : 0]++;
-                    break;
+                }
+                case GETS_COUNTERED -> counter[stat.isActive ? 1 : 0]++;
             }
         }
 
@@ -87,11 +74,10 @@ public class CounterStats extends Command {
         if (!Double.isFinite(chanceInactive)) chanceInactive = 0.5;
 
         String title = "% of wars that are countered (" + PnwUtil.getName(id, true) + ")";
-        StringBuilder response = new StringBuilder();
-        response.append(MathMan.format(chanceActive * 100) + "% for actives (" + totalActive + " wars)").append('\n');
-        response.append(MathMan.format(chanceInactive * 100) + "% for inactives (" + totalInactive + " wars)");
+        String response = MathMan.format(chanceActive * 100) + "% for actives (" + totalActive + " wars)" + '\n' +
+                MathMan.format(chanceInactive * 100) + "% for inactives (" + totalInactive + " wars)";
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString());
+        DiscordUtil.createEmbedCommand(event.getChannel(), title, response);
         return null;
     }
 }

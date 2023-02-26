@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import com.google.api.client.util.Sets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -7,28 +8,21 @@ import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import com.google.api.client.util.Sets;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -46,7 +40,7 @@ public class ListMultisByAlliance extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         NationDB nationDB = Locutus.imp().getNationDB();
 
-        String[] lines = FileUtil.readFile("/debug/nonreferrals.txt").split("\\r?\\n");
+        String[] lines = Objects.requireNonNull(FileUtil.readFile("/debug/nonreferrals.txt")).split("\\r?\\n");
         Map<Integer, DBNation> referredNations = new HashMap<>(Locutus.imp().getNationDB().getNations());
         Map<String, DBNation> nationsByName = new HashMap<>();
         for (Map.Entry<Integer, DBNation> entry : referredNations.entrySet()) {
@@ -136,18 +130,7 @@ public class ListMultisByAlliance extends Command {
 
             String multiStr = StringMan.join(entry.getValue().stream().map(this::url).collect(Collectors.toList()), "\t");
 
-            response.append(
-                    nationUrl + "\t" +
-                    allianceUrl + "\t" +
-                    referredNations.containsKey(nationId) + "\t" +
-                    sharedWars + "\t" +
-                    sharedTrades + "\t" +
-                    sentBank + "\t" +
-                    (sentBank || sharedTrades || sharedWars) + "\t" +
-                    nation.getAgeDays() + "\t" +
-                    nation.getPosition() + "\t" +
-                    multiStr + "\n"
-            );
+            response.append(nationUrl).append("\t").append(allianceUrl).append("\t").append(referredNations.containsKey(nationId)).append("\t").append(sharedWars).append("\t").append(sharedTrades).append("\t").append(sentBank).append("\t").append(sentBank || sharedTrades || sharedWars).append("\t").append(nation.getAgeDays()).append("\t").append(nation.getPosition()).append("\t").append(multiStr).append("\n");
         }
 
         DiscordUtil.createEmbedCommand(event.getChannel(), "Potential multis:", response.toString());
