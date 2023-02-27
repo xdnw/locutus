@@ -9,6 +9,8 @@ import java.lang.annotation.Target;
 @Target({ElementType.PARAMETER})
 public @interface Switch {
     String value();
+
     double min() default Double.NEGATIVE_INFINITY;
+
     double max() default Double.POSITIVE_INFINITY;
 }

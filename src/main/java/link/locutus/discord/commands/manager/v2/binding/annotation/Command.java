@@ -12,5 +12,6 @@ public @interface Command {
     String[] aliases() default {};
 
     String help() default "";
+
     String desc() default "";
 }
