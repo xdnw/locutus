@@ -27,9 +27,7 @@ public enum CommandCategory {
     DEBUG,
     FUN,
 
-    UNCATEGORIZED
-
-    ;
+    UNCATEGORIZED;
 
     private final CommandCategory[] children;
 

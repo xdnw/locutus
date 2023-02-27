@@ -52,7 +52,7 @@ public class DelegateMessage implements Message {
                 false,
                 false,
                 cmd,
-                nonce,
+                null,
                 user,
                 member,
                 null,

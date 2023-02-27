@@ -12,6 +12,7 @@ public class FunctionProviderParser<T> implements Parser<T> {
         this.key = key;
         this.provider = provider;
     }
+
     @Override
     public T apply(ArgumentStack arg) {
         return provider.apply(arg.getStore());

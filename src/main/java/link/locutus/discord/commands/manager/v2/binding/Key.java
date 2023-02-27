@@ -5,13 +5,7 @@ import link.locutus.discord.util.math.ReflectionUtil;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public class Key<T> {
     private final Type type;
@@ -26,26 +20,12 @@ public class Key<T> {
         this.annotations = null;
     }
 
-    public Key<T> append(Class<? extends Annotation> annotation) {
-        List<Class<?>> keyAnnotations = new ArrayList<>(getAnnotationTypes());
-        keyAnnotations.add(annotation);
-        return Key.of(getType(), keyAnnotations.toArray(new Class[0]));
-    }
-
     private Key(Type type, Class<?>... annotationClasses) {
         this.type = type;
         this.annotationTypes = new HashSet<>(Arrays.asList(annotationClasses));
         if (!this.annotationTypes.isEmpty()) this.annotationTypes.removeIf(f -> f == Binding.class);
         this.binding = null;
         this.annotations = null;
-    }
-
-    public static <T> Key<T> of(Type type, Class annotationClass) {
-        return new Key(type, annotationClass);
-    }
-
-    public static <T> Key<T> of(Type type, Class... annotationClasses) {
-        return new Key(type, annotationClasses);
     }
 
     private Key(Binding binding, Type type, Annotation... annotations) {
@@ -59,7 +39,37 @@ public class Key<T> {
         if (!this.annotationTypes.isEmpty()) this.annotationTypes.removeIf(f -> f == Binding.class);
     }
 
-    public Class<T> getClazz() {
+    public static <T> Key<T> of(Type type, Class annotationClass) {
+        return new Key<>(type, annotationClass);
+    }
+
+    public static <T> Key<T> of(Type type, Class... annotationClasses) {
+        return new Key<>(type, annotationClasses);
+    }
+
+    public static <T> Key<T> of(Type clazz) {
+        return of(clazz, new Annotation[0]);
+    }
+
+    public static <T> Key<T> of(Type clazz, Annotation... annotations) {
+        return of(null, clazz, annotations);
+    }
+
+    public static <T> Key<T> of(Binding binding, Type clazz) {
+        return of(binding, clazz, new Annotation[0]);
+    }
+
+    public static <T> Key<T> of(Binding binding, Type clazz, Annotation... annotations) {
+        return new Key<>(binding, clazz, annotations);
+    }
+
+    public Key<T> append(Class<? extends Annotation> annotation) {
+        List<Class<?>> keyAnnotations = new ArrayList<>(getAnnotationTypes());
+        keyAnnotations.add(annotation);
+        return Key.of(getType(), keyAnnotations.toArray(new Class[0]));
+    }
+
+    public Class getClazz() {
         return ReflectionUtil.getClassType(type);
     }
 
@@ -88,22 +98,6 @@ public class Key<T> {
 
     public Set<Class<?>> getAnnotationTypes() {
         return annotationTypes;
-    }
-
-    public static <T> Key<T> of(Type clazz) {
-        return of(clazz, new Annotation[0]);
-    }
-
-    public static <T> Key<T>  of(Type clazz, Annotation... annotations) {
-        return of(null, clazz, annotations);
-    }
-
-    public static <T> Key<T>  of(Binding binding, Type clazz) {
-        return of(binding, clazz, new Annotation[0]);
-    }
-
-    public static <T> Key<T>  of(Binding binding, Type clazz, Annotation... annotations) {
-        return new Key(binding, clazz, annotations);
     }
 
     @Override

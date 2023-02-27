@@ -1,9 +1,9 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import com.google.gson.internal.Primitives;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.util.math.ReflectionUtil;
-import com.google.gson.internal.Primitives;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -22,25 +22,8 @@ public class MethodParser<T> implements Parser<T> {
     private boolean isConsumerInit;
     private boolean isConsumer;
 
-    @Override
-    public String toString() {
-        return "MethodParser{" +
-                "desc='" + desc + '\'' +
-                ", key=" + key +
-                ", method=" + method +
-                ", params=" + params +
-                ", object=" + object +
-                ", isConsumerInit=" + isConsumerInit +
-                ", isConsumer=" + isConsumer +
-                '}';
-    }
-
     public MethodParser(Object object, Method method, String desc) {
         this(object, method, desc, null, null);
-    }
-
-    public Method getMethod() {
-        return method;
     }
 
     public MethodParser(Object object, Method method, String desc, Binding binding, Type ret) {
@@ -97,6 +80,23 @@ public class MethodParser<T> implements Parser<T> {
         this.isConsumerInit = isConsumer;
         this.isConsumer = isConsumer;
         this.desc = desc;
+    }
+
+    @Override
+    public String toString() {
+        return "MethodParser{" +
+                "desc='" + desc + '\'' +
+                ", key=" + key +
+                ", method=" + method +
+                ", params=" + params +
+                ", object=" + object +
+                ", isConsumerInit=" + isConsumerInit +
+                ", isConsumer=" + isConsumer +
+                '}';
+    }
+
+    public Method getMethod() {
+        return method;
     }
 
     public T apply(ValueStore store, Object t) {
