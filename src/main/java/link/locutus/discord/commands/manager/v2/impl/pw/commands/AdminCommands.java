@@ -498,7 +498,7 @@ public class AdminCommands {
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String apiUsageStats(@Me Guild guild, boolean cached) {
-        PoliticsAndWarV2 api = Locutus.imp().getGuildDB(guild).getApi(cached);
+        PoliticsAndWarV2 api = Locutus.imp().getGuildDB(guild).getApi();
         return printApiStats(api);
     }
 

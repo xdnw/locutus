@@ -131,7 +131,6 @@ public class OptimalBuild extends Command {
         if (me == null) {
             return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
-        if (me.getAlliance_id() == 4648) return "No permission for this command";
         Integer days = null;
         if (args.size() >= 2 && MathMan.isInteger(args.get(0))) {
             days = Integer.parseInt(args.get(0));

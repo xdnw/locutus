@@ -723,7 +723,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing land (from current to max)", aliases = {"LandCost", "land", "landcosts"})
-    public String LandCost(@Range(min=0, max=40000) int currentLand, @Range(min=0, max=40000) int maxLand, @Default("false") boolean rapidExpansion, @Default("false") boolean ala, @Default("false") boolean aec, @Switch("c") @Default("1") int cities) {
+    public String LandCost(@Range(min=0, max=40000) int currentLand, @Range(min=0, max=40000) int maxLand, @Default("false") boolean rapidExpansion, @Default("false") boolean ala, @Default("false") boolean aec, @Default("false") boolean gsa, @Switch("c") @Default("1") int cities) {
         if (maxLand > 40000) throw new IllegalArgumentException("Max land 40000");
 
         double total = 0;
@@ -731,7 +731,10 @@ public class UtilityCommands {
         total = PnwUtil.calculateLand(currentLand, maxLand);
 
         double discountFactor = 1;
-        if (rapidExpansion) discountFactor -= 0.05;
+        if (rapidExpansion) {
+            discountFactor -= 0.05;
+            if (gsa) discountFactor -= 0.025;
+        }
         if (ala) discountFactor -= 0.05;
         if (aec) discountFactor -= 0.05;
 

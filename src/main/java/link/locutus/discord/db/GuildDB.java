@@ -483,8 +483,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void setMeta(long userId, NationMeta key, byte[] value) {
-        todo - get delegate checks aa id of both and returns the one with the aa id, if both have delegate;
-        todo - also prevent setting delegate and aaid at same time;
         GuildDB delegate = getDelegateServer();
         if (delegate != null) {
             delegate.setMeta(userId, key, value);

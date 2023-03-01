@@ -42,7 +42,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage();
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        IACategory iaCat = db.getIACategory(true, true);
+        IACategory iaCat = db.getIACategory(true, true, true);
         if (iaCat == null) {
             throw new IllegalArgumentException("No interview category found");
         }
