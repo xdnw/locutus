@@ -3,6 +3,7 @@ package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -80,10 +81,6 @@ public class OffshoreInstance {
         return allianceId;
     }
 
-    public PoliticsAndWarV2 getApi() {
-        return getGuildDB().getApi(false);
-    }
-
     public GuildDB getGuildDB() {
         if (guildDBCached == null || !guildDBCached.isAllianceId(allianceId)) {
             guildDBCached = Locutus.imp().getGuildDBByAA(allianceId);
@@ -143,7 +140,7 @@ public class OffshoreInstance {
         }
         if (stockpile == null) {
             try {
-                AllianceBankContainer funds = getApi().getBank(allianceId).getAllianceBanks().get(0);
+                AllianceBankContainer funds = getAlliance().getApiV2().getBank(allianceId).getAllianceBanks().get(0);
                 stockpile = PnwUtil.resourcesToArray(PnwUtil.adapt(funds));
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -302,7 +299,9 @@ public class OffshoreInstance {
     }
 
     public synchronized Map<ResourceType, Double> getDeposits(long guildId, boolean force) {
-        GuildDB db = getGuildDB();
+        if (!guildDBCached.getCoalitionRaw(Coalition.OFFSHORING).contains(guildId)) {
+            throw new IllegalArgumentException("Guild " + guildId + " is not offshoring with " + getGuildDB().getGuild());
+        }
         List<Transaction2> toProcess = getTransactionsGuild(guildId, force);
 
         return PnwUtil.resourcesToMap(addTransfers(toProcess, guildId, 3));
@@ -362,6 +361,10 @@ public class OffshoreInstance {
         return getDepositsAA(Collections.singleton(allianceId), force);
     }
     public synchronized Map<ResourceType, Double> getDepositsAA(Set<Integer> allianceIds, boolean force) {
+        allianceIds = new LinkedHashSet<>(allianceIds);
+        Set<Integer> allowed = getGuildDB().getCoalition(Coalition.OFFSHORING);
+        allianceIds.removeIf(f -> !allowed.contains(f));
+        if (allianceIds.isEmpty()) return new HashMap<>();
         List<Transaction2> toProcess = getTransactionsAA(allianceIds, force);
         Set<Long> allianceIdsLong = allianceIds.stream().map(Integer::longValue).collect(Collectors.toSet());
         return PnwUtil.resourcesToMap(addTransfers(toProcess, allianceIdsLong, 2));
@@ -466,7 +469,7 @@ public class OffshoreInstance {
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
             return Map.entry(TransferStatus.INVALID_DESTINATION, "Alliance: " + receiver.getUrl() + " has no receivable nations");
         }
-        if (!receiver.isNation() && nationAccount == null && depositType != DepositType.IGNORE) {
+        if (!receiver.isNation() && depositType != DepositType.IGNORE) {
             return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to alliances");
         }
 
@@ -543,33 +546,45 @@ public class OffshoreInstance {
 
         DBNation bankerNation = DiscordUtil.getNation(banker);
 
-        Set<Long> allowedIds;
+        Map<Long, AccessType> allowedIds;
         try {
             allowedIds = senderDB.getAllowedBankAccountsOrThrow(banker, receiver, senderChannel);
         } catch (IllegalArgumentException e) {
             return Map.entry(TransferStatus.AUTHORIZATION, e.getMessage());
         }
+        if (allowedIds.isEmpty()) {
+            return Map.entry(TransferStatus.AUTHORIZATION, "You do not have permission to do a transfer (receiver: " + receiver.getQualifiedName() + ", channel: <#" + senderChannel + ">)");
+        }
 
+        boolean hasAnyEcon = allowedIds.containsValue(AccessType.ECON);
         boolean isInternalTransfer = false;
         {
+            if (nationAccount == null) {
+                if (!hasAnyEcon) {
+                    nationAccount = new DBNation(bankerNation); // Copy to avoid external mutation
+                } else {
+                    allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
+                }
+            } else if (nationAccount.getId() != bankerNation.getId()) {
+                allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
+                if (allowedIds.isEmpty()) {
+                    return Map.entry(TransferStatus.AUTHORIZATION, "You do not have permission to do a transfer for another nation's account using this channel");
+                }
+            }
+
             if (allianceAccount != null) {
-                if (!allowedIds.contains((long) allianceAccount.getId())) {
+                if (!allowedIds.containsKey((long) allianceAccount.getId())) {
                     return Map.entry(TransferStatus.AUTHORIZATION, "You attempted to withdraw from the alliance account: " + allianceAccount.getId() + " but are only authorized for " + StringMan.getString(allowedIds) + " (did you use the correct channel?)");
                 }
-                allowedIds.removeIf(f -> f != (long) allianceAccount.getId());
+                allowedIds.entrySet().removeIf(f -> f.getKey() != (long) allianceAccount.getId());
             }
 
-            Set<Long> econAllowedAccounts = Roles.ECON.getAllowedAccounts(banker, senderDB);
-            Set<Long> allowedIdsCopy = new HashSet<>(allowedIds);
-
-            if (nationAccount == null) {
-                allowedIds.retainAll(econAllowedAccounts);
-            }
+            Map<Long, AccessType> allowedIdsCopy = new HashMap<>(allowedIds);
 
             Set<Integer> guildAllianceIds = senderDB.getAllianceIds();
 
             if (expire != null) {
-                allowedIds.retainAll(econAllowedAccounts);
+                allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                 if (allowedIds.isEmpty()) {
                     return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSITS + " but attempted to do " + depositType);
                 }
@@ -577,17 +592,17 @@ public class OffshoreInstance {
 
             if (nationAccount != null) {
                 if (depositType != DepositType.DEPOSITS) {
-                    allowedIds.retainAll(econAllowedAccounts);
+                    allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                     if (allowedIds.isEmpty()) {
                         return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSITS + " but attempted to do " + depositType);
                     }
                 }
 
-                if (bankerNation == null || nationAccount.getId() != bankerNation.getId()) {
-                    allowedIds.retainAll(econAllowedAccounts);
+                if (nationAccount.getId() != bankerNation.getId()) {
+                    allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
 
                     if (!allowedIds.isEmpty() && !guildAllianceIds.isEmpty() && !Roles.ECON.has(banker, senderDB, nationAccount.getAlliance_id())) {
-                        return Map.entry(TransferStatus.AUTHORIZATION, "You attempted to access a nation's account in alliance: " + nationAccount.getAlliance_id() + " but are only authorized for " + StringMan.getString(econAllowedAccounts));
+                        return Map.entry(TransferStatus.AUTHORIZATION, "You attempted to access a nation's account in alliance: " + nationAccount.getAlliance_id() + " but are only authorized for " + StringMan.getString(allowedIdsCopy));
                     }
                 }
 
@@ -633,23 +648,22 @@ public class OffshoreInstance {
 
             if (allowedIds.isEmpty()) {
                 StringBuilder response = new StringBuilder();
-                if (econAllowedAccounts.isEmpty()) {
-                    response.append("You do not have permission to send directly from ANY alliance account (did you instead mean to do a personal withdrawal?)\n");
+                if (allowedIdsCopy.isEmpty()) {
+                    response.append("You do not have permission to send directly from ANY alliance account using this channel (did you instead mean to do a personal withdrawal?)\n");
                 } else {
-                    response.append("You have permission to withdraw from the alliance accounts: " + StringMan.getString(econAllowedAccounts) + " but attempted to withdraw from: " + StringMan.getString(allowedIdsCopy) + "\n" +
-                            "(did you use the right channel?)");
+                    response.append("You have permission to withdraw from the alliance accounts: " + StringMan.getString(allowedIdsCopy) + " but are not authorized to make this withdrawal (did you use the correct channel or account?)\n");
                 }
                 return Map.entry(TransferStatus.AUTHORIZATION, response.toString());
             }
         }
 
         long primaryAccountId;
-        if (nationAccount != null && allowedIds.contains((long) nationAccount.getAlliance_id())) {
+        if (nationAccount != null && allowedIds.containsKey((long) nationAccount.getAlliance_id())) {
             primaryAccountId = nationAccount.getAlliance_id();
-        } else if (receiver.isNation() && allowedIds.contains((long) receiver.asNation().getAlliance_id())) {
+        } else if (receiver.isNation() && allowedIds.containsKey((long) receiver.asNation().getAlliance_id())) {
             primaryAccountId = receiver.asNation().getAlliance_id();
         } else {
-            primaryAccountId = allowedIds.iterator().next();
+            primaryAccountId = allowedIds.keySet().iterator().next();
         }
         String note = "#" + depositType.name().toLowerCase(Locale.ROOT) + "=" + primaryAccountId;
         if (otherNotes.size() > 0) {
@@ -664,7 +678,7 @@ public class OffshoreInstance {
             senderDB.subtractBalance(timestamp, nationAccount, bankerNation != null ? bankerNation.getNation_id() : 0, note, amount);
         }
 
-        Map.Entry<TransferStatus, String> result = transferFromAllianceDeposits(bankerNation, senderDB, f -> allowedIds.contains(f.longValue()), receiver, amount, ingameNote);
+        Map.Entry<TransferStatus, String> result = transferFromAllianceDeposits(bankerNation, senderDB, f -> allowedIds.containsKey(f.longValue()), receiver, amount, ingameNote);
 
         switch (result.getKey()) {
             default: {
@@ -684,7 +698,18 @@ public class OffshoreInstance {
     }
 
     public boolean log(GuildDB sender, DBNation banker, NationOrAlliance receiver, String msg) {
-
+        GuildDB db = getGuildDB();
+        if (sender.getIdLong() == db.getIdLong()) return true;
+        MessageChannel channel = db.getResourceChannel(0);
+        if (channel == null) return true;
+        String name = sender.getGuild() + "";
+        Set<Integer> ids = sender.getAllianceIds();
+        if (!ids.isEmpty()) {
+            name += "/" + StringMan.join(ids, ",");
+        }
+        msg = "**" + name + "**: " + "Banker:" + banker.getName() + " -> " + receiver.getUrl() + ":\n" + msg;
+        RateLimitUtil.queueMessage(channel, msg, true);
+        return true;
     }
 
     public Map<Long, Boolean> disabledGuilds = new ConcurrentHashMap<>();

@@ -729,6 +729,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return api;
     }
 
+    public PoliticsAndWarV2 getApiV2(AlliancePermission... permissions) {
+        ApiKeyPool pool = getApiKeys(permissions);
+        if (pool == null) return null;
+        return new PoliticsAndWarV2(pool, Settings.INSTANCE.TEST, true);
+    }
     public PoliticsAndWarV3 getApi(AlliancePermission... permissions) {
         ApiKeyPool pool = getApiKeys(permissions);
         if (pool == null) return null;

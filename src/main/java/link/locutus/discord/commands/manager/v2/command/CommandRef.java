@@ -11,11 +11,12 @@ import org.json.JSONObject;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
 public class CommandRef {
-    private final Map<String, String> arguments = new HashMap<>();
+    private final Map<String, String> arguments = new LinkedHashMap<>();
     private final String path;
     public CommandRef() {
         String[] split = getClass().getName().split("\\$");

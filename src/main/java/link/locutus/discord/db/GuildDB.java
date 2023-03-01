@@ -1496,7 +1496,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
 
 
-//        Set<Long> allowedIds = new HashSet<>();
         if (Roles.ECON.has(banker, guild)) {
             for (long accountId : channelAccountIds) {
                 accessTypeMap.put(accountId, AccessType.ECON);
@@ -1504,23 +1503,22 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         } else if (!aaIds.isEmpty()) {
             for (Long aaId : channelAccountIds) {
                 if (Roles.ECON.has(banker, guild, aaId.intValue())) {
-                    allowedIds.add(aaId);
+                    accessTypeMap.put(aaId, AccessType.ECON);
                 }
             }
-            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, channelAccountIds, allowedIds.isEmpty());
+            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, channelAccountIds, accessTypeMap.isEmpty());
             if (withdrawAccount > 0) {
-                allowedIds.add(withdrawAccount);
+                accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
             }
         }
-        if (allowedIds.isEmpty()) {
+        if (accessTypeMap.isEmpty()) {
             if (isResourceChannel) {
                 throw new IllegalArgumentException("You are not authorized to withdraw from this resource channel. (Do you have the econ role for the alliances?: " + StringMan.getString(channelAccountIds) + ")");
             } else {
                 throw new IllegalArgumentException("You are not authorized to withdraw resources. Do you have the econ role for the alliance?");
             }
-
         }
-        return allowedIds;
+        return accessTypeMap;
     }
 
     public void addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> amounts, long dateTime, int banker, String offshoreNote) {
@@ -1570,7 +1568,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     }
                 }
 
-                addTransfer(dateTime, 0, 0, account, banker, offshoreNote, amountSigned);
+                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amountSigned);
             }
         }
         return ammountEach;
@@ -1598,6 +1596,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public void subtractBalance(long tx_datetime, NationOrAlliance account, int banker, String note, double[] amount) {
         addTransfer(tx_datetime, 0, 0, account, banker, note, amount);
+    }
+
+    public void addBalance(long tx_datetime, long accountId, int type, int banker, String note, double[] amount) {
+        addTransfer(tx_datetime, accountId, type, 0, 0, banker, note, amount);
+    }
+
+    public void subtractBalance(long tx_datetime, long accountId, int type, int banker, String note, double[] amount) {
+        addTransfer(tx_datetime, 0, 0, accountId, type, banker, note, amount);
     }
 
     public void addTransfer(long tx_datetime, NationOrAlliance sender, long receiver_id, int receiver_type, int banker, String note, double[] amount) {
@@ -1676,7 +1682,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     throw new IllegalArgumentException("No GuildDB found for: " + receiverAlliance + " (Are you sure Locutus is setup for this AA?)");
             }
 
-
             if (receiverAlliance == null) {
                 Set<Integer> aaIds = receiverDB.getAllianceIds();
                 if (!aaIds.isEmpty()) {
@@ -1744,12 +1749,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention() + "). Member withdrawals are not enabled, see: " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), null));
             }
 
-            Map<Long, MessageChannel> receiverChannel = receiverDB.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-
-//        if (senderChannel == null) throw new IllegalArgumentException("Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in " + senderDB);
-            if (receiverChannel == null)
-                throw new IllegalArgumentException("Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in receiving " + receiverDB.getGuild());
-
             if (Roles.MEMBER.toRole(senderDB) == null) {
                 throw new IllegalArgumentException("No member role set. Please have an admin use: " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), null) + " in " + senderDB.getGuild());
             }
@@ -1773,7 +1772,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     throw new IllegalArgumentException("Receiver nation (" + receiverNation.getNation() + ") is inactive in-game");
             }
 
-
             if (senderNation != null) {
                 double[] deposits = senderNation.getNetDeposits(senderDB);
                 checkDeposits(deposits, amount, "nation", senderNation.getName());
@@ -1795,11 +1793,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
 
             if (receiverOffshore.isDisabled(senderDB.getIdLong())) {
-                throw new IllegalArgumentException("An error occured. Please contact an administrator (code 0)");
+                throw new IllegalArgumentException("An error occured. Please contact an administrator (code: " + senderDB.getIdLong() + ")");
             }
             if (receiverOffshore.isDisabled(receiverDB.getIdLong())) {
-                throw new IllegalArgumentException("An error occured. Please contact an administrator (code 1)");
+                throw new IllegalArgumentException("An error occured. Please contact an administrator (code: " + receiverDB.getIdLong() + ")");
             }
+
+            MessageChannel receiverChannel = receiverDB.getResourceChannel(receiverAlliance != null ? receiverAlliance.getId() : 0);
+
+//        if (senderChannel == null) throw new IllegalArgumentException("Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in " + senderDB);
+            if (receiverChannel == null)
+                throw new IllegalArgumentException("Please have an admin set: " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), null) + " in receiving " + receiverDB.getGuild());
+
 
             String accountName;
             double[] guildDepo;
@@ -1808,7 +1813,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 accountName = "AA:" + senderAlliance.getId();
                 // ensure alliance deposits
             } else {
-                guildDepo = (senderOffshore.getDeposits(senderDB));
+                guildDepo = PnwUtil.resourcesToArray(senderOffshore.getDeposits(senderDB.getIdLong(), true));
                 accountName = senderDB.getIdLong() + "";
                 // ensure guild deposits
             }
@@ -1822,7 +1827,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             String note = "#deposit";
 
             long tx_datetime = System.currentTimeMillis();
-            senderDB.subtractBalance(tx_datetime, senderNation, bankerNation.getNation_id(), note, amount);
+            if (senderNation != null) {
+                senderDB.subtractBalance(tx_datetime, senderNation, bankerNation.getNation_id(), note, amount);
+            }
             long senderAccountId = senderAlliance != null ? senderAlliance.getIdLong() : senderDB.getIdLong();
             long receiverAccountId = receiverAlliance != null ? receiverAlliance.getIdLong() : receiverDB.getIdLong();
 
@@ -1830,12 +1837,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (senderAlliance != null) {
                     senderOffshore.getGuildDB().subtractBalance(tx_datetime, senderAlliance, bankerNation.getNation_id(), note, amount);
                 } else {
-                    senderOffshore.getGuildDB().subtractBalance(tx_datetime, senderDB, bankerNation.getNation_id(), note, amount);
+                    senderOffshore.getGuildDB().subtractBalance(tx_datetime, senderDB.getIdLong(), senderDB.getReceiverType(), bankerNation.getNation_id(), note, amount);
                 }
                 if (receiverAlliance != null) {
                     senderOffshore.getGuildDB().addBalance(tx_datetime, receiverAlliance, bankerNation.getNation_id(), note, amount);
                 } else {
-                    senderOffshore.getGuildDB().addBalance(tx_datetime, receiverDB, bankerNation.getNation_id(), note, amount);
+                    senderOffshore.getGuildDB().addBalance(tx_datetime, receiverDB.getIdLong(), receiverDB.getReceiverType(), bankerNation.getNation_id(), note, amount);
                 }
             }
             if (receiverNation != null) {
@@ -4679,8 +4686,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         PUBLIC_OFFSHORING(false, Key.ALLIANCE_ID, CommandCategory.ECON) {
             @Override
             public boolean allowed(GuildDB db) {
-                GuildDB offshoreDb = db.getOffshoreDB();
-                return offshoreDb != null && offshoreDb.getIdLong() == db.getIdLong();
+                Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
+                return offshoreDb != null && offshoreDb.getKey().getIdLong() == db.getIdLong();
             }
 
             @Override
@@ -5606,12 +5613,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         }
         return result;
-    }
-
-    public Role getRole(Roles role, long alliance) {
-        loadRoles();
-        if (role == null) return null;
-        return getRole(role.getName(), alliance);
     }
 
     private void loadRoles() {

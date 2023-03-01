@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.bank.Disperse;
@@ -840,7 +841,7 @@ public class BankCommands {
 
     @Command(desc = "Transfer from the alliance bank (alliance deposits)")
     @RolePermission(Roles.ECON)
-    public static String transfer(@Me IMessageIO channel,
+    public static String transfer(@Me IMessageIO channel, @Me JSONObject command,
                            @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType depositType,
 
                            @Switch("n") DBNation nationAccount,
@@ -916,15 +917,22 @@ public class BankCommands {
             return "Transfer too large. Please specify a smaller amount";
         }
 
-        String receiverStr = receiver.isAlliance() ? receiver.getName() : receiver.asNation().getNation();
-        Set<Long> allowedIds = guildDb.getAllowedBankAccountsOrThrow(author, receiver, channel.getIdLong());
+        Map<Long, AccessType> allowedIds = guildDb.getAllowedBankAccountsOrThrow(author, receiver, channel.getIdLong());
+
+        // Filter allowed ids by access type
 
         if (onlyMissingFunds) {
-            if ((me.getId() != receiver.getId() || !receiver.isNation()) && !allowedIds.contains(receiver.getAlliance_id())) {
-                if (allowedIds.isEmpty()) {
-                    return "You are not allowed to fetch stockpile. Missing role: " + Roles.ECON_LOW_GOV.toDiscordRoleNameElseInstructions(guildDb.getGuild());
-                } else {
-                    return "You are only authorized to fetch stockpile in the alliance ids: " + StringMan.getString(receiverStr);
+            int aaId = receiver.getAlliance_id();
+            if (aaId == 0) {
+                return "Receiver is not in an alliance (cannot determine missing funds)";
+            }
+            AccessType accessType = allowedIds.get((long) aaId);
+            if (accessType == null) {
+                return "You do not have access to the alliance stockpile information for " + DBAlliance.getOrCreate(aaId).getQualifiedName();
+            }
+            if (me.getId() != receiver.getId()) {
+                if (accessType != AccessType.ECON) {
+                    return "You can only access stockpile information for yourself";
                 }
             }
             Map<ResourceType, Double> existing = receiver.getStockpile();
@@ -932,6 +940,11 @@ public class BankCommands {
                 double toSend = Math.max(0, entry.getValue() - existing.getOrDefault(entry.getKey(), 0d));
                 entry.setValue(toSend);
             }
+        }
+
+        if (!force) {
+            // confirmation message
+            return "TODO: Confirmation";
         }
 
         Map.Entry<OffshoreInstance.TransferStatus, String> result;
