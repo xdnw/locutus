@@ -75,7 +75,7 @@ public class WarRoom extends Command {
         if (arg.equalsIgnoreCase("close") || arg.equalsIgnoreCase("delete")) {
             WarCategory.WarRoom room = warCat.getWarRoom(event.getGuildChannel());
             if (room != null) {
-                room.delete();
+                room.delete("");
                 return "Goodbye.";
             } else {
                 return "You are not in a war room!";
