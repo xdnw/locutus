@@ -467,7 +467,10 @@ public class SpyTracker {
         public String entryToString(DBNation attacker, long diff) {
             StringBuilder message = new StringBuilder(attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true));
             int defSpies = defender.getSpies();
-            int attSpies = attacker.updateSpies(24);
+            int attSpies = attacker.getSpies();
+            try {
+                attSpies = attacker.updateSpies(24);
+            } catch (Exception ignore) {}
             double odds = SpyCount.getOdds(attSpies, defSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
             message.append(MathMan.format(odds) + "%");
             if (attacker.hasProject(Projects.SPY_SATELLITE)) message.append(" | SAT");

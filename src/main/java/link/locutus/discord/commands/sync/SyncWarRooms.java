@@ -51,7 +51,7 @@ public class SyncWarRooms extends Command {
                             return "Updated " + event.getGuildChannel().getAsMention();
                         case "delete":
                             String name = event.getGuildChannel().getName();
-                            room.delete();
+                            room.delete("Deleted by " + author.getName() + "#" + author.getDiscriminator());
                             return "Deleted " + name;
                     }
 
