@@ -54,6 +54,66 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TradeCommands {
+
+//    @Command
+//    public String listOffers(Set<ResourceType> resources, @ArgChoice(value={"BUY", "SELL"}) String buyOrSell, @Default Set<DBNation> nations, @Default boolean requireAutomatic) {
+//
+//    }
+//
+//    @Command
+//    public String buy(@Me TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, @Me IMessageIO channel, ResourceType resource,
+//                      long quantity,
+//                      @Switch("minPPU") Integer minPPU,
+//                      @Switch("maxPPU") Integer maxPPU,
+//                      @Switch("s") boolean showPPURange,
+//                      @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
+//                      @Switch("f") Set<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU) {
+//        if (expire > TimeUnit.DAYS.toMillis(30)) {
+//            return "Expiry cannot be longer than 30 days.";
+//        }
+//        long expireMs = System.currentTimeMillis() + expire;
+//        if ((exchangeFor != null && exchangeFor.contains(resource)) || (exchangePPU != null && exchangePPU.containsKey(resource))) {
+//            return "You cannot exchange for the same resource.";
+//        }
+//        if (resource == ResourceType.CREDITS || (exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
+//            return "You cannot exchange for credits.";
+//        }
+//        if (resource == ResourceType.MONEY || (exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
+//            return "You cannot buy money. Create a sell offer instead.";
+//        }
+//
+//
+//
+//
+//    }
+//
+//    @Command
+//    public String sell(@Me JSONObject command, @Me DBNation me, @Me User author, @Me IMessageIO channel, ResourceType resource,
+//                      long quantity,
+//                      @Switch("minPPU") Integer minPPU,
+//                      @Switch("maxPPU") Integer maxPPU,
+//                      @Switch("s") boolean showPPURange,
+//                      @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
+//                      @Switch("f") Set<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU) {
+//        // max expiry 30d
+//        if (expire > TimeUnit.DAYS.toMillis(30)) {
+//            return "Expiry cannot be longer than 30 days.";
+//        }
+//        long expireMs = System.currentTimeMillis() + expire;
+//        if ((exchangeFor != null && exchangeFor.contains(resource)) || (exchangePPU != null && exchangePPU.containsKey(resource))) {
+//            return "You cannot exchange for the same resource.";
+//        }
+//        if (resource == ResourceType.CREDITS || (exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
+//            return "You cannot exchange for credits.";
+//        }
+//        if (resource == ResourceType.MONEY || (exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
+//            return "You cannot sell money. Create a buy offer instead.";
+//        }
+//
+//
+//    }
+
+
     @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"})
     public String GlobalTradeAverage(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager, @Timestamp long time) {
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = Locutus.imp().getTradeManager().getAverage(time);

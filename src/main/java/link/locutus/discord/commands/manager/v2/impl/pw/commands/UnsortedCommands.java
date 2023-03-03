@@ -540,7 +540,7 @@ public class UnsortedCommands {
                 .append("Daily city revenue ```" + city.toString() + "```")
                 .append("```").append(PnwUtil.resourcesToString(revenue)).append("```")
                 .append("Converted total: $" + MathMan.format(PnwUtil.convertedTotal(revenue)));
-        if (!metrics.powered) {
+        if (metrics.powered != null && !metrics.powered) {
             msg.append("\n**UNPOWERED**");
         }
         msg.append("\nAge: " + jCity.getAge());

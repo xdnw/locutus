@@ -2213,6 +2213,7 @@ public class BankCommands {
                     try {
                         List<String> tips2 = new ArrayList<>();
 
+                        StringBuilder append = new StringBuilder();
                         {
                             Map<ResourceType, Double> stockpile = finalNation.getStockpile();
                             if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
@@ -2248,10 +2249,10 @@ public class BankCommands {
                         }
 
                         if (!tips2.isEmpty()) {
-                            for (String tip : tips2) response.append("\n`tip: " + tip + "`");
+                            for (String tip : tips2) append.append("\n`tip: " + tip + "`");
 
                             try {
-                                msgFuture.get().append(response.toString()).send();
+                                msgFuture.get().append(append.toString()).send();
                             } catch (InterruptedException | ExecutionException e) {
                                 throw new RuntimeException(e);
                             }
