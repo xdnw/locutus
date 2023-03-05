@@ -625,6 +625,13 @@ public class GuildHandler {
         String subject = pair.getKey();
         String message = pair.getValue();
         ApiKeyPool keys = getDb().getMailKey();
+        if (keys == null) {
+            boolean hasKey = getDb().getOrNull(GuildDB.Key.API_KEY) != null;
+            if (!hasKey) {
+                throw new IllegalArgumentException("Please set `API_KEY` with " + CM.settings.cmd.toSlashMention());
+            }
+            throw new IllegalArgumentException("No valid `API_KEY` was found. Please ensure a valid one is set with " + CM.settings.cmd.toSlashMention());
+        }
 
         if (message.contains("%") || message.contains("{")) {
             message = DiscordUtil.format(guild, output, null, to, message);

@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -46,9 +47,13 @@ public interface NationOrAllianceOrGuildOrTaxid {
         throw new IllegalArgumentException("Invalid state: " + this);
     }
 
-    boolean isTaxid();
+    default boolean isTaxid() {
+        return this instanceof TaxBracket;
+    }
 
-    boolean isAlliance();
+    default boolean isAlliance() {
+        return this instanceof DBAlliance;
+    }
 
     default int getAlliance_id() {
         return getId();
@@ -83,7 +88,7 @@ public interface NationOrAllianceOrGuildOrTaxid {
     }
 
     default boolean isGuild() {
-        return getIdLong() > Integer.MAX_VALUE;
+        return this instanceof GuildDB;
     }
 
     default DBAlliance asAlliance() {
@@ -91,7 +96,7 @@ public interface NationOrAllianceOrGuildOrTaxid {
     }
 
     default boolean isNation() {
-        return !isAlliance() && !isGuild();
+        return this instanceof DBNation;
     }
 
     default Set<DBNation> getMemberDBNations() {
@@ -156,6 +161,10 @@ public interface NationOrAllianceOrGuildOrTaxid {
 
     default GuildDB asGuild() {
         return (GuildDB) this;
+    }
+
+    default TaxBracket asBracket() {
+        return (TaxBracket) this;
     }
 
     default String getUrl() {

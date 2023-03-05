@@ -1467,13 +1467,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void addBalanceTaxId(long tx_datetime, int taxId, int banker, String note, double[] amount) {
-        long taxIdInternal = - (((long) taxId) << 20);
-        addTransfer(tx_datetime, taxIdInternal, 4, 0, 0, banker, note, amount);
+        addTransfer(tx_datetime, taxId, 4, 0, 0, banker, note, amount);
     }
 
     public void addBalanceTaxId(long tx_datetime, int taxId, int nation, int banker, String note, double[] amount) {
-        long taxIdInternal = - (((long) taxId) << 20);
-        addTransfer(tx_datetime, taxIdInternal, 4, nation, 1, banker, note, amount);
+        addTransfer(tx_datetime, taxId, 4, nation, 1, banker, note, amount);
     }
 
     public void subBalance(long tx_datetime, NationOrAllianceOrGuild account, int banker, String note, double[] amount) {
@@ -1569,12 +1567,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public List<Map.Entry<Integer, Transaction2>> getDepositOffsetTransactionsTaxId(int tax_id) {
-        long id = -(((long) tax_id) << 20L);
-        List<Transaction2> records = getDepositOffsetTransactions(id);
+        List<Transaction2> records = getDepositOffsetTransactions(tax_id, 4);
         List<Map.Entry<Integer, Transaction2>> result = new ArrayList<>(records.size());
         for (Transaction2 record : records) {
-            if (record.sender_id != id && record.receiver_id != id) continue;
-            int sign = record.sender_id == id ? 1 : -1;
+            if (record.sender_id != tax_id && record.receiver_id != tax_id) continue;
+            int sign = record.sender_id == tax_id ? 1 : -1;
             result.add(new AbstractMap.SimpleEntry<>(sign, record));
         }
         return result;
@@ -1596,7 +1593,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public List<Transaction2> getDepositOffsetTransactions(long sender_id, int sender_type) {
-        Map<ResourceType, Map<String, Double>> legacyOffset = getDepositOffset(sender_type == 2 ? -sender_id : sender_id);
+        Map<ResourceType, Map<String, Double>> legacyOffset = sender_type <= 3 ? getDepositOffset(sender_type == 2 ? -sender_id : sender_id) : new HashMap<>();
         List<Transaction2> legacyTransfers = getDepositOffsetTransactionsLegacy(sender_id, sender_type, legacyOffset);
 
         List<Transaction2> transfers = getTransactionsById(sender_id, sender_type);
