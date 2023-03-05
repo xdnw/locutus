@@ -171,12 +171,7 @@ public class PnwUtil {
         if (forceIncludeExpired) allowExpiry = f -> false;
 
         if (tracked == null) {
-            tracked = new HashSet<>();
-            tracked.addAll(guildDB.getCoalitionRaw(Coalition.TRACK_DEPOSITS));
-            tracked.add(guildDB.getGuild().getIdLong());
-            Integer aaId = guildDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) tracked.add(aaId.longValue());
-            tracked = expandCoalition(tracked);
+            tracked = guildDB.getTrackedBanks();
         }
 
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
@@ -1018,11 +1013,11 @@ public class PnwUtil {
 
         // Project revenue
         if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.RESOURCE_PRODUCTION_CENTER)) {
-            for (ResourceType type : ResourceType.values) {
-                if (type.isRaw() && type.getBuilding().canBuild(nation.getContinent())) {
-                    profitBuffer[type.ordinal()] += turns * (Math.min(nation.getCities(), 10));
-                }
-            }
+//            for (ResourceType type : ResourceType.values) {
+//                if (type.isRaw() && type.getBuilding().canBuild(nation.getContinent())) {
+//                    // profitBuffer[type.ordinal()] += turns * (Math.min(nation.getCities(), 10));
+//                }
+//            }
         }
 
         // city revenue

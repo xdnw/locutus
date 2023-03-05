@@ -42,6 +42,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -57,9 +58,60 @@ public class TradeManager {
 
     private Map<Integer, DBTrade> activeTradesById = new ConcurrentHashMap<>();
 
+    private Map<ResourceType, Queue<TradeDB.BulkTradeOffer>> offersByResource = new ConcurrentHashMap<>();
+
     public TradeManager() throws SQLException, ClassNotFoundException {
         this.tradeDb = new link.locutus.discord.db.TradeDB();
     }
+
+    /**
+     * Add an offer. Delete existing offer for the same resource
+     * @param offer
+     * @return removed offers
+     */
+    public Set<TradeDB.BulkTradeOffer> addOffer(TradeDB.BulkTradeOffer offer, boolean checkExisting) {
+        Set<TradeDB.BulkTradeOffer> deleted = new HashSet<>();
+        Queue<TradeDB.BulkTradeOffer> existingQueue = offersByResource.get(offer.getResource());
+        if (existingQueue == null) {
+            existingQueue = offersByResource.computeIfAbsent(offer.getResource(), f -> new ConcurrentLinkedQueue<>());
+        } else if (checkExisting) {
+            synchronized (existingQueue) {
+                existingQueue.removeIf(f -> {
+                    if (f.nation == offer.nation && f.resourceId == offer.resourceId) {
+                        deleted.add(f);
+                        return true;
+                    }
+                    return false;
+                });
+                Set<Integer> idsToDelete = deleted.stream().map(f -> f.id).collect(Collectors.toSet());
+                Set<ResourceType> rssToDelete = deleted.stream().flatMap(f -> f.getExchangeFor().stream()).collect(Collectors.toSet());
+                for (ResourceType type : rssToDelete) {
+                    Queue<TradeDB.BulkTradeOffer> delExisting = offersByResource.get(type);
+                    if (delExisting != null) {
+                        delExisting.removeIf(f -> idsToDelete.contains(f.id));
+                    }
+                }
+                tradeDb.deleteBulkMarketOffers(idsToDelete);
+            }
+        }
+        synchronized (existingQueue) {
+            existingQueue.add(offer);
+        }
+        for (ResourceType type : offer.getExchangeFor()) {
+            offersByResource.computeIfAbsent(type, f -> new ConcurrentLinkedQueue<>()).add(offer);
+        }
+        return deleted;
+    }
+
+//    private void addBulkOffer(TradeDB.BulkTradeOffer offer) {}
+//
+//    public void loadBulkOffers() {
+//        List<TradeDB.BulkTradeOffer> offers = tradeDb.getMarketOffers();
+//        // iterate offers and add to offersByResource
+//        for (TradeDB.BulkTradeOffer offer : offers) {
+//            addBulkOffer(offer, false);
+//        }
+//    }
 
     private void updateLowHighCache() {
         int[] lowTmp = new int[ResourceType.values.length];

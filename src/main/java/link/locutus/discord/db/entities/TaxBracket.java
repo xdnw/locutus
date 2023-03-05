@@ -54,6 +54,16 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     }
 
     @Override
+    public String getTypePrefix() {
+        return "tax_id";
+    }
+
+    @Override
+    public boolean isNation() {
+        return false;
+    }
+
+    @Override
     public boolean isTaxid() {
         return true;
     }

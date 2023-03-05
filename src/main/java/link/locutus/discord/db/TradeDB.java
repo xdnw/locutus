@@ -9,10 +9,12 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import net.dv8tion.jda.api.entities.User;
 
 import java.sql.PreparedStatement;
@@ -90,8 +92,169 @@ public class TradeDB extends DBMainV2 {
             }
         }
 
+        {
+            // int resource not null, int nation not null, int resource not null, int quantity not null, boolean isBuy notNull, int minPPU, int maxPPU, boolean negotiable, long expire, long exchangeFor, byte[] exchangePPU
+            String stmt = "CREATE TABLE IF NOT EXISTS `MARKET_OFFERS` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`resource` INT NOT NULL, " +
+                    "`nation` INT NOT NULL, " +
+                    "`quantity` INT NOT NULL, " +
+                    "`isBuy` BOOLEAN NOT NULL," +
+                    " `minPPU` INT NOT NULL, " +
+                    "`maxPPU` INT NOT NULL, " +
+                    "`negotiable` BOOLEAN NOT NULL, " +
+                    "`expire` BIGINT NOT NULL," +
+                    " `exchangeFor` BIGINT NOT NULL, " +
+                    "`exchangePPU` BLOB)";
+            executeStmt(stmt);
+        }
+
+        purgeExpiredMarketOffers();
         purgeSubscriptions();
         loadColorBlocs();
+    }
+
+    public class BulkTradeOffer {
+        public int id;
+        public int resourceId;
+        public int nation;
+        public int quantity;
+        public boolean isBuy;
+        public int minPPU;
+        public int maxPPU;
+        public boolean negotiable;
+        public long expire;
+        public long exchangeForBits;
+        public double[] exchangePPU;
+
+        public BulkTradeOffer(int id, int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, long exchangeForBits, double[] exchangePPU) {
+            this.id = id;
+            this.resourceId = resourceId;
+            this.nation = nation;
+            this.quantity = quantity;
+            this.isBuy = isBuy;
+            this.minPPU = minPPU;
+            this.maxPPU = maxPPU;
+            this.negotiable = negotiable;
+            this.expire = expire;
+            this.exchangeForBits = exchangeForBits;
+            this.exchangePPU = exchangePPU;
+        }
+
+        public BulkTradeOffer(ResultSet rs) throws SQLException {
+            id = rs.getInt(1);
+            resourceId = rs.getInt(2);
+            nation = rs.getInt(3);
+            quantity = rs.getInt(4);
+            isBuy = rs.getBoolean(5);
+            minPPU = rs.getInt(6);
+            maxPPU = rs.getInt(7);
+            negotiable = rs.getBoolean(8);
+            expire = rs.getLong(9);
+            exchangeForBits = rs.getLong(10);
+            // bytes might be null
+            byte[] exchangePPUBytes = rs.getBytes(11);
+            if (exchangePPUBytes != null) {
+                exchangePPU = ArrayUtil.toDoubleArray(exchangePPUBytes);
+            }
+        }
+
+        public ResourceType getResource() {
+            return ResourceType.values[resourceId];
+        }
+
+        public Set<ResourceType> getExchangeFor() {
+            Set<ResourceType> set = new HashSet<>();
+            for (ResourceType type : ResourceType.values) {
+                if ((exchangeForBits & (1L << type.ordinal())) != 0) {
+                    set.add(type);
+                }
+            }
+            return set;
+        }
+
+        public double getExchangePpu(ResourceType type) {
+            return exchangePPU != null ? exchangePPU[type.ordinal()] : -1;
+        }
+
+        public void set(PreparedStatement stmt, boolean setId) {
+            try {
+                int i = 1;
+                if (setId) {
+                    stmt.setObject(i++, id);
+                }
+                stmt.setObject(i++, resourceId);
+                stmt.setObject(i++, nation);
+                stmt.setObject(i++, quantity);
+                stmt.setObject(i++, isBuy);
+                stmt.setObject(i++, minPPU);
+                stmt.setObject(i++, maxPPU);
+                stmt.setObject(i++, negotiable);
+                stmt.setObject(i++, expire);
+                stmt.setObject(i++, exchangeForBits);
+                stmt.setObject(i++, ArrayUtil.toByteArray(exchangePPU));
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public synchronized void updateMarketOffers(List<BulkTradeOffer> offers) {
+        executeBatch(offers, "UPDATE `MARKET_OFFERS` SET `resource` = ?, `nation` = ?, `quantity` = ?, `isBuy` = ?, `minPPU` = ?, `maxPPU` = ?, `negotiable` = ?, `expire` = ?, `exchangeFor` = ?, `exchangePPU` = ? WHERE `id` = ?", new ThrowingBiConsumer<BulkTradeOffer, PreparedStatement>() {
+            @Override
+            public void acceptThrows(BulkTradeOffer offer, PreparedStatement stmt) throws Exception {
+                offer.set(stmt, true);
+            }
+        });
+    }
+
+    public synchronized void instertMarketOffer(BulkTradeOffer offer) {
+        try (PreparedStatement stmt = getConnection().prepareStatement("INSERT INTO `MARKET_OFFERS`(`resource`, `nation`, `quantity`, `isBuy`, `minPPU`, `maxPPU`, `negotiable`, `expire`, `exchangeFor`, `exchangePPU`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+            offer.set(stmt, false);
+            stmt.executeUpdate();
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    offer.id = rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<BulkTradeOffer> getMarketOffers() {
+        List<BulkTradeOffer> result = new ArrayList<>();
+        com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("MARKET_OFFERS")
+                .select("*");
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                result.add(new BulkTradeOffer(rs));
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void addMarketOffers(List<BulkTradeOffer> offers) {
+        executeBatch(offers, "INSERT INTO `MARKET_OFFERS`(`resource`, `nation`, `quantity`, `isBuy`, `minPPU`, `maxPPU`, `negotiable`, `expire`, `exchangeFor`, `exchangePPU`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<BulkTradeOffer, PreparedStatement>() {
+            @Override
+            public void acceptThrows(BulkTradeOffer offer, PreparedStatement stmt) throws Exception {
+                offer.set(stmt, false);
+            }
+        });
+    }
+
+    public synchronized void deleteBulkMarketOffers(Set<Integer> ids) {
+        if (ids.isEmpty()) return;
+        ArrayList<Integer> idsList = new ArrayList<>(ids);
+        Collections.sort(idsList);
+        executeStmt("DELETE FROM `MARKET_OFFERS` WHERE `id` in " + StringMan.getString(idsList));
+    }
+
+    public void purgeExpiredMarketOffers() {
+        executeStmt("DELETE FROM `MARKET_OFFERS` WHERE `expire` < " + System.currentTimeMillis());
     }
 
     public void saveColorBlocs() {
