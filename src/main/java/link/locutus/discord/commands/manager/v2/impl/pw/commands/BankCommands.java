@@ -2060,54 +2060,50 @@ public class BankCommands {
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        List<String> tips2 = new ArrayList<>();
+                    List<String> tips2 = new ArrayList<>();
 
-                        {
-                            Map<ResourceType, Double> stockpile = finalNation.getStockpile();
-                            if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
-                                Map<ResourceType, Double> excess = finalNation.checkExcessResources(db, stockpile);
-                                if (!excess.isEmpty()) {
-                                    tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
-                                    if (Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.DEPOSIT_INTEREST))) {
-                                        List<Transaction2> transactions = finalNation.getTransactions(-1);
-                                        long last = 0;
-                                        for (Transaction2 transaction : transactions) last = Math.max(transaction.tx_datetime, last);
-                                        if (System.currentTimeMillis() - last > TimeUnit.DAYS.toMillis(5)) {
-                                            tips2.add("Deposit frequently to be eligable for interest on your deposits");
-                                        }
+                    {
+                        Map<ResourceType, Double> stockpile = finalNation.getStockpile();
+                        if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
+                            Map<ResourceType, Double> excess = finalNation.checkExcessResources(db, stockpile);
+                            if (!excess.isEmpty()) {
+                                tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
+                                if (Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.DEPOSIT_INTEREST))) {
+                                    List<Transaction2> transactions = finalNation.getTransactions(-1);
+                                    long last = 0;
+                                    for (Transaction2 transaction : transactions) last = Math.max(transaction.tx_datetime, last);
+                                    if (System.currentTimeMillis() - last > TimeUnit.DAYS.toMillis(5)) {
+                                        tips2.add("Deposit frequently to be eligable for interest on your deposits");
                                     }
                                 }
-                                Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
-                                if (!needed.isEmpty()) {
-                                    tips2.add("Missing resources for the next 3 days: " + PnwUtil.resourcesToString(needed));
-                                }
+                            }
+                            Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
+                            if (!needed.isEmpty()) {
+                                tips2.add("Missing resources for the next 3 days: " + PnwUtil.resourcesToString(needed));
                             }
                         }
+                    }
 
-                        if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE)) && db.isValidAlliance()) {
-                            AllianceList alliance = db.getAllianceList();
-                            if (alliance != null && alliance.contains(me.getAlliance_id())) {
-                                try {
-                                    Map<ResourceType, Double> stockpile = me.getAlliance().getStockpile();
-                                    if (PnwUtil.convertedTotal(stockpile) > 5000000) {
-                                        tips2.add("You MUST offshore funds after depositing `" + CM.offshore.send.cmd.toSlashMention() + "` ");
-                                    }
-                                } catch (Throwable ignore) {}
-                            }
-                        }
-
-                        if (!tips2.isEmpty()) {
-                            for (String tip : tips2) response.append("\n`tip: " + tip + "`");
-
+                    if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE)) && db.isValidAlliance()) {
+                        AllianceList alliance = db.getAllianceList();
+                        if (alliance != null && alliance.contains(me.getAlliance_id())) {
                             try {
-                                msgFuture.get().append(response.toString()).send();
-                            } catch (InterruptedException | ExecutionException e) {
-                                throw new RuntimeException(e);
-                            }
+                                Map<ResourceType, Double> stockpile = me.getAlliance().getStockpile();
+                                if (PnwUtil.convertedTotal(stockpile) > 5000000) {
+                                    tips2.add("You MUST offshore funds after depositing `" + CM.offshore.send.cmd.toSlashMention() + "` ");
+                                }
+                            } catch (Throwable ignore) {}
                         }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    }
+
+                    if (!tips2.isEmpty()) {
+                        for (String tip : tips2) response.append("\n`tip: " + tip + "`");
+
+                        try {
+                            msgFuture.get().append(response.toString()).send();
+                        } catch (InterruptedException | ExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             });

@@ -883,23 +883,13 @@ public class OffshoreInstance {
                         String title = "Reimburse";
                         StringBuilder body = new StringBuilder();
                         body.append("`").append(result.getValue()).append("`\n");
-                        body.append("ID: " + aaId2 + " | " + senderDB.getGuild().toString());
-                        body.append("\nAmount: " + PnwUtil.resourcesToString(transfer));
-
-                        List<String> commands = new ArrayList<>();
                         for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : addBalanceResult.entrySet()) {
-
+                            NationOrAllianceOrGuild account = entry.getKey();
+                            body.append("\n - `!addbalance " + account.getTypePrefix() + ":" + account.getId() + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit");
                         }
+                        body.append("\n<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
 
-
-                        String id = aaId2 == null ? "guild:" + senderDB.getGuild().getIdLong() : ("aa:" + aaId2);
-                        String cmd = CM.deposits.add.cmd.create("AA:" + id, PnwUtil.resourcesToString(transfer), null, null).toSlashCommand();
-                        body.append("\n" + cmd);
-
-                        if (logChannel != null) {
-                            DiscordUtil.createEmbedCommand(logChannel, title, body.toString());
-                            RateLimitUtil.queue(logChannel.sendMessage("^ <@" + Settings.INSTANCE.ADMIN_USER_ID + (">")));
-                        }
+                        log(senderDB, banker, receiver, "Reimburse: " + body.toString());
                     }
                     break;
                 }
