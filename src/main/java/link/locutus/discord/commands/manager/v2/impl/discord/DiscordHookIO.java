@@ -4,10 +4,8 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Channel;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.interactions.Interaction;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 
@@ -57,6 +55,7 @@ public class DiscordHookIO implements IMessageIO {
                     }
                     CompletableFuture<Message> future = DiscordUtil.sendMessage(hook, discMsg.content.toString());
                     if (result != null) {
+                        assert future != null;
                         msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                     }
                 } else {
@@ -71,11 +70,12 @@ public class DiscordHookIO implements IMessageIO {
                 for (Map.Entry<String, byte[]> entry : allFiles.entrySet()) {
                     result = hook.sendFile(entry.getValue(), entry.getKey()).complete();
                 }
-                if (result != null && msgFuture == null) msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
+                if (result != null && msgFuture == null)
+                    msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
             }
             return msgFuture;
         } else {
-            throw new IllegalArgumentException("Only DiscordMessageBuilder is supported");
+            throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
         }
     }
 
@@ -86,7 +86,7 @@ public class DiscordHookIO implements IMessageIO {
             RateLimitUtil.queue(hook.editMessageById(id, message));
             return this;
         } else {
-            throw new IllegalArgumentException("Only DiscordMessageBuilder is supported");
+            throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
         }
     }
 

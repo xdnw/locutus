@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.buildcmd.AssignBuild;
 import link.locutus.discord.commands.buildcmd.GetBuild;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -9,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.CityRanges;
@@ -17,7 +15,6 @@ import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
-import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,7 +29,7 @@ public class BuildCommands {
     // get
     // assign
 
-    @Command(desc = "List the currently set build categories")
+    @Command(desc = "List the currently set build categories.")
     @RolePermission(Roles.MEMBER)
     public String listall(@Me GuildDB db) {
         Map<String, List<CityBuildRange>> builds = db.getBuilds();
@@ -41,7 +38,7 @@ public class BuildCommands {
         for (Map.Entry<String, List<CityBuildRange>> entry : builds.entrySet()) {
             sb.append("**").append(entry.getKey()).append("**:\n");
             for (CityBuildRange range : entry.getValue()) {
-                sb.append(" - ").append(range.getMin() + "-" + range.getMin()).append("\n");
+                sb.append(" - ").append(range.getMin()).append("-").append(range.getMin()).append("\n");
             }
         }
         return sb.toString();
@@ -59,8 +56,7 @@ public class BuildCommands {
         for (CityBuildRange existing : existingRanges) {
             for (Map.Entry<Integer, Integer> range : ranges.getRanges()) {
                 if (Math.max(range.getKey(), existing.getMin()) <= Math.min(range.getValue(), existing.getMax())) {
-                    response.append('\n').append(" - Overlaps with (category, min-city, max-city) " + category + " " + existing.getMin() + " " + existing.getMax() + ". Use " +
-                                    CM.build.delete.cmd.create(category, existing.getMin() + "").toSlashCommand() + " to delete it.");
+                    response.append('\n').append(" - Overlaps with (category, min-city, max-city) ").append(category).append(" ").append(existing.getMin()).append(" ").append(existing.getMax()).append(". Use ").append(CM.build.delete.cmd.create(category, existing.getMin() + "").toSlashCommand()).append(" to delete it.");
                 }
             }
         }
@@ -72,11 +68,12 @@ public class BuildCommands {
     public String delete(@Me GuildDB db, String category, int minCities) {
         Map<String, List<CityBuildRange>> builds = db.getBuilds();
         if (!builds.containsKey(category)) {
-            return "No builds found in category: `" + category  + "`. Options: " + StringMan.getString(builds.keySet());
+            return "No builds found in category: `" + category + "`. Options: " + StringMan.getString(builds.keySet());
         }
         List<CityBuildRange> existingRanges = builds.getOrDefault(category, Collections.emptyList());
-        List<Integer> minCitiesList = existingRanges.stream().map(f -> f.getMin()).collect(Collectors.toList());
-        if (!minCitiesList.contains(minCities)) return "No build found with min-cities: `" + minCities + "`. Options: " + StringMan.getString(minCitiesList);
+        List<Integer> minCitiesList = existingRanges.stream().map(CityBuildRange::getMin).collect(Collectors.toList());
+        if (!minCitiesList.contains(minCities))
+            return "No build found with min-cities: `" + minCities + "`. Options: " + StringMan.getString(minCitiesList);
         db.removeBuild(category, minCities);
         return "Deleted builds with min-cities: `" + minCities + "`";
     }
@@ -87,7 +84,7 @@ public class BuildCommands {
         return AssignBuild.build(db, nation, cities == null ? nation.getCities() : cities, category);
     }
 
-    @Command(desc = "Print the current build being used by a nation")
+    @Command(desc = "Print the current build being used by a natio.n")
     @RolePermission(Roles.MEMBER)
     public String get(DBNation nation, @Me IMessageIO channel) throws Exception {
         return GetBuild.onCommand(nation, channel);

@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
@@ -11,8 +13,6 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
@@ -36,16 +36,16 @@ public class StockBinding extends BindingHelper {
     public Exchange exchangeByContext(StockDB db, @Me Guild guild, @Me MessageChannel channel) {
         GuildDB rootGuild = Locutus.imp().getGuildDB(StockDB.ROOT_GUILD);
         if (rootGuild.getGuild().getIdLong() != guild.getIdLong()) {
-            throw new IllegalArgumentException("This command must be used inside the company channel on: <https://discord.gg/TAF5zkh6WJ>");
+            throw new IllegalArgumentException("This command must be used inside the company channel.");
         }
         String[] split = channel.getName().split("-");
-        IllegalArgumentException err = new IllegalArgumentException("This command must be used inside the company channel in this guild");
+        IllegalArgumentException err = new IllegalArgumentException("This command must be used inside the company channel in this guild.");
         if (split.length < 2 || !MathMan.isInteger(split[0])) {
             throw err;
         }
         Exchange exchangeByName = db.getExchange(split[1]);
         Exchange exchangeById = db.getExchange(Integer.parseInt(split[0]));
-        if (exchangeById == null || exchangeByName == null || !exchangeById.equals(exchangeByName)) throw err;
+        if (exchangeById == null || !exchangeById.equals(exchangeByName)) throw err;
         return exchangeById;
     }
 
@@ -66,7 +66,8 @@ public class StockBinding extends BindingHelper {
     @Binding
     public Map<Exchange, Double> stocks(StockDB db, String stock) {
         stock = stock.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
-        Type type = new TypeToken<Map<String, Double>>() {}.getType();
+        Type type = new TypeToken<Map<String, Double>>() {
+        }.getType();
         Map<String, Double> resultStr = new Gson().fromJson(stock, type);
         Map<Exchange, Double> result = new LinkedHashMap<>();
         for (Map.Entry<String, Double> entry : resultStr.entrySet()) {
