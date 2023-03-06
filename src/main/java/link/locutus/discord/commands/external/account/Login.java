@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.config.Settings;
@@ -48,7 +49,7 @@ public class Login extends Command {
         String[] split = DiscordUtil.trimContent(event.getMessage().getContentRaw()).split(" ", 3);
         String username = split[1];
         String password = split[2];
-        return UnsortedCommands.login(Locutus.imp().getDiscordDB(), author, me, guild, username, password);
+        return UnsortedCommands.login(new DiscordChannelIO(event), Locutus.imp().getDiscordDB(), me, guild, username, password);
     }
 }
 
