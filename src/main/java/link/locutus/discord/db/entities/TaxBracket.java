@@ -87,7 +87,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
 
     public Set<DBNation> getNations() {
         if (taxId == 0) return Collections.emptySet();
-        if (getAlliance_id() == 0) {
+        if (getAlliance_id() != 0) {
             DBAlliance alliance = DBAlliance.get(allianceId);
             if (alliance != null) return alliance.getNations(f -> f.getTax_id() == taxId);
             return Collections.emptySet();

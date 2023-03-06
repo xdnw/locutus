@@ -42,7 +42,7 @@ public class EditAlliance extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         GuildDB db = Locutus.imp().getGuildDB(server);
-        if (!db.isAlliance()) return false;
+        if (!db.hasAlliance()) return false;
         if (Roles.ADMIN.has(user, server)) return true;
         DBNation nation = DiscordUtil.getNation(user);
         return nation != null && Roles.INTERNAL_AFFAIRS.has(user, server) && Rank.OFFICER.id <= nation.getPosition();

@@ -107,7 +107,8 @@ public class AllianceList {
                 alliances.add(alliance);
             }
         }
-        return alliances; }
+        return alliances;
+    }
 
     public List<BankDB.TaxDeposit> updateTaxes() {
         List<BankDB.TaxDeposit> deposits = new ArrayList<>();
@@ -193,7 +194,12 @@ public class AllianceList {
     }
 
     public boolean isEmpty() {
-        return ids.isEmpty();
+        for (int id : ids) {
+            if (DBAlliance.get(id) != null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public boolean contains(DBAlliance to) {

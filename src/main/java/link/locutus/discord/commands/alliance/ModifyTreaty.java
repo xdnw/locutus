@@ -34,7 +34,7 @@ public class ModifyTreaty extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Roles.FOREIGN_AFFAIRS.has(user, server) && Locutus.imp().getGuildDB(server).isAlliance();
+        return Roles.FOREIGN_AFFAIRS.has(user, server) && Locutus.imp().getGuildDB(server).hasAlliance();
     }
 
     @Override

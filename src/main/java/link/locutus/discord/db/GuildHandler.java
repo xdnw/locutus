@@ -2520,7 +2520,7 @@ public class GuildHandler {
     }
 
     public void procesRewards() {
-        if (!db.isAlliance()) return;
+        if (!db.hasAlliance()) return;
         Map<NationFilterString, double[]> rewards = getDb().getOrNull(GuildDB.Key.MEMBER_REWARDS);
         if (rewards == null || rewards.isEmpty()) return;
         MessageChannel rssChannel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);

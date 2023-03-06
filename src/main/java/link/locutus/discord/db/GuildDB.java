@@ -217,10 +217,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
 
         return null;
-//        ApiKeyPool pool = getApiPool(getAlliance_id(), false, AlliancePermission.POST_ANNOUNCEMENTS);
-//        if (pool != null && pool.size() > 0) return pool;
-//        pool = getApiPool(getAlliance_id(), false);
-//        return pool != null && pool.size() > 0 ? pool : null;
     }
 
     public boolean hasCoalitionPermsOnRoot(Coalition coalition) {
@@ -2130,7 +2126,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 return db.getWarChannel(throwException, true);
             }
 
-            if (isAlliance() || isWarServer) {
+            if (hasAlliance() || isWarServer) {
                 if (warChannel == null && !warChannelInit) {
                     warChannelInit = true;
                     boolean allowed = Boolean.TRUE.equals(enabled) || isWhitelisted() || isAllyOfRoot() || getPermission(WarCategory.class) > 0;
@@ -3598,9 +3594,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public boolean allowed(GuildDB db) {
                 if (db.getIdLong() == 940788925209923584L) return true;
-                Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
-                if (aaId == null) return false;
-                return DBAlliance.get(aaId) != null;
+                AllianceList aaList = db.getAllianceList();
+                return aaList != null && !aaList.isEmpty();
             }
 
             @Override
@@ -3613,9 +3608,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public boolean allowed(GuildDB db) {
                 if (db.getIdLong() == 940788925209923584L) return true;
-                Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
-                if (aaId == null) return false;
-                return DBAlliance.get(aaId) != null;
+                AllianceList aaList = db.getAllianceList();
+                return aaList != null && !aaList.isEmpty();
             }
 
             @Override
@@ -3647,9 +3641,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public boolean allowed(GuildDB db) {
-                Integer aaId = db.getOrNull(Key.ALLIANCE_ID);
-                if (aaId == null) return false;
-                return DBAlliance.get(aaId) != null;
+                AllianceList aaList = db.getAllianceList();
+                return aaList != null && !aaList.isEmpty();
             }
         },
 

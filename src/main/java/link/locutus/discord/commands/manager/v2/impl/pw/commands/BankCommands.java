@@ -1888,8 +1888,8 @@ public class BankCommands {
                        @Switch("f") boolean confirm) throws IOException {
         if (true) return "WIP";
         if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
-        if (receiverGuild != null && receiver.isGuild()) throw new IllegalArgumentException("Cannot specify receiver guild when receiver type is already a guild");
-        if (receiverAlliance != null && receiver.isAlliance()) throw new IllegalArgumentException("Cannot specify receiver alliance when receiver type is already an alliance");
+        if (receiverGuild != null && !receiver.isNation()) throw new IllegalArgumentException("Cannot specify receiver guild when receiver is not a nation");
+        if (receiverAlliance != null && !receiver.isNation()) throw new IllegalArgumentException("Cannot specify receiver alliance when receiver is not a nation");
 
         GuildDB receiverDB = receiverGuild == null ? receiver.isGuild() ? receiver.asGuild() : null : Locutus.imp().getGuildDB(receiverGuild);
         DBNation receiverNation = receiver.isNation() ? receiver.asNation() : null;
@@ -2449,7 +2449,7 @@ public class BankCommands {
             if (currentOffshore.getAllianceId() == offshoreAlliance.getAlliance_id()) {
                 return "This guild is already the offshore for this server";
             }
-            Set<Integer> aaIds = root.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            Set<Integer> aaIds = root.getAllianceIds();
 
             if (!force) {
                 String idStr = aaIds.isEmpty() ? root.getIdLong() + "" : StringMan.join(aaIds, ",");
