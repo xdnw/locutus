@@ -35,9 +35,12 @@ import java.util.Set;
 
 public class DiscordBindings extends BindingHelper {
     @Binding(examples = {"@user", "nation"})
-    public static User user(String name) {
+    public static User user(@Me User selfUser, String name) {
         User user = DiscordUtil.getUser(name);
         if (user == null) {
+            if (selfUser != null && name.equalsIgnoreCase("%user%")) {
+                return selfUser;
+            }
             throw new IllegalArgumentException("No user found for: `" + name + "`");
         }
         return user;
@@ -49,9 +52,9 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "@member")
-    public static Member member(@Me Guild guild, String name) {
+    public static Member member(@Me Guild guild, @Me User selfUser, String name) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild");
-        User user = user(name);
+        User user = user(selfUser, name);
         Member member = guild.getMember(user);
         if (member == null) throw new IllegalArgumentException("No such member: " + user.getName());
         return member;
@@ -60,6 +63,12 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     public Category category(ParameterData param, Guild guild, String category) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild");
+        if (category.charAt(0) == '<' && category.charAt(category.length() - 1) == '>') {
+            category = category.substring(1, category.length() - 1);
+        }
+        if (category.charAt(0) == '#') {
+            category = category.substring(1);
+        }
         List<Category> categories = guild.getCategoriesByName(category, true);
         Filter filter = param.getAnnotation(Filter.class);
         if (filter != null) {

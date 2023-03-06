@@ -1,19 +1,16 @@
 package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
@@ -79,7 +76,7 @@ public class TaxBracketSheet extends Command {
             Map<Integer, TaxBracket> allAllianceBrackets = Locutus.imp().getBankDB().getTaxBracketsAndEstimates();
             for (Map.Entry<Integer, TaxBracket> entry : allAllianceBrackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
-                if (allianceIds.contains(bracket.getAllianceId(false))) {
+                if (allianceIds.contains(bracket.getAlliance_id(false))) {
                     brackets.put(entry.getKey(), bracket);
                 }
             }

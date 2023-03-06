@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -38,6 +39,8 @@ public class AddBalanceBuilder {
     Map<DBAlliance, Map<String, double[]>> fundsToSendAAs = new LinkedHashMap<>();
     Map<GuildDB, Map<String, double[]>> fundsToSendGuilds = new LinkedHashMap<>();
 
+    Map<TaxBracket, Map<String, double[]>> fundsToSendBracket = new LinkedHashMap<>();
+
     public AddBalanceBuilder(GuildDB db) {
         this.db = db;
     }
@@ -56,6 +59,10 @@ public class AddBalanceBuilder {
 
     public Map<GuildDB, Map<String, double[]>> getFundsToSendGuilds() {
         return fundsToSendGuilds;
+    }
+
+    public Map<TaxBracket, Map<String, double[]>> getFundsToSendBracket() {
+        return fundsToSendBracket;
     }
 
     private <T> Map<T, Map<ResourceType, Double>> getTotal(Map<T, Map<String, double[]>> map) {
@@ -83,11 +90,16 @@ public class AddBalanceBuilder {
         return getTotal(fundsToSendAAs);
     }
 
+
+    public Map<TaxBracket, Map<ResourceType, Double>> getTotalForBrackets() {
+        return getTotal(fundsToSendBracket);
+    }
+
     public Map<GuildDB, Map<ResourceType, Double>> getTotalForGuilds() {
         return getTotal(fundsToSendGuilds);
     }
 
-    public AddBalanceBuilder add(NationOrAllianceOrGuild account, Map<ResourceType, Double> amount, String note) {
+    public AddBalanceBuilder add(NationOrAllianceOrGuildOrTaxid account, Map<ResourceType, Double> amount, String note) {
         if (note == null) note = "#deposit";
         Map<String, double[]> existing;
         if (account.isNation()) {
@@ -96,6 +108,8 @@ public class AddBalanceBuilder {
             existing = fundsToSendAAs.computeIfAbsent(account.asAlliance(), k -> new HashMap<>());
         } else if (account.isGuild()) {
             existing = fundsToSendGuilds.computeIfAbsent(account.asGuild(), k -> new HashMap<>());
+        } else if (account.isTaxid()) {
+            existing = fundsToSendBracket.computeIfAbsent(account.asBracket(), k -> new HashMap<>());
         } else {
             throw new IllegalArgumentException("Unknown type " + account);
         }
@@ -198,10 +212,10 @@ public class AddBalanceBuilder {
         double[] total = getTotal();
 
         StringBuilder title = new StringBuilder("Addbalance to");
-        if (!getFundsToSendNations().isEmpty()) title.append(" ").append(getFundsToSendNations().size()).append("nations");
-        if (!getFundsToSendAAs().isEmpty()) title.append(" ").append(getFundsToSendAAs().size()).append("alliances");
-        if (!getFundsToSendGuilds().isEmpty()) title.append(" ").append(getFundsToSendGuilds().size()).append("guilds");
-
+        if (!getFundsToSendNations().isEmpty()) title.append(" ").append(getFundsToSendNations().size()).append(" nations");
+        if (!getFundsToSendAAs().isEmpty()) title.append(" ").append(getFundsToSendAAs().size()).append(" alliances");
+        if (!getFundsToSendGuilds().isEmpty()) title.append(" ").append(getFundsToSendGuilds().size()).append(" guilds");
+        if (!getFundsToSendBracket().isEmpty()) title.append(" ").append(getFundsToSendBracket().size()).append(" brackets");
         String emoji = "Confirm";
 
         StringBuilder body = new StringBuilder();
@@ -241,6 +255,9 @@ public class AddBalanceBuilder {
         if (getFundsToSendAAs().size() == 1) {
             body.append("\nAlliance: " + getFundsToSendAAs().keySet().iterator().next().getMarkdownUrl());
         }
+        if (getFundsToSendBracket().size() == 1) {
+            body.append("\nBracket: #" + getFundsToSendBracket().keySet().iterator().next().getId());
+        }
 
         body.append("\nNotes: `" + StringMan.getString(getNotes(f -> true)) + "`");
 
@@ -251,7 +268,7 @@ public class AddBalanceBuilder {
         io.create().embed(title.toString(), body.toString()).commandButton(command, "Confirm").send();
     }
 
-    public Set<String> getNotes(Predicate<NationOrAllianceOrGuild> consumer) {
+    public Set<String> getNotes(Predicate<NationOrAllianceOrGuildOrTaxid> consumer) {
         Set<String> notes = new HashSet<>();
         for (Map.Entry<DBNation, Map<String, double[]>> entry : getFundsToSendNations().entrySet()) {
             if (consumer.test(entry.getKey())) {
@@ -264,6 +281,11 @@ public class AddBalanceBuilder {
             }
         }
         for (Map.Entry<DBAlliance, Map<String, double[]>> entry : getFundsToSendAAs().entrySet()) {
+            if (consumer.test(entry.getKey())) {
+                notes.addAll(entry.getValue().keySet());
+            }
+        }
+        for (Map.Entry<TaxBracket, Map<String, double[]>> entry : getFundsToSendBracket().entrySet()) {
             if (consumer.test(entry.getKey())) {
                 notes.addAll(entry.getValue().keySet());
             }
@@ -333,6 +355,19 @@ public class AddBalanceBuilder {
 
         }
 
+        for (Map.Entry<TaxBracket, Map<String, double[]>> entry : fundsToSendBracket.entrySet()) {
+            for (Map.Entry<String, double[]> entry2 : entry.getValue().entrySet()) {
+                TaxBracket sender = entry.getKey();
+                String note = entry2.getKey();
+                double[] amount = entry2.getValue();
+
+                db.addBalanceTaxId(tx_datetime, sender.taxId, 0, banker, note, amount);
+                totalAdded = PnwUtil.add(totalAdded, amount);
+                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getQualifiedName());
+            }
+
+        }
+
         return "Done:\n - " +
                 StringMan.join(response, "\n - ") +
                 "\nTotal added: `" + PnwUtil.resourcesToString(totalAdded) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalAdded));
@@ -348,6 +383,11 @@ public class AddBalanceBuilder {
     public double[] getTotal() {
         double[] total = ResourceType.getBuffer();
         for (Map<String, double[]> map : fundsToSendNations.values()) {
+            for (double[] doubles : map.values()) {
+                ResourceType.add(total, doubles);
+            }
+        }
+        for (Map<String, double[]> map : fundsToSendBracket.values()) {
             for (double[] doubles : map.values()) {
                 ResourceType.add(total, doubles);
             }

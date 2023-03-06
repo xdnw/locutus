@@ -1007,11 +1007,11 @@ public class PnwUtil {
 
         // Project revenue
         if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.RESOURCE_PRODUCTION_CENTER)) {
-            for (ResourceType type : ResourceType.values) {
-                if (type.isRaw()) {
-                    profitBuffer[type.ordinal()] += turns * nation.getCities();
-                }
-            }
+//            for (ResourceType type : ResourceType.values) {
+//                if (type.isRaw() && type.getBuilding().canBuild(nation.getContinent())) {
+//                    // profitBuffer[type.ordinal()] += turns * (Math.min(nation.getCities(), 10));
+//                }
+//            }
         }
 
         // city revenue
@@ -1327,5 +1327,9 @@ public class PnwUtil {
             }
         }
         return revenue;
+    }
+
+    public static String getTaxUrl(int taxId) {
+        return String.format("" + Settings.INSTANCE.PNW_URL() + "/index.php?id=15&tax_id=%s", taxId);
     }
 }

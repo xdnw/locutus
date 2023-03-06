@@ -909,6 +909,10 @@ public final class Locutus extends ListenerAdapter {
                 System.out.println("ID is null");
                 return;
             }
+            if (id.isBlank()) {
+                RateLimitUtil.queue(message.delete());
+                return;
+            }
             if (MathMan.isInteger(id)) {
                 List<MessageEmbed> embeds = message.getEmbeds();
                 if (embeds.size()  == 0) {

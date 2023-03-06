@@ -4,7 +4,9 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -15,25 +17,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid {
-
-    static NationOrAllianceOrGuild create(long id, int type) {
-        switch (type) {
-            case 1:
-                DBNation nation = DBNation.byId((int) id);
-                if (nation == null) {
-                    nation = new DBNation();
-                    nation.setNation_id((int) id);
-                }
-                return nation;
-            case 2:
-                return DBAlliance.getOrCreate((int) id);
-            case 3:
-                return (NationOrAllianceOrGuild) Locutus.imp().getDiscordApi().getGuildById(id);
-            default:
-                throw new IllegalArgumentException("Invalid type: " + type);
-        }
-    }
+public interface NationOrAllianceOrGuildOrTaxid {
 
     default int getId() {
         return (int) getIdLong();
@@ -47,6 +31,7 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         if (isNation()) return 1;
         if (isAlliance()) return 2;
         if (isGuild()) return 3;
+        if (isTaxid()) return 4;
         throw new IllegalArgumentException("Invalid state: " + this);
     }
 
@@ -58,12 +43,21 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         if (isNation()) return "Nation";
         if (isAlliance()) return "AA";
         if (isGuild()) return "Guild";
+        if (isTaxid()) return "tax_id";
         throw new IllegalArgumentException("Invalid state: " + this);
     }
 
-    boolean isAlliance();
+    default boolean isTaxid() {
+        return this instanceof TaxBracket;
+    }
 
-    int getAlliance_id();
+    default boolean isAlliance() {
+        return this instanceof DBAlliance;
+    }
+
+    default int getAlliance_id() {
+        return getId();
+    }
 
     String getName();
 
@@ -72,22 +66,29 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         int sender_type;
         if (isGuild()) {
             GuildDB db = asGuild();
-            if (db.hasAlliance()) {
-                throw new IllegalStateException("Alliance Guilds cannot be used as sender. Specify the alliance instead: " + db.getGuild());
+            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            if (aaId != null) {
+                sender_id = aaId;
+                sender_type = 2;
+            } else {
+                sender_id = db.getGuild().getIdLong();
+                sender_type = 3;
             }
-            sender_id = db.getGuild().getIdLong();
-            sender_type = 3;
         } else if (isAlliance()) {
-            throw new IllegalArgumentException("Alliance cannot be a sender");
+            sender_id = getAlliance_id();
+            sender_type = 2;
         } else if (isNation()) {
             sender_id = getId();
             sender_type = 1;
+        } else if (isTaxid()) {
+            sender_id = getId();
+            sender_type = 4;
         } else throw new IllegalArgumentException("Invalid receiver: " + this);
         return new AbstractMap.SimpleEntry<>(sender_id, sender_type);
     }
 
     default boolean isGuild() {
-        return getIdLong() > Integer.MAX_VALUE;
+        return this instanceof GuildDB;
     }
 
     default DBAlliance asAlliance() {
@@ -95,7 +96,7 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
     }
 
     default boolean isNation() {
-        return !isAlliance() && !isGuild();
+        return this instanceof DBNation;
     }
 
     default Set<DBNation> getMemberDBNations() {
@@ -104,9 +105,9 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            AllianceList aaList = db.getAllianceList();
-            if (aaList != null) {
-                nations.addAll(aaList.getNations(true, 0, true));
+            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            if (aaId != null) {
+                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(true, 0, true));
             } else {
                 Guild guild = db.getGuild();
                 Role role = Roles.MEMBER.toRole(guild);
@@ -134,9 +135,9 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            Set<Integer> ids = db.getAllianceIds();
-            if (!ids.isEmpty()) {
-                nations.addAll(Locutus.imp().getNationDB().getNations(ids));
+            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            if (aaId != null) {
+                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(false, 0, false));
             }
             Guild guild = db.getGuild();
             for (Member member : guild.getMembers()) {
@@ -154,11 +155,6 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         return nations;
     }
 
-    @Override
-    default boolean isTaxid() {
-        return false;
-    }
-
     default DBNation asNation() {
         return (DBNation) this;
     }
@@ -167,11 +163,18 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         return (GuildDB) this;
     }
 
+    default TaxBracket asBracket() {
+        return (TaxBracket) this;
+    }
+
     default String getUrl() {
         if (isAlliance()) return asAlliance().getUrl();
         if (isGuild()) {
             GuildDB guild = asGuild();
             if (guild != null) guild.getUrl();
+        }
+        if (isTaxid()) {
+            return PnwUtil.getTaxUrl(getId());
         }
         return asNation().getNationUrl();
     }

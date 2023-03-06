@@ -25,6 +25,7 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.JsonUtil;
+import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -39,6 +40,7 @@ import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
+import link.locutus.discord.util.task.EditAllianceTask;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
@@ -86,6 +88,27 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 other.wiki_link,
                 other.dateCreated,
                 other.color);
+    }
+
+    public void setAAPage(String file) throws Exception{
+        String input = FileUtil.readFile(file);
+
+        input = input.replaceAll("\n", "");
+        input = input.replaceAll("\r", "");
+        input = input.replaceAll("\t", "");
+        input = input.replaceAll("[ ][ ][ ]+", "");
+
+        String finalInput = input;
+
+        Auth auth = getAuth();
+        System.out.println(auth.getNation() + " | " + auth.getAllianceId());
+        String response = new EditAllianceTask(auth.getNation(), new Consumer<Map<String, String>>() {
+            @Override
+            public void accept(Map<String, String> stringStringMap) {
+                stringStringMap.put("desc", finalInput);
+            }
+        }).call();
+        System.out.println(response + " | response");
     }
 
     public static DBAlliance parse(String arg, boolean throwError) {
@@ -387,6 +410,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 }
             }
             Locutus.imp().getNationDB().saveNations(toSave);
+            return true;
         }
         if (!updateManually) return false;
         for (DBNation nation : getNations(true, 1440, true)) {

@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.Nation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -28,7 +29,6 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -59,7 +59,6 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -656,7 +655,7 @@ public class DBNation implements NationOrAlliance {
     public Auth auth = null;
 
     public String setTaxBracket(TaxBracket bracket, Auth auth) {
-        if (bracket.getAllianceId() != alliance_id) throw new UnsupportedOperationException("Not in alliance");
+        if (bracket.getAlliance_id() != alliance_id) throw new UnsupportedOperationException("Not in alliance");
 
         Map<String, String> post = new HashMap<>();
         post.put("bracket_id", "" + bracket.taxId);
@@ -747,6 +746,38 @@ public class DBNation implements NationOrAlliance {
 
     public boolean isFightingEnemyOfScore(Predicate<Double> filter) {
         return getStrongestEnemyOfScore(filter) != -1;
+    }
+
+    public boolean isFightingEnemyOfCities(Predicate<Double> filter) {
+        for (DBWar war : getWars()) {
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other != null && filter.test((double) other.getCities())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isDefendingEnemyOfCities(Predicate<Double> filter) {
+        for (DBWar war : getWars()) {
+            if (war.defender_id != nation_id) continue;
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other != null && filter.test((double) other.getCities())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isAttackingEnemyOfCities(Predicate<Double> filter) {
+        for (DBWar war : getWars()) {
+            if (war.attacker_id != nation_id) continue;
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other != null && filter.test((double) other.getCities())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Auth getAuth(Roles role) {
@@ -1340,10 +1371,14 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Integer updateSpies(boolean force) {
+        return updateSpies(force ? Integer.MIN_VALUE : 0);
+    }
+
+    public Integer updateSpies(int turns) {
         ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
         long currentTurn = TimeUtil.getTurn();
 
-        if (lastTurn == null ||  lastTurn.getLong() != currentTurn || force) {
+        if (lastTurn == null || (currentTurn - lastTurn.getLong() > turns)) {
             try {
                 if (getPositionEnum().id > Rank.APPLICANT.id) {
                     if (getAlliance().updateSpies(false)) {
@@ -3051,14 +3086,32 @@ public class DBNation implements NationOrAlliance {
 //            }
 //        }
 
+        long exponentialBackoff = 1000;
         while (true) {
+
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             Map<String, String> post = new HashMap<>();
             post.put("to", getNation_id() + "");
             post.put("subject", subject);
             post.put("message", message);
             String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
-            String result = FileUtil.readStringFromURL(url, post, null);
+            String result;
+            try {
+                result = FileUtil.readStringFromURL(url, post, null);
+            } catch (IOException e) {
+                if (e.getMessage().contains("Server returned HTTP response code: 429")) {
+                    if (exponentialBackoff >= 60000) throw e;
+                    try {
+                        Thread.sleep(exponentialBackoff);
+                    } catch (InterruptedException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    exponentialBackoff = Math.min(60000, exponentialBackoff * 2);
+                    continue;
+                } else {
+                    throw e;
+                }
+            }
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
                 pool.removeKey(pair);
@@ -3071,6 +3124,12 @@ public class DBNation implements NationOrAlliance {
                         return JsonParser.parseString(result).getAsJsonObject();
                     }
                 }
+            }
+            try {
+                return JsonParser.parseString(result).getAsJsonObject();
+            } catch (JsonSyntaxException e) {
+                System.out.println("Error sending mail to " + getNation_id() + " with key " + pair.getKey());
+                System.out.println(result);
             }
             System.out.println("Mail response " + result);
             break;
@@ -4356,5 +4415,9 @@ public class DBNation implements NationOrAlliance {
             return 1.2;
         }
         return 1;
+    }
+
+    public boolean isInWarRange(DBNation target) {
+        return target.getScore() > getScore() * 0.75 && target.getScore() < getScore() * 1.25;
     }
 }

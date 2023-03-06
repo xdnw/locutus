@@ -108,8 +108,7 @@ public class WarCategory {
     private final Guild guild;
     private final Set<Integer> allianceIds = new HashSet<>();
     private final Set<Integer> allies = new HashSet<>();
-    private final Set<Integer> enemies = new HashSet<>();
-    private final GuildDB db    ;
+    private final GuildDB db;
 
     public Guild getGuild() {
         return guild;
@@ -398,8 +397,7 @@ public class WarCategory {
                 room.participants.remove(previous);
 
                 if (room.participants.isEmpty() && !room.isPlanning()) {
-                    System.out.println("Delete " + room.target.getNation_id() + " (no participants)");
-                    room.delete();
+                    room.delete("No participants");
                 }
                 return;
             }
@@ -956,8 +954,9 @@ public class WarCategory {
             this.channel = channel;
         }
 
-        public void delete() {
+        public void delete(String reason) {
             if (channel != null) {
+                System.out.println("Delete channel (" + reason + "): " + channel.getName() + " | " + channel.getIdLong());
                 RateLimitUtil.queue(channel.delete());
                 warRoomMap.remove(target.getNation_id());
                 channel = null;
@@ -1074,8 +1073,7 @@ public class WarCategory {
             boolean planned = planning || isPlanning();
             if (!planned && wars.isEmpty()) {
                 if (channel != null) {
-                    System.out.println("Delete " + target.getNation_id() + " (no wars)");
-                    delete();
+                    delete("No wars");
                 }
                 return;
             }
@@ -1150,32 +1148,7 @@ public class WarCategory {
         allies.clear();
         allies.addAll(allianceIds);
 
-        Set<Integer> toAddChained = new HashSet<>();
-        Set<Integer> toAddSingle = new HashSet<>();
-        for (int i = 0; i < 2; i++) {
-            toAddChained.clear();
-            for (Integer id : allies) {
-                Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(id);
-                for (Map.Entry<Integer, Treaty> e : treaties.entrySet()) {
-                    switch (e.getValue().getType()) {
-                        case MDP:
-                        case MDOAP:
-                        case PROTECTORATE:
-                            toAddChained.add(e.getKey());
-                            break;
-                        case ODP:
-                        case ODOAP:
-                            toAddSingle.add(e.getKey());
-                            break;
-                    }
-                }
-            }
-            allies.addAll(toAddChained);
-        }
-        allies.addAll(toAddSingle);
-
-        enemies.clear();
-        enemies.addAll(db.getCoalition("enemies"));
+        System.out.println("Allies " + StringMan.getString(allianceIds));
     }
 
     public Set<Category> getCategories() {
@@ -1196,6 +1169,7 @@ public class WarCategory {
         if (warRoomMap.isEmpty() && !force) return;
 
         long start = System.currentTimeMillis();
+        syncAlliances();
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allianceIds, WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
         Map<Integer, List<DBWar>> byTarget = new RankBuilder<>(wars).group(war -> allianceIds.contains(war.attacker_aa) ? war.defender_id : war.attacker_id).get();
 
@@ -1222,8 +1196,7 @@ public class WarCategory {
                 if (room != null && room.channel != null) {
 
                     if (!room.isPlanning()) {
-                        System.out.println("Delete " + room.target.getNation_id() + " (target is not active)");
-                        room.delete();
+                        room.delete("Target is not active");
                     }
                 }
             }
@@ -1249,6 +1222,7 @@ public class WarCategory {
                     }
 
                     if (!duplicateChannels.add(targetId)) {
+                        System.out.println("Delete duplicate channel: " + channel.getName());
                         RateLimitUtil.queueWhenFree(channel.delete());
                     } else {
                         WarRoom existing = warRoomMap.get(targetId);
@@ -1267,8 +1241,9 @@ public class WarCategory {
                         if (room != null && room.isPlanning()) continue;
                     }
                     if (room != null) {
-                        room.delete();
+                        room.delete("No active wars");
                     } else {
+                        System.out.println("Delete channel: " + channel.getName() + " (no active wars)");
                         RateLimitUtil.queueWhenFree(channel.delete());
                     }
                 }

@@ -3,6 +3,11 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MMRDouble {
     public final double[] mmr;
@@ -45,6 +50,17 @@ public class MMRDouble {
         MilitaryBuilding building = unit.getBuilding();
         if (building == null) return 0;
         return mmr[building.ordinal() - Buildings.BARRACKS.ordinal()] / building.cap(null);
+    }
 
+    @Override
+    public String toString() {
+        boolean isDouble = false;
+        List<String> valueStr = new ArrayList<>();
+        for (double value : mmr) {
+            if ((int) value != value) isDouble = true;
+            valueStr.add(MathMan.format(value));
+        }
+        if (isDouble) return StringMan.join(valueStr, "/");
+        return StringMan.join(valueStr, "");
     }
 }

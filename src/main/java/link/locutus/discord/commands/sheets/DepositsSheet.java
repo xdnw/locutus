@@ -218,7 +218,7 @@ public class DepositsSheet extends Command {
             footer.append("\n**Net " + type + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), "AA Total", footer.toString());
+        DiscordUtil.createEmbedCommand(event.getChannel(), "Deposits Total", footer.toString());
 
         sheet.attach(new DiscordChannelIO(event).create(), footer.toString()).send();
         return null;

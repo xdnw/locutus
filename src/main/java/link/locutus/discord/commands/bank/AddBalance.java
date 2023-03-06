@@ -10,6 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -85,7 +86,11 @@ public class AddBalance extends Command {
         AddBalanceBuilder builder = guildDb.addBalanceBuilder();
 
         String arg = args.get(0);
-        if (arg.contains("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
+        if (arg.contains("tax_id=")) {
+            int taxId = PnwUtil.parseTaxId(arg);
+            TaxBracket bracket = new TaxBracket(taxId, 0, "", 0, 0, 0L);
+            builder.add(bracket, PnwUtil.parseResources(args.get(1)), note);
+        } else if (arg.contains("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             boolean negative = false;
             if (arg.charAt(0) == '-') {
                 negative = true;

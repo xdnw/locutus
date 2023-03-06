@@ -250,31 +250,6 @@ public class SpreadSheet {
         return service;
     }
 
-    public SpreadSheet(GuildDB db, GuildDB.Key key) throws GeneralSecurityException, IOException {
-        this.service = getServiceAPI();
-
-        String sheetId = db.getInfo(key);
-        if (sheetId == null) {
-            Spreadsheet spreadsheet = new Spreadsheet()
-                    .setProperties(new SpreadsheetProperties()
-                            .setTitle(db.getGuild().getId() + "." + key)
-                    );
-            spreadsheet = service.spreadsheets().create(spreadsheet)
-                    .setFields("spreadsheetId")
-                    .execute();
-
-            this.spreadsheetId = spreadsheet.getSpreadsheetId();
-            db.setInfo(key, this.spreadsheetId);
-            set(0, 0);
-
-            DriveFile gdFile = new DriveFile(spreadsheetId);
-            gdFile.shareWithAnyone(DriveFile.DriveRole.WRITER);
-
-        } else {
-            this.spreadsheetId = sheetId;
-        }
-    }
-
     public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative, String defaultNote) {
         Map<String, Boolean> result = new LinkedHashMap<String, Boolean>();
         List<List<Object>> rows = getAll();

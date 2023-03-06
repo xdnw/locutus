@@ -68,12 +68,11 @@ public class CheckCities extends Command {
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-
+        Set<Integer> aaIds = db.getAllianceIds(true);
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.INTERNAL_AFFAIRS_STAFF.has(event.getAuthor(), event.getGuild())) return "No permission to use *";
 
-            Set<Integer> aaIds = Locutus.imp().getGuildDB(event).getAllianceIds();
             nations = Locutus.imp().getNationDB().getNations(aaIds);
             nations.removeIf(n -> n.getPosition() <= 1 ||
                     n.getVm_turns() > 0 ||
@@ -83,6 +82,7 @@ public class CheckCities extends Command {
             nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
         }
 
+        if (aaIds.isEmpty()) return "No alliance registered to this guild";
 
         if (nations.isEmpty()) {
             return "No nations found for: `" + args.get(0) + "`" + ". Have they used " + CM.register.cmd.toSlashMention() + " ?";
@@ -92,9 +92,10 @@ public class CheckCities extends Command {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
                         + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID + "`";
             }
+            if (!aaIds.contains(nation.getAlliance_id())) {
+                return "Nation is not in the same alliance: " + nation.getNation() + " != " + StringMan.getString(aaIds);
+            }
         }
-
-        Set<Integer> aaIds = new SimpleNationList(nations).getAllianceIds();
 
         if (nations.size() > 1) {
             IACategory category = db.getIACategory();

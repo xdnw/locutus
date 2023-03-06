@@ -63,7 +63,7 @@ public class FindTrader extends Command {
             return "Must be either buy/sell: `" + args.get(1) + "`";
         }
         ResourceType type = ResourceType.parse(args.get(0));
-        if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
+        if (type == ResourceType.MONEY) return "Invalid resource";
 
         TradeManager manager = Locutus.imp().getTradeManager();
         link.locutus.discord.db.TradeDB db = manager.getTradeDb();

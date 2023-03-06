@@ -35,6 +35,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasKey;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
@@ -95,6 +96,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class UnsortedCommands {
+
+
     @Command(desc ="View nation or AA bank contents")
     @RolePermission(Roles.MEMBER)
     @IsAlliance
@@ -270,7 +273,11 @@ public class UnsortedCommands {
 
     @Command(desc="Login to allow locutus to run scripts through your account (Avoid using if possible)")
     @RankPermission(Rank.OFFICER)
-    public static String login(DiscordDB discordDB, @Me User author, @Me DBNation me, @Me Guild guild, String username, String password) {
+    public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me, @Me Guild guild, String username, String password) {
+        IMessageBuilder msg = io.getMessage();
+        try {
+            if (msg != null) io.delete(msg.getId());
+        } catch (Throwable ignore) {};
         if (me == null || me.getPosition() < Rank.OFFICER.id) return "You are not an officer of an alliance";
         if (guild != null) {
             return "This command must be used via private message with Locutus. DO NOT USE THIS COMMAND HERE";
@@ -319,7 +326,7 @@ public class UnsortedCommands {
 
     @Command
     @IsAlliance
-    public String listAllianceMembers(@Me IMessageIO channel, @Me GuildDB db, int page) {
+    public String listAllianceMembers(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, int page) {
         Set<DBNation> nations = db.getAllianceList().getNations();
 
         int perPage = 5;
@@ -354,7 +361,7 @@ public class UnsortedCommands {
 
                 return response.toString();
             }
-        }).page(page - 1, perPage).build(channel, null, getClass().getSimpleName());
+        }).page(page - 1, perPage).build(channel, command, getClass().getSimpleName());
         return null;
     }
 
@@ -540,7 +547,7 @@ public class UnsortedCommands {
                 .append("Daily city revenue ```" + city.toString() + "```")
                 .append("```").append(PnwUtil.resourcesToString(revenue)).append("```")
                 .append("Converted total: $" + MathMan.format(PnwUtil.convertedTotal(revenue)));
-        if (!metrics.powered) {
+        if (metrics.powered != null && !metrics.powered) {
             msg.append("\n**UNPOWERED**");
         }
         msg.append("\nAge: " + jCity.getAge());
@@ -657,7 +664,8 @@ public class UnsortedCommands {
                                List<ResourceType> resources, @Default NationList nationList,
                                @Switch("m") boolean ignoreMilitaryUpkeep,
                                @Switch("t") boolean ignoreTradeBonus,
-                               @Switch("n") boolean ignoreNationBonus,
+                               @Switch("b") boolean ignoreNationBonus,
+                               @Switch("n") boolean includeNegative,
                                @Switch("a") boolean listByNation,
                                @Switch("s") boolean listAverage,
                                @Switch("u") boolean uploadFile,
@@ -690,7 +698,7 @@ public class UnsortedCommands {
                     value += PnwUtil.convertedTotal(type, profit[type.ordinal()]);
                 }
             }
-            if (value > 0) {
+            if (value > 0 || includeNegative) {
                 profitByNation.put(nation, value);
             }
         }
@@ -1162,4 +1170,5 @@ public class UnsortedCommands {
         if (showAll) flags.add('a');
         return new KeyStore().onCommand(io, guild, author, me, cmd, flags);
     }
+
 }

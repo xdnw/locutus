@@ -105,7 +105,7 @@ public class DiscordChannelIO implements IMessageIO {
                 }
                 if (result != null && msgFuture == null) msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
             }
-            return null;
+            return msgFuture;
         } else {
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported");
         }

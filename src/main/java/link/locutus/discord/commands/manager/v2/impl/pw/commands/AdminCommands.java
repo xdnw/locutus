@@ -711,6 +711,39 @@ public class AdminCommands {
     }
 
     @Command
+    @RolePermission(value = Roles.ADMIN)
+    public String removeInvalidOffshoring(@Me GuildDB db) {
+        Set<Long> toRemove = new HashSet<>();
+        for (long id : db.getCoalitionRaw(Coalition.OFFSHORING)) {
+            GuildDB otherDb;
+            if (id > Integer.MAX_VALUE) {
+                otherDb = Locutus.imp().getGuildDB(id);
+            } else {
+                otherDb = Locutus.imp().getGuildDBByAA((int) id);
+            }
+            if (otherDb == null) {
+                toRemove.add(id);
+            }
+        }
+        System.out.println(StringMan.getString(toRemove));
+        for (long id : toRemove) {
+            db.removeCoalition(id, Coalition.OFFSHORING);
+        }
+        return "Removed `" + StringMan.join(toRemove, ",") + "` from " + Coalition.OFFSHORING;
+
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String leaveServer(long guildId) {
+        GuildDB db = Locutus.imp().getGuildDB(guildId);
+        if (db == null) return "Server not found " + guildId;
+        Guild guild = db.getGuild();
+        guild.leave().queue();
+        return "Leaving " + guild.getName();
+    }
+
+    @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listExpiredOffshores() {
         StringBuilder response = new StringBuilder();
@@ -771,7 +804,7 @@ public class AdminCommands {
 
                 DBNation nation = DiscordUtil.getNation(owner.getUser());
                 if (nation == null) {
-                    inactiveIds.add(id);
+                    unregistered.add(id);
                     response.append("\nowner is unregistered: " + id + " | " + owner.getIdLong());
                     continue;
                 }

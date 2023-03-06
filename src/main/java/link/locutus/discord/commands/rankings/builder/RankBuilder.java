@@ -112,8 +112,8 @@ public class RankBuilder<T> {
         if (command != null) itemsStr += "\nPress `" + emoji + "` to refresh";
         if (author != null) itemsStr += "\n" + author.getAsMention();
 
-        IMessageBuilder msg = io.create().embed(title, itemsStr)
-                .commandButton(command.toString(), emoji);
+        IMessageBuilder msg = io.create().embed(title, itemsStr);
+        if (command != null) msg = msg.commandButton(command.toString(), emoji);
 
         if (upload && values.size() > 25) {
             msg.file(title, toString());

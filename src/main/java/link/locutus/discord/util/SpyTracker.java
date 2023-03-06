@@ -380,8 +380,7 @@ public class SpyTracker {
                         enemies.add(war.attacker_id);
                         enemies.add(war.defender_id);
                     }
-                    if (!enemies.isEmpty() && (alert.exact.removeIf(o -> enemies.contains(o.nationId)) || alert.close.removeIf(o -> enemies.contains(o.nationId)))) {
-                        alert.exact.clear();
+                    if (!enemies.isEmpty() && alert.close.removeIf(o -> enemies.contains(o.nationId))) {
                         alert.close.clear();
                     }
                 }
@@ -403,7 +402,7 @@ public class SpyTracker {
                 // TODO Log the spy op
             }
 
-            String title = "Possible " + alert.change + " x " + unit + " spied";
+            String title = "Possible " + alert.change + " x " + unit + " spied (Note: False positives are common)";
             StringBuilder body = new StringBuilder("**" + title + "**:\n");
             body.append("\nDefender: " + defender.toMarkdown(false, true, true, true, true));
             body.append("\ntimestamp:" + alert.timestamp + " (" + TimeUtil.YYYY_MM_DDTHH_MM_SSX.format(new Date(alert.timestamp)) + ")");
@@ -468,7 +467,10 @@ public class SpyTracker {
         public String entryToString(DBNation attacker, long diff) {
             StringBuilder message = new StringBuilder(attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true));
             int defSpies = defender.getSpies();
-            int attSpies = attacker.updateSpies();
+            int attSpies = attacker.getSpies();
+            try {
+                attSpies = attacker.updateSpies(24);
+            } catch (Exception ignore) {}
             double odds = SpyCount.getOdds(attSpies, defSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
             message.append(MathMan.format(odds) + "%");
             if (attacker.hasProject(Projects.SPY_SATELLITE)) message.append(" | SAT");

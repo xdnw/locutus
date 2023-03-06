@@ -25,14 +25,11 @@ public class SyncTreaties extends Command {
 
     @Override
     public String help() {
-        return super.help() + " [top-N]";
+        return super.help();
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
-        Integer topX = MathMan.parseInt(args.get(0));
-        if (topX == null) return usage(event);
         Locutus.imp().getNationDB().updateTreaties(Event::post);
         return "Done";
     }

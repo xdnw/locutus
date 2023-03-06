@@ -24,7 +24,7 @@ public class LandCost extends Command {
 
     @Override
     public String help() {
-        return super.help() + " <current-land> <max-land> [rapid-expansion=false] [ALA=false] [AEC=false]";
+        return super.help() + " <current-land> <max-land> [rapid-expansion=false] [ALA=false] [AEC=false] [GSA=false]";
     }
 
     @Override
@@ -50,7 +50,7 @@ public class LandCost extends Command {
                 iter.remove();
             }
         }
-        if (args.size() < 2 || args.size() > 4) return usage(event);
+        if (args.size() < 2 || args.size() > 5) return usage(event);
 
         int current = Preconditions.checkNotNull(MathMan.parseInt(args.get(0)), "invalid amount: `" + args.get(0) + "`");
         int max = checkNotNull(MathMan.parseInt(args.get(1)), "invalid amount: `" + args.get(1) + "`");
@@ -61,15 +61,22 @@ public class LandCost extends Command {
         boolean ra = false;
         boolean ala = false;
         boolean aec = false;
+        boolean gsa = false;
 
         if (args.size() >= 3) ra = Boolean.parseBoolean(args.get(2));
         if (args.size() >= 4) ala = Boolean.parseBoolean(args.get(3));
         if (args.size() >= 5) aec = Boolean.parseBoolean(args.get(4));
+        if (args.size() >= 6) gsa = Boolean.parseBoolean(args.get(5));
 
         double discountFactor = 1;
-        if (ra) discountFactor -= 0.05;
+        if (ra) {
+            discountFactor -= 0.05;
+            if (gsa) discountFactor -= 0.025;
+        }
         if (ala) discountFactor -= 0.05;
         if (aec) discountFactor -= 0.05;
+
+
 
         total = total * discountFactor;
 

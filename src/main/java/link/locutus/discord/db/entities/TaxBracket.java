@@ -2,11 +2,12 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.config.Settings;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.util.PnwUtil;
 
 import java.util.*;
 
-public class TaxBracket {
+public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
     public final int taxId;
     public long dateFetched;
     private int allianceId;
@@ -29,6 +30,11 @@ public class TaxBracket {
         this.dateFetched = System.currentTimeMillis();
     }
 
+    @Override
+    public int getId() {
+        return taxId;
+    }
+
     public TaxBracket(int taxId, int allianceId, String name, int moneyRate, int rssRate, long date) {
         this.taxId = taxId;
         this.allianceId = allianceId;
@@ -47,7 +53,27 @@ public class TaxBracket {
         this.dateFetched = System.currentTimeMillis();
     }
 
-    public int getAllianceId() {
+    @Override
+    public String getTypePrefix() {
+        return "tax_id";
+    }
+
+    @Override
+    public boolean isNation() {
+        return false;
+    }
+
+    @Override
+    public boolean isTaxid() {
+        return true;
+    }
+
+    @Override
+    public boolean isAlliance() {
+        return false;
+    }
+
+    public int getAlliance_id() {
         if (this.allianceId < 0) {
             Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() == taxId);
             if (!nations.isEmpty()) {
@@ -61,7 +87,7 @@ public class TaxBracket {
 
     public Set<DBNation> getNations() {
         if (taxId == 0) return Collections.emptySet();
-        if (getAllianceId() == 0) {
+        if (getAlliance_id() == 0) {
             DBAlliance alliance = DBAlliance.get(allianceId);
             if (alliance != null) return alliance.getNations(f -> f.getTax_id() == taxId);
             return Collections.emptySet();
@@ -70,7 +96,7 @@ public class TaxBracket {
     }
 
     public String getUrl() {
-        return String.format("" + Settings.INSTANCE.PNW_URL() + "/index.php?id=15&tax_id=%s", taxId);
+        return PnwUtil.getTaxUrl(taxId);
     }
 
     @Override
@@ -86,8 +112,8 @@ public class TaxBracket {
         return name;
     }
 
-    public int getAllianceId(boolean fetchIfUnknown) {
-        return fetchIfUnknown ? getAllianceId() : allianceId;
+    public int getAlliance_id(boolean fetchIfUnknown) {
+        return fetchIfUnknown ? getAlliance_id() : allianceId;
     }
 
     public DBAlliance getAlliance() {

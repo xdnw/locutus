@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.ClassPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasKey;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
@@ -116,6 +117,24 @@ public class PermissionBinding extends BindingHelper {
     public boolean checkNotGuild(@Me Guild guild, NotGuild perm) {
         if (Arrays.asList(perm.value()).contains(guild.getIdLong())) {
             throw new IllegalCallerException("Guild has permission denied");
+        }
+        return true;
+    }
+
+    @Binding
+    @HasKey
+    public boolean checkKey(@Me GuildDB db, @Me User author, HasKey perm) {
+        if (perm.value() == null || perm.value().length == 0) {
+            throw new IllegalArgumentException("No key provided");
+        }
+        for (GuildDB.Key key : perm.value()) {
+            Object value = db.getOrNull(key);
+            if (value == null) {
+                throw new IllegalArgumentException("Key " + key.name() + " is not set in " + db.getGuild());
+            }
+            if (perm.checkPermission() && !key.hasPermission(db, author, value)) {
+                throw new IllegalCallerException("Key " + key.name() + " does not have permission in " + db.getGuild());
+            }
         }
         return true;
     }

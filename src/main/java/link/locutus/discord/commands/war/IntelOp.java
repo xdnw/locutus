@@ -3,7 +3,9 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -42,15 +44,22 @@ public class IntelOp extends Command {
 
     @Override
     public String desc() {
-        return "Find nations to conduct intel ops on (sorted by infra days * inactive)";
+        return "Find nations to conduct intel ops on (sorted by infra days * inactive)\n" +
+                "Use `nation:Borg` to specify nation\n" +
+                "Use `score:1234` to specify score";
     }
 
     private Map<Integer, Long> alreadySpied = new ConcurrentHashMap<>();
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        String nationStr = DiscordUtil.parseArg(args, "nation");
+        String scoreStr = DiscordUtil.parseArg(args, "score");
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         if (args.size() > 1) return usage(event);
+
+        DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, nationStr);
+        double score = scoreStr == null ? finalNation.getScore() : PrimitiveBindings.Double(scoreStr);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         int topX = 25;
@@ -77,26 +86,26 @@ public class IntelOp extends Command {
         enemies.removeIf(f -> f.getActive_m() < 4320);
         enemies.removeIf(f -> f.getVm_turns() > 0);
         enemies.removeIf(f -> f.isBeige());
-        if (me.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
+        if (finalNation.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
         enemies.removeIf(f -> f.getDef() == 3);
         enemies.removeIf(nation ->
                 nation.getActive_m() < 12000 &&
-                        nation.getGroundStrength(true, false) > me.getGroundStrength(true, false) &&
-                        nation.getAircraft() > me.getAircraft() &&
-                        nation.getShips() > me.getShips() + 2);
+                        nation.getGroundStrength(true, false) > finalNation.getGroundStrength(true, false) &&
+                        nation.getAircraft() > finalNation.getAircraft() &&
+                        nation.getShips() > finalNation.getShips() + 2);
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(30);
         enemies.removeIf(f -> alreadySpied.getOrDefault(f.getNation_id(), 0L) > cutoff);
 
         if (false) {
-            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
+            Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
             myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
             enemies.removeIf(f -> range.apply(f.getScore() / 1.75, f.getScore() / 0.75) <= 0);
         } else {
             List<DBNation> tmp = new ArrayList<>(enemies);
-            tmp.removeIf(f -> f.getScore() < me.getScore() * 0.75 || f.getScore() > me.getScore() * 1.75);
+            tmp.removeIf(f -> f.getScore() < score * 0.75 || f.getScore() > score * 1.75);
             if (tmp.isEmpty()) {
-                enemies.removeIf(f -> !f.isInSpyRange(me));
+                enemies.removeIf(f -> !f.isInSpyRange(finalNation));
             } else {
                 enemies = tmp;
             }
@@ -121,7 +130,7 @@ public class IntelOp extends Command {
             DBNation nation = entry.getKey();
             alreadySpied.put(nation.getNation_id(), System.currentTimeMillis());
 
-            String title = "Gather Intelligence for: " + me.getNation();
+            String title = "Gather Intelligence for: " + finalNation.getNation();
             String response = nation.toEmbedString(false);
             response += "\n1 spy on extremely covert: ";
             response += "\n*Please post the result of your spy report here*";

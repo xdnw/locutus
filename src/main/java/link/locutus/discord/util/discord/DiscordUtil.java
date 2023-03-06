@@ -33,6 +33,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -101,7 +102,7 @@ public class DiscordUtil {
 
     public static CompletableFuture<Message> upload(MessageChannel channel, String title, String body) {
         if (!title.contains(".")) title += ".txt";
-         return RateLimitUtil.queue(channel.sendFile(body.getBytes(StandardCharsets.ISO_8859_1), title));
+        return RateLimitUtil.queue(channel.sendFile(body.getBytes(StandardCharsets.ISO_8859_1), title));
     }
 
     public static void sortInterviewChannels(List<? extends GuildMessageChannel> channels, Map<Long, List<InterviewMessage>> messages, Map<? extends GuildMessageChannel, User> interviewUsers) {
@@ -168,14 +169,33 @@ public class DiscordUtil {
             keyOrLong = keyOrLong.substring(1);
         }
         if (MathMan.isInteger(keyOrLong)) {
-            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(Long.parseLong(keyOrLong));
+            long idLong = Long.parseLong(keyOrLong);
+            GuildChannel channel = guild != null ? guild.getGuildChannelById(idLong) : null;
+            if (channel == null) {
+                channel = Locutus.imp().getDiscordApi().getGuildChannelById(idLong);
+            }
             if (channel == null) {
 //                channel = Locutus.imp().getDiscordApi().getPrivateChannelById(keyOrLong);
 //                if (channel == null) {
 //                    throw new IllegalArgumentException("Invalid channel " + keyOrLong);
 //                }
             } else {
-                if (guild != null && channel.getGuild().getIdLong() != guild.getIdLong()) {
+                if (!(channel instanceof MessageChannel)) {
+                    throw new IllegalArgumentException("Invalid channel <#" + keyOrLong + "> (not a message channel)");
+                }
+                long channelGuildId = channel.getGuild().getIdLong();
+                if (guild != null) {
+                    GuildDB db = Locutus.imp().getGuildDB(guild);
+                    GuildDB faServer = db.getOrNull(GuildDB.Key.FA_SERVER);
+                    Guild maServer = db.getOrNull(GuildDB.Key.WAR_SERVER);
+                    if (faServer != null && channelGuildId == faServer.getIdLong()) {
+                        return (MessageChannel) channel;
+                    }
+                    if (maServer != null && channelGuildId == maServer.getIdLong()) {
+                        return (MessageChannel) channel;
+                    }
+                }
+                if (guild != null && channelGuildId != guild.getIdLong()) {
                     GuildDB otherDB = Locutus.imp().getGuildDB(channel.getGuild());
                     GuildDB delegate = otherDB.getOrNull(GuildDB.Key.DELEGATE_SERVER);
                     if (delegate == null || delegate.getIdLong() != guild.getIdLong()) {
@@ -183,7 +203,7 @@ public class DiscordUtil {
                     }
                 }
             }
-            return channel;
+            return (MessageChannel) channel;
         }
         List<TextChannel> channel = guild.getTextChannelsByName(keyOrLong, true);
         if (channel.size() == 1) {
@@ -1154,6 +1174,18 @@ public class DiscordUtil {
                 switch (filter.getKey().toLowerCase()) {
                     case "#ispowered": {
                         nations.removeIf(n -> !filter.getValue().apply(n.isPowered() ? 1d : 0d));
+                        continue;
+                    }
+                    case "#fightingenemyofcities": {
+                        nations.removeIf(n -> !n.isFightingEnemyOfCities(filter.getValue()::apply));
+                        continue;
+                    }
+                    case "#defendingenemyofcities": {
+                        nations.removeIf(n -> !n.isDefendingEnemyOfCities(filter.getValue()::apply));
+                        continue;
+                    }
+                    case "#attackingenemyofcities": {
+                        nations.removeIf(n -> !n.isAttackingEnemyOfCities(filter.getValue()::apply));
                         continue;
                     }
                     case "#fightingenemyofscore": {

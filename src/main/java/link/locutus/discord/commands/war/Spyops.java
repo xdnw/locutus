@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
@@ -67,11 +68,15 @@ public class Spyops extends Command {
                 "Use `success>80` to specify a cutoff for spyop success\n\n" +
                 "e.g. `" + Settings.commandPrefix(true) + "spyop enemies spies` | `" + Settings.commandPrefix(true) + "spyop enemies * -s`\n" +
                 "Add `-s` to force an update of nations with full spy slots\n" +
-                "Add `-k` to prioritize kills";
+                "Add `-k` to prioritize kills\n" +
+                "Add `nation:Borg` to specify nation";
     }
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        String nationStr = DiscordUtil.parseArg(args, "nation");
+        DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, nationStr);
+
         MessageChannel channel;
         if (flags.contains('d')) {
             channel = RateLimitUtil.complete(event.getAuthor().openPrivateChannel());
@@ -84,7 +89,7 @@ public class Spyops extends Command {
 
         try {
             String title = "Recommended ops";
-            String body = run(event, me, db, args, flags);
+            String body = run(event, finalNation, db, args, flags);
 
             if (flags.contains('r')) {
                 return body;

@@ -330,7 +330,7 @@ public class IACommands {
 
         boolean result = new SimpleNationList(nations).updateSpies(false);
         if (!result) {
-            return "Could not update spies (see `" + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + " <key>`";
+            return "Could not update spies (see " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + ")";
         }
 
         long dayCutoff = TimeUtil.getDay() - 2;
@@ -832,7 +832,9 @@ public class IACommands {
         }
 
         for (DBNation nation : nations) {
-            channel.send(nation.sendMail(key, subject, message) + "");
+            String subjectF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, subject);
+            String messageF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, message);
+            channel.send(nation.sendMail(key, subjectF, messageF) + "");
         }
 
         return "Done sending mail.";
@@ -983,9 +985,6 @@ public class IACommands {
                     }
                 }
             }
-            if (nationPosition != null && nationPosition.hasAnyAdminPermission()) {
-                return "You cannot adjust the position of admins (do that ingame)";
-            }
 
             if (position == DBAlliancePosition.REMOVE) {
                 if (!Roles.ADMIN.has(author, db.getGuild())) {
@@ -1001,10 +1000,13 @@ public class IACommands {
                     }
                 }
             }
-            // Cannot promote to leader, or any leader perms -> done
-            if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && !Roles.ADMIN.hasOnRoot(author)) {
-                return "You cannot promote to leadership positions (do this ingame)";
-            }
+        }
+        // Cannot promote to leader, or any leader perms -> done
+        if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && !Roles.ADMIN.hasOnRoot(author)) {
+            return "You cannot promote to leadership positions (do this ingame)";
+        }
+        if ((nationPosition != null && nationPosition.hasAnyAdminPermission()) || nation.getPositionEnum().id >= Rank.HEIR.id) {
+            return "You cannot adjust the position of admins (do that ingame)";
         }
 
         List<AlliancePermission> requiredPermissions = new ArrayList<>();
@@ -1013,6 +1015,7 @@ public class IACommands {
         if (position == DBAlliancePosition.REMOVE || position == DBAlliancePosition.APPLICANT) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
         Auth auth = DBAlliance.getOrCreate(allianceId).getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
         if (auth == null) return "No auth for this guild found for: " + StringMan.getString(requiredPermissions);
+        if (auth.getNationId() == nation.getNation_id()) return "You cannot change position of the nation connected to Locutus.";
 
         User discordUser = nation.getUser();
 
@@ -1498,9 +1501,9 @@ public class IACommands {
     }
 
     @Command(desc = "Create an interview channel")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String interview(User user, @Me GuildDB db) {
-        IACategory iaCat = db.getIACategory();
+    public String interview(@Me GuildDB db, @Me User selfUser, @Default("%user%") User user) {
+        IACategory iaCat = db.getIACategory(true, true, true);
+
         if (iaCat.getCategories().isEmpty()) {
             return "No categories found starting with: `interview`";
         }

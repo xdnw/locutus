@@ -271,13 +271,10 @@ public class OffshoreInstance {
         for (Transaction2 transfer : transactions) {
             String note = transfer.note;
             if (note != null) {
-                String[] split = note.split("(?=#)");
-                for (String filter : split) {
-                    String[] tagSplit = filter.split("[=| ]", 2);
-                    String tag = tagSplit[0].toLowerCase();
-                    String value = tagSplit.length == 2 && !tagSplit[1].trim().isEmpty() ? tagSplit[1].split(" ")[0].trim() : null;
-
-                    switch (tag) {
+                Map<String, String> parsed = PnwUtil.parseTransferHashNotes(note);
+                for (Map.Entry<String, String> entry : parsed.entrySet()) {
+                    String value = entry.getValue();
+                    switch (entry.getKey()) {
                         case "#guild":
                             if (!MathMan.isInteger(value)) continue outer;
                             long transferGuild = Long.parseLong(value);
@@ -329,13 +326,10 @@ public class OffshoreInstance {
         for (Transaction2 transfer : transactions) {
             String note = transfer.note;
             if (note != null) {
-                String[] split = note.split("(?=#)");
-                for (String filter : split) {
-                    String[] tagSplit = filter.split("[=| ]", 2);
-                    String tag = tagSplit[0].toLowerCase();
-                    String value = tagSplit.length == 2 && !tagSplit[1].trim().isEmpty() ? tagSplit[1].split(" ")[0].trim() : null;
-
-                    switch (tag) {
+                Map<String, String> parsed = PnwUtil.parseTransferHashNotes(note);
+                for (Map.Entry<String, String> entry : parsed.entrySet()) {
+                    String value = entry.getValue();
+                    switch (entry.getKey()) {
                         case "#alliance":
                             if (!MathMan.isInteger(value)) continue outer;
                             int transferAA = Integer.parseInt(value);
@@ -426,6 +420,7 @@ public class OffshoreInstance {
     }
 
     public Map.Entry<TransferStatus, String> transferSafe(NationOrAlliance nation, Map<ResourceType, Double> transfer, String note) {
+        if (DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         synchronized (BANK_LOCK) {
             if (nation.isNation()) return transferSafe(nation.asNation(), transfer, note);
             return transfer(nation.asAlliance(), transfer, note);
@@ -972,6 +967,7 @@ public class OffshoreInstance {
 
     public Map.Entry<TransferStatus, String> transfer(Auth auth, DBNation nation, Map<ResourceType, Double> transfer, String note) {
         if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
+        if (DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         synchronized (BANK_LOCK) {
 //            BankWithTask task = new BankWithTask(auth, allianceId, 0, nation, new Function<Map<ResourceType, Double>, String>() {
 //                @Override
@@ -1079,6 +1075,7 @@ public class OffshoreInstance {
     public Map.Entry<TransferStatus, String> transfer(DBAlliance alliance, Map<ResourceType, Double> transfer, String note) {
         if (alliance.getAlliance_id() == allianceId) return Map.entry(TransferStatus.INVALID_DESTINATION, "You can't send funds to yourself");
         if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
+        if (DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         if (!alliance.exists()) {
             return Map.entry(TransferStatus.INVALID_DESTINATION, "The alliance does not exist");
         }
