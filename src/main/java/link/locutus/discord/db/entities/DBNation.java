@@ -1386,7 +1386,7 @@ public class DBNation implements NationOrAlliance {
                     }
                 }
                 SpyCount.guessSpyCount(this);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }

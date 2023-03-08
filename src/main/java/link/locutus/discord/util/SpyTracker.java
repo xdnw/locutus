@@ -462,24 +462,30 @@ public class SpyTracker {
         }
 
 
-        public String entryToString(SpyActivity offensive) {
+        public String entryToString(SpyActivity offensive,, Map.Entry<Integer, Integer> killRange) {
             DBNation attacker = DBNation.byId(offensive.nationId);
             long diff = Math.abs(offensive.timestamp - timestamp);
-            return entryToString(attacker, diff);
+            return entryToString(attacker, killRange, diff);
         }
 
-        public String entryToString(DBNation attacker, long diff) {
-            StringBuilder message = new StringBuilder(attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true));
+        public String entryToString(DBNation attacker, Map.Entry<Integer, Integer> killRange, long diff) {
             int defSpies = defender.getSpies();
-            int attSpies = attacker.getSpies();
-            try {
-                attSpies = attacker.updateSpies(24);
-            } catch (Exception ignore) {}
+            int attSpies = attacker.updateSpies(24);;
+
             double odds = SpyCount.getOdds(attSpies, defSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
-            message.append(MathMan.format(odds) + "%");
+
+
+
+            StringBuilder message = new StringBuilder();
+            message.append("<" + attacker.getNationUrl() + "> | " + attacker.getAlliance() + " | " + MathMan.format(odds) + "%");
+
+            if (killRange != null) {
+                message.append(" | " + killRange.getKey() + "-" + killRange.getValue() + " max kills");
+            }
+
             if (attacker.hasProject(Projects.SPY_SATELLITE)) message.append(" | SAT");
             if (attacker.hasProject(Projects.INTELLIGENCE_AGENCY)) message.append(" | IA");
-            message.append(" | " + attSpies + " spies (?)");
+            message.append(" | " + attSpies + " spies");
             message.append(" | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
             return message.toString();
         }

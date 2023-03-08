@@ -132,7 +132,7 @@ public class SpyCount {
         return true;
     }
 
-    public Map.Entry<Double, Double> getUnitKillRange(int attSpies, int defSpies, MilitaryUnit unit, int defUnits, boolean spySat) {
+    public Map.Entry<Integer, Integer> getUnitKillRange(int attSpies, int defSpies, MilitaryUnit unit, int defUnits, boolean spySat) {
         double min;
         double max;
         if (unit == MilitaryUnit.SPIES) {
@@ -162,7 +162,7 @@ public class SpyCount {
             min *= 1.5;
             max *= 1.5;
         }
-        return new AbstractMap.SimpleEntry<>(min, max);
+        return new AbstractMap.SimpleEntry<>((int) Math.round(min), (int) Math.round(max));
     }
 
     public static int guessSpyCount(DBNation nation) throws IOException {
