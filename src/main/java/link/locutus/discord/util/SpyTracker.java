@@ -404,8 +404,12 @@ public class SpyTracker {
 
             String title = "Possible " + alert.change + " x " + unit + " spied (Note: False positives are common)";
             StringBuilder body = new StringBuilder("**" + title + "**:\n");
-            body.append("\nDefender: " + defender.toMarkdown(false, true, true, true, true));
+            body.append("\nDefender (" + defender.updateSpies(alert.unit == MilitaryUnit.SPIES ? 1 : 24) + " spies):" + defender.toMarkdown(false, true, true, true, true));
             body.append("\ntimestamp:" + alert.timestamp + " (" + TimeUtil.YYYY_MM_DDTHH_MM_SSX.format(new Date(alert.timestamp)) + ")");
+
+            // display recent wars (nation)
+            // display current wars (nations / alliances)
+
 
             if (!alert.exact.isEmpty()) {
                 body.append("\nAttackers (high probability):");

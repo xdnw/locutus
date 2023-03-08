@@ -3051,8 +3051,8 @@ public class DBNation implements NationOrAlliance {
             if (general) {
                 response
                         .append(String.format("%8s", getWarPolicy())).append(" | ")
-                        .append(String.format("%1s", getOff())).append(" \uD83D\uDDE1").append(" | ")
-                        .append(String.format("%1s", getDef())).append(" \uD83D\uDEE1").append(" | ");
+                        .append(String.format("%1s", getOff())).append("\uD83D\uDDE1").append(" | ")
+                        .append(String.format("%1s", getDef())).append("\uD83D\uDEE1").append(" | ");
             }
             String str = response.toString();
             if (str.endsWith(" | ")) response = new StringBuilder(str.substring(0, str.length() - 3));
