@@ -881,7 +881,7 @@ public class UnsortedCommands {
             return "Missing role: " + Roles.INTERNAL_AFFAIRS;
         }
 
-        String value = db.getInfo("copypasta." + key);
+        String value = db.getInfo("copypasta." + key, true);
 
         Set<String> missingRoles = null;
         if (value == null) {

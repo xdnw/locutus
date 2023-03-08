@@ -147,7 +147,7 @@ public class SpreadSheet {
     }
 
     public static SpreadSheet create(GuildDB db, GuildDB.Key key) throws GeneralSecurityException, IOException {
-        String sheetId = db.getInfo(key);
+        String sheetId = db.getInfo(key, true);
 
         Sheets api = null;
 

@@ -57,7 +57,7 @@ public class CopyPasta extends Command implements Noformat {
         }
         String key = args.get(0).toLowerCase();
         if (args.size() == 1) {
-            String value = db.getInfo("copypasta." + key);
+            String value = db.getInfo("copypasta." + key, true);
 
             if (value == null) {
                 Map<String, String> map = db.getInfoMap();

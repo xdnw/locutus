@@ -3385,18 +3385,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String validate(GuildDB db, String value) {
                 Map<Integer, Long> ids = (Map<Integer, Long>) parse(db, value);
-
-                boolean hasAAid = db.getOrNull(Key.ALLIANCE_ID) != null;
+                if (db.getOrNull(Key.ALLIANCE_ID) != null) {
+                    throw new IllegalArgumentException("You cannot delegate a server with an alliance id set");
+                }
                 // loop over ids
                 for (Map.Entry<Integer, Long> entry : ids.entrySet()) {
                     Guild guild = Locutus.imp().getDiscordApi().getGuildById(entry.getValue());
                     if (guild == null) throw new IllegalArgumentException("Invalid guild: `" + entry.getValue() + "` (are you sure locutus is in that server?)");
                     GuildDB otherDb = Locutus.imp().getGuildDB(guild);
                     if (guild.getIdLong() == db.getIdLong()) throw new IllegalArgumentException("You cannot set the delegate as this guild");
-                    if (otherDb.getOrNull(Key.DELEGATE_SERVER) != null) throw new IllegalArgumentException("Circular reference. The server you have set already delegates its DELEGATE_SERVER");
-
-                    boolean otherDbHasAA = otherDb.getOrNull(Key.ALLIANCE_ID) != null;
-                    if (hasAAid && otherDbHasAA) throw new IllegalArgumentException("Cannot delegate to guilds registered to different alliances. See: " + CM.settings.cmd.create(Key.ALLIANCE_ID.name(), null));
+                    if (otherDb.getInfo(Key.DELEGATE_SERVER, false) != null) throw new IllegalArgumentException("Circular reference. The server you have set already delegates its DELEGATE_SERVER");
                 }
                 if (db.getOrNull(Key.ALLIANCE_ID) != null) throw new IllegalArgumentException("Cannot delegate alliance guilds (please unset ALLIANCE_ID first)");
                 return value;
@@ -3406,38 +3404,30 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             public boolean hasPermission(GuildDB db, User author, Object value) {
                 if (!super.hasPermission(db, author, value)) return false;
                 if (value == null) return true;
-                GuildDB otherDB = (GuildDB) value;
+                Map.Entry<Integer, Long> entry = (Map.Entry<Integer, Long>) value;
+                GuildDB otherDB = Locutus.imp().getGuildDB(entry.getValue());
+                if (otherDB == null) {
+                    throw new IllegalArgumentException("Invalid guild: `" + entry.getValue() + "` (are you sure locutus is in that server?)");
+                }
                 if (!Roles.ADMIN.has(author, otherDB.getGuild())) throw new IllegalArgumentException("You do not have ADMIN on " + otherDB.getGuild());
                 return true;
             }
 
             @Override
             public Object parse(GuildDB db, String input) {
-                Map<Integer, Long> guildIds = new HashMap<>();
-                for (String s : input.split("[,|\n]")) {
-                    try {
-                        String[] split2 = s.trim().split("[:|=]", 2);
-                        if (split2.length == 2) {
-                            guildIds.put(Integer.parseInt(split2[0]), Long.parseLong(split2[1]));
-                        } else {
-                            guildIds.put(0, Long.parseLong(s));
-                        }
-                    } catch (NumberFormatException e) {
-                        throw new IllegalArgumentException("Invalid guild id: " + s);
-                    }
+                String[] split2 = input.trim().split("[:|=]", 2);
+                if (split2.length == 2) {
+                    return Map.entry(Integer.parseInt(split2[0]), Long.parseLong(split2[1]));
+                } else {
+                    return Map.entry(0, Long.parseLong(input));
                 }
-                return guildIds;
             }
 
             @Override
             public String toString(Object value) {
-                Map<Integer, Long> guildIds = (Map<Integer, Long>) value;
-                StringBuilder sb = new StringBuilder();
-                for (Map.Entry<Integer, Long> entry : guildIds.entrySet()) {
-                    if (sb.length() > 0) sb.append("\n");
-                    sb.append(entry.getKey()).append(":").append(entry.getValue());
-                }
-                return sb.toString();
+                Map.Entry<Integer, Long> pair = (Map.Entry<Integer, Long>) value;
+                if (pair.getKey() == 0) return pair.getValue() + "";
+                return pair.getKey() + ":" + pair.getValue();
             }
             @Override
             public String help() {
@@ -3452,7 +3442,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 Guild guild = Locutus.imp().getDiscordApi().getGuildById(Long.parseLong(value));
                 GuildDB otherDb = Locutus.imp().getGuildDB(guild);
                 if (guild.getIdLong() == db.getGuild().getIdLong()) throw new IllegalArgumentException("Use " + CM.settings.cmd.create(GuildDB.Key.FA_SERVER.name(), "null") + " to unset the FA_SERVER");
-                if (otherDb.getOrNull(Key.FA_SERVER) != null) throw new IllegalArgumentException("Circular reference. The server you have set already defers its FA_SERVER");
+                if (otherDb.getInfo(Key.FA_SERVER, false) != null) throw new IllegalArgumentException("Circular reference. The server you have set already defers its FA_SERVER");
                 return value;
             }
 
@@ -5210,12 +5200,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     @Deprecated
     public String getInfo(Key key, boolean allowDelegate) {
-        return getInfo(key.name(), allowDelegate);
-    }
+        if (key == Key.ALLIANCE_ID) {
+            String result = getInfo(key.name(), false);
 
-    @Deprecated
-    public String getInfo(Key key) {
-        return getInfo(key, true);
+        }
+        return getInfo(key.name(), allowDelegate);
     }
 
     public void setInfo(Key key, String value) {
@@ -5228,10 +5217,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private Map<String, String> info;
     private final Map<Key, Object> infoParsed = new HashMap<>();
     private final Object nullInstance = new Object();
-
-    public String getInfo(String key) {
-        return getInfo(key, true);
-    }
 
     public MessageChannel getResourceChannel(Integer allianceId) {
         Map<Long, MessageChannel> channels = getOrNull(Key.RESOURCE_REQUEST_CHANNEL);

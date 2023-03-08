@@ -985,14 +985,14 @@ public class UtilityCommands {
             }
         }
 
-        if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
+        if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
             response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
         }
-        else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
-        if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
+        else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildDB.Key.AUTOROLE) + "");
+        if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
             response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
         }
-        else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
+        else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildDB.Key.AUTONICK) + "");
         if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + "");
         return response.toString();
     }
@@ -1009,11 +1009,11 @@ public class UtilityCommands {
 
         StringBuilder response = new StringBuilder("Done!");
 
-        if (db.getInfo(GuildDB.Key.AUTOROLE) == null) {
+        if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
             response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoRole Mode: ").append((Object) db.getOrNull(GuildDB.Key.AUTOROLE));
-        if (db.getInfo(GuildDB.Key.AUTONICK) == null) {
+        if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
             response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
         }
         else response.append("\n - AutoNick Mode: ").append((Object) db.getOrNull(GuildDB.Key.AUTONICK));

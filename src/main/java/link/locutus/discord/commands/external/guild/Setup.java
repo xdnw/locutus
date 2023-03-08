@@ -47,7 +47,7 @@ public class Setup extends Command {
             if (key.requires != null) {
                 if (guildDb.getOrNull(key.requires) == null) continue;
             }
-            String value = guildDb.getInfo(key);
+            String value = guildDb.getInfo(key, false);
             if (value == null) {
                 return "Please use `" + Settings.commandPrefix(true) + "KeyStore " + key.name() + " <value>`";
             }

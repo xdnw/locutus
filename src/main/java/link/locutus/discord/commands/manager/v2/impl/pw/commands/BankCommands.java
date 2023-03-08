@@ -28,6 +28,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -825,6 +826,7 @@ public class BankCommands {
         if (loan != null && !ignoreLoans) {
             db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
         }
+
         if (depoByType.containsKey(DepositType.GRANT) && !ignoreGrants) {
             List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0);
             for (Map.Entry<Integer, Transaction2> entry : transactions) {
@@ -1929,13 +1931,15 @@ public class BankCommands {
 
     @Command(desc="Calculate a nations deposits/loans/taxes")
     @RolePermission(Roles.MEMBER)
-    public String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildHandler handler, NationOrAllianceOrGuild nationOrAllianceOrGuild,
+    public String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildHandler handler, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
                            @Switch("o") Set<DBAlliance> offshores,
                            @Switch("c") Long timeCutoff,
                            @Switch("b") boolean includeBaseTaxes,
                            @Switch("o") boolean ignoreInternalOffsets,
                            @Switch("t") Boolean showTaxesSeparately,
-                           @Switch("d") boolean replyInDMs
+                           @Switch("d") boolean replyInDMs,
+                           @Switch("e") boolean includeExpired,
+                           @Switch("e") boolean includeIgnored
                            ) throws IOException {
         if (timeCutoff == null) timeCutoff = 0L;
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
@@ -1991,7 +1995,11 @@ public class BankCommands {
             DBNation nation = nationOrAllianceOrGuild.asNation();
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild)) return "You do not have permission to check other nation's deposits";
             // txList
-            accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff);
+            accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, includeIgnored, includeExpired, f -> true);
+        } else if (nationOrAllianceOrGuild.isTaxid()) {
+            TaxBracket bracket = nationOrAllianceOrGuild.asBracket();
+            Map<DepositType, double[]> deposits = db.getTaxBracketDeposits(bracket.taxId, timeCutoff, includeExpired, includeIgnored);
+            accountDeposits.put("tax_id=" + bracket.taxId, deposits);
         }
 
         double[] total = new double[ResourceType.values.length];
