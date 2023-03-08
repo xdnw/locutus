@@ -1374,6 +1374,11 @@ public class DBNation implements NationOrAlliance {
         return updateSpies(force ? Integer.MIN_VALUE : 0);
     }
 
+    public Long getTurnUpdatedSpies() {
+        ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
+        return lastTurn == null ? null : lastTurn.getLong();
+    }
+
     public Integer updateSpies(int turns) {
         ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
         long currentTurn = TimeUtil.getTurn();
@@ -1432,6 +1437,11 @@ public class DBNation implements NationOrAlliance {
     @RolePermission(value = Roles.MILCOM)
     public int getSpies() {
         return Math.max(spies, 0);
+    }
+
+    @Command(desc = "Max spies a nation can have")
+    public int maxSpies() {
+        return hasProject(Projects.INTELLIGENCE_AGENCY) ? 60 : 50;
     }
 
     public void setSpies(int spies, boolean events) {
