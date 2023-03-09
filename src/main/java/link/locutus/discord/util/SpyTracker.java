@@ -404,24 +404,55 @@ public class SpyTracker {
 
             String title = "Possible " + alert.change + " x " + unit + " spied (Note: False positives are common)";
             StringBuilder body = new StringBuilder("**" + title + "**:\n");
-            body.append("\nDefender: " + defender.toMarkdown(false, true, true, true, true));
+            body.append("\nDefender (" + defender.updateSpies(alert.unit == MilitaryUnit.SPIES ? 1 : 24) + " spies):" + defender.toMarkdown(false, true, true, true, true));
             body.append("\ntimestamp:" + alert.timestamp + " (" + TimeUtil.YYYY_MM_DDTHH_MM_SSX.format(new Date(alert.timestamp)) + ")");
+
+            // display recent wars (nation)
+            // display current wars (nations / alliances)
+
+
+            if (unit.getBuilding() != null) {
+                int defUnits = defender.getUnits(unit) + Math.abs(alert.change);
+                Map.Entry<Integer, Integer> killRangeNoSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, false);
+                Map.Entry<Integer, Integer> killRangeSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, true);
+
+                body.append("\n\n**" + unit + " kill range:** ");
+                body.append(killRangeNoSat.getKey() + " - " + killRangeNoSat.getValue() + "(no SAT) | " + killRangeSat.getKey() + " - " + killRangeSat.getValue() + "(SAT)");
+            }
 
             if (!alert.exact.isEmpty()) {
                 body.append("\nAttackers (high probability):");
                 for (SpyActivity offensive : alert.exact) {
-                    body.append("\n - " + alert.entryToString(offensive));
+                    body.append("\n - " + alert.entryToString(offensive, null));
                 }
             } else if (!alert.close.isEmpty()) {
                 body.append("\nAttackers (medium probability):");
                 for (SpyActivity offensive : alert.close) {
-                    body.append("\n - " + alert.entryToString(offensive));
+                    body.append("\n - " + alert.entryToString(offensive, null));
                 }
             } else {
+                int defSpies = defender.getSpies();
+                if (unit == MilitaryUnit.SPIES) {
+                    defender.updateSpies(12);
+                    Long spiesUpdated = defender.getTurnUpdatedSpies();
+                    if (spiesUpdated != null && spiesUpdated >= TimeUtil.getTurn(System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(20))) {
+                        defSpies = Math.min(defender.maxSpies(), defSpies + Math.abs(alert.change));
+                    }
+
+                    // int spiesKilled, int defSpies, boolean spySat
+                    int killed = Math.abs(alert.change);
+                    Map.Entry<Integer, Integer> rangeNoSat = SpyCount.getSpiesUsedRange(killed, defSpies, false);
+                    Map.Entry<Integer, Integer> rangeSat = SpyCount.getSpiesUsedRange(killed, defSpies, true);
+                    body.append("\n**Attacker Spies Estimate:** ");
+                    body.append(rangeNoSat.getKey() + " - " + rangeNoSat.getValue() + "(no SAT) | " + rangeSat.getKey() + " - " + rangeSat.getValue() + "(SAT)");
+                    body.append("\n - Note: Unit counts may be incorrect (outdated/two attacks in quick succession)");
+                    body.append("\n - See: <https://politicsandwar.fandom.com/wiki/Spies>");
+                }
+
                 body.append("\nAttackers Online (low probability):");
                 for (Map.Entry<DBNation, Long> entry : alert.online) {
                     DBNation attacker = entry.getKey();
-                    body.append("\n - " + alert.entryToString(attacker, entry.getValue()));
+                    body.append("\n - " + alert.entryToString(attacker, null, entry.getValue()));
                 }
             }
 
@@ -458,24 +489,30 @@ public class SpyTracker {
         }
 
 
-        public String entryToString(SpyActivity offensive) {
+        public String entryToString(SpyActivity offensive, Map.Entry<Integer, Integer> killRange) {
             DBNation attacker = DBNation.byId(offensive.nationId);
             long diff = Math.abs(offensive.timestamp - timestamp);
-            return entryToString(attacker, diff);
+            return entryToString(attacker, killRange, diff);
         }
 
-        public String entryToString(DBNation attacker, long diff) {
-            StringBuilder message = new StringBuilder(attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true));
+        public String entryToString(DBNation attacker, Map.Entry<Integer, Integer> killRange, long diff) {
             int defSpies = defender.getSpies();
-            int attSpies = attacker.getSpies();
-            try {
-                attSpies = attacker.updateSpies(24);
-            } catch (Exception ignore) {}
+            int attSpies = attacker.updateSpies(24);;
+
             double odds = SpyCount.getOdds(attSpies, defSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
-            message.append(MathMan.format(odds) + "%");
+
+
+
+            StringBuilder message = new StringBuilder();
+            message.append("<" + attacker.getNationUrl() + ">|" + attacker.getNation() + " | " + attacker.getAlliance() + " | " + MathMan.format(odds) + "%");
+
+            if (killRange != null) {
+                message.append(" | " + killRange.getKey() + "-" + killRange.getValue() + " max kills");
+            }
+
             if (attacker.hasProject(Projects.SPY_SATELLITE)) message.append(" | SAT");
             if (attacker.hasProject(Projects.INTELLIGENCE_AGENCY)) message.append(" | IA");
-            message.append(" | " + attSpies + " spies (?)");
+            message.append(" | " + attSpies + " \uD83D\uDD75");
             message.append(" | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
             return message.toString();
         }

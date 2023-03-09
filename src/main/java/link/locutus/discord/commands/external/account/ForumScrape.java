@@ -25,11 +25,6 @@ public class ForumScrape extends Command {
     }
 
     @Override
-    public String desc() {
-        return null;
-    }
-
-    @Override
     public boolean checkPermission(Guild server, User user) {
         return super.checkPermission(server, user) && Roles.ADMIN.hasOnRoot(user);
     }

@@ -132,6 +132,46 @@ public class SpyCount {
         return true;
     }
 
+    public static Map.Entry<Integer, Integer> getSpiesUsedRange(int spiesKilled, int defSpies, boolean spySat) {
+        double factor = spySat ? 1.5 : 1;
+        long min = Math.round(spiesKilled / (1.05 * 0.335 * factor) + (defSpies * 0.4));
+        long max = Math.round(spiesKilled / (0.85 * 0.335 * factor) + (defSpies * 0.4));
+        return new AbstractMap.SimpleEntry<>((int) min, (int) max);
+    }
+
+    public static Map.Entry<Integer, Integer> getUnitKillRange(int attSpies, int defSpies, MilitaryUnit unit, int defUnits, boolean spySat) {
+        double min;
+        double max;
+        if (unit == MilitaryUnit.SPIES) {
+            double average =  ((double) attSpies - (defSpies * 0.4)) * 0.335;
+            double cap = (defSpies * 0.25) + 4;
+            min = Math.min(cap, average * 0.85);
+            max = Math.min(cap, average * 1.05);
+        } else {
+            switch (unit) {
+                case SOLDIER:
+                case TANK:
+                case AIRCRAFT:
+                case SHIP:
+                    min = (double) defUnits * 0.01;
+                    max = (double) defUnits * 0.05;
+                    break;
+                case MISSILE:
+                case NUKE:
+                    min = 1;
+                    max = 1;
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown unit type: " + unit);
+            }
+        }
+        if (spySat) {
+            min *= 1.5;
+            max *= 1.5;
+        }
+        return new AbstractMap.SimpleEntry<>((int) Math.round(min), (int) Math.round(max));
+    }
+
     public static int guessSpyCount(DBNation nation) throws IOException {
         int current = nation.getSpies();
 
