@@ -40,6 +40,7 @@ import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
@@ -179,10 +180,17 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = {"Borg", "alliance/id=7452", "647252780817448972"})
-    public static NationOrAllianceOrGuild nationOrAllianceOrGuild(String input) {
+    public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input) {
+        return nationOrAllianceOrGuildOrTaxId(input, true);
+    }
+    public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input, boolean includeTaxId) {
         try {
             return nationOrAlliance(input);
         } catch (IllegalArgumentException ignore) {
+            if (includeTaxId && !input.startsWith("#") && input.contains("tax_id")) {
+                int taxId = PnwUtil.parseTaxId(input);
+                return new TaxBracket(taxId, -1, "", 0, 0, 0L);
+            }
             if (input.startsWith("guild:")) {
                 input = input.substring(6);
                 if (!MathMan.isInteger(input)) {
@@ -208,6 +216,11 @@ public class PWBindings extends BindingHelper {
             }
             throw ignore;
         }
+    }
+
+    @Binding(examples = {"Borg", "alliance/id=7452", "647252780817448972"})
+    public static NationOrAllianceOrGuild nationOrAllianceOrGuild(String input) {
+        return (NationOrAllianceOrGuild) nationOrAllianceOrGuildOrTaxId(input, false);
     }
 
     @Binding(examples = {"'Error 404'", "7413", "https://politicsandwar.com/alliance/id=7413"})
@@ -266,7 +279,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm,#position>1")
-    public Set<DBNation> nations(@Me Guild guild, String input) {
+    public static Set<DBNation> nations(@Me Guild guild, String input) {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, input);
         if (nations == null) throw new IllegalArgumentException("Invalid nations: " + input);
         return nations;
@@ -336,11 +349,26 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "borg,AA:Cataclysm,647252780817448972")
     public Set<NationOrAllianceOrGuild> nationOrAllianceOrGuild(@Me Guild guild, String input) {
+        return (Set) nationOrAllianceOrGuildOrTaxId(guild, input, false);
+    }
+
+    @Binding(examples = "borg,AA:Cataclysm,647252780817448972")
+    public Set<NationOrAllianceOrGuildOrTaxid> nationOrAllianceOrGuildOrTaxId(@Me Guild guild, String input) {
+        return nationOrAllianceOrGuildOrTaxId(guild, input, true);
+    }
+
+    public static Set<NationOrAllianceOrGuildOrTaxid> nationOrAllianceOrGuildOrTaxId(@Me Guild guild, String input, boolean includeTaxId) {
         List<String> args = StringMan.split(input, ',');
-        Set<NationOrAllianceOrGuild> result = new LinkedHashSet<>();
+        Set<NationOrAllianceOrGuildOrTaxid> result = new LinkedHashSet<>();
         List<String> remainder = new ArrayList<>();
         outer:
         for (String arg : args) {
+            if (includeTaxId && !arg.startsWith("#") && arg.contains("tax_id")) {
+                int taxId = PnwUtil.parseTaxId(arg);
+                TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
+                result.add(bracket);
+                continue;
+            }
             if (arg.startsWith("guild:")) {
                 arg = arg.substring(6);
                 if (!MathMan.isInteger(arg)) {
@@ -370,7 +398,7 @@ public class PWBindings extends BindingHelper {
                     continue;
                 }
             } catch (IllegalArgumentException ignore) {}
-            GuildDB db = Locutus.imp().getGuildDB(guild);
+            GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
             if (db != null) {
                 if (arg.charAt(0) == '~') arg = arg.substring(1);
                 Set<Integer> coalition = db.getCoalition(arg);

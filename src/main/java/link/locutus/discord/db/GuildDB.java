@@ -2325,7 +2325,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         ALLIANCE_ID() {
             @Override
             public String validate(GuildDB db, String value) {
-                if (db.getOrNull(Key.DELEGATE_SERVER) != null) throw new IllegalArgumentException("Cannot set alliance id of delegate server (please unset DELEGATE_SERVER first)");
+                if (db.getInfo(Key.DELEGATE_SERVER, false) != null) throw new IllegalArgumentException("Cannot set alliance id of delegate server (please unset DELEGATE_SERVER first)");
 
                 Integer allianceId = PnwUtil.parseAllianceId(value);
                 if (allianceId == null) {

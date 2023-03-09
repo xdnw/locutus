@@ -88,7 +88,7 @@ public class AddBalance extends Command {
         String arg = args.get(0);
         if (arg.contains("tax_id=")) {
             int taxId = PnwUtil.parseTaxId(arg);
-            TaxBracket bracket = new TaxBracket(taxId, 0, "", 0, 0, 0L);
+            TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
             builder.add(bracket, PnwUtil.parseResources(args.get(1)), note);
         } else if (arg.contains("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             boolean negative = false;

@@ -1947,11 +1947,10 @@ public class BankCommands {
 
 
         StringBuilder response = new StringBuilder();
-        response.append("**" + nationOrAllianceOrGuild.getName() + "**:\n");
+        response.append("**" + nationOrAllianceOrGuild.getQualifiedName() + "**:\n");
         List<String> footers = new ArrayList<>();
 
         Map<DepositType, double[]> accountDeposits = new HashMap<>();
-        List<Transaction2> txList = new ArrayList<>();
 
         if (nationOrAllianceOrGuild.isAlliance()) {
             DBAlliance alliance = nationOrAllianceOrGuild.asAlliance();
@@ -1999,7 +1998,7 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             TaxBracket bracket = nationOrAllianceOrGuild.asBracket();
             Map<DepositType, double[]> deposits = db.getTaxBracketDeposits(bracket.taxId, timeCutoff, includeExpired, includeIgnored);
-            accountDeposits.put("tax_id=" + bracket.taxId, deposits);
+            accountDeposits.putAll(deposits);
         }
 
         double[] total = new double[ResourceType.values.length];
