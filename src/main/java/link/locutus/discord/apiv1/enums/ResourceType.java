@@ -13,6 +13,7 @@ import link.locutus.discord.util.PnwUtil;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -102,6 +103,13 @@ public enum ResourceType {
         return resources;
     }
 
+    public static double[] add(Collection<double[]> values) {
+        double[] result = getBuffer();
+        for (double[] value : values) {
+            add(result, value);
+        }
+        return result;
+    }
     public static double[] add(double[] resources, double[] values) {
         for (int i = 0; i < values.length; i++) {
             resources[i] += values[i];

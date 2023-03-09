@@ -1,11 +1,13 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -53,6 +55,7 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -85,6 +88,7 @@ import org.json.JSONObject;
 import rocker.guild.ia.message;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -93,6 +97,129 @@ import java.util.stream.Collectors;
 
 public class UnsortedCommands {
 
+    @Command(desc ="View nation or AA bank contents")
+    @RolePermission(Roles.MEMBER)
+    @IsAlliance
+    public String taxRevenueSheet(@Me IMessageIO io, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("f") boolean forceUpdate, @Switch("u") boolean includeUntaxable) throws GeneralSecurityException, IOException {
+        Set<TaxBracket> brackets = new HashSet<>();
+        Set<Integer> aaIds = db.getAllianceIds(true);
+        Set<Integer> alliancesUpdated = new HashSet<>();
+        if (nations != null) {
+            Map<Integer, Integer> taxIdToAA = new LinkedHashMap<>();
+            for (DBNation nation : nations) {
+                int taxId = nation.getTax_id();
+                if (taxId > 0) {
+                    taxIdToAA.put(taxId, nation.getAlliance_id());
+                }
+            }
+            for (Map.Entry<Integer, Integer> entry : taxIdToAA.entrySet()) {
+                int taxId = entry.getKey();
+                int aaId = entry.getValue();
+                DBAlliance alliance = DBAlliance.get(aaId);
+                TaxBracket bracket = new TaxBracket(taxId, aaId, "", -1, -1, 0L);
+                if (alliance != null) {
+                    Map<Integer, TaxBracket> aaBrackets = alliance.getTaxBrackets(!forceUpdate || !alliancesUpdated.add(aaId));
+                    bracket = aaBrackets.get(taxId);
+                }
+                brackets.add(bracket);
+            }
+        } else if (!aaIds.isEmpty()){
+            for (int aaId : aaIds) {
+                DBAlliance alliance = DBAlliance.get(aaId);
+                if (alliance != null) {
+                    brackets.addAll(alliance.getTaxBrackets(!forceUpdate || !alliancesUpdated.add(aaId)).values());
+                }
+            }
+        } else {
+            throw new IllegalArgumentException("No alliances are registered to this guild. Please provide a list of nations to check.");
+        }
+        if (brackets.isEmpty()) {
+            throw new IllegalArgumentException("No tax brackets found.");
+        }
+        if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
+
+        List<String> header = new ArrayList<>(Arrays.asList(
+            "ID",
+            "Name",
+            "Money Rate",
+            "Resource Rate",
+            "Alliance",
+            "Nations",
+            "Total[TAX]",
+            "Total[DEPOSITS]",
+            "Value[TAX]",
+            "Value[*]",
+            "Revenue Value"
+        ));
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.CREDITS) continue;
+            header.add(type.name());
+        }
+
+        sheet.setHeader(header);
+
+        boolean includeUnknownRate = false;
+        Gson gson = new Gson();
+        for (TaxBracket bracket : brackets) {
+            header.clear();
+            if (bracket.rssRate < 0 || bracket.moneyRate < 0) {
+                includeUnknownRate = true;
+            }
+            header.add("" + bracket.getId());
+            header.add(bracket.getName());
+            header.add("" + bracket.moneyRate);
+            header.add("" + bracket.rssRate);
+            header.add("" + bracket.getAlliance_id());
+            header.add("" + bracket.getNations().size());
+
+            Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, false, false);
+            double[] tax = depositsByCat.getOrDefault(DepositType.TAX, ResourceType.getBuffer());
+            double[] deposits = depositsByCat.getOrDefault(DepositType.DEPOSITS, ResourceType.getBuffer());
+            header.add(gson.toJson(PnwUtil.resourcesToMap(tax)));
+            header.add(gson.toJson(PnwUtil.resourcesToMap(deposits)));
+            header.add(String.format("%.2f", PnwUtil.convertedTotal(tax)));
+            header.add(String.format("%.2f", PnwUtil.convertedTotal(ResourceType.add(depositsByCat.values()))));
+
+            double[] revenue = ResourceType.getBuffer();
+            Set<DBNation> taxable = bracket.getNations();
+            if (!includeUntaxable) taxable.removeIf(f -> !f.isTaxable());
+            for (DBNation nation : taxable) {
+                double mRate = (bracket.moneyRate < 0 ? 100 : bracket.moneyRate) / 100d;
+                double rRate = (bracket.rssRate < 0 ? 100 : bracket.rssRate) / 100d;
+                double[] natRevenue = nation.getRevenue();
+                revenue[0] += Math.max(0, natRevenue[0]) * mRate;
+                for (int i = 1 ; i < natRevenue.length ; i++) {
+                    revenue[i] += Math.max(0, natRevenue[i]) * rRate;
+                }
+            }
+            header.add(String.format("%.2f", PnwUtil.convertedTotal(revenue)));
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                header.add("" + revenue[type.ordinal()]);
+            }
+            sheet.addRow(header);
+        }
+
+        List<String> messages = new ArrayList<>();
+        if (!includeUntaxable) {
+            messages.add("Set the `includeUntaxable` switch to include nations not currently paying taxes.");
+        }
+        if (!forceUpdate) {
+            messages.add("Set the `forceUpdate` switch to force an update of all tax brackets.");
+        }
+        if (includeUnknownRate) {
+            messages.add("You do not have permission to view the tax rates of some brackets. Revenue will be assumed 100/100");
+        }
+        messages.add("The TAX column includes tax records not set to go into a member's personal deposits, or offsets using the `#tax` note");
+
+        sheet.clearAll();
+        sheet.set(0, 0);
+
+        IMessageBuilder msg = io.create();
+        msg.append("Notes:\n - " + StringMan.join(messages, "\n - "));
+        sheet.attach(msg).send();
+        return null;
+    }
 
     @Command(desc ="View nation or AA bank contents")
     @RolePermission(Roles.MEMBER)

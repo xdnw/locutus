@@ -147,6 +147,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("admin"), "removeInvalidOffshoring", "removeinvalidoffshoring");
         this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveServer", "leaveServer");
 
+        this.commands.registerMethod(new UnsortedCommands(), List.of("sheets_econ"), "taxRevenueSheet", "taxRevenue");
+
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
         System.out.println(output);

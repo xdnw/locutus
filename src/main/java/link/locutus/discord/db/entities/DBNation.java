@@ -1374,6 +1374,11 @@ public class DBNation implements NationOrAlliance {
         return updateSpies(force ? Integer.MIN_VALUE : 0);
     }
 
+    public Long getTurnUpdatedSpies() {
+        ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
+        return lastTurn == null ? null : lastTurn.getLong();
+    }
+
     public Integer updateSpies(int turns) {
         ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
         long currentTurn = TimeUtil.getTurn();
@@ -1386,7 +1391,7 @@ public class DBNation implements NationOrAlliance {
                     }
                 }
                 SpyCount.guessSpyCount(this);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -1432,6 +1437,11 @@ public class DBNation implements NationOrAlliance {
     @RolePermission(value = Roles.MILCOM)
     public int getSpies() {
         return Math.max(spies, 0);
+    }
+
+    @Command(desc = "Max spies a nation can have")
+    public int maxSpies() {
+        return hasProject(Projects.INTELLIGENCE_AGENCY) ? 60 : 50;
     }
 
     public void setSpies(int spies, boolean events) {
@@ -3051,8 +3061,8 @@ public class DBNation implements NationOrAlliance {
             if (general) {
                 response
                         .append(String.format("%8s", getWarPolicy())).append(" | ")
-                        .append(String.format("%1s", getOff())).append(" \uD83D\uDDE1").append(" | ")
-                        .append(String.format("%1s", getDef())).append(" \uD83D\uDEE1").append(" | ");
+                        .append(String.format("%1s", getOff())).append("\uD83D\uDDE1").append(" | ")
+                        .append(String.format("%1s", getDef())).append("\uD83D\uDEE1").append(" | ");
             }
             String str = response.toString();
             if (str.endsWith(" | ")) response = new StringBuilder(str.substring(0, str.length() - 3));
