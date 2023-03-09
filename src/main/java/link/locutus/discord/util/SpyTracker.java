@@ -411,6 +411,15 @@ public class SpyTracker {
             // display current wars (nations / alliances)
 
 
+            if (unit.getBuilding() != null) {
+                int defUnits = defender.getUnits(unit) + Math.abs(alert.change);
+                Map.Entry<Integer, Integer> killRangeNoSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, false);
+                Map.Entry<Integer, Integer> killRangeSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, true);
+
+                body.append("\n\n**" + unit + " kill range:** ");
+                body.append(killRangeNoSat.getKey() + " - " + killRangeNoSat.getValue() + "(no SAT) | " + killRangeSat.getKey() + " - " + killRangeSat.getValue() + "(SAT)");
+            }
+
             if (!alert.exact.isEmpty()) {
                 body.append("\nAttackers (high probability):");
                 for (SpyActivity offensive : alert.exact) {
@@ -422,9 +431,28 @@ public class SpyTracker {
                     body.append("\n - " + alert.entryToString(offensive));
                 }
             } else {
+                int defSpies = defender.getSpies();
+                if (unit == MilitaryUnit.SPIES) {
+                    defender.updateSpies(12);
+                    Long spiesUpdated = defender.getTurnUpdatedSpies();
+                    if (spiesUpdated != null && spiesUpdated >= TimeUtil.getTurn(System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(20))) {
+                        defSpies = Math.min(defender.maxSpies(), defSpies + Math.abs(alert.change));
+                    }
+
+                    // int spiesKilled, int defSpies, boolean spySat
+                    int killed = Math.abs(alert.change);
+                    Map.Entry<Integer, Integer> rangeNoSat = SpyCount.getSpiesUsedRange(killed, defSpies, false);
+                    Map.Entry<Integer, Integer> rangeSat = SpyCount.getSpiesUsedRange(killed, defSpies, true);
+                    body.append("\n**Attacker Spies Estimate:** ");
+                    body.append(rangeNoSat.getKey() + " - " + rangeNoSat.getValue() + "(no SAT) | " + rangeSat.getKey() + " - " + rangeSat.getValue() + "(SAT)");
+                    body.append("\n - Note: Spy counts may be outdated/inaccurate");
+                    body.append("\n - See: <https://politicsandwar.fandom.com/wiki/Spies>");
+                }
+
                 body.append("\nAttackers Online (low probability):");
                 for (Map.Entry<DBNation, Long> entry : alert.online) {
                     DBNation attacker = entry.getKey();
+                    Map.Entry<Integer, Integer> killrange = null;
                     body.append("\n - " + alert.entryToString(attacker, entry.getValue()));
                 }
             }
