@@ -512,7 +512,7 @@ public class SpyTracker {
 
             if (attacker.hasProject(Projects.SPY_SATELLITE)) message.append(" | SAT");
             if (attacker.hasProject(Projects.INTELLIGENCE_AGENCY)) message.append(" | IA");
-            message.append(" | " + attSpies + " \uD83D\uDD75️");
+            message.append(" | " + attSpies + " \uD83D\uDD75");
             message.append(" | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
             return message.toString();
         }
