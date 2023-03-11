@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;

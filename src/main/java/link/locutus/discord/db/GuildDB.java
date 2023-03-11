@@ -1706,7 +1706,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public boolean sendInternal(@Me User banker, @Me DBNation bankerNation, GuildDB senderDB, DBAlliance senderAlliance, DBNation senderNation, GuildDB receiverDB, DBAlliance receiverAlliance, DBNation receiverNation, double[] amount) throws IOException {
         synchronized (OffshoreInstance.BANK_LOCK) {
             for (int i = 0; i < amount.length; i++) {
-                if (Double.isNaN(amount[i]) || amount[i] < 0) {
+                if (!Double.isFinite(amount[i]) || amount[i] < 0) {
                     throw new IllegalArgumentException("You cannot send negative amounts for " + ResourceType.values[i]);
                 }
             }

@@ -813,7 +813,7 @@ public class OffshoreInstance {
                 for (int i = 0; i < amount.length; i++) {
                     if (amount[i] != 0 && deposits[i] + 0.01 < amount[i] && !hasAdmin)
                         throw new IllegalArgumentException("You do not have " + MathMan.format(amount[i]) + "x" + ResourceType.values[i] + ", only " + MathMan.format(deposits[i]) + " (normalized)");
-                    if (Double.isNaN(amount[i]) || amount[i] < 0)
+                    if (!Double.isFinite(amount[i]) || amount[i] < 0)
                         throw new IllegalArgumentException(amount[i] + " is not a valid positive amount");
                 }
                 if (deposits[ResourceType.CREDITS.ordinal()] != 0)

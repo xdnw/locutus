@@ -2729,7 +2729,7 @@ public class NationDB extends DBMainV2 {
         checkNotNull(metric);
         String query = "INSERT OR " + (ignore ? "IGNORE" : "REPLACE") + " INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)";
 
-        if (Double.isNaN(value)) {
+        if (!Double.isFinite(value)) {
             return;
         }
         update(query, new ThrowingConsumer<PreparedStatement>() {

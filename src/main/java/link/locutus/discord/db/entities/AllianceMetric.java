@@ -484,7 +484,7 @@ public enum AllianceMetric {
                 int turnRelative = (int) (turn - startTurn);
                 for (int i = 0; i < metricsArr.length; i++) {
                     double value = valuesByTurnByMetric[i][turnRelative];
-                    if (value != Double.MAX_VALUE && !Double.isNaN(value)) {
+                    if (value != Double.MAX_VALUE && Double.isFinite(value)) {
                         buffer[i] = value;
                     }
                 }
@@ -534,7 +534,7 @@ public enum AllianceMetric {
                 int turnRelative = (int) (turn - startTurn);
                 for (int i = 0; i < coalitions.length; i++) {
                     double value = valuesByTurnByCoalition[i][turnRelative];
-                    if (value != Double.MAX_VALUE && !Double.isNaN(value)) {
+                    if (value != Double.MAX_VALUE && Double.isFinite(value)) {
                         buffer[i] = value;
                     }
                 }

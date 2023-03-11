@@ -1945,6 +1945,8 @@ public class BankCommands {
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
         if (offshoreIds != null) offshoreIds = PnwUtil.expandCoalition(offshoreIds);
 
+        boolean hasAdmin = Roles.ECON.has(author, guild);
+        AllianceList allowed = Roles.ECON.getAllianceList(author, db);
 
         StringBuilder response = new StringBuilder();
         response.append("**" + nationOrAllianceOrGuild.getQualifiedName() + "**:\n");
@@ -1959,6 +1961,7 @@ public class BankCommands {
             if (otherDb == null) throw new IllegalArgumentException("No guild found for " + alliance);
 
             OffshoreInstance offshore = otherDb.getOffshore();
+
 
             if (!Roles.ECON.has(author, otherDb.getGuild()) && (offshore == null || !Roles.ECON.has(author, offshore.getGuildDB().getGuild()))) {
                 return "You do not have permisssion to check another alliance's deposits";
