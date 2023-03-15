@@ -290,46 +290,53 @@ public class TradeDB extends DBMainV2 {
             }
         }
 
-//        public String toSimpleString(ResourceType traderBuying, ResourceType traderSelling, boolean boldMin, boolean boldMax) {
-//            if (traderBuying == null) traderBuying = ResourceType.MONEY;
-//            if (traderSelling == null) traderSelling = ResourceType.MONEY;
-//            if (traderBuying == traderSelling) {
-//                throw new IllegalArgumentException("Buying and selling cannot be the same resource (" + traderSelling + ")");
-//            }
-//            Map.Entry<Double, Double> range = getPriceRange(traderBuying, traderSelling);
-//
-//            StringBuilder response = new StringBuilder();
-//            boolean isExpired = isExpired();
-//            if (isExpired) response.append("~~");
-//
-//            String minStr = range.getKey() < 1 ? "1/" + MathMan.format(1 / range.getKey()) : MathMan.format(range.getKey());
-//            String maxStr = range.getValue() < 1 ? "1/" + MathMan.format(1 / range.getValue()) : MathMan.format(range.getValue());
-//
-//            if (traderSelling == null || traderSelling == ResourceType.MONEY) {
-//                response.append("$");
-//            }
-//            response.append(String.format("%8s", minStr)).append("-").append(String.format("%8s", maxStr));
-//            if (traderSelling != null && traderSelling != ResourceType.MONEY) {
-//                response.append(" " + String.format("%5s", traderSelling));
-//            }
-//            response.append(" | Amt: " + String.format("%9s", MathMan.format(quantity) + getResource()));
-//            // expire
-//
-//            ResourceType offerTradeFor = getResource() == traderBuying ? traderSelling : traderBuying;
-//            Set<ResourceType> exchangeForSet = getExchangeFor();
-//            if (exchangeForSet.contains(offerTradeFor) && exchangeForSet.size() > 1) {
-//                for (ResourceType type : exchangeForSet) {
-//                    response.append(type.name().substring(0, 1));
-//                }
-//            }
-//
-//            if (!getExchangeFor().isEmpty() && (buyWith == null || getExchangeFor().size() > 1)) {
-//                response.append(" | :");
-//            }
-//            // C/O/U/L/I/B/G/M/S/A/F/$
-//
-//            if (isExpired) response.append("~~");
-//        }
+        public String toSimpleString(ResourceType traderBuying, ResourceType traderSelling, boolean boldMin, boolean boldMax) {
+            if (traderBuying == null) traderBuying = ResourceType.MONEY;
+            if (traderSelling == null) traderSelling = ResourceType.MONEY;
+            if (traderBuying == traderSelling) {
+                throw new IllegalArgumentException("Buying and selling cannot be the same resource (" + traderSelling + ")");
+            }
+            Map.Entry<Double, Double> range = getPriceRange(traderBuying, traderSelling);
+
+            StringBuilder response = new StringBuilder();
+            boolean isExpired = isExpired();
+            if (isExpired) response.append("~~");
+
+            String minStr = range.getKey() < 1 ? "1/" + MathMan.format(1 / range.getKey()) : MathMan.format(range.getKey());
+            String maxStr = range.getValue() < 1 ? "1/" + MathMan.format(1 / range.getValue()) : MathMan.format(range.getValue());
+
+            if (traderSelling == null || traderSelling == ResourceType.MONEY) {
+                response.append("$");
+            }
+            response.append(String.format("%8s", minStr)).append("-").append(String.format("%8s", maxStr));
+            if (traderSelling != null && traderSelling != ResourceType.MONEY) {
+                response.append(" " + String.format("%5s", traderSelling));
+            }
+            response.append(" | Amt: " + String.format("%9s", MathMan.format(quantity) + getResource()));
+            // expire
+
+            ResourceType offerTradeFor = getResource() == traderBuying ? traderSelling : traderBuying;
+            Set<ResourceType> exchangeForSet = getExchangeFor();
+
+            // C/O/U/L/I/B/G/M/S/A/F/$
+            if (exchangeForSet.contains(offerTradeFor) && exchangeForSet.size() > 1) {
+                response.append(" | Trades For: ");
+                for (ResourceType type : exchangeForSet) {
+                    String symbol;
+                    if (type == ResourceType.MONEY) {
+                        symbol = "$";
+                    } else {
+                        symbol = type.toString().substring(0, 1);
+                    }
+                    response.append(symbol);
+                }
+            }
+
+            
+
+
+            if (isExpired) response.append("~~");
+        }
 
         public String toPrettyString() {
             if (isExpired()) {
