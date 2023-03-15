@@ -385,6 +385,7 @@ public class BankCommands {
 
         List<String> header = new ArrayList<>(Arrays.asList(
             "nation",
+            "tax_id",
             "cities",
             "avg_infra",
             "avg_land",
@@ -438,22 +439,22 @@ public class BankCommands {
 
             List<String> row = new ArrayList<>(header);
             row.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
-            row.set(1, nation.getCities() + "");
-            row.set(2, MathMan.format(nation.getAvg_infra()));
-            row.set(3, MathMan.format(nation.getAvgLand()));
-            row.set(4, MathMan.format(nation.getAvgBuildings()));
-            row.set(5, MathMan.format(disease));
-            row.set(6, MathMan.format(crime));
-            row.set(7, MathMan.format(pollution));
-            row.set(8, MathMan.format(population));
-            row.set(9, nation.getMMR());
-            row.set(9, "=\"" + nation.getMMR()+ "\"");
-            row.set(10, "=\"" + nation.getMMRBuildingStr()+ "\"");
-            row.set(11, MathMan.format(revenueConverted));
+            row.set(1, nation.getTax_id() + "");
+            row.set(2, nation.getCities() + "");
+            row.set(3, MathMan.format(nation.getAvg_infra()));
+            row.set(4, MathMan.format(nation.getAvgLand()));
+            row.set(5, MathMan.format(nation.getAvgBuildings()));
+            row.set(6, MathMan.format(disease));
+            row.set(7, MathMan.format(crime));
+            row.set(8, MathMan.format(pollution));
+            row.set(9, MathMan.format(population));
+            row.set(10, "=\"" + nation.getMMR()+ "\"");
+            row.set(11, "=\"" + nation.getMMRBuildingStr()+ "\"");
+            row.set(12, MathMan.format(revenueConverted));
 
-            row.set(12, MathMan.format(100 * revenueRaw / revenueConverted));
-            row.set(13, MathMan.format(100 * revenueManu / revenueConverted));
-            row.set(14, MathMan.format(100 * revenueCommerce / revenueConverted));
+            row.set(13, MathMan.format(100 * revenueRaw / revenueConverted));
+            row.set(14, MathMan.format(100 * revenueManu / revenueConverted));
+            row.set(15, MathMan.format(100 * revenueCommerce / revenueConverted));
 
             JavaCity city1 = cities.entrySet().iterator().next().getValue();
 
