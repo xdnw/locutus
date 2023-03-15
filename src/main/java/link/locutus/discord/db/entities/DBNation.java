@@ -334,6 +334,7 @@ public class DBNation implements NationOrAlliance {
                             output.append("\n").append(s);
                         });
                     } else {
+                        member = db.getGuild().retrieveMember(user).complete();
                         output.append("Member " + user.getName() + "#" + user.getDiscriminator() + " not found in guild: " + db.getGuild());
                     }
                 } catch (InsufficientPermissionException e) {
@@ -1396,6 +1397,11 @@ public class DBNation implements NationOrAlliance {
             }
         }
         return spies;
+    }
+
+    @Command
+    public double getCityExponent() {
+        return Math.pow(getCities(), 3);
     }
 
     public void setMeta(NationMeta key, byte value) {

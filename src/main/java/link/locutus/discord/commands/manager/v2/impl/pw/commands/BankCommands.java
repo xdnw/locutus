@@ -461,7 +461,12 @@ public class BankCommands {
             JavaCity origin = new JavaCity(city1);
             origin.zeroNonMilitary();
             JavaCity optimal = origin.optimalBuild(nation, 0);
-            double profitOptimal = optimal.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
+            double profitOptimal;
+            if (optimal == null) {
+                profitOptimal = optimal.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
+            } else {
+                profitOptimal = Integer.MAX_VALUE;
+            }
 
             double optimalGain = profit >= profitOptimal ? 1 : profit / profitOptimal;
 
@@ -1216,7 +1221,7 @@ public class BankCommands {
         sheet.set(0, 0);
 
         StringBuilder footer = new StringBuilder();
-        footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
+        footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));
 
         String type = "";
         OffshoreInstance offshore = db.getOffshore();
@@ -1225,7 +1230,7 @@ public class BankCommands {
             type = "offshored";
             aaDeposits = offshore.getDeposits(db);
         } else if (db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null){
-            type = "bank";
+            type = "bank stockpile";
             aaDeposits = PnwUtil.resourcesToArray(db.getAlliance().getStockpile());
         } else aaDeposits = null;
         if (aaDeposits != null) {
@@ -1236,11 +1241,11 @@ public class BankCommands {
 
                 }
             }
-            footer.append("\n**Net " + type + " (normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-            footer.append("\n**Net " + type + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
+            footer.append("\n**Total " + type + " - nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+            footer.append("\n**Total " + type + " - nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
 
-        sheet.attach(channel.create()).embed("AA Total", footer.toString())
+        sheet.attach(channel.create()).embed("Nation Deposits (With Alliance)", footer.toString())
                 .send();
         return null;
     }
@@ -1274,7 +1279,7 @@ public class BankCommands {
             if (nation.getAlliance_id() != aa.getAlliance_id()) throw new IllegalArgumentException("Nation: " + nation.getNationUrl() + " is not in " + aa.getUrl());
             if (nation.getPosition() <= 1) throw new IllegalArgumentException("Nation: " + nation.getNationUrl() + " is not a member");
             db.setMeta(nation.getNation_id(), NationMeta.TAX_RATE, new byte[]{(byte) taxRate.money, (byte) taxRate.resources});
-            response.append("Set " + nation.getNationUrl() + " taxrate to " + taxRate + "\n");
+            response.append("Set " + nation.getNationUrl() + " internal taxrate to " + taxRate + "\n");
         }
 
         response.append("Done!");
@@ -1443,17 +1448,17 @@ public class BankCommands {
 
             // if this alliance - get the transactions in the offshore
             Integer thisAA = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (thisAA != null && thisAA.equals(alliance.getAlliance_id())) {
-                OffshoreInstance offshore = db.getOffshore();
+            OffshoreInstance offshore = db.getOffshore();
+            if (thisAA != null && thisAA.equals(alliance.getAlliance_id()) && offshore != null) {
                 transactions.addAll(offshore.getTransactionsAA(thisAA, true));
-            } else if (thisAA != null && db.getOffshore() != null && db.getOffshore().getAllianceId() == thisAA) {
-                OffshoreInstance offshore = db.getOffshore();
+            } else if (thisAA != null && offshore != null && offshore.getAllianceId() == thisAA) {
                 transactions.addAll(offshore.getTransactionsAA(alliance.getAlliance_id(), true));
             } else {
                 transactions.addAll(db.getTransactionsById(alliance.getAlliance_id(), 2));
             }
 
             if (onlyOffshoreTransfers) {
+                if (offshore == null) return "This alliance does not have an offshore account";
                 Set<Long> offshoreAAs = db.getOffshore().getOffshoreAAs();
                 transactions.removeIf(f -> f.sender_type == 1 || f.receiver_type == 1);
                 transactions.removeIf(f -> f.tx_id != -1 && f.sender_id != 0 && f.receiver_id != 0 && !offshoreAAs.contains(f.sender_id) && !offshoreAAs.contains(f.receiver_id));
@@ -2379,7 +2384,7 @@ public class BankCommands {
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        sheet.attach(channel.create().embed("AA TOTAL", totalStr)).send();
+        sheet.attach(channel.create().embed("Nation Stockpiles", totalStr)).send();
         return null;
     }
 

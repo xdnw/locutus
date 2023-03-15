@@ -464,6 +464,12 @@ public class DiscordDB extends DBMainV2 {
         return null;
     }
 
+    public void deleteUid(BigInteger uid) {
+        update("DELETE FROM UUIDS WHERE uuid = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setBytes(1, uid.toByteArray());
+        });
+    }
+
     public Map<BigInteger, List<Map.Entry<Long, Long>>> getUuids(int nationId) {
         long end = Long.MAX_VALUE;
 
