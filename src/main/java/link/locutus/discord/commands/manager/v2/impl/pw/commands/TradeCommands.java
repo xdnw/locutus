@@ -1,15 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.collect.Maps;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -24,22 +18,15 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transfer;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
-import com.google.common.collect.Maps;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
@@ -54,64 +41,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TradeCommands {
-
-//    @Command
-//    public String listOffers(Set<ResourceType> resources, @ArgChoice(value={"BUY", "SELL"}) String buyOrSell, @Default Set<DBNation> nations, @Default boolean requireAutomatic) {
-//
-//    }
-//
-//    @Command
-//    public String buy(@Me TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, @Me IMessageIO channel, ResourceType resource,
-//                      long quantity,
-//                      @Switch("minPPU") Integer minPPU,
-//                      @Switch("maxPPU") Integer maxPPU,
-//                      @Switch("s") boolean showPPURange,
-//                      @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
-//                      @Switch("f") Set<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU) {
-//        if (expire > TimeUnit.DAYS.toMillis(30)) {
-//            return "Expiry cannot be longer than 30 days.";
-//        }
-//        long expireMs = System.currentTimeMillis() + expire;
-//        if ((exchangeFor != null && exchangeFor.contains(resource)) || (exchangePPU != null && exchangePPU.containsKey(resource))) {
-//            return "You cannot exchange for the same resource.";
-//        }
-//        if (resource == ResourceType.CREDITS || (exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
-//            return "You cannot exchange for credits.";
-//        }
-//        if (resource == ResourceType.MONEY || (exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
-//            return "You cannot buy money. Create a sell offer instead.";
-//        }
-//
-//
-//
-//
-//    }
-//
-//    @Command
-//    public String sell(@Me JSONObject command, @Me DBNation me, @Me User author, @Me IMessageIO channel, ResourceType resource,
-//                      long quantity,
-//                      @Switch("minPPU") Integer minPPU,
-//                      @Switch("maxPPU") Integer maxPPU,
-//                      @Switch("s") boolean showPPURange,
-//                      @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
-//                      @Switch("f") Set<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU) {
-//        // max expiry 30d
-//        if (expire > TimeUnit.DAYS.toMillis(30)) {
-//            return "Expiry cannot be longer than 30 days.";
-//        }
-//        long expireMs = System.currentTimeMillis() + expire;
-//        if ((exchangeFor != null && exchangeFor.contains(resource)) || (exchangePPU != null && exchangePPU.containsKey(resource))) {
-//            return "You cannot exchange for the same resource.";
-//        }
-//        if (resource == ResourceType.CREDITS || (exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
-//            return "You cannot exchange for credits.";
-//        }
-//        if (resource == ResourceType.MONEY || (exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
-//            return "You cannot sell money. Create a buy offer instead.";
-//        }
-//
-//
-//    }
 
 
     @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"})
@@ -146,9 +75,9 @@ public class TradeCommands {
                 .addField("Low", StringMan.join(low, "\n"), true)
                 .addField("High", StringMan.join(high, "\n"), true).build();
         channel.create()
-                        .embed(embed)
-                        .commandButton(command, "Refresh")
-                                .send();
+                .embed(embed)
+                .commandButton(command, "Refresh")
+                .send();
         return null;
     }
 
@@ -188,9 +117,9 @@ public class TradeCommands {
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Global Trade Volume")
                 .addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true)
-        .addField("Daily", StringMan.join(daily, " "), true)
-        .addField("Weekly", StringMan.join(weekly, " "), true)
-        .build()
+                .addField("Daily", StringMan.join(daily, " "), true)
+                .addField("Weekly", StringMan.join(weekly, " "), true)
+                .build()
         ).commandButton(command, "Refresh").send();
 
         return null;
@@ -201,7 +130,7 @@ public class TradeCommands {
         if (normalize) {
             double total = PnwUtil.convertedTotal(resources);
             if (total <= 0) {
-                return "Total is negative";
+                return "Total is negative.";
             }
 
             double negativeTotal = 0;
@@ -210,7 +139,7 @@ public class TradeCommands {
             while (iter.hasNext()) {
                 Map.Entry<ResourceType, Double> entry = iter.next();
                 if (entry.getValue() < 0) {
-                    negativeTotal += Locutus.imp().getTradeManager().getHigh(entry.getKey()) * entry.getValue().doubleValue() * -1;
+                    negativeTotal += Locutus.imp().getTradeManager().getHigh(entry.getKey()) * entry.getValue() * -1;
                     iter.remove();
                 }
             }
@@ -233,17 +162,16 @@ public class TradeCommands {
         double value = PnwUtil.convertedTotal(resources);
         if (useBuyPrice || useSellPrice) {
             value = 0;
-            boolean buy = useBuyPrice;
             for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-                int price = Locutus.imp().getTradeManager().getPrice(entry.getKey(), buy);
+                int price = Locutus.imp().getTradeManager().getPrice(entry.getKey(), useBuyPrice);
                 value += price * entry.getValue();
             }
         }
-        result.append("\n" + "Worth: $" + MathMan.format(value));
+        result.append("\n" + "Worth: $").append(MathMan.format(value));
         if (convertType != null && convertType != ResourceType.MONEY) {
             double convertTypeValue = PnwUtil.convertedTotal(convertType, 1);
             double amtConvertType = value / convertTypeValue;
-            result.append(" OR " + MathMan.format(amtConvertType) + "x " + convertType);
+            result.append(" OR ").append(MathMan.format(amtConvertType)).append("x ").append(convertType);
         }
 
         return result.toString();
@@ -254,8 +182,8 @@ public class TradeCommands {
         TradeManager trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "Refresh";
 
-        Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
-        Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
+        Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
         resources.remove(ResourceType.MONEY);
 
@@ -279,7 +207,7 @@ public class TradeCommands {
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Trade Margin")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
-        .addField("margin", StringMan.join(diffList, "\n"), true)
+                .addField("margin", StringMan.join(diffList, "\n"), true)
                 .build()
         ).commandButton(command, "Refresh").send();
 
@@ -290,8 +218,8 @@ public class TradeCommands {
     public String tradePrice(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager) {
         String refreshEmoji = "Refresh";
 
-        Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
-        Map<ResourceType, Double> high = manager.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
+        Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<ResourceType, Double> high = manager.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         String lowKey = "Low";
         String highKey = "High";
@@ -314,9 +242,9 @@ public class TradeCommands {
 
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Trade Price")
-               .addField("Resource", StringMan.join(resourceNames, "\n"), true)
-        .addField(lowKey, StringMan.join(lowList, "\n"), true)
-        .addField(highKey, StringMan.join(highList, "\n"), true)
+                .addField("Resource", StringMan.join(resourceNames, "\n"), true)
+                .addField(lowKey, StringMan.join(lowList, "\n"), true)
+                .addField(highKey, StringMan.join(highList, "\n"), true)
                 .build()
         ).commandButton(command, "Refresh").send();
         return null;
@@ -324,15 +252,15 @@ public class TradeCommands {
 
     @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.", aliases = {"TradeRanking", "TradeProfitRanking"})
     public String tradeRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Timestamp long time, @Switch("a") boolean groupByAlliance, @Switch("u") boolean uploadFile) {
-        Function<DBNation, Integer> groupBy = groupByAlliance ? groupBy = f -> f.getAlliance_id() : f -> f.getNation_id();
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        Function<DBNation, Integer> groupBy = groupByAlliance ? groupBy = DBNation::getAlliance_id : DBNation::getNation_id;
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         Map<Integer, TradeRanking.TradeProfitContainer> tradeContainers = new HashMap<>();
 
         List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(time);
 
         for (DBTrade trade : trades) {
             Integer buyer = trade.getBuyer();
-            Integer seller = trade.getSeller();
+            int seller = trade.getSeller();
 
             if (!nationIds.contains(buyer) && !nationIds.contains(seller)) {
                 continue;
@@ -391,7 +319,7 @@ public class TradeCommands {
             double profitTotal = PnwUtil.convertedTotal(container.netOutflows);
             double profitMin = 0;
             for (Map.Entry<ResourceType, Long> entry : container.netOutflows.entrySet()) {
-                profitMin += -PnwUtil.convertedTotal(entry.getKey(), -entry.getValue());
+                profitMin -= PnwUtil.convertedTotal(entry.getKey(), -entry.getValue());
             }
             profitTotal = Math.min(profitTotal, profitMin);
             profitByGroup.put(containerEntry.getKey(), profitTotal);
@@ -401,16 +329,6 @@ public class TradeCommands {
         String title = (groupByAlliance ? "Alliance" : "") + "trade profit (" + profitByGroup.size() + ")";
         new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PnwUtil.getName(id, groupByAlliance)).build(channel, command, title, uploadFile);
         return null;
-    }
-
-    public static class TradeProfitContainer {
-        public Map<ResourceType, Long> netOutflows = new HashMap<>();
-        public Map<ResourceType, Long> inflows = new HashMap<>();
-        public Map<ResourceType, Long> outflow = new HashMap<>();
-        public Map<ResourceType, Long> purchases = new HashMap<>();
-        public Map<ResourceType, Long> purchasesPrice = new HashMap<>();
-        public Map<ResourceType, Long> sales = new HashMap<>();
-        public Map<ResourceType, Long> salesPrice = new HashMap<>();
     }
 
     @Command
@@ -442,11 +360,7 @@ public class TradeCommands {
             }
 
             Map<ResourceType, Map<Integer, LongAdder>> map = offer.isBuy() ? sold : bought;
-            Map<Integer, LongAdder> rssMap = map.get(offer.getResource());
-            if (rssMap == null) {
-                rssMap = new HashMap<>();
-                map.put(offer.getResource(), rssMap);
-            }
+            Map<Integer, LongAdder> rssMap = map.computeIfAbsent(offer.getResource(), k -> new HashMap<>());
             LongAdder cumulative = rssMap.get(ppu);
             if (cumulative == null) {
                 cumulative = new LongAdder();
@@ -510,8 +424,8 @@ public class TradeCommands {
     }
 
     @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.")
-    public String tradeProfit(@Me GuildDB db, Set<DBNation> nations, @Timestamp long time) throws GeneralSecurityException, IOException {
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+    public String tradeProfit(@Me GuildDB db, Set<DBNation> nations, @Timestamp long time) {
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
         List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(time);
 
@@ -575,40 +489,32 @@ public class TradeCommands {
         double profitTotal = PnwUtil.convertedTotal(netOutflows);
         double profitMin = 0;
         for (Map.Entry<ResourceType, Long> entry : netOutflows.entrySet()) {
-            profitMin += -PnwUtil.convertedTotal(entry.getKey(), -entry.getValue());
+            profitMin -= PnwUtil.convertedTotal(entry.getKey(), -entry.getValue());
         }
         profitTotal = Math.min(profitTotal, profitMin);
 
         HashMap<ResourceType, Long> totalVolume = new LinkedHashMap<>();
         for (ResourceType type : ResourceType.values()) {
-            long in  = inflows.getOrDefault(type, 0L);
-            long out  = outflow.getOrDefault(type, 0L);
+            long in = inflows.getOrDefault(type, 0L);
+            long out = outflow.getOrDefault(type, 0L);
             long total = Math.abs(in) + Math.abs(out);
             if (total != 0) totalVolume.put(type, total);
         }
-//
-//        if (createSpreadsheet) {
-//            SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
-//        }
-
-        StringBuilder response = new StringBuilder();
-        response
-                .append('\n').append("Buy (PPU):```")
-                .append(String.format("%16s", PnwUtil.resourcesToString(ppuBuy)))
-                .append("```")
-                .append(' ').append("Sell (PPU):```")
-                .append(String.format("%16s", PnwUtil.resourcesToString(ppuSell)))
-                .append("```")
-                .append(' ').append("Net inflows:```")
-                .append(String.format("%16s", PnwUtil.resourcesToString(netOutflows)))
-                .append("```")
-                .append(' ').append("Total Volume:```")
-                .append(String.format("%16s", PnwUtil.resourcesToString(totalVolume)))
-                .append("```");
-        response.append("Profit total: $").append(MathMan.format(profitTotal));
-        return response.toString().trim();
+        String response = '\n' + "Buy (PPU):```" +
+                String.format("%16s", PnwUtil.resourcesToString(ppuBuy)) +
+                "```" +
+                ' ' + "Sell (PPU):```" +
+                String.format("%16s", PnwUtil.resourcesToString(ppuSell)) +
+                "```" +
+                ' ' + "Net inflows:```" +
+                String.format("%16s", PnwUtil.resourcesToString(netOutflows)) +
+                "```" +
+                ' ' + "Total Volume:```" +
+                String.format("%16s", PnwUtil.resourcesToString(totalVolume)) +
+                "```" +
+                "Profit total: $" + MathMan.format(profitTotal);
+        return response.trim();
     }
-
 
     @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation.")
     public String moneyTrades(TradeManager manager, DBNation nation, @Timestamp long time, @Switch("f") boolean forceUpdate, @Switch("a") boolean addBalance) throws IOException {
@@ -629,16 +535,17 @@ public class TradeCommands {
 
             Integer client = (offer.getSeller() == (nation.getNation_id())) ? offer.getBuyer() : offer.getSeller();
 
-            Map<ResourceType, Long> existing = netInflows.computeIfAbsent(client,  integer -> Maps.newLinkedHashMap());
+            Map<ResourceType, Long> existing = netInflows.computeIfAbsent(client, integer -> Maps.newLinkedHashMap());
 
             if (per <= 1) {
-                existing.put(offer.getResource(), (long) (offer.getQuantity() * sign + existing.getOrDefault(offer.getResource(), 0L)));
+                existing.put(offer.getResource(), offer.getQuantity() * sign + existing.getOrDefault(offer.getResource(), 0L));
             } else {
-                existing.put(ResourceType.MONEY, (long) (sign * offer.getTotal()) + existing.getOrDefault(ResourceType.MONEY, 0L));
+                existing.put(ResourceType.MONEY, (sign * offer.getTotal()) + existing.getOrDefault(ResourceType.MONEY, 0L));
             }
         }
 
-        if (netInflows.isEmpty()) return "No trades found for " + nation.getNation() + " in the past " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
+        if (netInflows.isEmpty())
+            return "No trades found for " + nation.getNation() + " in the past " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
 
         StringBuilder response = new StringBuilder("Your net inflows from:");
         for (Map.Entry<Integer, Map<ResourceType, Long>> entry : netInflows.entrySet()) {
@@ -646,8 +553,8 @@ public class TradeCommands {
             DBNation client = Locutus.imp().getNationDB().getNation(clientId);
             String name = PnwUtil.getName(clientId, false);
             if (addBalance) {
-                response.append("\n**" + name);
-                if (client != null) response.append(" | " + client.getAllianceName());
+                response.append("\n**").append(name);
+                if (client != null) response.append(" | ").append(client.getAllianceName());
                 response.append(":**\n");
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + clientId;
                 response.append(CM.deposits.add.cmd.create(url, PnwUtil.resourcesToString(entry.getValue()), "#deposit", null).toSlashCommand());
@@ -668,7 +575,7 @@ public class TradeCommands {
     @RolePermission(Roles.ECON)
     public String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db) throws IOException {
         GuildDB offshoreDb = db.getOffshoreDB();
-        if (offshoreDb != db) throw new IllegalArgumentException("This command must be run in the offshore server");
+        if (offshoreDb != db) throw new IllegalArgumentException("This command must be run in the offshore server.");
 
         channel.send("Please wait...");
 
@@ -684,10 +591,10 @@ public class TradeCommands {
         StringBuilder body = new StringBuilder();
         Set<Long> aaIds = coalitions.stream().filter(f -> f.intValue() == f).collect(Collectors.toSet());
         Set<Long> corpIds = coalitions.stream().filter(f -> f.intValue() != f).collect(Collectors.toSet());
-        body.append("Alliances: " + StringMan.join(aaIds, ",")).append("\n");
-        body.append("Corporations: " + StringMan.join(corpIds, ",")).append("\n");
-        body.append("Stockpile: `" + PnwUtil.resourcesToString(stockpile) + "`\n");
-        body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(stockpile))).append("\n");
+        body.append("Alliances: ").append(StringMan.join(aaIds, ",")).append("\n");
+        body.append("Corporations: ").append(StringMan.join(corpIds, ",")).append("\n");
+        body.append("Stockpile: `").append(PnwUtil.resourcesToString(stockpile)).append("`\n");
+        body.append(" - worth: ~$").append(MathMan.format(PnwUtil.convertedTotal(stockpile))).append("\n");
 
         List<String> errors = new ArrayList<>();
         Set<Long> testedIds = new HashSet<>();
@@ -726,15 +633,15 @@ public class TradeCommands {
         }
         Map<ResourceType, Double> diff = PnwUtil.subResourcesToA(new HashMap<>(allDeposits), stockpile);
 
-        body.append("Offshored Deposits: `" + PnwUtil.resourcesToString(allDeposits) + "`\n");
-        body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(allDeposits))).append("\n");
+        body.append("Offshored Deposits: `").append(PnwUtil.resourcesToString(allDeposits)).append("`\n");
+        body.append(" - worth: ~$").append(MathMan.format(PnwUtil.convertedTotal(allDeposits))).append("\n");
 
-        body.append("Diff: `" + PnwUtil.resourcesToString(diff) + "`\n");
-        body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(diff))).append("\n");
+        body.append("Diff: `").append(PnwUtil.resourcesToString(diff)).append("`\n");
+        body.append(" - worth: ~$").append(MathMan.format(PnwUtil.convertedTotal(diff))).append("\n");
 
         String emoji = "Show Day Graph";
 
-        body.append("\nPress `" + emoji + "` to compare by day (200 days)");
+        body.append("\nPress `").append(emoji).append("` to compare by day (200 days)");
 
 
 //        String cmd = "_" + Settings.commandPrefix(false) + "compareStockpileValueByDay " + PnwUtil.resourcesToString(stockpile) + " " + PnwUtil.resourcesToString(allDeposits) + " 200";
@@ -754,7 +661,7 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph comparing two resource stockpiles by day")
     @RolePermission(value = Roles.MEMBER)
-    public String compareStockpileValueByDay(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int days) throws IOException, GeneralSecurityException {
+    public String compareStockpileValueByDay(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min = 1, max = 3000) int days) throws IOException {
         Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
@@ -829,11 +736,11 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade price (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int days) throws IOException, GeneralSecurityException {
-        if (days <= 1) return "Invalid number of days";
+    public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int days) throws IOException {
+        if (days <= 1) return "Invalid number of days.";
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
-        if (resources.isEmpty()) return "Invalid resources";
+        if (resources.isEmpty()) return "Invalid resources.";
 
         long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
 
@@ -859,8 +766,8 @@ public class TradeCommands {
 
         double[] buffer = new double[resources.size()];
         long finalMinDay = minDay;
-        String[] labels = resources.stream().map(f -> f.getName()).toArray(String[]::new);
-        TimeNumericTable<Map<ResourceType, Map<Long, Double>>> table = new TimeNumericTable<>(title,"day", "ppu", labels) {
+        String[] labels = resources.stream().map(ResourceType::getName).toArray(String[]::new);
+        TimeNumericTable<Map<ResourceType, Map<Long, Double>>> table = new TimeNumericTable<>(title, "day", "ppu", labels) {
             @Override
             public void add(long day, Map<ResourceType, Map<Long, Double>> cost) {
                 for (int i = 0; i < resources.size(); i++) {
@@ -884,7 +791,7 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade margin (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min=1, max=300) int days, @Default("true") boolean percent) throws IOException, GeneralSecurityException {
+    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min = 1, max = 300) int days, @Default("true") boolean percent) throws IOException {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(days + 1);
 
@@ -948,8 +855,8 @@ public class TradeCommands {
 
         for (ResourceType[] types : tableTypes) {
             double[] buffer = new double[types.length];
-            String[] labels = Arrays.asList(types).stream().map(f -> f.getName()).toArray(String[]::new);
-            TimeNumericTable<Map<ResourceType, Double>> table = new TimeNumericTable<>(title,"day", "ppu", labels) {
+            String[] labels = Arrays.stream(types).map(ResourceType::getName).toArray(String[]::new);
+            TimeNumericTable<Map<ResourceType, Double>> table = new TimeNumericTable<>(title, "day", "ppu", labels) {
                 @Override
                 public void add(long day, Map<ResourceType, Double> cost) {
                     for (int i = 0; i < types.length; i++) {
@@ -975,17 +882,17 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade volume (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
+    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min = 1, max = 300) int days) throws IOException {
         String title = "volume by day";
-        rssTradeByDay(title, channel, days, offers -> manager.volumeByResource(offers));
+        rssTradeByDay(title, channel, days, manager::volumeByResource);
         return null;
     }
 
     @Command(desc = "Generate a graph of average trade total (buy/sell) by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
+    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min = 1, max = 300) int days) throws IOException {
         String title = "total by day";
-        rssTradeByDay(title, channel, days, offers -> manager.totalByResource(offers));
+        rssTradeByDay(title, channel, days, manager::totalByResource);
         return null;
     }
 
@@ -1108,8 +1015,8 @@ public class TradeCommands {
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Trade Price")
                 .addField("Nation", StringMan.join(nationName, "\n"), true)
-        .addField("Amt", StringMan.join(amtList, "\n"), true)
-        .addField("Ppu", StringMan.join(ppuList, "\n"), true)
+                .addField("Amt", StringMan.join(amtList, "\n"), true)
+                .addField("Ppu", StringMan.join(ppuList, "\n"), true)
                 .build()
         ).commandButton(command, "Refresh").send();
         return null;
@@ -1118,7 +1025,7 @@ public class TradeCommands {
     @Command
     @RolePermission(Roles.TRADE_ALERT)
     @WhitelistPermission
-    public String tradeAlertAbsolute(TradeDB db, @Me User  author, ResourceType resource, @ArgChoice(value={"BUY", "SELL"}) String buyOrSell, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+    public String tradeAlertAbsolute(TradeDB db, @Me User author, ResourceType resource, @ArgChoice(value = {"BUY", "SELL"}) String buyOrSell, @ArgChoice(value = {">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
         boolean isBuy = buyOrSell.equalsIgnoreCase("buy");
         if (!isBuy && !buyOrSell.equalsIgnoreCase("sell")) {
             return "Invalid category `" + buyOrSell + "`" + ". Must be either `buy` or `sell`";
@@ -1130,7 +1037,7 @@ public class TradeCommands {
 
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
-            return "You can only subscribe for a maximum of 30 days";
+            return "You can only subscribe for a maximum of 30 days.";
         }
 
         db.subscribe(author, resource, date, isBuy, above, ppu, TradeDB.TradeAlertType.ABSOLUTE);
@@ -1142,7 +1049,7 @@ public class TradeCommands {
     @Command
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertMistrade(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+    public String tradeAlertMistrade(TradeDB db, @Me User author, List<ResourceType> resources, @ArgChoice(value = {">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
             return "You can only subscribe for a maximum of 30 days";
@@ -1153,19 +1060,19 @@ public class TradeCommands {
         StringBuilder response = new StringBuilder();
         for (ResourceType resource : resources) {
             db.subscribe(author, resource, date, true, above, ppu, TradeDB.TradeAlertType.MISTRADE);
-            response.append("Subscribed to `MISTRADE: " + resource + " disparity " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
+            response.append("Subscribed to `MISTRADE: ").append(resource).append(" disparity ").append(aboveOrBelow).append(" $").append(ppu).append(" for ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration)).append("`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: `").append(Settings.commandPrefix(true)).append("trade-subs`");
         return response.toString();
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertDisparity(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+    public String tradeAlertDisparity(TradeDB db, @Me User author, List<ResourceType> resources, @ArgChoice(value = {">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
-            return "You can only subscribe for a maximum of 30 days";
+            return "You can only subscribe for a maximum of 30 days.";
         }
         boolean above = aboveOrBelow.contains(">");
         int offset = aboveOrBelow.contains("=") ? (above ? -1 : 1) : 0;
@@ -1173,16 +1080,16 @@ public class TradeCommands {
         StringBuilder response = new StringBuilder();
         for (ResourceType resource : resources) {
             db.subscribe(author, resource, date, true, above, ppu, TradeDB.TradeAlertType.DISPARITY);
-            response.append("Subscribed to `DISPARITY: " + resource + " ppu " + aboveOrBelow + " $" + ppu + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
+            response.append("Subscribed to `DISPARITY: ").append(resource).append(" ppu ").append(aboveOrBelow).append(" $").append(ppu).append(" for ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration)).append("`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: `").append(Settings.commandPrefix(true)).append("trade-subs`");
         return response.toString();
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertNoOffer(TradeDB db, @Me User  author, List<ResourceType> resources, @Timediff long duration) {
+    public String tradeAlertNoOffer(TradeDB db, @Me User author, List<ResourceType> resources, @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
             return "You can only subscribe for a maximum of 30 days";
@@ -1190,28 +1097,38 @@ public class TradeCommands {
         StringBuilder response = new StringBuilder();
         for (ResourceType resource : resources) {
             db.subscribe(author, resource, date, true, true, 0, TradeDB.TradeAlertType.NO_OFFER);
-            response.append("Subscribed to `NO_OFFER: " + resource + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
+            response.append("Subscribed to `NO_OFFER: ").append(resource).append(" for ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration)).append("`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: `").append(Settings.commandPrefix(true)).append("trade-subs`");
         return response.toString();
     }
 
     @Command
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertUndercut(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={"BUY", "SELL", "*"}) String buyOrSell, @Timediff long duration) {
+    public String tradeAlertUndercut(TradeDB db, @Me User author, List<ResourceType> resources, @ArgChoice(value = {"BUY", "SELL", "*"}) String buyOrSell, @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
-            return "You can only subscribe for a maximum of 30 days";
+            return "You can only subscribe for a maximum of 30 days.";
         }
         boolean isBuy = buyOrSell.equalsIgnoreCase("buy");
         StringBuilder response = new StringBuilder();
         for (ResourceType resource : resources) {
             db.subscribe(author, resource, date, isBuy, true, 0, TradeDB.TradeAlertType.UNDERCUT);
-            response.append("Subscribed to `UNDERCUT: " + resource + " " + buyOrSell + " for " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "`\n");
+            response.append("Subscribed to `UNDERCUT: ").append(resource).append(" ").append(buyOrSell).append(" for ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration)).append("`\n");
         }
-        response.append("Check your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`");
+        response.append("Check your subscriptions with: `").append(Settings.commandPrefix(true)).append("trade-subs`");
         return response.toString();
 
+    }
+
+    public static class TradeProfitContainer {
+        public Map<ResourceType, Long> netOutflows = new HashMap<>();
+        public Map<ResourceType, Long> inflows = new HashMap<>();
+        public Map<ResourceType, Long> outflow = new HashMap<>();
+        public Map<ResourceType, Long> purchases = new HashMap<>();
+        public Map<ResourceType, Long> purchasesPrice = new HashMap<>();
+        public Map<ResourceType, Long> sales = new HashMap<>();
+        public Map<ResourceType, Long> salesPrice = new HashMap<>();
     }
 }

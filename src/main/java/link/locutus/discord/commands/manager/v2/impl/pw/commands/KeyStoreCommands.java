@@ -10,12 +10,6 @@ import net.dv8tion.jda.api.entities.User;
 
 public class KeyStoreCommands {
 
-//    @Command
-//    @RolePermission(Roles.ADMIN)
-//    public String auto() {
-//
-//    }
-
     @Command
     @RolePermission(Roles.ADMIN)
     public String register(@Me GuildDB db, @Me User author, DBAlliance alliance) {

@@ -1,0 +1,24 @@
+@import link.locutus.discord.commands.manager.v2.binding.ValueStore
+@import link.locutus.discord.commands.manager.v2.command.CommandGroup
+@import link.locutus.discord.commands.manager.v2.perm.PermissionHandler
+
+@args(ValueStore store, PermissionHandler permHandler, String commandEndpoint, CommandGroup commands, String pageEndpoint, CommandGroup pages)
+@rocker.main.template("Commands/Pages") -> {
+<script>
+$(document).ready(function(){
+  $("#myInput").on("keyup", function() {
+    var value = $(this).val().toLowerCase();
+    $(".command").filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+    });
+  });
+});
+</script>
+<div class="container input-group input-group-lg">
+    <input class="form-control form-control-lg" id="myInput" type="text" placeholder="Filter..">
+</div>
+@rocker.command.commandgroup.template(store, pages, pages.getAllowedCommands(store, permHandler), pageEndpoint)
+
+@rocker.command.commandgroup.template(store, commands, commands.getAllowedCommands(store, permHandler), commandEndpoint)
+}
+
