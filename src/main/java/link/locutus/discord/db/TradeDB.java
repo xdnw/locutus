@@ -336,6 +336,7 @@ public class TradeDB extends DBMainV2 {
 
 
             if (isExpired) response.append("~~");
+            return minStr;
         }
 
         public String toPrettyString() {
