@@ -81,6 +81,7 @@ public class HelpCommand extends Command {
                         if (!command.checkPermission(event.isFromGuild() ? event.getGuild() : null, event.getAuthor()))
                             continue;
                         if (command.getCategories().containsAll(requiredCategories)) {
+                            if (command.desc() == null) throw new IllegalArgumentException("Command: " + command.getAliases().get(0) + " returns null for description");
                             String descShort = command.desc().split("\n")[0];
                             String helpDesc = "`" + Settings.commandPrefix(true) + "? " + command.getAliases().get(0) + "` - " + descShort;
                             commandsDescShort.add(helpDesc);

@@ -1,8 +1,12 @@
 package link.locutus.discord.apiv1.enums;
 
 import com.politicsandwar.graphql.model.Color;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
 
+import java.util.Collection;
 import java.util.Locale;
+import java.util.Set;
 
 public enum  NationColor {
     AQUA,
@@ -29,7 +33,23 @@ public enum  NationColor {
     private String votedName;
 
     public int getTurnBonus() {
+        if (this == GRAY) return 0;
+        if (this == BEIGE) return 50_000;
         return turnBonus;
+    }
+
+    public int getTurnBonus(Collection<DBNation> nationsOnColor, boolean cap) {
+        if (this == GRAY) return 0;
+        if (this == BEIGE) return 50_000;
+        double totalRev = 0;
+        for (DBNation nation : nationsOnColor) {
+            totalRev += PnwUtil.convertedTotal(nation.getRevenue()) / 12d;
+        }
+        double colorRev = Math.round((totalRev / Math.pow(nationsOnColor.size(), 2)));
+        if (cap) {
+            colorRev = Math.max(0, Math.min(75_000, colorRev));
+        }
+        return (int) Math.round(colorRev);
     }
 
     public void setTurnBonus(int amt) {

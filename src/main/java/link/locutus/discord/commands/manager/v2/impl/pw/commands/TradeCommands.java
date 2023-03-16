@@ -41,8 +41,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TradeCommands {
-
-
     @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"})
     public String GlobalTradeAverage(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager, @Timestamp long time) {
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = Locutus.imp().getTradeManager().getAverage(time);

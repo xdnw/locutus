@@ -287,6 +287,7 @@ public final class Locutus extends ListenerAdapter {
             manager.put(jda);
             manager.awaitReady();
 
+
             long appId = jda.getSelfUser().getApplicationIdLong();
             if (appId > 0) {
                 Settings.INSTANCE.APPLICATION_ID = appId;
@@ -334,6 +335,30 @@ public final class Locutus extends ListenerAdapter {
                         }
                     }
                 }
+            }
+
+            // load members
+            {
+                Deque<Guild> queue = new ArrayDeque<>(jda.getGuilds());
+                Runnable[] queueFunc = new Runnable[1];
+                queueFunc[0] = new Runnable() {
+                    @Override
+                    public void run() {
+                        Guild guild = queue.poll();
+                        if (guild == null) {
+                            System.out.println("Done loading guild members");
+                            return;
+                        }
+                        guild.loadMembers().onSuccess(f -> {
+                            System.out.println("Loaded " + f.size() + " members for " + guild);
+                            queueFunc[0].run();
+                        }).onError(f -> {
+                            System.out.println("Failed to load members for " + guild);
+                            queueFunc[0].run();
+                        });
+                    }
+                };
+                queueFunc[0].run();
             }
         }
 

@@ -96,6 +96,7 @@ public class TradeManager {
         }
         synchronized (existingQueue) {
             existingQueue.add(offer);
+            tradeDb.addMarketOffers(offer);
         }
         for (ResourceType type : offer.getExchangeFor()) {
             offersByResource.computeIfAbsent(type, f -> new ConcurrentLinkedQueue<>()).add(offer);

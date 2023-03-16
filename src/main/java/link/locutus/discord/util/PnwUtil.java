@@ -627,8 +627,15 @@ public class PnwUtil {
     public static String resourcesToFancyString(double[] resources) {
         return resourcesToFancyString(resourcesToMap(resources));
     }
+    public static String resourcesToFancyString(double[] resources, String totalName) {
+        return resourcesToFancyString(resourcesToMap(resources), totalName);
+    }
 
     public static String resourcesToFancyString(Map<ResourceType, Double> resources) {
+        return resourcesToFancyString(resources, null);
+    }
+
+    public static String resourcesToFancyString(Map<ResourceType, Double> resources, String totalName) {
         StringBuilder out = new StringBuilder();
         String leftAlignFormat = "%-10s | %-17s\n";
         out.append("```");
@@ -639,7 +646,7 @@ public class PnwUtil {
             if (amt != null) out.append(String.format(leftAlignFormat, type.name(), MathMan.format(amt)));
         }
         out.append("```\n");
-        out.append("**Total**: worth ~$" + MathMan.format(PnwUtil.convertedTotal(resources)) + "\n`" + PnwUtil.resourcesToString(resources) + "`");
+        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(PnwUtil.convertedTotal(resources)) + "\n`" + PnwUtil.resourcesToString(resources) + "`");
         return out.toString();
     }
 

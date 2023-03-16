@@ -24,7 +24,7 @@ public class InfraCost extends Command {
 
     @Override
     public String help() {
-        return super.help() + " <current-infra> <max-infra> [urbanization=false] [CCE=false] [AEC=false]";
+        return super.help() + " <current-infra> <max-infra> [urbanization=false] [CCE=false] [AEC=false] [GSA=false]";
     }
 
     @Override
@@ -60,17 +60,24 @@ public class InfraCost extends Command {
         boolean urban = false;
         boolean cce = false;
         boolean aec = false;
+        boolean gsa = false;
 
         if (args.size() >= 3) urban = Boolean.parseBoolean(args.get(2));
         if (args.size() >= 4) cce = Boolean.parseBoolean(args.get(3));
         if (args.size() >= 5) aec = Boolean.parseBoolean(args.get(4));
+        if (args.size() >= 6) gsa = Boolean.parseBoolean(args.get(5));
 
         double total = 0;
 
         total = PnwUtil.calculateInfra(current, max);
 
         double discountFactor = 1;
-        if (urban) discountFactor -= 0.05;
+        if (urban) {
+            discountFactor -= 0.05;
+            if (gsa) {
+                discountFactor -= 0.025;
+            }
+        }
         if (cce) discountFactor -= 0.05;
         if (aec) discountFactor -= 0.05;
 

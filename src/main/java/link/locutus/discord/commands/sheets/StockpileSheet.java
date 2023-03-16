@@ -96,7 +96,7 @@ public class StockpileSheet extends Command {
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        DiscordUtil.createEmbedCommand(event.getChannel(), "AA Total", totalStr);
+        DiscordUtil.createEmbedCommand(event.getChannel(), "Nation Stockpiles", totalStr);
 
         sheet.attach(new DiscordChannelIO(event).create()).send();
         return null;

@@ -27,6 +27,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.sim.AttackTypeNode;
@@ -49,9 +50,157 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.util.math.ArrayUtil.memorize;
+
 public class UtilityCommands {
+    @Command(desc = "List the color blocs")
+    public String calculateColorRevenue(@Default Set<DBNation> forceAqua,
+                                        @Default Set<DBNation> forceBlack,
+                                        @Default Set<DBNation> forceBlue,
+                                        @Default Set<DBNation> forceBrown,
+                                        @Default Set<DBNation> forceGreen,
+                                        @Default Set<DBNation> forceLime,
+                                        @Default Set<DBNation> forceMaroon,
+                                        @Default Set<DBNation> forceOlive,
+                                        @Default Set<DBNation> forceOrange,
+                                        @Default Set<DBNation> forcePink,
+                                        @Default Set<DBNation> forcePurple,
+                                        @Default Set<DBNation> forceRed,
+                                        @Default Set<DBNation> forceWhite,
+                                        @Default Set<DBNation> forceYellow,
+                                        @Default Set<DBNation> forceGrayOrBeige
+    ) {
+        Map<NationColor, Set<DBNation>> changeColors = new HashMap<>();
+        changeColors.put(NationColor.AQUA, forceAqua);
+        changeColors.put(NationColor.BLACK, forceBlack);
+        changeColors.put(NationColor.BLUE, forceBlue);
+        changeColors.put(NationColor.BROWN, forceBrown);
+        changeColors.put(NationColor.GREEN, forceGreen);
+        changeColors.put(NationColor.LIME, forceLime);
+        changeColors.put(NationColor.MAROON, forceMaroon);
+        changeColors.put(NationColor.OLIVE, forceOlive);
+        changeColors.put(NationColor.ORANGE, forceOrange);
+        changeColors.put(NationColor.PINK, forcePink);
+        changeColors.put(NationColor.PURPLE, forcePurple);
+        changeColors.put(NationColor.RED, forceRed);
+        changeColors.put(NationColor.WHITE, forceWhite);
+        changeColors.put(NationColor.YELLOW, forceYellow);
+        changeColors.put(NationColor.GRAY, forceGrayOrBeige);
+
+        Map<DBNation, NationColor> newColors = new HashMap<>();
+
+        for (Map.Entry<NationColor, Set<DBNation>> entry : changeColors.entrySet()) {
+            if (entry.getValue() == null) continue;
+            for (DBNation nation : entry.getValue()) {
+                if (nation.getColor() == entry.getKey() || ((nation.isGray() || nation.isBeige()) && entry.getKey() == NationColor.GRAY))
+                    continue;
+
+                newColors.put(nation, entry.getKey());
+            }
+        }
+
+        Map<NationColor, Integer> oldRevenueMap = new LinkedHashMap<>();
+        Map<NationColor, Double> revenueTotalMap = new LinkedHashMap<>();
+        Map<NationColor, Integer> numNationsMap = new LinkedHashMap<>();
+        Map<NationColor, Integer> oldNumNationsMap = new LinkedHashMap<>();
+
+        Set<NationColor> requiresScaling = new HashSet<>();
+        List<Map.Entry<Double, Integer>> scalingCounts = new ArrayList<>();
+
+        for (NationColor color : NationColor.values()) {
+            Set<DBNation> oldNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.getColor() == color);
+            boolean isChanged = false;
+            for (Map.Entry<DBNation, NationColor> entry : newColors.entrySet()) {
+                if (entry.getKey().getColor() == color || entry.getValue() == color) {
+                    isChanged = true;
+                    break;
+                }
+            }
+
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && newColors.getOrDefault(f, f.getColor()) == color);
+
+            oldNumNationsMap.put(color, oldNations.size());
+            if (isChanged) numNationsMap.put(color, nations.size());
+            else numNationsMap.put(color, oldNations.size());
+
+            int oldColorRev = color.getTurnBonus();
+
+            oldRevenueMap.put(color, oldColorRev);
+
+            if (color == NationColor.BEIGE || color == NationColor.GRAY) {
+                continue;
+            }
+            if (!newColors.isEmpty()) {
+                Supplier<Double> oldRevenueTotal = memorize(() -> PnwUtil.convertedTotal(new SimpleNationList(oldNations).getRevenue()));
+                Supplier<Double> newRevenueTotal = memorize(() -> PnwUtil.convertedTotal(new SimpleNationList(nations).getRevenue()));
+
+                double scalingFactor = -1;
+                if (oldColorRev > 0 && oldColorRev < 75_000) {
+                    double oldRevTotalEstimate = oldRevenueTotal.get();
+                    double oldRevTotalExact = ((double) oldColorRev) * oldNations.size() * oldNations.size();
+
+                    scalingFactor = (1d / oldRevTotalEstimate) * oldRevTotalExact;
+                    scalingCounts.add(new AbstractMap.SimpleEntry<>(scalingFactor, nations.size()));
+                }
+                if (isChanged) {
+                    double newColorRev = newRevenueTotal.get();
+                    if (scalingFactor != -1) {
+                        newColorRev = newColorRev * scalingFactor;
+                    } else {
+                        requiresScaling.add(color);
+                    }
+                    revenueTotalMap.put(color, newColorRev);
+                }
+            }
+        }
+
+        // calculate scaling factor
+        double scalingFactor = 1;
+        if (!scalingCounts.isEmpty() && !requiresScaling.isEmpty()) {
+            double totalValue = 0;
+            long num = 0L;
+            for (Map.Entry<Double, Integer> entry : scalingCounts) {
+                totalValue += entry.getKey() * entry.getValue();
+                num += entry.getValue();
+            }
+            scalingFactor = totalValue / num;
+        }
+
+        StringBuilder lines = new StringBuilder();
+        for (NationColor color : NationColor.values) {
+            lines.append(color).append(" | ");
+
+            int numNations = numNationsMap.get(color);
+            int oldNumNations = oldNumNationsMap.get(color);
+            lines.append("nations: ").append(MathMan.format(numNations));
+            if (oldNumNations != numNations) {
+                String signSym = (numNations > oldNumNations) ? "+" : "-";
+                lines.append(" (").append(signSym).append(MathMan.format(Math.abs(numNations - oldNumNations))).append(")");
+            }
+
+            int oldTurnIncome = oldRevenueMap.get(color);
+            int newTurnIncome = oldTurnIncome;
+
+            Double revenueTotal = revenueTotalMap.get(color);
+            if (revenueTotal != null) {
+                if (requiresScaling.contains(color)) {
+                    revenueTotal *= scalingFactor;
+                }
+                newTurnIncome = (int) Math.round(revenueTotal / (numNations * numNations));
+            }
+            newTurnIncome = Math.max(0, Math.min(75_000, newTurnIncome));
+            lines.append(" | bonus: ").append(newTurnIncome);
+            if (oldTurnIncome != newTurnIncome) {
+                String signSym = (newTurnIncome > oldTurnIncome) ? "+" : "-";
+                lines.append(" (").append(signSym).append(MathMan.format(Math.abs(newTurnIncome - oldTurnIncome))).append(")");
+            }
+            lines.append("\n");
+        }
+        return lines.toString();
+    }
 
     @Command(desc = "list channels")
     @RolePermission(Roles.ADMIN)
@@ -608,7 +757,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing infra (from current to max)", aliases = {"InfraCost", "infrastructurecost", "infra", "infrastructure", "infracosts"})
-    public String InfraCost(@Range(min = 0, max = 40000) int currentInfra, @Range(min = 0, max = 40000) int maxInfra, @Default("false") boolean urbanization, @Default("false") boolean cce, @Default("false") boolean aec, @Switch("c") @Default("1") int cities) {
+    public String InfraCost(@Range(min = 0, max = 40000) int currentInfra, @Range(min = 0, max = 40000) int maxInfra, @Default("false") boolean urbanization, @Default("false") boolean cce, @Default("false") boolean aec, @Default("false") boolean gsa, @Switch("c") @Default("1") int cities) {
         if (maxInfra > 40000) throw new IllegalArgumentException("Max infra 40000");
 
         double total;
@@ -616,7 +765,12 @@ public class UtilityCommands {
         total = PnwUtil.calculateInfra(currentInfra, maxInfra);
 
         double discountFactor = 1;
-        if (urbanization) discountFactor -= 0.05;
+        if (urbanization) {
+            discountFactor -= 0.05;
+            if (gsa) {
+                discountFactor -= 0.025;
+            }
+        }
         if (cce) discountFactor -= 0.05;
         if (aec) discountFactor -= 0.05;
 
