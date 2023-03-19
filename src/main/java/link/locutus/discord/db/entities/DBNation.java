@@ -3936,6 +3936,16 @@ public class DBNation implements NationOrAlliance {
         return netUnits;
     }
 
+    public long getRerollDate() {
+        long minDate = Long.MAX_VALUE;
+        for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
+            if (nation.getNation_id() <= nation_id) continue;
+            if (nation.date <= 0) continue;
+            minDate = Math.min(nation.date, minDate);
+        }
+        return minDate;
+    }
+
     public Map<Integer, Long> findDayChange() {
         MilitaryUnit[] units = new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.MISSILE, MilitaryUnit.NUKE};
         int[] caps = new int[units.length];
