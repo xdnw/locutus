@@ -1197,7 +1197,7 @@ public class BankCommands {
         if (offshore != null && offshore.getGuildDB() != db) {
             type = "offshored";
             aaDeposits = offshore.getDeposits(db);
-        } else if (db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null){
+        } else if (db.isValidAlliance()){
             type = "bank stockpile";
             aaDeposits = PnwUtil.resourcesToArray(db.getAllianceList().getStockpile());
         } else aaDeposits = null;
