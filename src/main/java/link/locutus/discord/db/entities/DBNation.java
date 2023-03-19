@@ -334,6 +334,7 @@ public class DBNation implements NationOrAlliance {
                             output.append("\n").append(s);
                         });
                     } else {
+                        member = db.getGuild().retrieveMember(user).complete();
                         output.append("Member " + user.getName() + "#" + user.getDiscriminator() + " not found in guild: " + db.getGuild());
                     }
                 } catch (InsufficientPermissionException e) {
@@ -1396,6 +1397,11 @@ public class DBNation implements NationOrAlliance {
             }
         }
         return spies;
+    }
+
+    @Command
+    public double getCityExponent() {
+        return Math.pow(getCities(), 3);
     }
 
     public void setMeta(NationMeta key, byte value) {
@@ -3932,6 +3938,16 @@ public class DBNation implements NationOrAlliance {
         }
 
         return netUnits;
+    }
+
+    public long getRerollDate() {
+        long minDate = Long.MAX_VALUE;
+        for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
+            if (nation.getNation_id() <= nation_id) continue;
+            if (nation.date <= 0) continue;
+            minDate = Math.min(nation.date, minDate);
+        }
+        return minDate;
     }
 
     public Map<Integer, Long> findDayChange() {

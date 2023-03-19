@@ -268,6 +268,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return Locutus.imp().getWarDb().countWarsByAlliance(allianceId, date);
     }
 
+    @Command
+    public double exponentialCityStrength() {
+        double total = 0;
+        for (DBNation nation : getNations(true, 10000, true)) {
+            total += Math.pow(nation.getCities(), 3) / 3d;
+        }
+        return total;
+    }
 
     public static Set<DBAlliance> getTopX(int topX, boolean checkTreaty) {
         Set<DBAlliance> results = new LinkedHashSet<>();

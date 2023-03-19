@@ -43,6 +43,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -75,6 +76,53 @@ public class DataDumpParser {
     public Map<Long, File> downloadNationFilesByDay() throws IOException, ParseException {
         if (nationFilesByDay != null) return nationFilesByDay;
         return nationFilesByDay = load("https://politicsandwar.com/data/nations/", new File("data/nations"));
+    }
+
+    public void printActiveCitiesByDay() throws IOException, NoSuchFieldException, IllegalAccessException {
+        List<String> result = new ArrayList<>();
+        Map<Long, Set<Integer>> activeByDay = Locutus.imp().getNationDB().getActivityByDay(0, f -> true);
+        for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
+            long day = entry.getKey();
+            Set<Integer> activeToday = new HashSet<>();
+            for (long i = day; i > day - 5; i--) {
+                activeToday.addAll(activeByDay.getOrDefault(i, Collections.emptySet()));
+            }
+            long timestamp = TimeUtil.getTimeFromDay(day);
+            // date in yyyy/MM/dd format from timestamp
+            String dateStr = TimeUtil.YYYY_MM_DD_FORMAT.format(new Date(timestamp));
+
+
+
+            AtomicLong citiesToday = new AtomicLong(0);
+            readAll(entry.getValue(), new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
+                @Override
+                public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws NoSuchFieldException, IllegalAccessException, ParseException {
+                    NationHeader header = loadHeader(new NationHeader(), headerList);
+                    while (rows.hasNext()) {
+                        CsvRow row = rows.next();
+                        int nationId = Integer.parseInt(row.getField(header.nation_id));
+                        if (header.vm_turns != 0) {
+                            int vm = Integer.parseInt(row.getField(header.vm_turns));
+                            if (vm > 0) continue;
+                        } else {
+                            if (!activeToday.contains(nationId)) {
+                                continue;
+                            }
+                        }
+                        NationColor color = NationColor.valueOf(row.getField(header.color).toUpperCase(Locale.ROOT));
+                        if (color == NationColor.GRAY || color == NationColor.BEIGE) {
+                            if (!activeToday.contains(nationId)) {
+                                continue;
+                            }
+                        }
+                        int numCities = Integer.parseInt(row.getField(header.cities));
+                        citiesToday.addAndGet(numCities);
+                    }
+                }
+            });
+            result.add(dateStr + "\t" + citiesToday.get());
+        }
+        System.out.println(StringMan.join(result, "\n"));
     }
 
     public Map<Long, Map<Integer, Continent>> getContinentByNationByDay() throws IOException, NoSuchFieldException, IllegalAccessException {

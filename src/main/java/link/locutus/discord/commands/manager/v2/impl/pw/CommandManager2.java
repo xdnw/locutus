@@ -25,6 +25,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBindin
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.StockBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.*;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
@@ -71,6 +72,7 @@ public class CommandManager2 {
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final NationPlaceholders nationPlaceholders;
+    private final AlliancePlaceholders alliancePlaceholders;
 
     public CommandManager2() {
         this.store = new SimpleValueStore<>();
@@ -87,6 +89,7 @@ public class CommandManager2 {
         new PermissionBinding().register(permisser);
 
         this.nationPlaceholders = new NationPlaceholders(store, validators, permisser);
+        this.alliancePlaceholders = new AlliancePlaceholders(store, validators, permisser);
 
         this.commands = CommandGroup.createRoot(store, validators);
     }
@@ -141,8 +144,19 @@ public class CommandManager2 {
         this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertUndercut", "undercut");
         this.commands.registerMethod(new AdminCommands(), List.of("admin"), "removeInvalidOffshoring", "removeinvalidoffshoring");
         this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveServer", "leaveServer");
+        this.commands.registerMethod(new UtilityCommands(), List.of("color"), "calculateColorRevenue", "revenue");
 
         this.commands.registerMethod(new UnsortedCommands(), List.of("sheets_econ"), "taxRevenueSheet", "taxRevenue");
+
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellOffer", "sell");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyOffer", "buy");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "deleteOffer", "delete");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "offerInfo", "info");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "updateOffer", "update");
+
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyList", "buy_list");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
@@ -173,6 +187,11 @@ public class CommandManager2 {
     public NationPlaceholders getNationPlaceholders() {
         return nationPlaceholders;
     }
+
+    public AlliancePlaceholders getAlliancePlaceholders() {
+        return alliancePlaceholders;
+    }
+
     public CommandGroup getCommands() {
         return commands;
     }

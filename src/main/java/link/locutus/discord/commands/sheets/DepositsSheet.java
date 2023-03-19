@@ -194,7 +194,7 @@ public class DepositsSheet extends Command {
         sheet.set(0, 0);
 
         StringBuilder footer = new StringBuilder();
-        footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive));
+        footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));
 
         String type = "";
         OffshoreInstance offshore = db.getOffshore();
@@ -203,7 +203,7 @@ public class DepositsSheet extends Command {
             type = "offshored";
             aaDeposits = offshore.getDeposits(db);
         } else if (db.isValidAlliance()){
-            type = "bank";
+            type = "bank stockpile";
             aaDeposits = PnwUtil.resourcesToArray(db.getAllianceList().getStockpile());
         } else aaDeposits = null;
         if (aaDeposits != null) {
@@ -214,11 +214,9 @@ public class DepositsSheet extends Command {
 
                 }
             }
-            footer.append("\n**Net " + type + " (normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-            footer.append("\n**Net " + type + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
+            footer.append("\n**Total " + type + " - nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+            footer.append("\n**Total " + type + " - nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
-
-        DiscordUtil.createEmbedCommand(event.getChannel(), "Deposits Total", footer.toString());
 
         sheet.attach(new DiscordChannelIO(event).create(), footer.toString()).send();
         return null;

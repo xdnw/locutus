@@ -1193,43 +1193,17 @@ public class UnsortedCommands {
     }
 
     @Command
-    public String reroll(@Me TextChannel channel, @Me Guild guild, @Me User author,
-                         DBNation nation) throws Exception {
-
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
-        for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
-            int otherId = entry.getKey();
-            DBNation otherNation = entry.getValue();
-
-            if (otherId > nation.getId() && otherNation.getAgeDays() > nation.getAgeDays() && Math.abs(otherNation.getDate()  - nation.getDate()) > TimeUnit.DAYS.toMillis(3)) {
-                return nation.getNation() + "/" + nation.getNation_id() + " is a reroll.";
-            }
+    public static String reroll(@Me IMessageIO io, DBNation nation) {
+        long date = nation.getRerollDate();
+        if (date == Long.MAX_VALUE) {
+            return "No direct reroll found. See also: " + CM.nation.list.multi.cmd.toSlashMention();
         }
-
-//        Map<Long, BigInteger> uuids = Locutus.imp().getDiscordDB().getUuids(me.getNation_id());
-        Set<String> multiNations = new HashSet<>();;
-        Set<Integer> deletedMulti = new HashSet<>();
-//        for (BigInteger uuid : uuids.values()) {
-//            Set<Integer> multis = Locutus.imp().getDiscordDB().getMultis(uuid);
-//            for (int nationId : multis) {
-//                if (nationId >= me.getNation_id()) continue;
-//                DBNation other = Locutus.imp().getNationDB().getNation(nationId);
-//                if (other == null) {
-//                    deletedMulti.add(nationId);
-//                } else if (other.getActive_m() > 10000 || other.getVm_turns() != 0) {
-//                    multiNations.add(other.getNation());
-//                }
-//            }
-//        }
-
-        if (!deletedMulti.isEmpty()) {
-            return nation.getNation() + "/" + nation.getNation_id() + " is a possible reroll of the following nation ids: " + StringMan.getString(deletedMulti);
-        }
-        if (!multiNations.isEmpty()) {
-            return nation.getNation() + "/" + nation.getNation_id() + " is a possible reroll of the following nations: " + StringMan.getString(multiNations);
-        }
-
-        return nation.getNation() + "/" + nation.getNation_id() + " is not a reroll.";
+        String title = "`" + nation.getNation() + "` is a reroll";
+        StringBuilder body = new StringBuilder();
+        body.append("Reroll date: " + DiscordUtil.timestamp(nation.getDate(), "d") + "\n");
+        body.append("Original creation date: " + DiscordUtil.timestamp(date, "d"));
+        io.create().embed(title, body.toString()).send();
+        return null;
     }
 
     @Command(desc = "Generate an optimal build for a city")
