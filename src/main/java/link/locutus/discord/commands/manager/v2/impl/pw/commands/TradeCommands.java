@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -44,6 +43,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
+import org.apache.commons.collections4.CollectionUtils;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -55,129 +55,366 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TradeCommands {
-//    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
-//    @Command
-//    public String buyList(@Me TradeManager tMan, ResourceType toBuy, Set<ResourceType> buyWithAny, @Default Set<DBNation> allowedTraders, @Default boolean buyItNow_NOT_IMPLEMENTED,
-//                          @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
-//
-//    }
-//
-//    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
-//    @Command
-//    public String offerInfo(@Me TradeManager tMan, int tradeId) {
-//        // get the offer from the db
-//        // display the pretty print
-//        boolean isBuy = false;
-//    }
-//
-//
-//    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
-//    @Command
-//    public String buyOffer(@Me IMessageIO io, @Me TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
-//                      long quantity,
-//                      @Switch("minPPU") Integer minPPU,
-//                      @Switch("maxPPU") Integer maxPPU,
-////                      @Switch("s") boolean showPPURange,
-//                      @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
-//                      @Switch("x") Set<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
-//                      @Switch("f") boolean confirm) {
-//        if (expire > TimeUnit.DAYS.toMillis(30)) {
-//            return "Expiry cannot be longer than 30 days.";
-//        }
-//        if ((exchangeFor != null && exchangeFor.contains(resource)) || (exchangePPU != null && exchangePPU.containsKey(resource))) {
-//            return "You cannot exchange for the same resource.";
-//        }
-//        if (resource == ResourceType.CREDITS || (exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
-//            return "You cannot exchange for credits.";
-//        }
-//        if (resource == ResourceType.MONEY || (exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
-//            return "You cannot buy money. Create a sell offer instead.";
-//        }
-//        if (exchangePPU != null) {
-//            for (Map.Entry<ResourceType, Double> entry : exchangePPU.entrySet()) {
-//                if (entry.getValue() < 0 || !Double.isFinite(entry.getValue())) {
-//                    return "Exchange PPU must be positive number (value provided: " +  entry.getKey() + " at "  + entry.getValue() + ")";
-//                }
-//            }
-//        }
-//        if (resource != ResourceType.FOOD && quantity < 100000) {
-//            return "Quantity must be at least 100,000";
-//        }
-//        if (resource == ResourceType.FOOD && quantity < 1000000) {
-//            return "Quantity must be at least 1,000,000";
-//        }
-//        if ((minPPU != null && minPPU <= 0) || (maxPPU != null && maxPPU <= 0)) {
-//            return "min/maxPPU must be positive number";
-//        }
-//        long expireMs = System.currentTimeMillis() + expire;
-//
-//
-//        // int id, int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, long exchangeForBits, double[] exchangePPU
-//        if (minPPU == null) minPPU = 0;
-//        if (maxPPU == null) maxPPU = 0;
-//        double[] exchangePPUDouble = exchangePPU == null ? null : PnwUtil.resourcesToArray(exchangePPU);
-//        // int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, Set<ResourceType> exchangeFor, double[] exchangePPU
-//        TradeDB.BulkTradeOffer offer = new TradeDB.BulkTradeOffer(resource.ordinal(), me.getNation_id(), quantity, true, minPPU, maxPPU, negotiable, expireMs, exchangeFor, exchangePPUDouble);
-//
-//        String title = me.getNation() + " will buy " + MathMan.format(quantity) + "x " + resource;
-//        String body = offer.toPrettyString();
-//        if (!confirm) {
-//            io.create().confirmation(title, body, command).send();
-//            return null;
-//        }
-//
-//        Set<TradeDB.BulkTradeOffer> removed = tMan.addOffer(offer, true);
-//
-//        StringBuilder response = new StringBuilder();
-//
-//        if (!removed.isEmpty()) {
-//            response.append("Removed ").append(removed.size()).append(" old offers:\n");
-//            for (TradeDB.BulkTradeOffer o : removed) {
-//                response.append(" - " + o.toSimpleString()).append("\n");
-//            }
-//        }
-//
-//        // post to channel
-//        {
-//            long channelIdTmp = 1080573769048932372L;
-//            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(channelIdTmp);
-//            if (channel != null) {
-//
-//            }
-//            // TODO refresh button for updating offer info
-//            // $trade offer info id
-//        }
-//
-//        io.create().embed("Posted: " + title, offer.toPrettyString()).append(response.toString()).send();
-//        return null;
-//    }
-//
-//    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
-//    @Command
-//    public String sellOffer(@Me TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, @Me IMessageIO channel, ResourceType resource,
-//                      long quantity,
-//                      @Switch("minPPU") Integer minPPU,
-//                      @Switch("maxPPU") Integer maxPPU,
-//                      @Switch("s") boolean showPPURange,
-//                      @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
-//                      @Switch("f") Set<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU) {
-//        // max expiry 30d
-//        if (expire > TimeUnit.DAYS.toMillis(30)) {
-//            return "Expiry cannot be longer than 30 days.";
-//        }
-//        long expireMs = System.currentTimeMillis() + expire;
-//        if ((exchangeFor != null && exchangeFor.contains(resource)) || (exchangePPU != null && exchangePPU.containsKey(resource))) {
-//            return "You cannot exchange for the same resource.";
-//        }
-//        if (resource == ResourceType.CREDITS || (exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
-//            return "You cannot exchange for credits.";
-//        }
-//        if (resource == ResourceType.MONEY || (exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
-//            return "You cannot sell money. Create a buy offer instead.";
-//        }
-//
-//
-//    }
+
+    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @Command
+    public String myOffers(TradeManager tMan, @Me DBNation me) {
+        Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(f -> f.nation == me.getNation_id());
+        if (offers.isEmpty()) {
+            return "You have no offers";
+        }
+        StringBuilder response = new StringBuilder();
+        response.append("**" + me.getNation() + " has " + offers.size() + " bulk trade offers:**\n");
+        for (TradeDB.BulkTradeOffer offer : offers) {
+            response.append(offer.toSimpleString() + "\n");
+        }
+        return response.toString();
+    }
+
+    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @Command
+    public String sellList(TradeManager tMan, ResourceType youSell, @Default("MONEY") ResourceType youReceive, @Default Set<DBNation> allowedTraders,
+                          @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
+        if (sortByLowestMaxPrice && sortByLowestMinPrice) {
+            return "You can't sort by both lowest min and max price (pick one)";
+        }
+        Set<ResourceType> youSellSet = Collections.singleton(youSell);
+        Set<ResourceType> youReceiveSet = Collections.singleton(youReceive);
+        Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(youSell, f ->
+                CollectionUtils.containsAny(f.getSelling(), youReceiveSet) &&
+                CollectionUtils.containsAny(f.getBuying(), youSellSet)
+                && (allowedTraders == null || allowedTraders.contains(f.getNation()))
+        );
+        if (offers.isEmpty()) {
+            return "No offers found";
+        }
+
+        List<TradeDB.BulkTradeOffer> offersSorted = new ArrayList<>(offers);
+        if (sortByLowestMaxPrice) {
+            offersSorted.sort(Comparator.comparingDouble(f -> f.getPriceRange(youReceive, youSell).getValue()));
+        } else if (sortByLowestMinPrice) {
+            offersSorted.sort(Comparator.comparingDouble(f -> f.getPriceRange(youReceive, youSell).getKey()));
+        } else {
+            offersSorted.sort(Comparator.comparingDouble(f -> average(f.getPriceRange(youReceive, youSell))));
+        }
+        StringBuilder response = new StringBuilder("**" + offers.size() + " offers found:**\n");
+        for (TradeDB.BulkTradeOffer offer : offersSorted) {
+            response.append(offer.toSimpleString(youSell, youReceive, sortByLowestMinPrice, sortByLowestMaxPrice) + "\n");
+        }
+        return response.toString();
+    }
+
+    private double average(Map.Entry<Double, Double> pair) {
+        return (pair.getKey() + pair.getValue()) / 2;
+    }
+
+    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @Command
+    public String buyList(TradeManager tMan, ResourceType youBuy, @Default("MONEY") ResourceType youProvide, @Default Set<DBNation> allowedTraders,
+                          @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
+        if (sortByLowestMaxPrice && sortByLowestMinPrice) {
+            return "You can't sort by both lowest min and max price (pick one)";
+        }
+        Set<ResourceType> youSellSet = Collections.singleton(youProvide);
+        Set<ResourceType> youReceiveSet = Collections.singleton(youBuy);
+        Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(youBuy, f ->
+                CollectionUtils.containsAny(f.getSelling(), youReceiveSet) &&
+                        CollectionUtils.containsAny(f.getBuying(), youSellSet)
+                        && (allowedTraders == null || allowedTraders.contains(f.getNation()))
+        );
+        if (offers.isEmpty()) {
+            return "No offers found";
+        }
+
+        List<TradeDB.BulkTradeOffer> offersSorted = new ArrayList<>(offers);
+        if (sortByLowestMaxPrice) {
+            offersSorted.sort(Comparator.comparingDouble(f -> f.getPriceRange(youBuy, youProvide).getValue()));
+        } else if (sortByLowestMinPrice) {
+            offersSorted.sort(Comparator.comparingDouble(f -> f.getPriceRange(youBuy, youProvide).getKey()));
+        } else {
+            offersSorted.sort(Comparator.comparingDouble(f -> average(f.getPriceRange(youBuy, youProvide))));
+        }
+        StringBuilder response = new StringBuilder("**" + offers.size() + " offers found:**\n");
+        for (TradeDB.BulkTradeOffer offer : offersSorted) {
+            response.append(offer.toSimpleString(youProvide, youBuy, sortByLowestMinPrice, sortByLowestMaxPrice) + "\n");
+        }
+        return response.toString();
+    }
+
+    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @Command
+    public String updateOffer(TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
+                              int offerId, Long quantity,
+                              @Switch("minPPU") Integer minPPU,
+                              @Switch("maxPPU") Integer maxPPU,
+                              @Switch("n") Boolean negotiable, @Switch("e") @Timediff Long expire,
+                              @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
+                              @Switch("f") boolean confirm) {
+        TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(offerId);
+        if (offer == null) {
+            return "No offer found with ID " + offerId;
+        }
+        offer = new TradeDB.BulkTradeOffer(offer);
+        if (offer.nation != me.getNation_id()) {
+            return "You are not the owner of offer " + offerId + " (owner: " + PnwUtil.getName(offer.nation, false) + ")";
+        }
+        if (quantity != null) {
+            if (quantity <= 0) {
+                return "Quantity must be greater than 0 (not " + quantity + ")";
+            }
+            offer.quantity = quantity;
+        }
+        if (minPPU != null) {
+            if (minPPU <= 0) {
+                return "Minimum price per unit must be greater than 0 (not " + minPPU + ")";
+            }
+            offer.minPPU = minPPU;
+        }
+        if (maxPPU != null) {
+            if (maxPPU <= 0) {
+                return "Maximum price per unit must be greater than 0 (not " + maxPPU + ")";
+            }
+            offer.maxPPU = maxPPU;
+        }
+        if (negotiable != null) {
+            offer.negotiable = negotiable;
+        }
+        if (expire != null) {
+            if (expire <= 0) {
+                return "Expiration must be greater than 0 (not " + expire + ")";
+            }
+            offer.expire = System.currentTimeMillis() + expire;
+        }
+
+        if (expire > TimeUnit.DAYS.toMillis(30)) {
+            return "Expiry cannot be longer than 30 days.";
+        }
+        if ((exchangeFor != null && exchangeFor.contains(offer.getResource())) || (exchangePPU != null && exchangePPU.containsKey(offer.getResource()))) {
+            return "You cannot exchange for the same resource.";
+        }
+        if ((exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
+            return "You cannot exchange for credits.";
+        }
+        if ((exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
+            return "You cannot buy money. Create a sell offer instead.";
+        }
+        if (exchangePPU != null) {
+            for (Map.Entry<ResourceType, Double> entry : exchangePPU.entrySet()) {
+                if (entry.getValue() < 0 || !Double.isFinite(entry.getValue())) {
+                    return "Exchange PPU must be positive number (value provided: " +  entry.getKey() + " at "  + entry.getValue() + ")";
+                }
+            }
+        }
+
+        if (exchangePPU != null || exchangeFor != null) {
+            offer.setExchangeFor(exchangeFor, PnwUtil.resourcesToArray(exchangePPU));
+        }
+
+        tMan.updateBulkOffer(offer);
+
+        return null;
+    }
+
+    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @Command
+    public String offerInfo(@Me JSONObject command, TradeManager tMan, @Me IMessageIO io, int offerId) {
+        TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(offerId);
+        if (offer == null) {
+            return "No offer found with ID " + offerId;
+        }
+        String title = offer.getTitle();
+        String body = offer.toPrettyString();
+        io.create().embed(title, body).commandButton(command, "Refresh").send();
+        return null;
+    }
+
+
+    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @Command
+    public String deleteOffer(TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
+                              @Default ResourceType deleteResource, @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell, @Switch("i") Integer deleteId) {
+        Set<Integer> idsToDelete = new HashSet<>();
+        if (deleteId != null) {
+            TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(deleteId);
+            if (offer == null) {
+                return "No offer found with ID " + deleteId;
+            }
+            if (offer.nation != me.getNation_id()) {
+                return "You can only delete your own offers (offer by: " + PnwUtil.getName(offer.nation, false) + ")";
+            }
+            idsToDelete.add(deleteId);
+        }
+        if (deleteResource != null) {
+            boolean isBuy = buyOrSell != null && buyOrSell.equalsIgnoreCase("BUYING");
+            Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(f ->
+                    f.nation == me.getNation_id() &&
+                    f.getResource() == deleteResource &&
+                            (buyOrSell == null || (isBuy && f.isBuy)));
+            offers.forEach(f -> idsToDelete.add(f.id));
+        }
+        if (idsToDelete.isEmpty()) {
+            return "No offers found to delete";
+        }
+        tMan.deleteBulkMarketOffers(idsToDelete, true);
+        return "Deleted " + idsToDelete.size() + " offers:";
+    }
+
+
+    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @Command
+    public String buyOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
+                      long quantity,
+                      @Switch("minPPU") Integer minPPU,
+                      @Switch("maxPPU") Integer maxPPU,
+                      @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
+                      @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
+                      @Switch("f") boolean confirm) {
+        if (expire > TimeUnit.DAYS.toMillis(30)) {
+            return "Expiry cannot be longer than 30 days.";
+        }
+        if ((exchangeFor != null && exchangeFor.contains(resource)) || (exchangePPU != null && exchangePPU.containsKey(resource))) {
+            return "You cannot exchange for the same resource.";
+        }
+        if (resource == ResourceType.CREDITS || (exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
+            return "You cannot exchange for credits.";
+        }
+        if (resource == ResourceType.MONEY || (exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
+            return "You cannot buy money. Create a sell offer instead.";
+        }
+        if (exchangePPU != null) {
+            for (Map.Entry<ResourceType, Double> entry : exchangePPU.entrySet()) {
+                if (entry.getValue() < 0 || !Double.isFinite(entry.getValue())) {
+                    return "Exchange PPU must be positive number (value provided: " +  entry.getKey() + " at "  + entry.getValue() + ")";
+                }
+            }
+        }
+        if (resource != ResourceType.FOOD && quantity < 100000) {
+            return "Quantity must be at least 100,000";
+        }
+        if (resource == ResourceType.FOOD && quantity < 1000000) {
+            return "Quantity must be at least 1,000,000";
+        }
+        if ((minPPU != null && minPPU <= 0) || (maxPPU != null && maxPPU <= 0)) {
+            return "min/maxPPU must be positive number";
+        }
+        long expireMs = System.currentTimeMillis() + expire;
+
+        // int id, int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, long exchangeForBits, double[] exchangePPU
+        if (minPPU == null) minPPU = 0;
+        if (maxPPU == null) maxPPU = 0;
+        double[] exchangePPUDouble = exchangePPU == null ? null : PnwUtil.resourcesToArray(exchangePPU);
+        // int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, Set<ResourceType> exchangeFor, double[] exchangePPU
+        TradeDB.BulkTradeOffer offer = new TradeDB.BulkTradeOffer(resource.ordinal(), me.getNation_id(), quantity, true, minPPU, maxPPU, negotiable, expireMs, exchangeFor, exchangePPUDouble);
+
+        String title = offer.getTitle();
+        String body = offer.toPrettyString();
+        if (!confirm) {
+            io.create().confirmation(title, body, command).send();
+            return null;
+        }
+
+        Set<TradeDB.BulkTradeOffer> removed = tMan.addBulkOffer(offer, true, true);
+
+        StringBuilder response = new StringBuilder();
+
+        if (!removed.isEmpty()) {
+            response.append("Removed ").append(removed.size()).append(" old offers:\n");
+            for (TradeDB.BulkTradeOffer o : removed) {
+                response.append(" - " + o.toSimpleString()).append("\n");
+            }
+        }
+
+        // post to channel
+        {
+            long channelIdTmp = 1080573769048932372L;
+            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(channelIdTmp);
+            if (channel != null) {
+                DiscordUtil.createEmbedCommand(channel, title, body); // TODO refresh cmd
+            }
+        }
+
+        io.create().embed("Posted: " + title, body).append(response.toString()).send();
+        return null;
+    }
+
+    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @Command
+    public String sellOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
+                           long quantity,
+                           @Switch("minPPU") Integer minPPU,
+                           @Switch("maxPPU") Integer maxPPU,
+                           @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
+                           @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
+                           @Switch("f") boolean confirm) {
+        if (expire > TimeUnit.DAYS.toMillis(30)) {
+            return "Expiry cannot be longer than 30 days.";
+        }
+        if ((exchangeFor != null && exchangeFor.contains(resource)) || (exchangePPU != null && exchangePPU.containsKey(resource))) {
+            return "You cannot exchange for the same resource.";
+        }
+        if (resource == ResourceType.CREDITS || (exchangeFor != null && exchangeFor.contains(ResourceType.CREDITS)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.CREDITS))) {
+            return "You cannot exchange for credits.";
+        }
+        if (resource == ResourceType.MONEY || (exchangeFor != null && exchangeFor.contains(ResourceType.MONEY)) || (exchangePPU != null && exchangePPU.containsKey(ResourceType.MONEY))) {
+            return "You cannot buy money. Create a buy offer instead.";
+        }
+        if (exchangePPU != null) {
+            for (Map.Entry<ResourceType, Double> entry : exchangePPU.entrySet()) {
+                if (entry.getValue() < 0 || !Double.isFinite(entry.getValue())) {
+                    return "Exchange PPU must be positive number (value provided: " +  entry.getKey() + " at "  + entry.getValue() + ")";
+                }
+            }
+        }
+        if (resource != ResourceType.FOOD && quantity < 100000) {
+            return "Quantity must be at least 100,000";
+        }
+        if (resource == ResourceType.FOOD && quantity < 1000000) {
+            return "Quantity must be at least 1,000,000";
+        }
+        if ((minPPU != null && minPPU <= 0) || (maxPPU != null && maxPPU <= 0)) {
+            return "min/maxPPU must be positive number";
+        }
+        long expireMs = System.currentTimeMillis() + expire;
+
+        // int id, int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, long exchangeForBits, double[] exchangePPU
+        if (minPPU == null) minPPU = 0;
+        if (maxPPU == null) maxPPU = 0;
+        double[] exchangePPUDouble = exchangePPU == null ? null : PnwUtil.resourcesToArray(exchangePPU);
+        // int resourceId, int nation, int quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, Set<ResourceType> exchangeFor, double[] exchangePPU
+        TradeDB.BulkTradeOffer offer = new TradeDB.BulkTradeOffer(resource.ordinal(), me.getNation_id(), quantity, false, minPPU, maxPPU, negotiable, expireMs, exchangeFor, exchangePPUDouble);
+
+        String title = offer.getTitle();
+        String body = offer.toPrettyString();
+        if (!confirm) {
+            io.create().confirmation(title, body, command).send();
+            return null;
+        }
+
+        Set<TradeDB.BulkTradeOffer> removed = tMan.addBulkOffer(offer, true, true);
+
+        StringBuilder response = new StringBuilder();
+
+        if (!removed.isEmpty()) {
+            response.append("Removed ").append(removed.size()).append(" old offers:\n");
+            for (TradeDB.BulkTradeOffer o : removed) {
+                response.append(" - " + o.toSimpleString()).append("\n");
+            }
+        }
+
+        // post to channel
+        {
+            long channelIdTmp = 1080573769048932372L;
+            GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(channelIdTmp);
+            if (channel != null) {
+                DiscordUtil.createEmbedCommand(channel, title, body); // TODO refresh cmd
+            }
+        }
+
+        io.create().embed("Posted: " + title, body).append(response.toString()).send();
+        return null;
+
+
+    }
 
 
     @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"})

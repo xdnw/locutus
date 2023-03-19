@@ -16,6 +16,7 @@ import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -135,7 +136,22 @@ public class TradeDB extends DBMainV2 {
         public long exchangeForBits;
         public double[] exchangePPU;
 
-        public BulkTradeOffer(int resourceId, int nation, long quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, Set<ResourceType> exchangeFor, double[] exchangePPU) {
+        public void setExchangeFor(Collection<ResourceType> exchangeFor, double[] exchangePPU) {
+            this.exchangeForBits = 0L;
+            if (exchangeFor != null) {
+                for (ResourceType type : exchangeFor) {
+                    this.exchangeForBits |= 1L << type.ordinal();
+                }
+            }
+            if (exchangePPU != null) {
+                for (int i = 0; i < exchangePPU.length; i++) {
+                    if (exchangePPU[i] >= 0.01) {
+                        this.exchangeForBits |= 1L << i;
+                    }
+                }
+            }
+        }
+        public BulkTradeOffer(int resourceId, int nation, long quantity, boolean isBuy, int minPPU, int maxPPU, boolean negotiable, long expire, List<ResourceType> exchangeFor, double[] exchangePPU) {
             this.resourceId = resourceId;
             this.nation = nation;
             this.quantity = quantity;
@@ -144,18 +160,30 @@ public class TradeDB extends DBMainV2 {
             this.maxPPU = maxPPU;
             this.negotiable = negotiable;
             this.expire = expire;
-            this.exchangeForBits = 0L;
-            if (exchangeFor != null) {
-                for (ResourceType type : exchangeFor) {
-                    this.exchangeForBits |= 1L << type.ordinal();
-                }
-                for (int i = 0; i < exchangePPU.length; i++) {
-                    if (exchangePPU[i] >= 0.01) {
-                        this.exchangeForBits |= 1L << i;
-                    }
-                }
-            }
+            this.setExchangeFor(exchangeFor, exchangePPU);
             this.exchangePPU = exchangePPU;
+        }
+
+        public Set<ResourceType> getSelling() {
+            Set<ResourceType> resources = new HashSet<>();
+            if (isBuy) {
+                resources.addAll(getExchangeFor());
+                resources.add(ResourceType.MONEY);
+            } else {
+                resources.add(getResource());
+            }
+            return resources;
+        }
+
+        public Set<ResourceType> getBuying() {
+            Set<ResourceType> resources = new HashSet<>();
+            if (!isBuy) {
+                resources.addAll(getExchangeFor());
+                resources.add(ResourceType.MONEY);
+            } else {
+                resources.add(getResource());
+            }
+            return resources;
         }
 
         public Map.Entry<Double, Double> getPriceRange(ResourceType tradeFor) {
@@ -188,6 +216,20 @@ public class TradeDB extends DBMainV2 {
             if (cashMin > cashMax) cashMin = cashMax;
             if (cashMax < cashMin) cashMax = cashMin;
             return new AbstractMap.SimpleEntry<>(cashMin, cashMax);
+        }
+
+        public BulkTradeOffer(BulkTradeOffer copy) {
+            this.id = copy.id;
+            this.resourceId = copy.resourceId;
+            this.nation = copy.nation;
+            this.quantity = copy.quantity;
+            this.isBuy = copy.isBuy;
+            this.minPPU = copy.minPPU;
+            this.maxPPU = copy.maxPPU;
+            this.negotiable = copy.negotiable;
+            this.expire = copy.expire;
+            this.exchangeForBits = copy.exchangeForBits;
+            this.exchangePPU = copy.exchangePPU;
         }
 
         public BulkTradeOffer(ResultSet rs) throws SQLException {
@@ -290,6 +332,33 @@ public class TradeDB extends DBMainV2 {
             }
         }
 
+        public DBNation getNation() {
+            return DBNation.byId(nation);
+        }
+
+        public String toSimpleString() {
+            /*
+            stmt.setObject(i++, resourceId);
+            stmt.setObject(i++, nation);
+            stmt.setObject(i++, quantity);
+            stmt.setObject(i++, isBuy);
+            stmt.setObject(i++, minPPU);
+            stmt.setObject(i++, maxPPU);
+            stmt.setObject(i++, negotiable);
+            stmt.setObject(i++, expire);
+            stmt.setObject(i++, exchangeForBits);
+            stmt.setObject(i++, ArrayUtil.toByteArray(exchangePPU));
+             */
+            String result = "#" + id + ": `" +
+                    PnwUtil.getName(nation, false) + "` " +
+                    (isBuy ? "Buying" : "Selling") +
+                    MathMan.format(quantity) + "x " +
+                    getResource() + " for " +
+                    minPPU + "-" + maxPPU;
+            if (negotiable) result += " (negotiable)";
+            return result;
+        }
+
         public String toSimpleString(ResourceType traderBuying, ResourceType traderSelling, boolean boldMin, boolean boldMax) {
             if (traderBuying == null) traderBuying = ResourceType.MONEY;
             if (traderSelling == null) traderSelling = ResourceType.MONEY;
@@ -301,6 +370,8 @@ public class TradeDB extends DBMainV2 {
             StringBuilder response = new StringBuilder();
             boolean isExpired = isExpired();
             if (isExpired) response.append("~~");
+
+            response.append("#" + id + ": ");
 
             String minStr = range.getKey() < 1 ? "1/" + MathMan.format(1 / range.getKey()) : MathMan.format(range.getKey());
             String maxStr = range.getValue() < 1 ? "1/" + MathMan.format(1 / range.getValue()) : MathMan.format(range.getValue());
@@ -320,7 +391,7 @@ public class TradeDB extends DBMainV2 {
 
             // C/O/U/L/I/B/G/M/S/A/F/$
             if (exchangeForSet.contains(offerTradeFor) && exchangeForSet.size() > 1) {
-                response.append(" | Trades For: ");
+                response.append(" | Also For: ");
                 for (ResourceType type : exchangeForSet) {
                     String symbol;
                     if (type == ResourceType.MONEY) {
@@ -331,11 +402,20 @@ public class TradeDB extends DBMainV2 {
                     response.append(symbol);
                 }
             }
-
-            
-
-
+            if (!isExpired) {
+                response.append(" | Ends: " + DiscordUtil.timestamp(expire, null));
+            }
+            DBNation dbNation = getNation();
+            response.append(" | By: " + PnwUtil.getName(nation, false));
+            Long userId = dbNation == null ? null : dbNation.getUserId();
+            if (userId != null) response.append(" <@" + userId + ">");
+            if (negotiable) response.append(" | **NEGOTIABLE**");
             if (isExpired) response.append("~~");
+            return response.toString();
+        }
+
+        public String getTitle() {
+            return "#" + id + ": " + PnwUtil.getName(nation, false) + " " + (isBuy ? "Buying" : "Selling") + " " + MathMan.format(quantity) + "x " + getResource();
         }
 
         public String toPrettyString() {
@@ -410,22 +490,6 @@ public class TradeDB extends DBMainV2 {
         });
     }
 
-    public synchronized void instertMarketOffer(BulkTradeOffer offer) {
-        try (PreparedStatement stmt = getConnection().prepareStatement("INSERT INTO `MARKET_OFFERS`(`resource`, `nation`, `quantity`, `isBuy`, `minPPU`, `maxPPU`, `negotiable`, `expire`, `exchangeFor`, `exchangePPU`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
-            offer.set(stmt, false);
-            stmt.executeUpdate();
-            try (ResultSet rs = stmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    offer.id = rs.getInt(1);
-                } else {
-                    throw new SQLException("Creating offer failed, no ID obtained.");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
     public List<BulkTradeOffer> getMarketOffers() {
         List<BulkTradeOffer> result = new ArrayList<>();
         com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("MARKET_OFFERS")
@@ -444,6 +508,15 @@ public class TradeDB extends DBMainV2 {
     public synchronized void addMarketOffers(BulkTradeOffer offer) {
         try (PreparedStatement stmt = getConnection().prepareStatement("INSERT OR REPLACE INTO `MARKET_OFFERS`(`resource`, `nation`, `quantity`, `isBuy`, `minPPU`, `maxPPU`, `negotiable`, `expire`, `exchangeFor`, `exchangePPU`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
             offer.set(stmt, false);
+            // get generated key
+            stmt.executeUpdate();
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    offer.id = rs.getInt(1);
+                } else {
+                    throw new SQLException("Creating offer failed, no ID obtained.");
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
