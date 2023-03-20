@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -14,7 +13,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -27,7 +25,6 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -35,13 +32,11 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.AttackTypeNode;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -63,12 +58,9 @@ import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.VoiceChannel;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -1095,14 +1087,14 @@ public class UtilityCommands {
         }
 
         if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
+            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null, null, null).toSlashCommand() + "");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildDB.Key.AUTOROLE) + "");
         if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
+            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null, null, null).toSlashCommand() + "");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildDB.Key.AUTONICK) + "");
-        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + "");
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null).toSlashCommand() + "");
         return response.toString();
     }
 
@@ -1119,14 +1111,14 @@ public class UtilityCommands {
         StringBuilder response = new StringBuilder("Done!");
 
         if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "");
+            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null, null, null).toSlashCommand() + "");
         }
         else response.append("\n - AutoRole Mode: ").append((Object) db.getOrNull(GuildDB.Key.AUTOROLE));
         if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand() + "");
+            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null, null, null).toSlashCommand() + "");
         }
         else response.append("\n - AutoNick Mode: ").append((Object) db.getOrNull(GuildDB.Key.AUTONICK));
-        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + "");
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null).toSlashCommand() + "");
         return response.toString();
     }
 

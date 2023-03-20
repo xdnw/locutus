@@ -787,7 +787,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     public WarCategory warChannelBinding(@Me GuildDB db) {
         WarCategory warChannel = db.getWarChannel(true);
-        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true").toSlashMention() + "");
+        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + "");
         return warChannel;
     }
 

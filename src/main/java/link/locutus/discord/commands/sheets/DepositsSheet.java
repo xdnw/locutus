@@ -5,7 +5,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
@@ -104,7 +103,7 @@ public class DepositsSheet extends Command {
                 nations.removeIf(n -> n.getPosition() <= 1);
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "") + " set");
+                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null) + " set");
                 nations = new HashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());

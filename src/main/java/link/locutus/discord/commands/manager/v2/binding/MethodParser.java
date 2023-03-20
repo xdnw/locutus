@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.binding;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
 import com.google.gson.internal.Primitives;
 
@@ -184,6 +185,9 @@ public class MethodParser<T> implements Parser<T> {
                     break;
                 }
                 Parser child = store.get(dependency);
+                if (child == null) {
+                    System.out.println("Check consumer " + StringMan.getString(getKey()) + " | " + dependency);
+                }
                 if (child.isConsumer(store)) {
                     isConsumer = true;
                     break;

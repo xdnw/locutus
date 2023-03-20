@@ -17,7 +17,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -48,11 +47,8 @@ import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
-import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.json.JSONObject;
-import rocker.grant.nation;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -191,7 +187,7 @@ public class IACommands {
         db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
 
         return StringMan.getString(govRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
-                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null) + "";
+                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "";
     }
 
     @Command(desc = "Remove a role from adding/removing specified roles\n" +
@@ -221,7 +217,7 @@ public class IACommands {
         db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
 
         return response.toString() + "\n" +
-                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null) + "";
+                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "";
     }
 
     @Command(desc = "Add role to a user\n" +
@@ -330,7 +326,7 @@ public class IACommands {
 
         boolean result = new SimpleNationList(nations).updateSpies(false);
         if (!result) {
-            return "Could not update spies (see " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + ")";
+            return "Could not update spies (see " + CM.settings.cmd.create("API_KEY", null, null, null).toSlashCommand() + ")";
         }
 
         long dayCutoff = TimeUtil.getDay() - 2;
@@ -853,7 +849,7 @@ public class IACommands {
 
         boolean isGov = Roles.ECON_LOW_GOV.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
         if (!isGov) {
-            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_SET_BRACKET.name(), null) + ")";
+            if (db.getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_SET_BRACKET.name(), null, null, null) + ")";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
         }
         if (internalRate != null && !isGov) {
@@ -868,7 +864,7 @@ public class IACommands {
 
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.contains(aaId)) {
-            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), aaId + "") + " to register it.";
+            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), aaId + "", null, null) + " to register it.";
         }
         DBAlliance alliance = DBAlliance.getOrCreate(aaId);
 
@@ -1059,7 +1055,7 @@ public class IACommands {
                     String title = "Disburse 3 days";
                     String body = "Use this once they have a suitable city build & color to send resources for the next 3 days";
 
-                    CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, null, "true");
+                    CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, null, null, null, null, null, "true");
                     channel.create().embed(title, body)
                                     .commandButton(cmd, "Disburse 3 days")
                                             .send();
@@ -1559,7 +1555,7 @@ public class IACommands {
             Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, filter);
 
             Set<Integer> aaIds = db.getAllianceIds();
-            if (aaIds.isEmpty()) return "No alliance set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "";
+            if (aaIds.isEmpty()) return "No alliance set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "";
 
             IACategory cat = db.getIACategory();
             if (cat.getCategories().isEmpty()) return "No `interview` categories found";

@@ -48,7 +48,7 @@ public class IASheet extends Command {
         GuildDB db = Locutus.imp().getGuildDB(event);
         if (db == null) return "Not in guild";
         Set<Integer> aaIds = db.getAllianceIds();
-        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + "";
+        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>", null, null) + "";
 
         if (args.size() != 1) return usage();
         List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));

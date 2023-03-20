@@ -624,7 +624,7 @@ public class IACheckup {
                 String desc ="During Peace time, you can find targets to gather intel on using:\n" +
                         "" + CM.spy.find.intel.cmd.toSlashMention() + "\n" +
                         "During wartime, you can find enemies to spy using:\n" +
-                        "" + CM.spy.find.target.cmd.create("enemies", "*", null, null, null) + "\n\n" +
+                        "" + CM.spy.find.target.cmd.create("enemies", "*", null, null, null, null) + "\n\n" +
                         "(You should conduct a spy op every day)";
                 return new AbstractMap.SimpleEntry<>(diff, desc);
             }
@@ -1117,7 +1117,7 @@ public class IACheckup {
         if (nation.getOff() >= targets.size() || targets.isEmpty()) return null;
         StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
-            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, "true", null, null, null, null).toSlashCommand();
+            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, null, null, "true", null, null, null).toSlashCommand();
             resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention() + "");
         } else hasEnemies = false;
         if (hasRaids) {

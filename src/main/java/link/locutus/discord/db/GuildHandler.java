@@ -69,6 +69,7 @@ import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -2342,21 +2343,28 @@ public class GuildHandler {
 
             if (members.isEmpty()) return;
             if (members.size() < 10 && !db.isWhitelisted()) {
-                Role iaRole = Roles.INTERNAL_AFFAIRS.toRole(db);
-                if (iaRole == null || guild.getMembersWithRoles(iaRole).isEmpty()) {
+                boolean allowed = false;
+                Map<Long, Role> roleMap = Roles.INTERNAL_AFFAIRS.toRoleMap(db);
+                Set<Member> membersWithRoles = new HashSet<>();
+                if (!roleMap.isEmpty()) {
+                    Set<Role> iaRoles = new HashSet<>(roleMap.values());
+                    for (Role role : iaRoles) {
+                        membersWithRoles.addAll(guild.getMembersWithRoles(role));
+                    }
+                    for (Member member : membersWithRoles) {
+                        if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
+                            allowed = true;
+                        }
+                    }
+                }
+                if (membersWithRoles.isEmpty()) {
                     try {
-                        RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null) + " and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
+                        RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null, null) + " and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
                         db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
                     return;
-                }
-                boolean allowed = false;
-                for (Member member : guild.getMembersWithRoles(iaRole)) {
-                    if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
-                        allowed = true;
-                    }
                 }
                 if (!allowed) {
                     try {

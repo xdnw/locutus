@@ -27,7 +27,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.balance.BankWithTask;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -627,9 +626,9 @@ public class OffshoreInstance {
                         if (!rssConversion) {
                             return Map.entry(TransferStatus.INSUFFICIENT_FUNDS,
                                     "You do not have `" + MathMan.format(amount[type.ordinal()]) + "x" + type + "`. (see " +
-                                            CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null) +
+                                            CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null, null, null) +
                                             " ). RESOURCE_CONVERSION is disabled (see " +
-                                            CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true") +
+                                            CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true", null, null) +
                                             ")");
                         }
                         hasExactResources = false;
@@ -766,7 +765,7 @@ public class OffshoreInstance {
                             body.append("Transfer: " + PnwUtil.resourcesToString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
                             body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
                             body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
-                            body.append("To set the default " + CM.settings.cmd.create(GuildDB.Key.BANKER_WITHDRAW_LIMIT.name(), "<amount>") + "");
+                            body.append("To set the default " + CM.settings.cmd.create(GuildDB.Key.BANKER_WITHDRAW_LIMIT.name(), "<amount>", null, null) + "");
                             DiscordUtil.createEmbedCommand(alertChannel, "Banker withdraw limit exceeded", body.toString());
                             Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
                             if (adminRole != null) {

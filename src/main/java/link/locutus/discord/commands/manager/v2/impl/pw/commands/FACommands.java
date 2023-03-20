@@ -269,7 +269,7 @@ public class FACommands {
         if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You do not have FOREIGN_AFFAIRS";
         Category category = db.getOrThrow(GuildDB.Key.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "").toSlashCommand() + "";
+            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
         }
         if (nation.getPosition() < Rank.OFFICER.id && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You are not an officer";
         User nationUser = nation.getUser();
@@ -283,7 +283,7 @@ public class FACommands {
             db.addCoalition(nation.getAlliance_id(), Coalition.MASKEDALLIANCES);
             GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildDB.Key.AUTOROLE);
             if (autoRoleValue == null || autoRoleValue == GuildDB.AutoRoleOption.FALSE) {
-                return "AutoRole is disabled. See " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand() + "";
+                return "AutoRole is disabled. See " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null, null, null).toSlashCommand() + "";
             }
             db.getAutoRoleTask().syncDB();
             db.getAutoRoleTask().autoRole(member, f -> {});

@@ -280,7 +280,7 @@ public class BankCommands {
             return "You do not have permisssion to send to other nations";
         }
         if (db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL) == null) {
-            return "No resource request channel set. See " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), null) + "";
+            return "No resource request channel set. See " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), null, null, null) + "";
         }
         if (!receiver.isBlockaded()) return "You are not currently blockaded";
 
@@ -425,7 +425,7 @@ public class BankCommands {
             return "You do not have permisssion to disburse to other nations";
         }
         if (db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL) == null) {
-            return "No resource request channel set. See " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), null) + "";
+            return "No resource request channel set. See " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), null, null, null) + "";
         }
         if (!receiver.isBlockaded()) return "You are not currently blockaded";
 
@@ -1101,8 +1101,8 @@ public class BankCommands {
                 nations.removeIf(n -> n.getPosition() <= 1);
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " set, or " +
-                        "" + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "") + " set");
+                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " +
+                        "" + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null) + " set");
                 nations = new LinkedHashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -2353,16 +2353,16 @@ public class BankCommands {
         if (nation.getAgeDays() < 100) return "Please contact <@664156861033086987> | borg#5729";
         if (root.isDelegateServer()) return "Cannot enable offshoring for delegate server (run this command in the root server)";
 
-        IMessageBuilder confirmButton = io.create().confirmation(CM.offshore.add.cmd.create(offshoreAlliance.getId() + ""));
+        IMessageBuilder confirmButton = io.create().confirmation(CM.offshore.add.cmd.create(offshoreAlliance.getId() + "", null));
         GuildDB offshoreDB = offshoreAlliance.getGuildDB();
 
         if (offshoreDB != null) {
             if (!offshoreDB.hasAlliance()) {
-                return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
+                return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " in " + offshoreDB.getGuild();
             }
             PoliticsAndWarV3 api = offshoreAlliance.getApi(AlliancePermission.WITHDRAW_BANK, AlliancePermission.VIEW_BANK);
             if (api == null) {
-                return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.API_KEY.name(), null).toSlashCommand() + " in " + offshoreDB.getGuild();
+                return "Please set the key " + CM.settings.cmd.create(GuildDB.Key.API_KEY.name(), null, null, null).toSlashCommand() + " in " + offshoreDB.getGuild();
             }
         }
 
@@ -2404,7 +2404,7 @@ public class BankCommands {
                 StringBuilder body = new StringBuilder();
                 body.append("The alliances to this guild will be unregistered: `" + StringMan.getString(toUnregister) + "`\n");
 
-                body.append("The new alliance: `" + offshoreAlliance.getId() + " will be set ` (See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null) + ")\n");
+                body.append("The new alliance: `" + offshoreAlliance.getId() + " will be set ` (See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null) + ")\n");
                 body.append("All other guilds using the prior alliance `" + StringMan.getString(toUnregister) + "` will be changed to use the new offshore");
 
                 confirmButton.embed(title, body.toString()).send();
@@ -2462,7 +2462,7 @@ public class BankCommands {
         }
 
         if (offshoreDB == null) {
-            return "No guild found for alliance: " + offshoreAlliance.getAlliance_id() + ". To register a guild to an alliance: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), offshoreAlliance.getAlliance_id() + "");
+            return "No guild found for alliance: " + offshoreAlliance.getAlliance_id() + ". To register a guild to an alliance: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), offshoreAlliance.getAlliance_id() + "", null, null);
         }
 
         OffshoreInstance currentOffshore = root.getOffshore();
@@ -2479,7 +2479,7 @@ public class BankCommands {
                 body.append("Changing offshores will close the account with your previous offshore provider\n");
                 body.append("Your current offshore is set to: " + currentOffshore.getAllianceId() + "\n");
                 body.append("To check your funds with the current offshore, use " +
-                        CM.deposits.check.cmd.create(idStr, null, null, null, null, null, null));
+                        CM.deposits.check.cmd.create(idStr, null, null, null, null, null, null, null, null));
                 body.append("\nIt is recommended to withdraw all funds from the current offshore before changing, as Locutus may not be able to access the account after closing it`");
 
                 confirmButton.embed(title, body.toString()).send();
@@ -2501,7 +2501,7 @@ public class BankCommands {
                 body.append("Withdraw commands will use this alliance bank\n");
                 body.append("To have another alliance/corporation use this bank as an offshore:\n");
                 body.append(" - You must be admin or econ on both discord servers\n");
-                body.append(" - On the other guild, use: " + CM.offshore.add.cmd.create(offshoreAlliance.getAlliance_id() + "") + "\n\n");
+                body.append(" - On the other guild, use: " + CM.offshore.add.cmd.create(offshoreAlliance.getAlliance_id() + "", null) + "\n\n");
                 body.append("If this is an offshore, and you create a new alliance, you may use this command to set the new alliance (all servers offshoring here will be updated)");
 
                 confirmButton.embed(title, body.toString()).send();
@@ -2519,7 +2519,7 @@ public class BankCommands {
         if (enabled != Boolean.TRUE && !Roles.ECON.has(user, offshoreDB.getGuild())) {
             Role role = Roles.ECON.toRole(offshoreDB);
             String roleName = role == null ? "ECON" : role.getName();
-            return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + CM.settings.cmd.create(GuildDB.Key.PUBLIC_OFFSHORING.name(), null) + " is not enabled on that guild.";
+            return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + CM.settings.cmd.create(GuildDB.Key.PUBLIC_OFFSHORING.name(), null, null, null) + " is not enabled on that guild.";
         }
 
         StringBuilder response = new StringBuilder();
@@ -2577,9 +2577,9 @@ public class BankCommands {
                     if (root.getOrNull(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES) == null) {
                         if (offshoreDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                             root.setInfo(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES, "false");
-                            response.append("\nNote: Offshore War alerts are disabled. Enable using: " + CM.settings.cmd.create(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES.name(), "true"));
+                            response.append("\nNote: Offshore War alerts are disabled. Enable using: " + CM.settings.cmd.create(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES.name(), "true", null, null));
                         } else {
-                            response.append("\nNote: Disable offshore war alerts using: " + CM.settings.cmd.create(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES.name(), "false"));
+                            response.append("\nNote: Disable offshore war alerts using: " + CM.settings.cmd.create(GuildDB.Key.WAR_ALERT_FOR_OFFSHORES.name(), "false", null, null));
                         }
                     }
                 }

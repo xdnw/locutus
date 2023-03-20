@@ -77,7 +77,7 @@ public class SyncTaxes extends Command {
                 }
                 case "legacy": {
                     Set<Integer> ids = db.getAllianceIds();
-                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null);
+                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null);
                     int aaId;
                     int offset = 0;
                     if (ids.size() > 1) {

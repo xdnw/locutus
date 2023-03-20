@@ -968,106 +968,111 @@ public class GrantCommands {
         return response + "<" + StringMan.join(pages, ">\n<") + ">";
     }
 //
-//    private Set<Integer> disabledNations = new HashSet<>();
+    private Set<Integer> disabledNations = new HashSet<>();
 //
-//    @WhitelistPermission
-//    @Command
-//    @RolePermission(Roles.ECON_LOW_GOV)
-//    public synchronized String approveGrant(@Me DBNation banker, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, UUID key, @Switch("f") boolean force) {
-//        try {
-//            Grant grant = Grant.getApprovedGrant(db.getIdLong(), key);
-//            if (grant == null) {
-//                return "Invalid Token. Please try again";
-//            }
-//            DBNation receiver = grant.getNation();
-//
-//            receiver.updateTransactions();
-//            receiver.getCityMap(true);
-//
-//            Set<Grant.Requirement> requirements = grant.getRequirements();
-//            Set<Grant.Requirement> failed = new HashSet<>();
-//            Set<Grant.Requirement> override = new HashSet<>();
-//            for (Grant.Requirement requirement : requirements) {
-//                Boolean result = requirement.apply(receiver);
-//                if (!result) {
-//                    if (requirement.canOverride()) {
-//                        override.add(requirement);
-//                    } else {
-//                        failed.add(requirement);
-//                    }
-//                }
-//            }
-//
-//            if (!failed.isEmpty()) {
-//                StringBuilder result = new StringBuilder("Grant could not be approved.\n");
-//                if (!failed.isEmpty()) {
-//                    result.append("\nFailed checks:\n - " + StringMan.join(failed.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n");
-//                }
-//                if (!override.isEmpty()) {
-//                    result.append("\nFailed checks that you have permission to bypass:\n - " + StringMan.join(override.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n");
-//                }
-//                return result.toString();
-//            }
-//
-//            if (!force) {
-//                String title = grant.title();
-//                StringBuilder body = new StringBuilder();
-//
-//                body.append("Receiver: " + receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
-//                body.append("Note: " + grant.getNote()).append("\n");
-//                body.append("Amt: " + grant.getAmount()).append("\n");
-//                body.append("Cost: `" + PnwUtil.resourcesToString(grant.cost())).append("\n\n");
-//
-//                if (!override.isEmpty()) {
-//                    body.append("**" + override.size() + " failed checks (you have admin override)**\n - ");
-//                    body.append(StringMan.join(override.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n\n");
-//                }
-//
-//                io.create().confirmation(title, body.toString(), command).send();
-//                return null;
-//            }
-//            if (disabledNations.contains(receiver.getNation_id())) {
-//                return "There was an error processing the grant. Please contact an administrator";
-//            }
-//
-//            Grant.deleteApprovedGrant(db.getIdLong(), key);
-//
-//            disabledNations.add(receiver.getNation_id());
-//
-//            Map.Entry<OffshoreInstance.TransferStatus, String> result = db.getOffshore().transferFromAllianceDeposits(banker, db, receiver, grant.cost(), grant.getNote());
-//            OffshoreInstance.TransferStatus status = result.getKey();
-//
-//            StringBuilder response = new StringBuilder();
-//            if (status == OffshoreInstance.TransferStatus.SUCCESS || status == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
-//                response.append("**Transaction:** ").append(result.getValue()).append("\n");
-//                response.append("**Instructions:** ").append(grant.getInstructions());
-//
-//                Locutus.imp().getExecutor().submit(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        receiver.updateTransactions();
-//                        for (Grant.Requirement requirement : grant.getRequirements()) {
-//                            if (!requirement.apply(receiver)) {
-//                                disabledNations.remove(receiver.getNation_id());
-//                                return;
-//                            }
-//                        }
-//                        AlertUtil.error("Grant is still eligable",grant.getType() + " | " + grant.getNote() + " | " + grant.getAmount() + " | " + grant.getTitle());
-//                    }
-//                });
-//
-//            } else {
-//                if (status != OffshoreInstance.TransferStatus.OTHER) {
-//                    disabledNations.remove(receiver.getNation_id());
-//                }
-//                response.append(status + ": " + result.getValue());
-//            }
-//
-//
-//            return response.toString();
-//        } catch (Throwable e) {
-//            e.printStackTrace();
-//            throw e;
-//        }
-//    }
+    @WhitelistPermission
+    @Command
+    @RolePermission(Roles.ECON_LOW_GOV)
+    public synchronized String approveGrant(@Me DBNation banker, @Me User user, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, UUID key, @Switch("f") boolean force) {
+        OffshoreInstance offshore = db.getOffshore();
+        if (offshore == null) {
+            return "No offshore bank";
+        }
+        try {
+            Grant grant = Grant.getApprovedGrant(db.getIdLong(), key);
+            if (grant == null) {
+                return "Invalid Token. Please try again";
+            }
+            DBNation receiver = grant.getNation();
+
+            receiver.updateTransactions();
+            receiver.getCityMap(true);
+
+            Set<Grant.Requirement> requirements = grant.getRequirements();
+            Set<Grant.Requirement> failed = new HashSet<>();
+            Set<Grant.Requirement> override = new HashSet<>();
+            for (Grant.Requirement requirement : requirements) {
+                Boolean result = requirement.apply(receiver);
+                if (!result) {
+                    if (requirement.canOverride()) {
+                        override.add(requirement);
+                    } else {
+                        failed.add(requirement);
+                    }
+                }
+            }
+
+            if (!failed.isEmpty()) {
+                StringBuilder result = new StringBuilder("Grant could not be approved.\n");
+                if (!failed.isEmpty()) {
+                    result.append("\nFailed checks:\n - " + StringMan.join(failed.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n");
+                }
+                if (!override.isEmpty()) {
+                    result.append("\nFailed checks that you have permission to bypass:\n - " + StringMan.join(override.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n");
+                }
+                return result.toString();
+            }
+
+            if (!force) {
+                String title = grant.title();
+                StringBuilder body = new StringBuilder();
+
+                body.append("Receiver: " + receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
+                body.append("Note: " + grant.getNote()).append("\n");
+                body.append("Amt: " + grant.getAmount()).append("\n");
+                body.append("Cost: `" + PnwUtil.resourcesToString(grant.cost())).append("\n\n");
+
+                if (!override.isEmpty()) {
+                    body.append("**" + override.size() + " failed checks (you have admin override)**\n - ");
+                    body.append(StringMan.join(override.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n\n");
+                }
+
+                io.create().confirmation(title, body.toString(), command).send();
+                return null;
+            }
+            if (disabledNations.contains(receiver.getNation_id())) {
+                return "There was an error processing the grant. Please contact an administrator";
+            }
+
+            Grant.deleteApprovedGrant(db.getIdLong(), key);
+
+            disabledNations.add(receiver.getNation_id());
+
+            Set<Long> allowedAlliances = Roles.ECON_LOW_GOV.getAllowedAccounts(user, db);
+            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(banker, db, f -> allowedAlliances.contains((long) f), receiver, grant.cost(), grant.getNote());
+            OffshoreInstance.TransferStatus status = result.getKey();
+
+            StringBuilder response = new StringBuilder();
+            if (status == OffshoreInstance.TransferStatus.SUCCESS || status == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
+                response.append("**Transaction:** ").append(result.getValue()).append("\n");
+                response.append("**Instructions:** ").append(grant.getInstructions());
+
+                Locutus.imp().getExecutor().submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        receiver.updateTransactions();
+                        for (Grant.Requirement requirement : grant.getRequirements()) {
+                            if (!requirement.apply(receiver)) {
+                                disabledNations.remove(receiver.getNation_id());
+                                return;
+                            }
+                        }
+                        AlertUtil.error("Grant is still eligable",grant.getType() + " | " + grant.getNote() + " | " + grant.getAmount() + " | " + grant.getTitle());
+                    }
+                });
+
+            } else {
+                if (status != OffshoreInstance.TransferStatus.OTHER) {
+                    disabledNations.remove(receiver.getNation_id());
+                }
+                response.append(status + ": " + result.getValue());
+            }
+
+
+            return response.toString();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
 }

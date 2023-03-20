@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -174,7 +175,7 @@ public enum Roles {
         if (role != null) {
             return role.getName();
         }
-        return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.create(name(), null);
+        return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.create(name(), null, null);
     }
 
     public GuildDB.Key getKey() {
@@ -230,7 +231,6 @@ public enum Roles {
     public Role toRole(Guild guild) {
         return toRole(Locutus.imp().getGuildDB(guild));
     }
-
     public Role toRole(int alliance) {
         GuildDB db = Locutus.imp().getGuildDBByAA(alliance);
         if (db == null) return null;
@@ -262,7 +262,8 @@ public enum Roles {
 
     public boolean has(Member member, int alliance) {
         if (has(member)) return true;
-        Role role = toRole(alliance);
+        if (alliance == 0) return false;
+        Role role = Locutus.imp().getGuildDB(member.getGuild()).getRole(this, (long) alliance);
         return role != null && member.getRoles().contains(role);
     }
 
@@ -306,5 +307,9 @@ public enum Roles {
         }
         return has(server.getMember(user));
 
+    }
+
+    public Map<Long, Role> toRoleMap(GuildDB senderDB) {
+        return senderDB.getRoleMap(this);
     }
 }

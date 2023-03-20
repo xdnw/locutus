@@ -156,7 +156,7 @@ public class ApiKeyPool {
         if (this.nextIndex >= this.apiKeyPool.size()) {
             this.nextIndex = 0;
         }
-        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ CM.settings.cmd.create("API_KEY", null).toSlashCommand() + "`)");
+        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ CM.settings.cmd.create("API_KEY", null, null, null).toSlashCommand() + "`)");
         ApiKey key = this.apiKeyPool.get(this.nextIndex++);
         key.use();
         return key;

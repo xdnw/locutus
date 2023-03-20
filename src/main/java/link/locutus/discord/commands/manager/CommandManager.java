@@ -325,11 +325,11 @@ public class CommandManager {
                 Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
                 Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
                 if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_BLACKLIST.name(), null) + ")"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_BLACKLIST.name(), null, null, null) + ")"));
                     return false;
                 }
                 if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_WHITELIST.name(), null) + ")"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_WHITELIST.name(), null, null, null) + ")"));
                     return false;
                 }
             }
@@ -488,7 +488,7 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + ""));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null).toSlashCommand() + ""));
                 return true;
             } else if (!member.getRoles().contains(registeredRole)) {
                 RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName()));
