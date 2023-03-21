@@ -995,6 +995,7 @@ public class PoliticsAndWarV3 {
             r.turns_left();
             r.alliance1_id();
             r.alliance2_id();
+            r.approved();
         });
     }
 
@@ -1231,6 +1232,7 @@ public class PoliticsAndWarV3 {
         .alliance2_id()
         .treaty_type()
         .treaty_url()
+        .approved()
         .turns_left();
     }
 
