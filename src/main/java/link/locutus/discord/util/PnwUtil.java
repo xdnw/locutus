@@ -552,16 +552,17 @@ public class PnwUtil {
             if (split.length == 2) {
                 arg = split[1].replaceAll("/", "");
             }
-        } else {
-            DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(arg);
-            if (alliance != null) {
-                return alliance.getAlliance_id();
-            }
         }
         if (MathMan.isInteger(arg)) {
             try {
                 return Integer.parseInt(arg);
             } catch (NumberFormatException e) {}
+        }
+        {
+            DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(arg);
+            if (alliance != null) {
+                return alliance.getAlliance_id();
+            }
         }
         if (arg.contains("=HYPERLINK") && arg.contains("alliance/id=")) {
             String regex = "alliance/id=([0-9]+)";

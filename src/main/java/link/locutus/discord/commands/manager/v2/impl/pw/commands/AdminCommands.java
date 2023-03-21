@@ -403,9 +403,8 @@ public class AdminCommands {
 
     @Command(desc = "Remove a discord role Locutus uses")
     @RolePermission(Roles.ADMIN)
-    public String unregisterRole(@Me Guild guild, @Me GuildDB db, Roles locutusRole) {
-        db.deleteRole(locutusRole);
-        return "Unregistered " + locutusRole;
+    public String unregisterRole(@Me User user, @Me Guild guild, @Me GuildDB db, Roles locutusRole, @Default DBAlliance alliance) {
+        return aliasRole(user, guild, db, locutusRole, null, alliance, true);
     }
 
     @Command()
@@ -440,12 +439,13 @@ public class AdminCommands {
                 response.add(aaId + ": " + role.getName());
             }
         }
+        if (response.isEmpty()) return "";
         return " - " + StringMan.join(response, "\n - ");
     }
 
     @Command(desc = "Set the discord roles Locutus uses")
     @RolePermission(Roles.ADMIN)
-    public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Default() DBAlliance alliance) {
+    public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Default() DBAlliance alliance, @Switch("r") boolean removeRole) {
         if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
             return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
         }
@@ -455,6 +455,29 @@ public class AdminCommands {
             if (discordRole != null) {
                 List<String> rolesListStr = new ArrayList<>();
                 Map<Roles, Map<Long, Long>> allMapping = db.getMappingRaw();
+                if (removeRole) {
+                    // remove all roles registered to it
+                    for (Map.Entry<Roles, Map<Long, Long>> locEntry : allMapping.entrySet()) {
+                        for (Map.Entry<Long, Long> discEntry : locEntry.getValue().entrySet()) {
+                            long aaId =discEntry.getKey();
+                            if (alliance != null && aaId != alliance.getAlliance_id()) continue;
+                            if (discEntry.getValue() == discordRole.getIdLong()) {
+                                String aaStr =  aaId == 0 ? "*" : PnwUtil.getName(aaId, true);
+                                rolesListStr.add("Removed " + locEntry.getKey().name() + " from " + discordRole.getName() + " (AA:" + aaId + ")");
+                                db.deleteRole(locEntry.getKey(), aaId);
+                            }
+                        }
+                    }
+                    if (rolesListStr.isEmpty()) {
+                        return "No aliases found for " + discordRole.getName();
+                    }
+                    response.append("Removed aliases for " + discordRole.getName() + ":\n - ");
+                    response.append(StringMan.join(rolesListStr, "\n - "));
+                    response.append("\n\nUse " + CM.role.setAlias.cmd.toSlashMention() + " to view current role aliases");
+                    return response.toString();
+                }
+
+
                 for (Map.Entry<Roles, Map<Long, Long>> locEntry : allMapping.entrySet()) {
                     for (Map.Entry<Long, Long> discEntry : locEntry.getValue().entrySet()) {
                         if (discEntry.getValue() == discordRole.getIdLong()) {
@@ -484,7 +507,7 @@ public class AdminCommands {
                     registeredRoles.add(role + ":\n" + mappingToString(mapping));
                     continue;
                 }
-                if (db.getOrNull(role.getKey()) == null) continue;
+                if (role.getKey() != null && db.getOrNull(role.getKey()) == null) continue;
                 unregisteredRoles.add(role + ":\n" + mappingToString(mapping));
             }
 
@@ -501,6 +524,19 @@ public class AdminCommands {
         }
 
         if (discordRole == null) {
+            if (removeRole) {
+                Role alias = db.getRole(locutusRole, alliance != null ? (long) alliance.getAlliance_id() : null);
+                if (alias == null) {
+                    String allianceStr = alliance != null ? alliance.getName() + "/" + alliance.getAlliance_id() : "*";
+                    return "No role alias found for " + allianceStr + ":" + locutusRole.name();
+                }
+                if (alliance != null) {
+                    db.deleteRole(locutusRole, alliance.getAlliance_id());
+                } else {
+                    db.deleteRole(locutusRole);
+                }
+                response.append("Removed role alias for " + locutusRole.name() + ":\n");
+            }
             Map<Long, Role> mapping = db.getAccountMapping(locutusRole);
             response.append("**" + locutusRole.name() + "**:\n");
             response.append("`" + locutusRole.getDesc() + "`\n");
@@ -511,6 +547,10 @@ public class AdminCommands {
             }
             response.append("Provide a value for `discordRole` to register a role.\n");
             return response.toString().trim();
+        }
+
+        if (removeRole) {
+            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.create(locutusRole.name()).toSlashCommand() + "");
         }
 
 

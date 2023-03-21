@@ -54,12 +54,19 @@ public class RoleAlias extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         if (args.size() > 3) return usage();
         User user = event.getAuthor();
-        // aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Default() DBAlliance alliance) {
         Guild server = event.getGuild();
         GuildDB db = Locutus.imp().getGuildDB(event);
         Roles locutusRole = args.size() > 0 ? Roles.parse(args.get(0)) : null;
         Role role = args.size() > 1 ? DiscordUtil.getRole(server, args.get(1)) : null;
+        boolean removeRole = false;
+        if (args.size() > 1 && role == null) {
+            if (args.get(1).equalsIgnoreCase("null")) {
+                removeRole = true;
+            } else {
+                return "Invalid role `" + args.get(1) + "`";
+            }
+        }
         DBAlliance alliance = args.size() > 2 ? DBAlliance.parse(args.get(2), true) : null;
-        return AdminCommands.aliasRole(user, server, db, locutusRole, role, alliance);
+        return AdminCommands.aliasRole(user, server, db, locutusRole, role, alliance, removeRole);
     }
 }

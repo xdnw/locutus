@@ -2326,47 +2326,68 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             public String validate(GuildDB db, String value) {
                 if (db.getInfo(Key.DELEGATE_SERVER, false) != null) throw new IllegalArgumentException("Cannot set alliance id of delegate server (please unset DELEGATE_SERVER first)");
 
-                Integer allianceId = PnwUtil.parseAllianceId(value);
-                if (allianceId == null) {
+                Set<Integer> aaIds = PnwUtil.parseAlliances(db, value);
+                if (aaIds.isEmpty()) {
                     throw new IllegalArgumentException("Invalid alliance: " + value);
                 }
+                if (aaIds.size() > 1) {
+                    throw new IllegalArgumentException("Multiple alliances not supported (yet): " + value);
+                }
 
-                GuildDB otherDb = Locutus.imp().getGuildDBByAA(allianceId);
-
-                if (allianceId != 0) {
+                for (int aaId : aaIds) {
+                    if (aaId == 0) {
+                        throw new IllegalArgumentException("Invalid alliance: " + value);
+                    }
+                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
+                    GuildDB otherDb = alliance.getGuildDB();
                     Member owner = db.getGuild().getOwner();
                     DBNation ownerNation = owner != null ? DiscordUtil.getNation(owner.getUser()) : null;
-                    if (ownerNation == null || ownerNation.getAlliance_id() != allianceId || ownerNation.getPosition() < Rank.LEADER.id) {
+                    if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
+                        Set<String> inviteCodes = new HashSet<>();
+                        boolean isValid = false;
                         try {
-                            String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + allianceId;
-                            String content = FileUtil.readStringFromURL(url);
-                            String idStr = db.guild.getId();
+                            try {
+                                List<Invite> invites = RateLimitUtil.complete(db.guild.retrieveInvites());
+                                for (Invite invite : invites) {
+                                    String inviteCode = invite.getCode();
+                                    inviteCodes.add(inviteCode);
+                                }
+                            } catch (InsufficientPermissionException ignore) {}
 
-                            if (!content.contains(idStr)) {
-                                boolean hasInvite = false;
-                                try {
-                                    List<Invite> invites = RateLimitUtil.complete(db.guild.retrieveInvites());
-                                    for (Invite invite : invites) {
-                                        String inviteUrl = invite.getUrl();
-                                        if (content.contains(inviteUrl)) {
-                                            hasInvite = true;
+                            if (!inviteCodes.isEmpty() && alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
+                                for (String code : inviteCodes) {
+                                    if (alliance.getDiscord_link().contains(code)) {
+                                        isValid = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (!isValid) {
+                                String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
+                                String content = FileUtil.readStringFromURL(url);
+                                String idStr = db.guild.getId();
+
+                                if (!content.contains(idStr)) {
+                                    for (String inviteCode : inviteCodes) {
+                                        if (content.contains(inviteCode)) {
+                                            isValid = true;
                                             break;
                                         }
                                     }
-                                } catch (InsufficientPermissionException ignore) {
-                                }
-
-                                if (!hasInvite) {
-                                    String msg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + allianceId + ">\n" +
-                                            "2. Scroll down to where it says Alliance Description:\n" +
-                                            "3. Put your guild id `" + idStr + "` somewhere in the text\n" +
-                                            "4. Click save\n" +
-                                            "5. Run the command " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "" + value + "", null, null) + " again\n" +
-                                            "(note: you can remove the id after setup)";
-                                    throw new IllegalArgumentException(msg);
                                 }
                             }
-                        } catch(IOException e){
+
+                            if (!isValid) {
+                                String msg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
+                                        "2. Scroll down to where it says Alliance Description:\n" +
+                                        "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
+                                        "4. Click save\n" +
+                                        "5. Run the command " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "" + value + "", null, null) + " again\n" +
+                                        "(note: you can remove the id after setup)";
+                                throw new IllegalArgumentException(msg);
+                            }
+                        } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
                     }
@@ -2376,21 +2397,35 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
                         String msg = "Only 1 root server per Alliance is permitted. The ALLIANCE_ID in the other guild: " + otherDb.getGuild() + " has been removed.\n" +
                                 "To have multiple servers, set the ALLIANCE_ID on your primary server, and then set " + CM.settings.cmd.create(GuildDB.Key.DELEGATE_SERVER.name(), "<guild-id>", null, null) + " on your other servers\n" +
-                                "The `<guild-id>` for this server is `" + db.getIdLong() + "` and the id for the other server is `" + otherDb.getIdLong() + "`.";
+                                "The `<guild-id>` for this server is `" + db.getIdLong() + "` and the id for the other server is `" + otherDb.getIdLong() + "`.\n\n" +
+                                "Run this command again to confirm and set the ALLIANCE_ID";
                         throw new IllegalArgumentException(msg);
                     }
                 }
-                return Integer.toString(allianceId);
+                return StringMan.join(aaIds, ",");
             }
             @Override
             public Object parse(GuildDB db, String input) {
-                int val = PnwUtil.parseAllianceId(input);
-                return val == 0 ? null : val;
+                String[] split = input.split(",");
+                Set<Integer> parsed = new LinkedHashSet<>(split.length);
+                for (String arg : split) {
+                    Integer id = PnwUtil.parseAllianceId(arg);
+                    if (id == null) {
+                        throw new IllegalArgumentException("Invalid alliance: " + arg);
+                    }
+                    parsed.add(id);
+                }
+                return parsed;
             }
 
             @Override
             public String help() {
                 return "Your alliance id. `null` if no alliance";
+            }
+
+            @Override
+            public String toString(Object value) {
+                return StringMan.join((Set<Integer>) value, ",");
             }
         },
 
@@ -5201,7 +5236,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public String getInfo(Key key, boolean allowDelegate) {
         if (key == Key.ALLIANCE_ID) {
             String result = getInfo(key.name(), false);
-
         }
         return getInfo(key.name(), allowDelegate);
     }

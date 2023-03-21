@@ -68,7 +68,6 @@ public class ParametricCallable implements ICommand {
     public static ParametricCallable generateFromMethod(CommandCallable parent, Object object, Method method, ValueStore store) {
         Command cmdAnn = method.getAnnotation(Command.class);
         if (cmdAnn != null) {
-            System.out.println("Register " + StringMan.getString(cmdAnn.aliases()));
             return new ParametricCallable(parent, store, object, method, cmdAnn);
         }
         return null;
