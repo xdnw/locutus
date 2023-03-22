@@ -56,7 +56,11 @@ import java.util.stream.Collectors;
 
 public class TradeCommands {
 
-    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    public static final long BULK_TRADE_SERVER = 672217848311054346L; // 1080313938937389207L
+    public static final long BULK_TRADE_CHANNEL = 672310912090243092L; // 1080573769048932372L
+
+
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String myOffers(TradeManager tMan, @Me DBNation me) {
         Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(f -> f.nation == me.getNation_id());
@@ -71,7 +75,7 @@ public class TradeCommands {
         return response.toString();
     }
 
-    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String sellList(TradeManager tMan, ResourceType youSell, @Default("MONEY") ResourceType youReceive, @Default Set<DBNation> allowedTraders,
                           @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
@@ -108,7 +112,7 @@ public class TradeCommands {
         return (pair.getKey() + pair.getValue()) / 2;
     }
 
-    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String buyList(TradeManager tMan, ResourceType youBuy, @Default("MONEY") ResourceType youProvide, @Default Set<DBNation> allowedTraders,
                           @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
@@ -141,15 +145,15 @@ public class TradeCommands {
         return response.toString();
     }
 
-    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
-    public String updateOffer(TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
+    public String updateOffer(@Me JSONObject command, TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
                               int offerId, Long quantity,
                               @Switch("minPPU") Integer minPPU,
                               @Switch("maxPPU") Integer maxPPU,
                               @Switch("n") Boolean negotiable, @Switch("e") @Timediff Long expire,
                               @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
-                              @Switch("f") boolean confirm) {
+                              @Switch("f") boolean force) {
         TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(offerId);
         if (offer == null) {
             return "No offer found with ID " + offerId;
@@ -210,12 +214,17 @@ public class TradeCommands {
             offer.setExchangeFor(exchangeFor, PnwUtil.resourcesToArray(exchangePPU));
         }
 
-        tMan.updateBulkOffer(offer);
+        if (!force) {
+            io.create().confirmation(offer.getTitle(), offer.toPrettyString(), command).send();
+            return null;
+        }
 
+        tMan.updateBulkOffer(offer);
+        io.create().embed("Updated: " + offer.getTitle(), offer.toPrettyString()).send();
         return null;
     }
 
-    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String offerInfo(@Me JSONObject command, TradeManager tMan, @Me IMessageIO io, int offerId) {
         TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(offerId);
@@ -229,7 +238,7 @@ public class TradeCommands {
     }
 
 
-    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String deleteOffer(TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
                               @Default ResourceType deleteResource, @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell, @Switch("i") Integer deleteId) {
@@ -260,7 +269,7 @@ public class TradeCommands {
     }
 
 
-    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String buyOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
                       long quantity,
@@ -268,7 +277,7 @@ public class TradeCommands {
                       @Switch("maxPPU") Integer maxPPU,
                       @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
                       @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
-                      @Switch("f") boolean confirm) {
+                      @Switch("f") boolean force) {
         if (expire > TimeUnit.DAYS.toMillis(30)) {
             return "Expiry cannot be longer than 30 days.";
         }
@@ -308,8 +317,8 @@ public class TradeCommands {
 
         String title = offer.getTitle();
         String body = offer.toPrettyString();
-        if (!confirm) {
-            io.create().confirmation(title, body, command).send();
+        if (!force) {
+            io.create().confirmation("Pending: " + title, body, command).send();
             return null;
         }
 
@@ -326,18 +335,20 @@ public class TradeCommands {
 
         // post to channel
         {
-            long channelIdTmp = 1080573769048932372L;
+            long channelIdTmp = BULK_TRADE_CHANNEL;
             GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(channelIdTmp);
             if (channel != null) {
                 DiscordUtil.createEmbedCommand(channel, title, body); // TODO refresh cmd
             }
         }
 
-        io.create().embed("Posted: " + title, body).append(response.toString()).send();
+        System.out.println("Response " + response.toString() + " | " + removed);
+
+        io.create().embed("Posted: " + offer.getTitle(), body).append(response.toString()).send();
         return null;
     }
 
-    @RolePermission(value=Roles.MEMBER, guild=1080313938937389207L)
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String sellOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
                            long quantity,
@@ -345,7 +356,7 @@ public class TradeCommands {
                            @Switch("maxPPU") Integer maxPPU,
                            @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
                            @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
-                           @Switch("f") boolean confirm) {
+                           @Switch("f") boolean force) {
         if (expire > TimeUnit.DAYS.toMillis(30)) {
             return "Expiry cannot be longer than 30 days.";
         }
@@ -385,8 +396,8 @@ public class TradeCommands {
 
         String title = offer.getTitle();
         String body = offer.toPrettyString();
-        if (!confirm) {
-            io.create().confirmation(title, body, command).send();
+        if (!force) {
+            io.create().confirmation("Pending: " + title, body, command).send();
             return null;
         }
 
@@ -403,14 +414,14 @@ public class TradeCommands {
 
         // post to channel
         {
-            long channelIdTmp = 1080573769048932372L;
+            long channelIdTmp = BULK_TRADE_CHANNEL;
             GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(channelIdTmp);
             if (channel != null) {
                 DiscordUtil.createEmbedCommand(channel, title, body); // TODO refresh cmd
             }
         }
 
-        io.create().embed("Posted: " + title, body).append(response.toString()).send();
+        io.create().embed("Posted: " + offer.getTitle(), body).append(response.toString()).send();
         return null;
 
 

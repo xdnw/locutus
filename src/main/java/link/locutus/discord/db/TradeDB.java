@@ -30,6 +30,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -287,7 +288,11 @@ public class TradeDB extends DBMainV2 {
                 stmt.setObject(i++, negotiable);
                 stmt.setObject(i++, expire);
                 stmt.setObject(i++, exchangeForBits);
-                stmt.setObject(i++, ArrayUtil.toByteArray(exchangePPU));
+                if (exchangePPU == null) {
+                    stmt.setNull(i++, Types.BINARY);
+                } else {
+                    stmt.setObject(i++, ArrayUtil.toByteArray(exchangePPU));
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -337,24 +342,12 @@ public class TradeDB extends DBMainV2 {
         }
 
         public String toSimpleString() {
-            /*
-            stmt.setObject(i++, resourceId);
-            stmt.setObject(i++, nation);
-            stmt.setObject(i++, quantity);
-            stmt.setObject(i++, isBuy);
-            stmt.setObject(i++, minPPU);
-            stmt.setObject(i++, maxPPU);
-            stmt.setObject(i++, negotiable);
-            stmt.setObject(i++, expire);
-            stmt.setObject(i++, exchangeForBits);
-            stmt.setObject(i++, ArrayUtil.toByteArray(exchangePPU));
-             */
             String result = "#" + id + ": `" +
                     PnwUtil.getName(nation, false) + "` " +
-                    (isBuy ? "Buying" : "Selling") +
+                    (isBuy ? "Buying" : "Selling") + " " + 
                     MathMan.format(quantity) + "x " +
                     getResource() + " for " +
-                    minPPU + "-" + maxPPU;
+                    getPpuRangeStr(false);
             if (negotiable) result += " (negotiable)";
             return result;
         }
@@ -449,6 +442,19 @@ public class TradeDB extends DBMainV2 {
 //            quantity as Amount: QUANTITY
             result.append("Amount: " + MathMan.format(quantity) + "\n");
 //            minPPU as Min PPU: MIN_PPU (if not null)
+            String ppuRange = getPpuRangeStr(false);
+            result.append("PPU: " + ppuRange + "\n");
+//            expire as Expires: EXPIRE_DATE (using TimeUtil discord format)
+            result.append("Expires: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire - System.currentTimeMillis()) + "\n");
+
+
+//            exchangeForBits as Exchange For: Set<EXCHANGE_FOR> (if not 0)
+//            exchangePPU as Exchange PPU: Set<EXCHANGE_PPU> (if not null)
+
+            return result.toString();
+        }
+
+        public String getPpuRangeStr(boolean compact) {
             String ppuRange;
             if (minPPU > 0 && maxPPU > 0) {
                 ppuRange = MathMan.format(minPPU) + "-" + MathMan.format(maxPPU);
@@ -459,21 +465,17 @@ public class TradeDB extends DBMainV2 {
             } else {
                 String low = MathMan.format(Locutus.imp().getTradeManager().getLowAvg(getResource()));
                 String high = MathMan.format(Locutus.imp().getTradeManager().getHighAvg(getResource()));
-                ppuRange = "Market Average (currently " + low + "-" + high + ")";
+                if (compact) {
+                    ppuRange = "~" + low + "-" + high + "";
+                } else {
+                    ppuRange = "Market Average (currently " + low + "-" + high + ")";
+                }
             }
-            result.append("PPU: " + ppuRange + "\n");
-//            expire as Expires: EXPIRE_DATE (using TimeUtil discord format)
-            result.append("Expires: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire - System.currentTimeMillis()) + "\n");
-
-
-//            exchangeForBits as Exchange For: Set<EXCHANGE_FOR> (if not 0)
-//            exchangePPU as Exchange PPU: Set<EXCHANGE_PPU> (if not null)
-
-
-
-            return result.toString();
+            return ppuRange;
         }
     }
+
+
 
     public synchronized void updateMarketOffers(List<BulkTradeOffer> offers) {
         for (BulkTradeOffer offer : offers) {

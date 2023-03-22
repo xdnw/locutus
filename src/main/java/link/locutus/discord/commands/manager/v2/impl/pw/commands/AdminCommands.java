@@ -21,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
@@ -450,6 +451,7 @@ public class AdminCommands {
             return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
         }
         StringBuilder response = new StringBuilder();
+        boolean showGlobalMappingInfo = false;
 
         if (locutusRole == null) {
             if (discordRole != null) {
@@ -477,9 +479,10 @@ public class AdminCommands {
                     return response.toString();
                 }
 
-
                 for (Map.Entry<Roles, Map<Long, Long>> locEntry : allMapping.entrySet()) {
-                    for (Map.Entry<Long, Long> discEntry : locEntry.getValue().entrySet()) {
+                    Map<Long, Long> aaToRoleMap = locEntry.getValue();
+                    showGlobalMappingInfo |= aaToRoleMap.size() > 1 && aaToRoleMap.containsKey(0L);
+                    for (Map.Entry<Long, Long> discEntry : aaToRoleMap.entrySet()) {
                         if (discEntry.getValue() == discordRole.getIdLong()) {
                             Roles role = locEntry.getKey();
                             long aaId = discEntry.getKey();
@@ -496,6 +499,7 @@ public class AdminCommands {
                 }
                 response.append("Aliases for " + discordRole.getName() + ":\n - ");
                 response.append(StringMan.join(rolesListStr, "\n - "));
+                if (showGlobalMappingInfo) response.append("\n`note: " + Messages.GLOBAL_ROLE_MAPPING_INFO + "`");
                 return response.toString();
             }
 
@@ -546,6 +550,9 @@ public class AdminCommands {
                 response.append("```\n" + mappingToString(mapping) + "```\n");
             }
             response.append("Provide a value for `discordRole` to register a role.\n");
+            if (mapping.size() > 1 && mapping.containsKey(0L)) {
+                response.append("`note: " + Messages.GLOBAL_ROLE_MAPPING_INFO + "`");
+            }
             return response.toString().trim();
         }
 

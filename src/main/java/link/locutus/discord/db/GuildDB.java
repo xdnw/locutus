@@ -5825,7 +5825,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             mapping = roleIds.get(allianceOrNull);
         }
         if (mapping == null) {
-            mapping = roleIds.get(0);
+            mapping = roleIds.get(0L);
         }
         if (mapping != null) {
             return guild.getRoleById(mapping);
