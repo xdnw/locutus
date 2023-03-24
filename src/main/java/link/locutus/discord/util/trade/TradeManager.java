@@ -62,6 +62,30 @@ public class TradeManager {
 
     public TradeManager() throws SQLException, ClassNotFoundException {
         this.tradeDb = new link.locutus.discord.db.TradeDB();
+
+    }
+
+    public Set<TradeDB.BulkTradeOffer> getBulkOffers(ResourceType type, Predicate<TradeDB.BulkTradeOffer> filter) {
+        Queue<TradeDB.BulkTradeOffer> offers = offersByResource.get(type);
+        if (offers == null) {
+            return Collections.emptySet();
+        }
+        return offers.stream().filter(filter).filter(f -> !f.isExpired()).collect(Collectors.toSet());
+    }
+
+    public Set<TradeDB.BulkTradeOffer> getBulkOffers(Predicate<TradeDB.BulkTradeOffer> filter) {
+        return offersByResource.values().stream().flatMap(Collection::stream).filter(filter).filter(f -> !f.isExpired()).collect(Collectors.toSet());
+    }
+
+    public TradeDB.BulkTradeOffer getBulkOffer(int tradeId) {
+        for (Map.Entry<ResourceType, Queue<TradeDB.BulkTradeOffer>> entry : offersByResource.entrySet()) {
+            for (TradeDB.BulkTradeOffer offer : entry.getValue()) {
+                if (offer.id == tradeId) {
+                    return offer;
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -69,7 +93,7 @@ public class TradeManager {
      * @param offer
      * @return removed offers
      */
-    public Set<TradeDB.BulkTradeOffer> addOffer(TradeDB.BulkTradeOffer offer, boolean checkExisting) {
+    public Set<TradeDB.BulkTradeOffer> addBulkOffer(TradeDB.BulkTradeOffer offer, boolean checkExisting, boolean addToDb) {
         Set<TradeDB.BulkTradeOffer> deleted = new HashSet<>();
         Queue<TradeDB.BulkTradeOffer> existingQueue = offersByResource.get(offer.getResource());
         if (existingQueue == null) {
@@ -96,7 +120,9 @@ public class TradeManager {
         }
         synchronized (existingQueue) {
             existingQueue.add(offer);
-            tradeDb.addMarketOffers(offer);
+            if (addToDb) {
+                tradeDb.addMarketOffers(offer);
+            }
         }
         for (ResourceType type : offer.getExchangeFor()) {
             offersByResource.computeIfAbsent(type, f -> new ConcurrentLinkedQueue<>()).add(offer);
@@ -950,5 +976,15 @@ public class TradeManager {
         } else {
             return ppu < 15000000 || ppu >= 30000000;
         }
+    }
+
+    public void deleteBulkMarketOffers(Set<Integer> idsToDelete, boolean deleteFromDB) {
+        offersByResource.values().forEach(offers -> offers.removeIf(offer -> idsToDelete.contains(offer.id)));
+        getTradeDb().deleteBulkMarketOffers(idsToDelete);
+    }
+
+    public void updateBulkOffer(TradeDB.BulkTradeOffer offer) {
+        deleteBulkMarketOffers(Collections.singleton(offer.id), false);
+        addBulkOffer(offer, false, false);
     }
 }

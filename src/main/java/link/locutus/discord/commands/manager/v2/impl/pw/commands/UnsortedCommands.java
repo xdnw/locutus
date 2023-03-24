@@ -44,7 +44,10 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -59,6 +62,19 @@ public class UnsortedCommands {
 
     private final Map<Long, String> previous = new HashMap<>();
     private long previousNicksGuild = 0;
+
+    @Command
+    public static String reroll(@Me IMessageIO io, DBNation nation) {
+        long date = nation.getRerollDate();
+        if (date == Long.MAX_VALUE) {
+            return "No direct reroll found. See also: " + CM.nation.list.multi.cmd.toSlashMention();
+        }
+        String title = "`" + nation.getNation() + "` is a reroll";
+        String body = "Reroll date: " + DiscordUtil.timestamp(nation.getDate(), "d") + "\n" +
+                "Original creation date: " + DiscordUtil.timestamp(date, "d");
+        io.create().embed(title, body).send();
+        return null;
+    }
 
     @Command(desc = "View nation or AA bank contents")
     @RolePermission(Roles.MEMBER)
@@ -94,7 +110,7 @@ public class UnsortedCommands {
                 }
             }
         } else {
-            throw new IllegalArgumentException("No alliances are registered to this guild. Please provide a list of nations to check.");
+            throw new IllegalArgumentException("No alliances are registered to this guild, please provide a list of nations to check.");
         }
         if (brackets.isEmpty()) {
             throw new IllegalArgumentException("No tax brackets found.");
@@ -171,9 +187,9 @@ public class UnsortedCommands {
             messages.add("Set the `forceUpdate` switch to force an update of all tax brackets.");
         }
         if (includeUnknownRate) {
-            messages.add("You do not have permission to view the tax rates of some brackets, revenue will be assumed 100/100");
+            messages.add("You do not have permission to view the tax rates of some brackets, revenue will be assumed 100/100.");
         }
-        messages.add("The TAX column includes tax records not set to go into a member's personal deposits, or offsets using the `#tax` note");
+        messages.add("The TAX column includes tax records not set to go into a member's personal deposits, or offsets using the `#tax` note.");
 
         sheet.clearAll();
         sheet.set(0, 0);
@@ -416,36 +432,33 @@ public class UnsortedCommands {
 
         int perPage = 5;
 
-        new RankBuilder<>(nations).adapt(new com.google.common.base.Function<DBNation, String>() {
-            @Override
-            public String apply(DBNation n) {
-                PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(n.getNation_id());
-                String result = "**" + n.getNation() + "**:" +
-                        "";
+        new RankBuilder<>(nations).adapt(n -> {
+            PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(n.getNation_id());
+            String result = "**" + n.getNation() + "**:" +
+                    "";
 
-                String active;
-                if (n.getActive_m() < TimeUnit.DAYS.toMinutes(1)) {
-                    active = "daily";
-                } else if (n.getActive_m() < TimeUnit.DAYS.toMinutes(7)) {
-                    active = "weekly";
-                } else {
-                    active = "inactive";
-                }
-                String url = n.getNationUrl();
-                String general = n.toMarkdown(false, true, false);
-                String infra = n.toMarkdown(false, false, true);
-
-                StringBuilder response = new StringBuilder();
-                response.append(n.getNation()).append(" | ").append(n.getAllianceName()).append(" | ").append(active);
-                if (user != null) {
-                    response.append('\n').append(user.getDiscordName()).append(" | ").append("`<@!").append(user.getDiscordId()).append(">`");
-                }
-                response.append('\n').append(url);
-                response.append('\n').append(general);
-                response.append(infra);
-
-                return response.toString();
+            String active;
+            if (n.getActive_m() < TimeUnit.DAYS.toMinutes(1)) {
+                active = "daily";
+            } else if (n.getActive_m() < TimeUnit.DAYS.toMinutes(7)) {
+                active = "weekly";
+            } else {
+                active = "inactive";
             }
+            String url = n.getNationUrl();
+            String general = n.toMarkdown(false, true, false);
+            String infra = n.toMarkdown(false, false, true);
+
+            StringBuilder response = new StringBuilder();
+            response.append(n.getNation()).append(" | ").append(n.getAllianceName()).append(" | ").append(active);
+            if (user != null) {
+                response.append('\n').append(user.getDiscordName()).append(" | ").append("`<@!").append(user.getDiscordId()).append(">`");
+            }
+            response.append('\n').append(url);
+            response.append('\n').append(general);
+            response.append(infra);
+
+            return response.toString();
         }).page(page - 1, perPage).build(channel, command, getClass().getSimpleName());
         return null;
     }
@@ -601,6 +614,8 @@ public class UnsortedCommands {
         return null;
     }
 
+//    double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
+
     @Command
     public String cityRevenue(@Me Guild guild, @Me IMessageIO channel, @Me User user,
                               CityBuild city, @Default("%user%") DBNation nation, @Switch("b") boolean excludeNationBonus) {
@@ -638,8 +653,6 @@ public class UnsortedCommands {
         msg.send();
         return null;
     }
-
-//    double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
 
     @Command
     public String unitHistory(@Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
@@ -1135,27 +1148,6 @@ public class UnsortedCommands {
             result += author.getAsMention();
         }
         return result;
-    }
-
-    @Command
-    public String reroll(@Me TextChannel channel, @Me Guild guild, @Me User author,
-                         DBNation nation) {
-
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
-        for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
-            int otherId = entry.getKey();
-            DBNation otherNation = entry.getValue();
-
-            if (otherId > nation.getId() && otherNation.getAgeDays() > nation.getAgeDays() && Math.abs(otherNation.getDate() - nation.getDate()) > TimeUnit.DAYS.toMillis(3)) {
-                return nation.getNation() + "/" + nation.getNation_id() + " is a reroll.";
-            }
-        }
-
-//        Map<Long, BigInteger> uuids = Locutus.imp().getDiscordDB().getUuids(me.getNation_id());
-        Set<String> multiNations = new HashSet<>();
-        Set<Integer> deletedMulti = new HashSet<>();
-
-        return nation.getNation() + "/" + nation.getNation_id() + " is not a reroll.";
     }
 
     @Command(desc = "Generate an optimal build for a city")

@@ -10,10 +10,8 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class Reroll extends Command {
@@ -61,10 +59,6 @@ public class Reroll extends Command {
                 return me.getNation() + "/" + me.getNation_id() + " is a reroll.";
             }
         }
-
-        Set<String> multiNations = new HashSet<>();
-        Set<Integer> deletedMulti = new HashSet<>();
-
         return me.getNation() + "/" + me.getNation_id() + " is not a reroll.";
     }
 }

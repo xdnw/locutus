@@ -416,10 +416,10 @@ public class BankCommands {
 
             double optimalGain = profit >= profitOptimal ? 1 : profit / profitOptimal;
 
-            row.set(15, MathMan.format(100 * optimalGain));
+            row.set(16, MathMan.format(100 * optimalGain));
 
 
-            int i = 16;
+            int i = 17;
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 row.set(i++, MathMan.format(revenue[type.ordinal()]));
