@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
@@ -10,8 +12,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.enums.AttackType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -51,17 +51,13 @@ public class AllianceAttackTypeRanking extends Command {
 
         String arg = args.get(0);
         if (MathMan.isInteger(arg)) arg = arg + "d";
-        long cutoffMs = System.currentTimeMillis() - TimeUtil.timeToSec(arg) * 1000l;
+        long cutoffMs = System.currentTimeMillis() - TimeUtil.timeToSec(arg) * 1000L;
         AttackType type = AttackType.valueOf(args.get(1).toUpperCase());
 
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
 //            Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWars();
         Map<Integer, Integer> totalAttacks = new HashMap<>();
         Map<Integer, Integer> attackOfType = new HashMap<>();
-
-//        if (flags.contains('m')) {
-//            attacks.removeIf(f -> f.att_mun_used != 0);
-//        }
 
         for (DBAttack attack : attacks) {
             DBNation nat = Locutus.imp().getNationDB().getNation(attack.attacker_nation_id);
@@ -99,7 +95,7 @@ public class AllianceAttackTypeRanking extends Command {
 
         String title = " attacks of type: " + type.getName() + " (" + args.get(0) + ")";
         title = (flags.contains('t') ? "total" : "percent") + title;
-        builder.sort().name(f -> f.getName(), g -> MathMan.format(g)).build(event, title);
+        builder.sort().name(DBAlliance::getName, MathMan::format).build(event, title);
         return null;
     }
 }
