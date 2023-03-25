@@ -65,6 +65,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -83,6 +84,36 @@ public class AdminCommands {
     public String syncTreasures() {
         Locutus.imp().getNationDB().updateTreasures(Event::post);
         return "Done!";
+    }
+
+    @Command
+    public String loginTimes(@Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, SpreadSheet sheet) throws IOException {
+        // time cutoff < 30d
+        if (System.currentTimeMillis() - cutoff > TimeUnit.DAYS.toMillis(30)) {
+            return "Cutoff must be within the last 30 days";
+        }
+        if (nations.size() > 30) {
+            return "Too many nations (max: 30)";
+        }
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "nation",
+                "time"
+        ));
+        sheet.addRow(header);
+        for (DBNation nation : nations) {
+            List<DBSpyUpdate> activity = Locutus.imp().getNationDB().getSpyActivityByNation(nation.getNation_id(), cutoff);
+            for (DBSpyUpdate update : activity) {
+                header.set(0, String.valueOf(nation.getNation_id()));
+                header.set(1, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(update.timestamp)));
+                sheet.addRow(header);
+            }
+        }
+
+        sheet.clearAll();
+        sheet.set(0, 0);
+
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command(desc = "Pull registered nations from locutus\n" +

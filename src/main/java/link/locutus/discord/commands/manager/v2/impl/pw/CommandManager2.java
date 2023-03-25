@@ -158,6 +158,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
 
+        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "loginTimes", "list_login_times");
+
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
         System.out.println(output);

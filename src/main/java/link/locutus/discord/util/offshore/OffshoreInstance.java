@@ -748,7 +748,7 @@ public class OffshoreInstance {
             }
         }
 
-        if (auth == null || !auth.isValid()) {
+        if (auth == null || !auth.isValid() || true) {
             // get api
             try {
                 PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);

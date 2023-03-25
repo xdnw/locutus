@@ -3056,6 +3056,26 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+    public List<DBSpyUpdate> getSpyActivityByNation(int nationId, long mindate) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM spy_activity WHERE nation = ? AND timestamp > ? ORDER BY timestamp DESC")) {
+            stmt.setLong(1, nationId);
+            stmt.setLong(2, mindate);
+
+            List<DBSpyUpdate> set = new ArrayList<>();
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    DBSpyUpdate entry = new DBSpyUpdate(rs);
+                    set.add(entry);
+                }
+            }
+            return set;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public List<DBSpyUpdate> getSpyActivity(long timestamp, long range) {
         try (PreparedStatement stmt = prepareQuery("select * FROM spy_activity WHERE timestamp > ? AND timestamp < ? ORDER BY timestamp ASC")) {
             stmt.setLong(1, timestamp - range);
