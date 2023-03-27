@@ -27,6 +27,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.offshore.Grant;
@@ -1054,7 +1055,9 @@ public class BankCommands {
                     "Add `-t` to not include taxes\n" +
                     "Add `-l` to not include loans\n" +
                     "Add `-g` to not include grants`\n" +
+                    "Add `-p` to include past depositors\n" +
                     "Add `-f` to force an update"
+
     )
     @RolePermission(Roles.ECON)
     public String depositSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
@@ -1065,6 +1068,7 @@ public class BankCommands {
                                @Switch("l") boolean noLoans,
                                @Switch("g") boolean noGrants,
                                @Switch("d") boolean noDeposits,
+                               @Switch("p") boolean includePastDepositors,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
@@ -1099,7 +1103,18 @@ public class BankCommands {
             if (!aaIds.isEmpty()) {
                 nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations(aaIds));
                 nations.removeIf(n -> n.getPosition() <= 1);
+
+                if (includePastDepositors) {
+                    Set<Integer> ids = Locutus.imp().getBankDB().getSenderNationIdFromAllianceReceivers(aaIds);
+                    for (int id : ids) {
+                        DBNation nation = Locutus.imp().getNationDB().getNation(id);
+                        if (nation != null) nations.add(nation);
+                    }
+                }
             } else {
+                if (includePastDepositors) {
+                    throw new IllegalArgumentException("usePastDepositors is only implemented for alliances (ping borg)");
+                }
                 Role role = Roles.MEMBER.toRole(guild);
                 if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " +
                         "" + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null) + " set");
@@ -1111,6 +1126,8 @@ public class BankCommands {
                 if (nations.isEmpty()) return "No members found";
 
             }
+        } else if (includePastDepositors) {
+            throw new IllegalArgumentException("usePastDepositors cannot be set when nations are provided");
         }
         Set<Long> tracked = null;
         if (offshores != null) {
@@ -1122,6 +1139,11 @@ public class BankCommands {
         double[] aaTotalPositive = ResourceType.getBuffer();
         double[] aaTotalNet = ResourceType.getBuffer();
 
+        boolean updateBulk = Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0;
+        if (updateBulk) {
+            Locutus.imp().getBankDB().updateBankRecs(Event::post);
+        }
+
         long last = System.currentTimeMillis();
         for (DBNation nation : nations) {
             if (System.currentTimeMillis() - last > 5000) {
@@ -1129,7 +1151,7 @@ public class BankCommands {
                 if (tmp != null) msgFuture = tmp.clear().append("calculating for: " + nation.getNation()).send();
                 last = System.currentTimeMillis();
             }
-            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, 0L, 0L);
+            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L);
             double[] buffer = ResourceType.getBuffer();
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
