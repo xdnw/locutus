@@ -57,7 +57,8 @@ public class DepositsSheet extends Command {
                 "Add `-t` to not include taxes\n" +
                 "Add `-l` to not include loans\n" +
                 "Add `-g` to not include grants`\n" +
-                "Add `-f` to force an update";
+                "Add `-f` to force an update\n" +
+                "Add `-p` to include all past members";
     }
 
     @Override
@@ -111,7 +112,6 @@ public class DepositsSheet extends Command {
                     nations.add(nation);
                 }
                 if (nations.isEmpty()) return "No members found";
-
             }
         } else if (args.size() >= 1) {
             nations = (DiscordUtil.parseNations(guild, args.get(0)));
