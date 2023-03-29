@@ -1,12 +1,9 @@
 package link.locutus.discord.db;
 
-import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -1984,9 +1981,9 @@ public class GuildHandler {
         Set<Project> projects = nation.getProjects();
         Map<Project, Set<Grant.Requirement>> allowed = new HashMap<>();
 
-        if (nation.getCities() <= Projects.RESOURCE_PRODUCTION_CENTER.maxCities()) allowed.put(Projects.RESOURCE_PRODUCTION_CENTER, Collections.EMPTY_SET);
+        if (nation.getCities() <= Projects.ACTIVITY_CENTER.maxCities()) allowed.put(Projects.ACTIVITY_CENTER, Collections.EMPTY_SET);
 
-        if (nation.getCities() >= Projects.RESOURCE_PRODUCTION_CENTER.maxCities() || nation.hasProject(Projects.RESOURCE_PRODUCTION_CENTER)) {
+        if (nation.getCities() >= Projects.ACTIVITY_CENTER.maxCities() || nation.hasProject(Projects.ACTIVITY_CENTER)) {
             allowed.put(Projects.URANIUM_ENRICHMENT_PROGRAM, new Grant.Requirement("must be on a continent with uranium", overrideSafe, f -> Buildings.URANIUM_MINE.canBuild(f.getContinent())).toSet());
             allowed.put(Projects.ARMS_STOCKPILE, Collections.EMPTY_SET);
             allowed.put(Projects.BAUXITEWORKS, Collections.EMPTY_SET);

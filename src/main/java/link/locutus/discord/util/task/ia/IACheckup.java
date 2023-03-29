@@ -3,12 +3,10 @@ package link.locutus.discord.util.task.ia;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.sheets.ROI;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.util.AuditType;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -24,7 +22,6 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.AServiceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -47,7 +44,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -860,7 +856,7 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkBuyRpc(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
-        if (nation.getCities() > Projects.RESOURCE_PRODUCTION_CENTER.maxCities()) return null;
+        if (nation.getCities() > Projects.ACTIVITY_CENTER.maxCities()) return null;
         if (nation.getProjectTurns() > 0 || nation.getFreeProjectSlots() <= 0) return null;
         return new AbstractMap.SimpleEntry<>("1", "Go to the projects tab and buy the resource production center");
     }
