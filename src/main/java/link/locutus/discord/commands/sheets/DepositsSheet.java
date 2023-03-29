@@ -139,7 +139,7 @@ public class DepositsSheet extends Command {
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
             header.set(1, nation.getCities());
             header.set(2, nation.getAgeDays());
-            header.set(3, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSITS, buffer))));
+            header.set(3, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
             header.set(4, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
             header.set(5, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
             header.set(6, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
@@ -155,7 +155,7 @@ public class DepositsSheet extends Command {
                     case TAX:
                         if (noTaxes) continue;
                         break;
-                    case DEPOSITS:
+                    case DEPOSIT:
                         if (noDeposits) continue;
                         break;
                 }

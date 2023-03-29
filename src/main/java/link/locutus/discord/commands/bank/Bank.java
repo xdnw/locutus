@@ -71,8 +71,8 @@ public class Bank extends Command {
                 return "That nation is not in your alliance:";
             }
             if (nation.getNation_id() != banker.getNation_id()) {
-                if (!Roles.INTERNAL_AFFAIRS_STAFF.has(user, guild) && !Roles.ECON_LOW_GOV.has(user, guild) && !Roles.MILCOM.has(user, guild)) {
-                    return "You are not authorized to view another nations bank. Missing any roles: " + Roles.INTERNAL_AFFAIRS_STAFF + ", " + Roles.ECON_LOW_GOV + ", " + Roles.MILCOM;
+                if (!Roles.INTERNAL_AFFAIRS_STAFF.has(user, guild) && !Roles.ECON_STAFF.has(user, guild) && !Roles.MILCOM.has(user, guild)) {
+                    return "You are not authorized to view another nations bank. Missing any roles: " + Roles.INTERNAL_AFFAIRS_STAFF + ", " + Roles.ECON_STAFF + ", " + Roles.MILCOM;
                 }
             }
             totals = nation.getStockpile();
@@ -86,7 +86,7 @@ public class Bank extends Command {
             if (!db.isAllianceId(alliance)) {
                 return "That alliance is not in your alliance:";
             }
-            if (!Roles.ECON_LOW_GOV.has(author, guild)) {
+            if (!Roles.ECON_STAFF.has(author, guild)) {
                 return "You do not have permission to view alliance bank contents.";
             }
             totals = DBAlliance.getOrCreate(alliance).getStockpile();

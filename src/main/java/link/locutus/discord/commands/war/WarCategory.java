@@ -928,7 +928,7 @@ public class WarCategory {
                                     RateLimitUtil.complete(useCat.putPermissionOverride(milcomRole)
                                             .setAllow(Permission.VIEW_CHANNEL));
                                 }
-                                Role advisor = Roles.MILCOM_ADVISOR.toRole(guild);
+                                Role advisor = Roles.MILCOM_NO_PINGS.toRole(guild);
                                 if (advisor != null) {
                                     RateLimitUtil.complete(useCat.putPermissionOverride(advisor)
                                             .setAllow(Permission.VIEW_CHANNEL));

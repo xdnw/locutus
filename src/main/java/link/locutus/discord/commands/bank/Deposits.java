@@ -150,10 +150,10 @@ public class Deposits extends Command {
             } else if (arg.equalsIgnoreCase("*")) {
                 OffshoreInstance offshore = guildDb.getOffshore();
                 if (offshore == null) return "No offshore found";
-                if (!Roles.ECON_LOW_GOV.has(author, guild) && !Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()))
+                if (!Roles.ECON_STAFF.has(author, guild) && !Roles.ECON_STAFF.has(author, offshore.getGuildDB().getGuild()))
                     return "You do not have permission to check this guild's deposits";
                 double[] deposits = offshore.getDeposits(guildDb);
-                accountDeposits.put("*", Collections.singletonMap(DepositType.DEPOSITS, deposits));
+                accountDeposits.put("*", Collections.singletonMap(DepositType.DEPOSIT, deposits));
             } else if (nation == null && MathMan.isInteger(arg) && Long.parseLong(arg) > Integer.MAX_VALUE) {
                 long id = Long.parseLong(arg);
                 GuildDB otherDb = Locutus.imp().getGuildDB(id);
@@ -161,12 +161,12 @@ public class Deposits extends Command {
                     OffshoreInstance offshore = otherDb.getOffshore();
                     if (offshore == null)
                         return "No offshore is set. In this server, use " + CM.coalition.add.cmd.create(otherDb.getIdLong() + "", Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create(otherDb.getIdLong() + "", Coalition.OFFSHORING.name()) + "";
-                    if (!Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_LOW_GOV.has(author, otherDb.getGuild()))
+                    if (!Roles.ECON_STAFF.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_STAFF.has(author, otherDb.getGuild()))
                         return "You do not have permission to check another guild's deposits";
 
                     double[] deposits = offshore.getDeposits(otherDb);
                     String name = otherDb.getGuild().getName();
-                    accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSITS, deposits));
+                    accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSIT, deposits));
                 } else if (!guildDb.isOffshore()) {
                     return "Unknown guild: : `" + arg + "`";
                 } else {
@@ -176,7 +176,7 @@ public class Deposits extends Command {
                     OffshoreInstance offshore = guildDb.getOffshore();
                     double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(id, true));
                     String name = id + "";
-                    accountDeposits.put(name + "(removed guild)", Collections.singletonMap(DepositType.DEPOSITS, deposits));
+                    accountDeposits.put(name + "(removed guild)", Collections.singletonMap(DepositType.DEPOSIT, deposits));
                 }
             } else if (nation == null && PnwUtil.parseAllianceId(arg) != null) {
                 Integer allianceId = PnwUtil.parseAllianceId(arg);
@@ -199,12 +199,12 @@ public class Deposits extends Command {
                 } else {
                     offshore = guildDb.getOffshore();
                 }
-                if (!Roles.ECON_LOW_GOV.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_LOW_GOV.has(author, otherDb.getGuild()))
+                if (!Roles.ECON_STAFF.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON_STAFF.has(author, otherDb.getGuild()))
                     return "You do not have permisssion to check another alliance's deposits";
 
                 String name = PnwUtil.getName(allianceId, true);
                 double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(allianceId, true));
-                accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSITS, deposits));
+                accountDeposits.put(name, Collections.singletonMap(DepositType.DEPOSIT, deposits));
             } else {
                 if (nation == null && arg.contains("/nation/") && DiscordUtil.parseNationId(arg) != null) {
                     nation = new DBNation();
@@ -212,7 +212,7 @@ public class Deposits extends Command {
                 }
                 if (nation == null) return "Nation not found: `" + arg + "`";
                 if (split.size() == 1) requiredUser = nation;
-                if (nation.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON_LOW_GOV.has(author, guild)) return "You do not have permission to check other nation's deposits";
+                if (nation.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON_STAFF.has(author, guild)) return "You do not have permission to check other nation's deposits";
 
                 Map<DepositType, double[]> nationDepo = nation.getDeposits(guildDb,
                         tracked,
@@ -270,9 +270,9 @@ public class Deposits extends Command {
         footers.add("value is based on current market prices");
 
         if (flags.contains('t') || db.getOrNull(GuildDB.Key.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE) {
-            if (categorized.containsKey(DepositType.DEPOSITS)) {
-                response.append("#DEPOSIT: (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSITS))) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSITS))).append("``` ");
+            if (categorized.containsKey(DepositType.DEPOSIT)) {
+                response.append("#DEPOSIT: (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))) + ")");
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
             }
             if (categorized.containsKey(DepositType.TAX)) {
                 response.append("#TAX (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))) + ")");

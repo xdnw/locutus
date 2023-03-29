@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -28,6 +29,35 @@ import java.util.stream.Collectors;
 public class GrantCommands {
 
     /*
+    // 1111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222
+            // #grant=533640709337514025 #expire=1680066316000 #land=2000 #city=12345678 #banker=1234567 #cash
+
+        CITY
+
+        LAND
+
+        INFRA
+
+        RESOURCES
+
+        PROJECT
+
+        BUILD
+
+        WARCHEST
+            - cities
+            - units
+            - mmr
+            - rebuy
+
+
+
+     */
+    public String city(@Default DBCity) {
+
+    }
+
+    /*
     Econ staff can send grants
 
     Grantable tax rates
@@ -43,10 +73,10 @@ public class GrantCommands {
         Projects:
      */
 //
-//    public String send(GuildDB db, User author, DBNation me, Map<DBNation, Grant> grants, Map<DBNation, List<String>> errors, Grant.Type type, boolean onlyMissingFunds, Long expire, boolean countAsCash) {
+//    public String send(GuildDB db, User author, DBNation me, Map<DBNation, Grant> grants, Map<DBNation, List<String>> errors, DepositType type, boolean onlyMissingFunds, Long expire, boolean countAsCash) {
 //        // no funds need to be sent
 //        boolean econGov = Roles.ECON.has(author, db.getGuild());
-//        boolean econStaff = Roles.ECON_LOW_GOV.has(author, db.getGuild());
+//        boolean econStaff = Roles.ECON_STAFF.has(author, db.getGuild());
 //
 //        if (!econGov) {
 //            if (!econStaff) {
@@ -102,13 +132,13 @@ public class GrantCommands {
 //                if (nation.getCities() >= 10 && nation.getNumWars() == 0) {
 //                    // require 5 hangars
 //                    grant.addRequirement(new Grant.Requirement("Nation does not have 5 hangars in each city (peacetime)", econStaff, f -> f.getMMRBuildingStr().charAt(2) == '5'));
-//                    if (type == Grant.Type.CITY || type == Grant.Type.INFRA || type == Grant.Type.LAND) {
+//                    if (type == DepositType.CITY || type == DepositType.INFRA || type == DepositType.LAND) {
 //                        grant.addRequirement(new Grant.Requirement("Nation does not have 0 factories in each city (peacetime)", econStaff, f -> f.getMMRBuildingStr().charAt(1) == '0'));
 //                        grant.addRequirement(new Grant.Requirement("Nation does not have max aircraft", econStaff, f -> f.getMMR().charAt(2) == '5'));
 //                    }
 //                }
 //
-//                if (type != Grant.Type.WARCHEST) grant.addRequirement(new Grant.Requirement("Nation is beige", econStaff, f -> !f.isBeige()));
+//                if (type != DepositType.WARCHEST) grant.addRequirement(new Grant.Requirement("Nation is beige", econStaff, f -> !f.isBeige()));
 //                grant.addRequirement(new Grant.Requirement("Nation is gray", econStaff, f -> !f.isGray()));
 //                grant.addRequirement(new Grant.Requirement("Nation is blockaded", econStaff, f -> !f.isBlockaded()));
 //
@@ -117,7 +147,7 @@ public class GrantCommands {
 //                grant.addRequirement(new Grant.Requirement("Nation does not have 10d seniority", econStaff, f -> f.allianceSeniority() >= 10));
 //
 //                grant.addRequirement(new Grant.Requirement("Nation does not have 80% daily logins (past 1 weeks)", econStaff, f -> nation.avg_daily_login_week() > 0.8));
-//                if (nation.getCities() < 10 && type != Grant.Type.WARCHEST) {
+//                if (nation.getCities() < 10 && type != DepositType.WARCHEST) {
 //                    // mmr = 5000
 //                    grant.addRequirement(new Grant.Requirement("Nation is not mmr=5000 (5 barracks, 0 factories, 0 hangars, 0 drydocks in each city)\n" +
 //                            "(peacetime raiding below city 10)", econStaff, f -> f.getMMRBuildingStr().startsWith("5000")));
@@ -595,8 +625,8 @@ public class GrantCommands {
 //            }
 //
 //            double[] finalFunds = funds;
-//            Grant grant = new Grant(nation, Grant.Type.WARCHEST)
-//                    .setInstructions(Grant.Type.UNIT.instructions + "\n" + unit + "=" + MathMan.format(natQuantity))
+//            Grant grant = new Grant(nation, DepositType.WARCHEST)
+//                    .setInstructions(DepositType.UNIT.instructions + "\n" + unit + "=" + MathMan.format(natQuantity))
 //                    .setTitle(unit.name())
 //                    .setCost(f -> finalFunds)
 //                    .addRequirement(new Grant.Requirement("Nation units have changed, try again", false, f -> f.getUnits(unit) == currentAmt));
@@ -605,7 +635,7 @@ public class GrantCommands {
 //            grants.put(nation, grant);
 //        }
 //
-//        return send(db, author, me, grants, errors, Grant.Type.UNIT, onlySendMissingFunds, expire, countAsCash);
+//        return send(db, author, me, grants, errors, DepositType.UNIT, onlySendMissingFunds, expire, countAsCash);
 //    }
 //
 //    @Command(desc = "Send funds for mmr")
@@ -800,7 +830,7 @@ public class GrantCommands {
 //
 //            Map<Integer, Double> currentInfraLevels = new HashMap<>();
 //
-//            Grant grant = new Grant(nation, Grant.Type.INFRA);
+//            Grant grant = new Grant(nation, DepositType.INFRA);
 //
 //            if (forNewCity) {
 //                // requires econ gov
@@ -900,14 +930,14 @@ public class GrantCommands {
 
     @WhitelistPermission
     @Command
-    @RolePermission(value = {Roles.ECON_LOW_GOV, Roles.ECON, Roles.ECON_GRANT_SELF})
+    @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_GRANT_SELF})
     public String approveEscrowed(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> deposits, Map<ResourceType, Double> escrowed) throws IOException {
         /*
         Member: Can only send funds in their deposits
          */
 
         boolean memberCanApprove = db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
-        boolean checkDepoValue = !Roles.ECON_LOW_GOV.has(author, db.getGuild());
+        boolean checkDepoValue = !Roles.ECON_STAFF.has(author, db.getGuild());
         boolean checkDepoResource = db.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) != Boolean.TRUE;
         boolean allowExtra = Roles.ECON.has(author, db.getGuild());
 
@@ -972,7 +1002,7 @@ public class GrantCommands {
 //
     @WhitelistPermission
     @Command
-    @RolePermission(Roles.ECON_LOW_GOV)
+    @RolePermission(Roles.ECON_STAFF)
     public synchronized String approveGrant(@Me DBNation banker, @Me User user, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, UUID key, @Switch("f") boolean force) {
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) {
@@ -1038,7 +1068,7 @@ public class GrantCommands {
 
             disabledNations.add(receiver.getNation_id());
 
-            Set<Long> allowedAlliances = Roles.ECON_LOW_GOV.getAllowedAccounts(user, db);
+            Set<Long> allowedAlliances = Roles.ECON_STAFF.getAllowedAccounts(user, db);
             Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(banker, db, f -> allowedAlliances.contains((long) f), receiver, grant.cost(), grant.getNote());
             OffshoreInstance.TransferStatus status = result.getKey();
 

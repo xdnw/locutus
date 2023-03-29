@@ -89,8 +89,38 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public GuildDB(Guild guild) throws SQLException, ClassNotFoundException {
         super("guilds/" + guild.getId());
+        this.roleToAccountToDiscord  = new ConcurrentHashMap<>();
         this.guild = guild;
         System.out.println(guild + " | AA:" + StringMan.getString(getAllianceIds()));
+        importLegacyRoles();
+    }
+
+    private void importLegacyRoles() {
+        try {
+            if (tableExists("ROLES")) {
+                // get records from ROLES
+                try (PreparedStatement stmt = prepareQuery("SELECT * FROM ROLES")) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            String roleName = rs.getString("role");
+                            long alias = rs.getLong("alias");
+                            long alliance = rs.getLong("alliance");
+
+                            Roles role = Roles.getRoleByNameLegacy(roleName);
+                            if (role == null) {
+                                throw new IllegalArgumentException("Unknown legacy role: " + roleName);
+                            }
+
+                            addRole(role, alias, alliance);
+                        }
+                    }
+                }
+                // drop tables ROLES
+                executeStmt("DROP TABLE ROLES");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void setAutoRoleTask(IAutoRoleTask autoRoleTask) {
@@ -802,7 +832,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         };
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `ROLES` (`role` VARCHAR NOT NULL, `alias` BIGINT NOT NULL, `alliance` BIGINT NOT NULL, PRIMARY KEY(role))";
+            String create = "CREATE TABLE IF NOT EXISTS `ROLES2` (`role` BIGINT NOT NULL, `alias` BIGINT NOT NULL, `alliance` BIGINT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
@@ -810,9 +840,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            try {
-            try (PreparedStatement close = prepareQuery("ALTER TABLE ROLES ADD COLUMN `alliance` BIGINT NOT NULL DEFAULT 0" )) {close.execute();}
-            } catch (SQLException ignore) {}
         };
         {
             String create = "CREATE TABLE IF NOT EXISTS `COALITIONS` (`alliance_id` BIGINT NOT NULL, `coalition` VARCHAR NOT NULL, PRIMARY KEY(alliance_id, coalition))";
@@ -1269,7 +1296,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         Map<DepositType, double[]> result = new LinkedHashMap<>();
         result.put(DepositType.TAX, taxes);
-        result.put(DepositType.DEPOSITS, deposits);
+        result.put(DepositType.DEPOSIT, deposits);
 
         List<Map.Entry<Integer, Transaction2>> offset = getDepositOffsetTransactionsTaxId(taxId);
         if (!offset.isEmpty()) {
@@ -5730,32 +5757,41 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private volatile boolean cachedRoleAliases = false;
-    private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord = new ConcurrentHashMap<>();
+    private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
 
     public void addRole(Roles locutusRole, Role discordRole, long allianceId) {
-        roleToAccountToDiscord.computeIfAbsent(locutusRole, f -> new ConcurrentHashMap<>()).put(allianceId, discordRole.getIdLong());
-        update("INSERT OR REPLACE INTO `ROLES`(`role`, `alias`, `alliance`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, locutusRole.name().toLowerCase());
-            stmt.setLong(2, discordRole.getIdLong());
+        addRole(locutusRole, discordRole.getIdLong(), allianceId);
+    }
+
+    public void addRole(Roles locutusRole, long discordRole, long allianceId) {
+        deleteRole(locutusRole, allianceId, false);
+        roleToAccountToDiscord.computeIfAbsent(locutusRole, f -> new ConcurrentHashMap<>()).put(allianceId, discordRole);
+        update("INSERT OR REPLACE INTO `ROLES2`(`role`, `alias`, `alliance`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, locutusRole.getId());
+            stmt.setLong(2, discordRole);
             stmt.setLong(3, allianceId);
         });
     }
-
     public void deleteRole(Roles role, long alliance) {
-        Map<Long, Long> existing = roleToAccountToDiscord.get(role);
-        if (existing != null) {
-            existing.remove(alliance);
+        deleteRole(role, alliance, true);
+    }
+    public void deleteRole(Roles role, long alliance, boolean updateCache) {
+        if (updateCache) {
+            Map<Long, Long> existing = roleToAccountToDiscord.get(role);
+            if (existing != null) {
+                existing.remove(alliance);
+            }
         }
-        update("DELETE FROM `ROLES` WHERE `role` = ? AND `alliance` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, role.name().toLowerCase());
+        update("DELETE FROM `ROLES2` WHERE `role` = ? AND `alliance` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, role.getId());
             stmt.setLong(2, alliance);
         });
     }
 
     public void deleteRole(Roles role) {
         roleToAccountToDiscord.remove(role);
-        update("DELETE FROM `ROLES` WHERE `role` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, role.name().toLowerCase());
+        update("DELETE FROM `ROLES2` WHERE `role` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, role.getId());
         });
     }
 
@@ -5783,11 +5819,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             synchronized (roleToAccountToDiscord) {
                 if (cachedRoleAliases) return;
                 cachedRoleAliases = true;
-                try (PreparedStatement stmt = prepareQuery("select * FROM ROLES")) {
+                try (PreparedStatement stmt = prepareQuery("select * FROM ROLES2")) {
                     try (ResultSet rs = stmt.executeQuery()) {
                         while (rs.next()) {
                             try {
-                                Roles role = Roles.valueOf(rs.getString("role").toUpperCase());
+                                Roles role = Roles.getRoleById(rs.getInt("role"));
                                 long alias = rs.getLong("alias");
                                 long alliance = rs.getLong("alliance");
                                 roleToAccountToDiscord.computeIfAbsent(role, f -> new ConcurrentHashMap<>()).put(alliance, alias);

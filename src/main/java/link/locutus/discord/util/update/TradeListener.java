@@ -1,7 +1,6 @@
 package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
-import com.politicsandwar.graphql.model.TradeType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -22,7 +21,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -208,8 +206,8 @@ public class TradeListener {
                 }
                 aaMessage.append("\n - To retain color income, wait for confirmation from a gov member, leave ingame, make (or join) an alliance called e.g. `" + db.getGuild().getName() + "-<color>`, and send a Protectorate treaty. Disband the alliance after 5 days");
 
-                Role optOut = Roles.TREASURE_ALERTS_OPT_OUT.toRole(db);
-                Role optIn = Roles.TREASURE_ALERTS.toRole(db);
+                Role optOut = Roles.TREASURE_ALERT_OPT_OUT.toRole(db);
+                Role optIn = Roles.TREASURE_ALERT.toRole(db);
                 Role memberRole = Roles.MEMBER.toRole(db);
                 if (optIn != null) {
                     Guild guild = db.getGuild();

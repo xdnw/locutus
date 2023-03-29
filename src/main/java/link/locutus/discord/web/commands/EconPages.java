@@ -36,7 +36,7 @@ public class EconPages {
 
     @Command(desc = "Show running tax expenses by day by bracket")
     @IsAlliance
-    @RolePermission(Roles.ECON_LOW_GOV)
+    @RolePermission(Roles.ECON_STAFF)
     public Object taxExpensesByTime(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Timestamp long start, @Timestamp long end, @Default Set<DBNation> nationFilter, @Switch("s") @Range(min=1) Integer movingAverageTurns, @Switch("c") boolean cumulative,
                                     @Switch("t") boolean dontRequireTagged) throws Exception {
 
@@ -113,7 +113,7 @@ public class EconPages {
 
     @Command(desc = "Show cumulative tax expenses over a period by nation/bracket")
     @IsAlliance
-    @RolePermission(Roles.ECON_LOW_GOV)
+    @RolePermission(Roles.ECON_STAFF)
     public Object taxExpensesIndex(@Me GuildDB db, @Timestamp long start, @Timestamp long end, @Switch("n") NationList nationList,
                                    @Switch("g") boolean dontRequireGrant, @Switch("t") boolean dontRequireTagged, @Switch("e") boolean dontRequireExpiry,
                                    @Switch("d") boolean includeDeposits) throws Exception {

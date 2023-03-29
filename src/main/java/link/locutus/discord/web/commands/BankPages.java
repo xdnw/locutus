@@ -30,7 +30,7 @@ import static link.locutus.discord.util.PnwUtil.convertedTotal;
 public class BankPages {
 
 //    @Command
-//    @RolePermission(Roles.ECON_LOW_GOV)
+//    @RolePermission(Roles.ECON_STAFF)
 //    public String listIngameTransfers(NationOrAlliance sender, NationOrAlliance receiver) {
 //
 //
@@ -90,7 +90,7 @@ public class BankPages {
             row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getNationUrl()));
             row.set(1, nation.getCities());
             row.set(2, nation.getAgeDays());
-            row.set(3, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSITS, buffer))));
+            row.set(3, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
             row.set(4, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
             row.set(5, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
             row.set(6, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));

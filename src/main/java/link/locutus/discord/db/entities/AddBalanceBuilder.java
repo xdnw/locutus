@@ -151,10 +151,10 @@ public class AddBalanceBuilder {
     public AddBalanceBuilder reset(DBNation nation, Set<DepositType> types) {
         if (types.isEmpty()) throw new IllegalArgumentException("No types specified");
         Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
-        double[] deposits = depoByType.get(DepositType.DEPOSITS);
+        double[] deposits = depoByType.get(DepositType.DEPOSIT);
 
-        if (deposits != null && types.contains(DepositType.DEPOSITS)) {
-            add(nation, ResourceType.negative(deposits), "#" + DepositType.DEPOSITS.name().toLowerCase());
+        if (deposits != null && types.contains(DepositType.DEPOSIT)) {
+            add(nation, ResourceType.negative(deposits), "#" + DepositType.DEPOSIT.name().toLowerCase());
         }
 
         double[] tax = depoByType.get(DepositType.TAX);

@@ -90,7 +90,7 @@ public class ChannelCommand extends Command {
         if (flags.contains('f')) roles.add(Roles.FOREIGN_AFFAIRS);
         if (flags.contains('e')) {
             roles.add(Roles.ECON);
-            roles.add(Roles.ECON_LOW_GOV);
+            roles.add(Roles.ECON_STAFF);
         }
         if (roles.isEmpty()) roles.add(Roles.INTERNAL_AFFAIRS);
 

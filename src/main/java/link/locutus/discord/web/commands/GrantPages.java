@@ -23,8 +23,8 @@ import java.util.UUID;
 
 public class GrantPages {
 
-    private Set<Grant> fetchGrants(GuildDB db, User user, DBNation nation, Grant.Type type, Map<Grant, List<String>> failedRequirements, Map<Grant, List<String>> overrideRequirements, Map<Grant, UUID> grantTokens) {
-        boolean overrideSafe = Roles.ECON_LOW_GOV.has(user, db.getGuild());
+    private Set<Grant> fetchGrants(GuildDB db, User user, DBNation nation, DepositType type, Map<Grant, List<String>> failedRequirements, Map<Grant, List<String>> overrideRequirements, Map<Grant, UUID> grantTokens) {
+        boolean overrideSafe = Roles.ECON_STAFF.has(user, db.getGuild());
         boolean overrideUnsafe = Roles.ECON.has(user, db.getGuild());
 
         Set<Grant> grants = new LinkedHashSet<>(db.getHandler().getEligableGrants(nation, type, overrideSafe, overrideUnsafe));
@@ -60,7 +60,7 @@ public class GrantPages {
         return grants;
     }
     @Command
-    @RolePermission(value = {Roles.ECON_LOW_GOV,Roles.ECON}, any=true)
+    @RolePermission(value = {Roles.ECON_STAFF,Roles.ECON}, any=true)
     public String projectGrants(@Me GuildDB db, @Me User user, @Me DBNation me, @Default DBNation nation) {
         if (nation == null) nation = me;
         Map<Grant, List<String>> failedRequirements = new HashMap<>();
@@ -68,7 +68,7 @@ public class GrantPages {
         Map<Grant, UUID> grantTokens = new HashMap<>();
 
         try {
-        Set<Grant> grants = fetchGrants(db, user, nation, Grant.Type.PROJECT, failedRequirements, overrideRequirements, grantTokens);
+        Set<Grant> grants = fetchGrants(db, user, nation, DepositType.PROJECT, failedRequirements, overrideRequirements, grantTokens);
         Set<Project> recommendedProjects = db.getHandler().getRecommendedProjects(nation);
 
         return rocker.grant.projects.template(recommendedProjects, grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
@@ -78,7 +78,7 @@ public class GrantPages {
     }
 
     @Command
-    @RolePermission(value = {Roles.ECON_LOW_GOV,Roles.ECON}, any=true)
+    @RolePermission(value = {Roles.ECON_STAFF,Roles.ECON}, any=true)
     public String cityGrants(@Me GuildDB db, @Me User user, @Me DBNation me, @Default DBNation nation) {
         if (nation == null) nation = me;
         Map<Grant, List<String>> failedRequirements = new HashMap<>();
@@ -86,7 +86,7 @@ public class GrantPages {
         Map<Grant, UUID> grantTokens = new HashMap<>();
 
         try {
-        Set<Grant> grants = fetchGrants(db, user, nation, Grant.Type.CITY, failedRequirements, overrideRequirements, grantTokens);
+        Set<Grant> grants = fetchGrants(db, user, nation, DepositType.CITY, failedRequirements, overrideRequirements, grantTokens);
         return rocker.grant.cities.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
         } catch (IllegalArgumentException e) {
             return e.getMessage();
@@ -94,7 +94,7 @@ public class GrantPages {
     }
 
     @Command
-    @RolePermission(value = {Roles.ECON_LOW_GOV,Roles.ECON}, any=true)
+    @RolePermission(value = {Roles.ECON_STAFF,Roles.ECON}, any=true)
     public String infraGrants(@Me GuildDB db, @Me User user, @Me DBNation me, @Default DBNation nation) {
         if (nation == null) nation = me;
         Map<Grant, List<String>> failedRequirements = new HashMap<>();
@@ -102,7 +102,7 @@ public class GrantPages {
         Map<Grant, UUID> grantTokens = new HashMap<>();
 
         try {
-            Set<Grant> grants = fetchGrants(db, user, nation, Grant.Type.INFRA, failedRequirements, overrideRequirements, grantTokens);
+            Set<Grant> grants = fetchGrants(db, user, nation, DepositType.INFRA, failedRequirements, overrideRequirements, grantTokens);
             return rocker.grant.infras.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
         } catch (IllegalArgumentException e) {
             return e.getMessage();
@@ -110,7 +110,7 @@ public class GrantPages {
     }
 
     @Command
-    @RolePermission(value = {Roles.ECON_LOW_GOV,Roles.ECON}, any=true)
+    @RolePermission(value = {Roles.ECON_STAFF,Roles.ECON}, any=true)
     public String landGrants(@Me GuildDB db, @Me User user, @Me DBNation me, @Default DBNation nation) {
         if (nation == null) nation = me;
         Map<Grant, List<String>> failedRequirements = new HashMap<>();
@@ -118,7 +118,7 @@ public class GrantPages {
         Map<Grant, UUID> grantTokens = new HashMap<>();
 
         try {
-            Set<Grant> grants = fetchGrants(db, user, nation, Grant.Type.LAND, failedRequirements, overrideRequirements, grantTokens);
+            Set<Grant> grants = fetchGrants(db, user, nation, DepositType.LAND, failedRequirements, overrideRequirements, grantTokens);
             return rocker.grant.lands.template(grants, user, nation, failedRequirements, overrideRequirements, grantTokens).render().toString();
         } catch (IllegalArgumentException e) {
             return e.getMessage();

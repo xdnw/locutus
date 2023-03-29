@@ -1520,6 +1520,7 @@ public class DBNation implements NationOrAlliance {
         } else {
             System.out.println("Update bank recs 1");
             Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, events));
+            System.out.println("Update bank recs 2");
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
     }
@@ -3941,11 +3942,29 @@ public class DBNation implements NationOrAlliance {
     }
 
     public long getRerollDate() {
+        List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+        int previousNationId = -1;
+        for (DBNation nation : nations) {
+            if (nation.getNation_id() < nation_id) {
+                previousNationId = Math.max(previousNationId, nation.getNation_id());
+            }
+        }
+        int finalPreviousNationId = previousNationId;
+        nations.removeIf(f -> f.getNation_id() < finalPreviousNationId);
+        // sort nations by nation_id
+        nations.sort(Comparator.comparingInt(DBNation::getNation_id));
+
         long minDate = Long.MAX_VALUE;
-        for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {
-            if (nation.getNation_id() <= nation_id) continue;
-            if (nation.date <= 0) continue;
-            minDate = Math.min(nation.date, minDate);
+        for (int i = 1; i < nations.size() - 1; i++) {
+            DBNation nation = nations.get(i);
+            if (nation.nation_id <= nation_id) continue;
+            if (nation.date < date) {
+                DBNation previous = nations.get(i - 1);
+                if (previous.date < nation.date) {
+                    // valid
+                    minDate = Math.min(nation.date, minDate);
+                }
+            }
         }
         return minDate;
     }

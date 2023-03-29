@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -57,6 +58,11 @@ public class BankWith extends Command {
     public String desc() {
         return "withdraw from the alliance bank\n" +
                 "Use `-f` to bypass all checks\n" +
+                "Use `expire:60d` to have expiry\n" +
+                "Use `-c` to convert cash\n" +
+                "Use `nation:Borg` to specify nation account\n" +
+                "Use `alliance:Rose` to specify alliance account\n" +
+                "Use `offshore:AllianceName` to specify offshore\n" +
                 "Use `-o` to subtract their existing funds from the transfer amount";
     }
 
@@ -72,21 +78,29 @@ public class BankWith extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        String expireStr = DiscordUtil.parseArg(args, "expire");
+        Long expire = expireStr == null ? null : PrimitiveBindings.Long(expireStr);
+
+        DBNation nationAccount = null;
+        DBAlliance allianceAccount = null;
+        DBAlliance offshoreAccount = null;
+
+        String nationAccountStr = DiscordUtil.parseArg(args, "nation");
+        if (nationAccountStr != null) {
+            nationAccount = PWBindings.nation(author, nationAccountStr);
+        }
+
+        String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");
+        if (allianceAccountStr != null) {
+            allianceAccount = PWBindings.alliance(allianceAccountStr);
+        }
+
+        String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
+        if (offshoreAccountStr != null) {
+            offshoreAccount = PWBindings.alliance(offshoreAccountStr);
+        }
+
         if (args.size() < 3) return usage();
-        /*
-        @Me IMessageIO channel,
-                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType depositType,
-
-                           @Switch("n") DBNation depositsAccount,
-                           @Switch("a") DBAlliance useAllianceBank,
-                           @Switch("o") DBAlliance useOffshoreAccount,
-
-                           @Switch("m") boolean onlyMissingFunds,
-                           @Switch("e") @Timediff Long expire,
-                           @Switch("g") UUID token,
-                           @Switch("c") boolean convertCash,
-                           @Switch("f") boolean force
-         */
         IMessageIO channel = new DiscordChannelIO(event.getChannel());
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0));
@@ -95,16 +109,24 @@ public class BankWith extends Command {
 
         boolean onlyMissingFunds = flags.contains('o');
         boolean convertCash = flags.contains('c');
-        boolean force = flags.contains('f');
+        boolean bypassChecks = flags.contains('f');
 
-        Long expire = null;
         UUID token = null;
-        JSONObject command = null;
-        // token
-        // nationAccount
-        // allianceAccount
-        // senderAlliance
+        // String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks
+        JSONObject command = CM.transfer.resources.cmd.create(
+            receiver.getUrl(),
+                PnwUtil.resourcesToString(transfer),
+                depositType.toString(),
+                nationAccount != null ? nationAccount.getUrl() : null,
+                allianceAccount != null ? allianceAccount.getUrl() : null,
+                offshoreAccount != null ? offshoreAccount.getUrl() : null,
+                String.valueOf(onlyMissingFunds),
+                expire == null ? null : String.valueOf(expire),
+                token == null ? null : token.toString(),
+                String.valueOf(convertCash),
+                String.valueOf(bypassChecks)
+        ).toJson();
 
-        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, null, null, null, onlyMissingFunds, expire, token, convertCash, force);
+        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, onlyMissingFunds, expire, token, convertCash, bypassChecks, false);
     }
 }

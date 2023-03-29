@@ -96,6 +96,28 @@ public class PWBindings extends BindingHelper {
         return build;
     }
 
+    @Binding(value = "City url", examples = {"city/id=371923"})
+    public DBCity cityUrl(@Me DBNation me, String input) {
+        int cityId;
+        if (input.contains("city/id=")) {
+            cityId = Integer.parseInt(input.split("=")[1]);
+        } else if (MathMan.isInteger(input)) {
+            cityId = Integer.parseInt(input);
+        } else {
+            throw new IllegalArgumentException("Not a valid city url: `" + input + "`");
+        }
+        DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
+        if (city == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
+        return city;
+    }
+
+    @Binding DepositType.Info depositType(String input) {
+        // #DEPOSIT
+        // ammount
+        // #
+
+    }
+
     @Binding(value = "City ranges", examples = {"c1-10", "c11+"})
     public CityRanges CityRanges(String input) {
         return CityRanges.parse(input);
@@ -511,7 +533,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     public static DepositType DepositType(String input) {
         if (input.startsWith("#")) input = input.substring(1);
-        return StringMan.parseUpper(DepositType.class, input);
+        return StringMan.parseUpper(DepositType.class, input.toUpperCase(Locale.ROOT));
     }
 
     @Binding

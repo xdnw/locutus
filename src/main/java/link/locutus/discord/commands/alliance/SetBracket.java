@@ -49,7 +49,7 @@ public class SetBracket extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Roles.ECON_LOW_GOV.has(user, server) || (Locutus.imp().getGuildDB(server).getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) == Boolean.TRUE && Roles.MEMBER.has(user, server));
+        return Roles.ECON_STAFF.has(user, server) || (Locutus.imp().getGuildDB(server).getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) == Boolean.TRUE && Roles.MEMBER.has(user, server));
     }
 
     @Override
@@ -61,7 +61,7 @@ public class SetBracket extends Command {
             return usage(event);
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        boolean isGov = Roles.ECON_LOW_GOV.has(author, guild) || Roles.INTERNAL_AFFAIRS.has(author, guild);
+        boolean isGov = Roles.ECON_STAFF.has(author, guild) || Roles.INTERNAL_AFFAIRS.has(author, guild);
         if (!isGov) {
             if (me != nation) return "You are only allowed to set your own tax rate";
         }

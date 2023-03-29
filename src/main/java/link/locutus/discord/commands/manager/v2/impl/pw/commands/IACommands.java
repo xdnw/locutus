@@ -122,10 +122,10 @@ public class IACommands {
     @RolePermission(value = {
             Roles.INTERNAL_AFFAIRS_STAFF,
             Roles.INTERNAL_AFFAIRS,
-            Roles.ECON_LOW_GOV,
+            Roles.ECON_STAFF,
             Roles.ECON,
             Roles.MILCOM,
-            Roles.MILCOM_ADVISOR,
+            Roles.MILCOM_NO_PINGS,
             Roles.FOREIGN_AFFAIRS,
             Roles.FOREIGN_AFFAIRS_STAFF,
     }, any = true)
@@ -249,10 +249,10 @@ public class IACommands {
     @RolePermission(value = {
             Roles.INTERNAL_AFFAIRS_STAFF,
             Roles.INTERNAL_AFFAIRS,
-            Roles.ECON_LOW_GOV,
+            Roles.ECON_STAFF,
             Roles.ECON,
             Roles.MILCOM,
-            Roles.MILCOM_ADVISOR,
+            Roles.MILCOM_NO_PINGS,
             Roles.FOREIGN_AFFAIRS,
             Roles.FOREIGN_AFFAIRS_STAFF,
     }, any = true)
@@ -433,7 +433,7 @@ public class IACommands {
             User user = mentee.getUser();
             if (user == null) continue;
 
-            boolean graduated = Roles.hasAny(user, guild, Roles.GRADUATED, Roles.INTERNAL_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON_LOW_GOV, Roles.MILCOM);
+            boolean graduated = Roles.hasAny(user, guild, Roles.GRADUATED, Roles.INTERNAL_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON_STAFF, Roles.MILCOM);
 
             IAChannel iaChan = iaCat.get(mentee);
             if (iaChan != null) {
@@ -577,7 +577,7 @@ public class IACommands {
                     membersNotOnDiscord.add(member);
                     continue;
                 }
-                if (Roles.hasAny(user, guild, Roles.GRADUATED, Roles.ADMIN, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.INTERVIEWER, Roles.MILCOM, Roles.MILCOM_ADVISOR, Roles.ECON, Roles.ECON_LOW_GOV, Roles.FOREIGN_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS)) {
+                if (Roles.hasAny(user, guild, Roles.GRADUATED, Roles.ADMIN, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.INTERVIEWER, Roles.MILCOM, Roles.MILCOM_NO_PINGS, Roles.ECON, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS)) {
                     continue;
                 }
                 if (!passedMap.getOrDefault(member, false)) {
@@ -847,7 +847,7 @@ public class IACommands {
         if (nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
         DBNation single = nations.size() == 1 ? nations.iterator().next() : null;
 
-        boolean isGov = Roles.ECON_LOW_GOV.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
+        boolean isGov = Roles.ECON_STAFF.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
         if (!isGov) {
             if (db.getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_SET_BRACKET.name(), null, null, null) + ")";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
@@ -1412,7 +1412,7 @@ public class IACommands {
     }
 
     @Command(desc = "Close a channel")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON, Roles.ECON_LOW_GOV}, any=true)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON, Roles.ECON_STAFF}, any=true)
     public String close(@Me GuildDB db, @Me GuildMessageChannel channel, @Switch("f") boolean forceDelete) {
         if (!(channel instanceof TextChannel)) {
             return "Not a text channel";

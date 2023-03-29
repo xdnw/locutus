@@ -3,7 +3,6 @@ package link.locutus.discord.db;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -34,14 +33,11 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.Grant;
-import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.task.MailTask;
-import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.JsonObject;
@@ -69,7 +65,6 @@ import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -727,7 +722,7 @@ public class GuildHandler {
      * @param overrideUnsafe
      * @return
      */
-    public Set<Grant> getBaseEligableGrants(DBNation nation, Grant.Type type, boolean overrideSafe, boolean overrideUnsafe) {
+    public Set<Grant> getBaseEligableGrants(DBNation nation, DepositType type, boolean overrideSafe, boolean overrideUnsafe) {
         Set<Grant> grants = new HashSet<>();
 
         User user = nation.getUser();
@@ -759,7 +754,7 @@ public class GuildHandler {
             }));
         }
 
-        if (nation.getCities() < 10 && type != Grant.Type.WARCHEST) {
+        if (nation.getCities() < 10 && type != DepositType.WARCHEST) {
             // mmr = 5000
             baseRequirements.add(new Grant.Requirement("Nation is not mmr=5000 (5 barracks, 0 factories, 0 hangars, 0 drydocks in each city)\n" +
                     "(peacetime raiding below city 10)", overrideSafe, f -> f.getMMRBuildingStr().startsWith("5000")));
@@ -771,7 +766,7 @@ public class GuildHandler {
         if (nation.getCities() >= 10 && nation.getNumWars() == 0) {
             // require 5 hangars
             baseRequirements.add(new Grant.Requirement("Nation does not have 5 hangars in each city (peacetime)", overrideSafe, f -> f.getMMRBuildingStr().charAt(2) == '5'));
-            if (type == Grant.Type.CITY || type == Grant.Type.INFRA || type == Grant.Type.LAND) {
+            if (type == DepositType.CITY || type == DepositType.INFRA || type == DepositType.LAND) {
                 baseRequirements.add(new Grant.Requirement("Nation does not have 0 factories in each city (peacetime)", overrideSafe, f -> f.getMMRBuildingStr().charAt(1) == '0'));
                 baseRequirements.add(new Grant.Requirement("Nation does not have max aircraft", overrideSafe, f -> f.getMMR().charAt(2) == '5'));
             }
@@ -813,7 +808,7 @@ public class GuildHandler {
 //                if (nation.getCities() < 9) {
 //                    // require 10 cities + 2k infra in deppsits
 //                    int amt = 10 - nation.getCities();
-//                    grants.add(new Grant(nation, Grant.Type.CITY)
+//                    grants.add(new Grant(nation, DepositType.CITY)
 //                            .setAmount(amt)
 //                            .addCity(currentCities)
 ////                        .setInstructions(grantCity(pnwNation, me, (int) amt, resources, force))
@@ -836,7 +831,7 @@ public class GuildHandler {
                     }
                 }));
 
-                Grant grant = new Grant(nation, Grant.Type.CITY)
+                Grant grant = new Grant(nation, DepositType.CITY)
                         .setAmount(1)
                         .addCity(currentCities)
 //                        .setInstructions(grantCity(pnwNation, me, (int) amt, resources, force))
@@ -876,7 +871,7 @@ public class GuildHandler {
                 Set<Project> alreadyHasProject = nation.getProjects();
 
                 for (Project project : allProjects) {
-                    Grant grant = new Grant(nation, Grant.Type.PROJECT)
+                    Grant grant = new Grant(nation, DepositType.PROJECT)
                             .setAmount(project.name())
                             .setCost(f -> PnwUtil.resourcesToArray(PnwUtil.multiply(project.cost(), f.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? 0.95 : 1)));
 
@@ -981,7 +976,7 @@ public class GuildHandler {
                         }
 
                         if (hasLowerBuildings) {
-                            Grant grant = new Grant(nation, Grant.Type.INFRA);
+                            Grant grant = new Grant(nation, DepositType.INFRA);
                             for (Integer cityId : cities.keySet()) grant.addCity(cityId);
                             grant.addRequirement(localRequirement);
                             grant.setAmount(infraLevel);
@@ -1022,7 +1017,7 @@ public class GuildHandler {
                         double cityInfra = Math.max(city.getInfra(), city.getRequiredInfra());
                         if (cityInfra >= infraLevel) continue;
 
-                        Grant grant = new Grant(nation, Grant.Type.INFRA);
+                        Grant grant = new Grant(nation, DepositType.INFRA);
                         grant.addRequirement(new Grant.Requirement("You have already received infra of that level for that city", overrideSafe, new Function<DBNation, Boolean>() {
                             @Override
                             public Boolean apply(DBNation nation) {
@@ -1060,7 +1055,7 @@ public class GuildHandler {
             }
             case LAND:
                 int amt = nation.getCities() < 10 ? 1500 : 2000;
-                Grant grant = new Grant(nation, Grant.Type.LAND);
+                Grant grant = new Grant(nation, DepositType.LAND);
                 Map<Integer, JavaCity> cities = nation.getCityMap(true, true);
                 boolean missingLand = false;
                 for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
@@ -1913,7 +1908,7 @@ public class GuildHandler {
      * @param overrideUnsafe - Allow some unsafe overrides (not in alliance, inactive, gray, applicant, all timeframe restrictions etc.)
      * @return
      */
-    public Set<Grant> getEligableGrants(DBNation nation, Grant.Type type, boolean overrideSafe, boolean overrideUnsafe) {
+    public Set<Grant> getEligableGrants(DBNation nation, DepositType type, boolean overrideSafe, boolean overrideUnsafe) {
         return new HashSet<>();
         // TODO add Grant#validateGrants() - which updates transactions and cities and city count
     }
@@ -2467,7 +2462,7 @@ public class GuildHandler {
     public void onBlockade(NationBlockadedEvent event) {
         DBNation nation = event.getBlockadedNation();
         GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.BLOCKADED_ALERTS);
-        Role role = Roles.BLOCKADED_ALERTS.toRole(guild);
+        Role role = Roles.BLOCKADED_ALERT.toRole(guild);
         blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, "blockaded");
     }
 
@@ -2516,8 +2511,8 @@ public class GuildHandler {
             title = "Unblockaded";
         }
         GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.UNBLOCKADED_ALERTS);
-        Role role = blockaded ? null : Roles.UNBLOCKADED_ALERTS.toRole(guild);
-        Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERTS.toRole(guild);
+        Role role = blockaded ? null : Roles.UNBLOCKADED_ALERT.toRole(guild);
+        Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERT.toRole(guild);
         blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, title);
 
         processEscrow(nation);

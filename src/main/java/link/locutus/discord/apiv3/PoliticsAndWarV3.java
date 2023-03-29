@@ -171,7 +171,10 @@ public class PoliticsAndWarV3 {
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {
                 try {
-                    Thread.sleep((long) (60000 * Math.pow(2, backOff)));
+                    long timeout = (long) (60000 * Math.pow(2, backOff));
+                    System.out.println(e.getMessage());
+                    System.out.println("Hit rate limit 2 " + timeout + "ms");
+                    Thread.sleep(timeout);
                 } catch (InterruptedException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -284,7 +287,9 @@ public class PoliticsAndWarV3 {
                             continue pageLoop;
                         case RETRY:
                             try {
-                                Thread.sleep(Math.min(60000, (long) (1000 + Math.pow(i * 1000, 2))));
+                                long timeout = Math.min(60000, (long) (1000 + Math.pow(i * 1000, 2)));
+                                System.out.println("Hit rate limit 3 " + timeout + "ms");
+                                Thread.sleep(timeout);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }

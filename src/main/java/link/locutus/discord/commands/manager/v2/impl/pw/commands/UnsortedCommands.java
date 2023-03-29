@@ -177,7 +177,7 @@ public class UnsortedCommands {
 
             Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, false, false);
             double[] tax = depositsByCat.getOrDefault(DepositType.TAX, ResourceType.getBuffer());
-            double[] deposits = depositsByCat.getOrDefault(DepositType.DEPOSITS, ResourceType.getBuffer());
+            double[] deposits = depositsByCat.getOrDefault(DepositType.DEPOSIT, ResourceType.getBuffer());
             header.add(gson.toJson(PnwUtil.resourcesToMap(tax)));
             header.add(gson.toJson(PnwUtil.resourcesToMap(deposits)));
             header.add(String.format("%.2f", PnwUtil.convertedTotal(tax)));
@@ -234,8 +234,8 @@ public class UnsortedCommands {
             DBAlliance alliance = nationOrAlliance.asAlliance();
             GuildDB otherDb = alliance.getGuildDB();
             if (otherDb == null) return "No guild found for " + alliance;
-            if (!Roles.ECON_LOW_GOV.has(author, otherDb.getGuild())) {
-                return "You do not have " + Roles.ECON_LOW_GOV + " in " + otherDb;
+            if (!Roles.ECON_STAFF.has(author, otherDb.getGuild())) {
+                return "You do not have " + Roles.ECON_STAFF + " in " + otherDb;
             }
             totals = alliance.getStockpile();
         } else {

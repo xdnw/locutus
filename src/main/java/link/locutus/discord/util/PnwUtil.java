@@ -283,7 +283,7 @@ public class PnwUtil {
         // TODO also update Grant.isNoteFromDeposits if this code is updated
 
         Map<String, String> notes = parseTransferHashNotes(note);
-        DepositType type = DepositType.DEPOSITS;
+        DepositType type = DepositType.DEPOSIT;
 
         for (Map.Entry<String, String> entry : notes.entrySet()) {
             String tag = entry.getKey();
@@ -315,7 +315,7 @@ public class PnwUtil {
                     if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
                         return;
                     }
-                    type = DepositType.DEPOSITS;
+                    type = DepositType.DEPOSIT;
                     continue;
                 case "#raws":
                 case "#raw":
@@ -336,7 +336,7 @@ public class PnwUtil {
                     if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
                         return;
                     }
-                    if (type == DepositType.DEPOSITS) {
+                    if (type == DepositType.DEPOSIT) {
                         type = DepositType.LOAN;
                     }
                     continue;

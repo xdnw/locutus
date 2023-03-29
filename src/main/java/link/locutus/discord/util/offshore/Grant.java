@@ -1,5 +1,6 @@
 package link.locutus.discord.util.offshore;
 
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
@@ -48,7 +49,7 @@ public class Grant {
 
     private final Set<String> notes;
 
-    private Type type;
+    private DepositType.Info type;
     private String title;
 
     private Function<DBNation, double[]> cost;
@@ -256,24 +257,6 @@ public class Grant {
         return DBNation.byId(nation.getNation_id());
     }
 
-    public enum Type {
-        CITY("Go to <https://politicsandwar.com/city/create/> and purchase a new city"),
-        PROJECT("Go to <https://politicsandwar.com/nation/projects/> and purchase the desired project"),
-        INFRA("Go to your city <https://politicsandwar.com/cities/> and purchase the desired infrastructure"),
-        LAND("Go to your city <https://politicsandwar.com/cities/> and purchase the desired land"),
-        UNIT("Go to <https://politicsandwar.com/nation/military/> and purchase the desired units"),
-        BUILD("Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the desired build"),
-        WARCHEST("warchest"),
-        RESOURCES("resources"),
-        ;
-
-        public final String instructions;
-
-        Type(String instructions) {
-            this.instructions = instructions;
-        }
-    }
-
     public static class GrantRequirementBuilder {
 
     }
@@ -317,7 +300,7 @@ public class Grant {
         }
     }
 
-    public Grant(DBNation nation, Type type) {
+    public Grant(DBNation nation, DepositType.Info type) {
         this.nation = nation;
         this.cost = f -> ResourceType.getBuffer();
         this.requirements = new LinkedHashSet<>();
