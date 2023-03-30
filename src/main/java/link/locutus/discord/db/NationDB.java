@@ -3521,9 +3521,49 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+    public Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> getRemovesByNationAlliance(Set<Integer> alliances, long cutoff) {
+        if (alliances.isEmpty()) return Collections.emptyMap();
+        Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> kickDates = new LinkedHashMap<>();
+
+        if (alliances.size() == 1) {
+            int alliance = alliances.iterator().next();
+            Map<Integer, Map.Entry<Long, Rank>> result = getRemovesByAlliance(alliance, cutoff);
+            // map to: nation -> alliance - > Long, Rank
+            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : result.entrySet()) {
+                kickDates.computeIfAbsent(entry.getKey(), k -> new LinkedHashMap<>()).put(alliance, entry.getValue());
+            }
+        } else {
+            try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance in " + StringMan.getString(alliances) + " " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
+                if (cutoff > 0) {
+                    stmt.setLong(1, cutoff);
+                }
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int nationId = rs.getInt("nation");
+                        int alliance = rs.getInt("alliance");
+                        long date = rs.getLong("date");
+                        int type = rs.getInt("type");
+                        Rank rank = Rank.byId(type);
+                        kickDates.computeIfAbsent(nationId, k -> new LinkedHashMap<>()).put(alliance, new AbstractMap.SimpleEntry<>(date, rank));
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+        return kickDates;
+    }
+
     public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance = ? ORDER BY date DESC")) {
+        return getRemovesByAlliance(allianceId, 0L);
+    }
+    public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId, long cutoff) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance = ? " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, allianceId);
+            if (cutoff > 0) {
+                stmt.setLong(2, cutoff);
+            }
 
             Map<Integer, Map.Entry<Long, Rank>> kickDates = new LinkedHashMap<>();
 
