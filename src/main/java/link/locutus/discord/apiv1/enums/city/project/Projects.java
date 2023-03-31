@@ -1,14 +1,11 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
-import com.politicsandwar.graphql.model.Alliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -253,7 +250,7 @@ public class Projects {
             .cost(MONEY, 50000000)
             .build();
 
-    public static final Project RESOURCE_PRODUCTION_CENTER = new Builder("resource_production_center", 29)
+    public static final Project ACTIVITY_CENTER = new Builder("activity_center", 29)
             .image("resource_production_center.jpg")
             .cost(FOOD, 1000)
             .cost(MONEY, 500000)

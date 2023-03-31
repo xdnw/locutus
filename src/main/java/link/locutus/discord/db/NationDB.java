@@ -2063,6 +2063,8 @@ public class NationDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance ON KICKS (alliance);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance_date ON KICKS (alliance,date);");
 
         String spies = "CREATE TABLE IF NOT EXISTS `SPIES_BUILDUP` (`nation` INT NOT NULL, `spies` INT NOT NULL, `day` BIGINT NOT NULL, PRIMARY KEY(nation, day))";
         try (Statement stmt = getConnection().createStatement()) {
@@ -3057,6 +3059,26 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+    public List<DBSpyUpdate> getSpyActivityByNation(int nationId, long mindate) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM spy_activity WHERE nation = ? AND timestamp > ? ORDER BY timestamp DESC")) {
+            stmt.setLong(1, nationId);
+            stmt.setLong(2, mindate);
+
+            List<DBSpyUpdate> set = new ArrayList<>();
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    DBSpyUpdate entry = new DBSpyUpdate(rs);
+                    set.add(entry);
+                }
+            }
+            return set;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     public List<DBSpyUpdate> getSpyActivity(long timestamp, long range) {
         try (PreparedStatement stmt = prepareQuery("select * FROM spy_activity WHERE timestamp > ? AND timestamp < ? ORDER BY timestamp ASC")) {
             stmt.setLong(1, timestamp - range);
@@ -3501,6 +3523,41 @@ public class NationDB extends DBMainV2 {
             throw new RuntimeException(e);
         }
     }
+
+    public Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> getRemovesByNationAlliance(Set<Integer> alliances, long cutoff) {
+        if (alliances.isEmpty()) return Collections.emptyMap();
+        Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> kickDates = new LinkedHashMap<>();
+
+        if (alliances.size() == 1) {
+            int alliance = alliances.iterator().next();
+            Map<Integer, Map.Entry<Long, Rank>> result = getRemovesByAlliance(alliance, cutoff);
+            // map to: nation -> alliance - > Long, Rank
+            for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : result.entrySet()) {
+                kickDates.computeIfAbsent(entry.getKey(), k -> new LinkedHashMap<>()).put(alliance, entry.getValue());
+            }
+        } else {
+            try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance in " + StringMan.getString(alliances) + " " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
+                if (cutoff > 0) {
+                    stmt.setLong(1, cutoff);
+                }
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int nationId = rs.getInt("nation");
+                        int alliance = rs.getInt("alliance");
+                        long date = rs.getLong("date");
+                        int type = rs.getInt("type");
+                        Rank rank = Rank.byId(type);
+                        kickDates.computeIfAbsent(nationId, k -> new LinkedHashMap<>()).put(alliance, new AbstractMap.SimpleEntry<>(date, rank));
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+        return kickDates;
+    }
+
     public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId) {
         return getRemovesByAlliance(allianceId, 0L);
     }

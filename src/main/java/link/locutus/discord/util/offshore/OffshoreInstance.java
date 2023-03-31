@@ -183,36 +183,31 @@ public class OffshoreInstance {
                 if (ResourceType.isEmpty(stockpile)) {
                     throw new IllegalArgumentException("No bank records & stockpile found for " + allianceId);
                 }
-                throw new IllegalArgumentException("No bank records found for " + allianceId + " | " + alliance.getId() + " | " + PnwUtil.resourcesToString(stockpile));
-            }
+                if (getGuildDB().getOrNull(GuildDB.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
+                    throw new IllegalArgumentException("No bank records found for " + allianceId + " | " + alliance.getId() + " | " + PnwUtil.resourcesToString(stockpile));
+                }
+            } else {
+                int minId = Integer.MAX_VALUE;
+                int maxId = Integer.MIN_VALUE;
+                long minDate = 0;
+                for (Bankrec bankRec : bankRecs) {
+                    Transaction2 tx = Transaction2.fromApiV3(bankRec);
+                    minId = Math.min(minId, tx.tx_id);
+                    maxId = Math.max(maxId, tx.tx_id);
+                    minDate = Math.min(minDate, tx.tx_datetime);
+                }
 
-            System.out.println(":||Remove stock9");
+                // add transactions
+                System.out.println("Add " + bankRecs.size());
+                Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(bankRecs, events));
 
-            int minId = Integer.MAX_VALUE;
-            int maxId = Integer.MIN_VALUE;
-            long minDate = 0;
-            for (Bankrec bankRec : bankRecs) {
-                Transaction2 tx = Transaction2.fromApiV3(bankRec);
-                minId = Math.min(minId, tx.tx_id);
-                maxId = Math.max(maxId, tx.tx_id);
-                minDate = Math.min(minDate, tx.tx_datetime);
-            }
+                if (bankRecs.size() > 0) {
+                    // delete legacy transactions for alliance id after date
+                    Locutus.imp().getBankDB().deleteLegacyAllianceTransactions(allianceId, minDate - 1000);
 
-            System.out.println(":||Remove stock10");
-            // add transactions
-            System.out.println("Add " + bankRecs.size());
-            Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(bankRecs, events));
-
-            if (bankRecs.size() > 0) {
-                System.out.println(":||Remove stock11");
-                // delete legacy transactions for alliance id after date
-                Locutus.imp().getBankDB().deleteLegacyAllianceTransactions(allianceId, minDate - 1000);
-
-                System.out.println(":||Remove stock12");
-                // set bank update timestamp
-                alliance.setMeta(AllianceMeta.BANK_UPDATE_INDEX, minDate);
-
-                System.out.println(":||Remove stock13");
+                    // set bank update timestamp
+                    alliance.setMeta(AllianceMeta.BANK_UPDATE_INDEX, minDate);
+                }
             }
         }
 
@@ -1243,7 +1238,7 @@ public class OffshoreInstance {
             }
         }
 
-        if (auth == null || !auth.isValid()) {
+        if (auth == null || !auth.isValid() || true) {
             // get api
             try {
                 PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
