@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -50,6 +51,12 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={Coalition.class})
     public List<String> Coalition(String input) {
         return StringMan.completeEnum(input, Coalition.class);
+    }
+
+    @Autocomplete
+    @Binding(types={DepositType.DepositTypeInfo.class})
+    public List<String> DepositTypeInfo(String input) {
+        return StringMan.completeEnum(input, DepositType.class);
     }
 
     @Autocomplete

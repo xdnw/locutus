@@ -3501,10 +3501,15 @@ public class NationDB extends DBMainV2 {
             throw new RuntimeException(e);
         }
     }
-
     public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance = ? ORDER BY date DESC")) {
+        return getRemovesByAlliance(allianceId, 0L);
+    }
+    public Map<Integer, Map.Entry<Long, Rank>> getRemovesByAlliance(int allianceId, long cutoff) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS WHERE alliance = ? " + (cutoff > 0 ? " AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, allianceId);
+            if (cutoff > 0) {
+                stmt.setLong(2, cutoff);
+            }
 
             Map<Integer, Map.Entry<Long, Rank>> kickDates = new LinkedHashMap<>();
 

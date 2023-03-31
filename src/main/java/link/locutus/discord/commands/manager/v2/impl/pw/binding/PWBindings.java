@@ -8,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
@@ -26,7 +25,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
-import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -57,7 +55,6 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
@@ -111,10 +108,41 @@ public class PWBindings extends BindingHelper {
         return city;
     }
 
-    @Binding DepositType.Info depositType(String input) {
-        // #DEPOSIT
-        // ammount
-        // #
+    @Binding
+    public static DepositType.DepositTypeInfo DepositTypeInfo(String input) {
+        if (input.startsWith("#")) input = input.substring(1);
+        DepositType type = null;
+        long value = 0;
+        long city = 0;
+        for (String arg : input.split(" ")) {
+            String[] split = arg.split("[=|:]");
+            String key = split[0];
+            DepositType tmp = StringMan.parseUpper(DepositType.class, key.toUpperCase(Locale.ROOT));
+            if (type == null || (type == DepositType.CITY && tmp != DepositType.CITY)) {
+                type = tmp;
+            } else {
+                throw new IllegalArgumentException("Invalid deposit type (duplicate): `" + input + "`");
+            }
+            if (split.length == 2) {
+                long num = Long.valueOf(split[1]);
+                if (tmp == DepositType.CITY) {
+                    city = num;
+                } else {
+                    value = num;
+                }
+            } else if (split.length != 1) {
+                throw new IllegalArgumentException("Invalid deposit type (value): `" + input + "`");
+            }
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("Invalid deposit type (empty): `" + input + "`");
+        }
+        if (type == DepositType.CITY) {
+            value = city;
+            city = 0;
+        }
+        return new DepositType.DepositTypeInfo(type, value, city);
+
 
     }
 
@@ -863,7 +891,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public TaxBracket bracket(@Me GuildDB db, String input) {
+    public static TaxBracket bracket(@Me GuildDB db, String input) {
         Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
         if (input.matches("[0-9]+/[0-9]+")) {
             String[] split = input.split("/");

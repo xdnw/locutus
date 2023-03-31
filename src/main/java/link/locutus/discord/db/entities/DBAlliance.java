@@ -329,6 +329,18 @@ public class DBAlliance implements NationList, NationOrAlliance {
             Locutus.imp().getBankDB().addTaxBracket(bracket);
             BRACKETS_CACHED.put(bracket.taxId, bracket);
         }
+        // update nations not matching a valid tax bracket
+        List<Integer> toUpdate = new ArrayList<>();
+        for (DBNation nation : getNations()) {
+            if (nation.getTax_id() != 0 && ! bracketsV3.containsKey(nation.getTax_id())) {
+                toUpdate.add(nation.getId());
+            }
+        }
+        if (!toUpdate.isEmpty()) {
+            Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateNations(toUpdate, f));
+        }
+
+
         return Collections.unmodifiableMap(BRACKETS_CACHED);
     }
 

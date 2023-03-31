@@ -1791,15 +1791,6 @@ public class CM {
             }
         }
     }
-    public static class grant{
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="approveGrant")
-        public static class approve extends CommandRef {
-            public static final approve cmd = new approve();
-            public approve create(String key, String force) {
-                return createArgs("key", key, "force", force);
-            }
-        }
-    }
     public static class test{
         @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="dummy")
         public static class dummy extends CommandRef {

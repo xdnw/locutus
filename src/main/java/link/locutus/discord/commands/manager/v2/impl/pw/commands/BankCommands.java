@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.bank.Disperse;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -37,7 +36,6 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.JsonUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -65,9 +63,7 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -75,7 +71,6 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -94,7 +89,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -310,16 +304,17 @@ public class BankCommands {
     public static String disburse(@Me User author, @Me GuildDB db, @Me IMessageIO io, @Me DBNation me,
                            NationList nationList,
                            @Range(min=0, max=7) double daysDefault,
-                           @Default("#tax") DepositType.Info depositType,
+                           @Default("#tax") DepositType.DepositTypeInfo depositType,
                            @Switch("d") boolean noDailyCash,
                            @Switch("c") boolean noCash,
 
                            @Switch("n") DBNation depositsAccount,
                            @Switch("a") DBAlliance useAllianceBank,
                            @Switch("o") DBAlliance useOffshoreAccount,
+                           @Switch("t") TaxBracket taxAccount,
                            @Switch("e") @Timediff Long expire,
                            @Switch("m") boolean convertToMoney,
-
+                           @Switch("b") boolean bypassChecks,
                            @Switch("f") boolean force) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         Set<DBNation> nations = new HashSet<>(nationList.getNations());
 
@@ -391,9 +386,7 @@ public class BankCommands {
             }
         }
 
-        TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
-
-        if (!errors.isEmpty()) {
+        if (!errors.isEmpty() && !force) {
             msg.file("errors.csv", StringMan.join(errors, "\n"));
             msg.send();
         }
@@ -402,17 +395,47 @@ public class BankCommands {
             Map.Entry<DBNation, Map<ResourceType, Double>> entry = fundsToSendNations.entrySet().iterator().next();
             DBNation nation = entry.getKey();
             Map<ResourceType, Double> transfer = entry.getValue();
-            String post = JsonUtil.toPrettyFormat(PnwUtil.getPostScript(nation.getNation(), true, transfer, depositType.toString()));
 
-            JSONObject cmd = null; // todo
-            throw new UnsupportedOperationException("TODO FIXME MULTI ALLIANCE SUPPORT");
-//            return transfer(io, cmd, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, false, expire, null, convertToMoney, false);
+            /*
+            @Switch("n") DBNation depositsAccount,
+                           @Switch("a") DBAlliance useAllianceBank,
+                           @Switch("o") DBAlliance useOffshoreAccount,
+                           @Switch("t") TaxBracket taxAccount,
+             */
+
+            JSONObject command = CM.transfer.resources.cmd.create(
+                    nation.getUrl(),
+                    PnwUtil.resourcesToString(transfer),
+                    depositType.toString(),
+                    depositsAccount != null ? depositsAccount.getUrl() : null,
+                    useAllianceBank != null ? useAllianceBank.getUrl() : null,
+                    useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
+                    Boolean.FALSE.toString(),
+                    expire == null ? null : "timestamp:" + expire,
+                    null,
+                    String.valueOf(convertToMoney),
+                    String.valueOf(bypassChecks)
+            ).toJson();
+
+            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, false, expire, null, convertToMoney, bypassChecks, force);
         } else {
             UUID key = UUID.randomUUID();
-            JSONObject cmd = null; // todo
-            throw new UnsupportedOperationException("TODO FIXME MULTI ALLIANCE SUPPORT");
-//            approvedTransfer.put(key, sheet.getTransfers());
-//            return transferBulk(io, cmd, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, expire, null, convertToMoney, false, key);
+            TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
+            APPROVED_BULK_TRANSFER.put(key, sheet.getTransfers());
+
+            JSONObject command = CM.transfer.bulk.cmd.create(
+                    sheet.getSheet().getURL(),
+                    depositType.toString(),
+                    depositsAccount != null ? depositsAccount.getUrl() : null,
+                    useAllianceBank != null ? useAllianceBank.getUrl() : null,
+                    useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
+                    Boolean.FALSE.toString(),
+                    expire == null ? null : ("timestamp:" + expire),
+                    String.valueOf(force),
+                    key.toString()
+            ).toJson();
+
+            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, expire, convertToMoney, bypassChecks, force, key);
         }
     }
 
@@ -755,11 +778,12 @@ public class BankCommands {
     @Command(desc = "Withdraw from the alliance bank (your deposits)")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, any=true)
     public String withdraw(@Me IMessageIO channel, @Me JSONObject command,
-                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, @NationDepositLimit Map<ResourceType, Double> transfer, @Default("#deposit") DepositType.Info depositType,
+                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, @NationDepositLimit Map<ResourceType, Double> transfer, @Default("#deposit") DepositType.DepositTypeInfo depositType,
 
                            @Switch("n") DBNation depositsAccount,
-                                     @Switch("a") DBAlliance useAllianceBank,
-                                     @Switch("o") DBAlliance useOffshoreAccount,
+                         @Switch("a") DBAlliance useAllianceBank,
+                         @Switch("o") DBAlliance useOffshoreAccount,
+                           @Switch("t") TaxBracket taxAccount,
 
                            @Switch("m") boolean onlyMissingFunds,
                            @Switch("e") @Timediff Long expire,
@@ -772,6 +796,7 @@ public class BankCommands {
                 depositsAccount == null ? me : depositsAccount,
                 useAllianceBank,
                 useOffshoreAccount,
+                taxAccount,
                 onlyMissingFunds,
                 expire,
                 token,
@@ -865,11 +890,12 @@ public class BankCommands {
     @Command(desc = "Transfer from the alliance bank (alliance deposits)")
     @RolePermission(Roles.ECON)
     public static String transfer(@Me IMessageIO channel, @Me JSONObject command,
-                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.Info depositType,
+                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.DepositTypeInfo depositType,
 
                            @Switch("n") DBNation nationAccount,
                            @Switch("a") DBAlliance senderAlliance,
                            @Switch("o") DBAlliance allianceAccount,
+                           @Switch("t") TaxBracket taxAccount,
 
                            @Switch("m") boolean onlyMissingFunds,
                            @Switch("e") @Timediff Long expire,
@@ -985,6 +1011,7 @@ public class BankCommands {
                     author,
                     nationAccount,
                     allianceAccount,
+                    taxAccount,
                     guildDb,
                     channel.getIdLong(),
                     receiver,
@@ -1334,7 +1361,7 @@ public class BankCommands {
 
     @Command(desc = "Convert negative deposits to another resource")
     @RolePermission(value = Roles.ECON)
-    public String convertNegativeDeposits(@Me IMessageIO channel, @Me GuildDB db, @Me User user, @Me DBNation me, Set<DBNation> nations, @Default("manu,raws,food") List<ResourceType> negativeResources, @Default("money") ResourceType convertTo, @Switch("g") boolean includeGrants, @Switch("t") DepositType.Info depositType, @Switch("f") Double conversionFactor, @Switch("s") SpreadSheet sheet, @Default() @Switch("n") String note) throws IOException, GeneralSecurityException {
+    public String convertNegativeDeposits(@Me IMessageIO channel, @Me GuildDB db, @Me User user, @Me DBNation me, Set<DBNation> nations, @Default("manu,raws,food") List<ResourceType> negativeResources, @Default("money") ResourceType convertTo, @Switch("g") boolean includeGrants, @Switch("t") DepositType.DepositTypeInfo depositType, @Switch("f") Double conversionFactor, @Switch("s") SpreadSheet sheet, @Default() @Switch("n") String note) throws IOException, GeneralSecurityException {
         if (nations.size() > 500) return "Too many nations > 500";
         // get deposits of nations
         // get negatives
@@ -1483,16 +1510,17 @@ public class BankCommands {
         return null;
     }
 
-    private Map<UUID, Map<NationOrAlliance, Map<ResourceType, Double>>> approvedTransfer = new ConcurrentHashMap<>();
+    private static Map<UUID, Map<NationOrAlliance, Map<ResourceType, Double>>> APPROVED_BULK_TRANSFER = new ConcurrentHashMap<>();
 
     @Command(desc = "Send multiple transfers to nations/alliances according to a sheet",
             help = "The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url), " +
                     "and then there must be a column named for each resource type you wish to transfer")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true)
-    public String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.Info depositType,
+    public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
                                @Switch("n") DBNation depositsAccount,
                                @Switch("a") DBAlliance useAllianceBank,
                                @Switch("o") DBAlliance useOffshoreAccount,
+                               @Switch("t") TaxBracket taxAccount,
                                @Switch("e") @Timediff Long expire,
                                @Switch("m") boolean convertToMoney,
                                @Switch("b") boolean bypassChecks,
@@ -1552,7 +1580,7 @@ public class BankCommands {
             }
 
             key = UUID.randomUUID();
-            approvedTransfer.put(key, transfers);
+            APPROVED_BULK_TRANSFER.put(key, transfers);
             String commandStr = command.put("force", "true").put("key", key).toString();
             io.create().embed(title, desc.toString())
                             .commandButton(commandStr, "Confirm")
@@ -1560,7 +1588,7 @@ public class BankCommands {
             return null;
         }
         if (key != null) {
-            Map<NationOrAlliance, Map<ResourceType, Double>> approvedAmounts = approvedTransfer.get(key);
+            Map<NationOrAlliance, Map<ResourceType, Double>> approvedAmounts = APPROVED_BULK_TRANSFER.get(key);
             if (approvedAmounts == null) return "No amount has been approved for transfer. Please try again";
             if (!approvedAmounts.equals(transfers)) {
                 return "The confirmed amount does not match. Please try again";
@@ -1596,6 +1624,7 @@ public class BankCommands {
                         user,
                         depositsAccount,
                         useOffshoreAccount,
+                        taxAccount,
                         db,
                         io.getIdLong(),
                         receiver,

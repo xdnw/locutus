@@ -1185,6 +1185,8 @@ public class UnsortedCommands {
             }
         }
 
+        BankCommands.transferBulk()
+
         String result = Disperse.disperse(db, fundsToSendNations, Collections.emptyMap(), note, io, "Send Warchest");
         if (fundsToSendNations.size() > 1) {
             result += author.getAsMention();

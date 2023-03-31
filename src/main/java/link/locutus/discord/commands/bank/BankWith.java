@@ -9,35 +9,22 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMeta;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.JsonUtil;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -74,16 +61,16 @@ public class BankWith extends Command {
         return db.getOffshore() != null;
     }
 
-    public static final Set<UUID> authorized = new HashSet<>();
-
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         String expireStr = DiscordUtil.parseArg(args, "expire");
         Long expire = expireStr == null ? null : PrimitiveBindings.Long(expireStr);
 
         DBNation nationAccount = null;
         DBAlliance allianceAccount = null;
         DBAlliance offshoreAccount = null;
+        TaxBracket taxAccount = null;
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
@@ -100,12 +87,17 @@ public class BankWith extends Command {
             offshoreAccount = PWBindings.alliance(offshoreAccountStr);
         }
 
+        String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
+        if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
+        if (taxIdStr != null) {
+            taxAccount = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+        }
+
         if (args.size() < 3) return usage();
         IMessageIO channel = new DiscordChannelIO(event.getChannel());
-        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0));
         Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
-        DepositType depositType = PWBindings.DepositType(args.get(2));
+        DepositType.DepositTypeInfo depositType = PWBindings.DepositTypeInfo(args.get(2));
 
         boolean onlyMissingFunds = flags.contains('o');
         boolean convertCash = flags.contains('c');
@@ -114,19 +106,19 @@ public class BankWith extends Command {
         UUID token = null;
         // String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks
         JSONObject command = CM.transfer.resources.cmd.create(
-            receiver.getUrl(),
+                receiver.getUrl(),
                 PnwUtil.resourcesToString(transfer),
                 depositType.toString(),
                 nationAccount != null ? nationAccount.getUrl() : null,
                 allianceAccount != null ? allianceAccount.getUrl() : null,
                 offshoreAccount != null ? offshoreAccount.getUrl() : null,
                 String.valueOf(onlyMissingFunds),
-                expire == null ? null : String.valueOf(expire),
+                expire == null ? null : ("timestamp:" + expire),
                 token == null ? null : token.toString(),
                 String.valueOf(convertCash),
                 String.valueOf(bypassChecks)
         ).toJson();
 
-        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, onlyMissingFunds, expire, token, convertCash, bypassChecks, false);
+        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, taxAccount, onlyMissingFunds, expire, token, convertCash, bypassChecks, false);
     }
 }

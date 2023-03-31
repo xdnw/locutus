@@ -31,33 +31,55 @@ public enum DepositType {
         this.description = description;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
     public DepositType getParent() {
         return parent;
     }
 
-    public Info withValue(long value) {
-        return new DepositType.Info(this, value);
+    public DepositTypeInfo withValue() {
+        return withValue(0, 0);
     }
 
-    public static class Info {
-        public final DepositType type;
-        public final long value;
+    public DepositTypeInfo withAmount(long amount) {
+        return withValue(amount, 0);
+    }
 
-        public Info(DepositType type, long value) {
+    public DepositTypeInfo withCity(long city) {
+        return withValue(0, city);
+    }
+
+    public DepositTypeInfo withValue(long amount, long city) {
+        return new DepositTypeInfo(this, amount, city);
+    }
+
+    public static class DepositTypeInfo {
+        public final DepositType type;
+        public final long amount;
+        public final long city;
+
+        public DepositTypeInfo(DepositType type, long amount, long city) {
             this.type = type;
-            this.value = value;
+            this.amount = amount;
+            this.city = city;
         }
 
-        public Info(DepositType type) {
-            this(type, -1);
+        public DepositTypeInfo(DepositType type) {
+            this(type, 0, 0);
         }
 
         public DepositType getType() {
             return type;
         }
 
-        public long getValue() {
-            return value;
+        public long getAmount() {
+            return amount;
+        }
+
+        public long getCity() {
+            return city;
         }
 
         public String toString(long accountId) {
@@ -78,11 +100,13 @@ public enum DepositType {
         @Override
         public String toString() {
             String note = "#" + type.name().toLowerCase(Locale.ROOT);
-            if (value == -1) {
-                note += "=*";
-            } else if (value != 0) {
-                note += "=" + value;
+            if (amount != 0) {
+                note += "=" + amount;
             }
+            if (city != 0) {
+                note += " #city=" + city;
+            }
+            return note;
         }
     }
 }

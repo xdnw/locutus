@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands;
 
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;

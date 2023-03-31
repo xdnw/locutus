@@ -920,6 +920,12 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
+    @Binding(types= DepositType.DepositTypeInfo.class)
+    public String DepositTypeInfo(ParameterData param) {
+        return DepositType(param);
+    }
+
+    @HtmlInput
     @Binding(types= WarStatus.class)
     public String WarStatus(ParameterData param) {
         return multipleSelect(param, Arrays.asList(WarStatus.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
