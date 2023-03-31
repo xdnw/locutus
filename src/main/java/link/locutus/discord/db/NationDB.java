@@ -2062,6 +2062,8 @@ public class NationDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance ON KICKS (alliance);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance_date ON KICKS (alliance,date);");
 
         String spies = "CREATE TABLE IF NOT EXISTS `SPIES_BUILDUP` (`nation` INT NOT NULL, `spies` INT NOT NULL, `day` BIGINT NOT NULL, PRIMARY KEY(nation, day))";
         try (Statement stmt = getConnection().createStatement()) {

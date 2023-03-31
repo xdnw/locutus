@@ -540,7 +540,6 @@ public class UtilityCommands {
 
         long start1 = System.currentTimeMillis();
         Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> removes = Locutus.imp().getNationDB().getRemovesByNationAlliance(enemies, cutoff);
-        System.out.println("Remove:|| Removes " + (System.currentTimeMillis() - start1) + "ms");
 
         Map<Integer, Integer> offshoresWar = new HashMap<>();
         Map<Integer, Integer> offshoresTreaty = new HashMap<>();
