@@ -396,13 +396,6 @@ public class BankCommands {
             DBNation nation = entry.getKey();
             Map<ResourceType, Double> transfer = entry.getValue();
 
-            /*
-            @Switch("n") DBNation depositsAccount,
-                           @Switch("a") DBAlliance useAllianceBank,
-                           @Switch("o") DBAlliance useOffshoreAccount,
-                           @Switch("t") TaxBracket taxAccount,
-             */
-
             JSONObject command = CM.transfer.resources.cmd.create(
                     nation.getUrl(),
                     PnwUtil.resourcesToString(transfer),
@@ -1510,22 +1503,39 @@ public class BankCommands {
         return null;
     }
 
-    private static Map<UUID, Map<NationOrAlliance, Map<ResourceType, Double>>> APPROVED_BULK_TRANSFER = new ConcurrentHashMap<>();
+    public static Map<UUID, Map<NationOrAlliance, Map<ResourceType, Double>>> APPROVED_BULK_TRANSFER = new ConcurrentHashMap<>();
+
+
 
     @Command(desc = "Send multiple transfers to nations/alliances according to a sheet",
             help = "The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url), " +
                     "and then there must be a column named for each resource type you wish to transfer")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true)
     public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
-                               @Switch("n") DBNation depositsAccount,
-                               @Switch("a") DBAlliance useAllianceBank,
-                               @Switch("o") DBAlliance useOffshoreAccount,
-                               @Switch("t") TaxBracket taxAccount,
-                               @Switch("e") @Timediff Long expire,
-                               @Switch("m") boolean convertToMoney,
-                               @Switch("b") boolean bypassChecks,
-                               @Switch("f") boolean force,
-                               @Switch("k") UUID key) throws IOException {
+                                      @Switch("n") DBNation depositsAccount,
+                                      @Switch("a") DBAlliance useAllianceBank,
+                                      @Switch("o") DBAlliance useOffshoreAccount,
+                                      @Switch("t") TaxBracket taxAccount,
+                                      @Switch("e") @Timediff Long expire,
+                                      @Switch("m") boolean convertToMoney,
+                                      @Switch("b") boolean bypassChecks,
+                                      @Switch("f") boolean force,
+                                      @Switch("k") UUID key) throws IOException {
+        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, expire, convertToMoney, bypassChecks, force, key, new HashMap<>());
+    }
+
+
+    public static String transferBulkWithErrors(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
+                                      @Switch("n") DBNation depositsAccount,
+                                      @Switch("a") DBAlliance useAllianceBank,
+                                      @Switch("o") DBAlliance useOffshoreAccount,
+                                      @Switch("t") TaxBracket taxAccount,
+                                      @Switch("e") @Timediff Long expire,
+                                      @Switch("m") boolean convertToMoney,
+                                      @Switch("b") boolean bypassChecks,
+                                      @Switch("f") boolean force,
+                                      @Switch("k") UUID key,
+                                                Map<NationOrAlliance, String> errors) throws IOException {
         double totalVal = 0;
 
         int nations = 0;
@@ -1648,6 +1658,13 @@ public class BankCommands {
                 io.send(PnwUtil.resourcesToString(amount) + " -> " + receiver.getUrl() + " | **" + result.getKey() + "**: " + result.getValue());
             }
         }
+
+        for (Map.Entry<NationOrAlliance, String> entry : errors.entrySet()) {
+            NationOrAlliance receiver = entry.getKey();
+            output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + "\t" + OffshoreInstance.TransferStatus.OTHER + "\t" + "\"" + entry.getValue() + "\"");
+            output.append("\n");
+        }
+
 
         io.create().file("transfer-results.csv", output.toString()).append("Done!\nTotal sent: `" + PnwUtil.resourcesToString(totalSent) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalSent))).send();
         return null;

@@ -70,8 +70,12 @@ public class Disperse extends Command {
         return "Disburse funds.\n" +
                 "add `-d` to assume daily cash login bonus\n" +
                 "add `-c` to skip sending cash\n" +
-                "add `-m` to convert to money" +
-                "Add `-f` to force it through";
+                "add `-m` to convert to money\n" +
+                "Add `-b` to bypass checks\n" +
+                "Add e.g. `nation:blah` to specify a nation account\n" +
+                "Add e.g. `alliance:blah` to specify an alliance account\n" +
+                "Add e.g. `offshore:blah` to specify an offshore account\n" +
+                "Add e.g. `tax_id:blah` to specify a tax bracket";
     }
 
     @Override
@@ -110,14 +114,13 @@ public class Disperse extends Command {
 
 
         double daysDefault = Integer.parseInt(args.get(1));
-        boolean force = flags.contains('f');
         boolean ignoreInactives = !flags.contains('i');
 
         DepositType.DepositTypeInfo type = PWBindings.DepositTypeInfo(args.get(2));
 
         String arg = args.get(0);
         List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(event.getGuild(), arg));
-        if (nations.size() != 1 || !flags.contains('f')) {
+        if (nations.size() != 1 || !flags.contains('b')) {
             nations.removeIf(n -> n.getPosition() <= 1);
             nations.removeIf(n -> n.getVm_turns() != 0);
             nations.removeIf(n -> n.getActive_m() > 2880);
@@ -137,13 +140,13 @@ public class Disperse extends Command {
                 type,
                 flags.contains('d'),
                 flags.contains('c'),
-                nationAccount != null ? nationAccount : null,
-                allianceAccount != null ? allianceAccount : null,
-                offshoreAccount != null ? offshoreAccount : null,
-                taxAccount != null ? taxAccount : null,
+                nationAccount,
+                allianceAccount,
+                offshoreAccount,
+                taxAccount,
                 null,
                 flags.contains('m'),
-                force,
-                false);
+                flags.contains('b'),
+                flags.contains('f'));
     }
 }

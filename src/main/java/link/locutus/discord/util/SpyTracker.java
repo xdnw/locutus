@@ -410,7 +410,6 @@ public class SpyTracker {
             // display recent wars (nation)
             // display current wars (nations / alliances)
 
-
             if (unit.getBuilding() != null) {
                 int defUnits = defender.getUnits(unit) + Math.abs(alert.change);
                 Map.Entry<Integer, Integer> killRangeNoSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, false);
