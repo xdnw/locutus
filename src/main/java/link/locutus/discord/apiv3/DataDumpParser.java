@@ -982,7 +982,7 @@ public class DataDumpParser {
         checkProject(nation, row, header.advanced_engineering_corps_np,Projects.ADVANCED_ENGINEERING_CORPS);
         checkProject(nation, row, header.government_support_agency_np,Projects.GOVERNMENT_SUPPORT_AGENCY);
         checkProject(nation, row, header.research_and_development_center_np,Projects.RESEARCH_AND_DEVELOPMENT_CENTER);
-        checkProject(nation, row, header.resource_production_center_np,Projects.RESOURCE_PRODUCTION_CENTER);
+        checkProject(nation, row, header.resource_production_center_np,Projects.ACTIVITY_CENTER);
         checkProject(nation, row, header.metropolitan_planning_np,Projects.METROPOLITAN_PLANNING);
         checkProject(nation, row, header.military_salvage_np,Projects.MILITARY_SALVAGE);
         checkProject(nation, row, header.fallout_shelter_np,Projects.FALLOUT_SHELTER);

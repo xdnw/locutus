@@ -76,6 +76,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -90,7 +91,56 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.commands.rankings.WarCostRanking.scale;
 
 public class StatCommands {
+    @Command
+    public String warAttacksByDay(@Me IMessageIO io, @Default Set<DBNation> nations, @Default @Timestamp Long cutoff, @Default Set<AttackType> allowedTypes) throws IOException {
+        if (cutoff == null) cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
+        List<DBAttack> attacks;
+        if (nations != null) {
+            Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+            attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
+        } else {
+            attacks = Locutus.imp().getWarDb().getAttacks(cutoff);
+        }
+        if (allowedTypes != null) {
+            attacks.removeIf(f -> !allowedTypes.contains(f.attack_type));
+        }
 
+        long minDay = TimeUtil.getDay(cutoff);
+        long maxDay = TimeUtil.getDay();
+        if (maxDay - minDay > 50000) {
+            throw new IllegalArgumentException("Too many days");
+        }
+        Map<Long, Integer> totalAttacksByDay = new HashMap<>();
+        for (DBAttack attack : attacks) {
+            long day = TimeUtil.getDay(attack.epoch);
+            totalAttacksByDay.put(day, totalAttacksByDay.getOrDefault(day, 0) + 1);
+        }
+
+        List<String> sheet = new ArrayList<>(Arrays.asList(
+                "Day,Attacks"
+        ));
+        TimeNumericTable<Void> table = new TimeNumericTable<>("Total attacks by day", "day", "attacks", "") {
+            @Override
+            public void add(long day, Void ignore) {
+                long offset = day - minDay;
+                int attacks = totalAttacksByDay.getOrDefault(day, 0);
+                add(offset, attacks);
+                String dayStr = TimeUtil.YYYY_MM_DD_FORMAT.format(new Date(TimeUtil.getTimeFromDay(day)));
+                sheet.add(dayStr + "," + attacks);
+            }
+        };
+
+        for (long day = minDay; day <= maxDay; day++) {
+            table.add(day, (Void) null);
+        }
+
+        io.create()
+                .file("img.png", table.write())
+                .file("data.csv", StringMan.join(sheet, "\n"))
+                .append("Done!")
+                .send();
+        return null;
+    }
     @Command(desc = "Rank war costs between two parties")
     public String warCostRanking(@Me IMessageIO io, @Me User author, @Me JSONObject command,
                                  @Timestamp long timeStart, @Timestamp @Default  Long timeEnd, @Default("*") Set<NationOrAlliance> coalition1, @Default("*") Set<NationOrAlliance> coalition2,
