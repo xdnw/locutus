@@ -2264,9 +2264,20 @@ public class BankCommands {
             for (Long alliancesOrGuild : alliancesOrGuilds) {
                 if (alliancesOrGuild < Integer.MAX_VALUE) {
                     GuildDB other = Locutus.imp().getGuildDBByAA(alliancesOrGuild.intValue());
-                    if (other != null) alliancesOrGuild = other.getGuild().getIdLong();
+                    if (other != null) {
+                        alliancesOrGuild = other.getGuild().getIdLong();
+                    } else {
+                        continue;
+                    }
                 }
-                serverIds.add(alliancesOrGuild);
+                GuildDB other = Locutus.imp().getGuildDB(alliancesOrGuild);
+                if (other == null) {
+                    continue;
+                }
+                GuildDB otherOffshore = other.getOffshoreDB();
+                if (otherOffshore == null || otherOffshore == root) {
+                    serverIds.add(alliancesOrGuild);
+                }
             }
 
 

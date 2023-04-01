@@ -51,7 +51,8 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command(desc = "Pull registered nation from locutus.")
+    @Command(desc = "Pull registered nations from locutus\n" +
+            "(or a provided url)")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncDiscordWithLocutus(@Default String url) throws IOException {
         if (url == null) {
@@ -750,7 +751,7 @@ public class AdminCommands {
             } else {
                 depo = offshore.getDeposits((int) id, false);
             }
-            totalInactive = PnwUtil.add(totalInactive, PnwUtil.resourcesToArray(depo));
+            PnwUtil.add(totalInactive, PnwUtil.resourcesToArray(depo));
         }
 
         for (long id : invalidIds) {
@@ -760,7 +761,7 @@ public class AdminCommands {
             } else {
                 depo = offshore.getDeposits((int) id, false);
             }
-            totalInvalid = PnwUtil.add(totalInvalid, PnwUtil.resourcesToArray(depo));
+            PnwUtil.add(totalInvalid, PnwUtil.resourcesToArray(depo));
         }
 
         for (long id : unregistered) {
@@ -770,7 +771,7 @@ public class AdminCommands {
             } else {
                 depo = offshore.getDeposits((int) id, false);
             }
-            totalUnregistered = PnwUtil.add(totalUnregistered, PnwUtil.resourcesToArray(depo));
+            PnwUtil.add(totalUnregistered, PnwUtil.resourcesToArray(depo));
         }
 
         for (long id : threeMonthIds) {
@@ -780,7 +781,7 @@ public class AdminCommands {
             } else {
                 depo = offshore.getDeposits((int) id, false);
             }
-            threeMonth = PnwUtil.add(threeMonth, PnwUtil.resourcesToArray(depo));
+            PnwUtil.add(threeMonth, PnwUtil.resourcesToArray(depo));
         }
 
         for (long id : sixMonthIds) {
@@ -790,7 +791,7 @@ public class AdminCommands {
             } else {
                 depo = offshore.getDeposits((int) id, false);
             }
-            sixMonth = PnwUtil.add(sixMonth, PnwUtil.resourcesToArray(depo));
+            PnwUtil.add(sixMonth, PnwUtil.resourcesToArray(depo));
         }
 
         for (long id : nineMonthIds) {
@@ -800,7 +801,7 @@ public class AdminCommands {
             } else {
                 depo = offshore.getDeposits((int) id, false);
             }
-            nineMonth = PnwUtil.add(nineMonth, PnwUtil.resourcesToArray(depo));
+            PnwUtil.add(nineMonth, PnwUtil.resourcesToArray(depo));
         }
 
         response.append("\n\nTotal invalid: ").append(PnwUtil.resourcesToString(totalInvalid));
@@ -912,7 +913,7 @@ public class AdminCommands {
         bank.sync(timestamp, false);
 
         Locutus.imp().getBankDB().updateBankRecs(Event::post);
-            return "Banks has been synced.";
+        return "Banks has been synced.";
     }
 
     @Command()

@@ -54,6 +54,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.math.ArrayUtil.memorize;
+import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
 public class UtilityCommands {
     @Command(desc = "List the color blocs")
@@ -228,7 +229,6 @@ public class UtilityCommands {
 
     @Command(desc = "Find potential offshores used by an alliance")
     @RolePermission(Roles.ECON)
-    @WhitelistPermission
     public String findOffshore(@Me IMessageIO channel, @Me JSONObject command, DBAlliance alliance, @Default @Timestamp Long cutoffMs) {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
 
@@ -484,18 +484,22 @@ public class UtilityCommands {
     }
 
     @Command
-    @WhitelistPermission
     @RolePermission(value = {Roles.ECON, Roles.MILCOM}, any = true)
     public String findOffshores(@Timestamp long cutoff, Set<DBAlliance> enemiesList, @Default() Set<DBAlliance> alliesList) {
         if (alliesList == null) alliesList = Collections.emptySet();
         Set<Integer> enemies = enemiesList.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
         Set<Integer> allies = alliesList.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
+        long start1 = System.currentTimeMillis();
+        Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> removes = Locutus.imp().getNationDB().getRemovesByNationAlliance(enemies, cutoff);
+
         Map<Integer, Integer> offshoresWar = new HashMap<>();
         Map<Integer, Integer> offshoresTreaty = new HashMap<>();
         Map<Integer, Integer> offshoresOfficer = new HashMap<>();
         Map<Integer, Integer> offshoresMember = new HashMap<>();
         Map<Integer, Map.Entry<Integer, Map.Entry<Integer, Double>>> offshoresTransfers = new HashMap<>(); // Ofshore AA id -> (parent AA id, num transfers, value transferred)
+
+        long totalBankDiff = 0;
 
         Map<Integer, List<DBNation>> alliances = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true);
         outer:
@@ -523,7 +527,10 @@ public class UtilityCommands {
                 }
             }
 
-            List<Transaction2> transfers = Locutus.imp().getBankDB().getTransactionsByAlliance(aaId);
+            long start = System.currentTimeMillis();
+            List<Transaction2> transfers = Locutus.imp().getBankDB().getTransactions(TRANSACTIONS_2.SENDER_ID.eq((long) aaId).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)).and(TRANSACTIONS_2.TX_DATETIME.gt(cutoff)));
+            totalBankDiff += System.currentTimeMillis() - start;
+
             transfers.removeIf(f -> f.sender_id != aaId || f.tx_datetime < cutoff);
             transfers.removeIf(f -> f.note != null && f.note.contains("of the alliance bank inventory."));
             if (!transfers.isEmpty()) {
@@ -565,7 +572,8 @@ public class UtilityCommands {
                     }
                 }
 
-                for (Map.Entry<Integer, Map.Entry<Long, Rank>> aaEntry : nation.getAllianceHistory().entrySet()) {
+                Map<Integer, Map.Entry<Long, Rank>> nationRemoves = removes.getOrDefault(nation.getNation_id(), Collections.emptyMap());
+                for (Map.Entry<Integer, Map.Entry<Long, Rank>> aaEntry : nationRemoves.entrySet()) {
                     int previousAA = aaEntry.getKey();
                     if (!enemies.contains(previousAA)) continue;
                     Map.Entry<Long, Rank> timeRank = aaEntry.getValue();
@@ -580,6 +588,8 @@ public class UtilityCommands {
                 }
             }
         }
+
+        System.out.println(":||Remove bank diff " + totalBankDiff + "ms");
 
         {
             StringBuilder response = new StringBuilder();

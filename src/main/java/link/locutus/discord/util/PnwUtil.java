@@ -1,6 +1,5 @@
 package link.locutus.discord.util;
 
-import com.google.gson.stream.MalformedJsonException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.stock.Exchange;
@@ -8,7 +7,6 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
@@ -18,7 +16,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import org.json.JSONObject;
@@ -26,7 +23,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import rocker.grant.nation;
 
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -1019,7 +1015,7 @@ public class PnwUtil {
         int numCities = bonus ? nation.getCities() : 10;
 
         // Project revenue
-        if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.RESOURCE_PRODUCTION_CENTER)) {
+        if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.ACTIVITY_CENTER)) {
 //            for (ResourceType type : ResourceType.values) {
 //                if (type.isRaw() && type.getBuilding().canBuild(nation.getContinent())) {
 //                    // profitBuffer[type.ordinal()] += turns * (Math.min(nation.getCities(), 10));

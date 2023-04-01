@@ -260,7 +260,7 @@ public class DiscordUtil {
 
     public static String timestamp(long timestamp, String type) {
         if (type == null) type = "R";
-        return "<T:" + timestamp + ":" + type + ">";
+        return "<t:" + (timestamp / 1000L) + ":" + type + ">";
     }
 
     public static void paginate(IMessageIO io, String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
