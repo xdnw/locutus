@@ -1,17 +1,16 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import com.google.common.collect.BiMap;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -83,27 +82,27 @@ public class NetProfitPerWar extends Command {
         RankBuilder<String> ranks;
         if (AAs == null) {
             // Group it by alliance
-            ranks = byNation.<Integer > group((entry, builder) -> {
-            DBNation nation = nations.get(entry.getKey());
-            if (nation != null) {
-                builder.put(nation.getAlliance_id(), entry.getValue());
-            }
-            })
-            // Average it per alliance
-            .average()
-            // Sort descending
-            .sort()
-            // Change key to alliance name
-            .nameKeys(allianceId -> PnwUtil.getName(allianceId, true))
-            .limit(25);
+            ranks = byNation.<Integer>group((entry, builder) -> {
+                        DBNation nation = nations.get(entry.getKey());
+                        if (nation != null) {
+                            builder.put(nation.getAlliance_id(), entry.getValue());
+                        }
+                    })
+                    // Average it per alliance
+                    .average()
+                    // Sort descending
+                    .sort()
+                    // Change key to alliance name
+                    .nameKeys(allianceId -> PnwUtil.getName(allianceId, true))
+                    .limit(25);
         } else {
             // Sort descending
             ranks = byNation
                     .removeIfKey(nationId -> !nations.containsKey(nationId) || (!finalAAs.isEmpty() && !finalAAs.contains(nations.get(nationId).getAlliance_id())))
                     .sort()
-            // Change key to alliance name
-            .nameKeys(nationId -> nations.get(nationId).getNation())
-            .limit(25);
+                    // Change key to alliance name
+                    .nameKeys(nationId -> nations.get(nationId).getNation())
+                    .limit(25);
         }
 
         // Embed the rank list

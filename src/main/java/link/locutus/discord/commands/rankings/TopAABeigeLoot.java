@@ -9,12 +9,14 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
-import com.google.common.collect.BiMap;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class TopAABeigeLoot extends Command {
     public TopAABeigeLoot() {
@@ -29,7 +31,7 @@ public class TopAABeigeLoot extends Command {
     @Override
     public String desc() {
         return "Get the largest alliance bank loot per score\n" +
-                "Add -t to just list total bank worth";
+                "Add -t to just list total bank worth.";
     }
 
     @Override
