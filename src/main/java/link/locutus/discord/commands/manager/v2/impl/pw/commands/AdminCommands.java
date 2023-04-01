@@ -31,6 +31,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
 import link.locutus.discord.util.update.NationUpdateProcessor;
 import net.dv8tion.jda.api.entities.*;
@@ -87,6 +88,35 @@ public class AdminCommands {
             Locutus.imp().getDiscordDB().addUser(new PNWUser(nationId, discordId, username));
         }
         return "Done! Imported " + count + "/" + lines.length + " users from " + url;
+    }
+
+    @Command
+    public String loginTimes(@Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, SpreadSheet sheet) throws IOException {
+        if (System.currentTimeMillis() - cutoff > TimeUnit.DAYS.toMillis(30)) {
+            return "Cutoff must be within the last 30 days.";
+        }
+        if (nations.size() > 30) {
+            return "Too many nations.";
+        }
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "nation",
+                "time"
+        ));
+        sheet.addRow(header);
+        for (DBNation nation : nations) {
+            List<DBSpyUpdate> activity = Locutus.imp().getNationDB().getSpyActivityByNation(nation.getNation_id(), cutoff);
+            for (DBSpyUpdate update : activity) {
+                header.set(0, String.valueOf(nation.getNation_id()));
+                header.set(1, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(update.timestamp)));
+                sheet.addRow(header);
+            }
+        }
+
+        sheet.clearAll();
+        sheet.set(0, 0);
+
+        sheet.attach(io.create()).send();
+        return null;
     }
 
     @Command
