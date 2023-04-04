@@ -463,10 +463,10 @@ public class BankCommands {
             origin.zeroNonMilitary();
             JavaCity optimal = origin.optimalBuild(nation, 0);
             double profitOptimal;
-            if (optimal == null) {
+            if (optimal != null) {
                 profitOptimal = optimal.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
             } else {
-                profitOptimal = Integer.MAX_VALUE;
+                profitOptimal = 0;
             }
 
             double optimalGain = profit >= profitOptimal ? 1 : profit / profitOptimal;

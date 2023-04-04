@@ -2234,6 +2234,13 @@ public class DBNation implements NationOrAlliance {
         return color;
     }
 
+    @Command
+    public boolean isAllianceColor() {
+        DBAlliance alliance = getAlliance();
+        if (alliance == null) return false;
+        return alliance.getColor() == getColor();
+    }
+
     public void setColor(NationColor color) {
 //        if (color != NationColor.GRAY && color != NationColor.BEIGE)
         if (color != this.color) {
