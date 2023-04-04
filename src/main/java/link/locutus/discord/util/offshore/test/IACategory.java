@@ -780,7 +780,7 @@ public class IACategory {
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null) return true;
-                if (db.getOrNull(GuildDB.Key.API_KEY) != null && db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
+                if (db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                     List<Transaction2> transactions = nation.getTransactions(-1);
                     for (Transaction2 transaction : transactions) {
                         if(transaction.receiver_id == nation.getNation_id() && transaction.note.contains("#deposit")) {
