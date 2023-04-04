@@ -2268,23 +2268,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             return false;
         }
 
-        Set<Long> myIds = new HashSet<>();
-        myIds.add(getGuild().getIdLong());
-        for (Integer id : getAllianceIds()) myIds.add(id.longValue());
+        Set<Integer> aaIds = getAllianceIds();
+        if (aaIds.isEmpty()) return false;
+        for (int aaId : aaIds) {
+            DBAlliance alliance = DBAlliance.get(aaId);
+            if (alliance == null) continue;
 
-        for (Long id : offshoring) {
-            GuildDB other;
-            if (id > Integer.MAX_VALUE) {
-                other = Locutus.imp().getGuildDB(id);
-            } else {
-                other = Locutus.imp().getGuildDBByAA(id.intValue());
-            }
-            if (other != null) {
-                Set<Long> otherOffshores = other.getCoalitionRaw(Coalition.OFFSHORE);
-                for (Long offshoreId : otherOffshores) {
-                    if (myIds.contains(offshoreId)) return true;
-                }
-            }
+            // ensure offshore and offshoring contain this aaid
+            if (!offshore.contains(alliance.getIdLong())) continue;
+            if (!offshoring.contains(alliance.getIdLong())) continue;
+            return true;
         }
         return false;
     }
@@ -2297,15 +2290,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         if (user == null) return false;
         DBNation nation = DiscordUtil.getNation(user);
         return nation != null && nation.getActive_m() < 10000;
-    }
-
-    /**
-     * Has spy sheets enabled
-     * @return true/false
-     */
-    public boolean enabledSpySheet() {
-        Object spysheet = getOrNull(Key.SPYOP_SHEET);
-        return (getOrNull(Key.API_KEY) != null && hasAlliance()) || spysheet != null;
     }
 
     public Set<String> findCoalitions(int aaId) {
@@ -2371,7 +2355,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     DBNation ownerNation = owner != null ? DiscordUtil.getNation(owner.getUser()) : null;
                     if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
                         Set<String> inviteCodes = new HashSet<>();
-                        boolean isValid = false;
+                        boolean isValid = Roles.ADMIN.hasOnRoot(owner.getUser());
                         try {
                             try {
                                 List<Invite> invites = RateLimitUtil.complete(db.guild.retrieveInvites());
@@ -3885,7 +3869,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        REQUIRED_TAX_BRACKET(false, API_KEY, CommandCategory.ECON) {
+        REQUIRED_TAX_BRACKET(false, ALLIANCE_ID, CommandCategory.ECON) {
             @Override
             public String validate(GuildDB db, String value) {
                 Map<NationFilterString, Integer> parsed = (Map<NationFilterString, Integer>) parse(db, value);
