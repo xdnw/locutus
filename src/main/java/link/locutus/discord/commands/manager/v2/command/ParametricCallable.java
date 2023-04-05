@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
@@ -167,6 +168,8 @@ public class ParametricCallable implements ICommand {
         // of parameters
         int numOptional = 0;
 
+        LocalValueStore locals = new LocalValueStore<>(store);
+
         // Go through each parameter
         for (int i = 0; i < types.length; i++) {
             Type type = types[i];
@@ -223,8 +226,9 @@ public class ParametricCallable implements ICommand {
 
             parameters[i] = parameter;
 
+            locals.addProvider(ParameterData.class, parameter);
             // Make a list of "real" parameters
-            if (binding.isConsumer(store)) {
+            if (binding.isConsumer(locals)) {
                 userParameters.add(parameter);
                 paramaterMap.put(parameter.getName().toLowerCase(Locale.ROOT), parameter);
             }

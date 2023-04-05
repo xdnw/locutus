@@ -15,6 +15,7 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -147,7 +148,7 @@ public class SpreadSheet {
     }
 
     public static SpreadSheet create(GuildDB db, GuildDB.Key key) throws GeneralSecurityException, IOException {
-        String sheetId = db.getInfo(key);
+        String sheetId = db.getInfo(key, true);
 
         Sheets api = null;
 
@@ -296,7 +297,7 @@ public class SpreadSheet {
             if (negative) transfer = PnwUtil.subResourcesToA(new LinkedHashMap<>(), transfer);
 
 
-            NationOrAllianceOrGuild account = PWBindings.nationOrAllianceOrGuild(nameStr);
+            NationOrAllianceOrGuildOrTaxid account = PWBindings.nationOrAllianceOrGuildOrTaxId(nameStr, true);
             if (account == null) {
                 throw new IllegalArgumentException("Invalid nation/alliance/guild: `" + nameStr + "`");
             }

@@ -62,7 +62,13 @@ public class TradeManager {
 
     public TradeManager() throws SQLException, ClassNotFoundException {
         this.tradeDb = new link.locutus.discord.db.TradeDB();
+        loadBulkOffers();
+    }
 
+    private void loadBulkOffers() {
+        tradeDb.getMarketOffers().forEach(f -> {
+            addBulkOffer(f, false, false);
+        });
     }
 
     public Set<TradeDB.BulkTradeOffer> getBulkOffers(ResourceType type, Predicate<TradeDB.BulkTradeOffer> filter) {
@@ -74,6 +80,9 @@ public class TradeManager {
     }
 
     public Set<TradeDB.BulkTradeOffer> getBulkOffers(Predicate<TradeDB.BulkTradeOffer> filter) {
+        Set<TradeDB.BulkTradeOffer> offers1 = offersByResource.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
+        Set<TradeDB.BulkTradeOffer> offers2 = offersByResource.values().stream().flatMap(Collection::stream).filter(filter).collect(Collectors.toSet());
+        System.out.println("Offers " + offers1.size() + " | " + offers2.size());
         return offersByResource.values().stream().flatMap(Collection::stream).filter(filter).filter(f -> !f.isExpired()).collect(Collectors.toSet());
     }
 
@@ -95,10 +104,8 @@ public class TradeManager {
      */
     public Set<TradeDB.BulkTradeOffer> addBulkOffer(TradeDB.BulkTradeOffer offer, boolean checkExisting, boolean addToDb) {
         Set<TradeDB.BulkTradeOffer> deleted = new HashSet<>();
-        Queue<TradeDB.BulkTradeOffer> existingQueue = offersByResource.get(offer.getResource());
-        if (existingQueue == null) {
-            existingQueue = offersByResource.computeIfAbsent(offer.getResource(), f -> new ConcurrentLinkedQueue<>());
-        } else if (checkExisting) {
+        Queue<TradeDB.BulkTradeOffer> existingQueue = offersByResource.computeIfAbsent(offer.getResource(), f -> new ConcurrentLinkedQueue<>());
+        if (checkExisting) {
             synchronized (existingQueue) {
                 existingQueue.removeIf(f -> {
                     if (f.nation == offer.nation && f.resourceId == offer.resourceId) {

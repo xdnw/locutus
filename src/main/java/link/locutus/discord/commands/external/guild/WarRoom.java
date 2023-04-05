@@ -18,6 +18,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.PermissionOverride;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
@@ -71,7 +72,7 @@ public class WarRoom extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory warCat = db.getWarChannel(true);
         if (warCat == null) {
-            return "War categories are not enabled. See " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true").toSlashMention() + "";
+            return "War categories are not enabled. See " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + "";
         }
         String filterArg = DiscordUtil.parseArg(args, "filter");
 
@@ -225,7 +226,7 @@ public class WarRoom extends Command {
                             Role econRole = Roles.ECON.toRole(guild);
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
 
-                            GuildMessageChannel rssChannel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                            MessageChannel rssChannel = db.getResourceChannel(attacker.getAlliance_id());
                             GuildMessageChannel grantChannel = db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL);
 
                             if (rssChannel != null) {

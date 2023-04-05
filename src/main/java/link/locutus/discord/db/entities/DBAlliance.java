@@ -24,6 +24,7 @@ import link.locutus.discord.event.alliance.*;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.util.JsonUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -37,6 +38,8 @@ import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.EditAllianceTask;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -46,6 +49,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -61,8 +65,8 @@ public class DBAlliance implements NationList, NationOrAlliance {
     private String wiki_link;
     private long dateCreated;
     private NationColor color;
-
     private volatile long lastUpdated = 0;
+    private OffshoreInstance bank;
 
     public DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
         this.allianceId = alliance.getId();
@@ -96,7 +100,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         String finalInput = input;
 
-        Auth auth = getGuildDB().getAuth();
+        Auth auth = getAuth();
         System.out.println(auth.getNation() + " | " + auth.getAllianceId());
         String response = new EditAllianceTask(auth.getNation(), new Consumer<Map<String, String>>() {
             @Override
@@ -222,6 +226,27 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return Locutus.imp().getNationDB().getAlliance(aaId);
     }
 
+    public Auth getAuth(AlliancePermission... permissions) {
+        Set<DBNation> nations = getNations();
+        for (DBNation gov : nations) {
+            if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id) continue;
+            if (gov.getPositionEnum().id < Rank.HEIR.id) {
+                DBAlliancePosition position = gov.getAlliancePosition();
+                if (permissions != null && permissions.length > 0 && (position == null || !position.hasAllPermission(permissions))) {
+                    continue;
+                }
+            }
+            try {
+                Auth auth = gov.getAuth(null);
+                if (auth != null && auth.getAllianceId() == allianceId && auth.isValid()) {
+                    return auth;
+                }
+            } catch (IllegalArgumentException ignore) {
+            }
+        }
+        return null;
+    }
+
     public static DBAlliance getOrCreate(int aaId) {
         return Locutus.imp().getNationDB().getOrCreateAlliance(aaId);
     }
@@ -295,9 +320,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             }
             if (!isOutdated) return BRACKETS_CACHED;
         }
-        GuildDB db = getGuildDB();
-        if (db == null) throw new IllegalArgumentException("No db found for " + db);
-        PoliticsAndWarV3 api = db.getApi(allianceId, false, AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = getApi(AlliancePermission.TAX_BRACKETS);
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
         BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
@@ -306,6 +329,18 @@ public class DBAlliance implements NationList, NationOrAlliance {
             Locutus.imp().getBankDB().addTaxBracket(bracket);
             BRACKETS_CACHED.put(bracket.taxId, bracket);
         }
+        // update nations not matching a valid tax bracket
+        List<Integer> toUpdate = new ArrayList<>();
+        for (DBNation nation : getNations()) {
+            if (nation.getTax_id() != 0 && ! bracketsV3.containsKey(nation.getTax_id())) {
+                toUpdate.add(nation.getId());
+            }
+        }
+        if (!toUpdate.isEmpty()) {
+            Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateNations(toUpdate, f));
+        }
+
+
         return Collections.unmodifiableMap(BRACKETS_CACHED);
     }
 
@@ -374,7 +409,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public boolean updateSpies(boolean updateManually) {
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.SEE_SPIES);
+        PoliticsAndWarV3 api = getApi(AlliancePermission.SEE_SPIES);
         if (api != null) {
             List<Nation> nations = api.fetchNations(f -> {
                 f.setAlliance_id(List.of(allianceId));
@@ -436,6 +471,22 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Map<Integer, Treaty> getTreaties() {
+        return getTreaties(false);
+    }
+    public Map<Integer, Treaty> getTreaties(boolean update) {
+        if (update) {
+            PoliticsAndWarV3 api = getApi(AlliancePermission.MANAGE_TREATIES);
+            if (api != null) {
+                List<com.politicsandwar.graphql.model.Treaty> treaties = api.fetchTreaties(allianceId);
+                Locutus.imp().getNationDB().updateTreaties(treaties, Event::post, true);
+                Map<Integer, Treaty> result = new HashMap<>();
+                for (com.politicsandwar.graphql.model.Treaty v3 : treaties) {
+                    Treaty treaty = new Treaty(v3);
+                    result.put(treaty.getFromId() == allianceId ? treaty.getToId() : treaty.getFromId(), treaty);
+                }
+                return result;
+            }
+        }
         return Locutus.imp().getNationDB().getTreaties(allianceId);
     }
 
@@ -643,7 +694,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         setMeta(key, value.getBytes(StandardCharsets.ISO_8859_1));
     }
 
-    public ApiKeyPool getApiKeys(boolean requireBotToken, AlliancePermission... permissions) {
+    public ApiKeyPool getApiKeys(AlliancePermission... permissions) {
         GuildDB db = getGuildDB();
         if (db != null) {
             String[] apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
@@ -686,7 +737,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
             try {
                 ApiKeyPool.ApiKey key = gov.getApiKey(false);
                 if (key == null) continue;
-                if (requireBotToken && key.getBotKey() == null) continue;
                 builder.addKey(key);
             } catch (IllegalArgumentException ignore) {
                 ignore.printStackTrace();
@@ -699,10 +749,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.SEE_SPIES);
-        if (api == null) {
-            throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
-        }
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.SEE_SPIES);
         List<Integer> ids = getNations().stream()
                 .filter(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.APPLICANT.id)
                 .map(f -> f.getNation_id()).collect(Collectors.toList());
@@ -717,26 +764,28 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
-        PoliticsAndWarV3 api = getApi(false, permissions);
+        PoliticsAndWarV3 api = getApi( permissions);
         if (api == null) {
-            String msg = "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
-            if (permissions.length > 0) msg += " and ensure you have in-game access to: " + StringMan.getString(permissions);
+            String msg = "No api key found for " + getQualifiedName() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
+            if (permissions.length > 0) msg += " and ensure your in-game position grants: " + StringMan.getString(permissions);
             throw new IllegalArgumentException(msg);
         }
         return api;
     }
 
-    public PoliticsAndWarV3 getApi(boolean requireBotToken, AlliancePermission... permissions) {
-        ApiKeyPool pool = getApiKeys(requireBotToken, permissions);
+    public PoliticsAndWarV2 getApiV2(AlliancePermission... permissions) {
+        ApiKeyPool pool = getApiKeys(permissions);
+        if (pool == null) return null;
+        return new PoliticsAndWarV2(pool, Settings.INSTANCE.TEST, true);
+    }
+    public PoliticsAndWarV3 getApi(AlliancePermission... permissions) {
+        ApiKeyPool pool = getApiKeys(permissions);
         if (pool == null) return null;
         return new PoliticsAndWarV3(pool);
     }
 
-    public Map<ResourceType, Double> getStockpile() throws IOException {
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.VIEW_BANK);
-        if (api == null) {
-            throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
-        }
+    public Map<ResourceType, Double> getStockpile() {
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.VIEW_BANK);
         double[] stockpile = api.getAllianceStockpile(allianceId);
         return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
     }
@@ -912,10 +961,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
 
-        PoliticsAndWarV3 api = getApi(false, AlliancePermission.TAX_BRACKETS);
-        if (api == null) {
-            api = getApi(false);
-        }
+        PoliticsAndWarV3 api = getApi( AlliancePermission.TAX_BRACKETS);
         if (api == null) return null;
 
         BankDB bankDb = Locutus.imp().getBankDB();
@@ -964,11 +1010,174 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return taxes;
     }
 
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean force) throws IOException {
+        Map<DBNation, Map<ResourceType, Double>> existing;
+        if (useExisting) {
+            existing = getMemberStockpile();
+        } else {
+            existing = new HashMap<>();
+            for (DBNation nation : nations) {
+                existing.put(nation, new HashMap<>());
+            }
+        }
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new HashMap<>();
+        for (DBNation nation : nations) {
+            Map<ResourceType, Double> stockpile = existing.get(nation);
+            if (stockpile == null) {
+                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
+                continue;
+            }
+            Map<ResourceType, Double> needed = nation.getResourcesNeeded(stockpile, daysDefault, force);
+            if (!needed.isEmpty()) {
+                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.SUCCESS, PnwUtil.resourcesToArray(needed)));
+            } else {
+                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
+            }
+        }
+
+        return result;
+    }
+
+    public OffshoreInstance getBank() {
+        if (bank == null) {
+            synchronized (this) {
+                if (bank == null) {
+                    bank = new OffshoreInstance(allianceId);
+                }
+            }
+        }
+        return bank;
+    }
+
+    public int updateTaxesLegacy(Long latestDate) {
+        int count = 0;
+
+        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(allianceId);
+        int latestId = 1;
+        if (latestDate == null) {
+            latestDate = 0L;
+        }
+
+        Auth auth = getAuth(AlliancePermission.TAX_BRACKETS);
+        if (auth == null) throw new IllegalArgumentException("Not auth found");
+
+
+        long now = System.currentTimeMillis();
+        if (!existing.isEmpty()) {
+
+            long date = existing.get(existing.size() - 1).date;
+            if (date < now) {
+                latestDate = Math.max(latestDate, date);
+            }
+            latestId = existing.get(existing.size() - 1).index;
+        }
+
+        List<BankDB.TaxDeposit> taxes = new GetTaxesTask(auth, latestDate).call();
+
+        synchronized (Locutus.imp().getBankDB()) {
+            long oldestFetched = Long.MAX_VALUE;
+            for (BankDB.TaxDeposit tax : taxes) {
+                tax.index = ++latestId;
+                oldestFetched = Math.min(oldestFetched, tax.date);
+            }
+            if (oldestFetched < latestDate - TimeUnit.DAYS.toMillis(7)) {
+                throw new IllegalArgumentException("Invalid fetch date: " + oldestFetched);
+            }
+
+            if (!taxes.isEmpty()) {
+                Locutus.imp().getBankDB().deleteTaxDeposits(auth.getAllianceId(), oldestFetched);
+                Locutus.imp().getBankDB().addTaxDeposits(taxes);
+            }
+        }
+        return count;
+    }
+
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
+        nationResourcesNeed = getResourcesNeeded(nations, daysDefault, useExisting, force);
+
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> toSend = new HashMap<>();
+
+        for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : nationResourcesNeed.entrySet()) {
+            DBNation nation = entry.getKey();
+            Map.Entry<OffshoreInstance.TransferStatus, double[]> value = entry.getValue();
+            double[] resources = value.getValue();
+
+            if (noDailyCash) {
+                resources[ResourceType.MONEY.ordinal()] = Math.max(0, resources[ResourceType.MONEY.ordinal()] - daysDefault * 500000);
+            }
+            if (noCash) resources[ResourceType.MONEY.ordinal()] = 0;
+
+            if (nation.getPositionEnum() == Rank.APPLICANT) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.APPLICANT, ResourceType.getBuffer()));
+                continue;
+            }
+            if (nation.getAlliance_id() != allianceId) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOT_MEMBER, ResourceType.getBuffer()));
+                continue;
+            }
+            if (nation.getVm_turns() > 0) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.VACATION_MODE, ResourceType.getBuffer()));
+            }
+            if (nation.isGray() && !ignoreInactives && !force) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.GRAY, ResourceType.getBuffer()));
+                continue;
+            }
+            if (nation.active_m() > TimeUnit.DAYS.toMinutes(4) && !ignoreInactives && !force) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.INACTIVE, ResourceType.getBuffer()));
+            }
+            if (nation.isBeige() && !allowBeige && !force) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.BEIGE, ResourceType.getBuffer()));
+            }
+            if (value.getKey() != OffshoreInstance.TransferStatus.SUCCESS) {
+                toSend.put(nation, value);
+                continue;
+            }
+            if (resources[ResourceType.CREDITS.ordinal()] != 0) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
+                continue;
+            }
+            if (ResourceType.isEmpty(resources)) {
+                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
+                continue;
+            }
+
+            toSend.put(nation, entry.getValue());
+        }
+
+        return toSend;
+    }
+
     public Set<DBNation> getNations(Predicate<DBNation> filter) {
         Set<DBNation> nations = new HashSet<>();
         for (DBNation nation : getNations()) {
             if (filter.test(nation)) nations.add(nation);
         }
         return nations;
+    }
+
+    public boolean setTaxBracket(TaxBracket required, DBNation nation) {
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.TAX_BRACKETS);
+        com.politicsandwar.graphql.model.TaxBracket result = api.assignTaxBracket(required.taxId, nation.getNation_id());
+        return result != null;
+    }
+
+    public Treaty sendTreaty(int allianceId, TreatyType type, String message, int days) {
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        com.politicsandwar.graphql.model.Treaty result = api.proposeTreaty(allianceId, days, type, message);
+        return new Treaty(result);
+    }
+
+    public Treaty approveTreaty(int id) {
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        com.politicsandwar.graphql.model.Treaty result = api.approveTreaty(id);
+        return new Treaty(result);
+    }
+
+
+    public Treaty cancelTreaty(int id) {
+        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        com.politicsandwar.graphql.model.Treaty result = api.cancelTreaty(id);
+        return new Treaty(result);
     }
 }

@@ -180,9 +180,12 @@ public interface IMessageBuilder {
         return confirmation(command.toJson());
     }
 
-
     default IMessageBuilder confirmation(String title, String body, JSONObject command, String parameter) {
-        return embed(title, body).commandButton(command.put(parameter, "true").toString(), "Confirm");
+        return confirmation(title, body, command, parameter, "Confirm");
+    }
+
+    default IMessageBuilder confirmation(String title, String body, JSONObject command, String parameter, String message) {
+        return embed(title, body).commandButton(command.put(parameter, "true").toString(), message);
     }
 
     @CheckReturnValue

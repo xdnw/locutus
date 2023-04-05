@@ -9,6 +9,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.InterviewMessage;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -155,10 +156,11 @@ public class IAPages {
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
     public Object memberAuditIndex(@Me GuildDB db) throws IOException {
-        IACheckup checkup = new IACheckup(db, db.getAlliance_id(), true);
+        AllianceList alliance = db.getAllianceList();
+        IACheckup checkup = new IACheckup(db, alliance, true);
         Map<IACheckup.AuditType, Map<DBNation, String>> allianceAuditResults = new LinkedHashMap<>();
 
-        DBAlliance alliance = db.getAlliance();
+
         List<DBNation> allNations = new ArrayList<>(alliance.getNations(true, 0, true));
         Collections.sort(allNations, Comparator.comparingInt(DBNation::getCities));
 
@@ -186,7 +188,7 @@ public class IAPages {
         }
 
 
-        return rocker.guild.ia.audits.template(db, alliance, allianceAuditResultsSorted).render().toString();
+        return rocker.guild.ia.audits.template(db, allianceAuditResultsSorted).render().toString();
     }
 
     @Command()
@@ -210,9 +212,9 @@ public class IAPages {
         boolean includeAudit = true;
         long timediff = TimeUnit.DAYS.toMillis(14);
 
-        Set<DBNation> mentees = new HashSet<>(db.getAlliance().getNations(true, 10000, true));
+        Set<DBNation> mentees = new HashSet<>(db.getAllianceList().getNations(true, 10000, true));
 
-        IACheckup checkup = includeAudit ? new IACheckup(db, db.getAlliance_id(), true) : null;
+        IACheckup checkup = includeAudit ? new IACheckup(db, db.getAllianceList(), true) : null;
         Map<DBNation, List<DBNation>> mentorMenteeMap = new HashMap<>();
 
         Map<DBNation, IACategory.AssignedMentor> menteeMentorMap = new HashMap<>();
@@ -233,7 +235,7 @@ public class IAPages {
             User user = mentee.getUser();
             if (user == null) continue;
 
-            boolean graduated = Roles.hasAny(user, guild, Roles.GRADUATED, Roles.INTERNAL_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON_LOW_GOV, Roles.MILCOM);
+            boolean graduated = Roles.hasAny(user, guild, Roles.GRADUATED, Roles.INTERNAL_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON_STAFF, Roles.MILCOM);
 
             IAChannel iaChan = iaCat.get(mentee);
             if (iaChan != null) {
@@ -298,7 +300,7 @@ public class IAPages {
             lastMentorTxByNationId.put(mentorId, transaction.tx_datetime);
         }
 
-        DBAlliance alliance = db.getAlliance();
+        AllianceList alliance = db.getAllianceList();
         Set<DBNation> members = alliance.getNations(true, 2880, true);
         members.removeIf(f -> !mentees.contains(f));
 
@@ -312,7 +314,7 @@ public class IAPages {
                 membersNotOnDiscord.add(member);
                 continue;
             }
-            if (Roles.hasAny(user, guild, Roles.GRADUATED, Roles.ADMIN, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.INTERVIEWER, Roles.MILCOM, Roles.MILCOM_ADVISOR, Roles.ECON, Roles.ECON_LOW_GOV, Roles.FOREIGN_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS)) {
+            if (Roles.hasAny(user, guild, Roles.GRADUATED, Roles.ADMIN, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.INTERVIEWER, Roles.MILCOM, Roles.MILCOM_NO_PINGS, Roles.ECON, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.FOREIGN_AFFAIRS)) {
                 continue;
             }
             if (!passedMap.getOrDefault(member, false)) {

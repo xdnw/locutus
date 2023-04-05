@@ -1,5 +1,6 @@
 @import link.locutus.discord.db.GuildDB
 @import net.dv8tion.jda.api.entities.Guild
+@import link.locutus.discord.db.entities.DBAlliance
 
 @args (Guild guild, GuildDB db)
 <div class="row p-2 m-3 guild-icon guild-entry bg-primary bg-gradient" style="border-radius:10px">
@@ -17,7 +18,9 @@
             <div class="col">
             <a href="/@guild.getIdLong()/guildindex" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View Server</a>
             @if (db.isValidAlliance()) {
-            <a href="https://politicsandwar.com/alliance/id=@db.getAlliance().getAlliance_id()" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View Alliance 🡕</a>
+                @for (DBAlliance alliance : db.getAllianceList().getAlliances()) {
+                    <a href="https://politicsandwar.com/alliance/id=@alliance.getAlliance_id()" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View @alliance.getQualifiedName() 🡕</a>
+                }
             }
             @if (db.getOffshore() != null) {
 <!--            <a href="/@guild.getIdLong()/bankindex" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View Bank</a>-->

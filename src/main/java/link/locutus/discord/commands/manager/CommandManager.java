@@ -101,7 +101,6 @@ import link.locutus.discord.commands.info.BeigeTurns;
 import link.locutus.discord.commands.info.ListMultisByAlliance;
 import link.locutus.discord.commands.info.Multi;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
-import link.locutus.discord.commands.rankings.AAMembers;
 import link.locutus.discord.commands.rankings.AllianceLootRanking;
 import link.locutus.discord.commands.bank.Inflows;
 import link.locutus.discord.commands.bank.SyncBanks;
@@ -326,11 +325,11 @@ public class CommandManager {
                 Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
                 Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
                 if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_BLACKLIST.name(), null) + ")"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_BLACKLIST.name(), null, null, null) + ")"));
                     return false;
                 }
                 if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_WHITELIST.name(), null) + ")"));
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_WHITELIST.name(), null, null, null) + ")"));
                     return false;
                 }
             }
@@ -457,8 +456,7 @@ public class CommandManager {
         if (db == null) return;
         if (!db.isWhitelisted() && db.getOrNull(GuildDB.Key.ENABLE_WAR_ROOMS) != Boolean.TRUE) return;
 
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId == null || aaId == 0) return;
+        if (!db.hasAlliance()) return;
 
         WarCategory.WarRoom room = WarCategory.getGlobalWarRoom(channel);
         if (room == null || room.target == null) return;
@@ -490,7 +488,7 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand() + ""));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null).toSlashCommand() + ""));
                 return true;
             } else if (!member.getRoles().contains(registeredRole)) {
                 RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName()));
@@ -796,7 +794,6 @@ public class CommandManager {
 
         this.register(new Login());
         this.register(new Logout());
-        this.register(new AAMembers());
         this.register(new ClearRoles());
         this.register(new ClearNicks());
         this.register(new Revenue());

@@ -195,9 +195,7 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return;
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId == null) return;
 
-        if (nation.getPosition() <= 1 || nation.getAlliance_id() != aaId) return;
+        if (nation.getPosition() <= 1 || !db.isAllianceId(nation.getAlliance_id())) return;
     }
 }

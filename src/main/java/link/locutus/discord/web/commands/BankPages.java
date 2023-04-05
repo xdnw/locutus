@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
@@ -31,7 +30,7 @@ import static link.locutus.discord.util.PnwUtil.convertedTotal;
 public class BankPages {
 
 //    @Command
-//    @RolePermission(Roles.ECON_LOW_GOV)
+//    @RolePermission(Roles.ECON_STAFF)
 //    public String listIngameTransfers(NationOrAlliance sender, NationOrAlliance receiver) {
 //
 //
@@ -63,13 +62,12 @@ public class BankPages {
 
         Collection<DBNation> nations;
 
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) {
-            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+        if (db.hasAlliance()) {
+            nations = Locutus.imp().getNationDB().getNations(db.getAllianceIds());
             nations.removeIf(n -> n.getPosition() <= 1);
         } else {
             Role role = Roles.MEMBER.toRole(guild);
-            if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "") + " set");
+            if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null) + " set");
             nations = new ArrayList<>();
             for (Member member : guild.getMembersWithRoles(role)) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -92,7 +90,7 @@ public class BankPages {
             row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getNationUrl()));
             row.set(1, nation.getCities());
             row.set(2, nation.getAgeDays());
-            row.set(3, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSITS, buffer))));
+            row.set(3, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
             row.set(4, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
             row.set(5, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
             row.set(6, MathMan.format(PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));

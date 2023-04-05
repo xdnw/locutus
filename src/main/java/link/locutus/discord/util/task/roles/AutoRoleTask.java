@@ -3,7 +3,6 @@ package link.locutus.discord.util.task.roles;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -31,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -124,8 +122,6 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         if (setAllianceMask == GuildDB.AutoRoleOption.ALLIES) {
             Set<Integer> allies = new HashSet<>(db.getAllies(true));
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) allies.add(aaId);
 
             if (allowedAAs == null) allowedAAs = f -> allies.contains(f);
             else {
@@ -417,7 +413,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         if (!isRegistered && !autoAll) {
             if (registeredRole == null) {
-                output.accept("No registered role exists. Please create one on discord, then use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), null) + "");
+                output.accept("No registered role exists. Please create one on discord, then use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), null, null) + "");
             } else {
                 output.accept(member.getEffectiveName() + " is NOT registered");
             }
@@ -572,15 +568,15 @@ public class AutoRoleTask implements IAutoRoleTask {
     public void autoRoleCities(Member member, Supplier<DBNation> nationSup, Consumer<String> output, Consumer<Future> tasks) {
         if (cityRoles.isEmpty()) return;
         Role memberRole = Roles.MEMBER.toRole(member.getGuild());
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null || memberRole != null) {
+        Set<Integer> allianceIds = db.getAllianceIds();
+        if (!allianceIds.isEmpty() || memberRole != null) {
             DBNation nation = nationSup.get();
             if (nation == null) {
                 return;
             }
             Set<Role> allowed;
-            if ((allianceId != null && (nation.getAlliance_id() != allianceId || nation.getPosition() <= 1)) ||
-                    (allianceId == null && (memberRole == null || !member.getRoles().contains(memberRole)))) {
+            if (((!allianceIds.contains(nation.getAlliance_id()) || nation.getPosition() <= 1)) ||
+                    (allianceIds.isEmpty() && (memberRole == null || !member.getRoles().contains(memberRole)))) {
                 allowed = new HashSet<>();
             } else {
                 allowed = new HashSet<>(cityRoleMap.getOrDefault(nation.getCities(), new HashSet<>()));

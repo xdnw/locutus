@@ -521,7 +521,7 @@ public class WarCategory {
 
                             Role econRole = Roles.ECON.toRole(guild);
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
-                            GuildMessageChannel rssChannel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                            MessageChannel rssChannel = db.getResourceChannel(attacker.getAlliance_id());
                             GuildMessageChannel grantChannel = db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL);
 
                             if (rssChannel != null) {
@@ -928,7 +928,7 @@ public class WarCategory {
                                     RateLimitUtil.complete(useCat.putPermissionOverride(milcomRole)
                                             .setAllow(Permission.VIEW_CHANNEL));
                                 }
-                                Role advisor = Roles.MILCOM_ADVISOR.toRole(guild);
+                                Role advisor = Roles.MILCOM_NO_PINGS.toRole(guild);
                                 if (advisor != null) {
                                     RateLimitUtil.complete(useCat.putPermissionOverride(advisor)
                                             .setAllow(Permission.VIEW_CHANNEL));
@@ -1128,19 +1128,19 @@ public class WarCategory {
     }
 
     private synchronized void syncAlliances() {
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
         allianceIds.clear();
-        if (allianceId != null) {
-            allianceIds.add(allianceId);
+        if (!aaIds.isEmpty()) {
+            allianceIds.addAll(aaIds);
         } else {
             allianceIds.addAll(db.getAllies(false));
         }
         for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
-            Integer aaId = otherDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
+            aaIds = otherDB.getAllianceIds();
+            if (!aaIds.isEmpty()) {
                 Guild warServer = otherDB.getOrNull(GuildDB.Key.WAR_SERVER);
-                if (warServer != null && warServer.getIdLong() == this.guild.getIdLong()) {
-                    allianceIds.add(aaId);
+                if (warServer != null && warServer.getIdLong() == this.db.getIdLong()) {
+                    allianceIds.addAll(aaIds);
                 }
             }
         }

@@ -5,10 +5,9 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -32,7 +31,7 @@ public class StockpileSheet extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         GuildDB db = Locutus.imp().getGuildDB(server);
-        return db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null && (Roles.ECON.has(user, server) || Roles.ECON_LOW_GOV.has(user, server));
+        return db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null && (Roles.ECON.has(user, server) || Roles.ECON_STAFF.has(user, server));
     }
 
     @Override
@@ -44,8 +43,8 @@ public class StockpileSheet extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        DBAlliance alliance = db.getAlliance();
-        if (alliance == null) return "Pleas set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "";
+        AllianceList alliance = db.getAllianceList();
+        if (alliance == null) return "Pleas set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "";
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 

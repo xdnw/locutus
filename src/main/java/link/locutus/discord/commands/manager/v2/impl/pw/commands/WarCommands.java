@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -26,6 +25,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.Spyop;
@@ -41,7 +41,6 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
 import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.war.WarCard;
@@ -49,7 +48,6 @@ import com.google.api.services.sheets.v4.model.CellData;
 import com.google.api.services.sheets.v4.model.RowData;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -61,15 +59,12 @@ import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -89,11 +84,9 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -1332,7 +1325,7 @@ public class WarCommands {
     public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch("s") @Range(min=0, max=100) Integer minSuccess) throws ExecutionException, InterruptedException, IOException {
         if (operations.isEmpty()) throw new IllegalArgumentException("Valid operations: " + StringMan.getString(SpyCount.Operation.values()));
         if (counterWith == null) {
-            counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(Collections.singleton(db.getAlliance_id())));
+            counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(db.getAllianceIds()));
         }
         counterWith.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
 
@@ -1468,8 +1461,8 @@ public class WarCommands {
         Set<Integer> alliesCoalition = db.getCoalition("allies");
         if (alliesCoalition != null) allies.addAll(alliesCoalition);
         if (me.getAlliance_id() != 0) allies.add(me.getAlliance_id());
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) allies.add(allianceId);
+        Set<Integer> aaIds = db.getAllianceIds();
+        allies.addAll(aaIds);
 
         Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id()).stream()
                 .map(dbWar -> dbWar.attacker_id == me.getNation_id() ? dbWar.defender_id : dbWar.attacker_id)
@@ -3080,17 +3073,19 @@ public class WarCommands {
         Set<Integer> alliesIds = db.getAllies();
         Set<Integer> protectorates = new HashSet<>();
 
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) {
-            protectorates = Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.PROTECTORATE).keySet();
-            if (includeProtectorates) {
-                alliesIds.addAll(protectorates);
-            }
-            if (includeMDP) {
-                alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP).keySet());
-            }
-            if (includeODP) {
-                alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.ODP, TreatyType.ODOAP).keySet());
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            for (int aaId : aaIds) {
+                protectorates = Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.PROTECTORATE).keySet();
+                if (includeProtectorates) {
+                    alliesIds.addAll(protectorates);
+                }
+                if (includeMDP) {
+                    alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP).keySet());
+                }
+                if (includeODP) {
+                    alliesIds.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.ODP, TreatyType.ODOAP).keySet());
+                }
             }
         }
 
@@ -3220,7 +3215,7 @@ public class WarCommands {
 
                 active_m = Math.min(active_m, defender.getActive_m());
 
-                if (Integer.valueOf(war.defender_aa).equals(aaId)) {
+                if (aaIds.contains(Integer.valueOf(war.defender_aa))) {
                     action = Math.min(action, 0);
                 } else if (protectorates.contains(war.defender_aa)) {
                     action = Math.min(action, 1);
@@ -3385,18 +3380,18 @@ public class WarCommands {
     public String counter(@Me DBNation me, @Me GuildDB db, DBNation target, @Default Set<DBNation> counterWith, @Switch("o")
             boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping, @Switch("s") boolean allowSameAlliance) {
         if (counterWith == null) {
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId == null) {
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (aaIds.isEmpty()) {
                 Set<Integer> allies = db.getAllies(true);
                 if (allies.isEmpty()) {
-                    aaId = me.getAlliance_id();
-                    if (aaId == 0) return "No alliance or allies are set.\n" + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance>") + "\nOR\n " + CM.coalition.create.cmd.create(null, Coalition.ALLIES.name()) + "";
-                    counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
+                    if (me.getAlliance_id() == 0) return "No alliance or allies are set.\n" + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance>", null, null) + "\nOR\n " + CM.coalition.create.cmd.create(null, Coalition.ALLIES.name()) + "";
+                    aaIds = new HashSet<>(Arrays.asList(me.getAlliance_id()));
+                    counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 10000, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(allies));
                 }
             } else {
-                counterWith = new HashSet<>(DBAlliance.getOrCreate(aaId).getNations(true, 10000, true));
+                counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 10000, true));
             }
         }
         counterWith.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= Rank.APPLICANT.id || (f.getCities() < 10 && f.getActive_m() > 4880));
@@ -3480,7 +3475,7 @@ public class WarCommands {
                               DBNation enemy, @Default Set<DBNation> attackers, @Default("3") @Range(min=0) int max
             , @Switch("p") boolean pingMembers, @Switch("a") boolean skipAddMembers, @Switch("m") boolean sendMail) {
         if (attackers == null) {
-            DBAlliance alliance = db.getAlliance();
+            AllianceList alliance = db.getAllianceList();
             if (alliance != null) {
                 attackers = new HashSet<>(alliance.getNations(true, 2440, true));
             } else {

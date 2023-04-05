@@ -101,8 +101,8 @@
         </div>
         <div class="list-group">
         @if (nation.getTankPct() > 0.8 && nation.getAircraftPct() > 0.8) {
-            @if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
-                <a href="javascript:void(0)" cmd="$war #off>0,~enemies,#attacking=https://politicsandwar.com/alliance/id=@db.getAlliance_id() -p" class="link-primary list-group-item bg-light">Priority War targets</a>
+            @if (db.hasAlliance()) {
+                <a href="javascript:void(0)" cmd="$war #off>0,~enemies,#attacking=~allies -p" class="link-primary list-group-item bg-light">Priority War targets</a>
             }
             <a href="javascript:void(0)" cmd="$war -p" class="link-primary list-group-item bg-light">Secondary War targets</a>
             <a href="javascript:void(0)" cmd="$war" class="link-primary list-group-item bg-light">All enemies</a>

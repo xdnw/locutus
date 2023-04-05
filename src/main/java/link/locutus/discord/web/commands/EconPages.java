@@ -7,7 +7,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.db.BankDB;
@@ -37,8 +36,7 @@ public class EconPages {
 
     @Command(desc = "Show running tax expenses by day by bracket")
     @IsAlliance
-    @RolePermission(Roles.ECON_LOW_GOV)
-    @IsAuthenticated
+    @RolePermission(Roles.ECON_STAFF)
     public Object taxExpensesByTime(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Timestamp long start, @Timestamp long end, @Default Set<DBNation> nationFilter, @Switch("s") @Range(min=1) Integer movingAverageTurns, @Switch("c") boolean cumulative,
                                     @Switch("t") boolean dontRequireTagged) throws Exception {
 
@@ -50,7 +48,7 @@ public class EconPages {
             Set<Integer> ids = nationFilter.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
             isNationIdPermitted = ids::contains;
         }
-        int aaId = db.getAlliance_id();
+        Set<Integer> aaIds = db.getAllianceIds();
 
         List<String> errors = new ArrayList<>();
         TaxRecordCategorizer2 categorized = new TaxRecordCategorizer2(db, start, end, true, dontRequireTagged, true, true, isNationIdPermitted, errors::add);
@@ -109,14 +107,13 @@ public class EconPages {
 
         Map<Integer, TaxBracket> t = categorized.getBrackets();
 
-        String pageHtml = taxexpensesbyturn.template(title, db, aaId, turnStart, turnEnd, categorized, categorizedByTurnByBracket, categorized.getBrackets()).render().toString();
+        String pageHtml = taxexpensesbyturn.template(title, db, turnStart, turnEnd, categorized, categorizedByTurnByBracket, categorized.getBrackets()).render().toString();
         return pageHtml;
     }
 
     @Command(desc = "Show cumulative tax expenses over a period by nation/bracket")
     @IsAlliance
-    @RolePermission(Roles.ECON_LOW_GOV)
-    @IsAuthenticated
+    @RolePermission(Roles.ECON_STAFF)
     public Object taxExpensesIndex(@Me GuildDB db, @Timestamp long start, @Timestamp long end, @Switch("n") NationList nationList,
                                    @Switch("g") boolean dontRequireGrant, @Switch("t") boolean dontRequireTagged, @Switch("e") boolean dontRequireExpiry,
                                    @Switch("d") boolean includeDeposits) throws Exception {
@@ -134,7 +131,7 @@ public class EconPages {
         TaxRecordCategorizer2 categorized = new TaxRecordCategorizer2(db, start, end, dontRequireGrant, dontRequireTagged, dontRequireExpiry, includeDeposits, allowedNations, errors::add);
 
         return rocker.guild.econ.taxexpenses.template(
-                db, categorized.getAaId(), categorized.getAlliances(), !dontRequireGrant, !dontRequireExpiry, !dontRequireTagged,
+                db, categorized.getAlliances(), !dontRequireGrant, !dontRequireExpiry, !dontRequireTagged,
                 categorized.getBrackets(), categorized.getTaxes(), categorized.getBracketsByNation(), categorized.getNationsByBracket(), categorized.getAllNations(),
                 categorized.getBracketToNationDepositCount(), categorized.getAllNationDepositCount(),
                 categorized.getIncomeTotal(), categorized.getIncomeByBracket(), categorized.getIncomeByNation(), categorized.getIncomeByNationByBracket(),

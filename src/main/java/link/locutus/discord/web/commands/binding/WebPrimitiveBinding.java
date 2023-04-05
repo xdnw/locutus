@@ -2,7 +2,6 @@ package link.locutus.discord.web.commands.binding;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -32,22 +31,23 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.json.CityBuild;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.scheduler.QuadConsumer;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
-import com.google.common.collect.BiMap;
 import com.google.gson.JsonArray;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -196,8 +196,8 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getIdLong());
 
             String sub = "<img class='guild-icon-inline' src='" + obj.getIconUrl() + "'>";
-            Integer aaId = Locutus.imp().getGuildDB(obj).getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) sub += aaId;
+            Set<Integer> alliances = Locutus.imp().getGuildDB(obj).getAllianceIds();
+            if (!alliances.isEmpty()) sub += "AA:" + StringMan.join(alliances, ",AA:");
             subtext.add(sub);
         });
     }
@@ -381,10 +381,13 @@ public class WebPrimitiveBinding extends BindingHelper {
             values.add(obj.getValue());
         });
     }
-
     @HtmlInput
     @Binding(types= NationOrAllianceOrGuild.class)
-    public String nationOrAllianceOrGuild(@Me User user, ParameterData param) {
+    public String nationOrAllianceOrGuildOrTaxid(@Me User user, @Me GuildDB db, ParameterData param) {
+        return nationOrAllianceOrGuildOrTaxid(user, db, param, true);
+    }
+
+    public String nationOrAllianceOrGuildOrTaxid(@Me User user, @Me GuildDB db, ParameterData param, boolean includeBrackets) {
         List<DBNation> nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         nations.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));
         nations.removeIf(f -> f.getActive_m() > 10000 && f.getCities() < 3);
@@ -393,7 +396,10 @@ public class WebPrimitiveBinding extends BindingHelper {
 
         List<Guild> guilds = user.getMutualGuilds();
 
-        List<NationOrAllianceOrGuild> options = new ArrayList<>(alliances.size() + nations.size() + guilds.size());
+        AllianceList aaList = includeBrackets && db == null ? null : db.getAllianceList();
+        Map<Integer, TaxBracket> taxIds = aaList == null ? null : aaList.getTaxBrackets(true);
+
+        List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(alliances.size() + nations.size() + guilds.size());
         for (Guild guild : guilds) {
             options.add(Locutus.imp().getGuildDB(guild));
         }
@@ -415,8 +421,21 @@ public class WebPrimitiveBinding extends BindingHelper {
                 names.add(formatGuildName(obj.asGuild().getGuild()));
                 values.add("guild:" + obj.getIdLong());
                 subtext.add("guild");
+            } else if (obj.isTaxid()) {
+                TaxBracket bracket = obj.asBracket();
+                int aaId = bracket.getAlliance_id();
+                names.add((aaId > 0 ? DBAlliance.getOrCreate(aaId).getName() + " - " : "") + bracket.getName() + ": " + bracket.moneyRate + "/" + bracket.rssRate);
+                subtext.add("#" + bracket.taxId + " (" + bracket.getNations().size() + " nations)");
+                values.add("tax_id=" + bracket.taxId);
             }
         });
+    }
+
+
+    @HtmlInput
+    @Binding(types= NationOrAllianceOrGuild.class)
+    public String nationOrAllianceOrGuild(@Me User user, ParameterData param) {
+        return nationOrAllianceOrGuildOrTaxid(user, null, param, false);
     }
 
     @HtmlInput
@@ -470,7 +489,10 @@ public class WebPrimitiveBinding extends BindingHelper {
 
             filterStr = filterStr.replace("{alliance_id}", "AA:" + me.getAlliance_id());
             if (db != null) {
-                filterStr = filterStr.replace("{guild_alliance_id}", "AA:" + db.getAlliance_id());
+                Set<Integer> aaIds = db.getAllianceIds();
+                if (!aaIds.isEmpty()) {
+                    filterStr = filterStr.replace("{guild_alliance_id}", "AA:" + StringMan.join(aaIds, ",AA:"));
+                }
             }
             filterStr = DiscordUtil.format(guild, channel, user, me, filterStr);
             options = DiscordUtil.parseNations(guild, filterStr);
@@ -540,6 +562,7 @@ public class WebPrimitiveBinding extends BindingHelper {
     public final Set<DBNation> NATIONS_KEY = null;
     public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
     public final Set<NationOrAllianceOrGuild> NATIONS_OR_ALLIANCE_OR_GUILD_KEY = null;
+    public final Set<NationOrAllianceOrGuildOrTaxid> NATIONS_OR_ALLIANCE_OR_GUILD_OR_TAXID_KEY = null;
     public final Set<Role> ROLES_KEY = null;
     public final Set<Member> MEMBERS_KEY = null;
     public final Set<DBAlliance> ALLIANCES_KEY = null;
@@ -602,6 +625,18 @@ public class WebPrimitiveBinding extends BindingHelper {
                         ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                         User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
                         return nationOrAllianceOrGuild(user, param);
+                    }));
+                });
+            }
+            {
+                Type type = getClass().getDeclaredField("NATIONS_OR_ALLIANCE_OR_GUILD_KEY").getGenericType();
+                Key key = Key.of(type, HtmlInput.class);
+                addBinding(store -> {
+                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                        User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
+                        GuildDB db = (GuildDB) valueStore.getProvided(Key.of(GuildDB.class, Me.class));
+                        return nationOrAllianceOrGuildOrTaxid(user, db, param, true);
                     }));
                 });
             }
@@ -885,6 +920,12 @@ public class WebPrimitiveBinding extends BindingHelper {
     }
 
     @HtmlInput
+    @Binding(types= DepositType.DepositTypeInfo.class)
+    public String DepositTypeInfo(ParameterData param) {
+        return DepositType(param);
+    }
+
+    @HtmlInput
     @Binding(types= WarStatus.class)
     public String WarStatus(ParameterData param) {
         return multipleSelect(param, Arrays.asList(WarStatus.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
@@ -923,11 +964,11 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types=DBAlliancePosition.class)
     public String position(@Me GuildDB db, ParameterData param) {
-        DBAlliance alliance = DBAlliance.get(db.getAlliance_id());
-        Set<DBAlliancePosition> positions = new HashSet<>(alliance.getPositions());
+        AllianceList alliances = db.getAllianceList();
+        Set<DBAlliancePosition> positions = new HashSet<>(alliances.getPositions());
         positions.add(DBAlliancePosition.REMOVE);
         positions.add(DBAlliancePosition.APPLICANT);
-        return multipleSelect(param, positions, rank -> new AbstractMap.SimpleEntry<>(rank.getName(), rank.getInputName()));
+        return multipleSelect(param, positions, rank -> new AbstractMap.SimpleEntry<>(alliances.size() > 1 ? rank.getQualifiedName() : rank.getName(), rank.getInputName()));
     }
 
     @HtmlInput
@@ -1082,10 +1123,11 @@ public class WebPrimitiveBinding extends BindingHelper {
     @HtmlInput
     @Binding(types= TaxBracket.class)
     public String bracket(@Me GuildDB db, ParameterData param) {
-        Map<Integer, TaxBracket> brackets = db.getAlliance().getTaxBrackets(true);
+        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
+            DBAlliance alliance = obj.getAlliance();
+            names.add(alliance.getName() + " - " + obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
             subtext.add("#" + obj.taxId + " (" + obj.getNations().size() + " nations)");
             values.add("tax_id=" + obj.taxId);
         });

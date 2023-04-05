@@ -7,7 +7,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
@@ -148,14 +147,14 @@ public class ROI extends Command {
         }
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
-        if (guildDb == null || guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
-            return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<value>") + "";
+        if (guildDb == null || !guildDb.hasAlliance()) {
+            return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<value>", null, null) + "";
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
 
-        Integer allianceId = guildDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>") + "";
+        Set<Integer> aaIds = guildDb.getAllianceIds();
+        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>", null, null) + "";
 
         List<ROIResult> roiMap = new ArrayList<>();
         boolean useSheet = false;
@@ -164,8 +163,7 @@ public class ROI extends Command {
             if (!Roles.ECON.has(event.getAuthor(), guildDb.getGuild())) {
                 return "You do not have the role: " + Roles.ECON;
             }
-            DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
-            Set<DBNation> nations = alliance.getNations();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNations(aaIds);
             try {
                 for (DBNation nation : nations) {
                     if (nation.getPosition() <= 1) continue;
@@ -190,7 +188,7 @@ public class ROI extends Command {
             Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
             nations.removeIf(n -> n.getActive_m() > 10000 || n.getVm_turns() > 0);
             if (nations.size() > 1 && !Roles.ADMIN.hasOnRoot(event.getAuthor())) {
-                nations.removeIf(n -> n.getAlliance_id() != allianceId);
+                nations.removeIf(n -> !aaIds.contains(n.getAlliance_id()));
                 if (nations.isEmpty()) {
                     return "You are only allowed to find grants for other alliances";
                 }

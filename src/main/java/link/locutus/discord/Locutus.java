@@ -18,6 +18,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.Event;
@@ -392,21 +393,9 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public OffshoreInstance getRootBank() {
-        return getGuildDB(getServer()).getHandler().getBank();
-    }
-
-    public PoliticsAndWarV2 getApi(int alliance) {
-        if (alliance == Settings.INSTANCE.ALLIANCE_ID()) {
-            return Locutus.imp().getRootPnwApi();
-        } else if (alliance == 0) {
-            return Locutus.imp().getPnwApi();
-        } else {
-            GuildDB guildDb = Locutus.imp().getGuildDBByAA(alliance);
-            if (guildDb == null) {
-                throw new IllegalArgumentException("Invalid guild: " + alliance);
-            }
-            return guildDb.getApi();
-        }
+        DBAlliance aa = DBAlliance.get(Settings.INSTANCE.ALLIANCE_ID());
+        if (aa == null) return null;
+        return aa.getBank();
     }
 
     public Auth getRootAuth() {
@@ -476,9 +465,8 @@ public final class Locutus extends ListenerAdapter {
         if (allianceId == 0) return null;
         for (Map.Entry<Long, GuildDB> entry : initGuildDB().entrySet()) {
             GuildDB db = entry.getValue();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
-            if (aaId != null && aaId == allianceId && db.getOrNull(GuildDB.Key.DELEGATE_SERVER, false) == null) {
-                return entry.getValue();
+            if (db.isAllianceId(allianceId)) {
+                return db;
             }
         }
 //        if (Locutus.imp().getNationDB().getAllianceName(allianceId) != null) {
@@ -888,8 +876,7 @@ public final class Locutus extends ListenerAdapter {
     public void onGuildMemberRoleAdd(@Nonnull GuildMemberRoleAddEvent event) {
         Guild guild = event.getGuild();
         GuildDB db = getGuildDB(guild);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId == null) return;
+        if (!db.hasAlliance()) return;
 
         executor.submit(() -> db.getHandler().onGuildMemberRoleAdd(event));
     }

@@ -342,13 +342,13 @@ public class WarUpdateProcessor {
 
         for (Map.Entry<GuildHandler, List<Map.Entry<DBWar, DBWar>>> entry : defWarsByGuild.entrySet()) {
             GuildHandler handler = entry.getKey();
-            boolean limit = rateLimit || (handler.getDb().getOrNull(GuildDB.Key.ALLIANCE_ID) == null && (toCreate > 50 || toCreate < free));
+            boolean limit = rateLimit || (!handler.getDb().hasAlliance() && (toCreate > 50 || toCreate < free));
             handler.onDefensiveWarAlert(entry.getValue(), limit);
         }
 
         for (Map.Entry<GuildHandler, List<Map.Entry<DBWar, DBWar>>> entry : offWarsByGuild.entrySet()) {
             GuildHandler handler = entry.getKey();
-            boolean limit = rateLimit || (handler.getDb().getOrNull(GuildDB.Key.ALLIANCE_ID) == null && (toCreate > 50 || toCreate < free));
+            boolean limit = rateLimit || (!handler.getDb().hasAlliance() && (toCreate > 50 || toCreate < free));
             handler.onOffensiveWarAlert(entry.getValue(), limit);
         }
     }

@@ -161,7 +161,7 @@ public class PrimitiveBindings extends BindingHelper {
 
     @Timestamp
     @Binding(types={long.class}, examples = {"5d", "10h3m25s", "dd/MM/yyyy"})
-    public Long timestamp(String argument) throws ParseException {
+    public static Long timestamp(String argument) throws ParseException {
         if (argument.equalsIgnoreCase("%epoch%")) {
             return 0L;
         }

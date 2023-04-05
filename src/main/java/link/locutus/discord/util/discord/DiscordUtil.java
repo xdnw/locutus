@@ -38,21 +38,17 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.MessageReaction;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
-import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONObject;
 import org.jsoup.internal.StringUtil;
-import rocker.guild.ia.message;
 
 import java.awt.Color;
 import java.io.IOException;
@@ -63,7 +59,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -78,13 +73,11 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.parseFilter;
 import static link.locutus.discord.util.MathMan.parseStringFilter;
@@ -838,9 +831,9 @@ public class DiscordUtil {
                             if (ignoreErrors) continue;
                             throw new IllegalArgumentException("Not in guild.");
                         }
-                        Integer allianceId = Locutus.imp().getGuildDB(guild).getOrNull(GuildDB.Key.ALLIANCE_ID);
-                        if (allianceId != null) {
-                            nations.addAll(Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId)));
+                        Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
+                        if (!aaIds.isEmpty()) {
+                            nations.addAll(Locutus.imp().getNationDB().getNations(aaIds));
                         } else {
                             nations.addAll(Locutus.imp().getNationDB().getNations(Locutus.imp().getGuildDB(guild).getCoalition(Coalition.ALLIES)));
                         }
@@ -1000,24 +993,25 @@ public class DiscordUtil {
                                 allies = parseAlliances(guild, argSplit[1]);
                             } else {
                                 allies = new HashSet<>();
-                                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                                if (aaId != null) {
-                                    allies.add(aaId);
-                                    Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(aaId);
-                                    treaties.entrySet().removeIf(e -> e.getValue().getType() != TreatyType.PROTECTORATE);
+                                Set<Integer> aaIds = db.getAllianceIds();
+                                if (!aaIds.isEmpty()) {
+                                    allies.addAll(aaIds);
+                                    for (int aaId : aaIds) {
+                                        Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(aaId);
+                                        treaties.entrySet().removeIf(e -> e.getValue().getType() != TreatyType.PROTECTORATE);
 
-                                    Set<DBNation> aaNations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
-                                    double totalScore = aaNations.stream().mapToDouble(DBNation::getScore).sum();
+                                        Set<DBNation> aaNations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
+                                        double totalScore = aaNations.stream().mapToDouble(DBNation::getScore).sum();
 
-                                    for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
-                                        int protId = entry.getKey();
-                                        Set<DBNation> protNations = Locutus.imp().getNationDB().getNations(Collections.singleton(protId));
-                                        double protScore = aaNations.stream().mapToDouble(DBNation::getScore).sum();
-                                        if (protScore < totalScore) {
-                                            allies.add(protId);
+                                        for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
+                                            int protId = entry.getKey();
+                                            Set<DBNation> protNations = Locutus.imp().getNationDB().getNations(Collections.singleton(protId));
+                                            double protScore = aaNations.stream().mapToDouble(DBNation::getScore).sum();
+                                            if (protScore < totalScore) {
+                                                allies.add(protId);
+                                            }
                                         }
                                     }
-
                                 } else {
                                     allies = db.getAllies();
                                 }

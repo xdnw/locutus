@@ -7,16 +7,19 @@ import link.locutus.discord.util.AlertUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.GroupField;
 import org.jooq.Record;
 import org.jooq.Result;
 import org.jooq.SQLDialect;
 import org.jooq.SelectConnectByStep;
 import org.jooq.SelectForUpdateStep;
+import org.jooq.SelectHavingStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SelectLimitStep;
 import org.jooq.SortField;
 import org.jooq.TableLike;
 import org.jooq.impl.DSL;
+import org.springframework.data.mongodb.core.mapreduce.GroupBy;
 
 import java.io.Closeable;
 import java.io.File;
@@ -111,7 +114,7 @@ public abstract class DBMainV3 implements Closeable {
         }
     }
 
-    public Result<Record> query(TableLike<?> table, Condition condition, SortField<?> orderBy, Integer limit) {
+    public Result<Record> query(TableLike<?> table, Condition condition, SortField<?> orderBy, Integer limit, GroupField... groupBy) {
         @NotNull SelectJoinStep<Record> select = ctx().select().from(table);
         SelectConnectByStep<Record> where;
         if (condition != null) {
@@ -119,11 +122,18 @@ public abstract class DBMainV3 implements Closeable {
         } else {
             where = select;
         }
+
+        SelectHavingStep<Record> groupStep;
+        if (groupBy != null && groupBy.length > 0) {
+            groupStep = where.groupBy(groupBy);
+        } else {
+            groupStep = where;
+        }
         SelectLimitStep<Record> orderStep;
         if (orderBy != null) {
-            orderStep = where.orderBy(orderBy);
+            orderStep = groupStep.orderBy(orderBy);
         } else {
-            orderStep = where;
+            orderStep = groupStep;
         }
         SelectForUpdateStep<Record> limitStep;
         if (limit != null) {

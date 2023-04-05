@@ -1,34 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.MMRDouble;
-import link.locutus.discord.db.entities.MMRInt;
-import link.locutus.discord.db.entities.MMRMatcher;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -36,32 +17,45 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import rocker.grant.city;
-import rocker.grant.infra;
-import rocker.grant.land;
-import rocker.grant.nation;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class GrantCommands {
+
+    /*
+    // 1111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222
+            // #grant=533640709337514025 #expire=1680066316000 #land=2000 #city=12345678 #banker=1234567 #cash
+
+        CITY
+
+        LAND
+
+        INFRA
+
+        RESOURCES
+
+        PROJECT
+
+        BUILD
+
+        WARCHEST
+            - cities
+            - units
+            - mmr
+            - rebuy
+
+
+
+     */
+//    public String city(@Default DBCity) {
+//
+//    }
 
     /*
     Econ staff can send grants
@@ -79,10 +73,10 @@ public class GrantCommands {
         Projects:
      */
 //
-//    public String send(GuildDB db, User author, DBNation me, Map<DBNation, Grant> grants, Map<DBNation, List<String>> errors, Grant.Type type, boolean onlyMissingFunds, Long expire, boolean countAsCash) {
+//    public String send(GuildDB db, User author, DBNation me, Map<DBNation, Grant> grants, Map<DBNation, List<String>> errors, DepositType type, boolean onlyMissingFunds, Long expire, boolean countAsCash) {
 //        // no funds need to be sent
 //        boolean econGov = Roles.ECON.has(author, db.getGuild());
-//        boolean econStaff = Roles.ECON_LOW_GOV.has(author, db.getGuild());
+//        boolean econStaff = Roles.ECON_STAFF.has(author, db.getGuild());
 //
 //        if (!econGov) {
 //            if (!econStaff) {
@@ -138,13 +132,13 @@ public class GrantCommands {
 //                if (nation.getCities() >= 10 && nation.getNumWars() == 0) {
 //                    // require 5 hangars
 //                    grant.addRequirement(new Grant.Requirement("Nation does not have 5 hangars in each city (peacetime)", econStaff, f -> f.getMMRBuildingStr().charAt(2) == '5'));
-//                    if (type == Grant.Type.CITY || type == Grant.Type.INFRA || type == Grant.Type.LAND) {
+//                    if (type == DepositType.CITY || type == DepositType.INFRA || type == DepositType.LAND) {
 //                        grant.addRequirement(new Grant.Requirement("Nation does not have 0 factories in each city (peacetime)", econStaff, f -> f.getMMRBuildingStr().charAt(1) == '0'));
 //                        grant.addRequirement(new Grant.Requirement("Nation does not have max aircraft", econStaff, f -> f.getMMR().charAt(2) == '5'));
 //                    }
 //                }
 //
-//                if (type != Grant.Type.WARCHEST) grant.addRequirement(new Grant.Requirement("Nation is beige", econStaff, f -> !f.isBeige()));
+//                if (type != DepositType.WARCHEST) grant.addRequirement(new Grant.Requirement("Nation is beige", econStaff, f -> !f.isBeige()));
 //                grant.addRequirement(new Grant.Requirement("Nation is gray", econStaff, f -> !f.isGray()));
 //                grant.addRequirement(new Grant.Requirement("Nation is blockaded", econStaff, f -> !f.isBlockaded()));
 //
@@ -153,7 +147,7 @@ public class GrantCommands {
 //                grant.addRequirement(new Grant.Requirement("Nation does not have 10d seniority", econStaff, f -> f.allianceSeniority() >= 10));
 //
 //                grant.addRequirement(new Grant.Requirement("Nation does not have 80% daily logins (past 1 weeks)", econStaff, f -> nation.avg_daily_login_week() > 0.8));
-//                if (nation.getCities() < 10 && type != Grant.Type.WARCHEST) {
+//                if (nation.getCities() < 10 && type != DepositType.WARCHEST) {
 //                    // mmr = 5000
 //                    grant.addRequirement(new Grant.Requirement("Nation is not mmr=5000 (5 barracks, 0 factories, 0 hangars, 0 drydocks in each city)\n" +
 //                            "(peacetime raiding below city 10)", econStaff, f -> f.getMMRBuildingStr().startsWith("5000")));
@@ -631,8 +625,8 @@ public class GrantCommands {
 //            }
 //
 //            double[] finalFunds = funds;
-//            Grant grant = new Grant(nation, Grant.Type.WARCHEST)
-//                    .setInstructions(Grant.Type.UNIT.instructions + "\n" + unit + "=" + MathMan.format(natQuantity))
+//            Grant grant = new Grant(nation, DepositType.WARCHEST)
+//                    .setInstructions(DepositType.UNIT.instructions + "\n" + unit + "=" + MathMan.format(natQuantity))
 //                    .setTitle(unit.name())
 //                    .setCost(f -> finalFunds)
 //                    .addRequirement(new Grant.Requirement("Nation units have changed, try again", false, f -> f.getUnits(unit) == currentAmt));
@@ -641,7 +635,7 @@ public class GrantCommands {
 //            grants.put(nation, grant);
 //        }
 //
-//        return send(db, author, me, grants, errors, Grant.Type.UNIT, onlySendMissingFunds, expire, countAsCash);
+//        return send(db, author, me, grants, errors, DepositType.UNIT, onlySendMissingFunds, expire, countAsCash);
 //    }
 //
 //    @Command(desc = "Send funds for mmr")
@@ -836,7 +830,7 @@ public class GrantCommands {
 //
 //            Map<Integer, Double> currentInfraLevels = new HashMap<>();
 //
-//            Grant grant = new Grant(nation, Grant.Type.INFRA);
+//            Grant grant = new Grant(nation, DepositType.INFRA);
 //
 //            if (forNewCity) {
 //                // requires econ gov
@@ -936,14 +930,14 @@ public class GrantCommands {
 
     @WhitelistPermission
     @Command
-    @RolePermission(value = {Roles.ECON_LOW_GOV, Roles.ECON, Roles.ECON_GRANT_SELF})
+    @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_GRANT_SELF})
     public String approveEscrowed(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> deposits, Map<ResourceType, Double> escrowed) throws IOException {
         /*
         Member: Can only send funds in their deposits
          */
 
         boolean memberCanApprove = db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
-        boolean checkDepoValue = !Roles.ECON_LOW_GOV.has(author, db.getGuild());
+        boolean checkDepoValue = !Roles.ECON_STAFF.has(author, db.getGuild());
         boolean checkDepoResource = db.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) != Boolean.TRUE;
         boolean allowExtra = Roles.ECON.has(author, db.getGuild());
 
@@ -1003,107 +997,111 @@ public class GrantCommands {
         response.append("activity[day]=" + MathMan.format(nation.avg_daily_login() * 100) + "%\n");
         return response + "<" + StringMan.join(pages, ">\n<") + ">";
     }
-
+//
     private Set<Integer> disabledNations = new HashSet<>();
-
-    @WhitelistPermission
-    @Command
-    @RolePermission(Roles.ECON_LOW_GOV)
-    public synchronized String approveGrant(@Me DBNation banker, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, UUID key, @Switch("f") boolean force) {
-        try {
-            Grant grant = Grant.getApprovedGrant(db.getIdLong(), key);
-            if (grant == null) {
-                return "Invalid Token. Please try again";
-            }
-            DBNation receiver = grant.getNation();
-
-            receiver.updateTransactions();
-            receiver.getCityMap(true);
-
-            Set<Grant.Requirement> requirements = grant.getRequirements();
-            Set<Grant.Requirement> failed = new HashSet<>();
-            Set<Grant.Requirement> override = new HashSet<>();
-            for (Grant.Requirement requirement : requirements) {
-                Boolean result = requirement.apply(receiver);
-                if (!result) {
-                    if (requirement.canOverride()) {
-                        override.add(requirement);
-                    } else {
-                        failed.add(requirement);
-                    }
-                }
-            }
-
-            if (!failed.isEmpty()) {
-                StringBuilder result = new StringBuilder("Grant could not be approved.\n");
-                if (!failed.isEmpty()) {
-                    result.append("\nFailed checks:\n - " + StringMan.join(failed.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n");
-                }
-                if (!override.isEmpty()) {
-                    result.append("\nFailed checks that you have permission to bypass:\n - " + StringMan.join(override.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n");
-                }
-                return result.toString();
-            }
-
-            if (!force) {
-                String title = grant.title();
-                StringBuilder body = new StringBuilder();
-
-                body.append("Receiver: " + receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
-                body.append("Note: " + grant.getNote()).append("\n");
-                body.append("Amt: " + grant.getAmount()).append("\n");
-                body.append("Cost: `" + PnwUtil.resourcesToString(grant.cost())).append("\n\n");
-
-                if (!override.isEmpty()) {
-                    body.append("**" + override.size() + " failed checks (you have admin override)**\n - ");
-                    body.append(StringMan.join(override.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n\n");
-                }
-
-                io.create().confirmation(title, body.toString(), command).send();
-                return null;
-            }
-            if (disabledNations.contains(receiver.getNation_id())) {
-                return "There was an error processing the grant. Please contact an administrator";
-            }
-
-            Grant.deleteApprovedGrant(db.getIdLong(), key);
-
-            disabledNations.add(receiver.getNation_id());
-
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = db.getOffshore().transferFromDeposits(banker, db, receiver, grant.cost(), grant.getNote());
-            OffshoreInstance.TransferStatus status = result.getKey();
-
-            StringBuilder response = new StringBuilder();
-            if (status == OffshoreInstance.TransferStatus.SUCCESS || status == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
-                response.append("**Transaction:** ").append(result.getValue()).append("\n");
-                response.append("**Instructions:** ").append(grant.getInstructions());
-
-                Locutus.imp().getExecutor().submit(new Runnable() {
-                    @Override
-                    public void run() {
-                        receiver.updateTransactions();
-                        for (Grant.Requirement requirement : grant.getRequirements()) {
-                            if (!requirement.apply(receiver)) {
-                                disabledNations.remove(receiver.getNation_id());
-                                return;
-                            }
-                        }
-                        AlertUtil.error("Grant is still eligable",grant.getType() + " | " + grant.getNote() + " | " + grant.getAmount() + " | " + grant.getTitle());
-                    }
-                });
-
-            } else {
-                if (status != OffshoreInstance.TransferStatus.OTHER) {
-                    disabledNations.remove(receiver.getNation_id());
-                }
-                response.append(status + ": " + result.getValue());
-            }
-
-
-            return response.toString();
-        } catch (Throwable e) {
-            e.printStackTrace();
-            throw e;
-        }
-    }
+//
+//    @WhitelistPermission
+//    @Command
+//    @RolePermission(Roles.ECON_STAFF)
+//    public synchronized String approveGrant(@Me DBNation banker, @Me User user, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, UUID key, @Switch("f") boolean force) {
+//        OffshoreInstance offshore = db.getOffshore();
+//        if (offshore == null) {
+//            return "No offshore bank";
+//        }
+//        try {
+//            Grant grant = Grant.getApprovedGrant(db.getIdLong(), key);
+//            if (grant == null) {
+//                return "Invalid Token. Please try again";
+//            }
+//            DBNation receiver = grant.getNation();
+//
+//            receiver.updateTransactions();
+//            receiver.getCityMap(true);
+//
+//            Set<Grant.Requirement> requirements = grant.getRequirements();
+//            Set<Grant.Requirement> failed = new HashSet<>();
+//            Set<Grant.Requirement> override = new HashSet<>();
+//            for (Grant.Requirement requirement : requirements) {
+//                Boolean result = requirement.apply(receiver);
+//                if (!result) {
+//                    if (requirement.canOverride()) {
+//                        override.add(requirement);
+//                    } else {
+//                        failed.add(requirement);
+//                    }
+//                }
+//            }
+//
+//            if (!failed.isEmpty()) {
+//                StringBuilder result = new StringBuilder("Grant could not be approved.\n");
+//                if (!failed.isEmpty()) {
+//                    result.append("\nFailed checks:\n - " + StringMan.join(failed.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n");
+//                }
+//                if (!override.isEmpty()) {
+//                    result.append("\nFailed checks that you have permission to bypass:\n - " + StringMan.join(override.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n");
+//                }
+//                return result.toString();
+//            }
+//
+//            if (!force) {
+//                String title = grant.title();
+//                StringBuilder body = new StringBuilder();
+//
+//                body.append("Receiver: " + receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
+//                body.append("Note: " + grant.getNote()).append("\n");
+//                body.append("Amt: " + grant.getAmount()).append("\n");
+//                body.append("Cost: `" + PnwUtil.resourcesToString(grant.cost())).append("\n\n");
+//
+//                if (!override.isEmpty()) {
+//                    body.append("**" + override.size() + " failed checks (you have admin override)**\n - ");
+//                    body.append(StringMan.join(override.stream().map(f -> f.getMessage()).collect(Collectors.toList()), "\n - ") + "\n\n");
+//                }
+//
+//                io.create().confirmation(title, body.toString(), command).send();
+//                return null;
+//            }
+//            if (disabledNations.contains(receiver.getNation_id())) {
+//                return "There was an error processing the grant. Please contact an administrator";
+//            }
+//
+//            Grant.deleteApprovedGrant(db.getIdLong(), key);
+//
+//            disabledNations.add(receiver.getNation_id());
+//
+//            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(banker, db, f -> allowedAlliances.contains((long) f), receiver, grant.cost(), grant.getNote());
+//            OffshoreInstance.TransferStatus status = result.getKey();
+//
+//            StringBuilder response = new StringBuilder();
+//            if (status == OffshoreInstance.TransferStatus.SUCCESS || status == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
+//                response.append("**Transaction:** ").append(result.getValue()).append("\n");
+//                response.append("**Instructions:** ").append(grant.getInstructions());
+//
+//                Locutus.imp().getExecutor().submit(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        receiver.updateTransactions();
+//                        for (Grant.Requirement requirement : grant.getRequirements()) {
+//                            if (!requirement.apply(receiver)) {
+//                                disabledNations.remove(receiver.getNation_id());
+//                                return;
+//                            }
+//                        }
+//                        AlertUtil.error("Grant is still eligable",grant.getType() + " | " + grant.getNote() + " | " + grant.getAmount() + " | " + grant.getTitle());
+//                    }
+//                });
+//
+//            } else {
+//                if (status != OffshoreInstance.TransferStatus.OTHER) {
+//                    disabledNations.remove(receiver.getNation_id());
+//                }
+//                response.append(status + ": " + result.getValue());
+//            }
+//
+//
+//            return response.toString();
+//        } catch (Throwable e) {
+//            e.printStackTrace();
+//            throw e;
+//        }
+//    }
 }

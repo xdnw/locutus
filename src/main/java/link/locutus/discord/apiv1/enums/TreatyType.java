@@ -12,6 +12,7 @@ public enum TreatyType {
 
     NPT(3),
 
+
     ;
 
     private final int strength;

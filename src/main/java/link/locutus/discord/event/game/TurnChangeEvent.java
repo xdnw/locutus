@@ -6,6 +6,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.guild.GuildScopeEvent;
+import link.locutus.discord.pnw.AllianceList;
 
 public class TurnChangeEvent extends GuildScopeEvent { // todo post to all guilds?
     private final long previous;
@@ -27,14 +28,17 @@ public class TurnChangeEvent extends GuildScopeEvent { // todo post to all guild
     @Override
     protected void postToGuilds() {
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            DBAlliance alliance = db.getAlliance();
-            if (alliance == null) continue;
-            boolean hasActiveLeaderOrHeir = alliance
-                    .getNations(true, 7200, true)
-                    .stream().anyMatch(f -> f.getPositionEnum().id >= Rank.HEIR.id);
-            if (!hasActiveLeaderOrHeir) continue;
-
-            post(db);
+            AllianceList alliances = db.getAllianceList();
+            if (alliances == null || alliances.isEmpty()) continue;
+            boolean hasAlliance = false;
+            for (DBAlliance alliance : alliances.getAlliances()) {
+                if (alliance
+                        .getNations(true, 7200, true)
+                        .stream().anyMatch(f -> f.getPositionEnum().id >= Rank.HEIR.id)) {
+                    hasAlliance = true;
+                }
+            }
+            if (hasAlliance) post(db);
         }
 
     }

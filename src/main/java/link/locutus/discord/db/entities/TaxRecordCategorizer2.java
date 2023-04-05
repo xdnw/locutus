@@ -33,7 +33,7 @@ import java.util.function.Predicate;
 
 public class TaxRecordCategorizer2 {
     private final GuildDB db;
-    private final int aaId;
+    private final Set<Integer> aaIds;
     private final Set<Integer> alliances;
     private final boolean dontRequireGrant;
     private final boolean dontRequireTagged;
@@ -220,7 +220,7 @@ public class TaxRecordCategorizer2 {
 
     public TaxRecordCategorizer2(GuildDB db, long start, long end, boolean dontRequireGrant, boolean dontRequireTagged, boolean dontRequireExpiry, boolean includeDeposits, Predicate<Integer> acceptsNation, Consumer<String> errors) throws Exception {
         this.db = db;
-        this.aaId = db.getAlliance_id();
+        this.aaIds = db.getAllianceIds();
         this.dontRequireGrant = dontRequireGrant;
         this.dontRequireTagged = dontRequireTagged;
         this.dontRequireExpiry = dontRequireExpiry;
@@ -229,8 +229,16 @@ public class TaxRecordCategorizer2 {
 
         Set<Predicate<Transaction2>> expenseRequirements = new HashSet<>();
         if (!dontRequireTagged) {
-            String requiredNote = "=" + getAaId();
-            expenseRequirements.add(tx -> (tx.sender_id == getAaId() && tx.isSenderAA()) || (tx.note != null && tx.note.contains(requiredNote)));
+            expenseRequirements.add(tx -> {
+                if (aaIds.contains((int) tx.sender_id) && tx.isSenderAA()) return true;
+                Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
+                for (String value : notes.values()) {
+                    if (MathMan.isInteger(value)) {
+                        if (aaIds.contains((int) Long.parseLong(value))) return true;
+                    }
+                }
+                return false;
+            });
         }
         if (!dontRequireGrant) {
             expenseRequirements.add(tx -> tx.note != null && tx.note.contains("#grant"));
@@ -240,14 +248,17 @@ public class TaxRecordCategorizer2 {
         }
 
         this.alliances = new HashSet<>();
-        getAlliances().add(getAaId());
+        getAlliances().addAll(getAllianceIds());
         getAlliances().addAll(db.getCoalition(Coalition.OFFSHORE));
 
-        this.taxes = Locutus.imp().getBankDB().getTaxesByAA(getAaId());
+        this.taxes = new ArrayList<>();
+        for (int aaId : aaIds) {
+            taxes.addAll(Locutus.imp().getBankDB().getTaxesByAA(aaId));
+        }
         this.taxes.removeIf(f -> !acceptsNation.test(f.nationId));
         getTaxes().removeIf(f -> f.date < start || f.date > end);
 
-        this.brackets = new HashMap<>(db.getAlliance().getTaxBrackets(true));
+        this.brackets = new HashMap<>(db.getAllianceList().getTaxBrackets(true));
         for (int i = getTaxes().size() - 1; i >= 0; i--) {
             BankDB.TaxDeposit tax = getTaxes().get(i);
             if (tax.tax_id > 0 && !brackets.containsKey(tax.tax_id)) {
@@ -256,7 +267,7 @@ public class TaxRecordCategorizer2 {
             }
         }
 
-        this.allNations = new ArrayList<>(DBAlliance.getOrCreate(getAaId()).getNations(true, 0, true));
+        this.allNations = new ArrayList<>(db.getAllianceList().getNations(true, 0, true));
         this.allNations.removeIf(f -> !acceptsNation.test(f.getNation_id()));
         this.nationsByBracket = new Int2ObjectOpenHashMap<>();
         this.bracketsByNation = new Int2ObjectOpenHashMap<>();
@@ -483,8 +494,8 @@ public class TaxRecordCategorizer2 {
         return db;
     }
 
-    public int getAaId() {
-        return aaId;
+    public Set<Integer> getAllianceIds() {
+        return aaIds;
     }
 
     public Set<Integer> getAlliances() {

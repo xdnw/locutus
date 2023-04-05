@@ -19,9 +19,9 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
@@ -30,6 +30,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -204,7 +205,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncReferrals(@Me GuildDB db) {
         if (!db.isValidAlliance()) return "Not in an alliance";
-        Collection<DBNation> nations = db.getAlliance().getNations(true, 10000, true);
+        Collection<DBNation> nations = db.getAllianceList().getNations(true, 10000, true);
         for (DBNation nation : nations) {
             db.getHandler().onRefer(nation);
         }
@@ -225,7 +226,7 @@ public class AdminCommands {
     public String announce(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch("v") @Default("0") Integer requiredVariation, @Switch("r") @Default("0") Integer requiredDepth, @Switch("s") Long seed, @Switch("m") boolean sendMail, @Switch("d") boolean sendDM, @Switch("f") boolean force) throws IOException {
         ApiKeyPool keys = db.getMailKey();
         if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
 
         List<String> errors = new ArrayList<>();
         Collection<DBNation> nations = nationList.getNations();
@@ -238,7 +239,7 @@ public class AdminCommands {
             } else {
                 continue;
             }
-            if (aaId != null && nation.getAlliance_id() != aaId) {
+            if (!aaIds.isEmpty() && !aaIds.contains(nation.getAlliance_id())) {
                 throw new IllegalArgumentException("Cannot send to nation not in alliance: " + nation.getNation() + " | " + user);
             }
             if (!force) {
@@ -403,11 +404,13 @@ public class AdminCommands {
 
     @Command
     @RolePermission(Roles.ADMIN)
-    @IsAuthenticated
-    public String editAlliance(@Me GuildDB db, @Me User author, @Default String attribute, @Default @TextArea String value) throws Exception {
+    public String editAlliance(@Me GuildDB db, @Me User author, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
+        if (!db.isAllianceId(alliance.getAlliance_id())) {
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
+        }
 
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
-        Auth auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
+        Auth auth = alliance.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
         if (auth == null) return "No authorization set";
 
         StringBuilder response = new StringBuilder();
@@ -432,9 +435,8 @@ public class AdminCommands {
 
     @Command(desc = "Remove a discord role Locutus uses")
     @RolePermission(Roles.ADMIN)
-    public String unregisterRole(@Me Guild guild, @Me GuildDB db, Roles locutusRole) {
-        db.deleteRole(locutusRole);
-        return "Unregistered " + locutusRole;
+    public String unregisterRole(@Me User user, @Me Guild guild, @Me GuildDB db, Roles locutusRole, @Default DBAlliance alliance) {
+        return aliasRole(user, guild, db, locutusRole, null, alliance, true);
     }
 
     @Command()
@@ -458,35 +460,142 @@ public class AdminCommands {
         return response.toString();
     }
 
+    private static String mappingToString(Map<Long, Role> mapping) {
+        List<String> response = new ArrayList<>();
+        for (Map.Entry<Long, Role> entry : mapping.entrySet()) {
+            Role role = entry.getValue();
+            long aaId = entry.getKey();
+            if (aaId == 0) {
+                response.add("*:" + role.getName());
+            } else {
+                response.add(aaId + ": " + role.getName());
+            }
+        }
+        if (response.isEmpty()) return "";
+        return " - " + StringMan.join(response, "\n - ");
+    }
+
     @Command(desc = "Set the discord roles Locutus uses")
     @RolePermission(Roles.ADMIN)
-    public String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, Roles locutusRole, @Default() Role discordRole) {
-        if (discordRole == null) {
-            int invalidRoles = 0;
-            List<Map.Entry<Roles, Long>> roles = db.getRoles();
-            StringBuilder response = new StringBuilder("Current aliases:").append('\n');
-            for (Map.Entry<Roles, Long> role : roles) {
-                Roles locRole = role.getKey();
-                GuildDB.Key key = locRole.getKey();
+    public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Default() DBAlliance alliance, @Switch("r") boolean removeRole) {
+        if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
+        }
+        StringBuilder response = new StringBuilder();
+        boolean showGlobalMappingInfo = false;
 
-                discordRole = guild.getRoleById(role.getValue());
-                String roleName = discordRole == null ? "null" : discordRole.getName();
-                response.append(" - " + role.getKey().name().toLowerCase() + " > " + roleName);
-
-                if (key != null && db.getOrNull(key) == null) {
-                    response.append(" (missing: " + key.name() + ")");
+        if (locutusRole == null) {
+            if (discordRole != null) {
+                List<String> rolesListStr = new ArrayList<>();
+                Map<Roles, Map<Long, Long>> allMapping = db.getMappingRaw();
+                if (removeRole) {
+                    // remove all roles registered to it
+                    for (Map.Entry<Roles, Map<Long, Long>> locEntry : allMapping.entrySet()) {
+                        for (Map.Entry<Long, Long> discEntry : locEntry.getValue().entrySet()) {
+                            long aaId =discEntry.getKey();
+                            if (alliance != null && aaId != alliance.getAlliance_id()) continue;
+                            if (discEntry.getValue() == discordRole.getIdLong()) {
+                                String aaStr =  aaId == 0 ? "*" : PnwUtil.getName(aaId, true);
+                                rolesListStr.add("Removed " + locEntry.getKey().name() + " from " + discordRole.getName() + " (AA:" + aaId + ")");
+                                db.deleteRole(locEntry.getKey(), aaId);
+                            }
+                        }
+                    }
+                    if (rolesListStr.isEmpty()) {
+                        return "No aliases found for " + discordRole.getName();
+                    }
+                    response.append("Removed aliases for " + discordRole.getName() + ":\n - ");
+                    response.append(StringMan.join(rolesListStr, "\n - "));
+                    response.append("\n\nUse " + CM.role.setAlias.cmd.toSlashMention() + " to view current role aliases");
+                    return response.toString();
                 }
-                response.append('\n');
+
+                for (Map.Entry<Roles, Map<Long, Long>> locEntry : allMapping.entrySet()) {
+                    Map<Long, Long> aaToRoleMap = locEntry.getValue();
+                    showGlobalMappingInfo |= aaToRoleMap.size() > 1 && aaToRoleMap.containsKey(0L);
+                    for (Map.Entry<Long, Long> discEntry : aaToRoleMap.entrySet()) {
+                        if (discEntry.getValue() == discordRole.getIdLong()) {
+                            Roles role = locEntry.getKey();
+                            long aaId = discEntry.getKey();
+                            if (aaId == 0) {
+                                rolesListStr.add("*:" + role.name());
+                            } else {
+                                rolesListStr.add(DBAlliance.getOrCreate((int) aaId).getName() + "/" + aaId + ":" + role.name());
+                            }
+                        }
+                    }
+                }
+                if (rolesListStr.isEmpty()) {
+                    return "No aliases found for " + discordRole.getName();
+                }
+                response.append("Aliases for " + discordRole.getName() + ":\n - ");
+                response.append(StringMan.join(rolesListStr, "\n - "));
+                if (showGlobalMappingInfo) response.append("\n`note: " + Messages.GLOBAL_ROLE_MAPPING_INFO + "`");
+                return response.toString();
             }
-            response.append("Available aliases: " + Roles.getValidRolesStringList()).append('\n');
-            response.append("Please provide `locutusRole` and `discordRole` to set an alias");
+
+            List<String> registeredRoles = new ArrayList<>();
+            List<String> unregisteredRoles = new ArrayList<>();
+            for (Roles role : Roles.values) {
+                Map<Long, Role> mapping = db.getAccountMapping(role);
+                if (mapping != null && !mapping.isEmpty()) {
+                    registeredRoles.add(role + ":\n" + mappingToString(mapping));
+                    continue;
+                }
+                if (role.getKey() != null && db.getOrNull(role.getKey()) == null) continue;
+                unregisteredRoles.add(role + ":\n" + mappingToString(mapping));
+            }
+
+            if (!registeredRoles.isEmpty()) {
+                response.append("**Registered Roles**:\n" + StringMan.join(registeredRoles, "\n") + "\n");
+            }
+            if (!unregisteredRoles.isEmpty()) {
+                response.append("**Unregistered Roles**:\n" + StringMan.join(unregisteredRoles, "\n") + "\n");
+            }
+            response.append("Provide a value for `locutusRole` for specific role information.\n" +
+                    "Provide a value for `discordRole` to register a role.\n");
+
+            return response.toString();
+        }
+
+        if (discordRole == null) {
+            if (removeRole) {
+                Role alias = db.getRole(locutusRole, alliance != null ? (long) alliance.getAlliance_id() : null);
+                if (alias == null) {
+                    String allianceStr = alliance != null ? alliance.getName() + "/" + alliance.getAlliance_id() : "*";
+                    return "No role alias found for " + allianceStr + ":" + locutusRole.name();
+                }
+                if (alliance != null) {
+                    db.deleteRole(locutusRole, alliance.getAlliance_id());
+                } else {
+                    db.deleteRole(locutusRole);
+                }
+                response.append("Removed role alias for " + locutusRole.name() + ":\n");
+            }
+            Map<Long, Role> mapping = db.getAccountMapping(locutusRole);
+            response.append("**" + locutusRole.name() + "**:\n");
+            response.append("`" + locutusRole.getDesc() + "`\n");
+            if (mapping.isEmpty()) {
+                response.append("No value set.");
+            } else {
+                response.append("```\n" + mappingToString(mapping) + "```\n");
+            }
+            response.append("Provide a value for `discordRole` to register a role.\n");
+            if (mapping.size() > 1 && mapping.containsKey(0L)) {
+                response.append("`note: " + Messages.GLOBAL_ROLE_MAPPING_INFO + "`");
+            }
             return response.toString().trim();
         }
 
-        Member member = guild.getMember(author);
+        if (removeRole) {
+            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.create(locutusRole.name()).toSlashCommand() + "");
+        }
 
-        db.addRole(locutusRole, discordRole.getIdLong());
-        return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + "\n" +
+
+        int aaId = alliance == null ? 0 : alliance.getAlliance_id();
+        String allianceStr = alliance == null ? "*" : alliance.getName() + "/" + aaId;
+        db.addRole(locutusRole, discordRole, aaId);
+        return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + " for alliance " + allianceStr + "\n" +
                 "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name()).toSlashCommand() + "";
     }
 
@@ -523,14 +632,17 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String rootApiUsageStats() {
         PoliticsAndWarV2 api = Locutus.imp().getRootPnwApi();
-        return printApiStats(api);
+        System.out.println(printApiStats(api));
+        return "Done! (see console)";
     }
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String apiUsageStats(@Me Guild guild, boolean cached) {
-        PoliticsAndWarV2 api = Locutus.imp().getGuildDB(guild).getApi();
-        return printApiStats(api);
+    public String apiUsageStats(@Me DBAlliance alliance, boolean cached) {
+        ApiKeyPool keys = alliance.getApiKeys();
+        PoliticsAndWarV2 api = new PoliticsAndWarV2(keys, Settings.INSTANCE.TEST, cached);
+        System.out.println(printApiStats(api));
+        return "Done! (see console)";
     }
 
     @Command(desc = "Check if current api keys are valid")
@@ -628,19 +740,19 @@ public class AdminCommands {
             Member owner = db.getGuild().getOwner();
             DBNation nation = DiscordUtil.getNation(owner.getUser());
 
-            Integer alliance = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            Set<Integer> aaIds = db.getAllianceIds();
 
             if (nation != null && nation.getActive_m() > 30000) {
-                response.append(guild + "/AA:" + alliance + ": owner (nation:" + nation.getNation_id() + ") is inactive " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()) + "\n");
+                response.append(guild + "/" + StringMan.getString(aaIds) + ": owner (nation:" + nation.getNation_id() + ") is inactive " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()) + "\n");
                 continue;
             }
             // In an alliance with inactive leadership (1 month)
-            if (alliance != null && !db.isValidAlliance()) {
-                response.append(guild + "/AA:" + alliance + ": alliance is invalid (nation:" + (nation == null ? "" : nation.getNation_id() + ")\n"));
+            if (!aaIds.isEmpty() && !db.isValidAlliance()) {
+                response.append(guild + "/" + StringMan.getString(aaIds) + ": alliance is invalid (nation:" + (nation == null ? "" : nation.getNation_id() + ")\n"));
                 continue;
             }
 
-            if (alliance == null && nation == null && checkMessages) {
+            if (aaIds.isEmpty() && nation == null && checkMessages) {
                 long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
                 boolean error = false;
                 long last = 0;
@@ -731,11 +843,11 @@ public class AdminCommands {
                 response.append("\nOther db is null: " + id);
                 continue;
             }
-            Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            Set<Integer> aaIds = otherDb.getAllianceIds();
 
             List<Transaction2> transactions;
-            if (aaId != null) {
-                transactions = offshore.getTransactionsAA(aaId, false);
+            if (!aaIds.isEmpty()) {
+                transactions = offshore.getTransactionsAA(aaIds, false);
             } else {
                 transactions = offshore.getTransactionsGuild(id, false);
             }
@@ -756,15 +868,15 @@ public class AdminCommands {
             if (id > Integer.MAX_VALUE) {
                 Member owner = otherDb.getGuild().getOwner();
 
-                if (aaId != null) {
-                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
+                if (!aaIds.isEmpty()) {
+                    AllianceList alliance = new AllianceList(aaIds);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
                     nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                     nations.removeIf(f -> f.getActive_m() > 10000);
 
                     if (nations.isEmpty()) {
                         inactiveIds.add(id);
-                        response.append("Inactive alliance (as guild) " + aaId + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong());
+                        response.append("Inactive alliance (as guild) " + StringMan.getString(aaIds) + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong());
                     }
                 }
 
@@ -789,22 +901,22 @@ public class AdminCommands {
 
                 Member owner = otherDb.getGuild().getOwner();
 
-                if (aaId != null) {
-                    DBAlliance alliance = DBAlliance.getOrCreate(aaId);
+                if (!aaIds.isEmpty()) {
+                    AllianceList alliance = new AllianceList(aaIds);
                     Set<DBNation> nations = new HashSet<>(alliance.getNations());
                     nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
                     nations.removeIf(f -> f.getActive_m() > 10000);
 
                     if (nations.isEmpty()) {
                         inactiveIds.add(id);
-                        response.append("Inactive alliance (as guild) " + aaId + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong() + " | (" + timeStr + ")");
+                        response.append("Inactive alliance (as guild) " + StringMan.getString(aaIds) + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong() + " | (" + timeStr + ")");
                     }
                 }
 
                 DBNation nation = DiscordUtil.getNation(owner.getUser());
                 if (nation == null) {
-                    if (aaId != null) {
-                        DBAlliance alliance = DBAlliance.get(aaId);
+                    if (aaIds.isEmpty()) {
+                        AllianceList alliance = new AllianceList(aaIds);
                         if (alliance != null) {
                             Set<DBNation> nations = alliance.getNations(f -> {
                                 if (f.active_m() > 10000) return false;
@@ -1013,7 +1125,7 @@ public class AdminCommands {
             if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);
         }
         channel.send("Syncing banks for " + db.getGuild() + "...");
-        OffshoreInstance bank = db.getHandler().getBank();
+        OffshoreInstance bank = alliance.getBank();
         bank.sync(timestamp, false);
 
         Locutus.imp().getBankDB().updateBankRecs(Event::post);

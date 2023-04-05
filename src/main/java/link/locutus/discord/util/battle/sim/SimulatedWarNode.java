@@ -224,7 +224,7 @@ public class SimulatedWarNode {
     }
 
     public double getValue(Function<SimulatedWarNode, Double> valueFunction) {
-        if (Double.isNaN(this.value)) {
+        if (!Double.isFinite(this.value)) {
             this.value = valueFunction.apply(this);
         }
         return this.value;

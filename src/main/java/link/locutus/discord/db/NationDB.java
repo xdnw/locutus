@@ -654,6 +654,7 @@ public class NationDB extends DBMainV2 {
         long turn = TimeUtil.getTurn();
         for (com.politicsandwar.graphql.model.Treaty treaty : treatiesV3) {
             Treaty dbTreaty = new Treaty(treaty);
+            if (dbTreaty.isPending()) continue;
             if (dbTreaty.getTurnEnds() <= turn) continue;
 
             DBAlliance fromAA = getAlliance(dbTreaty.getFromId());
@@ -2730,7 +2731,7 @@ public class NationDB extends DBMainV2 {
         checkNotNull(metric);
         String query = "INSERT OR " + (ignore ? "IGNORE" : "REPLACE") + " INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)";
 
-        if (Double.isNaN(value)) {
+        if (!Double.isFinite(value)) {
             return;
         }
         update(query, new ThrowingConsumer<PreparedStatement>() {

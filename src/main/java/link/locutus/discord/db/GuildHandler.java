@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -21,6 +22,7 @@ import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.guild.NewApplicantOnDiscordEvent;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.war.WarPeaceStatusEvent;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.user.Roles;
@@ -33,14 +35,11 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.Grant;
-import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.task.MailTask;
-import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.JsonObject;
@@ -93,9 +92,6 @@ public class GuildHandler {
     private final Set<Long> ignorePermanentInvitesFrom = new HashSet<>();
     private final Set<Integer> ignoreIncentivesForNations = new HashSet<>();
 
-    protected OffshoreInstance bank;
-    private boolean bankInit = false;
-
     public GuildHandler(Guild guild, GuildDB db) {
         this(guild, db, false);
     }
@@ -118,21 +114,6 @@ public class GuildHandler {
                 }
             });
         }
-    }
-
-    public void resetBankCache() {
-        if (bank == null) bankInit = false;
-    }
-
-    public synchronized OffshoreInstance getBank() {
-        if (!bankInit && db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
-            Auth auth = db.getAuth(AlliancePermission.WITHDRAW_BANK);
-            bankInit = true;
-            {
-                bank = new OffshoreInstance(auth, db, db.getOrThrow(GuildDB.Key.ALLIANCE_ID));
-            }
-        }
-        return bank;
     }
 
     @Subscribe
@@ -190,11 +171,12 @@ public class GuildHandler {
     }
 
     public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Map<NationFilterString, Integer> requiredTaxBracket, Consumer<String> responses) throws Exception {
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        nations.removeIf(f -> f.getAlliance_id() != aaId || f.isGray() || f.getVm_turns() > 0 || f.getPosition() <= 1 || f.isBeige());
+        Set<Integer> aaIds = db.getAllianceIds();
+        nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
 
-        Auth auth = getDb().getAuth(AlliancePermission.TAX_BRACKETS);
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets(false);
+        AllianceList allianceList = db.getAllianceList();
+
+        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(false);
         Map<DBNation, TaxBracket> bracketsByNation = new HashMap<>();
 
         Map<DBNation, Map.Entry<TaxBracket, String>> nationsMovedBracket = new HashMap<>();
@@ -221,7 +203,7 @@ public class GuildHandler {
                 }
             }
             if (required != null && (current == null || current.taxId != required.taxId)) {
-                String response = nation.setTaxBracket(required, auth);
+                String response = allianceList.setTaxBracket(required, nation);
                 responses.accept(nation.getNation() + ": " + response);
                 nationsMovedBracket.put(nation, new AbstractMap.SimpleEntry<>(required, reason));
                 Locutus.imp().getNationDB().markNationDirty(nation.getId());
@@ -236,8 +218,8 @@ public class GuildHandler {
     }
 
     public Map<DBNation, Map.Entry<TaxRate, String>> setNationInternalTaxRate(Set<DBNation> nations, Map<NationFilterString, TaxRate> requiredTaxRates, Consumer<String> responses) throws Exception {
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        nations.removeIf(f -> f.getAlliance_id() != aaId || f.isGray() || f.getVm_turns() > 0 || f.getPosition() <= 1 || f.isBeige());
+        Set<Integer> aaIds = db.getAllianceIds();
+        nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
 
         Map<DBNation, Map.Entry<TaxRate, String>> nationsMovedRate = new HashMap<>();
 
@@ -284,7 +266,7 @@ public class GuildHandler {
 
         Guild guild = getGuild();
         GuildDB db = getDb();
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
 
         GuildMessageChannel alertChannel = db.getOrNull(GuildDB.Key.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return false;
@@ -309,13 +291,13 @@ public class GuildHandler {
             if (nation.getActive_m() > 7200) return false;
 
             body.append("nation: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + "\n");
-            if (nation.getPosition() > 1 && nation.getAlliance_id() == aaId) {
+            if (nation.getPosition() > 1 && aaIds.contains(nation.getAlliance_id())) {
                 body.append("\n\n**ALREADY MEMBER OF " + nation.getAllianceName() + "**\n\n");
                 mentionInterviewer = false;
             }
-            if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
+            if (nation.getAlliance_id() != 0 && !aaIds.contains(nation.getAlliance_id())) {
                 Locutus.imp().getNationDB().updateNations(List.of(nation.getNation_id()), Event::post);
-                if (nation.getAlliance_id() != 0 && nation.getAlliance_id() != aaId) {
+                if (nation.getAlliance_id() != 0 && !aaIds.contains(nation.getAlliance_id())) {
                     body.append("\n\n**Already member of AA: " + nation.getAllianceName() + "**\n\n");
                     mentionInterviewer = false;
                     RateLimitUtil.queueWhenFree(author.openPrivateChannel().complete().sendMessage("As you're already a member of another alliance, message or ping @" + interviewerRole.getName() + " to (proceed"));
@@ -488,11 +470,11 @@ public class GuildHandler {
     }
 
     private void onNewApplicant(DBNation current) {
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
 
             // New applicant
-            if (current.getPositionEnum() == Rank.APPLICANT && current.getAlliance_id() == aaId) {
+            if (current.getPositionEnum() == Rank.APPLICANT && aaIds.contains(current.getAlliance_id())) {
                 MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
                     String type = "New Applicant Ingame";
@@ -554,11 +536,11 @@ public class GuildHandler {
         DBNation previous = event.getPrevious();
 
         onNewApplicant(current);
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
 
             // member leave
-            if (previous.getAlliance_id() == aaId && current.getAlliance_id() != aaId) {
+            if (aaIds.contains(previous.getAlliance_id()) && current.getAlliance_id() != previous.getAlliance_id()) {
                 MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
                     Rank rank = Rank.byId(previous.getPosition());
@@ -733,494 +715,494 @@ public class GuildHandler {
         return potentialRssProjects;
     }
 
-    /**
-     * A common set of grants for members (not enabled by default)
-     *
-     * @param nation
-     * @param type
-     * @param overrideSafe
-     * @param overrideUnsafe
-     * @return
-     */
-    public Set<Grant> getBaseEligableGrants(DBNation nation, Grant.Type type, boolean overrideSafe, boolean overrideUnsafe) {
-        Set<Grant> grants = new HashSet<>();
-
-        User user = nation.getUser();
-        if (user == null) throw new IllegalArgumentException("Nation is not verified: " + CM.register.cmd.toSlashMention() + "");
-        Member member = getGuild().getMember(user);
-        if (member == null) throw new IllegalArgumentException("There was an error verifying the nation");
-
-        DBAlliance alliance = getDb().getAlliance();
-        Set<Grant.Requirement> baseRequirements = new HashSet<>();
-
-        baseRequirements.add(new Grant.Requirement("This guild is not part of an alliance", false, f -> alliance != null));
-        baseRequirements.add(new Grant.Requirement("Nation is not a member of an alliance", overrideUnsafe, f -> f.getPosition() > 1));
-        baseRequirements.add(new Grant.Requirement("Nation is in VM", overrideUnsafe, f -> f.getVm_turns() == 0));
-        baseRequirements.add(new Grant.Requirement("Nation is not in the alliance: " + alliance.getAlliance_id(), overrideUnsafe, f -> f.getAlliance_id() == alliance.getAlliance_id()));
-
-        Role temp = Roles.TEMP.toRole(getGuild());
-        baseRequirements.add(new Grant.Requirement("Nation not eligible for grants", overrideSafe, f -> !member.getRoles().contains(temp)));
-
-        baseRequirements.add(new Grant.Requirement("Nation is not active in past 24h", overrideSafe, f -> f.getActive_m() < 1440));
-        baseRequirements.add(new Grant.Requirement("Nation is not active in past 7d", overrideUnsafe, f -> f.getActive_m() < 10000));
-
-        baseRequirements.add(new Grant.Requirement("Nation does not have 5 raids going", overrideSafe, f -> f.getCities() >= 10 || f.getOff() >= 5));
-
-        if (nation.getCities() >= 10) {
-            baseRequirements.add(new Grant.Requirement("Nation is not on the grant tax bracket", overrideSafe, f -> {
-                TaxRate taxRate = getInternalTaxrate(f.getNation_id());
-                if (taxRate == null || taxRate.money < 70 || taxRate.resources < 70) return false;
-                return true;
-            }));
-        }
-
-        if (nation.getCities() < 10 && type != Grant.Type.WARCHEST) {
-            // mmr = 5000
-            baseRequirements.add(new Grant.Requirement("Nation is not mmr=5000 (5 barracks, 0 factories, 0 hangars, 0 drydocks in each city)\n" +
-                    "(peacetime raiding below city 10)", overrideSafe, f -> f.getMMRBuildingStr().startsWith("5000")));
-        }
-        if (nation.getNumWars() > 0) {
-            // require max barracks
-            baseRequirements.add(new Grant.Requirement("Nation does not have 5 barracks in each city (raiding)", overrideSafe, f -> f.getMMRBuildingStr().charAt(0) == '5'));
-        }
-        if (nation.getCities() >= 10 && nation.getNumWars() == 0) {
-            // require 5 hangars
-            baseRequirements.add(new Grant.Requirement("Nation does not have 5 hangars in each city (peacetime)", overrideSafe, f -> f.getMMRBuildingStr().charAt(2) == '5'));
-            if (type == Grant.Type.CITY || type == Grant.Type.INFRA || type == Grant.Type.LAND) {
-                baseRequirements.add(new Grant.Requirement("Nation does not have 0 factories in each city (peacetime)", overrideSafe, f -> f.getMMRBuildingStr().charAt(1) == '0'));
-                baseRequirements.add(new Grant.Requirement("Nation does not have max aircraft", overrideSafe, f -> f.getMMR().charAt(2) == '5'));
-            }
-        }
-
-        baseRequirements.add(new Grant.Requirement("Nation is beige", overrideSafe, f -> !f.isBeige()));
-        baseRequirements.add(new Grant.Requirement("Nation is gray", overrideSafe, f -> !f.isGray()));
-        baseRequirements.add(new Grant.Requirement("Nation is blockaded", overrideSafe, f -> !f.isBlockaded()));
+//    /**
+//     * A common set of grants for members (not enabled by default)
+//     *
+//     * @param nation
+//     * @param type
+//     * @param overrideSafe
+//     * @param overrideUnsafe
+//     * @return
+//     */
+//    public Set<Grant> getBaseEligableGrants(DBNation nation, DepositType type, boolean overrideSafe, boolean overrideUnsafe) {
+//        Set<Grant> grants = new HashSet<>();
+//
+//        User user = nation.getUser();
+//        if (user == null) throw new IllegalArgumentException("Nation is not verified: " + CM.register.cmd.toSlashMention() + "");
+//        Member member = getGuild().getMember(user);
+//        if (member == null) throw new IllegalArgumentException("There was an error verifying the nation");
+//
+//        AllianceList alliance = getDb().getAllianceList();
+//        Set<Grant.Requirement> baseRequirements = new HashSet<>();
+//
+//        baseRequirements.add(new Grant.Requirement("This guild is not part of an alliance", false, f -> alliance != null));
+//        baseRequirements.add(new Grant.Requirement("Nation is not a member of an alliance", overrideUnsafe, f -> f.getPosition() > 1));
+//        baseRequirements.add(new Grant.Requirement("Nation is in VM", overrideUnsafe, f -> f.getVm_turns() == 0));
+//        baseRequirements.add(new Grant.Requirement("Nation is not in the alliance: " + StringMan.getString(alliance.getIds()), overrideUnsafe, f -> alliance.isInAlliance(f)));
+//
+//        Role temp = Roles.TEMP.toRole(getGuild());
+//        baseRequirements.add(new Grant.Requirement("Nation not eligible for grants", overrideSafe, f -> !member.getRoles().contains(temp)));
+//
+//        baseRequirements.add(new Grant.Requirement("Nation is not active in past 24h", overrideSafe, f -> f.getActive_m() < 1440));
+//        baseRequirements.add(new Grant.Requirement("Nation is not active in past 7d", overrideUnsafe, f -> f.getActive_m() < 10000));
+//
+//        baseRequirements.add(new Grant.Requirement("Nation does not have 5 raids going", overrideSafe, f -> f.getCities() >= 10 || f.getOff() >= 5));
+//
+//        if (nation.getCities() >= 10) {
+//            baseRequirements.add(new Grant.Requirement("Nation is not on the grant tax bracket", overrideSafe, f -> {
+//                TaxRate taxRate = getInternalTaxrate(f.getNation_id());
+//                if (taxRate == null || taxRate.money < 70 || taxRate.resources < 70) return false;
+//                return true;
+//            }));
+//        }
+//
+//        if (nation.getCities() < 10 && type != DepositType.WARCHEST) {
+//            // mmr = 5000
+//            baseRequirements.add(new Grant.Requirement("Nation is not mmr=5000 (5 barracks, 0 factories, 0 hangars, 0 drydocks in each city)\n" +
+//                    "(peacetime raiding below city 10)", overrideSafe, f -> f.getMMRBuildingStr().startsWith("5000")));
+//        }
+//        if (nation.getNumWars() > 0) {
+//            // require max barracks
+//            baseRequirements.add(new Grant.Requirement("Nation does not have 5 barracks in each city (raiding)", overrideSafe, f -> f.getMMRBuildingStr().charAt(0) == '5'));
+//        }
+//        if (nation.getCities() >= 10 && nation.getNumWars() == 0) {
+//            // require 5 hangars
+//            baseRequirements.add(new Grant.Requirement("Nation does not have 5 hangars in each city (peacetime)", overrideSafe, f -> f.getMMRBuildingStr().charAt(2) == '5'));
+//            if (type == DepositType.CITY || type == DepositType.INFRA || type == DepositType.LAND) {
+//                baseRequirements.add(new Grant.Requirement("Nation does not have 0 factories in each city (peacetime)", overrideSafe, f -> f.getMMRBuildingStr().charAt(1) == '0'));
+//                baseRequirements.add(new Grant.Requirement("Nation does not have max aircraft", overrideSafe, f -> f.getMMR().charAt(2) == '5'));
+//            }
+//        }
+//
 //        baseRequirements.add(new Grant.Requirement("Nation is beige", overrideSafe, f -> !f.isBeige()));
-
-        // TODO no disburse past 5 days during wartime
-        // TODO 2d seniority and 5 won wars for initial 1.7k infra grants
-        baseRequirements.add(new Grant.Requirement("Nation does not have 10d seniority", overrideSafe, f -> {
-            Map.Entry<Integer, Rank> previousAA = f.getAlliancePosition(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
-            return previousAA.getKey() == alliance.getAlliance_id() && previousAA.getValue().id > Rank.APPLICANT.id;
-        }));
-
-        baseRequirements.add(new Grant.Requirement("Nation does not have 80% daily logins (past 1 weeks)", overrideSafe, f -> nation.avg_daily_login_week() > 0.8));
-
-        switch (type) {
-            default:
-                throw new UnsupportedOperationException("TODO: This type of grant is not supported currently");
-            case CITY: {
-                baseRequirements.add(new Grant.Requirement("Nation has 20 cities", overrideSafe, f -> f.getCities() < 20));
-                baseRequirements.add(new Grant.Requirement("Domestic policy must be set to MANIFEST_DESTINY for city grants: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY));
-
-                // must be gov ossoona or have project timer up as well
-                // City 11-12 = Encourage them to pass the test and get UP grant
-                // TODO must not have received grant for this city yet
-                // city grant past c10 in past 10 days
-
-                baseRequirements.add(new Grant.Requirement("Nation still has a city timer", overrideUnsafe, f -> f.getCities() < 10 || f.getCityTurns() <= 0));
-
-                int currentCities = nation.getCities();
-                baseRequirements.add(new Grant.Requirement("Nation has built a city, please run the grant command again", false, f -> f.getCities() == currentCities));
-
-                baseRequirements.add(new Grant.Requirement("Nation does not have 10 cities", overrideSafe, f -> f.getCities() >= 10));
-
-//                if (nation.getCities() < 9) {
-//                    // require 10 cities + 2k infra in deppsits
-//                    int amt = 10 - nation.getCities();
-//                    grants.add(new Grant(nation, Grant.Type.CITY)
-//                            .setAmount(amt)
-//                            .addCity(currentCities)
+//        baseRequirements.add(new Grant.Requirement("Nation is gray", overrideSafe, f -> !f.isGray()));
+//        baseRequirements.add(new Grant.Requirement("Nation is blockaded", overrideSafe, f -> !f.isBlockaded()));
+////        baseRequirements.add(new Grant.Requirement("Nation is beige", overrideSafe, f -> !f.isBeige()));
+//
+//        // TODO no disburse past 5 days during wartime
+//        // TODO 2d seniority and 5 won wars for initial 1.7k infra grants
+//        baseRequirements.add(new Grant.Requirement("Nation does not have 10d seniority", overrideSafe, f -> {
+//            Map.Entry<Integer, Rank> previousAA = f.getAlliancePosition(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
+//            return alliance.contains(previousAA.getKey()) && previousAA.getValue().id > Rank.APPLICANT.id;
+//        }));
+//
+//        baseRequirements.add(new Grant.Requirement("Nation does not have 80% daily logins (past 1 weeks)", overrideSafe, f -> nation.avg_daily_login_week() > 0.8));
+//
+//        switch (type) {
+//            default:
+//                throw new UnsupportedOperationException("TODO: This type of grant is not supported currently");
+//            case CITY: {
+//                baseRequirements.add(new Grant.Requirement("Nation has 20 cities", overrideSafe, f -> f.getCities() < 20));
+//                baseRequirements.add(new Grant.Requirement("Domestic policy must be set to MANIFEST_DESTINY for city grants: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY));
+//
+//                // must be gov ossoona or have project timer up as well
+//                // City 11-12 = Encourage them to pass the test and get UP grant
+//                // TODO must not have received grant for this city yet
+//                // city grant past c10 in past 10 days
+//
+//                baseRequirements.add(new Grant.Requirement("Nation still has a city timer", overrideUnsafe, f -> f.getCities() < 10 || f.getCityTurns() <= 0));
+//
+//                int currentCities = nation.getCities();
+//                baseRequirements.add(new Grant.Requirement("Nation has built a city, please run the grant command again", false, f -> f.getCities() == currentCities));
+//
+//                baseRequirements.add(new Grant.Requirement("Nation does not have 10 cities", overrideSafe, f -> f.getCities() >= 10));
+//
+////                if (nation.getCities() < 9) {
+////                    // require 10 cities + 2k infra in deppsits
+////                    int amt = 10 - nation.getCities();
+////                    grants.add(new Grant(nation, DepositType.CITY)
+////                            .setAmount(amt)
+////                            .addCity(currentCities)
+//////                        .setInstructions(grantCity(pnwNation, me, (int) amt, resources, force))
+////                            .setCost(new Function<DBNation, double[]>() {
+////                                @Override
+////                                public double[] apply(DBNation nation) {
+////                                    double cityCost = PnwUtil.nextCityCost(nation, amt);
+////                                    double factor = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY ? 0.95 : 1;
+////                                    return ResourceType.MONEY.toArray(cityCost * factor);
+////                                }
+////                            })
+////                    );
+////                }
+//                baseRequirements.add(new Grant.Requirement("Nation received city grant in past 10 days", overrideUnsafe, new Function<DBNation, Boolean>() {
+//                    @Override
+//                    public Boolean apply(DBNation nation) {
+//                        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
+//                        List<Transaction2> transactions = nation.getTransactions(-1L);
+//                        return (!Grant.hasReceivedGrantWithNote(transactions, "#city", cutoff));
+//                    }
+//                }));
+//
+//                Grant grant = new Grant(nation, DepositType.CITY)
+//                        .setAmount(1)
+//                        .addCity(currentCities)
 ////                        .setInstructions(grantCity(pnwNation, me, (int) amt, resources, force))
-//                            .setCost(new Function<DBNation, double[]>() {
+//                        .setCost(new Function<DBNation, double[]>() {
+//                            @Override
+//                            public double[] apply(DBNation nation) {
+//                                double cityCost = PnwUtil.nextCityCost(nation, 1);
+//                                double factor = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY ? 0.95 : 1;
+//                                return ResourceType.MONEY.toArray(cityCost * factor);
+//                            }
+//                        });
+//
+//                // city 10 day unsafe
+//                // city safe
+//
+//                grant.addRequirement(new Grant.Requirement("Already received a grant for a city", overrideSafe, new Function<DBNation, Boolean>() {
+//                    @Override
+//                    public Boolean apply(DBNation nation) {
+//                        List<Transaction2> transactions = nation.getTransactions(-1);
+//                        return !Grant.hasGrantedCity(nation, transactions, currentCities + 1);
+//                    }
+//                }));
+//                grants.add(grant);
+//                break;
+//            }
+//            case PROJECT: {
+//
+//                baseRequirements.add(new Grant.Requirement("Domestic policy must be set to TECHNOLOGICAL_ADVANCEMENT for project grants: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT));
+//                baseRequirements.add(new Grant.Requirement("Nation still has a city timer", overrideUnsafe, f -> f.getProjectTurns() <= 0));
+//                baseRequirements.add(new Grant.Requirement("Nation has no free project slot", overrideUnsafe, f -> f.projectSlots() > f.getNumProjects()));
+//                // project grant in past 10 days
+//
+//                // TODO must not have received grant for this project yet
+//
+//                Set<Project> allowedProjects = getAllowedProjectGrantSet(nation);
+//                Set<Project> allProjects = new HashSet<>(Arrays.asList(Projects.values));
+//                Set<Project> alreadyHasProject = nation.getProjects();
+//
+//                for (Project project : allProjects) {
+//                    Grant grant = new Grant(nation, DepositType.PROJECT)
+//                            .setAmount(project.name())
+//                            .setCost(f -> PnwUtil.resourcesToArray(PnwUtil.multiply(project.cost(), f.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? 0.95 : 1)));
+//
+//                    grant.addRequirement(new Grant.Requirement("Not eligable for project", overrideSafe, f -> allowedProjects.contains(project)));
+//                    grant.addRequirement(new Grant.Requirement("Already have project", overrideUnsafe, f -> {
+//                        return !f.getProjects().contains(project);
+//                    }));
+//                    if (project == Projects.URBAN_PLANNING || project == Projects.ADVANCED_URBAN_PLANNING) {
+//                        grant.addRequirement(new Grant.Requirement("Please contact econ gov to approve this grant (as its expensive)", overrideSafe, f -> {
+//                            return !f.getProjects().contains(project);
+//                        }));
+//                    }
+//
+//                    grant.addRequirement(new Grant.Requirement("Already received a grant for a project in past 10 days", overrideUnsafe, new Function<DBNation, Boolean>() {
+//                        @Override
+//                        public Boolean apply(DBNation nation) {
+//                            long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
+//
+//                            List<Transaction2> transactions = nation.getTransactions(-1L);
+//
+//                            if (Grant.hasReceivedGrantWithNote(transactions, "#project", cutoff)) return false;
+//
+//                            if (Grant.getProjectsGranted(nation, transactions).contains(project)) return false;
+//                            return true;
+//                        }
+//                    }));
+//
+//                    grants.add(grant);
+//                }
+//
+//                break;
+//            }
+//            case INFRA: {
+//                Map<Integer, JavaCity> cities = nation.getCityMap(true, true);
+//
+//                // Grant for each city, as well as all cities (not currently granted)
+//                int[] options;
+//                if (getDb().getCoalition(Coalition.ENEMIES).isEmpty() && nation.getDef() == 0) {
+//                    options = new int[]{1200, 1700, 2000};
+//                } else {
+//                    options = new int[]{1200, 1500};
+//                }
+//
+//                Grant.Requirement noWarRequirement = new Grant.Requirement("Higher infra grants require approval when fighting wars", overrideSafe, new Function<DBNation, Boolean>() {
+//                    @Override
+//                    public Boolean apply(DBNation nation) {
+//                        if (nation.getDef() > 0) return false;
+//                        if (nation.getNumWars() > 0 && nation.getNumWarsAgainstActives() > 0) return false;
+//                        return true;
+//                    }
+//                });
+//
+//                Grant.Requirement seniority = new Grant.Requirement("Nation does not have 3 days alliance seniority", overrideSafe, f -> f.allianceSeniority() < 3);
+//
+//                for (int infraLevel : options) {
+//                    List<Grant.Requirement> localRequirement = new ArrayList<>();
+//
+//                    switch (infraLevel) {
+//                        case 1200:
+//                            break;
+//                        case 1700:
+//                        case 1500:
+//                            localRequirement.add(seniority);
+//                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ (or remove the `enemies` coalition)", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
+//                            localRequirement.add(noWarRequirement);
+//                            break;
+//                        case 2000:
+//                            localRequirement.add(seniority);
+//                            localRequirement.add(noWarRequirement);
+//                            localRequirement.add(new Grant.Requirement("Nation does not have 10 cities", overrideSafe, f -> f.getCities() >= 10));
+//                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
+//                            localRequirement.add(new Grant.Requirement("Domestic policy must be set to URBANIZATION for infra grants above 1700: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.URBANIZATION));
+//                            localRequirement.add(new Grant.Requirement("Infra grants above 1700 whilst raiding/warring require econ approval", overrideSafe, f -> {
+//                                if (f.getDef() > 0) return false;
+//                                if (f.getOff() > 0) {
+//                                    for (DBWar war : f.getActiveWars()) {
+//                                        DBNation other = war.getNation(war.isAttacker(f));
+//                                        if (other.getActive_m() < 1440 || other.getPosition() >= Rank.APPLICANT.id) {
+//                                            return false;
+//                                        }
+//                                    }
+//                                }
+//                                return true;
+//                            }));
+//                            break;
+//                        default:
+//                            throw new IllegalArgumentException("Invalid infra level");
+//                    }
+//                    {
+//                        boolean hasLowerInfra = false;
+//                        boolean hasLowerBuildings = false;
+//                        for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
+//                            JavaCity city = entry.getValue();
+//                            if (city.getInfra() < infraLevel) {
+//                                hasLowerInfra = true;
+//                            }
+//                            double currentInfra = Math.max(city.getRequiredInfra(), city.getInfra());
+//                            if (currentInfra < infraLevel) {
+//                                hasLowerBuildings = true;
+//                                break;
+//                            }
+//                        }
+//
+//                        if (hasLowerBuildings) {
+//                            Grant grant = new Grant(nation, DepositType.INFRA);
+//                            for (Integer cityId : cities.keySet()) grant.addCity(cityId);
+//                            grant.addRequirement(localRequirement);
+//                            grant.setAmount(infraLevel);
+//                            grant.setCost(new Function<DBNation, double[]>() {
 //                                @Override
 //                                public double[] apply(DBNation nation) {
-//                                    double cityCost = PnwUtil.nextCityCost(nation, amt);
-//                                    double factor = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY ? 0.95 : 1;
-//                                    return ResourceType.MONEY.toArray(cityCost * factor);
+//                                    double cost = 0;
+//                                    List<Transaction2> transactions = nation.getTransactions(-1L);
+////                                    Map<Integer, Double> byCity = Grant.getInfraGrantsByCity(nation, transactions);
+//                                    for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
+//                                        double currentInfra = Grant.getCityInfraGranted(nation, entry.getKey(), transactions);
+//                                        JavaCity city = entry.getValue();
+//                                        currentInfra = Math.max(currentInfra, Math.max(city.getRequiredInfra(), city.getInfra()));
+//                                        if (currentInfra < infraLevel) {
+//                                            cost += PnwUtil.calculateInfra(currentInfra, infraLevel);
+//                                        }
+//                                    }
+//
+//                                    boolean urban = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
+//                                    boolean cce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
+//                                    boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
+//                                    double discountFactor = 1;
+//                                    if (urban) discountFactor -= 0.05;
+//                                    if (cce) discountFactor -= 0.05;
+//                                    if (aec) discountFactor -= 0.05;
+//                                    cost = cost * discountFactor;
+//
+//                                    return ResourceType.MONEY.toArray(cost);
 //                                }
-//                            })
-//                    );
+//                            });
+//                            grants.add(grant);
+//                        }
+//                    }
+//
+//                    for (Map.Entry<Integer, JavaCity> entry : nation.getCityMap(true).entrySet()) {
+//                        int id = entry.getKey();
+//                        JavaCity city = entry.getValue();
+//                        double cityInfra = Math.max(city.getInfra(), city.getRequiredInfra());
+//                        if (cityInfra >= infraLevel) continue;
+//
+//                        Grant grant = new Grant(nation, DepositType.INFRA);
+//                        grant.addRequirement(new Grant.Requirement("You have already received infra of that level for that city", overrideSafe, new Function<DBNation, Boolean>() {
+//                            @Override
+//                            public Boolean apply(DBNation nation) {
+//                                List<Transaction2> transactions = nation.getTransactions(-1L);
+//                                double maxGranted = Grant.getCityInfraGranted(nation, id, transactions);
+//                                if (maxGranted >= infraLevel) return false;
+//                                return true;
+//                            }
+//                        }));
+//                        grant.addCity(id);
+//                        grant.addRequirement(localRequirement);
+//                        grant.setAmount(infraLevel);
+//                        grant.setCost(new Function<DBNation, double[]>() {
+//                            @Override
+//                            public double[] apply(DBNation nation) {
+//                                List<Transaction2> transactions = nation.getTransactions(-1L);
+//                                double maxGranted = Grant.getCityInfraGranted(nation, id, transactions);
+//
+//                                double cost = PnwUtil.calculateInfra(maxGranted, infraLevel);
+//                                boolean urban = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
+//                                boolean cce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
+//                                boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
+//                                double discountFactor = 1;
+//                                if (urban) discountFactor -= 0.05;
+//                                if (cce) discountFactor -= 0.05;
+//                                if (aec) discountFactor -= 0.05;
+//                                cost = cost * discountFactor;
+//                                return ResourceType.MONEY.toArray(cost);
+//                            }
+//                        });
+//                        grants.add(grant);
+//                    }
 //                }
-                baseRequirements.add(new Grant.Requirement("Nation received city grant in past 10 days", overrideUnsafe, new Function<DBNation, Boolean>() {
-                    @Override
-                    public Boolean apply(DBNation nation) {
-                        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
-                        List<Transaction2> transactions = nation.getTransactions(-1L);
-                        return (!Grant.hasReceivedGrantWithNote(transactions, "#city", cutoff));
-                    }
-                }));
-
-                Grant grant = new Grant(nation, Grant.Type.CITY)
-                        .setAmount(1)
-                        .addCity(currentCities)
-//                        .setInstructions(grantCity(pnwNation, me, (int) amt, resources, force))
-                        .setCost(new Function<DBNation, double[]>() {
-                            @Override
-                            public double[] apply(DBNation nation) {
-                                double cityCost = PnwUtil.nextCityCost(nation, 1);
-                                double factor = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY ? 0.95 : 1;
-                                return ResourceType.MONEY.toArray(cityCost * factor);
-                            }
-                        });
-
-                // city 10 day unsafe
-                // city safe
-
-                grant.addRequirement(new Grant.Requirement("Already received a grant for a city", overrideSafe, new Function<DBNation, Boolean>() {
-                    @Override
-                    public Boolean apply(DBNation nation) {
-                        List<Transaction2> transactions = nation.getTransactions(-1);
-                        return !Grant.hasGrantedCity(nation, transactions, currentCities + 1);
-                    }
-                }));
-                grants.add(grant);
-                break;
-            }
-            case PROJECT: {
-
-                baseRequirements.add(new Grant.Requirement("Domestic policy must be set to TECHNOLOGICAL_ADVANCEMENT for project grants: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT));
-                baseRequirements.add(new Grant.Requirement("Nation still has a city timer", overrideUnsafe, f -> f.getProjectTurns() <= 0));
-                baseRequirements.add(new Grant.Requirement("Nation has no free project slot", overrideUnsafe, f -> f.projectSlots() > f.getNumProjects()));
-                // project grant in past 10 days
-
-                // TODO must not have received grant for this project yet
-
-                Set<Project> allowedProjects = getAllowedProjectGrantSet(nation);
-                Set<Project> allProjects = new HashSet<>(Arrays.asList(Projects.values));
-                Set<Project> alreadyHasProject = nation.getProjects();
-
-                for (Project project : allProjects) {
-                    Grant grant = new Grant(nation, Grant.Type.PROJECT)
-                            .setAmount(project.name())
-                            .setCost(f -> PnwUtil.resourcesToArray(PnwUtil.multiply(project.cost(), f.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT ? 0.95 : 1)));
-
-                    grant.addRequirement(new Grant.Requirement("Not eligable for project", overrideSafe, f -> allowedProjects.contains(project)));
-                    grant.addRequirement(new Grant.Requirement("Already have project", overrideUnsafe, f -> {
-                        return !f.getProjects().contains(project);
-                    }));
-                    if (project == Projects.URBAN_PLANNING || project == Projects.ADVANCED_URBAN_PLANNING) {
-                        grant.addRequirement(new Grant.Requirement("Please contact econ gov to approve this grant (as its expensive)", overrideSafe, f -> {
-                            return !f.getProjects().contains(project);
-                        }));
-                    }
-
-                    grant.addRequirement(new Grant.Requirement("Already received a grant for a project in past 10 days", overrideUnsafe, new Function<DBNation, Boolean>() {
-                        @Override
-                        public Boolean apply(DBNation nation) {
-                            long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
-
-                            List<Transaction2> transactions = nation.getTransactions(-1L);
-
-                            if (Grant.hasReceivedGrantWithNote(transactions, "#project", cutoff)) return false;
-
-                            if (Grant.getProjectsGranted(nation, transactions).contains(project)) return false;
-                            return true;
-                        }
-                    }));
-
-                    grants.add(grant);
-                }
-
-                break;
-            }
-            case INFRA: {
-                Map<Integer, JavaCity> cities = nation.getCityMap(true, true);
-
-                // Grant for each city, as well as all cities (not currently granted)
-                int[] options;
-                if (getDb().getCoalition(Coalition.ENEMIES).isEmpty() && nation.getDef() == 0) {
-                    options = new int[]{1200, 1700, 2000};
-                } else {
-                    options = new int[]{1200, 1500};
-                }
-
-                Grant.Requirement noWarRequirement = new Grant.Requirement("Higher infra grants require approval when fighting wars", overrideSafe, new Function<DBNation, Boolean>() {
-                    @Override
-                    public Boolean apply(DBNation nation) {
-                        if (nation.getDef() > 0) return false;
-                        if (nation.getNumWars() > 0 && nation.getNumWarsAgainstActives() > 0) return false;
-                        return true;
-                    }
-                });
-
-                Grant.Requirement seniority = new Grant.Requirement("Nation does not have 3 days alliance seniority", overrideSafe, f -> f.allianceSeniority() < 3);
-
-                for (int infraLevel : options) {
-                    List<Grant.Requirement> localRequirement = new ArrayList<>();
-
-                    switch (infraLevel) {
-                        case 1200:
-                            break;
-                        case 1700:
-                        case 1500:
-                            localRequirement.add(seniority);
-                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ (or remove the `enemies` coalition)", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
-                            localRequirement.add(noWarRequirement);
-                            break;
-                        case 2000:
-                            localRequirement.add(seniority);
-                            localRequirement.add(noWarRequirement);
-                            localRequirement.add(new Grant.Requirement("Nation does not have 10 cities", overrideSafe, f -> f.getCities() >= 10));
-                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
-                            localRequirement.add(new Grant.Requirement("Domestic policy must be set to URBANIZATION for infra grants above 1700: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.URBANIZATION));
-                            localRequirement.add(new Grant.Requirement("Infra grants above 1700 whilst raiding/warring require econ approval", overrideSafe, f -> {
-                                if (f.getDef() > 0) return false;
-                                if (f.getOff() > 0) {
-                                    for (DBWar war : f.getActiveWars()) {
-                                        DBNation other = war.getNation(war.isAttacker(f));
-                                        if (other.getActive_m() < 1440 || other.getPosition() >= Rank.APPLICANT.id) {
-                                            return false;
-                                        }
-                                    }
-                                }
-                                return true;
-                            }));
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Invalid infra level");
-                    }
-                    {
-                        boolean hasLowerInfra = false;
-                        boolean hasLowerBuildings = false;
-                        for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-                            JavaCity city = entry.getValue();
-                            if (city.getInfra() < infraLevel) {
-                                hasLowerInfra = true;
-                            }
-                            double currentInfra = Math.max(city.getRequiredInfra(), city.getInfra());
-                            if (currentInfra < infraLevel) {
-                                hasLowerBuildings = true;
-                                break;
-                            }
-                        }
-
-                        if (hasLowerBuildings) {
-                            Grant grant = new Grant(nation, Grant.Type.INFRA);
-                            for (Integer cityId : cities.keySet()) grant.addCity(cityId);
-                            grant.addRequirement(localRequirement);
-                            grant.setAmount(infraLevel);
-                            grant.setCost(new Function<DBNation, double[]>() {
-                                @Override
-                                public double[] apply(DBNation nation) {
-                                    double cost = 0;
-                                    List<Transaction2> transactions = nation.getTransactions(-1L);
-//                                    Map<Integer, Double> byCity = Grant.getInfraGrantsByCity(nation, transactions);
-                                    for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-                                        double currentInfra = Grant.getCityInfraGranted(nation, entry.getKey(), transactions);
-                                        JavaCity city = entry.getValue();
-                                        currentInfra = Math.max(currentInfra, Math.max(city.getRequiredInfra(), city.getInfra()));
-                                        if (currentInfra < infraLevel) {
-                                            cost += PnwUtil.calculateInfra(currentInfra, infraLevel);
-                                        }
-                                    }
-
-                                    boolean urban = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
-                                    boolean cce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
-                                    boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
-                                    double discountFactor = 1;
-                                    if (urban) discountFactor -= 0.05;
-                                    if (cce) discountFactor -= 0.05;
-                                    if (aec) discountFactor -= 0.05;
-                                    cost = cost * discountFactor;
-
-                                    return ResourceType.MONEY.toArray(cost);
-                                }
-                            });
-                            grants.add(grant);
-                        }
-                    }
-
-                    for (Map.Entry<Integer, JavaCity> entry : nation.getCityMap(true).entrySet()) {
-                        int id = entry.getKey();
-                        JavaCity city = entry.getValue();
-                        double cityInfra = Math.max(city.getInfra(), city.getRequiredInfra());
-                        if (cityInfra >= infraLevel) continue;
-
-                        Grant grant = new Grant(nation, Grant.Type.INFRA);
-                        grant.addRequirement(new Grant.Requirement("You have already received infra of that level for that city", overrideSafe, new Function<DBNation, Boolean>() {
-                            @Override
-                            public Boolean apply(DBNation nation) {
-                                List<Transaction2> transactions = nation.getTransactions(-1L);
-                                double maxGranted = Grant.getCityInfraGranted(nation, id, transactions);
-                                if (maxGranted >= infraLevel) return false;
-                                return true;
-                            }
-                        }));
-                        grant.addCity(id);
-                        grant.addRequirement(localRequirement);
-                        grant.setAmount(infraLevel);
-                        grant.setCost(new Function<DBNation, double[]>() {
-                            @Override
-                            public double[] apply(DBNation nation) {
-                                List<Transaction2> transactions = nation.getTransactions(-1L);
-                                double maxGranted = Grant.getCityInfraGranted(nation, id, transactions);
-
-                                double cost = PnwUtil.calculateInfra(maxGranted, infraLevel);
-                                boolean urban = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
-                                boolean cce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
-                                boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
-                                double discountFactor = 1;
-                                if (urban) discountFactor -= 0.05;
-                                if (cce) discountFactor -= 0.05;
-                                if (aec) discountFactor -= 0.05;
-                                cost = cost * discountFactor;
-                                return ResourceType.MONEY.toArray(cost);
-                            }
-                        });
-                        grants.add(grant);
-                    }
-                }
-                break;
-            }
-            case LAND:
-                int amt = nation.getCities() < 10 ? 1500 : 2000;
-                Grant grant = new Grant(nation, Grant.Type.LAND);
-                Map<Integer, JavaCity> cities = nation.getCityMap(true, true);
-                boolean missingLand = false;
-                for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-                    grant.addCity(entry.getKey());
-                    if (entry.getValue().getLand() < amt) missingLand = true;
-                }
-                if (missingLand) {
-                    grant.setAmount(amt);
-                    grant.setCost(new Function<DBNation, double[]>() {
-                        @Override
-                        public double[] apply(DBNation nation) {
-                            List<Transaction2> transactions = nation.getTransactions(-1L);
-                            Map<Integer, Double> byCity = Grant.getLandGrantedByCity(nation, transactions);
-
-                            double total = 0;
-                            for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
-                                JavaCity city = entry.getValue();
-                                int cityId = entry.getKey();
-                                double currentLand = Math.max(city.getLand(), byCity.getOrDefault(cityId, 0d));
-                                PnwUtil.calculateLand(currentLand, amt);
-                            }
-
-                            return ResourceType.MONEY.toArray(total);
-                        }
-                    });
-                } else {
-                    throw new IllegalArgumentException("You already have " + amt + " land in each city");
-                }
-                break;
-            case UNIT:
-                throw new IllegalArgumentException("Units are not granted. Please get a warchest grant");
-            case BUILD:
-                throw new IllegalArgumentException("Please use " + CM.city.optimalBuild.cmd.toSlashMention() + "");
-                // MMR_RAIDING:
-                // MMR_WARTIME:
-                // MMR_PEACE: c1-10=5001,c11+=5553
-
-                // builds: PEACETIME, NON_COMMERCE, SELF_SUFFICIENT
-            case WARCHEST:
-                baseRequirements.add(new Grant.Requirement("Nation does not have 10 cities", overrideSafe, f -> f.getCities() >= 10));
-                baseRequirements.add(new Grant.Requirement("Nation is losing", overrideSafe, f -> f.getRelativeStrength() < 1));
-                baseRequirements.add(new Grant.Requirement("Nation is on low military", overrideSafe, f -> f.getAircraftPct() < 0.7));
-                baseRequirements.add(new Grant.Requirement("Already received warchest since last war", overrideUnsafe, new Function<DBNation, Boolean>() {
-                    @Override
-                    public Boolean apply(DBNation nation) {
-                        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(3);
-                        long latestWarTime = 0;
-                        DBWar latestWar = null;
-                        for (DBWar war : nation.getWars()) {
-                            if (war.date > latestWarTime) {
-                                latestWarTime = war.date;
-                                latestWar = war;
-                            }
-                        }
-                        if (latestWar != null) {
-                            for (DBAttack attack : latestWar.getAttacks()) {
-                                latestWarTime = Math.max(latestWarTime, attack.epoch);
-                            }
-                            cutoff = Math.min(latestWarTime, cutoff);
-                        }
-                        List<Transaction2> transactions = nation.getTransactions(-1L);
-                        for (Transaction2 transaction : transactions) {
-                            if (transaction.tx_datetime < cutoff) continue;
-                            if (transaction.note != null && transaction.note.toLowerCase().contains("#warchest")) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    }
-                }));
-
-
-                // has not received warchest in past 3 days
-                // is assigned to a counter
-
-                // fighting an enemy, or there are enemies
-
-                boolean isCountering = false;
-                Set<Integer> allies = getDb().getAllies(true);
-                WarCategory warChannel = getDb().getWarChannel();
-                for (Map.Entry<Integer, WarCategory.WarRoom> entry : warChannel.getWarRoomMap().entrySet()) {
-                    WarCategory.WarRoom room = entry.getValue();
-                    if (room.isParticipant(nation, false)) {
-                        boolean isDefending = false;
-                        boolean isEnemyAttackingMember = false;
-                        for (DBWar war : room.target.getActiveWars()) {
-                            if (allies.contains(war.defender_aa)) {
-                                isEnemyAttackingMember = true;
-                            }
-                            if (war.defender_id == nation.getNation_id()) {
-                                isDefending = true;
-                            }
-                        }
-                        if (!isDefending && isEnemyAttackingMember) {
-                            isCountering = true;
-                        }
-                    }
-                }
-
-                boolean isLosing = nation.getRelativeStrength() < 1;
-
-                boolean hasEnemy = false;
-                Set<Integer> enemies = getDb().getCoalition(Coalition.ENEMIES);
-
-                boolean correctMMR = PnwUtil.matchesMMR(nation.getMMRBuildingStr(), "555X");
-
-                // is assigned counter
-                // OR
-                // enemies AND mmr=555X
-
-                // TODO
-                // - funds for only a specific unit
-                // - limit 24h
-                // - dont allow more than 5 since last war
-                // - dont allow more than 1 in 5 days if no units were bought in last X days
-
-                /*
-                Nation has max aircraft and 3% tanks
-                 */
-                if (!enemies.isEmpty() && nation.getRelativeStrength() >= 1) {
-                    String mmr = nation.getMMRBuildingStr();
-                    // 80% planes + 50%
-                }
-                // has enemies, or ordered to counter
-
-                /*
-                    Has enemies and has not received warchest in the past 5 days
-                    Added to a war room as an attacker
-                    Has not received warchest in the past 5 days
-                 */
-                break;
-            case RESOURCES:
-                // disburse up to 5 days?
-                    GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-                    if (channel != null) {
-                        throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.raws.cmd.toSlashMention() + " in " + channel.getAsMention() + " to request funds from your deposits");
-                    }
-                throw new IllegalArgumentException("Please request resources in the resource request channel");
-        }
-        for (Grant grant : grants) {
-            grant.addRequirement(baseRequirements);
-        }
-
-        return grants;
-    }
+//                break;
+//            }
+//            case LAND:
+//                int amt = nation.getCities() < 10 ? 1500 : 2000;
+//                Grant grant = new Grant(nation, DepositType.LAND);
+//                Map<Integer, JavaCity> cities = nation.getCityMap(true, true);
+//                boolean missingLand = false;
+//                for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
+//                    grant.addCity(entry.getKey());
+//                    if (entry.getValue().getLand() < amt) missingLand = true;
+//                }
+//                if (missingLand) {
+//                    grant.setAmount(amt);
+//                    grant.setCost(new Function<DBNation, double[]>() {
+//                        @Override
+//                        public double[] apply(DBNation nation) {
+//                            List<Transaction2> transactions = nation.getTransactions(-1L);
+//                            Map<Integer, Double> byCity = Grant.getLandGrantedByCity(nation, transactions);
+//
+//                            double total = 0;
+//                            for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
+//                                JavaCity city = entry.getValue();
+//                                int cityId = entry.getKey();
+//                                double currentLand = Math.max(city.getLand(), byCity.getOrDefault(cityId, 0d));
+//                                PnwUtil.calculateLand(currentLand, amt);
+//                            }
+//
+//                            return ResourceType.MONEY.toArray(total);
+//                        }
+//                    });
+//                } else {
+//                    throw new IllegalArgumentException("You already have " + amt + " land in each city");
+//                }
+//                break;
+//            case UNIT:
+//                throw new IllegalArgumentException("Units are not granted. Please get a warchest grant");
+//            case BUILD:
+//                throw new IllegalArgumentException("Please use " + CM.city.optimalBuild.cmd.toSlashMention() + "");
+//                // MMR_RAIDING:
+//                // MMR_WARTIME:
+//                // MMR_PEACE: c1-10=5001,c11+=5553
+//
+//                // builds: PEACETIME, NON_COMMERCE, SELF_SUFFICIENT
+//            case WARCHEST:
+//                baseRequirements.add(new Grant.Requirement("Nation does not have 10 cities", overrideSafe, f -> f.getCities() >= 10));
+//                baseRequirements.add(new Grant.Requirement("Nation is losing", overrideSafe, f -> f.getRelativeStrength() < 1));
+//                baseRequirements.add(new Grant.Requirement("Nation is on low military", overrideSafe, f -> f.getAircraftPct() < 0.7));
+//                baseRequirements.add(new Grant.Requirement("Already received warchest since last war", overrideUnsafe, new Function<DBNation, Boolean>() {
+//                    @Override
+//                    public Boolean apply(DBNation nation) {
+//                        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(3);
+//                        long latestWarTime = 0;
+//                        DBWar latestWar = null;
+//                        for (DBWar war : nation.getWars()) {
+//                            if (war.date > latestWarTime) {
+//                                latestWarTime = war.date;
+//                                latestWar = war;
+//                            }
+//                        }
+//                        if (latestWar != null) {
+//                            for (DBAttack attack : latestWar.getAttacks()) {
+//                                latestWarTime = Math.max(latestWarTime, attack.epoch);
+//                            }
+//                            cutoff = Math.min(latestWarTime, cutoff);
+//                        }
+//                        List<Transaction2> transactions = nation.getTransactions(-1L);
+//                        for (Transaction2 transaction : transactions) {
+//                            if (transaction.tx_datetime < cutoff) continue;
+//                            if (transaction.note != null && transaction.note.toLowerCase().contains("#warchest")) {
+//                                return false;
+//                            }
+//                        }
+//                        return true;
+//                    }
+//                }));
+//
+//
+//                // has not received warchest in past 3 days
+//                // is assigned to a counter
+//
+//                // fighting an enemy, or there are enemies
+//
+//                boolean isCountering = false;
+//                Set<Integer> allies = getDb().getAllies(true);
+//                WarCategory warChannel = getDb().getWarChannel();
+//                for (Map.Entry<Integer, WarCategory.WarRoom> entry : warChannel.getWarRoomMap().entrySet()) {
+//                    WarCategory.WarRoom room = entry.getValue();
+//                    if (room.isParticipant(nation, false)) {
+//                        boolean isDefending = false;
+//                        boolean isEnemyAttackingMember = false;
+//                        for (DBWar war : room.target.getActiveWars()) {
+//                            if (allies.contains(war.defender_aa)) {
+//                                isEnemyAttackingMember = true;
+//                            }
+//                            if (war.defender_id == nation.getNation_id()) {
+//                                isDefending = true;
+//                            }
+//                        }
+//                        if (!isDefending && isEnemyAttackingMember) {
+//                            isCountering = true;
+//                        }
+//                    }
+//                }
+//
+//                boolean isLosing = nation.getRelativeStrength() < 1;
+//
+//                boolean hasEnemy = false;
+//                Set<Integer> enemies = getDb().getCoalition(Coalition.ENEMIES);
+//
+//                boolean correctMMR = PnwUtil.matchesMMR(nation.getMMRBuildingStr(), "555X");
+//
+//                // is assigned counter
+//                // OR
+//                // enemies AND mmr=555X
+//
+//                // TODO
+//                // - funds for only a specific unit
+//                // - limit 24h
+//                // - dont allow more than 5 since last war
+//                // - dont allow more than 1 in 5 days if no units were bought in last X days
+//
+//                /*
+//                Nation has max aircraft and 3% tanks
+//                 */
+//                if (!enemies.isEmpty() && nation.getRelativeStrength() >= 1) {
+//                    String mmr = nation.getMMRBuildingStr();
+//                    // 80% planes + 50%
+//                }
+//                // has enemies, or ordered to counter
+//
+//                /*
+//                    Has enemies and has not received warchest in the past 5 days
+//                    Added to a war room as an attacker
+//                    Has not received warchest in the past 5 days
+//                 */
+//                break;
+//            case RESOURCES:
+//                // disburse up to 5 days?
+//                    MessageChannel channel = getDb().getResourceChannel(nation.getAlliance_id());
+//                    if (channel != null) {
+//                        throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.raws.cmd.toSlashMention() + " in " + channel.getAsMention() + " to request funds from your deposits");
+//                    }
+//                throw new IllegalArgumentException("Please request resources in the resource request channel");
+//        }
+//        for (Grant grant : grants) {
+//            grant.addRequirement(baseRequirements);
+//        }
+//
+//        return grants;
+//    }
 
 //    public double[] getDeposits(Alliance alliance, boolean update) {
 //
@@ -1370,21 +1352,21 @@ public class GuildHandler {
 //    }
 
     public void onAttack(DBNation memberNation, DBAttack root) {
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
             if (root.attack_type == AttackType.VICTORY) {
                 DBNation attacker = Locutus.imp().getNationDB().getNation(root.attacker_nation_id);
-                handleLostWars(attacker, allianceId, root, memberNation);
+                handleLostWars(attacker, aaIds, root, memberNation);
 
                 DBNation defender = Locutus.imp().getNationDB().getNation(root.defender_nation_id);
-                handleWonWars(defender, allianceId, root, memberNation);
+                handleWonWars(defender, aaIds, root, memberNation);
 
             }
         }
     }
 
-    private void handleWonWars(DBNation enemy, Integer allianceId, DBAttack root, DBNation memberNation) {
-        if (enemy == null || enemy.getAlliance_id() == allianceId || enemy.getNation_id() == memberNation.getNation_id()) return;
+    private void handleWonWars(DBNation enemy, Set<Integer> aaIds, DBAttack root, DBNation memberNation) {
+        if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
         GuildMessageChannel channel = db.getOrNull(GuildDB.Key.WON_WAR_CHANNEL);
         if (enemy.getActive_m() > 1440 || enemy.getVm_turns() > 0) return;
 
@@ -1396,8 +1378,8 @@ public class GuildHandler {
         createWarInfoEmbed(title, war, enemy, memberNation, channel);
     }
 
-    private void handleLostWars(DBNation enemy, Integer allianceId, DBAttack root, DBNation memberNation) {
-        if (enemy == null || enemy.getAlliance_id() == allianceId || enemy.getNation_id() == memberNation.getNation_id()) return;
+    private void handleLostWars(DBNation enemy, Set<Integer> aaIds, DBAttack root, DBNation memberNation) {
+        if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
         GuildMessageChannel channel = db.getOrNull(GuildDB.Key.LOST_WAR_CHANNEL);
 
         if (channel == null) return;
@@ -1514,7 +1496,7 @@ public class GuildHandler {
         Role milcomRole = Roles.MILCOM.toRole(guild);
         Role faRole = Roles.FOREIGN_AFFAIRS.toRole(guild);
 
-        Integer aaId = getDb().getOrNull(GuildDB.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = db.getAllianceIds();
         WarCategory warCat = db.getWarChannel();
 
         for (Map.Entry<DBWar, DBWar> entry : wars) {
@@ -1553,7 +1535,7 @@ public class GuildHandler {
                 }
             } else {
                 if (defender != null) {
-                    boolean pingMilcom = defender.getPosition() >= Rank.MEMBER.id || defender.getActive_m() < 2440 || (aaId != null && defender.getAlliance_id() == aaId && defender.getActive_m() < 7200);
+                    boolean pingMilcom = defender.getPosition() >= Rank.MEMBER.id || defender.getActive_m() < 2440 || (aaIds.contains(defender.getAlliance_id()) && defender.getActive_m() < 7200);
                     if (pingMilcom && milcomRole != null) {
                         CounterStat counterStat = war.getCounterStat();
                         if (counterStat != null && counterStat.type == CounterType.IS_COUNTER && !enemies.contains(attacker.getAlliance_id())) {
@@ -1624,7 +1606,7 @@ public class GuildHandler {
                                 DBNation nation = war.getNation(true);
                                 if (nation == null) continue;
                                 User user = nation.getUser();
-                                if ((aaId == null || war.attacker_aa != aaId) && (user == null || guild.getMember(user) == null))
+                                if ((!aaIds.contains(war.attacker_aa)) && (user == null || guild.getMember(user) == null))
                                     continue;
 
                                 String title = "Do Not Raid/" + channel.getIdLong();
@@ -1864,8 +1846,7 @@ public class GuildHandler {
                     return false;
                 }
                 Boolean hideApps = db.getOrNull(GuildDB.Key.HIDE_APPLICANT_WARS);
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (hideApps == null && aaId == null) {
+                if (hideApps == null && !db.hasAlliance()) {
                     hideApps = true;
                 }
 
@@ -1888,15 +1869,17 @@ public class GuildHandler {
             tracked.addAll(db.getCoalition("offshore"));
         }
 
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null && allianceId != 0) {
-            tracked.add(allianceId);
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            for (int id : db.getAllianceIds()) {
+                if (id != 0) tracked.add(id);
+            }
         }
 
-        if (offensive && (allianceId == null || db.getOrNull(GuildDB.Key.SHOW_ALLY_OFFENSIVE_WARS) == Boolean.TRUE)) {
+        if (offensive && (aaIds.isEmpty() || db.getOrNull(GuildDB.Key.SHOW_ALLY_OFFENSIVE_WARS) == Boolean.TRUE)) {
             tracked.addAll(db.getCoalition(Coalition.ALLIES));
         }
-        if (!offensive && (allianceId == null || db.getOrNull(GuildDB.Key.SHOW_ALLY_DEFENSIVE_WARS) == Boolean.TRUE)) {
+        if (!offensive && (aaIds.isEmpty() || db.getOrNull(GuildDB.Key.SHOW_ALLY_DEFENSIVE_WARS) == Boolean.TRUE)) {
             tracked.addAll(db.getCoalition(Coalition.ALLIES));
         }
 
@@ -1920,48 +1903,6 @@ public class GuildHandler {
         return allowed;
     }
 
-    public List<BankDB.TaxDeposit> updateTaxesLegacy(Long latestDate) {
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(aaId);
-        int latestId = 1;
-        if (latestDate == null) {
-            latestDate = 0L;
-        }
-
-        Auth auth = getDb().getAuth(AlliancePermission.TAX_BRACKETS);
-        if (auth == null) throw new IllegalArgumentException("Not auth found");
-
-
-        long now = System.currentTimeMillis();
-        if (!existing.isEmpty()) {
-
-            long date = existing.get(existing.size() - 1).date;
-            if (date < now) {
-                latestDate = Math.max(latestDate, date);
-            }
-            latestId = existing.get(existing.size() - 1).index;
-        }
-
-        List<BankDB.TaxDeposit> taxes = new GetTaxesTask(auth, latestDate).call();
-
-        synchronized (Locutus.imp().getBankDB()) {
-            long oldestFetched = Long.MAX_VALUE;
-            for (BankDB.TaxDeposit tax : taxes) {
-                tax.index = ++latestId;
-                oldestFetched = Math.min(oldestFetched, tax.date);
-            }
-            if (oldestFetched < latestDate - TimeUnit.DAYS.toMillis(7)) {
-                throw new IllegalArgumentException("Invalid fetch date: " + oldestFetched);
-            }
-
-            if (!taxes.isEmpty()) {
-                Locutus.imp().getBankDB().deleteTaxDeposits(auth.getAllianceId(), oldestFetched);
-                Locutus.imp().getBankDB().addTaxDeposits(taxes);
-            }
-        }
-        return taxes;
-    }
-
     /**
      * @param nation
      * @param type
@@ -1969,7 +1910,7 @@ public class GuildHandler {
      * @param overrideUnsafe - Allow some unsafe overrides (not in alliance, inactive, gray, applicant, all timeframe restrictions etc.)
      * @return
      */
-    public Set<Grant> getEligableGrants(DBNation nation, Grant.Type type, boolean overrideSafe, boolean overrideUnsafe) {
+    public Set<Grant> getEligableGrants(DBNation nation, DepositType type, boolean overrideSafe, boolean overrideUnsafe) {
         return new HashSet<>();
         // TODO add Grant#validateGrants() - which updates transactions and cities and city count
     }
@@ -2262,20 +2203,23 @@ public class GuildHandler {
     }
 
     public GuildDB getOffshoreDB() {
-        DBAlliance alliance = getDb().getAlliance();
+        Set<Integer> aaIds = getDb().getAllianceIds();
 
         Set<Integer> offshores = db.getCoalition(Coalition.OFFSHORE);
-        for (Integer aaId : offshores) {
-            DBAlliance aa = DBAlliance.get(aaId);
+        for (Integer offshoreId : offshores) {
+            DBAlliance aa = DBAlliance.get(offshoreId);
             if (aa == null || !aa.exists()) continue;
 
-            GuildDB otherDb = Locutus.imp().getGuildDBByAA(aaId);
+            GuildDB otherDb = Locutus.imp().getGuildDBByAA(offshoreId);
             if (otherDb == null) continue;
 
             Set<Long> offshoring = otherDb.getCoalitionRaw(Coalition.OFFSHORING);
-            if ((alliance != null && (offshoring.contains((long) alliance.getAlliance_id())))
-                    || offshoring.contains(getGuild().getIdLong())) {
-                return otherDb;
+            if (aaIds.isEmpty()) {
+                if (offshoring.contains(getDb().getIdLong())) return otherDb;
+            } else {
+                for (int aaId : aaIds) {
+                    if (offshoring.contains((long) aaId)) return otherDb;
+                }
             }
         }
         return null;
@@ -2351,7 +2295,7 @@ public class GuildHandler {
         Set<AuditType> disabledAudits = db.getOrNull(GuildDB.Key.DISABLED_MEMBER_AUDITS);
         if (disabledAudits != null && disabledAudits.contains(AuditType.INACTIVE)) return;
 
-        DBAlliance alliance = db.getAlliance();
+        AllianceList alliance = db.getAllianceList();
         if (alliance == null) return;
         long turnStart = TimeUtil.getTurn() - 12 * 3;
         long timeCheckStart = TimeUtil.getTimeFromTurn(turnStart - 1);
@@ -2385,10 +2329,10 @@ public class GuildHandler {
             GuildMessageChannel output = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT, false);
             if (output == null) return;
 
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
-            if (aaId == null) return;
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (aaIds.isEmpty()) return;
 
-            Set<DBNation> members = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
+            Set<DBNation> members = Locutus.imp().getNationDB().getNations(aaIds);
             members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
             members.removeIf(f -> f.getActive_m() > 2880);
             members.removeIf(f -> f.getVm_turns() > 0);
@@ -2396,21 +2340,28 @@ public class GuildHandler {
 
             if (members.isEmpty()) return;
             if (members.size() < 10 && !db.isWhitelisted()) {
-                Role iaRole = Roles.INTERNAL_AFFAIRS.toRole(db);
-                if (iaRole == null || guild.getMembersWithRoles(iaRole).isEmpty()) {
+                boolean allowed = false;
+                Map<Long, Role> roleMap = Roles.INTERNAL_AFFAIRS.toRoleMap(db);
+                Set<Member> membersWithRoles = new HashSet<>();
+                if (!roleMap.isEmpty()) {
+                    Set<Role> iaRoles = new HashSet<>(roleMap.values());
+                    for (Role role : iaRoles) {
+                        membersWithRoles.addAll(guild.getMembersWithRoles(role));
+                    }
+                    for (Member member : membersWithRoles) {
+                        if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
+                            allowed = true;
+                        }
+                    }
+                }
+                if (membersWithRoles.isEmpty()) {
                     try {
-                        RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null) + " and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
+                        RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null, null) + " and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
                         db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
                     return;
-                }
-                boolean allowed = false;
-                for (Member member : guild.getMembersWithRoles(iaRole)) {
-                    if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
-                        allowed = true;
-                    }
                 }
                 if (!allowed) {
                     try {
@@ -2471,8 +2422,8 @@ public class GuildHandler {
     public void onRefer(DBNation nation) {
         if (nation.getVm_turns() > 0 || nation.getActive_m() > 2880 || nation.isGray() || nation.isBeige()) return;
 
-        Integer aaId = getDb().getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null && nation != null && nation.getAlliance_id() == aaId && nation.getPosition() > Rank.APPLICANT.id) {
+        Set<Integer> aaIds = getDb().getAllianceIds();
+        if (!aaIds.isEmpty() && nation != null && aaIds.contains(nation.getAlliance_id()) && nation.getPosition() > Rank.APPLICANT.id) {
             Map<ResourceType, Double> amtMap = getDb().getOrNull(GuildDB.Key.REWARD_REFERRAL);
             if (amtMap == null) return;
             double[] amt = PnwUtil.resourcesToArray(amtMap);
@@ -2513,7 +2464,7 @@ public class GuildHandler {
     public void onBlockade(NationBlockadedEvent event) {
         DBNation nation = event.getBlockadedNation();
         GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.BLOCKADED_ALERTS);
-        Role role = Roles.BLOCKADED_ALERTS.toRole(guild);
+        Role role = Roles.BLOCKADED_ALERT.toRole(guild);
         blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, "blockaded");
     }
 
@@ -2562,8 +2513,8 @@ public class GuildHandler {
             title = "Unblockaded";
         }
         GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.UNBLOCKADED_ALERTS);
-        Role role = blockaded ? null : Roles.UNBLOCKADED_ALERTS.toRole(guild);
-        Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERTS.toRole(guild);
+        Role role = blockaded ? null : Roles.UNBLOCKADED_ALERT.toRole(guild);
+        Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERT.toRole(guild);
         blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, title);
 
         processEscrow(nation);
@@ -2574,7 +2525,7 @@ public class GuildHandler {
     }
 
     public void procesRewards() {
-        if (!db.isAlliance()) return;
+        if (!db.hasAlliance()) return;
         Map<NationFilterString, double[]> rewards = getDb().getOrNull(GuildDB.Key.MEMBER_REWARDS);
         if (rewards == null || rewards.isEmpty()) return;
         MessageChannel rssChannel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);

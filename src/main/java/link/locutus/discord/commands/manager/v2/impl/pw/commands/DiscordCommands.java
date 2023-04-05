@@ -186,7 +186,7 @@ public class DiscordCommands {
             createdChannel = updateChannel(RateLimitUtil.complete(category.createTextChannel(channelName)), member, roles);
             if (copypasta != null && !copypasta.isEmpty()) {
                 String key = "copypasta." + copypasta;
-                String copyPasta = db.getInfo(key);
+                String copyPasta = db.getInfo(key, true);
                 if (copyPasta != null) {
                     RateLimitUtil.queue(createdChannel.sendMessage(copyPasta));
                 }

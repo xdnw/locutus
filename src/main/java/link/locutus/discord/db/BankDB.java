@@ -33,6 +33,7 @@ import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.Condition;
+import org.jooq.GroupField;
 import org.jooq.Index;
 import org.jooq.InsertSetMoreStep;
 import org.jooq.Loader;
@@ -700,6 +701,25 @@ public class BankDB extends DBMainV3 {
         return getTransactions(TRANSACTIONS_2.SENDER_ID.eq((long) alliance_id).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)));
     }
 
+    public Set<Integer> getSenderNationIdFromAllianceReceivers(Set<Integer> allianceIds) {
+        if (allianceIds.size() == 0) throw new IllegalArgumentException("allianceIds must not be empty");
+        Condition condition;
+        if (allianceIds.size() == 1) {
+            int allianceId = allianceIds.iterator().next();
+            condition = TRANSACTIONS_2.SENDER_ID.eq((long) allianceId).and(TRANSACTIONS_2.SENDER_TYPE.eq(2));
+        } else {
+            condition = TRANSACTIONS_2.SENDER_ID.in(allianceIds).and(TRANSACTIONS_2.SENDER_TYPE.eq(2));
+        }
+        GroupField groupBy = TRANSACTIONS_2.RECEIVER_ID;
+        Result<Record> rs = query(TRANSACTIONS_2, condition, null, null, groupBy);
+        Set<Integer> set = new HashSet<>();
+        for (Record r : rs) {
+            Transaction2 tx = Transaction2.fromTX2Table((Transactions_2Record) r);
+            if (tx.receiver_type == 1)
+                set.add((int) tx.receiver_id);
+        }
+        return set;
+    }
     public List<Transaction2> getTransactionsByAllianceReceiver(int alliance_id) {
         return getTransactions(TRANSACTIONS_2.RECEIVER_ID.eq((long) alliance_id).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2)));
     }

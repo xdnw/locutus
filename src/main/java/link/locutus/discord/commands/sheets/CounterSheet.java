@@ -71,17 +71,19 @@ public class CounterSheet extends Command {
         Set<Integer> allies = db.getAllies();
         Set<Integer> protectorates = new HashSet<>();
 
-        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != null) {
-            protectorates = Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.PROTECTORATE).keySet();
-            if (includeProtectorates) {
-                allies.addAll(protectorates);
-            }
-            if (includeMDP) {
-                allies.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP).keySet());
-            }
-            if (includeODP) {
-                allies.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.ODP, TreatyType.ODOAP).keySet());
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) {
+            for (int aaId : aaIds) {
+                protectorates = Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.PROTECTORATE).keySet();
+                if (includeProtectorates) {
+                    allies.addAll(protectorates);
+                }
+                if (includeMDP) {
+                    allies.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.MDP, TreatyType.MDOAP).keySet());
+                }
+                if (includeODP) {
+                    allies.addAll(Locutus.imp().getNationDB().getTreaties(aaId, TreatyType.ODP, TreatyType.ODOAP).keySet());
+                }
             }
         }
 
@@ -214,7 +216,7 @@ public class CounterSheet extends Command {
 
                 active_m = Math.min(active_m, defender.getActive_m());
 
-                if (Integer.valueOf(war.defender_aa).equals(aaId)) {
+                if (aaIds.contains(Integer.valueOf(war.defender_aa))) {
                     action = Math.min(action, 0);
                 } else if (protectorates.contains(war.defender_aa)) {
                     action = Math.min(action, 1);
