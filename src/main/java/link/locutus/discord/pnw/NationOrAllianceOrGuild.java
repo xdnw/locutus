@@ -78,7 +78,8 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
             sender_id = db.getGuild().getIdLong();
             sender_type = 3;
         } else if (isAlliance()) {
-            throw new IllegalArgumentException("Alliance cannot be a sender");
+            sender_id = getIdLong();
+            sender_type = 2;
         } else if (isNation()) {
             sender_id = getId();
             sender_type = 1;
@@ -105,7 +106,7 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         else if (isGuild()) {
             GuildDB db = asGuild();
             AllianceList aaList = db.getAllianceList();
-            if (aaList != null) {
+            if (aaList != null && !aaList.isEmpty()) {
                 nations.addAll(aaList.getNations(true, 0, true));
             } else {
                 Guild guild = db.getGuild();

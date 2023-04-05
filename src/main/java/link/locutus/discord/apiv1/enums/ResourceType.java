@@ -70,7 +70,7 @@ public enum ResourceType {
 
     public static boolean isEmpty(double[] resources) {
         for (double i : resources) {
-            if (Math.abs(i) > 0.01) return false;
+            if (Math.round(i * 100) != 0) return false;
         }
         return true;
     }

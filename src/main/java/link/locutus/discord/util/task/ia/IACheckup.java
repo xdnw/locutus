@@ -97,9 +97,10 @@ public class IACheckup {
     private final AllianceList alliance;
 
     public IACheckup(GuildDB db, AllianceList alliance, boolean useCache) throws IOException {
-        if (db == null || alliance == null) throw new IllegalStateException("No database found");
+        if (db == null) throw new IllegalStateException("No database found");
+        if (alliance == null || alliance.isEmpty()) throw new IllegalStateException("No alliance found");
         this.db = db;
-        this.alliance = db.getAllianceList();
+        this.alliance = alliance;
         memberStockpile = new HashMap<>();
         if (!useCache) {
             memberStockpile = alliance.getMemberStockpile();
@@ -321,7 +322,6 @@ public class IACheckup {
     private Map<Integer, Alliance> alliances = new HashMap<>();
 
     private Map.Entry<Object, String> checkup(AuditType type, DBNation nation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, Map<ResourceType, Double> stockpile, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
-        System.out.println("remove:|| running checkup " + type + " | " + nation.getNation());
         boolean updateNation = individual && !fast;
 
         switch (type) {

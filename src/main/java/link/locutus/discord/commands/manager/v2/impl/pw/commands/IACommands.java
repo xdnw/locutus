@@ -396,6 +396,12 @@ public class IACommands {
         buf.putInt(mentor.getNation_id());
         buf.putLong(System.currentTimeMillis());
 
+        // TOOD
+        // add mentor to channel (remove any other mentor)
+        // add mentor role to channel
+        // Move channel to mentor category
+        // Remove interviewer role (if mentor role is set)
+
         db.setMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR, buf.array());
         return "Set " + mentee.getNation() + "'s mentor to " + mentor.getNation();
     }

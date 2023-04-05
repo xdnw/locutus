@@ -255,7 +255,6 @@ public class WarUpdateProcessor {
                 if (!toUpdate.isEmpty()) {
                     if (wars.size() > 25 && RateLimitUtil.getCurrentUsed() > 55) {
                         while (RateLimitUtil.getCurrentUsed(true) > 55) {
-                            System.out.println("Remove:|| Wait handle war rooms");
                             try {
                                 Thread.sleep(1000);
                             } catch (InterruptedException e) {
@@ -264,13 +263,11 @@ public class WarUpdateProcessor {
                             }
                         }
                     }
-                    System.out.println("Remove:|| War room update");
                     for (WarCategory warCat : toUpdate) {
                         warCat.update(pair.getKey(), pair.getValue());
                     }
                 }
             }
-            System.out.println("Remove:|| Done handle war rooms");
         } catch (Throwable e) {
             e.printStackTrace();
         }

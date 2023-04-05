@@ -397,7 +397,7 @@ public class WebPrimitiveBinding extends BindingHelper {
         List<Guild> guilds = user.getMutualGuilds();
 
         AllianceList aaList = includeBrackets && db == null ? null : db.getAllianceList();
-        Map<Integer, TaxBracket> taxIds = aaList == null ? null : aaList.getTaxBrackets(true);
+        Map<Integer, TaxBracket> taxIds = aaList == null || aaList.isEmpty() ? null : aaList.getTaxBrackets(true);
 
         List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(alliances.size() + nations.size() + guilds.size());
         for (Guild guild : guilds) {

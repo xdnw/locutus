@@ -31,7 +31,7 @@ public class StockpileSheet extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         GuildDB db = Locutus.imp().getGuildDB(server);
-        return db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null && (Roles.ECON.has(user, server) || Roles.ECON_STAFF.has(user, server));
+        return db.isValidAlliance() && (Roles.ECON.has(user, server) || Roles.ECON_STAFF.has(user, server));
     }
 
     @Override
@@ -44,7 +44,7 @@ public class StockpileSheet extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         AllianceList alliance = db.getAllianceList();
-        if (alliance == null) return "Pleas set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "";
+        if (alliance == null || alliance.isEmpty()) return "Pleas set " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "";
 
         Map<DBNation, Map<ResourceType, Double>> stockpile = alliance.getMemberStockpile();
 

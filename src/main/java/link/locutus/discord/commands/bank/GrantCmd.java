@@ -5,7 +5,6 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -54,9 +53,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class GrantCmd extends Command {
-    private final BankWith withdrawCommand;
+    private final TransferCommand withdrawCommand;
 
-    public GrantCmd(BankWith withdrawCommand) {
+    public GrantCmd(TransferCommand withdrawCommand) {
         super("grant", "loan", CommandCategory.ECON);
         this.withdrawCommand = withdrawCommand;
     }

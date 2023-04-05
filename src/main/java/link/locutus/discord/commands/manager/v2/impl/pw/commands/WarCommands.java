@@ -3476,7 +3476,7 @@ public class WarCommands {
             , @Switch("p") boolean pingMembers, @Switch("a") boolean skipAddMembers, @Switch("m") boolean sendMail) {
         if (attackers == null) {
             AllianceList alliance = db.getAllianceList();
-            if (alliance != null) {
+            if (alliance != null && !alliance.isEmpty()) {
                 attackers = new HashSet<>(alliance.getNations(true, 2440, true));
             } else {
                 throw new IllegalArgumentException("This guild is not in an alliance, please provide the nations to counter with");

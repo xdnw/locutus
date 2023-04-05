@@ -42,7 +42,6 @@ public class AllianceList {
     }
 
     public <T> AllianceList(Set<Integer> ids) {
-        if (ids.isEmpty()) throw new IllegalArgumentException("Empty alliance list");
         this.ids = ids;
     }
 

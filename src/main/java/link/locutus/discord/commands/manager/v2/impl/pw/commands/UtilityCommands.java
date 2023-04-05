@@ -629,8 +629,6 @@ public class UtilityCommands {
             }
         }
 
-        System.out.println(":||Remove bank diff " + totalBankDiff + "ms");
-
         {
             StringBuilder response = new StringBuilder();
             if (!offshoresWar.isEmpty()) {
@@ -754,7 +752,6 @@ public class UtilityCommands {
                              @Switch("s") Set<WarStatus> statuses) {
         WarParser parser = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
         Map<Integer, DBWar> wars = parser.getWars();
-        System.out.println("Remove:||Wars " + wars.size());
 
         SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars.values()).group(new BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>() {
             @Override

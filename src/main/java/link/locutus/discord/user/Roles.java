@@ -234,7 +234,7 @@ public enum Roles {
 
     public AllianceList getAllianceList(User user, GuildDB db) {
         AllianceList list = db.getAllianceList();
-        if (list == null) return null;
+        if (list == null || list.isEmpty()) return new AllianceList();
         return list.subList(getAllowedAccounts(user, db).stream()
                 .map(Long::intValue)
                 .collect(Collectors.toSet()));

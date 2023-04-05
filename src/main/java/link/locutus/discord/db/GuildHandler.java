@@ -2296,7 +2296,7 @@ public class GuildHandler {
         if (disabledAudits != null && disabledAudits.contains(AuditType.INACTIVE)) return;
 
         AllianceList alliance = db.getAllianceList();
-        if (alliance == null) return;
+        if (alliance == null || alliance.isEmpty()) return;
         long turnStart = TimeUtil.getTurn() - 12 * 3;
         long timeCheckStart = TimeUtil.getTimeFromTurn(turnStart - 1);
         long timeCheckEnd = TimeUtil.getTimeFromTurn(turnStart);
@@ -2373,7 +2373,6 @@ public class GuildHandler {
                     return;
                 }
             }
-            System.out.println("remove:||Send mail 3" + getGuild());
 
             if (!GuildDB.Key.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
                 try {
@@ -2384,14 +2383,12 @@ public class GuildHandler {
                 }
                 return;
             }
-            System.out.println("remove:||Send mail 4" + getGuild());
 
             Long delay = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_DELAY);
             Runnable task = new CaughtRunnable() {
                 @Override
                 public void runUnsafe() {
                     try {
-                        System.out.println("remove:||Send mail 5" + getGuild());
                         JsonObject response = db.sendRecruitMessage(current);
                         RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true);
                     } catch (Throwable e) {

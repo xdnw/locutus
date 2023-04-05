@@ -55,8 +55,7 @@ public class CityUpdateProcessor {
         DBNation nation = DBNation.byId(event.getNationId());
 
         if (city.infra % 50 != 0 && nation != null) {
-            System.out.println(":||remove infra buy: " + event.getPrevious().infra + " -> " + city.infra);
-
+            System.out.println(":||TODO: Fix infra buy audit: " + event.getPrevious().infra + " -> " + city.infra);
             if (true) return;
             AlertUtil.auditAlert(nation, AuditType.UNEVEN_INFRA, new Function<GuildDB, String>() {
                 @Override

@@ -127,26 +127,20 @@ public class OffshoreInstance {
     private double[] lastFunds2 = null;
 
     public synchronized boolean sync(Long latest, boolean checkLast) {
-        System.out.println(":||Remove stock1");
         double[] stockpile = null;
         PoliticsAndWarV3 api = null;
         if (!Settings.USE_V2) {
             try {
                 api = getAlliance().getApi(AlliancePermission.VIEW_BANK);
-                System.out.println(":||Remove stock2");
                 stockpile = api.getAllianceStockpile(allianceId);
-                System.out.println(":||Remove stock3");
             } catch (HttpServerErrorException.InternalServerError | HttpServerErrorException.ServiceUnavailable |
                      HttpServerErrorException.GatewayTimeout ignore) {
             }
         }
         if (stockpile == null) {
             try {
-                System.out.println(":||Remove stock4");
                 AllianceBankContainer funds = getAlliance().getApiV2().getBank(allianceId).getAllianceBanks().get(0);
-                System.out.println(":||Remove stock5");
                 stockpile = PnwUtil.resourcesToArray(PnwUtil.adapt(funds));
-                System.out.println(":||Remove stock6");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -170,14 +164,12 @@ public class OffshoreInstance {
 
         int finalBankMetaI = bankMetaI;
         if (!Settings.USE_V2) {
-            System.out.println(":||Remove stock7");
             List<Bankrec> bankRecs = api.fetchAllianceBankRecs(allianceId, f -> {
                 f.or_id(List.of(allianceId));
                 f.rtype(List.of(2));
                 f.stype(List.of(2));
                 if (finalBankMetaI > 0) f.min_id(finalBankMetaI);
             });
-            System.out.println(":||Remove stock8 " + finalBankMetaI);
 
             if (bankRecs.isEmpty()) {
                 if (ResourceType.isEmpty(stockpile)) {
@@ -210,8 +202,6 @@ public class OffshoreInstance {
                 }
             }
         }
-
-        System.out.println(":||Remove stock14");
 
         return false;
     }
@@ -312,25 +302,22 @@ public class OffshoreInstance {
         }
         List<Transaction2> toProcess = getTransactionsGuild(guildId, force);
 
-        return PnwUtil.resourcesToMap(addTransfers(toProcess, guildId, 3));
+        Map<ResourceType, Double> result = PnwUtil.resourcesToMap(addTransfers(toProcess, guildId, 3));
+        return result;
     }
 
     public synchronized List<Transaction2> getTransactionsAA(int allianceId, boolean force) {
         return getTransactionsAA(Collections.singleton(allianceId), force);
     }
     public synchronized List<Transaction2> getTransactionsAA(Set<Integer> allianceId, boolean force) {
-        System.out.println(":||Remove 3.321");
         if (force || outOfSync.get()) sync();
-        System.out.println(":||Remove 3.322");
 
         GuildDB db = getGuildDB();
         List<Transaction2> transactions = new ArrayList<>();
         List<Transaction2> offset = new ArrayList<>();
         for (int id : allianceId) {
             transactions.addAll(Locutus.imp().getBankDB().getBankTransactions(id, 2));
-            System.out.println(":||Remove 3.323");
             offset.addAll(db.getDepositOffsetTransactions(-id));
-            System.out.println(":||Remove 3.324");
         }
 
 
@@ -365,8 +352,6 @@ public class OffshoreInstance {
             toProcess.add(transfer);
         }
 
-        System.out.println(":||Remove 3.325");
-
         return toProcess;
     }
 
@@ -374,18 +359,13 @@ public class OffshoreInstance {
         return getDepositsAA(Collections.singleton(allianceId), force);
     }
     public synchronized Map<ResourceType, Double> getDepositsAA(Set<Integer> allianceIds, boolean force) {
-        System.out.println(":||Remove 3.31");
         allianceIds = new LinkedHashSet<>(allianceIds);
         Set<Integer> allowed = getGuildDB().getCoalition(Coalition.OFFSHORING);
         allianceIds.removeIf(f -> !allowed.contains(f));
         if (allianceIds.isEmpty()) return new HashMap<>();
-        System.out.println(":||Remove 3.32");
         List<Transaction2> toProcess = getTransactionsAA(allianceIds, force);
-        System.out.println(":||Remove 3.33");
         Set<Long> allianceIdsLong = allianceIds.stream().map(Integer::longValue).collect(Collectors.toSet());
-        System.out.println(":||Remove 3.34");
         double[] sum = addTransfers(toProcess, allianceIdsLong, 2);
-        System.out.println(":||Remove 3.35");
         return PnwUtil.resourcesToMap(sum);
     }
 
@@ -899,7 +879,6 @@ public class OffshoreInstance {
         for (ResourceType type : ResourceType.values) if (amount[type.ordinal()] < 0) return Map.entry(TransferStatus.NOTHING_WITHDRAWN, "You cannot withdraw negative " + type);
         if (!hasAmount) return Map.entry(TransferStatus.NOTHING_WITHDRAWN, "You did not withdraw anything.");
 
-
         if (banker != null) {
             boolean isAdmin = false;
             User user = banker.getUser();
@@ -956,9 +935,7 @@ public class OffshoreInstance {
 
         long start = System.currentTimeMillis();
 
-        System.out.println(":||Remove 0" + ((-start) + (start = System.currentTimeMillis())) + "ms");
         synchronized (BANK_LOCK) {
-            System.out.println(":||Remove 1" + ((-start) + (start = System.currentTimeMillis())) + "ms");
             boolean isZero = true;
             for (double i : amount) if (i != 0) isZero = false;
             if (isZero) throw new IllegalArgumentException("No funds need to be sent");
@@ -969,56 +946,42 @@ public class OffshoreInstance {
             GuildDB offshoreDB = getGuildDB();
             if (offshoreDB == null) throw new IllegalArgumentException("No guild is registered with this offshore");
 
-            System.out.println(":||Remove 2" + ((-start) + (start = System.currentTimeMillis())) + "ms");
-
             if (isDisabled(senderDB.getGuild().getIdLong())) {
                 throw new IllegalArgumentException("There was an error transferring funds (failed to fetch bank stockpile). Please have an admin use " + CM.offshore.unlockTransfers.cmd.toSlashMention() + " in the offshore server (" + getGuildDB().getIdLong() + ")");
             }
-
-
-            System.out.println(":||Remove 3" + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
             boolean hasAdmin = false;
             User bankerUser = banker != null ? banker.getUser() : null;
             if (bankerUser != null) hasAdmin = Roles.ECON.has(bankerUser, offshoreDB.getGuild());
 
-            System.out.println(":||Remove 3.1" + ((-start) + (start = System.currentTimeMillis())) + "ms");
-
             // Ensure sufficient deposits
-            boolean valid = senderDB == offshoreDB;
             Map<NationOrAllianceOrGuild, double[]> depositsByAA = getDepositsByAA(senderDB, allowedAlliances, true);
             double[] deposits = ResourceType.getBuffer();
             double[] finalDeposits = deposits;
             depositsByAA.forEach((a, b) -> ResourceType.add(finalDeposits, b));
 
-            System.out.println(":||Remove 4" + ((-start) + (start = System.currentTimeMillis())) + "ms");
-
-            if (!valid) {
+            if (senderDB != offshoreDB) {
                 deposits = PnwUtil.normalize(deposits); // normalize
                 for (int i = 0; i < amount.length; i++) {
-                    if (amount[i] != 0 && deposits[i] + 0.01 < amount[i] && !hasAdmin)
+                    if (Math.round(amount[i] * 100) != 0 && Math.round(deposits[i] * 100) < Math.round(amount[i] * 100))
                         throw new IllegalArgumentException("You do not have " + MathMan.format(amount[i]) + "x" + ResourceType.values[i] + ", only " + MathMan.format(deposits[i]) + " (normalized)");
-                    if (!Double.isFinite(amount[i]) || amount[i] < 0)
+                    if (!Double.isFinite(amount[i]) || Math.round(amount[i] * 100) < 0)
                         throw new IllegalArgumentException(amount[i] + " is not a valid positive amount");
                 }
                 if (deposits[ResourceType.CREDITS.ordinal()] != 0)
                     throw new IllegalArgumentException("You cannot transfer credits");
             }
 
-            System.out.println(":||Remove 5" + ((-start) + (start = System.currentTimeMillis())) + "ms");
-
             disabledGuilds.put(senderDB.getGuild().getIdLong(), true);
 
             Map<ResourceType, Double> transfer = PnwUtil.resourcesToMap(amount);
 
             long tx_datetime = System.currentTimeMillis();
-            String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
-
-            System.out.println(":||Remove 6" + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
             Map<NationOrAllianceOrGuild, double[]> addBalanceResult = null;
+            String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
             try {
-                if (!valid) {
+                if (senderDB != offshoreDB) {
                     addBalanceResult = offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, -1, banker != null ? banker.getNation_id() : 0, offshoreNote);
 //                offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
                 }
@@ -1028,14 +991,21 @@ public class OffshoreInstance {
                 throw e;
             }
 
-            System.out.println(":||Remove 7" + ((-start) + (start = System.currentTimeMillis())) + "ms");
-
             Map.Entry<OffshoreInstance.TransferStatus, String> result = transferSafe(receiver, transfer, note);
 
-            System.out.println(":||Remove 8" + ((-start) + (start = System.currentTimeMillis())) + "ms");
-
             switch (result.getKey()) {
+                case ALLIANCE_ACCESS:
+                case APPLICANT:
+                case INACTIVE:
+                case BEIGE:
+                case GRAY:
+                case NOT_MEMBER:
+                case INVALID_TOKEN:
+                case GRANT_REQUIREMENT:
+                case AUTHORIZATION:
+                case CONFIRMATION:
                 default:
+
                 case OTHER:
                     log(senderDB, banker, receiver, "Unknown result: " + result + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
                 case SUCCESS:
@@ -1050,13 +1020,12 @@ public class OffshoreInstance {
                         result = Map.entry(result.getKey(), resultMsg.toString());
                     }
 
-                    System.out.println(":||Remove 8.1" + ((-start) + (start = System.currentTimeMillis())) + "ms");
-
-                    if ((result.getKey() == OffshoreInstance.TransferStatus.SUCCESS || result.getKey() == OffshoreInstance.TransferStatus.ALLIANCE_BANK)) {
+                    boolean valid = senderDB == offshoreDB;
+                    if (!valid && ((result.getKey() == OffshoreInstance.TransferStatus.SUCCESS || result.getKey() == OffshoreInstance.TransferStatus.ALLIANCE_BANK))) {
                         double[] newDeposits = getDeposits(senderDB, true);
                         for (ResourceType type : ResourceType.values) {
                             double amt = deposits[type.ordinal()];
-                            if (amt > newDeposits[type.ordinal()]) valid = true;
+                            if (Math.round(amt * 100) > Math.round(newDeposits[type.ordinal()]) * 100) valid = true;
                         }
                         if (!valid) {
                             sync(null, false);
@@ -1070,8 +1039,6 @@ public class OffshoreInstance {
                         valid = false;
                     }
 
-                    System.out.println(":||Remove 8.2" + ((-start) + (start = System.currentTimeMillis())) + "ms");
-
                     if (valid) {
                         disabledGuilds.remove(senderDB.getIdLong());
                     } else {
@@ -1084,10 +1051,8 @@ public class OffshoreInstance {
                         }
                         body.append("\n<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
 
-                        log(senderDB, banker, receiver, "Reimburse: " + body.toString());
+                        log(senderDB, banker, receiver, title + ": " + body.toString());
                     }
-
-                    System.out.println(":||Remove 8.3" + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
                     break;
                 }
@@ -1101,7 +1066,7 @@ public class OffshoreInstance {
                 case NOTHING_WITHDRAWN:
                 case INVALID_API_KEY:
                     disabledGuilds.remove(senderDB.getIdLong());
-                    if (!valid) {
+                    if (senderDB != offshoreDB) {
                         if (addBalanceResult != null) {
                             offshoreDB.addBalanceMulti(addBalanceResult, tx_datetime, banker != null ? banker.getNation_id() : 0, offshoreNote);
                         }
@@ -1109,11 +1074,10 @@ public class OffshoreInstance {
 //                    double[] negative = ResourceType.negative(amount.clone());
 //                    offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, negative);
                     break;
+
 //                default:
 //                    throw new IllegalStateException("Unknown result: " + result);
             }
-
-            System.out.println(":||Remove 9" + ((-start) + (start = System.currentTimeMillis())) + "ms");
 
             return result;
         }
@@ -1318,8 +1282,6 @@ public class OffshoreInstance {
 
         Set<Integer> ids = guildDb.getAllianceIds();
 
-        System.out.println(":||Remove 3.2");
-
         if (!ids.isEmpty()) {
             boolean allowedAny = false;
             for (int id : ids) {
@@ -1327,9 +1289,7 @@ public class OffshoreInstance {
                     continue;
                 }
                 allowedAny = true;
-                System.out.println(":||Remove 3.3");
                 double[] rss = PnwUtil.resourcesToArray(getDepositsAA(ids, update));
-                System.out.println(":||Remove 3.4");
                 update = false;
                 result.put(DBAlliance.getOrCreate(id), rss);
             }
