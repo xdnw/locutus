@@ -1632,9 +1632,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             for (int i = 0; i < amountLeft.length; i++) {
                 double subDepositsI = subDeposits[i];
                 double amountI = amountLeft[i];
-                if (subDepositsI > 0 && amountI > 0) {
+                if (Math.round(subDepositsI * 100) > 0 && Math.round(amountI * 100) > 0) {
                     double subtract = Math.min(subDepositsI, amountI);
-                    if (subtract < 0.01) continue;
+                    if (Math.round(subtract * 100) == 0) continue;
                     if (toSubtract == null) toSubtract = ResourceType.getBuffer();
                     toSubtract[i] = subtract;
                     amountLeft[i] -= subtract;
@@ -1649,9 +1649,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         amountSigned[i] *= sign;
                     }
                 }
-
+                System.out.println("Add balance to: " + account.getQualifiedName() + " " + PnwUtil.resourcesToString(amountSigned) + "");
                 addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amountSigned);
             }
+        }
+        if (!ResourceType.isEmpty(amountLeft)) {
+            throw new IllegalArgumentException("Could not add balance to all accounts. Amount left: " + PnwUtil.resourcesToString(amountLeft));
         }
         return ammountEach;
     }
@@ -2226,7 +2229,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public boolean isValidAlliance() {
         Set<Integer> aaIds = getOrNull(Key.ALLIANCE_ID);
-        if (aaIds.isEmpty()) return false;
+        if (aaIds == null || aaIds.isEmpty()) return false;
         for (int aaId : aaIds) {
             if (DBAlliance.get(aaId) != null) return true;
         }
@@ -3711,6 +3714,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         BEIGE_ALERT_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
             @Override
+
             public String validate(GuildDB db, String value) {
                 return Key.validateChannel(db, value);
             }
@@ -3875,7 +3879,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 Map<NationFilterString, Integer> parsed = (Map<NationFilterString, Integer>) parse(db, value);
 
                 AllianceList alliance = db.getAllianceList();
-                if (alliance == null) throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
+                if (alliance == null || alliance.isEmpty()) throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
 
                 Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
                 if (brackets.isEmpty()) throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
@@ -4925,7 +4929,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         "" +
                         "```";
             }
-        }
+        },
 
 //        REWARD_ECON(false, Key.GRANT_REQUEST_CHANNEL, CommandCategory.ECON) {
 //            @Override

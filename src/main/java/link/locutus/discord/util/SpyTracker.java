@@ -526,7 +526,6 @@ public class SpyTracker {
             }
         }
         if (activitiesToFlag.isEmpty()) return;
-        System.out.println(":||remove SpyTracker Checking active");
 
         String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
         String html = FileUtil.readStringFromURL(url);

@@ -1740,12 +1740,10 @@ public class DBNation implements NationOrAlliance {
 
         DBAlliance alliance = getAlliance();
         if (myKey != null) {
-            System.out.println("remove:||Create with my key");
             pool  = ApiKeyPool.create(myKey);
         } else if (getPositionEnum().id <= Rank.APPLICANT.id || alliance == null) {
             throw new IllegalArgumentException("Nation " + nation + " is not member in an alliance");
         } else {
-            System.out.println("remove:||Create with alliance key");
             pool = alliance.getApiKeys(AlliancePermission.SEE_SPIES);
             if (pool == null) {
                 throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");

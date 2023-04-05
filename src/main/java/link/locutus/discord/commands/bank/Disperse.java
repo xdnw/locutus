@@ -4,54 +4,28 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.JsonUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.sheet.templates.TransferSheet;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-import java.util.function.Consumer;
 
 public class Disperse extends Command {
-    public Disperse(BankWith withdrawCommand) {
+    public Disperse(TransferCommand withdrawCommand) {
         super("disburse", "disperse", CommandCategory.ECON);
     }
 

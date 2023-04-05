@@ -52,7 +52,7 @@ public class ModifyTreaty extends Command {
         if (args.size() != 1) return usage(event);
         GuildDB db = Locutus.imp().getGuildDB(guild);
         AllianceList aaList = Roles.FOREIGN_AFFAIRS.getAllianceList(author, db);
-        if (aaList == null) return "Missing roles: " + Roles.FOREIGN_AFFAIRS.toDiscordRoleNameElseInstructions(guild);
+        if (aaList.isEmpty()) return "Missing roles: " + Roles.FOREIGN_AFFAIRS.toDiscordRoleNameElseInstructions(guild);
         Set<DBAlliance> senders = PWBindings.alliances(guild, args.get(0));
         if (value) {
             return FACommands.approveTreaty(aaList, senders);

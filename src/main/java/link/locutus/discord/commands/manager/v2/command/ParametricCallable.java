@@ -524,8 +524,6 @@ public class ParametricCallable implements ICommand {
             String arg = combined.get(parameter.getName());
             if (arg == null) arg = combined.get(parameter.getName().toLowerCase(Locale.ROOT));
 
-            System.out.println("Get for " + parameter.getName() + " | " + arg);
-
             Object value;
             // flags
             if (parameter.isFlag()) {

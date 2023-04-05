@@ -364,7 +364,7 @@ public class Deposits extends Command {
 
                     if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE)) && guildDb.isValidAlliance()) {
                         AllianceList alliance = db.getAllianceList();
-                        if (alliance != null && alliance.contains(me.getAlliance_id())) {
+                        if (alliance != null && !alliance.isEmpty() && alliance.contains(me.getAlliance_id())) {
                             try {
                                 Map<ResourceType, Double> stockpile = me.getAlliance().getStockpile();
                                 if (PnwUtil.convertedTotal(stockpile) > 5000000) {

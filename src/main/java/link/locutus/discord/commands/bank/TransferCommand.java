@@ -24,15 +24,14 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class BankWith extends Command {
+public class TransferCommand extends Command {
     boolean disabled = false;
-    public BankWith() {
+    public TransferCommand() {
         super("transfer", "withdraw", CommandCategory.ECON);
     }
 

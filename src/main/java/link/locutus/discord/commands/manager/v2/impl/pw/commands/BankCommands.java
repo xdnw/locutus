@@ -1289,7 +1289,7 @@ public class BankCommands {
         if (taxRate.money < -1 || taxRate.money > 100 || taxRate.resources < -1 || taxRate.resources > 100) throw new IllegalArgumentException("Invalid taxrate: " + taxRate);
 
         AllianceList aa = db.getAllianceList();
-        if (aa == null) throw new IllegalArgumentException("This guild is not registered to an alliance");
+        if (aa == null || aa.isEmpty()) throw new IllegalArgumentException("This guild is not registered to an alliance");
 
         StringBuilder response = new StringBuilder();
 
@@ -2209,7 +2209,7 @@ public class BankCommands {
 
                     if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE)) && db.isValidAlliance()) {
                         AllianceList alliance = db.getAllianceList();
-                        if (alliance != null && alliance.contains(me.getAlliance_id())) {
+                        if (alliance != null && !alliance.isEmpty() && alliance.contains(me.getAlliance_id())) {
                             try {
                                 Map<ResourceType, Double> aaStockpile = me.getAlliance().getStockpile();
                                 if (aaStockpile != null && PnwUtil.convertedTotal(aaStockpile) > 5000000) {

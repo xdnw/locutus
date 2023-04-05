@@ -32,7 +32,7 @@ public class CounterGenerator {
         Set<Integer> allies = db.getAllies();
         AllianceList alliance = db.getAllianceList();
 
-        if (requireOnDiscord || alliance == null || allies.isEmpty()) {
+        if (requireOnDiscord || alliance == null || alliance.isEmpty() || allies.isEmpty()) {
             if (role == null) throw new IllegalArgumentException("No member role setup");
             List<Member> members = guild.getMembersWithRoles(role);
             for (Member member : members) {

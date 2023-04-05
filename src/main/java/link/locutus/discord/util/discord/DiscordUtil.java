@@ -310,10 +310,7 @@ public class DiscordUtil {
 
         IMessageBuilder message = io.getMessage();
         if (message == null || message.getAuthor() == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
-            System.out.println("remove:||Create new");
             message = io.create();
-        } else {
-            System.out.println("remove:||Reuse old");
         }
 
         EmbedBuilder builder = new EmbedBuilder();
@@ -325,8 +322,6 @@ public class DiscordUtil {
         message.embed(builder.build());
         message.clearButtons();
         message.addCommands(reactions);
-
-        System.out.println("remove:||Sending message");
 
         message.send();
     }

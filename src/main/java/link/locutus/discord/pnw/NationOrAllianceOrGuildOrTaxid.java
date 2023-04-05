@@ -100,7 +100,7 @@ public interface NationOrAllianceOrGuildOrTaxid {
         else if (isGuild()) {
             GuildDB db = asGuild();
             AllianceList aaList = db.getAllianceList();
-            if (aaList != null) {
+            if (aaList != null && !aaList.isEmpty()) {
                 nations.addAll(aaList.getNations(true, 0, true));
             } else {
                 Guild guild = db.getGuild();
@@ -130,7 +130,7 @@ public interface NationOrAllianceOrGuildOrTaxid {
         else if (isGuild()) {
             GuildDB db = asGuild();
             AllianceList aaList = db.getAllianceList();
-            if (aaList == null) {
+            if (aaList == null && !aaList.isEmpty()) {
                 for (Member member : db.getGuild().getMembers()) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null) {

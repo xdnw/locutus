@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.bank.BankWith;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
@@ -15,8 +14,6 @@ import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.commands.stock.StockTrade;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
@@ -24,14 +21,10 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.util.AbstractMap;
@@ -44,7 +37,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 

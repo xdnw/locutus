@@ -735,10 +735,8 @@ public class WarCategory {
 
             if (updatePin) {
                 String newTopic = DiscordUtil.getChannelUrl(channel) + "/" + msg.getId() + " " + CM.war.room.pin.cmd.toSlashMention();
-                System.out.println("remove:|| Update the pin " + channel + " | " + newTopic);
                 RateLimitUtil.queue(channel.getManager().setTopic(newTopic));
                 RateLimitUtil.queue(channel.pinMessageById(msg.getId()));
-                System.out.println("remove:|| Update the pin 2 " + channel + " | " + newTopic);
             } else {
                 System.out.println("Topic is valid message " + topic + " | " + msg);
             }

@@ -225,18 +225,22 @@ public class BankDB extends DBMainV3 {
     public void updateBankRecs(int nationId, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
+        long start = System.currentTimeMillis();
         List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
         int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
+        System.out.println("Latest tx id: " + minId + " in " + (System.currentTimeMillis() - start) + "ms");
         List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
             @Override
             public void accept(BankrecsQueryRequest request) {
-                request.setOr_type(List.of(1));
-                request.setOr_id(List.of(nationId));
                 if (minId > 0) request.setMin_id(minId + 1);
+                request.setOr_id(List.of(nationId));
+//                request.setOr_type(List.of(1));
             }
         });
 
+        System.out.println("Fetched " + bankRecs.size() + " bank recs in " + (System.currentTimeMillis() - start) + "ms");
         saveBankRecs(bankRecs, eventConsumer);
+        System.out.println("Saved bank recs in " + (System.currentTimeMillis() - start) + "ms");
     }
 
     public void updateBankRecsv2(int nationId, Consumer<Event> eventConsumer) {
@@ -285,7 +289,6 @@ public class BankDB extends DBMainV3 {
 
     public void saveBankRecsV2(List<BankRecord> bankrecs, Consumer<Event> eventConsumer) {
         if (bankrecs.isEmpty()) return;
-        if (bankrecs.size() > 10) System.out.println("remove:|| save bank recs " + bankrecs.size());
         invalidateTXCache();
         List<Transaction2> transfers = new ArrayList<>();
         for (BankRecord bankrec : bankrecs) {
@@ -309,7 +312,6 @@ public class BankDB extends DBMainV3 {
 
     public void saveBankRecs(List<Bankrec> bankrecs, Consumer<Event> eventConsumer) {
         if (bankrecs.isEmpty()) return;
-        if (bankrecs.size() > 10) System.out.println("remove:|| save bank recs " + bankrecs.size());
         invalidateTXCache();
         List<Transaction2> transfers = new ArrayList<>();
         for (Bankrec bankrec : bankrecs) {
@@ -679,11 +681,18 @@ public class BankDB extends DBMainV3 {
         Reference<Map.Entry<Integer, List<Transaction2>>> tmp = txNationCache;
         Map.Entry<Integer, List<Transaction2>> cached = tmp == null ? null : tmp.get();
         if (cached != null && cached.getKey() == nation) {
-            return cached.getValue();
+            List<Transaction2> value = cached.getValue();
+            if (limit > 0) {
+                // sort by tx_id desc
+                value.sort((o1, o2) -> Long.compare(o2.tx_id, o1.tx_id));
+                // return top limit
+                return value.subList(0, Math.min(limit, value.size()));
+            }
+            return value;
         }
         List<Transaction2> list = getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq((long) nation).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)),
                 TRANSACTIONS_2.RECEIVER_ID.eq((long) nation).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))), TRANSACTIONS_2.TX_ID.desc(), limit > 0 ? limit : null);
-        txNationCache = new SoftReference<>(new AbstractMap.SimpleEntry<>(nation, new ArrayList<>(list)));
+        if (limit > 0) txNationCache = new SoftReference<>(new AbstractMap.SimpleEntry<>(nation, new ArrayList<>(list)));
         return list;
     }
 
