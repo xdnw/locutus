@@ -35,7 +35,7 @@ public class BFSUtil {
 
         Function<T, Double>[] completeValueFuncFinal = new Function[1];
 
-        long delay = 1000;
+        long delay = 5000;
 
         int i = 0;
         while (!queue.isEmpty()) {
