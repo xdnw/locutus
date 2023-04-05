@@ -71,6 +71,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -108,8 +109,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
                             Roles role = Roles.getRoleByNameLegacy(roleName);
                             if (role == null) {
-                                if (roleName.equalsIgnoreCase("distributor")) {
-                                    continue;
+                                switch (roleName.toLowerCase(Locale.ROOT)) {
+                                    case "distributor":
+                                    case "ambassador":
+                                    case "active":
+                                    case "war_alert":
+                                    case "map_full_alert":
+                                    case "beige_alert_30m":
+                                        continue;
                                 }
                                 throw new IllegalArgumentException("Unknown legacy role: " + roleName);
                             }
@@ -1573,10 +1580,23 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             channelAccountIds.removeIf(f -> f != getIdLong());
         }
         if (channelAccountIds.isEmpty()) {
-            throw new IllegalArgumentException("The resource channel: <#" + messageChannelIdOrNull + ">" +
+            MessageChannel defaultChannel = getResourceChannel(0);
+            MessageChannel channelForAA = receiver.isAlliance() || receiver.isNation() ? getResourceChannel(receiver.getAlliance_id()) : null;
+            String msg = "The channel: <#" + messageChannelIdOrNull + ">" +
                     " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
-                    " but the server is only registered to the following alliances: " + StringMan.getString(aaIds) +
-                    "\nSee: " + CM.settings.cmd.toSlashMention() + " with keys: " + Key.ALLIANCE_ID + " and " + Key.RESOURCE_REQUEST_CHANNEL);
+                    " and  the server is registered to the following alliances: " + StringMan.getString(aaIds) +
+                    "\nSee Also: " + CM.settings.cmd.toSlashMention() + " with keys: " + Key.ALLIANCE_ID + " and " + Key.RESOURCE_REQUEST_CHANNEL;
+
+            if (defaultChannel != null || channelForAA != null) {
+                msg += "\n";
+            }
+            if (defaultChannel != null) {
+                msg += "\nDefault withdraw channel: " + defaultChannel.getAsMention();
+            }
+            if (channelForAA != null && (defaultChannel == null || channelForAA.getIdLong() != defaultChannel.getIdLong())) {
+                msg += "\nWithdraw channel for alliance: " + channelForAA.getAsMention();
+            }
+            throw new IllegalArgumentException(msg);
         }
 
 
@@ -2388,6 +2408,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                                             break;
                                         }
                                     }
+                                } else {
+                                    isValid = true;
                                 }
                             }
 
@@ -5059,7 +5081,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (otherDb == null) continue;
             Set<Long> offshoring = otherDb.getCoalitionRaw(Coalition.OFFSHORING);
             if (!offshoring.contains((long) offshoreId)) {
-                return null;
+                continue;
             }
 
             if (aaIds.isEmpty()) {
