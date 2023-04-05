@@ -91,7 +91,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         super("guilds/" + guild.getId());
         this.roleToAccountToDiscord  = new ConcurrentHashMap<>();
         this.guild = guild;
-        System.out.println(guild + " | AA:" + StringMan.getString(getAllianceIds()));
+        System.out.println(guild + " | AA:" + StringMan.getString(getOrNull(Key.ALLIANCE_ID, false)));
         importLegacyRoles();
     }
 
@@ -104,14 +104,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         while (rs.next()) {
                             String roleName = rs.getString("role");
                             long alias = rs.getLong("alias");
-                            long alliance = rs.getLong("alliance");
+//                            long alliance = rs.getLong("alliance");
 
                             Roles role = Roles.getRoleByNameLegacy(roleName);
                             if (role == null) {
+                                if (roleName.equalsIgnoreCase("distributor")) {
+                                    continue;
+                                }
                                 throw new IllegalArgumentException("Unknown legacy role: " + roleName);
                             }
-
-                            addRole(role, alias, alliance);
+                            addRole(role, alias, 0);
                         }
                     }
                 }
@@ -2213,12 +2215,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return getDelegateServer(false);
     }
     public GuildDB getDelegateServer(boolean getParent) {
-        GuildDB delegate = getOrNull(Key.DELEGATE_SERVER, false);
-        if (delegate != null && delegate.getIdLong() != getIdLong()) {
-            if (getParent) {
-                GuildDB delegateDelegate = delegate.getOrNull(Key.DELEGATE_SERVER, false);
-            }
-            return delegate;
+        Map.Entry<Integer, Long> delegate = getOrNull(Key.DELEGATE_SERVER, false);
+        if (delegate != null && delegate.getValue() != getIdLong()) {
+            return Locutus.imp().getGuildDB(delegate.getValue());
         }
         return null;
     }
@@ -5280,9 +5279,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
         String value = info.get(key.toLowerCase());
         if (value == null && allowDelegate) {
-            GuildDB delegate = getOrNull(Key.DELEGATE_SERVER, false);
-            if (delegate != null && delegate.getIdLong() != getIdLong()) {
-                value = delegate.getInfo(key, false);
+            Map.Entry<Integer, Long> delegate = getOrNull(Key.DELEGATE_SERVER, false);
+            if (delegate != null && delegate.getValue() != getIdLong()) {
+                GuildDB delegateDb = Locutus.imp().getGuildDB(delegate.getValue());
+                if (delegateDb != null) {
+                    value = delegateDb.getInfo(key, false);
+                }
             }
         }
         return value;
