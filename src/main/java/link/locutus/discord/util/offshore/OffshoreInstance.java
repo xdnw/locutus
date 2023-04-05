@@ -1153,7 +1153,7 @@ public class OffshoreInstance {
             Map.Entry<TransferStatus, String> result = transferUnsafe(auth, nation, transfer, note);//categorize(task);
             String msg = "`" + PnwUtil.resourcesToString(transfer) + "` -> " + nation.getUrl() + "\n**" + result.getKey() + "**: " + result.getValue();
 
-            GuildMessageChannel logChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+            MessageChannel logChannel = getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
                 RateLimitUtil.queue(logChannel.sendMessage(msg));
             }
