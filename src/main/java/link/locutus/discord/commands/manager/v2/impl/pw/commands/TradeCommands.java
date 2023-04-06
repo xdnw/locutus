@@ -338,7 +338,7 @@ public class TradeCommands {
             long channelIdTmp = BULK_TRADE_CHANNEL;
             GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(channelIdTmp);
             if (channel != null) {
-                DiscordUtil.createEmbedCommand(channel, title, body); // TODO refresh cmd
+                DiscordUtil.createEmbedCommand(channel, offer.getTitle(), body); // TODO refresh cmd
             }
         }
 
@@ -417,7 +417,7 @@ public class TradeCommands {
             long channelIdTmp = BULK_TRADE_CHANNEL;
             GuildMessageChannel channel = Locutus.imp().getDiscordApi().getGuildChannelById(channelIdTmp);
             if (channel != null) {
-                DiscordUtil.createEmbedCommand(channel, title, body); // TODO refresh cmd
+                DiscordUtil.createEmbedCommand(channel, offer.getTitle(), body); // TODO refresh cmd
             }
         }
 
