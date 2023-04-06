@@ -49,6 +49,7 @@ public class TransferCommand extends Command {
                 "Use `nation:Borg` to specify nation account\n" +
                 "Use `alliance:Rose` to specify alliance account\n" +
                 "Use `offshore:AllianceName` to specify offshore\n" +
+                "Use `tax_id:1234` to specify tax account\n" +
                 "Use `-o` to subtract their existing funds from the transfer amount";
     }
 
@@ -95,8 +96,10 @@ public class TransferCommand extends Command {
         if (args.size() < 3) return usage();
         IMessageIO channel = new DiscordChannelIO(event.getChannel());
         NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0));
-        Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
-        DepositType.DepositTypeInfo depositType = PWBindings.DepositTypeInfo(args.get(2));
+        String rssStr = args.size() > 3 ? args.get(1) + " " + args.get(2) : args.get(1);
+        Map<ResourceType, Double> transfer = PnwUtil.parseResources(rssStr);
+        String noteStr = args.get(args.size() - 1);
+        DepositType.DepositTypeInfo depositType = PWBindings.DepositTypeInfo(noteStr);
 
         boolean onlyMissingFunds = flags.contains('o');
         boolean convertCash = flags.contains('c');

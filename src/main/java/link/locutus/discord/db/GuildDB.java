@@ -71,6 +71,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -91,7 +92,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         super("guilds/" + guild.getId());
         this.roleToAccountToDiscord  = new ConcurrentHashMap<>();
         this.guild = guild;
-        System.out.println(guild + " | AA:" + StringMan.getString(getAllianceIds()));
+        System.out.println(guild + " | AA:" + StringMan.getString(getOrNull(Key.ALLIANCE_ID, false)));
         importLegacyRoles();
     }
 
@@ -104,14 +105,22 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         while (rs.next()) {
                             String roleName = rs.getString("role");
                             long alias = rs.getLong("alias");
-                            long alliance = rs.getLong("alliance");
+//                            long alliance = rs.getLong("alliance");
 
                             Roles role = Roles.getRoleByNameLegacy(roleName);
                             if (role == null) {
+                                switch (roleName.toLowerCase(Locale.ROOT)) {
+                                    case "distributor":
+                                    case "ambassador":
+                                    case "active":
+                                    case "war_alert":
+                                    case "map_full_alert":
+                                    case "beige_alert_30m":
+                                        continue;
+                                }
                                 throw new IllegalArgumentException("Unknown legacy role: " + roleName);
                             }
-
-                            addRole(role, alias, alliance);
+                            addRole(role, alias, 0);
                         }
                     }
                 }
@@ -1571,10 +1580,23 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             channelAccountIds.removeIf(f -> f != getIdLong());
         }
         if (channelAccountIds.isEmpty()) {
-            throw new IllegalArgumentException("The resource channel: <#" + messageChannelIdOrNull + ">" +
+            MessageChannel defaultChannel = getResourceChannel(0);
+            MessageChannel channelForAA = receiver.isAlliance() || receiver.isNation() ? getResourceChannel(receiver.getAlliance_id()) : null;
+            String msg = "The channel: <#" + messageChannelIdOrNull + ">" +
                     " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
-                    " but the server is only registered to the following alliances: " + StringMan.getString(aaIds) +
-                    "\nSee: " + CM.settings.cmd.toSlashMention() + " with keys: " + Key.ALLIANCE_ID + " and " + Key.RESOURCE_REQUEST_CHANNEL);
+                    " and  the server is registered to the following alliances: " + StringMan.getString(aaIds) +
+                    "\nSee Also: " + CM.settings.cmd.toSlashMention() + " with keys: " + Key.ALLIANCE_ID + " and " + Key.RESOURCE_REQUEST_CHANNEL;
+
+            if (defaultChannel != null || channelForAA != null) {
+                msg += "\n";
+            }
+            if (defaultChannel != null) {
+                msg += "\nDefault withdraw channel: " + defaultChannel.getAsMention();
+            }
+            if (channelForAA != null && (defaultChannel == null || channelForAA.getIdLong() != defaultChannel.getIdLong())) {
+                msg += "\nWithdraw channel for alliance: " + channelForAA.getAsMention();
+            }
+            throw new IllegalArgumentException(msg);
         }
 
 
@@ -1603,20 +1625,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return accessTypeMap;
     }
 
-    public void addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> amounts, long dateTime, int banker, String offshoreNote) {
+    public void subBalanceMulti(Map<NationOrAllianceOrGuild, double[]> amounts, long dateTime, int banker, String offshoreNote) {
         for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : amounts.entrySet()) {
             NationOrAllianceOrGuild account = entry.getKey();
             double[] amount = entry.getValue();
+            double[] amountNegative = ResourceType.negative(amount.clone());
             if (account.isGuild()) {
-                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amount);
+                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amountNegative);
             } else {
-                addTransfer(dateTime, 0, 0, (NationOrAlliance) account, banker, offshoreNote, amount);
+                addTransfer(dateTime, 0, 0, (NationOrAlliance) account, banker, offshoreNote, amountNegative);
             }
         }
     }
 
-    public Map<NationOrAllianceOrGuild, double[]> addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, double sign, int banker, String offshoreNote) {
-        if (sign != -1 && sign != 1) throw new IllegalArgumentException("Sign must be -1 or 1");
+    public Map<NationOrAllianceOrGuild, double[]> subBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, int banker, String offshoreNote) {
         for (int i = 0; i < amount.length; i++) {
             if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + PnwUtil.resourcesToString(amount));
         }
@@ -1641,16 +1663,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 }
             }
             if (toSubtract != null) {
-                ammountEach.put(account, toSubtract);
-
-                double[] amountSigned = toSubtract.clone();
-                if (sign != 1) {
-                    for (int i = 0; i < amountSigned.length; i++) {
-                        amountSigned[i] *= sign;
-                    }
-                }
-                System.out.println("Add balance to: " + account.getQualifiedName() + " " + PnwUtil.resourcesToString(amountSigned) + "");
-                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amountSigned);
+                ammountEach.put(account, toSubtract.clone());
+                System.out.println("Add balance to: " + account.getQualifiedName() + " " + PnwUtil.resourcesToString(toSubtract) + "");
+                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, toSubtract);
             }
         }
         if (!ResourceType.isEmpty(amountLeft)) {
@@ -2213,12 +2228,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return getDelegateServer(false);
     }
     public GuildDB getDelegateServer(boolean getParent) {
-        GuildDB delegate = getOrNull(Key.DELEGATE_SERVER, false);
-        if (delegate != null && delegate.getIdLong() != getIdLong()) {
-            if (getParent) {
-                GuildDB delegateDelegate = delegate.getOrNull(Key.DELEGATE_SERVER, false);
-            }
-            return delegate;
+        Map.Entry<Integer, Long> delegate = getOrNull(Key.DELEGATE_SERVER, false);
+        if (delegate != null && delegate.getValue() != getIdLong()) {
+            return Locutus.imp().getGuildDB(delegate.getValue());
         }
         return null;
     }
@@ -2389,6 +2401,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                                             break;
                                         }
                                     }
+                                } else {
+                                    isValid = true;
                                 }
                             }
 
@@ -5060,7 +5074,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (otherDb == null) continue;
             Set<Long> offshoring = otherDb.getCoalitionRaw(Coalition.OFFSHORING);
             if (!offshoring.contains((long) offshoreId)) {
-                return null;
+                continue;
             }
 
             if (aaIds.isEmpty()) {
@@ -5280,9 +5294,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
         String value = info.get(key.toLowerCase());
         if (value == null && allowDelegate) {
-            GuildDB delegate = getOrNull(Key.DELEGATE_SERVER, false);
-            if (delegate != null && delegate.getIdLong() != getIdLong()) {
-                value = delegate.getInfo(key, false);
+            Map.Entry<Integer, Long> delegate = getOrNull(Key.DELEGATE_SERVER, false);
+            if (delegate != null && delegate.getValue() != getIdLong()) {
+                GuildDB delegateDb = Locutus.imp().getGuildDB(delegate.getValue());
+                if (delegateDb != null) {
+                    value = delegateDb.getInfo(key, false);
+                }
             }
         }
         return value;

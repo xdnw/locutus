@@ -197,8 +197,8 @@ public class DiscordUtil {
                 }
                 if (guild != null && channelGuildId != guild.getIdLong()) {
                     GuildDB otherDB = Locutus.imp().getGuildDB(channel.getGuild());
-                    GuildDB delegate = otherDB.getOrNull(GuildDB.Key.DELEGATE_SERVER);
-                    if (delegate == null || delegate.getIdLong() != guild.getIdLong()) {
+                    Map.Entry<Integer, Long> delegate = otherDB.getOrNull(GuildDB.Key.DELEGATE_SERVER);
+                    if (delegate == null || delegate.getValue() != guild.getIdLong()) {
                         throw new IllegalArgumentException("Channel: " + keyOrLong + " not in " + guild + " (" + guild + ")");
                     }
                 }

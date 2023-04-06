@@ -87,7 +87,7 @@ public enum DepositType {
             if (accountId != 0) {
                 if (type.parent == null) {
                     if (result.contains("=")) {
-                        throw new IllegalArgumentException("Deposit type " + type.name() + " does not support a value");
+                        throw new IllegalArgumentException("Deposit type " + type.name() + " already has a value");
                     }
                     result += "=" + accountId;
                 } else {
