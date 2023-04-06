@@ -7,12 +7,14 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -49,7 +51,7 @@ public class Offshore extends Command {
     public String desc() {
         return "Queue a transfer offshore (with authorization)\n" +
                 "`aa-warchest` is how much to leave in the AA bank - in the form `{money=1,food=2}`\n" +
-                "`#note` is what note to use for the transfer (defaults to deposit)";
+                "`account` is what account to offshore into (e.g. your alliance or guild). Defaults to sender alliance";
     }
 
     @Override
@@ -70,17 +72,18 @@ public class Offshore extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty() || args.size() > 3) return usage();
 
+        NationOrAllianceOrGuild account = null;
         Map<ResourceType, Double> warchest;
-        String note;
         if (args.size() >= 2) warchest = PnwUtil.parseResources(args.get(1));
         else warchest = Collections.emptyMap();
-        if (args.size() >= 3) note = args.get(2);
-        else note = "#tx_id=" + UUID.randomUUID();
+        if (args.size() >= 3) {
+            account = PWBindings.nationOrAllianceOrGuild(args.get(2));
+        }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
         DBAlliance to = null;
         if (args.size() > 0) to = DBAlliance.getOrCreate(PnwUtil.parseAllianceId(args.get(0)));
-        return BankCommands.offshore(author, db, to, warchest, note);
+        return BankCommands.offshore(author, db, to, warchest, account);
     }
 }

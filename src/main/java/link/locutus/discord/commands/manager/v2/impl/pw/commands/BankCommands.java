@@ -123,24 +123,24 @@ public class BankCommands {
     @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_STAFF}, alliance = true)
     @HasOffshore
     @IsAlliance
-    public static String offshore(@Me User user, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default("") String note) throws IOException {
-        boolean memberCanOffshore = db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) == Boolean.TRUE;
-        Roles checkRole = memberCanOffshore ? Roles.MEMBER : Roles.ECON_STAFF;
-        if (note != null && !note.isEmpty()) {
-            checkRole = Roles.ECON_STAFF;
+    public static String offshore(@Me User user, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default("") NationOrAllianceOrGuild account) throws IOException {
+        if (account.isNation()) {
+            throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
         }
+        boolean memberCanOffshore = db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) == Boolean.TRUE;
+        Roles checkRole = memberCanOffshore && account != null ? Roles.MEMBER : Roles.ECON_STAFF;
+
         AllianceList allianceList = checkRole.getAllianceList(user, db);
         if (allianceList == null || allianceList.isEmpty()) {
             StringBuilder msg = new StringBuilder("Missing Role: " + checkRole.toDiscordRoleNameElseInstructions(db.getGuild()));
-            if (memberCanOffshore && note != null) {
-                msg.append(". You do not have permission to use a custom note.");
+            if (memberCanOffshore && account != null) {
+                msg.append(". You do not have permission to specify an alternative account.");
             }
             if (!memberCanOffshore) {
                 msg.append(". See also: " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.MEMBER_CAN_OFFSHORE);
             }
             throw new IllegalArgumentException(msg.toString());
         }
-
         Set<Integer> offshores = db.getCoalition(Coalition.OFFSHORE);
         if (to == null) {
             OffshoreInstance offshore = db.getOffshore();
@@ -167,6 +167,13 @@ public class BankCommands {
                 entry.setValue(newAmount);
             }
             OffshoreInstance bank = from.getBank();
+            String note;
+            if (account != null) {
+                note = account.isAlliance() ? "#alliance=" + account.getId() : "#guild=" + account.getIdLong();
+            } else {
+                note = "#alliance=" + to.getAlliance_id();
+            }
+            note += " #tx_id=" + UUID.randomUUID().toString();
             Map.Entry<OffshoreInstance.TransferStatus, String> response = bank.transferUnsafe(null, to, resources, note);
             results.add(from.getName() + " -> " + to.getName() + ": " + response.getKey() + " (" + response.getValue() + ")");
         }
