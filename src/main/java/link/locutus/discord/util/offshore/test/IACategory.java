@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore.test;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -284,6 +285,18 @@ public class IACategory {
             iaChannel.updatePerms();
             channelMap.put(iaChannel.getNation(), iaChannel);
         }
+
+        IMessageIO io = new DiscordChannelIO(channel);
+        IMessageBuilder msg = io.create();
+
+        String key = "copypasta.interview";
+        String body = db.getInfo(key, true);
+        if (body != null) {
+            String title = "Welcome to Paradise " + user.getName();
+            msg.embed(title, body);
+        }
+
+        msg.append(user.getAsMention()).send();
 
         return channel;
     }
