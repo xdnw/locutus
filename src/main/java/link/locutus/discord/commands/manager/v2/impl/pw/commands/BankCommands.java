@@ -123,8 +123,8 @@ public class BankCommands {
     @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_STAFF}, alliance = true)
     @HasOffshore
     @IsAlliance
-    public static String offshore(@Me User user, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default("") NationOrAllianceOrGuild account) throws IOException {
-        if (account.isNation()) {
+    public static String offshore(@Me User user, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default NationOrAllianceOrGuild account) throws IOException {
+        if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
         }
         boolean memberCanOffshore = db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) == Boolean.TRUE;
@@ -306,7 +306,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Disburse funds", aliases = {"disburse", "disperse"})
-    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true)
+    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true, any = true)
     @IsAlliance
     public static String disburse(@Me User author, @Me GuildDB db, @Me IMessageIO io, @Me DBNation me,
                            NationList nationList,
@@ -1140,7 +1140,7 @@ public class BankCommands {
                 nations.removeIf(n -> n.getPosition() <= 1);
 
                 if (includePastDepositors) {
-                    Set<Integer> ids = Locutus.imp().getBankDB().getSenderNationIdFromAllianceReceivers(aaIds);
+                    Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(aaIds);
                     for (int id : ids) {
                         DBNation nation = Locutus.imp().getNationDB().getNation(id);
                         if (nation != null) nations.add(nation);
@@ -1517,7 +1517,7 @@ public class BankCommands {
     @Command(desc = "Send multiple transfers to nations/alliances according to a sheet",
             help = "The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url), " +
                     "and then there must be a column named for each resource type you wish to transfer")
-    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true)
+    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true, any = true)
     public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
                                       @Switch("n") DBNation depositsAccount,
                                       @Switch("a") DBAlliance useAllianceBank,

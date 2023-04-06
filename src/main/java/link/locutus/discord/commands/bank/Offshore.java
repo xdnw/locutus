@@ -44,7 +44,7 @@ public class Offshore extends Command {
 
     @Override
     public String help() {
-        return Settings.commandPrefix(true) + "offshore <alliance-url> [aa-warchest] [#note]";
+        return Settings.commandPrefix(true) + "offshore <alliance-url> [aa-warchest] [account]";
     }
 
     @Override
