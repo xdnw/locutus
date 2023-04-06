@@ -102,6 +102,14 @@ public class DepositsSheet extends Command {
             if (!aaIds.isEmpty()) {
                 nations = Locutus.imp().getNationDB().getNations(aaIds);
                 nations.removeIf(n -> n.getPosition() <= 1);
+
+                if (flags.contains('p')) {
+                    Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(aaIds);
+                    for (int id : ids) {
+                        DBNation nation = Locutus.imp().getNationDB().getNation(id);
+                        if (nation != null) nations.add(nation);
+                    }
+                }
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
                 if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null) + " set");
