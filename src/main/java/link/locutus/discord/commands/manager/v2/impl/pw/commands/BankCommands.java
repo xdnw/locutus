@@ -171,7 +171,7 @@ public class BankCommands {
             if (account != null) {
                 note = account.isAlliance() ? "#alliance=" + account.getId() : "#guild=" + account.getIdLong();
             } else {
-                note = "#alliance=" + to.getAlliance_id();
+                note = "#alliance=" + from.getAlliance_id();
             }
             note += " #tx_id=" + UUID.randomUUID().toString();
             Map.Entry<OffshoreInstance.TransferStatus, String> response = bank.transferUnsafe(null, to, resources, note);
