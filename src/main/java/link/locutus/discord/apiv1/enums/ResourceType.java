@@ -124,6 +124,16 @@ public enum ResourceType {
         return resources;
     }
 
+    public static boolean equals(Map<ResourceType, Double> amtA, Map<ResourceType, Double> amtB) {
+        for (ResourceType type : ResourceType.values) {
+            if (Math.round(100 * (amtA.getOrDefault(type, 0d) - amtB.getOrDefault(type, 0d))) != 0) {
+                System.out.println(type + " | " + amtA.getOrDefault(type, 0d) + " | " + amtB.getOrDefault(type, 0d) + " | " + Math.round(100 * (amtA.getOrDefault(type, 0d) - amtB.getOrDefault(type, 0d))));
+                return false;
+            }
+        }
+        return true;
+    }
+
     public double[] toArray(double amt) {
         double[] result = getBuffer();
         result[ordinal()] = amt;

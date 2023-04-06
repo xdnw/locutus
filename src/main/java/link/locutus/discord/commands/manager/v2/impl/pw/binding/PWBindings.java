@@ -110,15 +110,15 @@ public class PWBindings extends BindingHelper {
 
     @Binding
     public static DepositType.DepositTypeInfo DepositTypeInfo(String input) {
-        if (input.startsWith("#")) input = input.substring(1);
         DepositType type = null;
         long value = 0;
         long city = 0;
         for (String arg : input.split(" ")) {
+            if (arg.startsWith("#")) arg = arg.substring(1);
             String[] split = arg.split("[=|:]");
             String key = split[0];
             DepositType tmp = StringMan.parseUpper(DepositType.class, key.toUpperCase(Locale.ROOT));
-            if (type == null || (type == DepositType.CITY && tmp != DepositType.CITY)) {
+            if (type == null || (type == tmp)) {
                 type = tmp;
             } else {
                 throw new IllegalArgumentException("Invalid deposit type (duplicate): `" + input + "`");

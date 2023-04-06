@@ -1625,20 +1625,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return accessTypeMap;
     }
 
-    public void addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> amounts, long dateTime, int banker, String offshoreNote) {
+    public void subBalanceMulti(Map<NationOrAllianceOrGuild, double[]> amounts, long dateTime, int banker, String offshoreNote) {
         for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : amounts.entrySet()) {
             NationOrAllianceOrGuild account = entry.getKey();
             double[] amount = entry.getValue();
+            double[] amountNegative = ResourceType.negative(amount.clone());
             if (account.isGuild()) {
-                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amount);
+                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amountNegative);
             } else {
-                addTransfer(dateTime, 0, 0, (NationOrAlliance) account, banker, offshoreNote, amount);
+                addTransfer(dateTime, 0, 0, (NationOrAlliance) account, banker, offshoreNote, amountNegative);
             }
         }
     }
 
-    public Map<NationOrAllianceOrGuild, double[]> addBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, double sign, int banker, String offshoreNote) {
-        if (sign != -1 && sign != 1) throw new IllegalArgumentException("Sign must be -1 or 1");
+    public Map<NationOrAllianceOrGuild, double[]> subBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, int banker, String offshoreNote) {
         for (int i = 0; i < amount.length; i++) {
             if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + PnwUtil.resourcesToString(amount));
         }
@@ -1663,16 +1663,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 }
             }
             if (toSubtract != null) {
-                ammountEach.put(account, toSubtract);
-
-                double[] amountSigned = toSubtract.clone();
-                if (sign != 1) {
-                    for (int i = 0; i < amountSigned.length; i++) {
-                        amountSigned[i] *= sign;
-                    }
-                }
-                System.out.println("Add balance to: " + account.getQualifiedName() + " " + PnwUtil.resourcesToString(amountSigned) + "");
-                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, amountSigned);
+                ammountEach.put(account, toSubtract.clone());
+                System.out.println("Add balance to: " + account.getQualifiedName() + " " + PnwUtil.resourcesToString(toSubtract) + "");
+                addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, toSubtract);
             }
         }
         if (!ResourceType.isEmpty(amountLeft)) {

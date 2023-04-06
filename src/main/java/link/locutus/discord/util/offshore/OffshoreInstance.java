@@ -517,7 +517,7 @@ public class OffshoreInstance {
 
         List<String> otherNotes = new ArrayList<>();
 
-        if (expire != null) {
+        if (expire != null && expire != 0) {
             if (!receiver.isNation()) {
                 return Map.entry(TransferStatus.INVALID_NOTE, "Expire can only be used with nations");
             }
@@ -582,7 +582,7 @@ public class OffshoreInstance {
 
         Set<Integer> guildAllianceIds = senderDB.getAllianceIds();
 
-        if (expire != null) {
+        if (expire != null && expire != 0) {
             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
             if (allowedIds.isEmpty()) {
                 return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSIT + " but attempted to do " + depositType);
@@ -590,8 +590,10 @@ public class OffshoreInstance {
         }
 
         boolean rssConversion = senderDB.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) == Boolean.TRUE;
+        boolean ignoreGrants = senderDB.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.TRUE;
         double txValue = PnwUtil.convertedTotal(amount);
 
+        double[] myDeposits = null;
         if (nationAccount != null) {
             if (depositType.getType() != DepositType.DEPOSIT) {
                 allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
@@ -610,26 +612,25 @@ public class OffshoreInstance {
 
             if (!receiver.isNation() || nationAccount.getNation_id() != receiver.asNation().getNation_id()) {
                 isInternalTransfer = true;
-                if (depositType.getType() != DepositType.IGNORE) {
-                    return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to another nation");
+                if (depositType.getType() == DepositType.IGNORE) {
+                    return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.DEPOSIT + "` as the depositType when transferring to another nation");
                 }
             }
 
-            boolean ignoreGrants = senderDB.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.TRUE;
 //            if (!requireConfirmation)
             {
-                double[] myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, requireConfirmation ? -1 : 0L);
-                myDeposits = PnwUtil.normalize(myDeposits);
-                double myDepoValue = PnwUtil.convertedTotal(myDeposits, false);
+                myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, requireConfirmation ? -1 : 0L);
+                double[] myDepositsNormalized = PnwUtil.normalize(myDeposits);
+                double myDepoValue = PnwUtil.convertedTotal(myDepositsNormalized, false);
 
                 double[] missing = null;
 
                 for (ResourceType type : ResourceType.values) {
-                    if (Math.round(myDeposits[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                    if (Math.round(myDepositsNormalized[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
                         if (missing == null) {
                             missing = ResourceType.getBuffer();
                         }
-                        missing[type.ordinal()] = amount[type.ordinal()] - myDeposits[type.ordinal()];
+                        missing[type.ordinal()] = amount[type.ordinal()] - myDepositsNormalized[type.ordinal()];
                     }
                 }
                 if (missing != null) {
@@ -806,6 +807,19 @@ public class OffshoreInstance {
         long timestamp = System.currentTimeMillis();
         if (isInternalTransfer) {
             senderDB.subtractBalance(timestamp, nationAccount, bankerNation != null ? bankerNation.getNation_id() : 0, note, amount);
+            if (depositType.getType() == DepositType.DEPOSIT) {
+                double[] myNewDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, -1L);
+                // ensure myDeposits and myNewDeposits difference is amount
+                double[] diff = ResourceType.getBuffer();
+                for (int i = 0; i < amount.length; i++) {
+                    diff[i] = myDeposits[i] - myNewDeposits[i];
+                }
+                for (int i = 0; i < amount.length; i++) {
+                    if (Math.round(diff[i] * 100) != Math.round(amount[i] * 100)) {
+                        return Map.entry(TransferStatus.OTHER, "Internal error: " + PnwUtil.resourcesToString(diff) + " != " + PnwUtil.resourcesToString(amount));
+                    }
+                }
+            }
         }
         if (taxAccount != null) {
             double[] amountNegative = ResourceType.negative(amount.clone());
@@ -982,7 +996,32 @@ public class OffshoreInstance {
             String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
             try {
                 if (senderDB != offshoreDB) {
-                    addBalanceResult = offshoreDB.addBalanceMulti(depositsByAA, tx_datetime, amount, -1, banker != null ? banker.getNation_id() : 0, offshoreNote);
+                    addBalanceResult = offshoreDB.subBalanceMulti(depositsByAA, tx_datetime, amount, banker != null ? banker.getNation_id() : 0, offshoreNote);
+
+                    Map<NationOrAllianceOrGuild, double[]> newDeposits = getDepositsByAA(senderDB, allowedAlliances, false);
+                    // Emsure addBalanceResult total matches amount (rounded to 2 decimal places)
+                    double[] totalAddBalance = ResourceType.getBuffer();
+                    addBalanceResult.forEach((a, b) -> ResourceType.add(totalAddBalance, b));
+                    for (int i = 0; i < amount.length; i++) {
+                        if (Math.round(totalAddBalance[i] * 100) != Math.round(amount[i] * 100))
+                            throw new IllegalArgumentException("Error: Addbalance does not match" + MathMan.format(totalAddBalance[i]) + " != " + MathMan.format(amount[i]));
+                    }
+                    // ensure the difference between depositsByAA and newDeposits match the addBalanceResult
+                    for (int i = 0; i < amount.length; i++) {
+                        if (Math.round(amount[i] * 100) == 0) continue; // skip if amount is 0 (no need to check)
+                        double diff = 0;
+                        for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : depositsByAA.entrySet()) {
+                            diff += entry.getValue()[i];
+                        }
+                        for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : newDeposits.entrySet()) {
+                            diff -= entry.getValue()[i];
+                        }
+                        if (Math.round(diff * 100) != Math.round(totalAddBalance[i] * 100))
+                            throw new IllegalArgumentException("Error: Addbalance does not match" + MathMan.format(diff) + " != " + MathMan.format(totalAddBalance[i]));
+                    }
+
+
+
 //                offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
                 }
             } catch (Throwable e) {
@@ -1042,16 +1081,17 @@ public class OffshoreInstance {
                     if (valid) {
                         disabledGuilds.remove(senderDB.getIdLong());
                     } else {
-                        String title = "Reimburse";
-                        StringBuilder body = new StringBuilder();
-                        body.append("`").append(result.getValue()).append("`\n");
-                        for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : addBalanceResult.entrySet()) {
-                            NationOrAllianceOrGuild account = entry.getKey();
-                            body.append("\n - `!addbalance " + account.getTypePrefix() + ":" + account.getId() + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit");
+                        if (senderDB != offshoreDB) {
+                            String title = "Reimburse";
+                            StringBuilder body = new StringBuilder();
+                            body.append("`").append(result.getValue()).append("`\n");
+                            for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : addBalanceResult.entrySet()) {
+                                NationOrAllianceOrGuild account = entry.getKey();
+                                body.append("\n - `!addbalance " + account.getTypePrefix() + ":" + account.getId() + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit");
+                            }
+                            body.append("\n<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
+                            log(senderDB, banker, receiver, title + ": " + body.toString());
                         }
-                        body.append("\n<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
-
-                        log(senderDB, banker, receiver, title + ": " + body.toString());
                     }
 
                     break;
@@ -1068,7 +1108,7 @@ public class OffshoreInstance {
                     disabledGuilds.remove(senderDB.getIdLong());
                     if (senderDB != offshoreDB) {
                         if (addBalanceResult != null) {
-                            offshoreDB.addBalanceMulti(addBalanceResult, tx_datetime, banker != null ? banker.getNation_id() : 0, offshoreNote);
+                            offshoreDB.subBalanceMulti(addBalanceResult, tx_datetime, banker != null ? banker.getNation_id() : 0, offshoreNote);
                         }
                     }
 //                    double[] negative = ResourceType.negative(amount.clone());

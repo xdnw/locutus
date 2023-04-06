@@ -337,7 +337,7 @@ public class BankCommands {
             while (iter.hasNext()) {
                 DBNation nation = iter.next();
                 OffshoreInstance.TransferStatus status = OffshoreInstance.TransferStatus.SUCCESS;
-                String debug = status.getMessage();
+                String debug = "";
                 if (nation.getPosition() <= 1) status = OffshoreInstance.TransferStatus.APPLICANT;
                 else if (nation.getVm_turns() > 0) status = OffshoreInstance.TransferStatus.VACATION_MODE;
                 else if (!db.isAllianceId(nation.getAlliance_id())) status = OffshoreInstance.TransferStatus.NOT_MEMBER;
@@ -352,7 +352,7 @@ public class BankCommands {
                 }
                 if (status != OffshoreInstance.TransferStatus.SUCCESS) {
                     iter.remove();
-                    errors.add(nation.getName() + "\t" + status.name() + "\t" + debug);
+                    errors.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage() + debug);
                 }
             }
             int removed = originalSize - nations.size();
@@ -881,7 +881,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Transfer from the alliance bank (alliance deposits)")
-    @RolePermission(Roles.ECON)
+    @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     public static String transfer(@Me IMessageIO channel, @Me JSONObject command,
                            @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.DepositTypeInfo depositType,
 
@@ -1575,24 +1575,15 @@ public class BankCommands {
             }
 
             StringBuilder desc = new StringBuilder();
-            desc.append("Note: `" + depositType + "`");
-            desc.append("\nTotal: `" + PnwUtil.resourcesToString(totalRss) + "`");
-
-            for (Map.Entry<NationOrAlliance, Map<ResourceType, Double>> entry : transfers.entrySet()) {
-                NationOrAlliance natOrAA = entry.getKey();
-                if (!natOrAA.isNation()) continue;
-                DBNation nation = natOrAA.asNation();
-                if (nation.getVm_turns() > 0) {
-                    desc.append("\nVM: " + nation.getNationUrlMarkup(true));
-                } else if (nation.getActive_m() > 7200) {
-                    desc.append("\nINACTIVE: " + nation.getNationUrlMarkup(true));
-                }
-            }
+            IMessageBuilder msg = io.create();
+            desc.append("Total: `" + PnwUtil.resourcesToString(totalRss) + "`\n");
+            desc.append("Note: `" + depositType + "`\n\n");
+            sheet.getSheet().attach(msg, desc, true, desc.length());
 
             key = UUID.randomUUID();
             APPROVED_BULK_TRANSFER.put(key, transfers);
             String commandStr = command.put("force", "true").put("key", key).toString();
-            io.create().embed(title, desc.toString())
+            msg.embed(title, desc.toString())
                             .commandButton(commandStr, "Confirm")
                                     .send();
             return null;
@@ -1600,8 +1591,16 @@ public class BankCommands {
         if (key != null) {
             Map<NationOrAlliance, Map<ResourceType, Double>> approvedAmounts = APPROVED_BULK_TRANSFER.get(key);
             if (approvedAmounts == null) return "No amount has been approved for transfer. Please try again";
-            if (!approvedAmounts.equals(transfers)) {
-                return "The confirmed amount does not match. Please try again";
+            Set<NationOrAlliance> keys = new HashSet<>();
+            keys.addAll(approvedAmounts.keySet());
+            keys.addAll(transfers.keySet());
+            for (NationOrAlliance nationOrAlliance : keys) {
+                Map<ResourceType, Double> amtA = approvedAmounts.getOrDefault(nationOrAlliance, Collections.emptyMap());
+                Map<ResourceType, Double> amtB = transfers.getOrDefault(nationOrAlliance, Collections.emptyMap());
+                if (!ResourceType.equals(amtA, amtB)) {
+                    System.out.println(nationOrAlliance + " | " + amtA + " | " + amtB);
+                    return "The confirmed amount does not match. Please try again";
+                }
             }
         }
 
