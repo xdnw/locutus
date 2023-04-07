@@ -161,6 +161,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("admin"), "loginTimes", "list_login_times");
 
         this.commands.registerMethod(new StatCommands(), List.of("stats_war"), "warAttacksByDay", "warattacksbyday");
+        this.commands.registerMethod(new FunCommands(), List.of("fun"), "stealBorgsCity", "stealborgscity");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
