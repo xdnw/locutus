@@ -187,7 +187,7 @@ public class MilitaryRanking extends Command {
 
                 for (int i = 0; i < row.size(); i++) {
                     Object val = row.get(i);
-                    if (val instanceof Number && !Double.isFinite((double) ((Number) val).doubleValue())) {
+                    if (val instanceof Number && !Double.isFinite(((Number) val).doubleValue())) {
                         row.set(i, 0);
                     }
                 }
