@@ -32,6 +32,8 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.auth.AuthHandler;
+import link.locutus.discord.web.auth.IAuthHandler;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.binding.NationListPages;
@@ -84,9 +86,11 @@ public class PageHandler implements Handler {
     private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
+    private final IAuthHandler authHandler;
 
     public PageHandler(WebRoot root) {
         this.root = root;
+        this.authHandler = new AuthHandler(root.getDb());
 
         this.store = new SimpleValueStore<>();
 
@@ -169,16 +173,18 @@ public class PageHandler implements Handler {
             if (cmdStr.charAt(0) == '$') cmdStr = Settings.commandPrefix(false) + cmdStr.substring(1);
 
             Context ctx = sse.ctx;
-            JsonObject userJson = root.getDiscordUser(ctx);
-            if (userJson == null) {
-                sseMessage(sse, "Not registered", false);
-                return;
-            }
-            Long userId = Long.parseLong(userJson.get("id").getAsString());
-            User user = Locutus.imp().getDiscordApi().getUserById(userId);
-            DBNation nation = DiscordUtil.getNation(userId);
-            if (nation == null || user == null) {
-                sseMessage(sse, "User not verfied", false);
+            DBNation nation = authHandler.getNation(ctx);
+//
+//            JsonObject userJson = authHandler.getDiscordUser(ctx);
+//            if (userJson == null) {
+//                sseMessage(sse, "Not registered", false);
+//                return;
+//            }
+//            Long userId = Long.parseLong(userJson.get("id").getAsString());
+//            User user = Locutus.imp().getDiscordApi().getUserById(userId);
+//            DBNation nation = DiscordUtil.getNation(userId);
+            if (nation == null) {
+                sseMessage(sse, "User not verified", false);
                 return;
             }
 
@@ -204,7 +210,10 @@ public class PageHandler implements Handler {
 
             Message embedMessage = new MessageBuilder().setContent(cmdStr).build();
             JoobyMessage sseMessage = new JoobyMessage(action, embedMessage, -1);
-            sseMessage.setUser(user);
+            User user = nation.getUser();
+            if (user != null) {
+                sseMessage.setUser(user);
+            }
             action.load(sseMessage);
 
             MessageReceivedEvent finalEvent = new DelegateMessageEvent(guildDb.getGuild(), -1, sseMessage);
@@ -240,7 +249,7 @@ public class PageHandler implements Handler {
 
         try {
             Context ctx = sse.ctx;
-            JsonObject userJson = root.getDiscordUser(ctx);
+            JsonObject userJson = authHandler.getDiscordUser(ctx);
             if (userJson == null) {
                 sseMessage(sse, "Not registered", false);
                 return;
@@ -341,8 +350,7 @@ public class PageHandler implements Handler {
 
     public Map.Entry<Long, DBNation> getUserIdNationPair(Context ctx) {
         try {
-            JsonObject userJson = userJson = root.getDiscordUser(ctx);
-
+            JsonObject userJson = authHandler.getDiscordUser(ctx);
             if (userJson == null) {
                 throw new IllegalArgumentException("Not  registered");
             }
@@ -403,7 +411,7 @@ public class PageHandler implements Handler {
     public void sse(SseClient2 sse) {
         try {
             Context ctx = sse.ctx;
-            JsonObject userJson = root.getDiscordUser(ctx);
+            JsonObject userJson = authHandler.getDiscordUser(ctx);
             if (userJson == null) {
                 sseMessage(sse, "Not registered", false);
                 return;
@@ -463,7 +471,7 @@ public class PageHandler implements Handler {
     }
 
     @Command()
-    public Object command(@Me GuildDB db, @Me User user, ArgumentStack stack, Context ctx) {
+    public Object command(@Me GuildDB db, ArgumentStack stack, Context ctx) {
         List<String> args = stack.getRemainingArgs();
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
         CommandCallable cmd = manager.getCallable(args);
@@ -476,9 +484,9 @@ public class PageHandler implements Handler {
     public void handle(@NotNull Context ctx) throws Exception {
         logger.info("Page method " + ctx.method());
         try {
-            JsonObject userJson = root.getDiscordUser(ctx);
+            JsonObject userJson = authHandler.getDiscordUser(ctx);
             if (userJson == null) {
-                root.login(ctx);
+                authHandler.login(ctx);
                 return;
             }
             Long id = Long.parseLong(userJson.get("id").getAsString());
@@ -672,5 +680,9 @@ public class PageHandler implements Handler {
         response.addProperty("action", "redirect");
         response.addProperty("value", redirect);
         sse.sendEvent(response);
+    }
+
+    public void logout(Context ctx) {
+        authHandler.logout(ctx);
     }
 }

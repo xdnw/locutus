@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
@@ -251,7 +252,7 @@ public class WarRoom extends Command {
                             String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body.toString()));
 
                             try {
-                                attacker.sendMail(Locutus.imp().getRootAuth(), title, mailBody);
+                                attacker.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, mailBody);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }

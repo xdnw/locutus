@@ -561,7 +561,7 @@ public class WarCommands {
 
     @Command(desc = "Find blockade targets")
     @RolePermission(Roles.MEMBER)
-    public String unblockade(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me IMessageIO channel,
+    public String unblockade(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me IMessageIO channel,
                              Set<DBNation> allies,
                              @Default("*") Set<DBNation> targets,
                              @Switch("s") Integer myShips,

@@ -124,7 +124,8 @@ public class SearchMailTask implements Callable<List<Mail>> {
                         } else {
                             messagesStr.add("" + recRead);
                         }
-                        onEach.accept(mail, messagesStr);
+                        if (onEach != null) onEach.accept(mail, messagesStr);
+                        response.add(mail);
 //                        {
 //                            String discordFormat = String.format(format, leader, nationId, subject, msgMarkdown);
 //                            Mail mail = new Mail(msgId, subject, leader, nationId, discordFormat);
