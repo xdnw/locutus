@@ -38,7 +38,7 @@ public class AutoRole extends Command {
 
     @Override
     public String desc() {
-        return "Auto rank users on discord";
+        return "Auto-Role discord users with registered role and alliance role.";
     }
 
     @Override
@@ -60,31 +60,22 @@ public class AutoRole extends Command {
         StringBuilder response = new StringBuilder();
 
         if (args.get(0).equalsIgnoreCase("*")) {
-            Function<Long, Boolean> func = new Function<Long, Boolean>() {
-                @Override
-                public Boolean apply(Long i) {
-                    task.autoRoleAll(new Consumer<String>() {
-                        private boolean messaged = false;
-                        @Override
-                        public void accept(String s) {
-                            if (messaged) return;
-                            messaged = true;
-                            RateLimitUtil.queue(event.getChannel().sendMessage(s));
-                        }
-                    });
-                    return true;
-                }
+            if (!Roles.INTERNAL_AFFAIRS.has(event.getMember())) return "No permission";
+            Function<Long, Boolean> func = i -> {
+                task.autoRoleAll(new Consumer<>() {
+                    private boolean messaged = false;
+
+                    @Override
+                    public void accept(String s) {
+                        if (messaged) return;
+                        messaged = true;
+                        RateLimitUtil.queue(event.getChannel().sendMessage(s));
+                    }
+                });
+                return true;
             };
-            if (Roles.ADMIN.hasOnRoot(event.getAuthor()) || true) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please wait..."));
-                func.apply(0L);
-            } else if (Roles.INTERNAL_AFFAIRS.has(event.getMember())) {
-                String taskId = getClass().getSimpleName() + "." + db.getGuild().getId();
-                Boolean result = TimeUtil.runTurnTask(taskId, func);
-                if (result != Boolean.TRUE) return "Task already ran this turn";
-            } else {
-                return "No permission";
-            }
+            RateLimitUtil.queue(event.getChannel().sendMessage("Please wait..."));
+            func.apply(0L);
 
             if (db.hasAlliance()) {
                 for (Map.Entry<Member, GuildDB.UnmaskedReason> entry : db.getMaskedNonMembers().entrySet()) {
@@ -93,7 +84,7 @@ public class AutoRole extends Command {
                     if (nation != null) {
                         String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
                         if (nation.getActive_m() > 10000) active = "**" + active + "**";
-                        response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAllianceName());
+                        response.append(nation.getName()).append(" | <").append(nation.getNationUrl()).append("> | ").append(active).append(" | ").append(Rank.byId(nation.getPosition())).append(" in the alliance:").append(nation.getAllianceName());
                     }
                     response.append(" - ").append(entry.getValue());
                     response.append("\n");
@@ -103,14 +94,13 @@ public class AutoRole extends Command {
 
         } else {
             DBNation nation = DiscordUtil.parseNation(args.get(0));
-            if (nation == null) return "User is not registered on the game.";
+            if (nation == null) return "That nation isn't registered: " + CM.register.cmd.toSlashMention() + "");
             User user = nation.getUser();
-            if (user == null) return "Nation is not registered";
+            if (user == null) return "User is not registered.";
             Member member = db.getGuild().getMember(user);
-            if (user == null) return "Nation is not registered to member on guild: " + user.getName() + "#" + user.getDiscriminator();
+            if (member == null) return "Member not found in guild: " + user.getName() + "#" + user.getDiscriminator();
             List<String> output = new ArrayList<>();
             Consumer<String> out = output::add;
-            if (nation == null) out.accept("That nation isn't registered: " + CM.register.cmd.toSlashMention() + "");
             task.autoRole(member, out);
 
             if (!output.isEmpty()) {
