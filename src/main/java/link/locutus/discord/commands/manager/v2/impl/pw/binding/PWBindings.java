@@ -118,7 +118,7 @@ public class PWBindings extends BindingHelper {
             String[] split = arg.split("[=|:]");
             String key = split[0];
             DepositType tmp = StringMan.parseUpper(DepositType.class, key.toUpperCase(Locale.ROOT));
-            if (type == null || (type == tmp)) {
+            if (type == null || (type != tmp)) {
                 type = tmp;
             } else {
                 throw new IllegalArgumentException("Invalid deposit type (duplicate): `" + input + "`");
