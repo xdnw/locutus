@@ -36,23 +36,27 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FunCommands {
 
 
-    private Map<Integer, Integer> stolenCities = new HashMap<>();
+    private final Map<Integer, Integer> stolenCities = new HashMap<>();
+    private final Map<Integer, Boolean> received = new ConcurrentHashMap<>();
+    private String[] lines = null;
+
     @Command(desc = "Steal one of borgs cities")
     public String stealBorgsCity(@Me DBNation me) throws IOException {
         if (me.getAgeDays() < 30) {
             int age = me.getCityMap(false).values().stream().mapToInt(JavaCity::getAge).max().orElse(0);
             if (age < 30) {
-                return "You must have a nation at least 30 days old";
+                return "You must have a nation at least 30 days old.";
             }
         }
-        if (ThreadLocalRandom.current().nextInt(100) < 50) return "You were unsuccessful in stealing one of Borg's cities. Your agents were able to operate undetected. The operation cost you $0 and 0 of your spies were captured and executed.";
+        if (ThreadLocalRandom.current().nextInt(100) < 50)
+            return "You were unsuccessful in stealing one of Borg's cities, your agents were able to operate undetected, the operation cost you $0 and 0 of your spies were captured and executed.";
 
         Auth auth = Locutus.imp().getRootAuth();
 
         List<Integer> cities = new ArrayList<>(DBNation.byId(189573).getCityMap(false).keySet());
         // get random city from cities
         int id = cities.get(ThreadLocalRandom.current().nextInt(cities.size()));
-        String name =  me.getNation() + "'s city";
+        String name = me.getNation() + "'s city";
 
         String result = auth.setCityName(id, name);
 
@@ -61,7 +65,7 @@ public class FunCommands {
         stolenCities.put(id, me.getNation_id());
 
         int num = 113 + ThreadLocalRandom.current().nextInt(312);
-        String msg = "You successfully snuck in the cover of night and replaced every sign in Borg's city. Your spies replaced " + num + " signs. Your agents were able to operate undetected. The operation cost you $0 and 0 of your spies were captured and executed.";
+        String msg = "You successfully snuck in the cover of night and replaced every sign in Borg's city, your spies replaced " + num + " signs, your agents were able to operate undetected, the operation cost you $0 and 0 of your spies were captured and executed.";
         msg += "\nThe city is now yours! (until someone wakes up)" + "\n - <" + url + ">";
 
         boolean stolenAll = false;
@@ -71,12 +75,10 @@ public class FunCommands {
         return msg;
     }
 
-    private Map<Integer, Boolean> received = new ConcurrentHashMap<>();
-
     @Command(desc = "Making a list, checking it twice; Gonna find out whos naughty or nice. St Borgolas is coming to town")
     public String borgmas(@Me DBNation me) throws IOException {
         if (me.getMeta(NationMeta.BORGMAS) != null || received.put(me.getNation_id(), true) != null) {
-            return "You've already opened your presents this year. Merry Borgmas!";
+            return "You've already opened your presents this year, Merry Borgmas!";
         }
 
         Map.Entry<Integer, Integer> commends = me.getCommends();
@@ -105,8 +107,6 @@ public class FunCommands {
         return message;
     }
 
-    private String[] lines = null;
-
     @Command
     public String joke() {
         if (lines == null) {
@@ -126,7 +126,7 @@ public class FunCommands {
         String[] Rs = {"\uD835\uDDCB", "\uD835\uDDB1", "R", "r", "\u200A", "\u200B", "\uFEFF", "\u180E"};
         String[] Gs = {"\uD835\uDDC0", "\uD835\uDDA6", "G", "g", "\u200A", "\u200B", "\uFEFF", "\u180E"};
 
-        String[][] CODES = new String[][] {
+        String[][] CODES = new String[][]{
                 Bs,
                 Os,
                 Rs,
@@ -187,6 +187,6 @@ public class FunCommands {
                 output.append(letter);
             }
         }
-        return "Output:\n" + output.toString();
+        return "Output:\n" + output;
     }
 }

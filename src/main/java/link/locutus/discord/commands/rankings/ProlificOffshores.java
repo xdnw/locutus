@@ -4,11 +4,10 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import com.google.common.collect.BiMap;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -55,13 +54,6 @@ public class ProlificOffshores extends Command {
             }
         }
         aaCount.entrySet().removeIf(e -> e.getValue() > 2);
-//        aaCount.entrySet().removeIf(new Predicate<Map.Entry<Integer, Long>>() {
-//            @Override
-//            public boolean test(Map.Entry<Integer, Long> e) {
-//                return aaCount1City.getOrDefault(e.getKey(), 0L).equals(e.getValue());
-//            }
-//        });
-
         for (Map.Entry<Integer, Long> entry : aaCount.entrySet()) {
             List<Transaction2> transfers = Locutus.imp().getBankDB().getAllianceTransfers(entry.getKey(), cutoffMs);
             long sum = 0;
@@ -77,10 +69,10 @@ public class ProlificOffshores extends Command {
 
 
         new SummedMapRankBuilder<>(aaCount)
-        .sort()
-        .nameKeys(f -> PnwUtil.getName(f, true))
-        .limit(10)
-        .build(event, "Prolific Offshores (" + days + " days)");
+                .sort()
+                .nameKeys(f -> PnwUtil.getName(f, true))
+                .limit(10)
+                .build(event, "Prolific Offshores (" + days + " days)");
 
         return null;
     }

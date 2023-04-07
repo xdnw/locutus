@@ -6,12 +6,12 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -39,12 +39,13 @@ public class WarRanking extends Command {
 
     @Override
     public String desc() {
-        return "Alliances by total wars over a specified number of days\n" +
-                "Use `-o` to only include offensive wars\n" +
-                "use `-d` to only include defensive wars\n" +
-                "use `-n` to normalize it per active member\n" +
-                "Use `-i` to filter out inactives (2d) for normalization\n" +
-                "Use `-a` to not rank alliances and do it by nation";
+        return """
+                Alliances by total wars over a specified number of days
+                Use `-o` to only include offensive wars
+                use `-d` to only include defensive wars
+                use `-n` to normalize it per active member
+                Use `-i` to filter out inactives (2d) for normalization
+                Use `-a` to not rank alliances and do it by nation""";
     }
 
     @Override
@@ -63,8 +64,8 @@ public class WarRanking extends Command {
         Set<Integer> allowedAttackers = args.get(1).equals("*") ? null : checkNotNull(DiscordUtil.parseAlliances(guild, args.get(1)), "Invalid alliance for coalition 1");
         Set<Integer> allowedDefenders = args.size() < 3 ? allowedAttackers : args.get(2).equals("*") ? null : checkNotNull(DiscordUtil.parseAlliances(guild, args.get(2)), "Invalid alliance for coalition 2");
 
-        allowedAttackersF = allowedAttackers == null ? f -> true : f -> allowedAttackers.contains(f);
-        allowedDefendersF = allowedDefenders == null ? f -> true : f -> allowedDefenders.contains(f);
+        allowedAttackersF = allowedAttackers == null ? f -> true : allowedAttackers::contains;
+        allowedDefendersF = allowedDefenders == null ? f -> true : allowedDefenders::contains;
 
         boolean offensive = !flags.contains('d');
         boolean defensive = !flags.contains('o');
@@ -75,31 +76,28 @@ public class WarRanking extends Command {
 
         boolean byAA = !flags.contains('a');
 
-        SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars.values()).group(new BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>() {
-            @Override
-            public void accept(DBWar dbWar, GroupedRankBuilder<Integer, DBWar> builder) {
-                if (!allowedDefendersF.apply(dbWar.defender_aa) || !allowedAttackersF.apply(dbWar.attacker_aa)) return;
-                if (byAA) {
-                    if (dbWar.attacker_aa != 0 && offensive) builder.put(dbWar.attacker_aa, dbWar);
-                    if (dbWar.defender_aa != 0 && defensive) builder.put(dbWar.defender_aa, dbWar);
-                } else {
-                    if (offensive) builder.put(dbWar.attacker_id, dbWar);
-                    if (defensive) builder.put(dbWar.defender_id, dbWar);
-                }
+        SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars.values()).group((BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>) (dbWar, builder) -> {
+            if (!allowedDefendersF.apply(dbWar.defender_aa) || !allowedAttackersF.apply(dbWar.attacker_aa)) return;
+            if (byAA) {
+                if (dbWar.attacker_aa != 0 && offensive) builder.put(dbWar.attacker_aa, dbWar);
+                if (dbWar.defender_aa != 0 && defensive) builder.put(dbWar.defender_aa, dbWar);
+            } else {
+                if (offensive) builder.put(dbWar.attacker_id, dbWar);
+                if (defensive) builder.put(dbWar.defender_id, dbWar);
             }
         }).sumValues(f -> 1d);
         if (flags.contains('n') && byAA) {
             ranksUnsorted = ranksUnsorted.adapt((aaId, numWars) -> {
                 int num = DBAlliance.getOrCreate(aaId).getNations(true, flags.contains('i') ? 2440 : Integer.MAX_VALUE, true).size();
                 if (num == 0) return 0d;
-                return numWars.doubleValue() / (double) num;
+                return numWars / (double) num;
             });
         }
 
         RankBuilder<String> ranks = ranksUnsorted.sort().nameKeys(i -> PnwUtil.getName(i, byAA));
-        String offOrDef ="";
+        String offOrDef = "";
         if (offensive != defensive) {
-            if (offensive) offOrDef = "offensive "; 
+            if (offensive) offOrDef = "offensive ";
             else offOrDef = "defensive ";
         }
 

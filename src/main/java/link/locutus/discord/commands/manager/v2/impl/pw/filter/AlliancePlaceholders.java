@@ -19,16 +19,11 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class AlliancePlaceholders extends Placeholders<DBAlliance> {
-    private Map<String, AllianceInstanceAttribute> customMetrics = new HashMap<>();
+    private final Map<String, AllianceInstanceAttribute> customMetrics = new HashMap<>();
 
     public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBAlliance.class, DBAlliance.getOrCreate(0), store, validators, permisser);
     }
-
-//    public <T> AllianceInstanceMetric addMetric(String name, String desc, Class<T> type, Function<Alliance, T> func) {
-//        AllianceInstanceMetric metric = new AllianceInstanceMetric(name, desc, type, (Function<Alliance, Object>) func);
-//        customMetrics.put(name, metric);
-//    }
 
     public List<AllianceInstanceAttribute> getMetrics(ValueStore store) {
         List<AllianceInstanceAttribute> result = new ArrayList<>();

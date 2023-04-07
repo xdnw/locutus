@@ -1,25 +1,22 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 public class DiscordChannelIO implements IMessageIO {
     private final MessageChannel channel;
-    private Supplier<Message> userMessage;
+    private final Supplier<Message> userMessage;
 
     public DiscordChannelIO(MessageChannel channel, Supplier<Message> userMessage) {
         this.channel = channel;
@@ -66,8 +63,8 @@ public class DiscordChannelIO implements IMessageIO {
             }
             if (discMsg.embeds.size() > 10) {
                 for (MessageEmbed embed : discMsg.embeds) {
-                    discMsg.content.append("**" + embed.getTitle() + "**\n");
-                    discMsg.content.append(embed.getDescription() + "\n");
+                    discMsg.content.append("**").append(embed.getTitle()).append("**\n");
+                    discMsg.content.append(embed.getDescription()).append("\n");
                 }
                 discMsg.embeds.clear();
             }
@@ -87,6 +84,7 @@ public class DiscordChannelIO implements IMessageIO {
                     }
                     CompletableFuture<Message> future = DiscordUtil.sendMessage(channel, discMsg.content.toString());
                     if (result != null) {
+                        assert future != null;
                         msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                     }
                 } else {
@@ -103,11 +101,12 @@ public class DiscordChannelIO implements IMessageIO {
                 for (Map.Entry<String, byte[]> entry : allFiles.entrySet()) {
                     result = channel.sendFile(entry.getValue(), entry.getKey()).complete();
                 }
-                if (result != null && msgFuture == null) msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
+                if (result != null && msgFuture == null)
+                    msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
             }
             return msgFuture;
         } else {
-            throw new IllegalArgumentException("Only DiscordMessageBuilder is supported");
+            throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
         }
     }
 
@@ -118,7 +117,7 @@ public class DiscordChannelIO implements IMessageIO {
             RateLimitUtil.queue(channel.editMessageById(id, message));
             return this;
         } else {
-            throw new IllegalArgumentException("Only DiscordMessageBuilder is supported");
+            throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
         }
     }
 

@@ -8,7 +8,6 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
-import com.google.common.collect.BiMap;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
