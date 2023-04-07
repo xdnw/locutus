@@ -11,6 +11,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
@@ -4309,7 +4310,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String validate(GuildDB db, String value) {
                 Map<Long, MessageChannel> parsed = (Map<Long, MessageChannel>) parse(db, value);
-                if (!parsed.containsKey(0L)) throw new IllegalArgumentException("You must specify a default channel (id 0)");
+                if (!parsed.containsKey(0L)) throw new IllegalArgumentException("You must specify a default channel (e.g. `0:#channel`)");
                 return toString(parsed);
 
             }
@@ -4580,17 +4581,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public Object parse(GuildDB db, String input) {
-                Double value = MathMan.parseDouble(input);
-                if (value == null) {
-                    throw new IllegalArgumentException("Invalid number: `" + input + "`");
-                }
-                if (!Double.isFinite(value)) {
-                    throw new IllegalArgumentException("Invalid number (not finite): `" + input + "`");
-                }
-                if (value <= 0) {
-                    throw new IllegalArgumentException("Invalid number (must be positive): `" + input + "`");
-                }
-                return value;
+                return PrimitiveBindings.Double(input);
             }
 
             @Override
