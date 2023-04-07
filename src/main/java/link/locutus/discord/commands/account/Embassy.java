@@ -43,7 +43,7 @@ public class Embassy extends Command {
             return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
         }
         if (args.size() == 1 && args.get(0).equalsIgnoreCase("*")) {
-            if (!Roles.ADMIN.has(event.getAuthor(), event.getGuild())) return "No permission.";
+            if (!Roles.ADMIN.has(event.getAuthor(), event.getGuild())) return "No permission";
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(event.getGuild().getRoles());
             for (TextChannel channel : category.getTextChannels()) {
                 String[] split = channel.getName().split("-");
@@ -63,7 +63,7 @@ public class Embassy extends Command {
         }
 
         if (me.getAlliance_id() == 0) {
-            return "You are not in an alliance.";
+            return "You are not in an alliance";
         }
         int aa = me.getAlliance_id();
         String aaName = Locutus.imp().getNationDB().getAllianceName(aa);
@@ -81,7 +81,7 @@ public class Embassy extends Command {
             }
         }
         if (me.getPosition() <= 1) {
-            return "You must be a member to create an embassy.";
+            return "You must be a member to create an embassy";
         }
 
         String embassyName = aaName + "-" + aa;

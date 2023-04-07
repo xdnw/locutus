@@ -1,18 +1,23 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.rankings.builder.*;
+import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
+import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
+import link.locutus.discord.commands.rankings.builder.NumericMappedRankBuilder;
+import link.locutus.discord.commands.rankings.builder.RankBuilder;
+import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import com.google.common.collect.BiMap;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -22,19 +27,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class WarCostRanking extends Command {
     public WarCostRanking() {
         super(CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
-    }
-
-    public static double scale(DBNation nation, double value, boolean enabled) {
-        if (enabled) {
-            value /= nation.getCities();
-        }
-        return value;
     }
 
     @Override
@@ -49,23 +48,22 @@ public class WarCostRanking extends Command {
 
     @Override
     public String desc() {
-        return """
-                Ranking of nations or alliances and their war costs over days
-                Add -u to exclude unit cost
-                Add -i to exclude infra cost
-                Add -c to exclude consumption
-                Add -l to exclude loot
-                Add -t to rank total instead of average per war
-                Add -p to do loss instead of profit
-                Add -d to do damage dealt instead of cost
-                Add -n to do net instead of total/average
-                Add -a to group by alliance instead of nation
-                Add -s to scale per city
-                Add `kill:<unit>` to only include kills
-                Add `death:<unit>` to only include unit losses
-                Add `attack:<attack_type>` to sum attack types
-                Add `resource:<resource>` to sum specific resource losses
-                Add `-f` to not attach the full ranking File""";
+        return "Ranking of nations or alliances and their war costs over days\n" +
+                "Add -u to exclude unit cost\n" +
+                "Add -i to exclude infra cost\n" +
+                "Add -c to exclude consumption\n" +
+                "Add -l to exclude loot\n" +
+                "Add -t to rank total instead of average per war\n" +
+                "Add -p to do loss instead of profit\n" +
+                "Add -d to do damage dealt instead of cost\n" +
+                "Add -n to do net instead of total/average\n" +
+                "Add -a to group by alliance instead of nation\n" +
+                "Add -s to scale per city\n" +
+                "Add `kill:<unit>` to only include kills\n" +
+                "Add `death:<unit>` to only include unit losses\n" +
+                "Add `attack:<attack_type>` to sum attack types\n" +
+                "Add `resource:<resource>` to sum specific resource losses\n" +
+                "Add `-f` to not attach the full ranking File";
     }
 
     @Override
@@ -82,27 +80,24 @@ public class WarCostRanking extends Command {
             if (arg.startsWith("kill:")) {
                 if (split.length != 2) return "Use `kill:UNIT_TYPE`";
                 unitKill = MilitaryUnit.get(split[1]);
-                if (unitKill == null)
-                    throw new IllegalArgumentException("Valid units are: " + StringMan.getString(MilitaryUnit.values()));
+                if (unitKill == null) throw new IllegalArgumentException("Valid units are: " + StringMan.getString(MilitaryUnit.values()));
                 iter.remove();
                 typeName = unitKill.name();
             } else if (arg.startsWith("death:")) {
                 if (split.length != 2) return "Use `death:UNIT_TYPE`";
                 unitLoss = MilitaryUnit.get(split[1]);
-                if (unitLoss == null)
-                    throw new IllegalArgumentException("Valid units are: " + StringMan.getString(MilitaryUnit.values()));
+                if (unitLoss == null) throw new IllegalArgumentException("Valid units are: " + StringMan.getString(MilitaryUnit.values()));
                 iter.remove();
                 typeName = unitLoss.name();
             } else if (arg.startsWith("attack:")) {
                 if (split.length != 2) return "Use `attack:ATTACK_TYPE`";
                 attType = AttackType.get(split[1]);
-                if (attType == null)
-                    throw new IllegalArgumentException("Valid attack types are: " + StringMan.getString(AttackType.values()));
+                if (attType == null) throw new IllegalArgumentException("Valid attack types are: " + StringMan.getString(AttackType.values()));
                 iter.remove();
                 typeName = attType.name();
             } else if (arg.startsWith("resource:")) {
                 if (split.length != 2) return "Use `resource:RESOURCE`";
-                resourceType = ResourceType.parse(split[1]);
+                resourceType =ResourceType.parse(split[1]);
                 iter.remove();
                 typeName = resourceType.name();
             }
@@ -146,8 +141,13 @@ public class WarCostRanking extends Command {
 
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(start, end);
 
+        boolean finalUnits = units;
+        boolean finalInfra = infra;
+        boolean finalConsumption = consumption;
+        boolean finalLoot = loot;
+
         GroupedRankBuilder<Integer, DBAttack> attackGroup = new RankBuilder<>(attacks)
-                .group((attack, map) -> {
+                .group((BiConsumer<DBAttack, GroupedRankBuilder<Integer, DBAttack>>) (attack, map) -> {
                     // Group attacks into attacker and defender
                     map.put(attack.attacker_nation_id, attack);
                     map.put(attack.defender_nation_id, attack);
@@ -174,15 +174,15 @@ public class WarCostRanking extends Command {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (3)");
                 double min = damage ? 0 : Double.NEGATIVE_INFINITY;
                 ResourceType finalResourceType = resourceType;
-                getValue = (attacker, attack) -> Math.max(min, attack.getLosses(attacker, units, infra, consumption, loot).getOrDefault(finalResourceType, 0d));
+                getValue = (attacker, attack) -> Math.max(min, attack.getLosses(attacker, finalUnits, finalInfra, finalConsumption, finalLoot).getOrDefault(finalResourceType, 0d));
             }
             if (getValue == null) {
                 getValue = (attacker, attack) -> {
                     if (!damage) {
-                        return attack.getLossesConverted(attacker, units, infra, consumption, loot);
+                        return attack.getLossesConverted(attacker, finalUnits, finalInfra, finalConsumption, finalLoot);
                     } else {
                         double total = 0;
-                        Map<ResourceType, Double> losses = attack.getLosses(attacker, units, infra, consumption, loot);
+                        Map<ResourceType, Double> losses = attack.getLosses(attacker, finalUnits, finalInfra, finalConsumption, finalLoot);
                         for (Map.Entry<ResourceType, Double> entry : losses.entrySet()) {
                             if (entry.getValue() > 0) total += PnwUtil.convertedTotal(entry.getKey(), entry.getValue());
                         }
@@ -226,7 +226,7 @@ public class WarCostRanking extends Command {
         RankBuilder<String> ranks;
         if (isAA) {
             // Group it by alliance
-            NumericGroupRankBuilder<Integer, Number> byAAMap = byNation.group((entry, builder) -> {
+            NumericGroupRankBuilder<Integer, Number> byAAMap = byNation.<Integer>group((entry, builder) -> {
                 DBNation nation = nationMap.get(entry.getKey());
                 if (nation != null) {
                     builder.put(nation.getAlliance_id(), entry.getValue());
@@ -234,7 +234,7 @@ public class WarCostRanking extends Command {
             });
             SummedMapRankBuilder<Integer, Number> byAA = average ? byAAMap.average() : byAAMap.sum();
 
-            // Sort descending
+                    // Sort descending
             ranks = byAA.sort()
                     // Change key to alliance name
                     .nameKeys(allianceId -> PnwUtil.getName(allianceId, true));
@@ -254,5 +254,12 @@ public class WarCostRanking extends Command {
             DiscordUtil.upload(event2.getChannel(), title, ranks.toString());
         }
         return null;
+    }
+
+    public static double scale(DBNation nation, double value, boolean enabled) {
+        if (enabled) {
+            value /= nation.getCities();
+        }
+        return value;
     }
 }

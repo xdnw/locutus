@@ -1,29 +1,39 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class Inflows extends Command {
     public Inflows() {
         super("transfers", "inflows", "outflows", CommandCategory.ECON);
     }
+
+    private final String URL_BASE = "" + Settings.INSTANCE.PNW_URL() + "/%s/id=%s";
+    private final String EMOJI_FOLLOW = "\u27a1\ufe0f";
+    private final String EMOJI_QUESTION = "\u2753";
 
     @Override
     public String help() {
@@ -32,7 +42,7 @@ public class Inflows extends Command {
 
     @Override
     public String desc() {
-        return "Analyze the inflows of a nation or alliance over a period of time.";
+        return "Analyze the inflows of a nation or alliance over a period of time";
     }
 
     @Override
@@ -70,7 +80,7 @@ public class Inflows extends Command {
 
         Function<Integer, String> aaNameFunc = i -> Locutus.imp().getNationDB().getAllianceName(i);
 
-        if (nationId == null || arg0.contains("/alliance/") || arg0.charAt(0) == '~') {
+        if (nationId == null || arg0.contains("/allaince/") || arg0.charAt(0) == '~') {
             if (arg0.charAt(0) == '~') {
                 arg0 = args.get(0).substring(1);
                 self = Locutus.imp().getGuildDB(event).getCoalition(arg0);
@@ -102,6 +112,11 @@ public class Inflows extends Command {
                 if (per > 1 && (per < 10000 || (type != ResourceType.FOOD && per < 100000))) {
                     continue;
                 }
+                long amount = offer.getQuantity();
+                if (per <= 1) {
+                    amount = offer.getTotal();
+                    type = ResourceType.MONEY;
+                }
                 Transaction2 transfer = new Transaction2(offer);
                 allTransfers.add(transfer);
             }
@@ -114,7 +129,7 @@ public class Inflows extends Command {
         Map<Integer, List<Transaction2>> nationOutflow = new HashMap<>();
 
         for (Transaction2 transfer : allTransfers) {
-            if (transfer.note != null && transfer.note.contains("'s nation and captured.")) continue;
+            if (transfer.note != null && transfer.note.contains("'s nation and captured")) continue;
             int sender = (int) transfer.getSender();
             int receiver = (int) transfer.getReceiver();
 
@@ -131,20 +146,24 @@ public class Inflows extends Command {
                 continue;
             }
 
-            List<Transaction2> list = map.computeIfAbsent(other, k -> new ArrayList<>());
+            List<Transaction2> list = map.get(other);
+            if (list == null) {
+                list = new ArrayList<>();
+                map.put(other, list);
+            }
             list.add(transfer);
         }
 
         StringBuilder msg = new StringBuilder();
         if ((!aaInflow.isEmpty() || !nationInflow.isEmpty()) && !flags.contains('i')) {
             msg.append("Net inflows:\n");
-            msg.append(send(selfName, aaNameFunc, aaInflow, true)).append("\n");
-            msg.append(send(selfName, nationNameFunc, nationInflow, true)).append("\n");
+            msg.append(send(selfName, aaNameFunc, "alliance", aaInflow, days, true) + "\n");
+            msg.append(send(selfName, nationNameFunc, "nation", nationInflow, days, true) + "\n");
         }
         if ((!aaOutflow.isEmpty() || !nationOutflow.isEmpty()) && !flags.contains('o')) {
             msg.append("Net outflows:\n");
-            msg.append(send(selfName, aaNameFunc, aaOutflow, false)).append("\n");
-            msg.append(send(selfName, nationNameFunc, nationOutflow, false)).append("\n");
+            msg.append(send(selfName, aaNameFunc, "alliance", aaOutflow, days, false) + "\n");
+            msg.append(send(selfName, nationNameFunc, "nation", nationOutflow, days, false) + "\n");
         }
 
         if (aaInflow.isEmpty() && nationInflow.isEmpty() && aaOutflow.isEmpty() && nationOutflow.isEmpty()) {
@@ -154,15 +173,17 @@ public class Inflows extends Command {
         }
     }
 
-    private String send(String selfName, Function<Integer, String> nameFunc, Map<Integer, List<Transaction2>> transferMap, boolean inflow) {
+    private String send(String selfName, Function<Integer, String> nameFunc, String typeOther, Map<Integer, List<Transaction2>> transferMap, int days, boolean inflow) {
         StringBuilder result = new StringBuilder();
         for (Map.Entry<Integer, List<Transaction2>> entry : transferMap.entrySet()) {
             int id = entry.getKey();
 
+            String url = String.format(URL_BASE, typeOther, id);
             String name = nameFunc.apply(id);
 
             List<Transaction2> transfers = entry.getValue();
             String title = inflow ? name + " > " + selfName : selfName + " > " + name;
+            String followCmd = Settings.commandPrefix(true) + "inflows " + url + " " + days;
 
             StringBuilder message = new StringBuilder();
 
@@ -174,7 +195,9 @@ public class Inflows extends Command {
 
             message.append(PnwUtil.resourcesToString(totals));
 
-            result.append(title).append(": ").append(message).append("\n");
+            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
+//            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
+            result.append(title + ": " + message).append("\n");
         }
         return result.toString();
     }

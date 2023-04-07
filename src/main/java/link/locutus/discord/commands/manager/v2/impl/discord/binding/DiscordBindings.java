@@ -15,7 +15,16 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.discord.GuildShardManager;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
@@ -37,40 +46,23 @@ public class DiscordBindings extends BindingHelper {
         return user;
     }
 
+    @Binding
+    public Permission key(String input) {
+        return emum(Permission.class, input);
+    }
+
     @Binding(examples = "@member")
     public static Member member(@Me Guild guild, @Me User selfUser, String name) {
-        if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
+        if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild");
         User user = user(selfUser, name);
         Member member = guild.getMember(user);
         if (member == null) throw new IllegalArgumentException("No such member: " + user.getName());
         return member;
     }
 
-    @Binding(examples = "@role")
-    public static Role role(@Me Guild guild, String role) {
-        if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
-        Role discordRole = DiscordUtil.getRole(guild, role);
-        if (discordRole == null) throw new IllegalArgumentException("No role found for " + role);
-        return discordRole;
-    }
-
-    @Binding(examples = "@role1,@role2")
-    public static Set<Role> roles(@Me Guild guild, String input) {
-        Set<Role> roles = new LinkedHashSet<>();
-        for (String arg : input.split(",")) {
-            roles.add(role(guild, arg));
-        }
-        return roles;
-    }
-
-    @Binding
-    public Permission key(String input) {
-        return emum(Permission.class, input);
-    }
-
     @Binding
     public Category category(ParameterData param, Guild guild, String category) {
-        if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
+        if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild");
         if (category.charAt(0) == '<' && category.charAt(category.length() - 1) == '>') {
             category = category.substring(1, category.length() - 1);
         }
@@ -97,6 +89,23 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     public OnlineStatus onlineStatus(String input) {
         return StringMan.parseUpper(OnlineStatus.class, input);
+    }
+
+    @Binding(examples = "@role")
+    public static Role role(@Me Guild guild, String role) {
+        if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild");
+        Role discordRole = DiscordUtil.getRole(guild, role);
+        if (discordRole == null) throw new IllegalArgumentException("No role found for " + role);
+        return discordRole;
+    }
+
+    @Binding(examples = "@role1,@role2")
+    public static Set<Role> roles(@Me Guild guild, String input) {
+        Set<Role> roles = new LinkedHashSet<>();
+        for (String arg : input.split(",")) {
+            roles.add(role(guild, arg));
+        }
+        return roles;
     }
 
     @Binding(examples = "@member1,@member2")
@@ -139,7 +148,7 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     @Me
     public Guild guild() {
-        throw new IllegalStateException("No guild set in command locals.");
+        throw new IllegalStateException("No guild set in command locals");
     }
 
     @Binding(examples = "#channel")
@@ -152,18 +161,16 @@ public class DiscordBindings extends BindingHelper {
     @Binding(examples = "#channel")
     public TextChannel textChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
-        if (channel == null) throw new IllegalArgumentException("No channel found for " + null);
-        if (!(channel instanceof TextChannel))
-            throw new IllegalArgumentException("Channel " + channel + " is not a " + TextChannel.class.getSimpleName() + " but is instead of type " + channel.getClass().getSimpleName());
+        if (channel == null) throw new IllegalArgumentException("No channel found for " + channel);
+        if (!(channel instanceof TextChannel)) throw new IllegalArgumentException("Channel " + channel + " is not a " + TextChannel.class.getSimpleName() + " but is instead of type " + channel.getClass().getSimpleName());
         return (TextChannel) channel;
     }
 
     @Binding(examples = "#channel")
     public ICategorizableChannel categorizableChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
-        if (channel == null) throw new IllegalArgumentException("No channel found for " + null);
-        if (!(channel instanceof ICategorizableChannel))
-            throw new IllegalArgumentException("Channel " + channel + " is not a " + ICategorizableChannel.class.getSimpleName() + " but is instead of type " + channel.getClass().getSimpleName());
+        if (channel == null) throw new IllegalArgumentException("No channel found for " + channel);
+        if (!(channel instanceof ICategorizableChannel)) throw new IllegalArgumentException("Channel " + channel + " is not a " + ICategorizableChannel.class.getSimpleName() + " but is instead of type " + channel.getClass().getSimpleName());
         return (ICategorizableChannel) channel;
     }
 
@@ -174,28 +181,27 @@ public class DiscordBindings extends BindingHelper {
 
     @Binding
     public MessageReceivedEvent event() {
-        throw new IllegalStateException("No event set in command locals.");
+        throw new IllegalStateException("No event set in command locals");
     }
 
     @Binding
     @Me
     public MessageChannel channel() {
-        throw new IllegalStateException("No channel set in command locals.");
+        throw new IllegalStateException("No channel set in command locals");
     }
 
     @Binding
     @Me
     public GuildMessageChannel guildChannel(@Me TextChannel channel) {
-        if (channel == null) throw new IllegalArgumentException("This command can only be used in a guild channel.");
-        return channel;
+        if (!(channel instanceof GuildMessageChannel)) throw new IllegalArgumentException("This command can only be used in a guild channel");
+        return (GuildMessageChannel) channel;
     }
 
     @Binding
     @Me
     public ICategorizableChannel categorizableChannel(@Me TextChannel channel) {
-        if (channel == null)
-            throw new IllegalArgumentException("This command can only be used in a categorize channel.");
-        return channel;
+        if (!(channel instanceof ICategorizableChannel)) throw new IllegalArgumentException("This command can only be used in a categorizable channel");
+        return (ICategorizableChannel) channel;
     }
 
     @Binding
@@ -205,8 +211,7 @@ public class DiscordBindings extends BindingHelper {
             MessageChannel parent = hook.getParent();
             if (parent != null) channel = parent;
         }
-        if (!(channel instanceof TextChannel))
-            throw new IllegalArgumentException("This command can only be used in a guild text channel.");
+        if (!(channel instanceof TextChannel)) throw new IllegalArgumentException("This command can only be used in a guild text channel");
         return (TextChannel) channel;
     }
 
@@ -229,24 +234,24 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     @Me
     public User user() {
-        throw new IllegalStateException("No user set in command locals.");
+        throw new IllegalStateException("No user set in command locals");
     }
 
     @Binding
     @Me
     public Message message() {
-        throw new IllegalStateException("No message set in command locals.");
+        throw new IllegalStateException("No message set in command locals");
     }
 
     @Binding
     @Me
     public JSONObject command() {
-        throw new IllegalArgumentException("No command binding found.");
+        throw new IllegalArgumentException("No command binding found");
     }
 
     @Binding
     @Me
     public IMessageIO channelIO() {
-        throw new IllegalArgumentException("No channel binding found.");
+        throw new IllegalArgumentException("No channel binding found");
     }
 }

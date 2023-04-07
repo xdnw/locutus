@@ -8,7 +8,8 @@ public enum Operation {
     NOT_EQUAL("!="),
     EQUAL("="),
     GREATER(">"),
-    LESSER("<");
+    LESSER("<")
+    ;
 
     public final String code;
 
@@ -21,42 +22,47 @@ public enum Operation {
         return input -> {
             if (input == null) return Operation.this == Operation.NOT_EQUAL;
             double val1 = input.doubleValue();
-            return switch (Operation.this) {
-                case LESSER_EQUAL -> val1 <= val2;
-                case GREATER_EQUAL -> val1 >= val2;
-                case EQUAL -> val1 == val2;
-                case GREATER -> val1 > val2;
-                case LESSER -> val1 < val2;
-                case NOT_EQUAL -> val1 != val2;
-            };
+            switch (Operation.this) {
+                case LESSER_EQUAL: return val1 <= val2;
+                case GREATER_EQUAL: return val1 >= val2;
+                case EQUAL: return val1 == val2;
+                case GREATER: return val1 > val2;
+                case LESSER: return val1 < val2;
+                case NOT_EQUAL: return val1 != val2;
+            }
+            return false;
         };
     }
 
     public Predicate<String> getStringPredicate(String compareTo) {
+        String val2 = compareTo;
         return val1 -> {
             if (val1 == null) return Operation.this == Operation.NOT_EQUAL;
-            return switch (Operation.this) {
-                case LESSER_EQUAL -> val1.compareTo(compareTo) <= 0;
-                case GREATER_EQUAL -> val1.compareTo(compareTo) >= 0;
-                case EQUAL -> val1.equalsIgnoreCase(compareTo);
-                case GREATER -> val1.compareTo(compareTo) > 0;
-                case LESSER -> val1.compareTo(compareTo) < 0;
-                case NOT_EQUAL -> !val1.equalsIgnoreCase(compareTo);
-            };
+            switch (Operation.this) {
+                case LESSER_EQUAL: return val1.compareTo(val2) <= 0;
+                case GREATER_EQUAL: return val1.compareTo(val2) >= 0;
+                case EQUAL: return val1.equalsIgnoreCase(val2);
+                case GREATER: return val1.compareTo(val2) > 0;
+                case LESSER: return val1.compareTo(val2) < 0;
+                case NOT_EQUAL: return !val1.equalsIgnoreCase(val2);
+            }
+            return false;
         };
     }
 
     public Predicate<Boolean> getBooleanPredicate(boolean compareTo) {
+        boolean val2 = compareTo;
         return val1 -> {
             if (val1 == null) return Operation.this == Operation.NOT_EQUAL;
-            return switch (Operation.this) {
-                case LESSER_EQUAL -> !val1;
-                case GREATER_EQUAL -> val1;
-                case EQUAL -> val1 == compareTo;
-                case GREATER -> val1 && !compareTo;
-                case LESSER -> !val1 && compareTo;
-                case NOT_EQUAL -> val1 != compareTo;
-            };
+            switch (Operation.this) {
+                case LESSER_EQUAL: return !val1;
+                case GREATER_EQUAL: return val1;
+                case EQUAL: return val1 == val2;
+                case GREATER: return val1 && !val2;
+                case LESSER: return !val1 && val2;
+                case NOT_EQUAL: return val1 != val2;
+            }
+            return false;
         };
     }
 }

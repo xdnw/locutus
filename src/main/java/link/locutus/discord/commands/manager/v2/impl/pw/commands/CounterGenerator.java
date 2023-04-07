@@ -1,23 +1,27 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-<<<<<<< HEAD
 import link.locutus.discord.pnw.AllianceList;
-=======
-import link.locutus.discord.db.entities.DBWar;
->>>>>>> pr/15
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class CounterGenerator {
     public static List<DBNation> generateCounters(GuildDB db, DBNation enemy, boolean requireOnDiscord, boolean allowAttackersWithMaxOffensives) {
@@ -28,13 +32,8 @@ public class CounterGenerator {
         Set<Integer> allies = db.getAllies();
         AllianceList alliance = db.getAllianceList();
 
-<<<<<<< HEAD
         if (requireOnDiscord || alliance == null || alliance.isEmpty() || allies.isEmpty()) {
             if (role == null) throw new IllegalArgumentException("No member role setup");
-=======
-        if (requireOnDiscord || alliance == null || allies.isEmpty()) {
-            if (role == null) throw new IllegalArgumentException("No member role has been set.");
->>>>>>> pr/15
             List<Member> members = guild.getMembersWithRoles(role);
             for (Member member : members) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -132,7 +131,12 @@ public class CounterGenerator {
             factors.put(att, activeFactor * groundFactor * cityFactor * att.getStrength() * maxOffFactor * roomFactor);
         }
 
-        attackersSorted.sort((o1, o2) -> Double.compare(factors.get(o2), factors.get(o1)));
+        Collections.sort(attackersSorted, new Comparator<DBNation>() {
+            @Override
+            public int compare(DBNation o1, DBNation o2) {
+                return Double.compare(factors.get(o2), factors.get(o1));
+            }
+        });
 
         if (attackersSorted.size() > 0 && filter) {
             for (int i = 0; i < Math.min(3, attackersSorted.size()); i++) {

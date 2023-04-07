@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw;
 
+import com.google.gson.JsonObject;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -9,8 +10,15 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.CommandGroup;
+import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
@@ -24,15 +32,36 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.MessageBuilder;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -65,74 +94,39 @@ public class CommandManager2 {
         this.commands = CommandGroup.createRoot(store, validators);
     }
 
-    public static Map<String, String> parseArguments(Set<String> params, String input, boolean checkUnbound) {
-        Map<String, String> lowerCase = new HashMap<>();
-        for (String param : params) {
-            lowerCase.put(param.toLowerCase(Locale.ROOT), param);
-        }
-
-
-        Map<String, String> result = new LinkedHashMap<>();
-        Pattern pattern = Pattern.compile("(?i)(^| )(" + StringMan.join(lowerCase.keySet(), "|") + "): [^ ]");
-        Matcher matcher = pattern.matcher(input);
-
-        Pattern fuzzyArg = !checkUnbound ? null : Pattern.compile("(?i) ([a-zA-Z]+): [^ ]");
-
-        Map<String, Integer> argStart = new LinkedHashMap<>();
-        Map<String, Integer> argEnd = new LinkedHashMap<>();
-        String lastArg = null;
-        while (matcher.find()) {
-            String argName = matcher.group(2).toLowerCase(Locale.ROOT);
-            int index = matcher.end(2) + 2;
-            Integer existing = argStart.put(argName, index);
-            if (existing != null)
-                throw new IllegalArgumentException("Duplicate argument `" + argName + "` in `" + input + "`");
-
-            if (lastArg != null) {
-                argEnd.put(lastArg, matcher.start(2) - 1);
-            }
-            lastArg = argName;
-        }
-        if (lastArg != null) {
-            argEnd.put(lastArg, input.length());
-        }
-
-        for (Map.Entry<String, Integer> entry : argStart.entrySet()) {
-            String id = entry.getKey();
-            int start = entry.getValue();
-            int end = argEnd.get(id);
-            String value = input.substring(start, end);
-
-            if (fuzzyArg != null) {
-                Matcher valueMatcher = fuzzyArg.matcher(value);
-                if (valueMatcher.find()) {
-                    String fuzzyArgName = valueMatcher.group(1);
-                    throw new IllegalArgumentException("Invalid argument: `" + fuzzyArgName + "` for `" + input + "` options: " + StringMan.getString(params));
-                }
-            }
-            result.put(lowerCase.get(id), value);
-        }
-
-        if (argStart.isEmpty()) {
-            throw new IllegalArgumentException("No arguments found` for `" + input + "` options: " + StringMan.getString(params));
-        }
-
-        return result;
-    }
-
-    public static void main(String[] args) {
-        boolean checkUnbound = true;
-        Set<String> params = new HashSet<>(Arrays.asList("hello", "world"));
-        String input = "hello: test testing world: blah something.";
-        Map<String, String> result = parseArguments(params, input, checkUnbound);
-        System.out.println("Result " + StringMan.getString(result));
-    }
-
     public CommandManager2 registerDefaults() {
 
+//        StockCommands stock = new StockCommands();
+////        this.commands.registerMapping(new CM());
+//
+//        CommandGroup legacy = CommandGroup.createRoot(store, validators);
+//        //        this.commands.registerSubCommands(new ExchangeCommands(), "exchange", "corp", "corporation");
+//        legacy.registerSubCommands(stock, "stock");
+//        legacy.registerCommands(new UtilityCommands());
+//
+//        legacy.registerCommands(new BankCommands());
+//        legacy.registerCommands(new StatCommands());
+//        legacy.registerCommands(new IACommands());
+//        legacy.registerCommands(new AttackCommands());
+//        legacy.registerCommands(new AdminCommands());
+//        legacy.registerCommands(new DiscordCommands());
+//        legacy.registerCommands(new FACommands());
+//        legacy.registerCommands(new FunCommands());
+//        legacy.registerCommands(new PlayerSettingCommands());
+//        legacy.registerCommands(new LoanCommands());
+//        legacy.registerCommands(new TradeCommands());
+//        legacy.registerCommands(new WarCommands());
+//        legacy.registerSubCommands(new GrantCommands(), "grant");
+//        legacy.registerCommands(new TestCommands());
+//        legacy.registerCommands(new UnsortedCommands());
+//        legacy.registerSubCommands(new ReportCommands(), "report");
+//
+//        YamlConfiguration commandRemapConfig = loadDefaultMapping();
+//        if (commandRemapConfig != null) {
+//            this.commands.registerCommandsWithMapping(legacy, commandRemapConfig, 2, false);
+//        }
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
-<<<<<<< HEAD
 //        this.commands.registerSubCommands(new BuildCommands(), "build");
 //        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
 //
@@ -163,38 +157,6 @@ public class CommandManager2 {
 //        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyList", "buy_list");
 //        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
 //        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
-=======
-        this.commands.registerSubCommands(new BuildCommands(), "build");
-        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
-
-        this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertTKRSpySheet", "convertTKRSpySheet");
-        this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertTKRSpySheet", "convertTKR");
-        this.commands.registerMethod(new WarCommands(), List.of(), "raidNone", "raid");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncLootFromAttacks", "syncLootFromAttacks");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTreasures", "treasures");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncDiscordWithLocutus", "discord");
-
-        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertAbsolute", "price");
-        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertMistrade", "mistrade");
-        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertDisparity", "margin");
-        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertNoOffer", "no_offers");
-        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertUndercut", "undercut");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "removeInvalidOffshoring", "removeinvalidoffshoring");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveServer", "leaveServer");
-        this.commands.registerMethod(new UtilityCommands(), List.of("color"), "calculateColorRevenue", "revenue");
-
-        this.commands.registerMethod(new UnsortedCommands(), List.of("sheets_econ"), "taxRevenueSheet", "taxRevenue");
-
-        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellOffer", "sell");
-        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyOffer", "buy");
-        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "deleteOffer", "delete");
-        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "offerInfo", "info");
-        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "updateOffer", "update");
-
-        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyList", "buy_list");
-        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
-        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
->>>>>>> pr/15
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin"), "loginTimes", "list_login_times");
 
@@ -242,7 +204,7 @@ public class CommandManager2 {
         return commands.getCallable(args);
     }
 
-    public Map.Entry<CommandCallable, String> getCallableAndPath(List<String> args) {
+    public Map.Entry<CommandCallable,String> getCallableAndPath(List<String> args) {
         CommandCallable root = commands;
         List<String> path = new ArrayList<>();
 
@@ -276,20 +238,18 @@ public class CommandManager2 {
     }
 
     private LocalValueStore createLocals(Guild guild, MessageChannel channel, User user, Message message, IMessageIO io, Map<String, String> fullCmdStr) {
-        if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.contains(guild.getIdLong()))
-            throw new IllegalArgumentException("Unsupported");
+        if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.contains(guild.getIdLong())) throw new IllegalArgumentException("Unsupported");
 
         LocalValueStore<Object> locals = new LocalValueStore<>(store);
 
         locals.addProvider(Key.of(PermissionHandler.class), permisser);
         locals.addProvider(Key.of(ValidatorStore.class), validators);
 
-        if (Settings.INSTANCE.MODERATION.BANNED_USERS.contains(user.getIdLong()))
-            throw new IllegalArgumentException("Unsupported");
+        if (Settings.INSTANCE.MODERATION.BANNED_USERS.contains(user.getIdLong())) throw new IllegalArgumentException("Unsupported");
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null) {
             if (Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation.getId())
-                    || Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id())) {
+            || Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id())) {
                 throw new IllegalArgumentException("Unsupported");
             }
         }
@@ -306,8 +266,7 @@ public class CommandManager2 {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             if (db != null) {
                 for (int id : db.getAllianceIds(true)) {
-                    if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(id))
-                        throw new IllegalArgumentException("Unsupported");
+                    if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(id)) throw new IllegalArgumentException("Unsupported");
                 }
             }
             locals.addProvider(Key.of(GuildDB.class, Me.class), db);
@@ -328,70 +287,75 @@ public class CommandManager2 {
             run(guild, channel, user, message, io, pathStr, stringArguments, async);
             return;
         }
-        Runnable task = () -> {
-            List<String> args = StringMan.split(fullCmdStr, ' ');
-            List<String> original = new ArrayList<>(args);
-            CommandCallable callable = commands.getCallable(args, true);
-            if (callable == null) {
-                System.out.println("No cmd found for " + StringMan.getString(original));
-                return;
-            }
-
-            LocalValueStore<Object> locals = createLocals(guild, channel, user, message, io, Collections.emptyMap());
-
-            if (callable instanceof ParametricCallable parametric) {
-
-                try {
-                    ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
-                    handleCall(io, () -> {
-                        Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
-                        Object[] parsed = parametric.argumentMapToArray(map);
-
-                        return parametric.call(null, locals, parsed);
-                    });
-                } catch (Throwable e) {
-                    e.printStackTrace();
+        Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                List<String> args = StringMan.split(fullCmdStr, ' ');
+                List<String> original = new ArrayList<>(args);
+                CommandCallable callable = commands.getCallable(args, true);
+                if (callable == null) {
+                    System.out.println("No cmd found for " + StringMan.getString(original));
+                    return;
                 }
-            } else if (callable instanceof CommandGroup group) {
-                System.out.println("Remove:|| group " + group.getPrimaryCommandId());
-                handleCall(io, group, locals);
-            } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+
+                LocalValueStore<Object> locals = createLocals(guild, channel, user, message, io, Collections.emptyMap());
+
+                if (callable instanceof ParametricCallable parametric) {
+
+                    try {
+                        ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
+                        handleCall(io, () -> {
+                            Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
+                            Object[] parsed = parametric.argumentMapToArray(map);
+
+                            return parametric.call(null, locals, parsed);
+                        });
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                } else if (callable instanceof CommandGroup group) {
+                    System.out.println("Remove:|| group " + group.getPrimaryCommandId());
+                    handleCall(io, group, locals);
+                } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+            }
         };
         if (async) Locutus.imp().getExecutor().submit(task);
         else task.run();
     }
-
     public void run(Guild guild, MessageChannel channel, User user, Message message, IMessageIO io, String path, Map<String, String> arguments, boolean async) {
-        Runnable task = () -> {
-            try {
-                CommandCallable callable = commands.get(Arrays.asList(path.split(" ")));
-                if (callable == null) {
-                    System.out.println("No cmd found for " + path);
-                    io.create().append("No command found for " + path).send();
-                    return;
-                }
-
-                Map<String, String> argsAndCmd = new HashMap<>(arguments);
-                argsAndCmd.put("", path);
-                Map<String, String> finalArguments = new LinkedHashMap<>(arguments);
-                finalArguments.remove("");
-
-                LocalValueStore<Object> locals = createLocals(guild, channel, user, message, io, argsAndCmd);
-                if (callable instanceof ParametricCallable parametric) {
-                    if (message == null) {
-                        String cmdRaw = (path + " " + parametric.stringifyArgumentMap(finalArguments, " ")).trim();
-                        Message embedMessage = new MessageBuilder().setContent(Settings.commandPrefix(false) + cmdRaw).build();
-                        locals.addProvider(Key.of(Message.class, Me.class), embedMessage);
+        Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    CommandCallable callable = commands.get(Arrays.asList(path.split(" ")));
+                    if (callable == null) {
+                        System.out.println("No cmd found for " + path);
+                        io.create().append("No command found for " + path).send();
+                        return;
                     }
-                    handleCall(io, () -> {
-                        Object[] parsed = parametric.parseArgumentMap(finalArguments, locals, validators, permisser);
-                        return parametric.call(null, locals, parsed);
-                    });
-                } else if (callable instanceof CommandGroup group) {
-                    handleCall(io, group, locals);
-                } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
-            } catch (Throwable e) {
-                e.printStackTrace();
+
+                    Map<String, String> argsAndCmd = new HashMap<>(arguments);
+                    argsAndCmd.put("", path);
+                    Map<String, String> finalArguments = new LinkedHashMap<>(arguments);
+                    finalArguments.remove("");
+
+                    LocalValueStore<Object> locals = createLocals(guild, channel, user, message, io, argsAndCmd);
+                    if (callable instanceof ParametricCallable parametric) {
+                        if (message == null) {
+                            String cmdRaw = (path + " " + parametric.stringifyArgumentMap(finalArguments, " ")).trim();
+                            Message embedMessage = new MessageBuilder().setContent(Settings.commandPrefix(false) + cmdRaw).build();
+                            locals.addProvider(Key.of(Message.class, Me.class), embedMessage);
+                        }
+                        handleCall(io, () -> {
+                            Object[] parsed = parametric.parseArgumentMap(finalArguments, locals, validators, permisser);
+                            return parametric.call(null, locals, parsed);
+                        });
+                    } else if (callable instanceof CommandGroup group) {
+                        handleCall(io, group, locals);
+                    } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
             }
         };
         if (async) Locutus.imp().getExecutor().submit(task);
@@ -409,10 +373,10 @@ public class CommandManager2 {
             String title = e.getMessage();
             StringBuilder body = new StringBuilder();
             if (e.getHelp() != null) {
-                body.append("`/").append(e.getHelp()).append("`");
+                body.append("`/" + e.getHelp() + "`");
             }
             if (e.getDescription() != null && !e.getDescription().isEmpty()) {
-                body.append("\n").append(e.getDescription());
+                body.append("\n" + e.getDescription());
             }
             if (title == null || title.isEmpty()) title = e.getClass().getSimpleName();
 
@@ -433,13 +397,79 @@ public class CommandManager2 {
         handleCall(io, () -> group.call(new ArgumentStack(new ArrayList<>(), store, validators, permisser)));
     }
 
+//    private void handleCall(IMessageIO io, ParametricCallable callable, ValueStore store, Object[] parsed) {
+//        //callable.call(null, store, parsed);
+//        handleCall(io, () -> callable.call(null, store, parsed));
+//    }
+
+    public static Map<String, String> parseArguments(Set<String> params, String input, boolean checkUnbound) {
+        Map<String, String> lowerCase = new HashMap<>();
+        for (String param : params) {
+            lowerCase.put(param.toLowerCase(Locale.ROOT), param);
+        }
+
+
+        Map<String, String> result = new LinkedHashMap<>();
+        Pattern pattern = Pattern.compile("(?i)(^| )(" + StringMan.join(lowerCase.keySet(), "|") + "): [^ ]");
+        Matcher matcher = pattern.matcher(input);
+
+        Pattern fuzzyArg = !checkUnbound ? null : Pattern.compile("(?i) ([a-zA-Z]+): [^ ]");
+
+        Map<String, Integer> argStart = new LinkedHashMap<>();
+        Map<String, Integer> argEnd = new LinkedHashMap<>();
+        String lastArg = null;
+        while (matcher.find()) {
+            String argName = matcher.group(2).toLowerCase(Locale.ROOT);
+            int index = matcher.end(2) + 2;
+            Integer existing = argStart.put(argName, index);
+            if (existing != null) throw new IllegalArgumentException("Duplicate argument `" + argName + "` in `" + input + "`");
+
+            if (lastArg != null) {
+                argEnd.put(lastArg, matcher.start(2) - 1);
+            }
+            lastArg = argName;
+        }
+        if (lastArg != null) {
+            argEnd.put(lastArg, input.length());
+        }
+
+        for (Map.Entry<String, Integer> entry : argStart.entrySet()) {
+            String id = entry.getKey();
+            int start = entry.getValue();
+            int end = argEnd.get(id);
+            String value = input.substring(start, end);
+
+            if (fuzzyArg != null) {
+                Matcher valueMatcher = fuzzyArg.matcher(value);
+                if (valueMatcher.find()) {
+                    String fuzzyArgName = valueMatcher.group(1);
+                    throw new IllegalArgumentException("Invalid argument: `" + fuzzyArgName + "` for `" + input + "` options: " + StringMan.getString(params));
+                }
+            }
+            result.put(lowerCase.get(id), value);
+        }
+
+        if (argStart.isEmpty()) {
+            throw new IllegalArgumentException("No arguments found` for `" + input + "` options: " + StringMan.getString(params));
+        }
+
+        return result;
+    }
+
+    public static void main(String[] args) {
+        boolean checkUnbound = true;
+        Set<String> params = new HashSet<>(Arrays.asList("hello", "world"));
+        String input = "hello: test testing world: blah something";
+        Map<String, String> result = parseArguments(params, input, checkUnbound);
+        System.out.println("Result " + StringMan.getString(result));
+    }
+
     public Map<String, String> validateSlashCommand(String input, boolean strict) {
         String original = input;
         CommandGroup root = commands;
         while (true) {
             int index = input.indexOf(' ');
-            if (index < 0)
-                throw new IllegalArgumentException("No parametric command found for " + original + " only found root: " + root.getFullPath());
+            if (index < 0) throw new IllegalArgumentException("No parametric command found for " + original + " only found root: " + root.getFullPath());
             String arg0 = input.substring(0, index);
             input = input.substring(index + 1).trim();
 
@@ -451,6 +481,7 @@ public class CommandManager2 {
                 return new HashMap<>();
             } else if (next instanceof CommandGroup group) {
                 root = group;
+                continue;
             } else if (next == null) {
                 throw new IllegalArgumentException("No parametric command found for " + original + " (" + arg0 + ")");
             } else {

@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.info.optimal;
 
 import link.locutus.discord.Locutus;
-<<<<<<< HEAD
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -21,8 +20,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
-=======
->>>>>>> pr/15
 import link.locutus.discord.apiv1.domains.City;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -32,28 +29,23 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.pnw.json.CityBuild;
-import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import rocker.grant.city;
+import rocker.grant.nation;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -77,9 +69,9 @@ public class OptimalBuild extends Command {
     public String desc() {
         return "Optimize a build for a city e.g.\n" +
                 "For 30 days:" +
-                " - `" + Settings.commandPrefix(true) + "OptimalBuild 30 " + Settings.INSTANCE.PNW_URL() + "/city/id=1234`\n" +
+                " - `" + Settings.commandPrefix(true) + "OptimalBuild 30 " + Settings.INSTANCE.PNW_URL() + "/city/id=XXXX`\n" +
                 "For an indefinite time span:\n" +
-                " - `" + Settings.commandPrefix(true) + "OptimalBuild " + Settings.INSTANCE.PNW_URL() + "/city/id=1234`\n" +
+                " - `" + Settings.commandPrefix(true) + "OptimalBuild " + Settings.INSTANCE.PNW_URL() + "/city/id=XXXX`\n" +
                 "To specify an MMR, add e.g. `mmr=5050`\n" +
                 "To specify a continent, add e.g. `continent=australia`\n" +
                 "To specify an age (int days), add e.g. `age=150`\n" +
@@ -140,7 +132,6 @@ public class OptimalBuild extends Command {
         if (me == null) {
             return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
-        if (me.getAlliance_id() == 4648) return "No permission for this command.";
         Integer days = null;
         if (args.size() >= 2 && MathMan.isInteger(args.get(0))) {
             days = Integer.parseInt(args.get(0));
@@ -149,8 +140,8 @@ public class OptimalBuild extends Command {
 
         Set<Project> addProject = new HashSet<>();
 
-        boolean positiceCash = false;
-        boolean manu = true;
+        Boolean positiceCash = false;
+        Boolean manu = true;
         String mmr = null;
 
         Double crimeLimit = null;
@@ -183,81 +174,92 @@ public class OptimalBuild extends Command {
             String[] split = next.split("[=<>]");
             if (split.length == 2) {
                 switch (split[0].toLowerCase()) {
-                    case "mmr" -> {
+                    case "mmr":
                         String mmrStr = split[1];
                         if (MathMan.isInteger(mmrStr) && mmrStr.length() == 4) {
                             mmr = mmrStr;
                             iter.remove();
                         }
-                    }
-                    case "radiation" -> {
+                        break;
+                    case "radiation":
                         baseRadiation = MathMan.parseDouble(split[1]);
                         iter.remove();
-                    }
-                    case "steel" -> {
+                        break;
+                    case "steel":
                         steel = MathMan.parseInt(split[1]);
                         iter.remove();
-                    }
-                    case "gas", "gasoline" -> {
+                        break;
+                    case "gas":
+                    case "gasoline":
                         gasoline = MathMan.parseInt(split[1]);
                         iter.remove();
-                    }
-                    case "muni", "munitions" -> {
+                        break;
+                    case "muni":
+                    case "munitions":
                         munitions = MathMan.parseInt(split[1]);
                         iter.remove();
-                    }
-                    case "alu", "aluminium", "aluminum" -> {
+                        break;
+                    case "alu":
+                    case "aluminium":
+                    case "aluminum":
                         aluminum = MathMan.parseInt(split[1]);
                         iter.remove();
-                    }
-                    case "infrastructure", "infra" -> {
+                        break;
+                    case "infrastructure":
+                    case "infra":
                         infra = MathMan.parseDouble(split[1]);
                         iter.remove();
-                    }
-                    case "infralow" -> {
+                        break;
+                    case "infralow":
                         infraLow = MathMan.parseDouble(split[1]);
                         iter.remove();
-                    }
-                    case "crime" -> {
+                        break;
+                    case "crime":
                         crimeLimit = MathMan.parseDouble(split[1]);
                         iter.remove();
-                    }
-                    case "pop", "population" -> {
+                        break;
+                    case "pop":
+                    case "population":
                         popLimit = MathMan.parseDouble(split[1]);
                         iter.remove();
-                    }
-                    case "poplow", "populationlow" -> {
+                        break;
+                    case "poplow":
+                    case "populationlow":
                         popLow = MathMan.parseDouble(split[1]);
                         iter.remove();
-                    }
-                    case "disease" -> {
+                        break;
+                    case "disease":
                         diseaseLimit = MathMan.parseDouble(split[1]);
                         iter.remove();
-                    }
-                    case "land" -> {
+                        break;
+                    case "land":
                         land = MathMan.parseDouble(split[1]);
                         iter.remove();
-                    }
-                    case "age" -> {
+                        break;
+                    case "age":
                         age = MathMan.parseInt(split[1]);
                         iter.remove();
-                    }
-                    case "continent" -> {
+                        break;
+                    case "continent":
                         continent = Continent.valueOf(split[1].toUpperCase());
                         iter.remove();
-                    }
-                    case "manufacturing", "manufactured", "manu" -> {
+                        break;
+                    case "manufacturing":
+                    case "manufactured":
+                    case "manu":
                         manu = Boolean.parseBoolean(split[1]);
                         iter.remove();
-                    }
-                    case "cash" -> {
+                        break;
+                    case "cash":
                         positiceCash = Boolean.parseBoolean(split[1]);
                         iter.remove();
-                    }
-                    case "tax", "taxes", "taxrate" -> {
+                        break;
+                    case "tax":
+                    case "taxes":
+                    case "taxrate":
                         taxes = new TaxRate(split[1]);
                         iter.remove();
-                    }
+                        break;
                 }
             }
         }
@@ -265,7 +267,7 @@ public class OptimalBuild extends Command {
             return usage(null, io);
         }
 
-        int cityId;
+        Integer cityId = null;
         if (args.size() <= 3 && args.get(args.size() - 1).contains("/city/")) {
             String cityArg = args.size() == 2 ? args.get(1) : args.get(0);
             if (!cityArg.toLowerCase().contains("/city/")) {
@@ -326,7 +328,7 @@ public class OptimalBuild extends Command {
         }
 
         if (origin.getInfra() > 3600) {
-            return "Too much infrastructure.";
+            return "Too much infra";
         }
 
         double radIndex = baseRadiation;
@@ -338,7 +340,7 @@ public class OptimalBuild extends Command {
         DBNation finalMe = me;
         Continent finalContinent = continent;
         Predicate<Project> hasProject = project -> addProject.contains(project) || project.get(finalMe) > 0;
-        double grossModifier = finalMe.getGrossModifier();
+        double grossModifier = finalMe.getGrossModifier();;
 
         CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
 
@@ -347,19 +349,24 @@ public class OptimalBuild extends Command {
             double[] buffer = new double[ResourceType.values.length];
             double moneyFactor = (100 - taxes.money) / 100d;
             double rssFactor = (100 - taxes.resources) / 100d;
-            valueFunc = javaCity -> {
-                Arrays.fill(buffer, 0);
-                double[] profit = javaCity.profit(finalContinent, rads, -1L, hasProject, buffer, numCities, grossModifier, 12);
-                profit[0] *= moneyFactor;
-                for (int i = 1; i < profit.length; i++) {
-                    if (profit[i] > 0) {
-                        profit[i] *= rssFactor;
+            valueFunc = new Function<JavaCity, Double>() {
+                @Override
+                public Double apply(JavaCity javaCity) {
+                    Arrays.fill(buffer, 0);
+                    double[] profit = javaCity.profit(finalContinent, rads, -1L, hasProject, buffer, numCities, grossModifier, 12);
+                    profit[0] *= moneyFactor;
+                    for (int i = 1; i < profit.length; i++) {
+                        if (profit[i] > 0) {
+                            profit[i] *= rssFactor;
+                        }
                     }
+                    return PnwUtil.convertedTotal(profit) / javaCity.getImpTotal();
                 }
-                return PnwUtil.convertedTotal(profit) / javaCity.getImpTotal();
             };
         } else {
-            valueFunc = javaCity -> javaCity.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier()) / javaCity.getImpTotal();
+            valueFunc = javaCity -> {
+                return javaCity.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier()) / javaCity.getImpTotal();
+            };
         }
 
         if (infraLow != null) {
@@ -371,8 +378,7 @@ public class OptimalBuild extends Command {
                     double currentInfra = city.getInfra();
                     city.setInfra(Math.min(currentInfra, finalInfraLow));
                     city.getMetrics(hasProject).recalculate(city, hasProject);
-                    if (popLowFinal != null && city.getPopulation(hasProject) < popLowFinal)
-                        return Double.NEGATIVE_INFINITY;
+                    if (popLowFinal != null && city.getPopulation(hasProject) < popLowFinal) return Double.NEGATIVE_INFINITY;
                     Double value = parent.apply(city);
                     city.setInfra(currentInfra);
                     return value;
@@ -404,13 +410,10 @@ public class OptimalBuild extends Command {
         if (!manu) {
             Function<JavaCity, Double> parent = valueFunc;
             valueFunc = city -> {
-                if (city.get(Buildings.MUNITIONS_FACTORY) > city.get(Buildings.LEAD_MINE))
-                    return Double.NEGATIVE_INFINITY;
+                if (city.get(Buildings.MUNITIONS_FACTORY) > city.get(Buildings.LEAD_MINE)) return Double.NEGATIVE_INFINITY;
                 if (city.get(Buildings.GAS_REFINERY) > city.get(Buildings.OIL_WELL)) return Double.NEGATIVE_INFINITY;
-                if (city.get(Buildings.ALUMINUM_REFINERY) > city.get(Buildings.BAUXITE_MINE))
-                    return Double.NEGATIVE_INFINITY;
-                if (city.get(Buildings.STEEL_MILL) > city.get(Buildings.COAL_MINE) || city.get(Buildings.STEEL_MILL) > city.get(Buildings.IRON_MINE))
-                    return Double.NEGATIVE_INFINITY;
+                if (city.get(Buildings.ALUMINUM_REFINERY) > city.get(Buildings.BAUXITE_MINE)) return Double.NEGATIVE_INFINITY;
+                if (city.get(Buildings.STEEL_MILL) > city.get(Buildings.COAL_MINE) || city.get(Buildings.STEEL_MILL) > city.get(Buildings.IRON_MINE)) return Double.NEGATIVE_INFINITY;
                 return parent.apply(city);
             };
         }
@@ -499,26 +502,32 @@ public class OptimalBuild extends Command {
 
             double[] profitBuffer = new double[ResourceType.values.length];
 
-            goal = city -> {
-                if (parentGoal.apply(city)) {
-                    Arrays.fill(profitBuffer, 0);
-                    city.profit(finalContinent, rads, -1L, hasProject, profitBuffer, numCities, finalMe.getGrossModifier(), 12);
-                    profitBuffer[0] += 500000d / numCities;
-                    double original = profitBuffer[0];
+            goal = new Function<JavaCity, Boolean>() {
+                @Override
+                public Boolean apply(JavaCity city) {
+                    if (parentGoal.apply(city)) {
+                        Arrays.fill(profitBuffer, 0);
+                        city.profit(finalContinent, rads, -1L, hasProject, profitBuffer, numCities, finalMe.getGrossModifier(), 12);
+                        profitBuffer[0] += 500000d / numCities;
+                        double original = profitBuffer[0];
 
-                    for (MilitaryUnit unit : MilitaryUnit.values) {
-                        MilitaryBuilding building = unit.getBuilding();
-                        if (building == null) continue;
-                        int numBuilt = city.get(building);
-                        if (numBuilt == 0) continue;
-                        int amt = building.max() * numBuilt;
+                        for (MilitaryUnit unit : MilitaryUnit.values) {
+                            MilitaryBuilding building = unit.getBuilding();
+                            if (building == null) continue;
+                            int numBuilt = city.get(building);
+                            if (numBuilt == 0) continue;
+                            int amt = building.max() * numBuilt;
 
-                        double[] upkeep = unit.getUpkeep(true);
-                        profitBuffer[0] -= upkeep[0] * amt;
+                            double[] upkeep = unit.getUpkeep(true);
+                            profitBuffer[0] -= upkeep[0] * amt;
+                        }
+                        if (profitBuffer[0] < 0) {
+                            return false;
+                        }
+                        return true;
                     }
-                    return !(profitBuffer[0] < 0);
+                    return false;
                 }
-                return false;
             };
         }
 
@@ -548,15 +557,15 @@ public class OptimalBuild extends Command {
             double baseProfit = origin.profitConvertedCached(finalContinent, rads, hasProject, numCities, finalMe.getGrossModifier());
             double netProfit = ((profit - baseProfit) * days - cost);
 
-            result.append("\nNet Profit: (").append(days).append(" days): $").append(MathMan.format(netProfit));
+            result.append("\nNet Profit: (" + days + " days): $"  + MathMan.format(netProfit));
             if (netProfit > 0) {
                 double roi;
                 if (cost < 0) {
                     roi = Double.POSITIVE_INFINITY;
-                    result.append("\nROI (weekly): ").append(MathMan.format(roi)).append(" (no cost to import)");
+                    result.append("\nROI (weekly): " + MathMan.format(roi) + " (no cost to import)");
                 } else {
                     roi = ((netProfit / cost) / days) * 7 * 100;
-                    result.append("\nROI (weekly): ").append(MathMan.format(roi)).append("%");
+                    result.append("\nROI (weekly): " + MathMan.format(roi) + "%");
                 }
             }
         }
@@ -565,18 +574,20 @@ public class OptimalBuild extends Command {
         String emoji = "Grant";
         String command = Settings.commandPrefix(true) + "grant %user% " + json;
 
-        result.append(" Disease: ").append(optimized.getDisease(hasProject)).append("\n");
-        result.append(" Crime: ").append(optimized.getCrime(hasProject)).append("\n");
-        result.append(" Commerce: ").append(optimized.getCommerce(hasProject)).append("\n");
-        result.append(" Population: ").append(optimized.getPopulation(hasProject)).append("\n");
+        if (true) {
+            result.append(" Disease: " + optimized.getDisease(hasProject)).append("\n");
+            result.append(" Crime: " + optimized.getCrime(hasProject)).append("\n");
+            result.append(" Commerce: " + optimized.getCommerce(hasProject)).append("\n");
+            result.append(" Population: " + optimized.getPopulation(hasProject)).append("\n");
+        }
 
-        result.append(" Click ").append(emoji).append(" to request a grant");
+        result.append(" Click " + emoji + " to request a grant");
 
         Role role = Roles.ECON.toRole(db);
         if (role != null) {
-            result.append("\nPing ").append(role.getAsMention()).append(" to transfer you the funds");
+            result.append("\nPing " + role.getAsMention() + " to transfer you the funds");
         }
-        result.append("\n").append(author.getAsMention());
+        result.append("\n" + author.getAsMention());
 
         me.setMeta(NationMeta.INTERVIEW_OPTIMALBUILD, (byte) 1);
 
@@ -591,7 +602,7 @@ public class OptimalBuild extends Command {
     private void checkup(IMessageIO io, DBNation me, int cityId, JavaCity city) {
         Map<Integer, JavaCity> cities = Collections.singletonMap(cityId, city);
 
-        ArrayList<Map.Entry<Object, String>> audits = new ArrayList<>();
+        ArrayList<Map.Entry<Object, String>> audits = new ArrayList<Map.Entry<Object, String>>();
         audits.add(IACheckup.checkUnpowered(me, cities));
         audits.add(IACheckup.checkOverpowered(cities));
         audits.add(IACheckup.checkNuclearPower(cities));

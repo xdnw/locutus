@@ -19,7 +19,6 @@ public class ForumScrape extends Command {
     public ForumScrape() {
         super("forumscrape", CommandCategory.LOCUTUS_ADMIN);
     }
-
     @Override
     public String help() {
         return null;

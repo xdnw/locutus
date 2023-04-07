@@ -9,6 +9,5 @@ import java.lang.annotation.Target;
 @Target({ElementType.PARAMETER, ElementType.METHOD})
 public @interface Range {
     double min() default Double.NEGATIVE_INFINITY;
-
     double max() default Double.POSITIVE_INFINITY;
 }

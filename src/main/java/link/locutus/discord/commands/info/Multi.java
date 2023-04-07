@@ -23,7 +23,7 @@ public class Multi extends Command {
 
     @Override
     public String desc() {
-        return "Check if a nation has a multi account.";
+        return "Check if a nation has a multi";
     }
 
     @Override
@@ -53,12 +53,14 @@ public class Multi extends Command {
 
         DiscordUtil.createEmbedCommand(event.getChannel(), title, result);
 
-        return """
-                ```Disclaimer:
-                 - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)
-                 - A network not shared 'concurrently' or within a short timeframe may be a false positive
-                 - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)
-                 - It is against game rules to use evidence to threaten or coerce others
-                See: https://politicsandwar.com/rules/```""";
+        String disclaimer = "```Disclaimer:\n" +
+                " - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)\n" +
+                " - A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
+                " - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
+                " - It is against game rules to use evidence to threaten or coerce others\n" +
+                "See: https://politicsandwar.com/rules/" +
+                "```";
+
+        return disclaimer;
     }
 }

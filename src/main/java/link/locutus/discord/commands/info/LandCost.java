@@ -1,12 +1,12 @@
 package link.locutus.discord.commands.info;
 
-import com.google.common.base.Preconditions;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import com.google.common.base.Preconditions;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -54,7 +54,7 @@ public class LandCost extends Command {
 
         int current = Preconditions.checkNotNull(MathMan.parseInt(args.get(0)), "invalid amount: `" + args.get(0) + "`");
         int max = checkNotNull(MathMan.parseInt(args.get(1)), "invalid amount: `" + args.get(1) + "`");
-        if (max > 20000) throw new IllegalArgumentException("Max land 20,000.");
+        if (max > 20000) throw new IllegalArgumentException("Max land 20,000");
 
         double total = PnwUtil.calculateLand(current, max) * cities;
 

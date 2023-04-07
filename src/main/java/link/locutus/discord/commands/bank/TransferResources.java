@@ -28,7 +28,7 @@ public class TransferResources extends Command {
 
     @Override
     public String desc() {
-        return "Transfer resources to yourself.";
+        return "Transfer resources to yourself";
     }
 
     @Override

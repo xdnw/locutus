@@ -1,21 +1,28 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
+import com.google.common.collect.BiMap;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.format;
 
@@ -50,6 +57,8 @@ public class AllianceLootRanking extends Command {
         Map<Integer, Map<ResourceType, Double>> byAlliance = new HashMap<>();
 
         for (DBAttack attack : attacks) {
+//            if (attack.attack_type != AttackType.VICTORY && attack.attack_type != AttackType.A_LOOT) continue;
+//            if (attack.attack_type == AttackType.A_LOOT) continue;
 
             Map<ResourceType, Double> loot = attack.getLoot();
             Integer looter = attack.getLooter();
@@ -79,7 +88,8 @@ public class AllianceLootRanking extends Command {
                 .sorted(Comparator.comparingDouble(
 //                        o -> -PnwUtil.convertedTotal(o.getValue())))
                         o -> -o.getValue().getOrDefault(ResourceType.MONEY, 0d)))
-                .toList();
+                .collect(Collectors.toList()
+                );
 
         String title = "Loot (" + days + " days):";
         StringBuilder response = new StringBuilder();
@@ -92,12 +102,12 @@ public class AllianceLootRanking extends Command {
             String name = PnwUtil.getName(allianceId, true);
             name = name.substring(0, Math.min(32, name.length()));
 
-            response.append('\n').append(String.format("%4s", i + 1)).append(". ").append(String.format("%32s", name)).append(": $").append(format(value));
+            response.append('\n').append(String.format("%4s", i + 1) + ". ").append(String.format("%32s", name)).append(": $").append(format(value));
         }
 
         String emoji = "Refresh";
         String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
-        response.append("\n\nPress `").append(emoji).append("` to refresh");
+        response.append("\n\nPress `" + emoji + "` to refresh");
         DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, cmd);
 
         return null;

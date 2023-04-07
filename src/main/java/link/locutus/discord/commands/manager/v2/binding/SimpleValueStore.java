@@ -1,7 +1,11 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class SimpleValueStore<T> implements ValueStore<T> {
     public Map<Type, Map<Key, Parser>> bindings = new LinkedHashMap<>();
@@ -34,6 +38,7 @@ public class SimpleValueStore<T> implements ValueStore<T> {
 
         Map<Key, Parser> allowed = bindings.getOrDefault(key.getType(), Collections.emptyMap());
 
-        return allowed.get(key);
+        Parser result = allowed.get(key);
+        return result;
     }
 }

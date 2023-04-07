@@ -10,7 +10,6 @@ public class ProviderParser<T> implements Parser<T> {
         this.key = key;
         this.value = value;
     }
-
     @Override
     public T apply(ArgumentStack arg) {
         return value;

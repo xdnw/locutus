@@ -17,9 +17,9 @@ public interface Attribute<T, R> extends Function<T, R> {
         return StringMan.getString(value);
     }
 
-    String getName();
+    public String getName();
 
-    Type getType();
+    public Type getType();
 
-    String getDesc();
+    public String getDesc();
 }

@@ -73,36 +73,67 @@ public class Score extends Command {
             if (split.length != 2) return usage(event);
 
             Double amt = MathMan.parseDouble(split[1]);
-            if (amt == null) return "Unknown number `" + split[1] + "`";
+            if (amt == null) return "Unknown number `" + split[1] +"`";
 
             String arg = split[0].toLowerCase();
             switch (arg) {
-                case "cities", "city" -> nation.setCities(amt.intValue());
-
-                case "soldier", "soldiers" -> nation.setSoldiers(amt.intValue());
-
-                case "tank", "tanks" -> nation.setTanks(amt.intValue());
-
-                case "aircraft", "planes", "plane" -> nation.setAircraft(amt.intValue());
-
-                case "ship", "ships", "boats" -> nation.setShips(amt.intValue());
-
-                case "missile", "missiles" -> nation.setMissiles(amt.intValue());
-
-                case "nuke", "nukes" -> nation.setNukes(amt.intValue());
-                case "project", "projects" -> {
+                case "cities":
+                case "city":
+                    nation.setCities(amt.intValue());
+//                    score += (100 * (amt - 1));
+//                    cities = amt.intValue();
+                    break;
+                case "soldier":
+                case "soldiers":
+                    nation.setSoldiers(amt.intValue());
+//                    score += MilitaryUnit.SOLDIER.getScore(amt.intValue());
+                    break;
+                case "tank":
+                case "tanks":
+                    nation.setTanks(amt.intValue());
+//                    score += MilitaryUnit.TANK.getScore(amt.intValue());
+                    break;
+                case "aircraft":
+                case "planes":
+                case "plane":
+                    nation.setAircraft(amt.intValue());
+//                    score += MilitaryUnit.AIRCRAFT.getScore(amt.intValue());
+                    break;
+                case "ship":
+                case "ships":
+                case "boats":
+                    nation.setShips(amt.intValue());
+//                    score += MilitaryUnit.SHIP.getScore(amt.intValue());
+                    break;
+                case "missile":
+                case "missiles":
+                    nation.setMissiles(amt.intValue());
+//                    score += MilitaryUnit.MISSILE.getScore(amt.intValue());
+                    break;
+                case "nuke":
+                case "nukes":
+                    nation.setNukes(amt.intValue());
+//                    score += MilitaryUnit.NUKE.getScore(amt.intValue());
+                    break;
+                case "project":
+                case "projects":
                     if (amt.intValue() >= Projects.values.length) return "Too many projects: " + amt.intValue();
                     nation.setProjectsRaw(0);
                     for (int i = 0; i < amt.intValue(); i++) {
                         nation.setProject(Projects.values[i]);
                     }
-                }
-                case "infra" -> infra = amt.intValue();
-                case "avg_infra" -> avg_infra = amt;
-                case "mmr" -> mmrStr = split[1];
-                default -> {
+                    break;
+                case "infra":
+                    infra = amt.intValue();
+                    break;
+                case "avg_infra":
+                    avg_infra = amt;
+                    break;
+                case "mmr":
+                    mmrStr = split[1];
+                    break;
+                default:
                     return "Unknown value: `" + split[0] + "`.\n" + usage();
-                }
             }
         }
         if (avg_infra >= 0) {

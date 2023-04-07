@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.binding.annotation;
 
+import link.locutus.discord.commands.manager.CommandCategory;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -12,6 +13,5 @@ public @interface Command {
     String[] aliases() default {};
 
     String help() default "";
-
     String desc() default "";
 }

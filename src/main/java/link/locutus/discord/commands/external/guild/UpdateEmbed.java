@@ -37,7 +37,7 @@ public class UpdateEmbed extends Command {
 
     @Override
     public String desc() {
-        return "Updates a Locutus embed title/body/reactions.";
+        return "Updates a Locutus embed title/body/reactions";
     }
 
     @Override
@@ -50,8 +50,7 @@ public class UpdateEmbed extends Command {
         if (args.isEmpty()) return usage();
 
         Message message = event.getMessage();
-        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID)
-            return "This command can only be run when bound to a Locutus embed.";
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) return "This command can only be run when bound to a Locutus embed";
 
         String requiredRole = DiscordUtil.parseArg(args, "role");
         if (requiredRole != null) {
@@ -89,6 +88,8 @@ public class UpdateEmbed extends Command {
             builder.setDescription(parse(setDesc.replace(("{description}"), embed.getDescription()), embed, message));
         }
 
+//        Map<String, String> reactions = DiscordUtil.getReactions(embed);
+//        if (reactions == null) reactions = new LinkedHashMap<>();
 
         if (!args.isEmpty()) {
             return "Invalid arguments: `" + StringMan.getString(args) + "`";

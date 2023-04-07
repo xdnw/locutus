@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ICommandGroup extends CommandCallable {
-    Map<String, CommandCallable> getSubcommands();
+    public Map<String, CommandCallable> getSubcommands();
 
     default Set<String> getSubCommandIds() {
         return getSubcommands().keySet();

@@ -557,7 +557,7 @@ public class IACheckup {
                 StringBuilder response = new StringBuilder();
 
                 if (inefficientAmount) {
-                    response.append("Infrastructure is cheapest when purchased in multiples of 100");
+//                response.append("Infrastructure is cheapest when purchased");
                 }
 
                 if (infraLevels.size() > 1) {

@@ -30,7 +30,7 @@ public class TurnTimer extends Command {
 
     @Override
     public String desc() {
-        return "Check how many turns are left in the city/project timer.";
+        return "Check how many turns are left in the city/project timer";
     }
 
     @Override
@@ -39,13 +39,16 @@ public class TurnTimer extends Command {
         DBNation nation = DiscordUtil.parseNation(args.get(0));
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
 
-        return "City: " + nation.getCityTurns() + " turns (" + nation.getCities() + " cities)\n" +
-                "Project: " + nation.getProjectTurns() + "turns | " +
-                "(" + nation.getProjects().size() + "/" + nation.projectSlots() + " slots)\n" +
-                "Color: " + nation.getColorTurns() + "turns \n" +
-                "Domestic Policy: " + nation.getDomesticPolicyTurns() + "turns \n" +
-                "War Policy: " + nation.getWarPolicyTurns() + "turns \n" +
-                "Beige Turns: " + nation.getBeigeTurns() + "turns \n" +
-                "Vacation: " + nation.getVm_turns();
+        StringBuilder response = new StringBuilder();
+        response.append("City: " + nation.getCityTurns() + " turns (" + nation.getCities() + " cities)\n");
+        response.append("Project: " + nation.getProjectTurns() + "turns | " +
+                "(" + nation.getProjects().size() + "/" + nation.projectSlots() + " slots)\n");
+        response.append("Color: " + nation.getColorTurns() + "turns \n");
+        response.append("Domestic Policy: " + nation.getDomesticPolicyTurns() + "turns \n");
+        response.append("War Policy: " + nation.getWarPolicyTurns() + "turns \n");
+        response.append("Beige Turns: " + nation.getBeigeTurns() + "turns \n");
+        response.append("Vacation: " + nation.getVm_turns());
+
+        return response.toString();
     }
 }

@@ -24,7 +24,6 @@ public class Sudo extends Command implements Noformat {
     public Sudo() {
         super("sudo", CommandCategory.LOCUTUS_ADMIN);
     }
-
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "sudo <user> <command>";
@@ -32,7 +31,7 @@ public class Sudo extends Command implements Noformat {
 
     @Override
     public String desc() {
-        return "Run a command as another user.";
+        return "Run a command as another user";
     }
 
     @Override

@@ -17,6 +17,6 @@ public class CmdError extends CmdResult {
 
     @Override
     public void build(MessageReceivedEvent event) {
-
+        
     }
 }

@@ -50,7 +50,7 @@ public class HasRole extends Command {
             }
         }
 
-        if (guildIds.isEmpty()) return "User does not have that role in any server.";
+        if (guildIds.isEmpty()) return "User does not have that role on any server";
 
         return user.getName() + " has " + role.name() + " on " + StringMan.getString(guild);
     }

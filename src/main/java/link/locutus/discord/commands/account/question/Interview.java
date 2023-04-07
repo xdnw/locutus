@@ -42,9 +42,9 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage();
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        IACategory iaCat = db.getIACategory(true, true,true);
+        IACategory iaCat = db.getIACategory(true, true, true);
         if (iaCat == null) {
-            throw new IllegalArgumentException("No interview category found.");
+            throw new IllegalArgumentException("No interview category found");
         }
         if (iaCat.getCategories().isEmpty()) {
             return "No categories found starting with: `interview`";
@@ -82,21 +82,79 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
 
         GuildMessageChannel channel = iaCat.getOrCreate(user, true);
         if (channel == null) {
-            String reason;
+            String reason = "";
 
             Member member = guild.getMember(user);
             if (member == null) {
-                reason = "Member not found on discord.";
+                reason = "Member not found on discord";
             } else if (iaCat.getActiveCategories().isEmpty()) {
-                reason = "No interview category found.";
+                reason = "No interview category found";
             } else if (iaCat.getFreeCategory(iaCat.getActiveCategories()) == null) {
-                reason = "Interview category is full.";
+                reason = "Interview category is full";
             } else {
-                reason = "Unknown reason.";
+                reason = "Uknown reason";
             }
             return "Unable to find or create channel: " + reason;
         }
 
         return channel.getAsMention();
+
+
+//        GuildDB db = Locutus.imp().getGuildDB(guild);
+//        if (args.isEmpty()) {
+//            Category category = db.getOrThrow(GuildDB.Key.INTERVIEW_CATEGORY);
+//            GuildMessageChannel alertChannel = db.getOrNull(GuildDB.Key.INTERVIEW_PENDING_ALERTS);
+//
+//            Role applicantRole = Roles.APPLICANT.toRole(guild);
+//            Role interviewerRole = Roles.INTERVIEWER.toRole(guild);
+//
+//            String channelName = author.getId();
+//            GuildMessageChannel interviewChannel = null;
+//
+//            Member member = guild.getMember(author);
+//
+//            for (GuildMessageChannel GuildMessageChannel : category.getTextChannels()) {
+//                if (GuildMessageChannel.getName().contains(channelName)) {
+//                    interviewChannel = GuildMessageChannel;
+//                    break;
+//                }
+//            }
+//
+//            if (interviewChannel == null) {
+//                interviewChannel = link.locutus.discord.util.RateLimitUtil.complete(category.createTextChannel(channelName));
+//
+//                guild.addRoleToMember(author.getIdLong(), link.locutus.discord.util.RateLimitUtil.queue(applicantRole));
+//
+//                if (alertChannel != null) {
+//                    String title = "New applicant";
+//
+//                    String emoji = "\u2705";
+//
+//                    StringBuilder body = new StringBuilder();
+//                    body.append("User: " + author.getAsMention() + "\n");
+//                    DBNation nation = DiscordUtil.getNation(author);
+//                    if (nation != null) {
+//                        body.append("nation: " + MarkupUtil.markdownUrl(nation.getNation(), nation.getNationUrl()) + "\n");
+//                    }
+//                    body.append("Channel: " + interviewChannel.getAsMention() + "\n\n");
+//                    body.append("The first on the trigger, react with the " + emoji + " emoji");
+//
+//                    String pending = Settings.commandPrefix(true) + "pending 'Interview Assigned' '@%user% in " + interviewChannel.getAsMention() + "'";
+//
+//                    DiscordUtil.createEmbedCommand(alertChannel, title, body.toString(), emoji, pending);
+//
+//                    if (interviewerRole != null) {
+//                        interviewChannel.sendMessage("^ " + interviewerRole.getAsMention());
+//                    }
+//                }
+//                // ping interviewer
+//            }
+//
+//            link.locutus.discord.util.RateLimitUtil.queue(interviewChannel.sendMessage(author.getAsMention()).complete().delete());
+//            // ping the user in the c
+//
+//            return null;
+//        }
+
     }
 }

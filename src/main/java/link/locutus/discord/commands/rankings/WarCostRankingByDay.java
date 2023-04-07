@@ -1,24 +1,30 @@
 package link.locutus.discord.commands.rankings;
 
+import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.db.entities.AttackCost;
+import link.locutus.discord.db.entities.WarAttackParser;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
 import de.erichseifert.gral.data.DataTable;
 import de.erichseifert.gral.data.Row;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.rankings.table.TimeNumericTable;
-import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.WarAttackParser;
-import link.locutus.discord.util.PnwUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class WarCostRankingByDay extends Command {
@@ -38,24 +44,23 @@ public class WarCostRankingByDay extends Command {
 
     @Override
     public String desc() {
-        return """
-                Get a war breakdown by day
-                Add `-b` to show breakdown by attack type
-                Add `-f` to show Full cost
-                Add `-l` to show loot
-                Add `-c` to show consumption
-                Add `-a` to show ammunition usage
-                Add `-g` to show gasoline usage
-                Add `-u` to show unit losses
-                Add `-h` to show H-Bomb (nuke) losses
-                Add `-m` to show Missile losses
-                Add `-p` to show Plane losses
-                Add `-t` to show Tank losses
-                Add `-s` to show Soldier losses
-                Add `-i` to show Infra losses
-                Add `-o` to graph a running total
-                Add `-e` to show enemy stats instead of attacker
-                Add `-d` to show raw data (csv)""";
+        return "Get a war breakdown by day\n" +
+                "Add `-b` to show breakdown by attack type\n" +
+                "Add `-f` to show Full cost\n" +
+                "Add `-l` to show loot\n" +
+                "Add `-c` to show consumption\n" +
+                "Add `-a` to show ammunition usage\n" +
+                "Add `-g` to show gasoline usage\n" +
+                "Add `-u` to show unit losses\n" +
+                "Add `-h` to show H-Bomb (nuke) losses\n" +
+                "Add `-m` to show Missile losses\n" +
+                "Add `-p` to show Plane losses\n" +
+                "Add `-t` to show Tank losses\n" +
+                "Add `-s` to show Soldier losses\n" +
+                "Add `-i` to show Infra losses\n" +
+                "Add `-o` to graph a running total\n" +
+                "Add `-e` to show enemy stats instead of attacker\n" +
+                "Add `-d` to show raw data (csv)";
     }
 
     private void add2(TimeNumericTable<Map<String, WarAttackParser>> table, long dayRelative, long dayOffset, Map<String, WarAttackParser> parserMap, Map<String, Map<Long, AttackCost>> byDayMap, Function<AttackCost, Number> calc) {
@@ -88,6 +93,7 @@ public class WarCostRankingByDay extends Command {
         if (days > 1000 || days <= 1) return "Invalid number of days: `" + days + "`";
 
 
+
         Map<String, WarAttackParser> coalitions = new LinkedHashMap<>();
         Map<String, Map<Long, AttackCost>> coalitionsByDay = new LinkedHashMap<>();
         for (int i = 0; i < args.size() - 1; i++) {
@@ -112,7 +118,7 @@ public class WarCostRankingByDay extends Command {
         boolean total = flags.contains('o');
         List<TimeNumericTable<Map<String, WarAttackParser>>> tables = new ArrayList<>();
         if (flags.contains('i')) {
-            tables.add(new TimeNumericTable<>("Infra Loss", "day", null, labels) {
+            tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Infra Loss", "day", null, labels) {
                 @Override
                 public void add(long day, Map<String, WarAttackParser> costMap) {
                     add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getInfraLost(primary));
@@ -121,84 +127,84 @@ public class WarCostRankingByDay extends Command {
             });
         }
 
-        if (flags.contains('s')) tables.add(new TimeNumericTable<>("Soldier Losses", "day", null, labels) {
+        if (flags.contains('s')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Soldier Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getUnitsLost(primary).getOrDefault(MilitaryUnit.SOLDIER, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('t')) tables.add(new TimeNumericTable<>("Tank Losses", "day", null, labels) {
+        if (flags.contains('t')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Tank Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getUnitsLost(primary).getOrDefault(MilitaryUnit.TANK, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('p')) tables.add(new TimeNumericTable<>("Plane Losses", "day", null, labels) {
+        if (flags.contains('p')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Plane Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getUnitsLost(primary).getOrDefault(MilitaryUnit.AIRCRAFT, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('n')) tables.add(new TimeNumericTable<>("Naval Ship Losses", "day", null, labels) {
+        if (flags.contains('n')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Naval Ship Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getUnitsLost(primary).getOrDefault(MilitaryUnit.SHIP, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('m')) tables.add(new TimeNumericTable<>("Missile Losses", "day", null, labels) {
+        if (flags.contains('m')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Missile Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getUnitsLost(primary).getOrDefault(MilitaryUnit.MISSILE, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('h')) tables.add(new TimeNumericTable<>("H-Bomb (nuke) Losses", "day", null, labels) {
+        if (flags.contains('h')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("H-Bomb (nuke) Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getUnitsLost(primary).getOrDefault(MilitaryUnit.NUKE, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('u')) tables.add(new TimeNumericTable<>("Unit Losses", "day", null, labels) {
+        if (flags.contains('u')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Unit Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> PnwUtil.convertedTotal(f.getUnitCost(primary)));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('g')) tables.add(new TimeNumericTable<>("Gasoline", "day", null, labels) {
+        if (flags.contains('g')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Gasoline", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> PnwUtil.convertedTotal(f.getUnitCost(primary)));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('a')) tables.add(new TimeNumericTable<>("Ammunition", "day", null, labels) {
+        if (flags.contains('a')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Ammunition", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, cost -> cost.getConsumption(primary).getOrDefault(ResourceType.MUNITIONS, 0d));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('c')) tables.add(new TimeNumericTable<>("Consumption", "day", null, labels) {
+        if (flags.contains('c')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Consumption", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, cost -> PnwUtil.convertedTotal(cost.getConsumption(primary)));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('l')) tables.add(new TimeNumericTable<>("Looted", "day", null, labels) {
+        if (flags.contains('l')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Looted", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, cost -> PnwUtil.convertedTotal(cost.getLoot(primary)));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('f')) tables.add(new TimeNumericTable<>("Full Losses", "day", null, labels) {
+        if (flags.contains('f')) tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Full Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, cost -> PnwUtil.convertedTotal(cost.getTotal(primary)));
@@ -207,7 +213,7 @@ public class WarCostRankingByDay extends Command {
         });
         if (flags.contains('b')) {
             for (AttackType attType : AttackType.values) {
-                tables.add(new TimeNumericTable<>("Num " + attType.getName(), "day", null, labels) {
+                tables.add(new TimeNumericTable<Map<String, WarAttackParser>>("Num " + attType.getName(), "day", null, labels) {
                     @Override
                     public void add(long day, Map<String, WarAttackParser> costMap) {
 

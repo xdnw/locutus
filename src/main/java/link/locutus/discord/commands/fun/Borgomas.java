@@ -26,8 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Borgomas extends Command {
 
-    private final Map<Integer, Boolean> received = new ConcurrentHashMap<>();
-
     public Borgomas() {
         super("Borgmas", "Christmas", CommandCategory.FUN);
     }
@@ -41,6 +39,8 @@ public class Borgomas extends Command {
     public String desc() {
         return "He's making a list, And checking it twice; Gonna find out Who's naughty and nice. Saint Borgolas is coming to town. **RESISTANCE IS FUTILE**";
     }
+
+    private Map<Integer, Boolean> received = new ConcurrentHashMap<>();
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
@@ -57,17 +57,18 @@ public class Borgomas extends Command {
 
         me.setMeta(NationMeta.BORGMAS, (byte) 1);
 
+        int up = commends.getKey();
         int down = commends.getValue();
 
         Map<ResourceType, Double> resources;
         String message;
-        boolean good = down < 2;
+        boolean good = down < 2 || false;
         if (good) {
             message = "You open your present to find... 1,000,000 borg bucks! (Legal tender throughout Unicomplex, Orbis and all assimilated worlds).\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
             resources = Collections.singletonMap(ResourceType.MONEY, 1000000d);
         } else {
             GuildDB dbAA = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
-            if (true) {
+            if (true || (dbAA != null && (dbAA.isWhitelisted() || dbAA.getOffshore() != null))) {
                 message = "You open your present to find a 10kg hunk of coal...\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
                 resources = Collections.singletonMap(ResourceType.COAL, 0.01);
             } else {

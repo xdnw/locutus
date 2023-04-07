@@ -1,6 +1,12 @@
 package link.locutus.discord.commands.manager.dummy;
 
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.ChannelType;
+import net.dv8tion.jda.api.entities.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.PrivateChannel;
+import net.dv8tion.jda.api.entities.GuildMessageChannel;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

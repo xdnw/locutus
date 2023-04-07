@@ -7,7 +7,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class GroupedRankBuilder<T, G> {
-    private final Map<T, List<G>> mapped;
+    private Map<T, List<G>> mapped;
 
     public GroupedRankBuilder() {
         this.mapped = new LinkedHashMap<>();
@@ -24,18 +24,21 @@ public class GroupedRankBuilder<T, G> {
     public <H> GroupedRankBuilder<T, H> adaptValues(BiFunction<T, G, H> adapter) {
         for (Map.Entry<T, List<G>> entry : mapped.entrySet()) {
             List<G> value = entry.getValue();
-            value.replaceAll(u -> (G) adapter.apply(entry.getKey(), u));
+            for (int i = 0; i < value.size(); i++) {
+                value.set(i, (G) adapter.apply(entry.getKey(), value.get(i)));
+            }
         }
         return (GroupedRankBuilder<T, H>) this;
     }
 
     public <K, V extends Number> NumericMappedRankBuilder<T, K, V> map(BiFunction<T, G, K> groupBy, BiFunction<T, G, V> toNumber) {
-        NumericMappedRankBuilder<T, K, V> result = new NumericMappedRankBuilder<>();
+        NumericMappedRankBuilder<T, K, V> result = new NumericMappedRankBuilder<T, K, V>();
         for (Map.Entry<T, List<G>> entry : mapped.entrySet()) {
             T t = entry.getKey();
             List<G> value = entry.getValue();
             LinkedHashMap<K, V> map = new LinkedHashMap<>();
-            for (G item : value) {
+            for (int i = 0; i < value.size(); i++) {
+                G item = value.get(i);
                 K key = groupBy.apply(t, item);
                 V add = toNumber.apply(t, item);
                 map.put(key, (V) MathMan.add(add, map.get(key)));

@@ -1,7 +1,9 @@
 package link.locutus.discord.commands.fun;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -12,8 +14,41 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Nev extends Command {
+    public Nev() {
+        super(CommandCategory.FUN);
+    }
+    @Override
+    public boolean checkPermission(Guild server, User user) {
+        return true;
+    }
+
+    int zal = 0;
+
+    @Override
+    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        String text = "Nev. The warm light in this cold dark world. The music note in the deafening wasteland of our society.";
+
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        if (zal++ > 0) {
+            StringBuilder result = new StringBuilder();
+            char[] arr = text.toCharArray();
+            for (int i = 0; i < arr.length; i++) {
+                char myChar = arr[i];
+                if (zal >= arr.length || ThreadLocalRandom.current().nextInt(arr.length - zal) == 0) {
+                    String zalChar = goZalgo("" + myChar, true, false, true, true, true);
+                    result.append(zalChar);
+                } else {
+                    result.append(myChar);
+                }
+            }
+            return result.toString();
+        }
+
+        return text;
+    }
+
     private static final char[] zalgo_up =
-            {'\u030d', /*        */'\u030e', /*    */'\u0304', /*        */'\u0305', /*         */
+            { '\u030d', /*        */'\u030e', /*    */'\u0304', /*        */'\u0305', /*         */
                     '\u033f', /*         */'\u0311', /*    */'\u0306', /*       */'\u0310', /*       */
                     '\u0352', /*         */'\u0357', /*    */'\u0351', /*       */'\u0307', /*       */
                     '\u0308', /*         */'\u030a', /*    */'\u0342', /*       */'\u0343', /*       */
@@ -26,9 +61,10 @@ public class Nev extends Command {
                     '\u036a', /*         */'\u036b', /*    */'\u036c', /*       */'\u036d', /*       */
                     '\u036e', /*         */'\u036f', /*    */'\u033e', /*       */'\u035b', /*       */
                     '\u0346', /*         */'\u031a' /*    */
-            };
+            } ;
+
     private static final char[] zalgo_down =
-            {'\u0316', /*     */'\u0317', /*       */'\u0318', /*       */'\u0319', /*        */
+                   { '\u0316', /*     */'\u0317', /*       */'\u0318', /*       */'\u0319', /*        */
                     '\u031c', /*       */'\u031d', /*       */'\u031e', /*       */'\u031f', /*        */
                     '\u0320', /*       */'\u0324', /*       */'\u0325', /*       */'\u0326', /*        */
                     '\u0329', /*       */'\u032a', /*       */'\u032b', /*       */'\u032c', /*        */
@@ -38,30 +74,17 @@ public class Nev extends Command {
                     '\u0347', /*       */'\u0348', /*       */'\u0349', /*       */'\u034d', /*        */
                     '\u034e', /*       */'\u0353', /*       */'\u0354', /*       */'\u0355', /*        */
                     '\u0356', /*       */'\u0359', /*       */'\u035a', /*       */'\u0323' /*        */
-            };
+            } ;
+
     //those always stay in the middle
     private static final char[] zalgo_mid =
-            {'\u0315', /*          */'\u031b', /*        */'\u0340', /*         */'\u0341', /*          */
+                  { '\u0315', /*          */'\u031b', /*        */'\u0340', /*         */'\u0341', /*          */
                     '\u0358', /*          */'\u0321', /*        */'\u0322', /*         */'\u0327', /*          */
                     '\u0328', /*          */'\u0334', /*        */'\u0335', /*         */'\u0336', /*          */
                     '\u034f', /*          */'\u035c', /*        */'\u035d', /*         */'\u035e', /*          */
                     '\u035f', /*          */'\u0360', /*        */'\u0362', /*         */'\u0338', /*          */
                     '\u0337', /*          */'\u0361', /*        */'\u0489' /*        */
-            };
-    int zal = 0;
-
-    public Nev() {
-        super(CommandCategory.FUN);
-    }
-
-    private static int rand(int max) {
-        return (int) Math.floor(Math.random() * max);
-    }
-
-    private static char rand_zalgo(char[] array) {
-        int ind = (int) Math.floor(Math.random() * array.length);
-        return array[ind];
-    }
+            } ;
 
 
     // rand funcs
@@ -69,24 +92,36 @@ public class Nev extends Command {
 
     //gets an int between 0 and max
 
-    private static boolean is_zalgo_char(char c) {
-        for (char value : zalgo_up)
-            if (c == value)
-                return true;
-        for (char value : zalgo_down)
-            if (c == value)
-                return true;
-        for (char value : zalgo_mid)
-            if (c == value)
-                return true;
-        return false;
+    private static int rand(int max) {
+        return (int)Math.floor(Math.random() * max);
     }
 
     //gets a random char from a zalgo char table
 
+    private static char rand_zalgo(char[] array) {
+        int ind = (int)Math.floor(Math.random() * array.length);
+        return array[ind];
+    }
+
+    //hide show element
+    //lookup char to know if its a zalgo char or not
+
+    private static boolean is_zalgo_char(char c) {
+        for (int i = 0; i < zalgo_up.length; i++)
+            if (c == zalgo_up[i])
+                return true;
+        for (int i = 0; i < zalgo_down.length; i++)
+            if (c == zalgo_down[i])
+                return true;
+        for (int i = 0; i < zalgo_mid.length; i++)
+            if (c == zalgo_mid[i])
+                return true;
+        return false;
+    }
+
     public static String goZalgo(String iText, boolean zalgo_opt_mini, boolean zalgo_opt_normal, boolean up,
                                  boolean down, boolean mid) {
-        StringBuilder zalgoTxt = new StringBuilder();
+        String zalgoTxt = "";
 
         for (int i = 0; i < iText.length(); i++) {
             if (is_zalgo_char(iText.charAt(i)))
@@ -97,7 +132,7 @@ public class Nev extends Command {
             int num_down;
 
             //add the normal character
-            zalgoTxt.append(iText.charAt(i));
+            zalgoTxt += iText.charAt(i);
 
             //options
             if (zalgo_opt_mini) {
@@ -117,42 +152,17 @@ public class Nev extends Command {
 
             if (up)
                 for (int j = 0; j < num_up; j++)
-                    zalgoTxt.append(rand_zalgo(zalgo_up));
+                    zalgoTxt += rand_zalgo(zalgo_up);
             if (mid)
                 for (int j = 0; j < num_mid; j++)
-                    zalgoTxt.append(rand_zalgo(zalgo_mid));
+                    zalgoTxt += rand_zalgo(zalgo_mid);
             if (down)
                 for (int j = 0; j < num_down; j++)
-                    zalgoTxt.append(rand_zalgo(zalgo_down));
+                    zalgoTxt += rand_zalgo(zalgo_down);
         }
 
 
-        return zalgoTxt.toString();
-    }
 
-    @Override
-    public boolean checkPermission(Guild server, User user) {
-        return true;
-    }
-
-    @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        String text = "Nev. The warm light in this cold dark world. The music note in the deafening wasteland of our society.";
-
-        if (zal++ > 0) {
-            StringBuilder result = new StringBuilder();
-            char[] arr = text.toCharArray();
-            for (char myChar : arr) {
-                if (zal >= arr.length || ThreadLocalRandom.current().nextInt(arr.length - zal) == 0) {
-                    String zalChar = goZalgo("" + myChar, true, false, true, true, true);
-                    result.append(zalChar);
-                } else {
-                    result.append(myChar);
-                }
-            }
-            return result.toString();
-        }
-
-        return text;
+        return zalgoTxt;
     }
 }

@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings.builder;
 
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.apiv1.enums.ResourceType;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,7 +9,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class NumericMappedRankBuilder<T, G, N extends Number> {
-    private final Map<T, Map<G, N>> mapped;
+    private Map<T, Map<G, N>> mapped;
 
     public NumericMappedRankBuilder() {
         this.mapped = new LinkedHashMap<>();
@@ -30,7 +30,12 @@ public class NumericMappedRankBuilder<T, G, N extends Number> {
     }
 
     public SummedMapRankBuilder<T, Double> sumResources() {
-        return sum(g -> PnwUtil.convertedTotal((Map<ResourceType, ? extends Number>) g));
+        return sum(new Function<Map<G, N>, Double>() {
+            @Override
+            public Double apply(Map<G, N> g) {
+                return PnwUtil.convertedTotal((Map<ResourceType, ? extends Number>) g);
+            }
+        });
     }
 
     public <H extends Number> SummedMapRankBuilder<T, H> sum(Function<Map<G, N>, H> toNumber) {

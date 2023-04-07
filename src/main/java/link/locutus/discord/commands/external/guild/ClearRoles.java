@@ -22,7 +22,6 @@ public class ClearRoles extends Command {
     public ClearRoles() {
         super(CommandCategory.GUILD_MANAGEMENT);
     }
-
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.ADMIN.has(user, server);
@@ -46,8 +45,7 @@ public class ClearRoles extends Command {
                 }
             }
             return "Cleared unused AA roles!";
-        }
-        if (args.get(0).equalsIgnoreCase("ALLIANCE")) {
+        } if (args.get(0).equalsIgnoreCase("ALLIANCE")) {
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(event.getGuild().getRoles());
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                 entry.getValue().delete().complete();
@@ -65,13 +63,8 @@ public class ClearRoles extends Command {
                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
                 List<Role> roles = member.getRoles();
                 if (roles.contains(memberRole)) {
-<<<<<<< HEAD
                     if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
                         response.append("\nRemove member from " + member.getEffectiveName());
-=======
-                    if (nation == null || nation.getAlliance_id() != aaId) {
-                        response.append("\nRemove member from ").append(member.getEffectiveName());
->>>>>>> pr/15
                         RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, memberRole));
                     }
                 }

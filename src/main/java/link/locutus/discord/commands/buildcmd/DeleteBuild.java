@@ -24,7 +24,7 @@ public class DeleteBuild extends Command {
 
     @Override
     public String desc() {
-        return "Delete a build registered in a specific category with the provided min-cities.";
+        return "Delete a build registered in a specific category with the provided min-cities";
     }
 
     @Override
@@ -34,13 +34,15 @@ public class DeleteBuild extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        if (args.size() == 2) {
-            if (!MathMan.isInteger(args.get(1))) {
-                return "Not an integer. `" + args.get(1) + "`";
-            }
-            Locutus.imp().getGuildDB(event).removeBuild(args.get(0), Integer.parseInt(args.get(1)));
-            return "Removed build: `" + args.get(0) + "`";
+        switch (args.size()) {
+            default:
+                return usage(event);
+            case 2:
+                if (!MathMan.isInteger(args.get(1))) {
+                    return "Not an integer. `" + args.get(1) + "`";
+                }
+                Locutus.imp().getGuildDB(event).removeBuild(args.get(0), Integer.parseInt(args.get(1)));
+                return "Removed build: `" + args.get(0) + "`";
         }
-        return usage(event);
     }
 }

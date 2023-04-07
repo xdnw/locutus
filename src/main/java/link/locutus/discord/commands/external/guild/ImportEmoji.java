@@ -19,7 +19,6 @@ public class ImportEmoji extends Command {
     public ImportEmoji() {
         super(CommandCategory.GUILD_MANAGEMENT);
     }
-
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.ADMIN.has(user, server);
@@ -37,6 +36,7 @@ public class ImportEmoji extends Command {
         }
         String arg = args.get(0);
         if (arg.startsWith("https://discord.com/channels/")) {
+
         } else if (arg.startsWith("http")) {
             byte[] bytes = FileUtil.readBytesFromUrl(arg);
             if (bytes != null) {

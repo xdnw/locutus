@@ -43,7 +43,7 @@ public class RunAllNations extends Command implements Noformat {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
 
         if (nations.size() == 0) return "No nations found for `" + args.get(0) + "`";
-        if (nations.size() > 200 && !Roles.ADMIN.hasOnRoot(author)) return "Too many nations (max 200).";
+        if (nations.size() > 200 && !Roles.ADMIN.hasOnRoot(author)) return ">200 nations";
 
         String cmd = args.get(1);
         MessageChannel channel = event.getChannel();

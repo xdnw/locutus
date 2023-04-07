@@ -27,7 +27,7 @@ public class MsgInfo extends Command {
 
     @Override
     public String desc() {
-        return "print message info to console.";
+        return "print message info to console";
     }
 
     @Override
@@ -51,11 +51,11 @@ public class MsgInfo extends Command {
         }
 
         String title = "Message " + message.getIdLong();
-        response.append("```").append(DiscordUtil.trimContent(message.getContentRaw()).replaceAll("`", "\\`")).append("```\n\n");
+        response.append("```" + DiscordUtil.trimContent(message.getContentRaw()).replaceAll("`", "\\`") + "```\n\n");
 
         if (!reactionsByUser.isEmpty()) {
             for (Map.Entry<User, List<String>> entry : reactionsByUser.entrySet()) {
-                response.append(entry.getKey().getAsMention()).append("\t").append(StringMan.join(entry.getValue(), ","));
+                response.append(entry.getKey().getAsMention() + "\t" + StringMan.join(entry.getValue(), ","));
                 response.append("\n");
             }
         }

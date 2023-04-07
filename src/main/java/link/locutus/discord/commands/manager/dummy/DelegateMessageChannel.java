@@ -1,7 +1,12 @@
 package link.locutus.discord.commands.manager.dummy;
 
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.ChannelType;
+import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.MessageHistory;
 import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.AuditableRestAction;
@@ -57,13 +62,13 @@ public class DelegateMessageChannel implements MessageChannel {
 
     @Override
     @Nonnull
-    public List<CompletableFuture<Void>> purgeMessagesById(@NotNull String @NotNull ... messageIds) {
+    public List<CompletableFuture<Void>> purgeMessagesById(@NotNull String... messageIds) {
         return parent.purgeMessagesById(messageIds);
     }
 
     @Override
     @Nonnull
-    public List<CompletableFuture<Void>> purgeMessages(@NotNull Message @NotNull ... messages) {
+    public List<CompletableFuture<Void>> purgeMessages(@NotNull Message... messages) {
         return parent.purgeMessages(messages);
     }
 
@@ -75,7 +80,7 @@ public class DelegateMessageChannel implements MessageChannel {
 
     @Override
     @Nonnull
-    public List<CompletableFuture<Void>> purgeMessagesById(long @NotNull ... messageIds) {
+    public List<CompletableFuture<Void>> purgeMessagesById(@NotNull long... messageIds) {
         return parent.purgeMessagesById(messageIds);
     }
 
@@ -89,14 +94,14 @@ public class DelegateMessageChannel implements MessageChannel {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendMessageFormat(@NotNull String format, @NotNull Object @NotNull ... args) {
+    public MessageAction sendMessageFormat(@NotNull String format, @NotNull Object... args) {
         return parent.sendMessageFormat(format, args);
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendMessageEmbeds(@NotNull MessageEmbed embed, @NotNull MessageEmbed @NotNull ... other) {
+    public MessageAction sendMessageEmbeds(@NotNull MessageEmbed embed, @NotNull MessageEmbed... other) {
         return parent.sendMessageEmbeds(embed, other);
     }
 
@@ -117,28 +122,28 @@ public class DelegateMessageChannel implements MessageChannel {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendFile(@NotNull File file, @NotNull AttachmentOption @NotNull ... options) {
+    public MessageAction sendFile(@NotNull File file, @NotNull AttachmentOption... options) {
         return parent.sendFile(file, options);
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendFile(@NotNull File file, @NotNull String fileName, @NotNull AttachmentOption @NotNull ... options) {
+    public MessageAction sendFile(@NotNull File file, @NotNull String fileName, @NotNull AttachmentOption... options) {
         return parent.sendFile(file, fileName, options);
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendFile(@NotNull InputStream data, @NotNull String fileName, @NotNull AttachmentOption @NotNull ... options) {
+    public MessageAction sendFile(@NotNull InputStream data, @NotNull String fileName, @NotNull AttachmentOption... options) {
         return parent.sendFile(data, fileName, options);
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendFile(byte @NotNull [] data, @NotNull String fileName, @NotNull AttachmentOption @NotNull ... options) {
+    public MessageAction sendFile(@NotNull byte[] data, @NotNull String fileName, @NotNull AttachmentOption... options) {
         return parent.sendFile(data, fileName, options);
     }
 
@@ -409,28 +414,28 @@ public class DelegateMessageChannel implements MessageChannel {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageFormatById(@NotNull String messageId, @NotNull String format, @NotNull Object @NotNull ... args) {
+    public MessageAction editMessageFormatById(@NotNull String messageId, @NotNull String format, @NotNull Object... args) {
         return parent.editMessageFormatById(messageId, format, args);
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageFormatById(long messageId, @NotNull String format, @NotNull Object @NotNull ... args) {
+    public MessageAction editMessageFormatById(long messageId, @NotNull String format, @NotNull Object... args) {
         return parent.editMessageFormatById(messageId, format, args);
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageEmbedsById(@NotNull String messageId, @NotNull MessageEmbed @NotNull ... newEmbeds) {
+    public MessageAction editMessageEmbedsById(@NotNull String messageId, @NotNull MessageEmbed... newEmbeds) {
         return parent.editMessageEmbedsById(messageId, newEmbeds);
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageEmbedsById(long messageId, @NotNull MessageEmbed @NotNull ... newEmbeds) {
+    public MessageAction editMessageEmbedsById(long messageId, @NotNull MessageEmbed... newEmbeds) {
         return parent.editMessageEmbedsById(messageId, newEmbeds);
     }
 
@@ -465,14 +470,14 @@ public class DelegateMessageChannel implements MessageChannel {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageComponentsById(@NotNull String messageId, @NotNull LayoutComponent @NotNull ... components) {
+    public MessageAction editMessageComponentsById(@NotNull String messageId, @NotNull LayoutComponent... components) {
         return parent.editMessageComponentsById(messageId, components);
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageComponentsById(long messageId, @NotNull LayoutComponent @NotNull ... components) {
+    public MessageAction editMessageComponentsById(long messageId, @NotNull LayoutComponent... components) {
         return parent.editMessageComponentsById(messageId, components);
     }
 
@@ -502,7 +507,7 @@ public class DelegateMessageChannel implements MessageChannel {
     }
 
     @Override
-    public @NotNull String getAsMention() {
+    public String getAsMention() {
         return parent.getAsMention();
     }
 

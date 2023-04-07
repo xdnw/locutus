@@ -74,7 +74,7 @@ public class AddBuild extends Command {
                 for (CityBuildRange range : list) {
                     if (range.getMin() == min) continue;
                     if (Math.max(min, range.getMin()) <= Math.min(max, range.getMax())) {
-                        response.append('\n').append(" - Overlaps with (category, min-city, max-city) ").append(category).append(" ").append(range.getMin()).append(" ").append(range.getMax()).append(". Use `").append(Settings.commandPrefix(true)).append("delbuild ").append(category).append(" ").append(range.getMin()).append("`");
+                        response.append('\n').append(" - Overlaps with (category, min-city, max-city) " + category + " " + range.getMin() + " " + range.getMax() + ". Use `" + Settings.commandPrefix(true) + "delbuild " + category + " " + range.getMin() + "`");
                     }
                 }
                 return response.toString().trim();
@@ -82,6 +82,6 @@ public class AddBuild extends Command {
                 return "Invalid build json: " + e.getMessage();
             }
         }
-        return usage(event, "No build json provided.");
+        return usage(event, "No build json provided");
     }
 }

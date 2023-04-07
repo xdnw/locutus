@@ -9,7 +9,6 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Lury extends Command {
@@ -34,7 +33,7 @@ public class Lury extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        String[] lines = Objects.requireNonNull(FileUtil.readFile("/fun/overlord.txt")).split("\\r?\\n");
+        String[] lines = FileUtil.readFile("/fun/overlord.txt").split("\\r?\\n");
         return lines[ThreadLocalRandom.current().nextInt(lines.length)];
     }
 }

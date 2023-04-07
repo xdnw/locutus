@@ -65,7 +65,8 @@ public class SriCommand extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        return random.get(new Random().nextInt(random.size()));
+        String msg = random.get(new Random().nextInt(random.size()));
+        return msg;
 
 
     }

@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 public class CityAgeRanking extends Command {
 
@@ -36,7 +37,24 @@ public class CityAgeRanking extends Command {
         GroupedRankBuilder<Integer, DBNation> nationByAAGroup = new RankBuilder<>(nations.values()).group(DBNation::getAlliance_id);
         Map<Integer, List<DBNation>> nationsByAlliance = nationByAAGroup.get();
 
-        NumericMappedRankBuilder<Integer, Integer, Number> avg = nationByAAGroup.map((integer, nation) -> null, (integer, nation) -> nation.getAgeDays());
+        NumericMappedRankBuilder<Integer, Integer, Number> avg = nationByAAGroup.map(new BiFunction<Integer, DBNation, Integer>() {
+            @Override
+            public Integer apply(Integer integer, DBNation nation) {
+                return null;
+            }
+        }, new BiFunction<Integer, DBNation, Number>() {
+            @Override
+            public Number apply(Integer integer, DBNation nation) {
+                return nation.getAgeDays();
+            }
+        });
+
+//        new RankBuilder<>(nations)
+//                .removeIf(nation -> nation.getAircraft() == null)
+//                .group(DBNation::getAlliance_id)
+//                .sumValues(DBNation::getAircraft)
+//                .sort()
+//                .nameKeys(alliances::get).build(event, "Total planes in " + group);
 
         return null;
 

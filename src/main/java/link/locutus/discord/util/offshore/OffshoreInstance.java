@@ -80,16 +80,11 @@ public class OffshoreInstance {
         return allianceId;
     }
 
-<<<<<<< HEAD
     public GuildDB getGuildDB() {
         if (guildDBCached == null || !guildDBCached.isAllianceId(allianceId)) {
             guildDBCached = Locutus.imp().getGuildDBByAA(allianceId);
         }
         return guildDBCached;
-=======
-    public PoliticsAndWarV2 getApi() {
-        return getGuildDB().getApi(false, true);
->>>>>>> pr/15
     }
 
 

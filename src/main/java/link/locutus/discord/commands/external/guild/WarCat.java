@@ -49,10 +49,10 @@ public class WarCat extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(event);
         WarCategory warChannels = db.getWarChannel();
-        if (warChannels == null) return "War channels are not enabled.";
+        if (warChannels == null) return "War channels are not enabled";
 
         WarCategory.WarRoom waRoom = warChannels.getWarRoom(event.getGuildChannel());
-        if (waRoom == null) return "This command must be run in a war room.";
+        if (waRoom == null) return "This command must be run in a war room";
 
         String categoryName = args.get(0);
         if (categoryName.startsWith("<")) {
@@ -67,7 +67,7 @@ public class WarCat extends Command {
 
         List<Category> categories = guild.getCategoriesByName(categoryName, true);
         Category category;
-        if (categories.isEmpty()) {
+        if (categories == null || categories.isEmpty()) {
             category = RateLimitUtil.complete(guild.createCategory(categoryName));
             Role milcomRole = Roles.MILCOM.toRole(guild);
             if (milcomRole != null) {
@@ -80,7 +80,8 @@ public class WarCat extends Command {
         }
 
         MessageChannel currentChannel = event.getChannel();
-        if (!(currentChannel instanceof ICategorizableChannel cc)) return "This channel cannot have a category.";
+        if (!(currentChannel instanceof ICategorizableChannel)) return "This channel cannot have a category";
+        ICategorizableChannel cc = (ICategorizableChannel) currentChannel;
         if (category.equals(cc.getParentCategory())) {
             return "Already in category: " + categoryName;
         }

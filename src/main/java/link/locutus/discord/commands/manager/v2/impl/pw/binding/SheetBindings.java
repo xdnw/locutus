@@ -15,7 +15,7 @@ public class SheetBindings extends BindingHelper {
     public SpreadSheet sheet(String input) throws GeneralSecurityException, IOException {
         String spreadsheetId;
         if (input.startsWith("sheet:")) {
-        } else if (input.startsWith("https://docs.google.com/spreadsheets/")) {
+        } else if (input.startsWith("https://docs.google.com/spreadsheets/")){
         } else {
             throw new IllegalArgumentException("Invalid sheet: `" + input + "`");
         }
@@ -28,8 +28,7 @@ public class SheetBindings extends BindingHelper {
         TransferSheet sheet = new TransferSheet(input);
 
         Set<String> invalid = sheet.read();
-        if (!invalid.isEmpty())
-            throw new IllegalArgumentException("Invalid nations/alliances: " + StringMan.getString(invalid));
+        if (!invalid.isEmpty()) throw new IllegalArgumentException("Invalid nations/alliances: " + StringMan.getString(invalid));
 
         return sheet;
     }

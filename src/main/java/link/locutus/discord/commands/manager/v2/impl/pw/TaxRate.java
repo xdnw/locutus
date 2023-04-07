@@ -8,10 +8,8 @@ public class TaxRate {
 
     public TaxRate(String parse) {
         String[] split = parse.split("/");
-        if (split.length != 2)
-            throw new IllegalArgumentException("Invalid tax rate: " + parse + ". (must be in format 100/100)");
-        if (!MathMan.isInteger(split[0]) || !MathMan.isInteger(split[1]))
-            throw new IllegalArgumentException("Tax rate must be numeric: " + parse);
+        if (split.length != 2) throw new IllegalArgumentException("Invalid tax rate: " + parse + ". (must be in format 100/100)");
+        if (!MathMan.isInteger(split[0]) || !MathMan.isInteger(split[1])) throw new IllegalArgumentException("Tax rate must be numeric: " + parse);
         this.money = Integer.parseInt(split[0]);
         this.resources = Integer.parseInt(split[1]);
     }

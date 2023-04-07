@@ -1,20 +1,26 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.format;
@@ -23,7 +29,6 @@ public class WarLossesPerCity extends Command {
     public WarLossesPerCity() {
         super(CommandCategory.MILCOM, CommandCategory.GAME_INFO_AND_TOOLS);
     }
-
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "WarLossesPerCity <alliance|coalition|*> <days>";
@@ -56,6 +61,11 @@ public class WarLossesPerCity extends Command {
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
         for (DBAttack attack : attacks) {
             if (attack.victor != 0) {
+//                if (nationMap.containsKey(attack.attacker_nation_id)) {
+//                    double attLoss = attack.getLossesConverted(true);
+//                    totals.put(attack.attacker_nation_id, totals.getOrDefault(attack.attacker_nation_id, 0d) + attLoss);
+//                    counters.put(attack.attacker_nation_id, counters.getOrDefault(attack.attacker_nation_id, 0) + 1);
+//                }
                 if (nationMap.containsKey(attack.defender_nation_id)) {
                     double defLoss = attack.getLossesConverted(false);
                     totals.put(attack.defender_nation_id, totals.getOrDefault(attack.defender_nation_id, 0d) + defLoss);
@@ -66,14 +76,16 @@ public class WarLossesPerCity extends Command {
 
         List<Map.Entry<Integer, Double>> sorted = new ArrayList<>(totals.entrySet())
                 .stream()
-                .peek(entry -> {
+                .map(entry -> {
                     DBNation nation = nationMap.get(entry.getKey());
                     int totalCounters = counters.getOrDefault(entry.getKey(), 0);
                     entry.setValue(entry.getValue() / (nation.getCities() * totalCounters));
+                    return entry;
                 })
                 .sorted(Comparator.comparingDouble(
                         o -> -o.getValue()))
-                .toList();
+                .collect(Collectors.toList()
+                );
 
         String title = args.get(0) + " City Losses per Def War (" + days + " days):";
         StringBuilder response = new StringBuilder();
@@ -85,11 +97,11 @@ public class WarLossesPerCity extends Command {
             double value = entry.getValue();
             String name = nation.getNation();
             name = name.substring(0, Math.min(32, name.length()));
-            response.append('\n').append(String.format("%4s", i + 1)).append(". ").append(String.format("%32s", name)).append(": $").append(format(value));
+            response.append('\n').append(String.format("%4s", i + 1) + ". ").append(String.format("%32s", name)).append(": $").append(format(value));
         }
 
         String emoji = "Refresh";
-        response.append("\n\nPress `").append(emoji).append("` to refresh");
+        response.append("\n\nPress `" + emoji + "` to refresh");
         DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
 
         return null;

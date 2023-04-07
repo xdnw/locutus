@@ -39,13 +39,12 @@ public class Tag {
         }
         Member member = event.getMember();
         if (it == null) {
-            assert member != null;
             if ((member.getOnlineStatus() != OnlineStatus.ONLINE && member.getOnlineStatus() != OnlineStatus.DO_NOT_DISTURB)) {
-                return "You can only play tag if you are online.";
+                return "You can only play tag if you are online";
             }
             previous = it;
             it = event.getAuthor().getIdLong();
-            return "Tag, you're it!";
+            return "Tag, you're it! (mention someone else to tag them)";
         }
         return null;
     }

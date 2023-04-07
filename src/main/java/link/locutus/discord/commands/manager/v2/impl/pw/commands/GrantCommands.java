@@ -1,14 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-<<<<<<< HEAD
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-=======
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
->>>>>>> pr/15
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
@@ -16,24 +9,16 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-<<<<<<< HEAD
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.offshore.Grant;
-=======
->>>>>>> pr/15
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-<<<<<<< HEAD
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
-=======
-import link.locutus.discord.util.offshore.Grant;
-import link.locutus.discord.util.offshore.OffshoreInstance;
->>>>>>> pr/15
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
@@ -42,7 +27,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class GrantCommands {
-<<<<<<< HEAD
 
     /*
     // 1111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222
@@ -943,9 +927,6 @@ public class GrantCommands {
 //    public String land(NationList nations, double landUpTo, @Default CityFilter cities, @Switch("m") boolean onlyMissingFunds, @Switch("e") int expireAfterDays, @Switch("f") boolean bypassChecks) {
 //
 //    }
-=======
-    private final Set<Integer> disabledNations = new HashSet<>();
->>>>>>> pr/15
 
     @WhitelistPermission
     @Command
@@ -969,14 +950,16 @@ public class GrantCommands {
             for (int i = 0; i < actualDeposits.length; i++) {
                 if (actualDeposits[i] < expectedDeposits[i]) {
                     depositsMatch = false;
-                    break;
                 }
             }
 
+            if (depositsMatch) {
+
+            }
         }
 
         if (!depositsMatch) {
-            String title = "Error Outdated!, Please try again";
+            String title = "[Error] Outdated. Please try again";
 
             String body = db.generateEscrowedCard(receiver);
             body += "\nCommand run by: " + author.getAsMention();
@@ -1003,17 +986,17 @@ public class GrantCommands {
                 baseUrl + "citygrants/" + nation.getNation_id(),
                 baseUrl + "projectgrants/" + nation.getNation_id()
         );
-        String response = nation.toMarkdown() + "\n" +
-                "color=" + nation.getColor() + "\n" +
-                "mmr[unit]=" + nation.getMMR() + "\n" +
-                "mmr[build]=" + nation.getMMRBuildingStr() + "\n" +
-                "timer[city]=" + nation.getCityTurns() + " timer[project]=" + nation.getProjectTurns() + "\n" +
-                "slots[project]=" + nation.getNumProjects() + "/" + nation.projectSlots() + "\n" +
-                "activity[turn]=" + MathMan.format(nation.avg_daily_login_turns() * 100) + "%\n" +
-                "activity[day]=" + MathMan.format(nation.avg_daily_login() * 100) + "%\n";
+        StringBuilder response = new StringBuilder();
+        response.append(nation.toMarkdown() + "\n");
+        response.append("color=" + nation.getColor() + "\n");
+        response.append("mmr[unit]=" + nation.getMMR() + "\n");
+        response.append("mmr[build]=" + nation.getMMRBuildingStr() + "\n");
+        response.append("timer[city]=" + nation.getCityTurns() + " timer[project]=" + nation.getProjectTurns() + "\n");
+        response.append("slots[project]=" + nation.getNumProjects() + "/" + nation.projectSlots() + "\n");
+        response.append("activity[turn]=" + MathMan.format(nation.avg_daily_login_turns() * 100) + "%\n");
+        response.append("activity[day]=" + MathMan.format(nation.avg_daily_login() * 100) + "%\n");
         return response + "<" + StringMan.join(pages, ">\n<") + ">";
     }
-<<<<<<< HEAD
 //
     private Set<Integer> disabledNations = new HashSet<>();
 //
@@ -1121,102 +1104,4 @@ public class GrantCommands {
 //            throw e;
 //        }
 //    }
-=======
-
-    @WhitelistPermission
-    @Command
-    @RolePermission(Roles.ECON_LOW_GOV)
-    public synchronized String approveGrant(@Me DBNation banker, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, UUID key, @Switch("f") boolean force) {
-        try {
-            Grant grant = Grant.getApprovedGrant(db.getIdLong(), key);
-            if (grant == null) {
-                return "Invalid Token, Please try again.";
-            }
-            DBNation receiver = grant.getNation();
-
-            receiver.updateTransactions();
-            receiver.getCityMap(true);
-
-            Set<Grant.Requirement> requirements = grant.getRequirements();
-            Set<Grant.Requirement> failed = new HashSet<>();
-            Set<Grant.Requirement> override = new HashSet<>();
-            for (Grant.Requirement requirement : requirements) {
-                Boolean result = requirement.apply(receiver);
-                if (!result) {
-                    if (requirement.canOverride()) {
-                        override.add(requirement);
-                    } else {
-                        failed.add(requirement);
-                    }
-                }
-            }
-
-            if (!failed.isEmpty()) {
-                StringBuilder result = new StringBuilder("Grant could not be approved.\n");
-                result.append("\nFailed checks:\n - ").append(StringMan.join(failed.stream().map(Grant.Requirement::getMessage).collect(Collectors.toList()), "\n - ")).append("\n");
-                if (!override.isEmpty()) {
-                    result.append("\nFailed checks that you have permission to bypass:\n - ").append(StringMan.join(override.stream().map(Grant.Requirement::getMessage).collect(Collectors.toList()), "\n - ")).append("\n");
-                }
-                return result.toString();
-            }
-
-            if (!force) {
-                String title = grant.title();
-                StringBuilder body = new StringBuilder();
-
-                body.append("Receiver: ").append(receiver.getNationUrlMarkup(true)).append(" | ").append(receiver.getAllianceUrlMarkup(true)).append("\n");
-                body.append("Note: ").append(grant.getNote()).append("\n");
-                body.append("Amt: ").append(grant.getAmount()).append("\n");
-                body.append("Cost: `").append(PnwUtil.resourcesToString(grant.cost())).append("\n\n");
-
-                if (!override.isEmpty()) {
-                    body.append("**").append(override.size()).append(" failed checks (you have to ask for an admin for override)**\n - ");
-                    body.append(StringMan.join(override.stream().map(Grant.Requirement::getMessage).collect(Collectors.toList()), "\n - ")).append("\n\n");
-                }
-
-                io.create().confirmation(title, body.toString(), command).send();
-                return null;
-            }
-            if (disabledNations.contains(receiver.getNation_id())) {
-                return "There was an error processing the grant, Please contact an administrator.";
-            }
-
-            Grant.deleteApprovedGrant(db.getIdLong(), key);
-
-            disabledNations.add(receiver.getNation_id());
-
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = db.getOffshore().transferFromDeposits(banker, db, receiver, grant.cost(), grant.getNote());
-            OffshoreInstance.TransferStatus status = result.getKey();
-
-            StringBuilder response = new StringBuilder();
-            if (status == OffshoreInstance.TransferStatus.SUCCESS || status == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
-                response.append("**Transaction:** ").append(result.getValue()).append("\n");
-                response.append("**Instructions:** ").append(grant.getInstructions());
-
-                Locutus.imp().getExecutor().submit(() -> {
-                    receiver.updateTransactions();
-                    for (Grant.Requirement requirement : grant.getRequirements()) {
-                        if (!requirement.apply(receiver)) {
-                            disabledNations.remove(receiver.getNation_id());
-                            return;
-                        }
-                    }
-                    AlertUtil.error("Grant is still eligable", grant.getType() + " | " + grant.getNote() + " | " + grant.getAmount() + " | " + grant.getTitle());
-                });
-
-            } else {
-                if (status != OffshoreInstance.TransferStatus.OTHER) {
-                    disabledNations.remove(receiver.getNation_id());
-                }
-                response.append(status).append(": ").append(result.getValue());
-            }
-
-
-            return response.toString();
-        } catch (Throwable e) {
-            e.printStackTrace();
-            throw e;
-        }
-    }
->>>>>>> pr/15
 }

@@ -29,7 +29,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class AdapterMessageUpdateAction implements MessageAction {
     private final WebhookMessageUpdateAction<Message> parent;
@@ -43,7 +48,7 @@ public class AdapterMessageUpdateAction implements MessageAction {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction addFile(@NotNull InputStream data, @NotNull String name, @NotNull AttachmentOption @NotNull ... options) {
+    public MessageAction addFile(@NotNull InputStream data, @NotNull String name, @NotNull AttachmentOption... options) {
         parent.addFile(data, name, options);
         return this;
     }
@@ -51,7 +56,7 @@ public class AdapterMessageUpdateAction implements MessageAction {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction addFile(byte @NotNull [] data, @NotNull String name, @NotNull AttachmentOption @NotNull ... options) {
+    public MessageAction addFile(@NotNull byte[] data, @NotNull String name, @NotNull AttachmentOption... options) {
         parent.addFile(data, name, options);
         return this;
     }
@@ -59,7 +64,7 @@ public class AdapterMessageUpdateAction implements MessageAction {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction addFile(@NotNull File file, @NotNull String name, @NotNull AttachmentOption @NotNull ... options) {
+    public MessageAction addFile(@NotNull File file, @NotNull String name, @NotNull AttachmentOption... options) {
         parent.addFile(file, name, options);
         return this;
     }
@@ -67,7 +72,7 @@ public class AdapterMessageUpdateAction implements MessageAction {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction addFile(@NotNull File file, @NotNull AttachmentOption @NotNull ... options) {
+    public MessageAction addFile(@NotNull File file, @NotNull AttachmentOption... options) {
         parent.addFile(file, options);
         return this;
     }
@@ -219,11 +224,10 @@ public class AdapterMessageUpdateAction implements MessageAction {
         return parent.and(other);
     }
 
-    @SafeVarargs
     @Override
     @CheckReturnValue
     @Nonnull
-    public final RestAction<List<Message>> zip(@NotNull RestAction<? extends Message> first, @NotNull RestAction<? extends Message> @NotNull ... other) {
+    public RestAction<List<Message>> zip(@NotNull RestAction<? extends Message> first, @NotNull RestAction<? extends Message>... other) {
         return parent.zip(first, other);
     }
 
@@ -325,7 +329,7 @@ public class AdapterMessageUpdateAction implements MessageAction {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction mention(@NotNull IMentionable @NotNull ... mentions) {
+    public MessageAction mention(@NotNull IMentionable... mentions) {
         throw new UnsupportedOperationException("Not implemented");
     }
 
@@ -339,28 +343,28 @@ public class AdapterMessageUpdateAction implements MessageAction {
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction mentionUsers(@NotNull String @NotNull ... userIds) {
+    public MessageAction mentionUsers(@NotNull String... userIds) {
         throw new UnsupportedOperationException("Not implemented");
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction mentionUsers(long @NotNull ... userIds) {
+    public MessageAction mentionUsers(@NotNull long... userIds) {
         throw new UnsupportedOperationException("Not implemented");
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction mentionRoles(@NotNull String @NotNull ... roleIds) {
+    public MessageAction mentionRoles(@NotNull String... roleIds) {
         throw new UnsupportedOperationException("Not implemented");
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction mentionRoles(long @NotNull ... roleIds) {
+    public MessageAction mentionRoles(@NotNull long... roleIds) {
         throw new UnsupportedOperationException("Not implemented");
     }
 
@@ -394,7 +398,7 @@ public class AdapterMessageUpdateAction implements MessageAction {
 
     @NotNull
     @Override
-    public MessageAction setActionRows(@NotNull ActionRow @NotNull ... rows) {
+    public MessageAction setActionRows(@NotNull ActionRow... rows) {
         parent.setActionRows(rows);
         return this;
     }
@@ -446,7 +450,6 @@ public class AdapterMessageUpdateAction implements MessageAction {
     @NotNull
     @Override
     public MessageAction append(@Nullable CharSequence csq, int start, int end) {
-        assert csq != null;
         parent.setContent(csq.subSequence(start, end) + "");
         return this;
     }
@@ -460,7 +463,6 @@ public class AdapterMessageUpdateAction implements MessageAction {
     @NotNull
     @Override
     public MessageAction apply(@Nullable Message message) {
-        assert message != null;
         parent.applyMessage(message);
         return this;
     }

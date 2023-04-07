@@ -2,7 +2,12 @@ package link.locutus.discord.commands.rankings.builder;
 
 import link.locutus.discord.util.MathMan;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -91,7 +96,7 @@ public class SummedMapRankBuilder<T, G extends Number> {
 
     public SummedMapRankBuilder<T, G> sort(Comparator<Map.Entry<T, G>> comparator) {
         ArrayList<Map.Entry<T, G>> list = new ArrayList<>(map.entrySet());
-        list.sort(comparator);
+        Collections.sort(list, comparator);
         Map<T, G> newMap = new LinkedHashMap<>();
         for (Map.Entry<T, G> entry : list) {
             newMap.put(entry.getKey(), entry.getValue());

@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -9,6 +8,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.ScriptUtil;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import net.dv8tion.jda.api.entities.User;
 
 import javax.script.ScriptException;
@@ -23,12 +23,13 @@ public class StandardPlaceholders {
 
     @Command
     String js(@Me User author, @TextArea String text) throws ScriptException {
-        if (text.contains("[a-zA-Z]+")) {
+        String msg = text;
+        if (msg.contains("[a-zA-Z]+")){
             if (!Roles.ADMIN.hasOnRoot(author)) {
                 return null;
             }
         }
-        return ScriptUtil.getEngine().eval(text) + "";
+        return ScriptUtil.getEngine().eval(msg) + "";
     }
 
     @Command
@@ -51,8 +52,7 @@ public class StandardPlaceholders {
         return System.currentTimeMillis() + "";
     }
 
-    @Command
-    public String date() {
+    @Command public String date() {
         return Instant.now().toString();
     }
 
@@ -64,7 +64,9 @@ public class StandardPlaceholders {
         for (Map.Entry<Integer, JavaCity> entry : cities) {
             citiesByDate.add(entry.getValue());
         }
-        citiesByDate.sort((o1, o2) -> Long.compare(o2.getAge(), o1.getAge()));
+        citiesByDate.sort((o1, o2) -> {
+            return Long.compare(o2.getAge(), o1.getAge());
+        });
         return citiesByDate.get(index).getAge() + "";
     }
 }

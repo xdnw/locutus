@@ -1,23 +1,28 @@
 package link.locutus.discord.commands.rankings.builder;
 
-import com.google.common.base.Function;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.StringMan;
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class RankBuilder<T> {
     private List<T> values;
-
     public RankBuilder(List<T> values) {
         this.values = values;
     }
@@ -31,8 +36,8 @@ public class RankBuilder<T> {
         return this;
     }
 
-    public <G> RankBuilder<G> adapt(java.util.function.Function<T, G> adapter) {
-        List<G> transform = values.stream().map(adapter).collect(Collectors.toList());
+    public <G> RankBuilder<G> adapt(Function<T, G> adapter) {
+        List<G> transform = Lists.transform(values, adapter);
         return new RankBuilder<>(transform);
     }
 
@@ -65,7 +70,7 @@ public class RankBuilder<T> {
     }
 
     public RankBuilder<T> sort(Comparator<T> comparator) {
-        values.sort(comparator);
+        Collections.sort(values, comparator);
         return this;
     }
 
@@ -97,11 +102,9 @@ public class RankBuilder<T> {
     public void build(IMessageIO io, JSONObject command, String title, boolean upload) {
         build(null, io, command, title, upload);
     }
-
     public void build(IMessageIO io, JSONObject command, String title) {
         build(null, io, command, title, false);
     }
-
     public void build(User author, IMessageIO io, JSONObject command, String title, boolean upload) {
         List<String> items = toItems(25);
         String emoji = "Refresh";
@@ -118,7 +121,6 @@ public class RankBuilder<T> {
 
         msg.send();
     }
-
     public void build(User author, MessageChannel channel, String cmd, String title) {
         List<String> items = toItems(25);
         String emoji = "Refresh";
@@ -126,7 +128,7 @@ public class RankBuilder<T> {
         if (cmd != null) itemsStr += "\nPress `" + emoji + "` to refresh";
         if (author != null) itemsStr += "\n" + author.getAsMention();
 
-        String[] args = cmd == null ? new String[0] : new String[]{emoji, cmd};
+        String[] args = cmd == null ? new String[0] : new String[] {emoji, cmd};
         DiscordUtil.createEmbedCommand(channel, title, itemsStr, args);
     }
 

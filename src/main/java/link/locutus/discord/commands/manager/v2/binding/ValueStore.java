@@ -9,18 +9,18 @@ public interface ValueStore<T> {
 
     <V extends T> Parser<V> addParser(Key<V> key, Parser<V> parser);
 
-    default <V extends T> void addProvider(Class<V> clazz, V value) {
-        addProvider(Key.of(clazz), value);
+    default <V extends T> Parser<V> addProvider(Class<V> clazz, V value) {
+        return addProvider(Key.of(clazz), value);
     }
 
-    default <V extends T> void addProvider(V value) {
-        Key key = Key.of(value.getClass());
-        addProvider(key, value);
+    default <V extends T> Parser<V> addProvider(V value) {
+        Key<V> key = (Key) Key.of(value.getClass());
+        return addProvider(key, value);
     }
 
-    default <V extends T> void addProvider(Key<V> key, V value) {
+    default <V extends T> Parser<V> addProvider(Key<V> key, V value) {
         ProviderParser<V> parser = new ProviderParser<>(key, value);
-        addParser(key, parser);
+        return addParser(key, parser);
     }
 
     <V extends T> Parser<V> get(Key<V> key);

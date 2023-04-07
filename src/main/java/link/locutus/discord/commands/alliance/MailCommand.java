@@ -34,7 +34,7 @@ public class MailCommand extends Command implements Noformat {
 
     @Override
     public String help() {
-        return "`" + Settings.commandPrefix(true) + "mail <nations> <subject> <message...>` or `" + Settings.commandPrefix(true) + "mail <leaders> <message-url> <message...>`";
+        return "`" + Settings.commandPrefix(true) + "mail <nation> <subject> <message...>` or `" + Settings.commandPrefix(true) + "mail <leader> <message-url> <message...>`";
     }
 
     @Override
@@ -59,7 +59,7 @@ public class MailCommand extends Command implements Noformat {
             String arg1 = args.get(1);
 
             if (arg1.contains("message/id=")) {
-                Auth auth;
+                Auth auth = null;
 
                 if (fromStr != null) {
                     DBNation from = DiscordUtil.parseNation(fromStr);
@@ -67,7 +67,7 @@ public class MailCommand extends Command implements Noformat {
                     auth = from.getAuth(null);
                     GuildDB authDB = Locutus.imp().getGuildDB(from.getAlliance_id());
                     boolean hasPerms = (Roles.INTERNAL_AFFAIRS.hasOnRoot(author)) || (authDB != null && Roles.INTERNAL_AFFAIRS.has(author, authDB.getGuild()));
-                    if (!hasPerms) return "You do not have permission to reply to this message.";
+                    if (!hasPerms) return "You do not have permission to reply to this message";
                 } else {
                     auth = me.getAuth();
                 }
@@ -92,22 +92,22 @@ public class MailCommand extends Command implements Noformat {
 
             ApiKeyPool.ApiKey myKey = me.getApiKey(false);
 
-            ApiKeyPool key;
+            ApiKeyPool key = null;
             if (flags.contains('l') || myKey == null) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use`" + Settings.commandPrefix(false) + "credentials addApiKey` to add your own key.";
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use`" + Settings.commandPrefix(false) + "credentials addApiKey` to add your own key";
                 }
                 key = db.getMailKey();
             } else {
                 key = ApiKeyPool.builder().addKey(myKey).build();
             }
+            if (key == null){
                 return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey`";
-            if (key == null) {
             }
 
 
             if (!flags.contains('f')) {
-                String title = "Send " + nations.size() + " messages.";
+                String title = "Send " + nations.size() + " messages";
                 String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()).replaceFirst(" ", " -f ");
 
                 Set<Integer> alliances = new LinkedHashSet<>();
@@ -121,10 +121,11 @@ public class MailCommand extends Command implements Noformat {
                 }
                 if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances";
 
-                String body = "subject: " + subject + "\n" +
-                        "body: ```" + message + "```";
+                StringBuilder body = new StringBuilder();
+                body.append("subject: " + subject + "\n");
+                body.append("body: ```" + message + "```");
 
-                DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body, "Next", pending);
+                DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "Next", pending);
                 return null;
             }
 

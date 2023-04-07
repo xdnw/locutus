@@ -39,8 +39,8 @@ public class Logout extends Command {
                 }
                 me.auth = null;
             }
-            return "Logged out.";
+            return "Logged out";
         }
-        return "You are not logged in.";
+        return "You are not logged in";
     }
 }

@@ -14,7 +14,6 @@ public class PendingCommand extends Command {
     public PendingCommand() {
         super("pending", CommandCategory.DEBUG);
     }
-
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "pending <command>";
@@ -22,7 +21,7 @@ public class PendingCommand extends Command {
 
     @Override
     public String desc() {
-        return "Pend a command.";
+        return "Pend a command";
     }
 
     @Override

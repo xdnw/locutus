@@ -18,13 +18,13 @@ public class ParameterData {
     private Parser binding;
     private String desc;
 
-    public Type getType() {
-        return type;
-    }
-
     public ParameterData setType(Type type) {
         this.type = type;
         return this;
+    }
+
+    public Type getType() {
+        return type;
     }
 
     public ParameterData setModifiers(Annotation[] annotations) {
@@ -32,13 +32,23 @@ public class ParameterData {
         return this;
     }
 
-    public String[] getDefaultValue() {
-        return defaultValue;
+    public ParameterData setFlag(String value) {
+        this.flag = value;
+        return this;
+    }
+
+    public ParameterData setOptional(boolean value) {
+        this.optional = value;
+        return this;
     }
 
     public ParameterData setDefaultValue(String[] value) {
         this.defaultValue = value;
         return this;
+    }
+
+    public String[] getDefaultValue() {
+        return defaultValue;
     }
 
     public String getDefaultValueString() {
@@ -49,13 +59,13 @@ public class ParameterData {
         return name;
     }
 
+    public Annotation[] getAnnotations() {
+        return annotations;
+    }
+
     public ParameterData setName(String name) {
         this.name = name;
         return this;
-    }
-
-    public Annotation[] getAnnotations() {
-        return annotations;
     }
 
     public boolean isConsumeFlag() {
@@ -70,26 +80,21 @@ public class ParameterData {
         return optional;
     }
 
-    public ParameterData setOptional(boolean value) {
-        this.optional = value;
-        return this;
-    }
-
-    public Parser<?> getBinding() {
-        return binding;
-    }
-
-    public ParameterData setBinding(Parser<?> binding) {
+    public ParameterData setBinding(Parser binding) {
         this.binding = binding;
         return this;
+    }
+
+    public Parser getBinding() {
+        return binding;
     }
 
     public boolean isFlag() {
         return getFlag() != null;
     }
 
-    public ParameterData setFlag(String value) {
-        this.flag = value;
+    public ParameterData setDescription(String value) {
+        this.desc = desc;
         return this;
     }
 
@@ -113,13 +118,13 @@ public class ParameterData {
         if (isFlag()) {
             examplePrefix = "-" + getFlag() + " ";
             if (includeName) {
-                expanded.append("`-").append(getFlag()).append("` - ").append(getName());
+                expanded.append("`-").append(getFlag()).append("` - " + getName());
                 if (isConsumeFlag()) {
-                    expanded.append(" (").append(typeName).append(")");
+                    expanded.append(" (" + typeName + ")");
                 }
             }
         } else if (includeName) {
-            expanded.append("`").append(getName()).append("` (").append(typeName).append(")");
+            expanded.append("`").append(getName()).append("` (" + typeName + ")");
         }
         if (includeDesc) {
             String paramDesc = getDescription();
@@ -132,15 +137,15 @@ public class ParameterData {
         }
         if (getDefaultValue() != null) {
             if (expanded.length() > 0) expanded.append("\n - ");
-            expanded.append("default: `").append(StringMan.join(getDefaultValue(), " ")).append("`");
+            expanded.append("default: `" + StringMan.join(getDefaultValue(), " ") + "`");
         }
         if (includeExample) {
-            Key<?> key = getBinding().getKey();
+            Key key = getBinding().getKey();
             Binding keyBinding = key.getBinding();
             if (keyBinding != null && keyBinding.examples().length != 0) {
                 if (!isFlag() || isConsumeFlag()) {
                     String example = examplePrefix + StringMan.join(keyBinding.examples(), "`, `" + examplePrefix);
-                    expanded.append("\n - e.g. `").append(example).append("`");
+                    expanded.append("\n - e.g. `" + example + "`");
                 }
             }
         }
@@ -153,10 +158,6 @@ public class ParameterData {
             return binding.getDescription();
         }
         return null;
-    }
-
-    public ParameterData setDescription(String value) {
-        return this;
     }
 
     public <T extends Annotation> T getAnnotation(Class<T> filterClass) {

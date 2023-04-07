@@ -1,11 +1,12 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 
 public class LocalValueStore<T> extends DelegateValueStore<T> {
     private final ValueStore<T> global;
 
     public LocalValueStore(ValueStore<T> parent) {
-        super(new SimpleValueStore<>());
+        super(new SimpleValueStore<T>());
         this.global = parent;
     }
 

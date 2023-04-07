@@ -18,7 +18,6 @@ public class CityCost extends Command {
     public CityCost() {
         super("citycost", "citycosts", CommandCategory.ECON, CommandCategory.GAME_INFO_AND_TOOLS);
     }
-
     @Override
     public String help() {
         return super.help() + " <current-city> <max-city> [manifest-destiny=false] [city-planning=false] [advanced-city-planning=false] [metropolitan-planning=false] [government-support-agency=false]";

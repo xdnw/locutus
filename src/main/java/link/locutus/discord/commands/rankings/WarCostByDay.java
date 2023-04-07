@@ -54,22 +54,21 @@ public class WarCostByDay extends Command {
 
     @Override
     public String desc() {
-        return """
-                Get a war breakdown by day
-                Add `-b` to show breakdown by attack type
-                Add `-f` to show Full cost
-                Add `-l` to show loot
-                Add `-c` to show consumption
-                Add `-a` to show ammunition usage
-                Add `-g` to show gasoline usage
-                Add `-u` to show unit losses
-                Add `-h` to show H-Bomb (nuke) losses
-                Add `-m` to show Missile losses
-                Add `-p` to show Plane losses
-                Add `-t` to show Tank losses
-                Add `-s` to show Soldier losses
-                Add `-i` to show Infra losses
-                Add `-o` to graph a running total""";
+        return "Get a war breakdown by day\n" +
+                "Add `-b` to show breakdown by attack type\n" +
+                "Add `-f` to show Full cost\n" +
+                "Add `-l` to show loot\n" +
+                "Add `-c` to show consumption\n" +
+                "Add `-a` to show ammunition usage\n" +
+                "Add `-g` to show gasoline usage\n" +
+                "Add `-u` to show unit losses\n" +
+                "Add `-h` to show H-Bomb (nuke) losses\n" +
+                "Add `-m` to show Missile losses\n" +
+                "Add `-p` to show Plane losses\n" +
+                "Add `-t` to show Tank losses\n" +
+                "Add `-s` to show Soldier losses\n" +
+                "Add `-i` to show Infra losses\n" +
+                "Add `-o` to graph a running total";
     }
 
     @Override
@@ -182,7 +181,12 @@ public class WarCostByDay extends Command {
 
         Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
 
-        attacks.sort(Comparator.comparingLong(o -> o.epoch));
+        Collections.sort(attacks, new Comparator<DBAttack>() {
+            @Override
+            public int compare(DBAttack o1, DBAttack o2) {
+                return Long.compare(o1.epoch, o2.epoch);
+            }
+        });
 
         String finalNameA = nameA;
         String finalNameB = nameB;
@@ -200,92 +204,91 @@ public class WarCostByDay extends Command {
         long max = Collections.max(warCostByDay.keySet());
         boolean total = flags.contains('o');
         List<TimeDualNumericTable<AttackCost>> tables = new ArrayList<>();
-        if (flags.contains('i')) tables.add(new TimeDualNumericTable<>("Infra Loss", "day", null, nameA, nameB) {
+        if (flags.contains('i')) tables.add(new TimeDualNumericTable<AttackCost>("Infra Loss", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, cost.getInfraLost(true), cost.getInfraLost(false));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('s')) tables.add(new TimeDualNumericTable<>("Soldier Losses", "day", null, nameA, nameB) {
+        if (flags.contains('s')) tables.add(new TimeDualNumericTable<AttackCost>("Soldier Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.SOLDIER, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.SOLDIER, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('t')) tables.add(new TimeDualNumericTable<>("Tank Losses", "day", null, nameA, nameB) {
+        if (flags.contains('t')) tables.add(new TimeDualNumericTable<AttackCost>("Tank Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.TANK, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.TANK, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('p')) tables.add(new TimeDualNumericTable<>("Plane Losses", "day", null, nameA, nameB) {
+        if (flags.contains('p')) tables.add(new TimeDualNumericTable<AttackCost>("Plane Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.AIRCRAFT, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.AIRCRAFT, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('n')) tables.add(new TimeDualNumericTable<>("Naval Ship Losses", "day", null, nameA, nameB) {
+        if (flags.contains('n')) tables.add(new TimeDualNumericTable<AttackCost>("Naval Ship Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.SHIP, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.SHIP, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('m')) tables.add(new TimeDualNumericTable<>("Missile Losses", "day", null, nameA, nameB) {
+        if (flags.contains('m')) tables.add(new TimeDualNumericTable<AttackCost>("Missile Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.MISSILE, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.MISSILE, 0));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('h'))
-            tables.add(new TimeDualNumericTable<>("H-Bomb (nuke) Losses", "day", null, nameA, nameB) {
-                @Override
-                public void add(long day, AttackCost cost) {
-                    add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.NUKE, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.NUKE, 0));
-                    processTotal(total, this);
-                }
-            });
-        if (flags.contains('u')) tables.add(new TimeDualNumericTable<>("Unit Losses", "day", null, nameA, nameB) {
+        if (flags.contains('h')) tables.add(new TimeDualNumericTable<AttackCost>("H-Bomb (nuke) Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getUnitsLost(true).getOrDefault(MilitaryUnit.NUKE, 0), cost.getUnitsLost(false).getOrDefault(MilitaryUnit.NUKE, 0));
+                processTotal(total, this);
+            }
+        });
+        if (flags.contains('u')) tables.add(new TimeDualNumericTable<AttackCost>("Unit Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, PnwUtil.convertedTotal(cost.getUnitCost(true)), PnwUtil.convertedTotal(cost.getUnitCost(false)));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('g')) tables.add(new TimeDualNumericTable<>("Gasoline", "day", null, nameA, nameB) {
+        if (flags.contains('g')) tables.add(new TimeDualNumericTable<AttackCost>("Gasoline", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, cost.getConsumption(true).getOrDefault(ResourceType.GASOLINE, 0d), cost.getConsumption(false).getOrDefault(ResourceType.GASOLINE, 0d));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('a')) tables.add(new TimeDualNumericTable<>("Ammunition", "day", null, nameA, nameB) {
+        if (flags.contains('a')) tables.add(new TimeDualNumericTable<AttackCost>("Ammunition", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, cost.getConsumption(true).getOrDefault(ResourceType.MUNITIONS, 0d), cost.getConsumption(false).getOrDefault(ResourceType.MUNITIONS, 0d));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('c')) tables.add(new TimeDualNumericTable<>("Consumption", "day", null, nameA, nameB) {
+        if (flags.contains('c')) tables.add(new TimeDualNumericTable<AttackCost>("Consumption", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, PnwUtil.convertedTotal(cost.getConsumption(true)), PnwUtil.convertedTotal(cost.getConsumption(false)));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('l')) tables.add(new TimeDualNumericTable<>("Looted", "day", null, nameA, nameB) {
+        if (flags.contains('l')) tables.add(new TimeDualNumericTable<AttackCost>("Looted", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, -PnwUtil.convertedTotal(cost.getLoot(true)), -PnwUtil.convertedTotal(cost.getLoot(false)));
                 processTotal(total, this);
             }
         });
-        if (flags.contains('f')) tables.add(new TimeDualNumericTable<>("Full Losses", "day", null, nameA, nameB) {
+        if (flags.contains('f')) tables.add(new TimeDualNumericTable<AttackCost>("Full Losses", "day", null, nameA, nameB) {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, PnwUtil.convertedTotal(cost.getTotal(true)), PnwUtil.convertedTotal(cost.getTotal(false)));
@@ -294,7 +297,7 @@ public class WarCostByDay extends Command {
         });
         if (flags.contains('b')) {
             for (AttackType attType : AttackType.values) {
-                tables.add(new TimeDualNumericTable<>("Num " + attType.getName(), "day", null, nameA, nameB) {
+                tables.add(new TimeDualNumericTable<AttackCost>("Num " + attType.getName(), "day", null, nameA, nameB) {
                     @Override
                     public void add(long day, AttackCost cost) {
                         ArrayList<DBAttack> a = new ArrayList<>(cost.getAttacks(true));

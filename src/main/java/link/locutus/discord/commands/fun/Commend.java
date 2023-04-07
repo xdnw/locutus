@@ -14,7 +14,6 @@ import java.util.Set;
 
 public class Commend extends Command {
     private final boolean isCommend;
-    Set<Integer> history = new HashSet<>();
 
     public Commend(String id, boolean isCommend) {
         super(id, CommandCategory.FUN);
@@ -31,6 +30,8 @@ public class Commend extends Command {
         return true;
     }
 
+    Set<Integer> history = new HashSet<>();
+
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage();
@@ -38,7 +39,7 @@ public class Commend extends Command {
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
 
         if (history.contains(nation.getNation_id())) {
-            return "I already did that today.";
+            return "I already did that today";
         }
         history.add(nation.getNation_id());
 

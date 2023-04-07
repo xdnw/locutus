@@ -9,8 +9,6 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD, ElementType.TYPE})
 public @interface Binding {
     String value() default "";
-
     String[] examples() default {};
-
     Class<?>[] types() default {};
 }

@@ -4,108 +4,88 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Step;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.autocomplete.PrimitiveCompleter;
-import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
+import net.dv8tion.jda.api.JDA;
+import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete.DiscordCompleter;
+import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Autoparse;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.interactions.commands.Command.Choice;
+import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.Channel;
+import net.dv8tion.jda.api.entities.ChannelType;
+import net.dv8tion.jda.api.entities.Emoji;
+import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.GuildChannel;
+import net.dv8tion.jda.api.entities.IMentionable;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.NewsChannel;
+import net.dv8tion.jda.api.entities.PrivateChannel;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.StageChannel;
+import net.dv8tion.jda.api.entities.StoreChannel;
+import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.ThreadChannel;
+import net.dv8tion.jda.api.entities.ThreadMember;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.VoiceChannel;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
 import net.dv8tion.jda.api.interactions.InteractionHook;
-import net.dv8tion.jda.api.interactions.commands.Command.Choice;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
-import net.dv8tion.jda.api.interactions.commands.build.*;
+import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandGroupData;
 import net.dv8tion.jda.api.utils.WidgetUtil;
 import net.dv8tion.jda.api.utils.data.SerializableData;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.lang.reflect.Type;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SlashCommandManager extends ListenerAdapter {
-    private static final Map<Type, Collection<ChannelType>> CHANNEL_TYPES = new ConcurrentHashMap<>();
-    private static final Map<Type, OptionType> OPTION_TYPES = new ConcurrentHashMap<>();
-
-    static {
-        CHANNEL_TYPES.put(GuildMessageChannel.class, Collections.singleton(ChannelType.TEXT));
-        CHANNEL_TYPES.put(PrivateChannel.class, Collections.singleton(ChannelType.PRIVATE));
-        CHANNEL_TYPES.put(VoiceChannel.class, Collections.singleton(ChannelType.VOICE));
-//        channelTypes.put(TODO unused, ChannelType.GROUP);
-        CHANNEL_TYPES.put(Category.class, Collections.singleton(ChannelType.CATEGORY));
-        CHANNEL_TYPES.put(NewsChannel.class, Collections.singleton(ChannelType.NEWS));
-        CHANNEL_TYPES.put(StoreChannel.class, Collections.singleton(ChannelType.STORE));
-        CHANNEL_TYPES.put(StageChannel.class, Collections.singleton(ChannelType.STAGE));
-        CHANNEL_TYPES.put(ThreadChannel.class, List.of(ChannelType.GUILD_PUBLIC_THREAD, ChannelType.GUILD_PRIVATE_THREAD));
-    }
-
-    static {
-        OPTION_TYPES.put(int.class, OptionType.INTEGER);
-        OPTION_TYPES.put(short.class, OptionType.INTEGER);
-        OPTION_TYPES.put(byte.class, OptionType.INTEGER);
-        OPTION_TYPES.put(long.class, OptionType.INTEGER);
-        OPTION_TYPES.put(Integer.class, OptionType.INTEGER);
-        OPTION_TYPES.put(Short.class, OptionType.INTEGER);
-        OPTION_TYPES.put(Byte.class, OptionType.INTEGER);
-        OPTION_TYPES.put(Long.class, OptionType.INTEGER);
-
-        OPTION_TYPES.put(double.class, OptionType.NUMBER);
-        OPTION_TYPES.put(float.class, OptionType.NUMBER);
-        OPTION_TYPES.put(Double.class, OptionType.NUMBER);
-        OPTION_TYPES.put(Float.class, OptionType.NUMBER);
-
-        OPTION_TYPES.put(boolean.class, OptionType.BOOLEAN);
-        OPTION_TYPES.put(Boolean.class, OptionType.BOOLEAN);
-
-        OPTION_TYPES.put(Channel.class, OptionType.CHANNEL);
-        // Redundant, since it checks superclass, but added for clarity anyway
-        OPTION_TYPES.put(Category.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(MessageChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(GuildMessageChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(GuildChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(TextChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(ThreadChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(VoiceChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(NewsChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(StoreChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(StageChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(PrivateChannel.class, OptionType.CHANNEL);
-
-        OPTION_TYPES.put(User.class, OptionType.USER);
-        OPTION_TYPES.put(Member.class, OptionType.USER);
-
-        OPTION_TYPES.put(Role.class, OptionType.ROLE);
-
-        OPTION_TYPES.put(IMentionable.class, OptionType.MENTIONABLE);
-        // Redundant but added for clarity:
-        OPTION_TYPES.put(Emoji.class, OptionType.MENTIONABLE);
-        OPTION_TYPES.put(Emote.class, OptionType.MENTIONABLE);
-        OPTION_TYPES.put(ThreadMember.class, OptionType.MENTIONABLE);
-        OPTION_TYPES.put(WidgetUtil.Widget.Member.class, OptionType.MENTIONABLE);
-
-        // Fallback, default
-        OPTION_TYPES.put(Object.class, OptionType.STRING);
-    }
-
     private final Locutus root;
     private final CommandManager2 commands;
+
     private final Map<String, Long> commandIds = new HashMap<>();
-    private final Set<Key> bindingKeys = new HashSet<>();
 
     public SlashCommandManager(Locutus locutus) {
         this.root = locutus;
@@ -123,17 +103,6 @@ public class SlashCommandManager extends ListenerAdapter {
         Locutus locutus = Locutus.create().start();
         // TODO test the command?
 //        System.exit(1);
-    }
-
-    public static Collection<ChannelType> getChannelType(Type type) {
-        if (type instanceof Class tClass) {
-            while (tClass != null) {
-                Collection<ChannelType> found = CHANNEL_TYPES.get(tClass);
-                if (found != null) return found;
-                tClass = tClass.getSuperclass();
-            }
-        }
-        return null;
     }
 
     private int getSize(SlashCommandData cmd) {
@@ -177,7 +146,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     public void printSize(SlashCommandData cmd, StringBuilder response, int indent) {
         String indentStr = StringMan.repeat(" ", indent);
-        response.append(indentStr).append(cmd.getName()).append("(desc:").append(cmd.getDescription().length()).append(" option:").append(getOptionSize(cmd.getOptions())).append(" sub:").append(getSubSize(cmd.getSubcommands())).append(" group:").append(getGroupSize(cmd.getSubcommandGroups())).append(")\n");
+        response.append(indentStr + cmd.getName() + "(desc:" + cmd.getDescription().length() + " option:" + getOptionSize(cmd.getOptions()) + " sub:" + getSubSize(cmd.getSubcommands()) + " group:" + getGroupSize(cmd.getSubcommandGroups()) + ")\n");
         for (OptionData option : cmd.getOptions()) {
             printSize(option, response, indent + 2);
         }
@@ -191,7 +160,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     public void printSize(SubcommandGroupData group, StringBuilder response, int indent) {
         String indentStr = StringMan.repeat(" ", indent);
-        response.append(indentStr).append(group.getName()).append("(desc:").append(group.getDescription().length()).append(" sub: ").append(getSubSize(group.getSubcommands())).append(")\n");
+        response.append(indentStr + group.getName() + "(desc:" + group.getDescription().length() + " sub: " + getSubSize(group.getSubcommands()) + ")\n");
         for (SubcommandData sub : group.getSubcommands()) {
             printSize(sub, response, indent + 2);
         }
@@ -199,7 +168,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     public void printSize(SubcommandData sub, StringBuilder response, int indent) {
         String indentStr = StringMan.repeat(" ", indent);
-        response.append(indentStr).append("sub:").append(sub.getName()).append("(desc:").append(sub.getDescription().length()).append(" option: ").append(getOptionSize(sub.getOptions())).append(")\n");
+        response.append(indentStr + "sub:" + sub.getName() + "(desc:" + sub.getDescription().length() + " option: " + getOptionSize(sub.getOptions()) + ")\n");
         for (OptionData option : sub.getOptions()) {
             printSize(option, response, indent + 2);
         }
@@ -207,7 +176,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     public void printSize(OptionData option, StringBuilder response, int indent) {
         String indentStr = StringMan.repeat(" ", indent);
-        response.append(indentStr).append("opt:").append(option.getName()).append("(desc:").append(option.getDescription().length()).append(")\n");
+        response.append(indentStr + "opt:" + option.getName() + "(desc:" + option.getDescription().length() + ")\n");
     }
 
     public void setupCommands() {
@@ -215,6 +184,8 @@ public class SlashCommandManager extends ListenerAdapter {
         new DiscordCompleter().register(commands.getStore());
         new PWCompleter().register(commands.getStore());
 
+//        commands.registerDefaults();
+//        commands.getCommands().registerCommands(this);
 
         List<SlashCommandData> toRegister = new ArrayList<>();
         for (Map.Entry<String, CommandCallable> entry : commands.getCommands().getSubcommands().entrySet()) {
@@ -266,6 +237,16 @@ public class SlashCommandManager extends ListenerAdapter {
 
             JDA api = Locutus.imp().getDiscordApi(guild.getIdLong());
 
+//            CommandData messageCommand = Commands.message("rerun");
+//            CommandData messageCommand = Commands.message("embedinfo");
+
+            // checkup
+            // deposits
+            // who
+            // transfer
+            // wars
+
+
 
             List<net.dv8tion.jda.api.interactions.commands.Command> commands = api.updateCommands().addCommands(toRegister).complete();
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
@@ -282,7 +263,15 @@ public class SlashCommandManager extends ListenerAdapter {
     }
 
     public SlashCommandData adaptCommands(CommandCallable callable, String id, SlashCommandData root, SubcommandGroupData discGroup, int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
+//        String id = callable.getPrimaryAlias().toLowerCase(Locale.ROOT);
+//        String desc = callable.desc(commands.getStore());
+//        if (desc == null) desc = "";
         String desc = callable.simpleDesc();
+//        String help = callable.help(commands.getStore());
+//        if (desc.length() >= maxDescription && simpleDesc != null) {
+//            System.out.println("Long desc " + desc);
+//            desc = simpleDesc;
+//        }
         if (desc.length() >= maxDescription) {
             desc = desc.split("\n")[0];
         }
@@ -298,7 +287,8 @@ public class SlashCommandManager extends ListenerAdapter {
             root = Commands.slash(id.toLowerCase(Locale.ROOT), desc);
             current = root;
         }
-        if (callable instanceof ICommandGroup group) {
+        if (callable instanceof ICommandGroup) {
+            ICommandGroup group = (ICommandGroup) callable;
 
             if (current == null) {
                 if (discGroup == null) {
@@ -316,7 +306,8 @@ public class SlashCommandManager extends ListenerAdapter {
                 CommandCallable subCmd = entry.getValue();
                 adaptCommands(subCmd, subId, root, discGroup, maxDescription, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
             }
-        } else if (callable instanceof ParametricCallable parametric) {
+        } else if (callable instanceof ParametricCallable) {
+            ParametricCallable parametric = (ParametricCallable) callable;
             List<OptionData> options = createOptions(parametric, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
             if (current == null) {
                 SubcommandData discSub = new SubcommandData(id, desc);
@@ -331,13 +322,13 @@ public class SlashCommandManager extends ListenerAdapter {
             try {
                 if (current instanceof SlashCommandData) {
                     ((SlashCommandData) current).addOptions(options);
-                } else {
+                } else if (current instanceof SubcommandData) {
                     ((SubcommandData) current).addOptions(options);
                 }
             } catch (Throwable e) {
                 System.out.println("Error creating command: " + id);
                 for (OptionData option : options) {
-                    System.out.println(" - option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
+                    System.out.println( " - option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
                 }
 
                 e.printStackTrace();
@@ -346,6 +337,8 @@ public class SlashCommandManager extends ListenerAdapter {
         }
         return root;
     }
+
+    private Set<Key> bindingKeys = new HashSet<>();
 
     public List<OptionData> createOptions(ParametricCallable cmd, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeDesc) {
         List<OptionData> result = new ArrayList<>();
@@ -398,7 +391,8 @@ public class SlashCommandManager extends ListenerAdapter {
                 // enum
                 // add choice if <25 options, else autocomplete
                 boolean isEnumChoice = false;
-                if (type instanceof Class clazz) {
+                if (type instanceof Class) {
+                    Class clazz = (Class) type;
                     if (clazz.isEnum()) {
                         Object[] values = clazz.getEnumConstants();
                         if (values.length <= OptionData.MAX_CHOICES) {
@@ -476,15 +470,94 @@ public class SlashCommandManager extends ListenerAdapter {
                 option.setDescription("_");
             }
 
-            option.setRequired(!param.isOptional() && !param.isFlag());
+            if (param.isOptional() || param.isFlag()) {
+                option.setRequired(false);
+            } else {
+                option.setRequired(true);
+            }
 
             result.add(option);
         }
         return result;
     }
 
+    private static final Map<Type, Collection<ChannelType>> CHANNEL_TYPES = new ConcurrentHashMap<>();
+    static {
+        CHANNEL_TYPES.put(GuildMessageChannel.class, Collections.singleton(ChannelType.TEXT));
+        CHANNEL_TYPES.put(PrivateChannel.class, Collections.singleton(ChannelType.PRIVATE));
+        CHANNEL_TYPES.put(VoiceChannel.class, Collections.singleton(ChannelType.VOICE));
+//        channelTypes.put(TODO unused, ChannelType.GROUP);
+        CHANNEL_TYPES.put(Category.class, Collections.singleton(ChannelType.CATEGORY));
+        CHANNEL_TYPES.put(NewsChannel.class, Collections.singleton(ChannelType.NEWS));
+        CHANNEL_TYPES.put(StoreChannel.class, Collections.singleton(ChannelType.STORE));
+        CHANNEL_TYPES.put(StageChannel.class, Collections.singleton(ChannelType.STAGE));
+        CHANNEL_TYPES.put(ThreadChannel.class, List.of(ChannelType.GUILD_PUBLIC_THREAD, ChannelType.GUILD_PRIVATE_THREAD));
+    }
+
+    public static Collection<ChannelType> getChannelType(Type type) {
+        if (type instanceof Class) {
+            Class tClass = (Class) type;
+            while (tClass != null) {
+                Collection<ChannelType> found = CHANNEL_TYPES.get(tClass);
+                if (found != null) return found;
+                tClass = tClass.getSuperclass();
+            }
+        }
+        return null;
+    }
+
+    private static final Map<Type, OptionType> OPTION_TYPES = new ConcurrentHashMap<>();
+    static {
+        OPTION_TYPES.put(int.class, OptionType.INTEGER);
+        OPTION_TYPES.put(short.class, OptionType.INTEGER);
+        OPTION_TYPES.put(byte.class, OptionType.INTEGER);
+        OPTION_TYPES.put(long.class, OptionType.INTEGER);
+        OPTION_TYPES.put(Integer.class, OptionType.INTEGER);
+        OPTION_TYPES.put(Short.class, OptionType.INTEGER);
+        OPTION_TYPES.put(Byte.class, OptionType.INTEGER);
+        OPTION_TYPES.put(Long.class, OptionType.INTEGER);
+
+        OPTION_TYPES.put(double.class, OptionType.NUMBER);
+        OPTION_TYPES.put(float.class, OptionType.NUMBER);
+        OPTION_TYPES.put(Double.class, OptionType.NUMBER);
+        OPTION_TYPES.put(Float.class, OptionType.NUMBER);
+
+        OPTION_TYPES.put(boolean.class, OptionType.BOOLEAN);
+        OPTION_TYPES.put(Boolean.class, OptionType.BOOLEAN);
+
+        OPTION_TYPES.put(Channel.class, OptionType.CHANNEL);
+        // Redundant, since it checks superclass, but added for clarity anyway
+        OPTION_TYPES.put(Category.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(MessageChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(GuildMessageChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(GuildChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(TextChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(ThreadChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(VoiceChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(NewsChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(StoreChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(StageChannel.class, OptionType.CHANNEL);
+        OPTION_TYPES.put(PrivateChannel.class, OptionType.CHANNEL);
+
+        OPTION_TYPES.put(User.class, OptionType.USER);
+        OPTION_TYPES.put(Member.class, OptionType.USER);
+
+        OPTION_TYPES.put(Role.class, OptionType.ROLE);
+
+        OPTION_TYPES.put(IMentionable.class, OptionType.MENTIONABLE);
+        // Redundant but added for clarity:
+        OPTION_TYPES.put(Emoji.class, OptionType.MENTIONABLE);
+        OPTION_TYPES.put(Emote.class, OptionType.MENTIONABLE);
+        OPTION_TYPES.put(ThreadMember.class, OptionType.MENTIONABLE);
+        OPTION_TYPES.put(WidgetUtil.Widget.Member.class, OptionType.MENTIONABLE);
+
+        // Fallback, default
+        OPTION_TYPES.put(Object.class, OptionType.STRING);
+    }
+
     public OptionType createType(Type type) {
-        if (type instanceof Class tClass) {
+        if (type instanceof Class) {
+            Class tClass = (Class) type;
             while (tClass != null) {
                 OptionType found = OPTION_TYPES.get(tClass);
                 if (found != null) return found;
@@ -511,11 +584,12 @@ public class SlashCommandManager extends ListenerAdapter {
             return;
         }
 
-        if (!(cmd instanceof ParametricCallable parametric)) {
+        if (!(cmd instanceof ParametricCallable)) {
             System.out.println("remove:||Not parametric: " + path);
             return;
         }
 
+        ParametricCallable parametric = (ParametricCallable) cmd;
         Map<String, ParameterData> map = parametric.getUserParameterMap();
         ParameterData param = map.get(optionName);
         if (param == null) {
@@ -546,7 +620,7 @@ public class SlashCommandManager extends ListenerAdapter {
         locals.addProvider(Key.of(MessageChannel.class, Me.class), event.getMessageChannel());
 
         // Option with current value
-        List<String> args = new ArrayList<>(List.of(option.getValue()));
+        List<String> args = new ArrayList<>(Arrays.asList(option.getValue()));
         ArgumentStack stack = new ArgumentStack(args, locals, commands.getValidators(), commands.getPermisser());
         locals.addProvider(stack);
 
@@ -567,7 +641,8 @@ public class SlashCommandManager extends ListenerAdapter {
             for (Object o : resultList) {
                 String name;
                 String value;
-                if (o instanceof Map.Entry<?, ?> entry) {
+                if (o instanceof Map.Entry) {
+                    Map.Entry<?, ?> entry = ((Map.Entry<?, ?>) o);
                     name = entry.getKey().toString();
                     value = entry.getKey().toString();
                 } else {
@@ -583,7 +658,8 @@ public class SlashCommandManager extends ListenerAdapter {
     }
 
     @Override
-    public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
+    public void onSlashCommandInteraction(SlashCommandInteractionEvent event)
+    {
         try {
             event.deferReply(false).queue();
 

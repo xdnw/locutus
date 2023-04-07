@@ -1,11 +1,7 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
-<<<<<<< HEAD
 import link.locutus.discord.apiv1.enums.DepositType;
-=======
-import link.locutus.discord.apiv1.enums.ResourceType;
->>>>>>> pr/15
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -21,15 +17,15 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-<<<<<<< HEAD
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -40,15 +36,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-=======
-import java.util.*;
->>>>>>> pr/15
 
 public class Warchest extends Command {
     public Warchest() {
         super(CommandCategory.ECON, CommandCategory.MILCOM);
     }
-
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.MEMBER.has(user, server) && server != null;
@@ -62,7 +54,6 @@ public class Warchest extends Command {
     @Override
     public String desc() {
         return "Determine how much to send to each member to meet their warchest requirements (per city)\n" +
-<<<<<<< HEAD
                 "Add `-s` to skip checking stockpile\n" +
                 "add `-m` to convert to money\n" +
                 "Add `-b` to bypass checks\n" +
@@ -70,9 +61,6 @@ public class Warchest extends Command {
                 "Add e.g. `alliance:blah` to specify an alliance account\n" +
                 "Add e.g. `offshore:blah` to specify an offshore account\n" +
                 "Add e.g. `tax_id:blah` to specify a tax bracket";
-=======
-                "Add `-s` to skip checking stockpile.";
->>>>>>> pr/15
     }
 
     @Override
@@ -108,39 +96,6 @@ public class Warchest extends Command {
             return usage(event, "Current warchest (per city): " + PnwUtil.resourcesToString(guildDb.getPerCityWarchest(me)));
         }
 
-<<<<<<< HEAD
-=======
-        String note;
-        note = args.get(2);
-        Collection<String> allowedLabels = Arrays.asList("#warchest", "#grant", "#deposit", "#trade", "#ignore", "#tax", "#account");
-        if (!allowedLabels.contains(note.split("=")[0]))
-            return "Please use one of the following labels: " + StringMan.getString(allowedLabels);
-        Integer aaId = Locutus.imp().getGuildDB(guild).getOrNull(GuildDB.Key.ALLIANCE_ID);
-        note += "=" + Objects.requireNonNullElseGet(aaId, guild::getIdLong);
-
-        boolean hasEcon = Roles.ECON.has(author, guild);
-        Collection<DBNation> nations;
-        if (args.get(0).equalsIgnoreCase("*")) {
-            if (!hasEcon) {
-                return "No permission: " + Roles.ECON.name();
-            }
-            nations = Locutus.imp().getNationDB().getNations(Collections.singleton(aaId));
-        } else {
-            nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
-        }
-        if (nations.isEmpty()) return "No nation specified.";
-        if (!hasEcon && (nations.size() != 1 || !nations.iterator().next().equals(me)))
-            return "You only have permission to send to your own nation.";
-
-
-        nations.removeIf(f -> f.getActive_m() > 7200);
-        nations.removeIf(f -> f.getPosition() <= 1);
-        nations.removeIf(f -> f.getVm_turns() != 0);
-
-        if (nations.isEmpty()) {
-            return "No nation in this tax bracket.";
-        }
->>>>>>> pr/15
 
         Map<ResourceType, Double> perCity = PnwUtil.parseResources(args.get(1));
         if (perCity.isEmpty()) return "Invalid amount: `" + args.get(1) + "`";
@@ -161,7 +116,6 @@ public class Warchest extends Command {
             return "No nations found (add `-f` to force send)";
         }
         boolean skipStockpile = flags.contains('s');
-<<<<<<< HEAD
         return UnsortedCommands.warchest(
                 guildDb,
                 new DiscordChannelIO(event.getChannel()),
@@ -180,34 +134,5 @@ public class Warchest extends Command {
                 flags.contains('m'),
                 flags.contains('b'),
                 flags.contains('f'));
-=======
-        if (!flags.contains('s')) {
-            if (aaId == null) return "No alliance found for this guild. Add `-s` to skip checking stockpile.";
-            memberResources2 = DBAlliance.getOrCreate(aaId).getMemberStockpile();
-        }
-        for (DBNation nation : nations) {
-            Map<ResourceType, Double> stockpile = memberResources2.getOrDefault(nation, skipStockpile ? Collections.emptyMap() : null);
-
-            if (PnwUtil.convertedTotal(stockpile) < 0) continue;
-
-            Map<ResourceType, Double> toSendCurrent = new HashMap<>();
-            for (ResourceType type : perCity.keySet()) {
-                double required = perCity.getOrDefault(type, 0d) * nation.getCities();
-                double current = stockpile.getOrDefault(type, 0d);
-                if (required > current) {
-                    toSendCurrent.put(type, required - current);
-                }
-            }
-            if (!toSendCurrent.isEmpty()) {
-                fundsToSendNations.put(nation, toSendCurrent);
-            }
-        }
-
-        String result = Disperse.disperse(guildDb, fundsToSendNations, Collections.emptyMap(), note, new DiscordChannelIO(event), "Send Warchest");
-        if (fundsToSendNations.size() > 1) {
-            RateLimitUtil.queue(event.getGuildChannel().sendMessage(author.getAsMention()));
-        }
-        return result;
->>>>>>> pr/15
     }
 }

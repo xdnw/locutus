@@ -34,6 +34,7 @@ public class Mask extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 3) return usage(event);
 
+        Member authMem = guild.getMember(author);
         Role role = DiscordUtil.getRole(guild, args.get(1));
         boolean value = args.get(2).toLowerCase().startsWith("t") || args.get(2).equals("1");
 
@@ -42,35 +43,43 @@ public class Mask extends Command {
         if (nations.isEmpty()) return "Unknown nation: `" + args.get(0) + "`";
         for (DBNation nation : nations) {
             User user = nation == null ? null : nation.getUser();
+//            if (user == null) {
+//                List<Member> mem1 = guild.getMembersByEffectiveName(args.get(0), true);
+//                if (mem1.isEmpty()) mem1 = guild.getMembersByName(args.get(0), true);
+//                if (mem1.size() == 1) user = mem1.get(0).getUser();
+//                else {
+//                    response.append("\nInvalid user: `" + args.get(0) + "`");
+//                    continue;
+//                }
+//            }
             if (user == null) {
-                assert nation != null;
-                response.append("\nInvalid user: ").append(nation.getNation());
+                response.append("\nInvalid user: " + nation.getNation());
                 continue;
             }
             Member member = guild.getMember(user);
             if (member == null) {
-                response.append("\nInvalid member: ").append(nation.getNation());
+                response.append("\nInvalid member: " + nation.getNation());
                 continue;
             }
             if (role == null) {
-                response.append("\nInvalid role: `").append(args.get(1)).append("`");
+                response.append("\nInvalid role: `" + args.get(1) + "`");
                 continue;
             }
 
             List<Role> roles = member.getRoles();
             if (value && roles.contains(role)) {
-                response.append("\nYou already have the role: `").append(args.get(1)).append("`");
+                response.append("\nYou already have the role: `" + args.get(1) + "`");
                 continue;
             } else if (!value && !roles.contains(role)) {
-                response.append("\nYou do not have the role: `").append(args.get(1)).append("`");
+                response.append("\nYou do not have the role: `" + args.get(1) + "`");
                 continue;
             }
             if (value) {
                 RateLimitUtil.queue(guild.addRoleToMember(member, role));
-                response.append("\nAdded role to member.");
+                response.append("\nAdded role to member");
             } else {
                 RateLimitUtil.queue(guild.removeRoleFromMember(member, role));
-                response.append("\nRemoved role from member.");
+                response.append("\nRemoved role from member");
             }
         }
         response.append("\nDone!");

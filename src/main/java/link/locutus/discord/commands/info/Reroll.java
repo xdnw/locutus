@@ -6,12 +6,15 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class Reroll extends Command {
@@ -55,10 +58,11 @@ public class Reroll extends Command {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();
 
-            if (otherId > id && otherNation.getAgeDays() > me.getAgeDays() && Math.abs(otherNation.getDate() - me.getDate()) > TimeUnit.DAYS.toMillis(3)) {
+            if (otherId > id && otherNation.getAgeDays() > me.getAgeDays() && Math.abs(otherNation.getDate()  - me.getDate()) > TimeUnit.DAYS.toMillis(3)) {
                 return me.getNation() + "/" + me.getNation_id() + " is a reroll.";
             }
         }
+
         return me.getNation() + "/" + me.getNation_id() + " is not a reroll.";
     }
 }

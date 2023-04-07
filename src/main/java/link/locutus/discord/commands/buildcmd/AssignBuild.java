@@ -29,13 +29,51 @@ public class AssignBuild extends Command {
         super("AssignBuild", "build", CommandCategory.ECON, CommandCategory.MEMBER);
     }
 
+    @Override
+    public String help() {
+        return Settings.commandPrefix(true) + "build [category]";
+    }
+
+    @Override
+    public String desc() {
+        return "Have the bot give you a build for war or raiding, based on your city count. Available categories are: `" + Settings.commandPrefix(true) + "build ?`";
+    }
+
+
+    @Override
+    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+
+        DBNation me = DiscordUtil.getNation(event);
+        if (me == null) {
+            return "Invalid nation? Are you sure you are registered?" + event.getAuthor().getAsMention();
+        }
+
+        if (args.size() != 1) {
+            return usage(event);
+        }
+        GuildDB db = Locutus.imp().getGuildDB(event);
+        String result = build(db, me, me.getCities(), args.get(0));
+
+        return result;
+    }
+
+    @Override
+    public boolean checkPermission(Guild server, User user) {
+        return Roles.MEMBER.has(user, server);
+    }
+
     public static String build(GuildDB db, DBNation me, int cities, String arg) throws InterruptedException, ExecutionException, IOException {
         JavaCity to = null;
 
         if (arg.contains("/city/")) {
-            throw new IllegalArgumentException("Not implemented.");
-        } else if (arg.charAt(0) == '{') {
-            CityBuild build = new Gson().fromJson(arg, CityBuild.class);
+//            cityId = Integer.parseInt(content.split("=")[1]);
+//            City pnwCity = Locutus.imp().getPnwApi().getCity(cityId);
+//            from = new JavaCity(pnwCity);
+            throw new IllegalArgumentException("Not implemented");
+        }
+        else if (arg.charAt(0) == '{') {
+            String buildJson = arg;
+            CityBuild build = new Gson().fromJson(buildJson, CityBuild.class);
             to = new JavaCity(build);
         } else {
             String category = arg.toLowerCase();
@@ -59,36 +97,5 @@ public class AssignBuild extends Command {
         double[] totalArr = new double[ResourceType.values.length];
         Map<Integer, JavaCity> from = me.getCityMap(true);
         return to.instructions(from, totalArr);
-    }
-
-    @Override
-    public String help() {
-        return Settings.commandPrefix(true) + "build [category]";
-    }
-
-    @Override
-    public String desc() {
-        return "Have the bot give you a build for war or raiding, based on your city count. Available categories are: `" + Settings.commandPrefix(true) + "build ?`";
-    }
-
-    @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-
-        DBNation me = DiscordUtil.getNation(event);
-        if (me == null) {
-            return "Invalid nation, Are you sure you are registered?" + event.getAuthor().getAsMention();
-        }
-
-        if (args.size() != 1) {
-            return usage(event);
-        }
-        GuildDB db = Locutus.imp().getGuildDB(event);
-
-        return build(db, me, me.getCities(), args.get(0));
-    }
-
-    @Override
-    public boolean checkPermission(Guild server, User user) {
-        return Roles.MEMBER.has(user, server);
     }
 }
