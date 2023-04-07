@@ -244,9 +244,11 @@ public class IACategory {
         String channelName;
         if (nation != null) {
             channelName = nation.getNation() + "-" + nation.getNation_id();
+        } else {
+            channelName = user.getName();
         }
 
-        TextChannel channel = RateLimitUtil.complete(category.createTextChannel(user.getName()));
+        TextChannel channel = RateLimitUtil.complete(category.createTextChannel(channelName));
         if (channel == null) {
             if (guild.getCategoryById(category.getIdLong()) == null) {
                 fetchChannels();
