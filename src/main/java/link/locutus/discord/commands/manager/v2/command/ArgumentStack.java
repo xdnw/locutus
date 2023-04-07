@@ -6,22 +6,18 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class ArgumentStack {
     private final List<String> args;
-    private final ValueStore store;
+    private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private int index;
 
     public ArgumentStack(List<String> args, ValueStore<?> store, ValidatorStore validators, PermissionHandler permisser) {
         this.args = args;
-        this.store = store;
+        this.store = (ValueStore<Object>) store;
         this.validators = validators;
         this.permisser = permisser;
     }
@@ -74,16 +70,17 @@ public class ArgumentStack {
         return new ArgumentStack(args.subList(start, end), store, validators, permisser);
     }
 
-    public <T> T consume(Key key) {
-        if (key == null || (key.getType() == String.class && key.getAnnotations().length == 0)) return (T) consumeNext();
-        Parser parser = store.get(key);
+    public <T> T consume(Key<?> key) {
+        if (key == null || (key.getType() == String.class && key.getAnnotations().length == 0))
+            return (T) consumeNext();
+        Parser<?> parser = store.get(key);
         if (parser == null) {
-            throw new IllegalStateException("No binding found for: " + key.toString());
+            throw new IllegalStateException("No binding found for: " + key);
         }
         return (T) parser.apply(this);
     }
 
-    public ValueStore getStore() {
+    public ValueStore<?> getStore() {
         return store;
     }
 
@@ -101,7 +98,7 @@ public class ArgumentStack {
                     String value = args.remove(i);
                     map.put(flagStr, value);
                 }
-            } else if (arg.matches("^-[a-zA-Z_?]+[ ].*$")) {
+            } else if (arg.matches("^-[a-zA-Z_?]+ .*$")) {
                 String[] split = arg.split(" ", 2);
                 if (split.length == 2) {
                     String flagStr = split[0].substring(1);

@@ -77,13 +77,10 @@ public class CheckMail extends Command {
 
         Map<DBNation, Map<Mail, List<String>>> results = new LinkedHashMap<>();
 
-        SearchMailTask task = new SearchMailTask(me.getAuth(null), query, checkUnread, checkRead, readContent, new BiConsumer<Mail, List<String>>() {
-            @Override
-            public void accept(Mail mail, List<String> strings) {
-                DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
-                if (nation != null) {
-                    results.computeIfAbsent(nation, f -> new LinkedHashMap<>()).put(mail, strings);
-                }
+        SearchMailTask task = new SearchMailTask(me.getAuth(null), query, checkUnread, checkRead, readContent, (mail, strings) -> {
+            DBNation nation = Locutus.imp().getNationDB().getNation(mail.nationId);
+            if (nation != null) {
+                results.computeIfAbsent(nation, f -> new LinkedHashMap<>()).put(mail, strings);
             }
         });
         task.call();

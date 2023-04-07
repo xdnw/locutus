@@ -17,17 +17,11 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
-import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,20 +29,48 @@ import static net.dv8tion.jda.api.interactions.components.buttons.Button.ID_MAX_
 
 public class DiscordMessageBuilder implements IMessageBuilder {
 
-    private final IMessageIO parent;
-    public long id;
-    public long timeCreated;
-    public User author;
-
     public final StringBuilder content = new StringBuilder();
     public final List<Button> buttons = new ArrayList<>();
     public final List<MessageEmbed> embeds = new ArrayList<>();
     public final Map<String, byte[]> images = new HashMap<>();
     public final Map<String, byte[]> files = new HashMap<>();
     public final Map<String, String> remapLongCommands = new HashMap<>();
+    private final IMessageIO parent;
+    public long id;
+    public long timeCreated;
+    public User author;
 
     public DiscordMessageBuilder(MessageChannel channel, Message message) {
         this(new DiscordChannelIO(channel, () -> message), message);
+    }
+
+    public DiscordMessageBuilder(IMessageIO parent, @Nullable Message message) {
+        if (message != null) {
+            id = message.getIdLong();
+            content.append(message.getContentRaw());
+            buttons.addAll(message.getButtons());
+            embeds.addAll(message.getEmbeds());
+            if (!this.embeds.isEmpty()) {
+                Map<String, String> reactions = DiscordUtil.getReactions(embeds.get(0));
+                if (reactions != null && !reactions.isEmpty()) {
+                    remapLongCommands.putAll(reactions);
+                    Set<String> buttonIds = buttons.stream().map(Button::getId).collect(Collectors.toSet());
+                    for (Map.Entry<String, String> entry : reactions.entrySet()) {
+                        String label = entry.getKey();
+                        if (!buttonIds.contains(label)) {
+                            String cmd = entry.getValue();
+                            buttons.add(Button.primary(label, label));
+                        }
+                    }
+                }
+            }
+            try {
+                this.timeCreated = message.getTimeCreated().toInstant().toEpochMilli();
+                this.author = message.getAuthor();
+            } catch (UnsupportedOperationException ignore) {
+            }
+        }
+        this.parent = parent;
     }
 
     public Message build(boolean includeContent) {
@@ -78,36 +100,6 @@ public class DiscordMessageBuilder implements IMessageBuilder {
         if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
 
         return discBuilder.build();
-    }
-    public DiscordMessageBuilder(IMessageIO parent, @Nullable Message message) {
-        if (message != null) {
-            id = message.getIdLong();
-            content.append(message.getContentRaw());
-            buttons.addAll(message.getButtons());
-            embeds.addAll(message.getEmbeds());
-            if (!this.embeds.isEmpty()) {
-                Map<String, String> reactions = DiscordUtil.getReactions(embeds.get(0));
-                if (reactions != null && !reactions.isEmpty()) {
-                    remapLongCommands.putAll(reactions);
-                    Set<String> buttonIds = buttons.stream().map(Button::getId).collect(Collectors.toSet());
-                    for (Map.Entry<String, String> entry : reactions.entrySet()) {
-                        String label = entry.getKey();
-                        if (!buttonIds.contains(label)) {
-                            String cmd = entry.getValue();
-                            buttons.add(Button.primary(label, label));
-                        }
-                    }
-                }
-            }
-            try {
-            this.timeCreated = message.getTimeCreated().toInstant().toEpochMilli();
-            this.author = message.getAuthor();
-            } catch (UnsupportedOperationException ignore) {}
-//            for (Message.Attachment attachment : message.getAttachments()) {
-//
-//            }
-        }
-        this.parent = parent;
     }
 
     @Override

@@ -22,7 +22,7 @@ public class Runall extends Command implements Noformat {
 
     @Override
     public String help() {
-        return super.help() + "<command>";
+        return super.help() + " <command>";
     }
 
     @Override
@@ -35,8 +35,8 @@ public class Runall extends Command implements Noformat {
         String msg = DiscordUtil.trimContent(event.getMessage().getContentRaw());
         msg = msg.replaceAll(Settings.commandPrefix(true) + "runall " + Settings.commandPrefix(true), "");
         String[] split = msg.split("\\r?\\n" + Settings.commandPrefix(true));
-        for (int i = 0; i < split.length; i++) {
-            String cmd = Settings.commandPrefix(true) + split[i];
+        for (String s : split) {
+            String cmd = Settings.commandPrefix(true) + s;
             if (cmd.toLowerCase().startsWith(Settings.commandPrefix(true) + "runall")) continue;
             Message message = new DelegateMessage(event.getMessage()) {
                 @Nonnull

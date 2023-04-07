@@ -1,22 +1,8 @@
 package link.locutus.discord.commands.rankings.table;
 
-import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.CIEDE2000;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import de.erichseifert.gral.data.Column;
-import de.erichseifert.gral.data.DataSeries;
-import de.erichseifert.gral.data.DataSource;
-import de.erichseifert.gral.data.DataTable;
-import de.erichseifert.gral.data.Row;
+import de.erichseifert.gral.data.*;
 import de.erichseifert.gral.data.statistics.Statistics;
 import de.erichseifert.gral.graphics.Insets2D;
 import de.erichseifert.gral.graphics.Orientation;
@@ -26,16 +12,44 @@ import de.erichseifert.gral.plots.XYPlot;
 import de.erichseifert.gral.plots.axes.AxisRenderer;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.math.CIEDE2000;
 
-import java.awt.Color;
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class TimeNumericTable<T> {
+
+    protected final DataTable data;
+    private final String name;
+    private final int amt;
+    private final String[] labels;
+    private final String labelX, labelY;
+
+    public TimeNumericTable(String title, String labelX, String labelY, String... seriesLabels) {
+        this.name = title;
+        this.amt = seriesLabels.length;
+        this.labels = seriesLabels;
+        this.labelX = labelX;
+        this.labelY = labelY;
+        if (this.labelY == null && title != null) labelY = title;
+        List<Class<? extends Comparable<?>>> types = new ArrayList<>();
+        types.add(Long.class);
+        for (int i = 0; i < amt; i++) types.add(Double.class);
+        this.data = new DataTable(types.toArray(new Class[0]));
+    }
 
     public static TimeNumericTable<Void> createForContinents(Set<Continent> continents, long start, long end) {
         String title = "Radiation by turn";
@@ -62,7 +76,7 @@ public abstract class TimeNumericTable<T> {
                         double rads = radsByCont.getOrDefault(continentsList.get(i), 0d);
                         buffer[i] = rads;
                     }
-                    double total =0;
+                    double total = 0;
                     for (double val : radsByCont.values()) total += val;
                     buffer[buffer.length - 1] = total / 5d;
                 }
@@ -82,14 +96,14 @@ public abstract class TimeNumericTable<T> {
      */
     public static Set<DBNation> toNations(DBAlliance alliance, boolean removeVM, int removeInactiveM, boolean removeApps) {
         Set<DBNation> nations = alliance.getNations(removeVM, removeInactiveM, removeApps);
-        nations.removeIf(f -> f.hasUnsetMil());
+        nations.removeIf(DBNation::hasUnsetMil);
         return nations;
     }
 
     public static List<String> toCoalitionNames(List<Set<DBAlliance>> coalitions) {
         List<String> result = new ArrayList<>();
         for (Set<DBAlliance> coalition : coalitions) {
-            String coalitionName = coalition.stream().map(f -> f.getName()).collect(Collectors.joining(","));
+            String coalitionName = coalition.stream().map(DBAlliance::getName).collect(Collectors.joining(","));
             result.add(coalitionName);
         }
         return result;
@@ -112,10 +126,7 @@ public abstract class TimeNumericTable<T> {
     }
 
     public static <T> TimeNumericTable create(String title, Set<Attribute<T, Double>> metrics, Collection<T> coalition, Attribute<T, Double> groupBy, boolean total) {
-        Set<T> nations = new HashSet<>();
-        for (T nation : coalition) {
-            nations.add(nation);
-        }
+        Set<T> nations = new HashSet<>(coalition);
         return create(title, metrics, nations, groupBy, total);
     }
 
@@ -225,27 +236,8 @@ public abstract class TimeNumericTable<T> {
         return table;
     }
 
-    private final String name;
-    protected final DataTable data;
-    private final int amt;
-    private final String[] labels;
-    private final String labelX, labelY;
-
     public String getName() {
         return name;
-    }
-
-    public TimeNumericTable(String title, String labelX, String labelY, String... seriesLabels) {
-        this.name = title;
-        this.amt = seriesLabels.length;
-        this.labels = seriesLabels;
-        this.labelX = labelX;
-        this.labelY = labelY;
-        if (this.labelY == null && title != null) labelY = title;
-        List<Class<? extends Comparable<?>>> types = new ArrayList<>();
-        types.add(Long.class);
-        for (int i = 0; i < amt; i++) types.add(Double.class);
-        this.data = new DataTable(types.toArray(new Class[0]));
     }
 
     public abstract void add(long day, T cost);
@@ -334,7 +326,7 @@ public abstract class TimeNumericTable<T> {
             min = Math.min(min, col.getStatistics(Statistics.MIN));
             max = Math.max(max, col.getStatistics(Statistics.MAX));
         }
-        plot.getAxis(XYPlot.AXIS_Y).setRange(min,max);
+        plot.getAxis(XYPlot.AXIS_Y).setRange(min, max);
 
 
         // Format  plot

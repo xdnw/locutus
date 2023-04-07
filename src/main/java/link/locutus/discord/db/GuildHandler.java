@@ -1871,7 +1871,7 @@ public class GuildHandler {
 
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
-            for (int id : db.getAllianceIds()) {
+            for (int id : aaIds) {
                 if (id != 0) tracked.add(id);
             }
         }

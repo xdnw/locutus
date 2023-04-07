@@ -64,7 +64,7 @@ public class Deposits extends Command {
                 "Add `-e` to include expired nation transfers\n" +
                 "Add `-t` to show taxes separately (See flag: `-b` and `!synctaxes`)\n\n" +
                 "Note: Use `" + Settings.commandPrefix(true) + "synctaxes` to update tax records\n" +
-                "Add `-d` to show results in dm"
+                "Add `-d` to show results in dm."
                 ;
     }
 
@@ -73,21 +73,11 @@ public class Deposits extends Command {
         return true;
     }
 
-    public void largest(Map<ResourceType, Double> total, Map<ResourceType, Double> local) {
-        for (Map.Entry<ResourceType, Double> entry : local.entrySet()) {
-            ResourceType type = entry.getKey();
-            total.put(type, Math.max(entry.getValue(), total.getOrDefault(type, 0d)));
-            if (total.get(type) <= 0) {
-                total.remove(type);
-            }
-        }
-    }
-
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         DBNation banker = DiscordUtil.getNation(event);
         if (banker == null) {
-            return "Please use " + Settings.commandPrefix(true) + "validate";
+            return "Please use " + Settings.commandPrefix(true) + "validate.";
         }
         String requiredNote = DiscordUtil.parseArg(args, "note");
         boolean includeIgnored = flags.contains('i');
@@ -123,7 +113,7 @@ public class Deposits extends Command {
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
 
         StringBuilder response = new StringBuilder();
-        response.append("**" + arg0 + "**:\n".replaceAll("@", ""));
+        response.append("**").append(arg0).append("**:\n");
 
         List<String> footers = new ArrayList<>();
 
@@ -194,7 +184,7 @@ public class Deposits extends Command {
                             return "No offshore set";
                         }
                     }
-                } else if(!guildDb.isOffshore()) {
+                } else if (!guildDb.isOffshore()) {
                     return "Unknown guild for AA:" + allianceId;
                 } else {
                     offshore = guildDb.getOffshore();
@@ -242,7 +232,7 @@ public class Deposits extends Command {
                 double[] existing = categorized.computeIfAbsent(type, f -> new double[ResourceType.values.length]);
                 double[] current = entry.getValue();
 
-                for (int i = 0 ; i < existing.length; i++) {
+                for (int i = 0; i < existing.length; i++) {
                     if (largest) {
                         existing[i] = Math.max(existing[i], current[i]);
                         total[i] = Math.max(total[i], current[i]);
@@ -275,19 +265,19 @@ public class Deposits extends Command {
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
             }
             if (categorized.containsKey(DepositType.TAX)) {
-                response.append("#TAX (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))) + ")");
+                response.append("#TAX (worth $").append(MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX)))).append(")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
-                response.append("#LOAN/#GRANT (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))) + ")");
+                response.append("#LOAN/#GRANT (worth $").append(MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN)))).append(")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
             }
             if (categorized.containsKey(DepositType.GRANT)) {
-                response.append("#EXPIRE (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))) + ")");
+                response.append("#EXPIRE (worth $").append(MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT)))).append(")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
             }
             if (categorized.size() > 1) {
-                response.append("Total: (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
+                response.append("Total: (worth: $").append(MathMan.format(PnwUtil.convertedTotal(total))).append(")");
                 response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
             }
         } else {
@@ -296,24 +286,24 @@ public class Deposits extends Command {
             String safekeepTitle = "Safekeep (`#tax`|`#deposit`: worth $";
             boolean hasPriorCategory = false;
             if (categorized.containsKey(DepositType.GRANT)) {
-                response.append(totalTitle + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
+                response.append(totalTitle).append(MathMan.format(PnwUtil.convertedTotal(total))).append(")");
                 response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
                 footers.add("Unlike loans, debt from grants will expire if you stay (see the transaction for the timeframe)");
                 hasPriorCategory = true;
             }
             if (categorized.containsKey(DepositType.LOAN)) {
-                response.append((hasPriorCategory ? noGrantTitle : totalTitle) + MathMan.format(PnwUtil.convertedTotal(totalNoGrants)) + ")");
+                response.append(hasPriorCategory ? noGrantTitle : totalTitle).append(MathMan.format(PnwUtil.convertedTotal(totalNoGrants))).append(")");
                 response.append("\n```").append(PnwUtil.resourcesToString(totalNoGrants)).append("``` ");
                 hasPriorCategory = true;
             }
 
-            response.append((hasPriorCategory ? safekeepTitle : totalTitle) + MathMan.format(PnwUtil.convertedTotal(taxAndDeposits)) + ")");
+            response.append(hasPriorCategory ? safekeepTitle : totalTitle).append(MathMan.format(PnwUtil.convertedTotal(taxAndDeposits))).append(")");
             response.append("\n```").append(PnwUtil.resourcesToString(taxAndDeposits)).append("``` ");
         }
         if (requiredUser != null && me != null && requiredUser.getNation_id() == me.getNation_id()) {
-            footers.add("Funds default to #deposit if no other note is used");
+            footers.add("Funds default to #deposit if no other note is used.");
             if (Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.RESOURCE_CONVERSION))) {
-                footers.add("You can sell resources to the alliance by depositing with the note #cash");
+                footers.add("You can sell resources to the alliance by depositing with the note #cash.");
             }
             if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {
                 Role role = Roles.ECON_WITHDRAW_SELF.toRole(guild);
@@ -323,11 +313,9 @@ public class Deposits extends Command {
             }
         }
 
-        if (!footers.isEmpty()) {
-            for (int i = 0; i < footers.size(); i++) {
-                String footer = footers.get(i);
-                response.append("\n`note" + (i == 0 ? "" : i)).append(": " + footer + "`");
-            }
+        for (int i = 0; i < footers.size(); i++) {
+            String footer = footers.get(i);
+            response.append("\n`note").append(i == 0 ? "" : i).append(": ").append(footer).append("`");
         }
 
         MessageChannel output = flags.contains('d') ? RateLimitUtil.complete(author.openPrivateChannel()) : event.getChannel();
@@ -386,41 +374,4 @@ public class Deposits extends Command {
         return null;
     }
 
-    public void appendAlliance(Map<Integer, String> alliances, Integer bankTo, Map<ResourceType, Double> value, StringBuilder response) {
-        String allianceName = alliances.getOrDefault(bankTo, "");
-        response.append('\n')
-                .append(allianceName).append(" | ")
-                .append("<" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + bankTo + ">")
-                .append("```")
-                .append(PnwUtil.resourcesToString(value))
-                .append(" | Converted total: $")
-                .append(String.format("%.2f", PnwUtil.convertedTotal(value)))
-                .append("```");
-    }
-
-    public void appendByName(String name, Map<ResourceType, Double> value, StringBuilder response) {
-        response.append('\n')
-                .append(name).append(" | ")
-                .append("```")
-                .append(PnwUtil.resourcesToString(value))
-                .append(" | Converted total: $")
-                .append(String.format("%.2f", PnwUtil.convertedTotal(value)))
-                .append("```");
-    }
-
-    public void appendNation(Integer nationId, Map<ResourceType, Double> value, StringBuilder response) {
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
-        String name = nation != null ? nation.getNation() : "";
-        String alliance = nation != null ? nation.getAllianceName() : "";
-        String link = nation != null ? "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nationId : "";
-        response.append('\n')
-                .append(name).append(" | ")
-                .append(alliance).append(" | ")
-                .append("<" + link + ">")
-                .append("```")
-                .append(PnwUtil.resourcesToString(value))
-                .append(" | Converted total: $")
-                .append(String.format("%.2f", PnwUtil.convertedTotal(value)))
-                .append("```");
-    }
 }

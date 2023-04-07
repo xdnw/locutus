@@ -6,12 +6,12 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Category;
@@ -30,8 +30,48 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class DiscordCompleter extends BindingHelper {
+    public final Set<Role> ROLES_KEY = null;
+    public final Set<Member> MEMBERS_KEY = null;
+    public final Set<Project> PROJECTS_KEY = null;
+
+    {
+        try {
+            {
+                Type type = getClass().getDeclaredField("MEMBERS_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
+
+                    List<Member> options = guild.getMembers();
+                    return StringMan.autocompleteComma(input.toString(), options, s -> DiscordBindings.member(guild, null, s), Member::getEffectiveName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
+                })));
+            }
+            {
+                Type type = getClass().getDeclaredField("ROLES_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
+
+                    List<Role> options = guild.getRoles();
+                    return StringMan.autocompleteComma(input.toString(), options, s -> DiscordBindings.role(guild, s), Role::getName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
+                })));
+            }
+            {
+                Type type = getClass().getDeclaredField("PROJECTS_KEY").getGenericType();
+                Key key = Key.of(type, Autocomplete.class);
+                addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+
+                    List<Project> options = Arrays.asList(Projects.values);
+                    return StringMan.autocompleteComma(input.toString(), options, Projects::get, Project::name, Project::name, OptionData.MAX_CHOICES);
+                })));
+            }
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Autocomplete
-    @Binding(types={Category.class})
+    @Binding(types = {Category.class})
     public List<String> category(@Me Member member, @Me Guild guild, String input) {
         List<Category> categories = new ArrayList<>(guild.getCategories());
         categories.removeIf(f -> !f.getMembers().contains(member));
@@ -39,11 +79,11 @@ public class DiscordCompleter extends BindingHelper {
             categories = StringMan.getClosest(input, categories, Channel::getName, OptionData.MAX_CHOICES, true);
         }
 
-        return categories.stream().map(f -> f.getAsMention()).collect(Collectors.toList());
+        return categories.stream().map(Channel::getAsMention).collect(Collectors.toList());
     }
 
     @Autocomplete
-    @Binding(types={Guild.class})
+    @Binding(types = {Guild.class})
     public List<Map.Entry<String, String>> Guild(@Me User user, String input) {
         List<Guild> options = user.getMutualGuilds();
         options = StringMan.getClosest(input, options, Guild::getName, OptionData.MAX_CHOICES, true, true);
@@ -51,96 +91,30 @@ public class DiscordCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={Roles.class})
+    @Binding(types = {Roles.class})
     public List<String> Roles(String input) {
         return StringMan.completeEnum(input, Roles.class);
     }
 
     @Autocomplete
-    @Binding(types={Permission.class})
+    @Binding(types = {Permission.class})
     public List<String> Permission(String input) {
         return StringMan.completeEnum(input, Permission.class);
     }
 
-
     @Autocomplete
-    @Binding(types={OnlineStatus.class})
+    @Binding(types = {OnlineStatus.class})
     public List<String> onlineStatus(String input) {
         return StringMan.completeEnum(input, OnlineStatus.class);
     }
 
     @Autocomplete
-    @Binding(types={Role.class})
+    @Binding(types = {Role.class})
     public List<Map.Entry<String, String>> role(@Me Guild guild, String input) {
         List<Role> options = guild.getRoles();
         List<Role> closest = StringMan.getClosest(input, options, true);
-        return StringMan.autocompletePairs(closest, f -> f.getName(), f -> f.getAsMention());
+        return StringMan.autocompletePairs(closest, Role::getName, IMentionable::getAsMention);
     }
-
-    public final Set<Role> ROLES_KEY = null;
-    public final Set<Member> MEMBERS_KEY = null;
-
-    public final Set<Project> PROJECTS_KEY = null;
-
-
-    {
-        try {
-            {
-                Type type = getClass().getDeclaredField("MEMBERS_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
-
-                        List<Member> options = guild.getMembers();
-                        return StringMan.autocompleteComma(input.toString(), options, new Function<String, Member>() {
-                            @Override
-                            public Member apply(String s) {
-                                return DiscordBindings.member(guild, null, s);
-                            }
-                        }, Member::getEffectiveName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("ROLES_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
-
-                        List<Role> options = guild.getRoles();
-                        return StringMan.autocompleteComma(input.toString(), options, new Function<String, Role>() {
-                            @Override
-                            public Role apply(String s) {
-                                return DiscordBindings.role(guild, s);
-                            }
-                        }, Role::getName, IMentionable::getAsMention, OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("PROJECTS_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-
-                        List<Project> options = Arrays.asList(Projects.values);
-                        return StringMan.autocompleteComma(input.toString(), options, new Function<String, Project>() {
-                            @Override
-                            public Project apply(String s) {
-                                return Projects.get(s);
-                            }
-                        }, Project::name, Project::name, OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-        } catch (NoSuchFieldException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
     //// TODO start here
 //
 //    @Binding
@@ -169,21 +143,10 @@ public class DiscordCompleter extends BindingHelper {
 //    }
 //
 //    @Binding
-//    public GuildShardManager shardManager() {
-//        return Locutus.imp().getDiscordApi();
-//    }
-//
-//    @Binding
 //    public Guild guild(long guildId) {
 //        Guild guild = Locutus.imp().getDiscordApi().getGuildById(guildId);
 //        if (guild == null) throw new IllegalArgumentException("No guild found for: " + guildId);
 //        return guild;
-//    }
-//
-//    @Binding
-//    @Me
-//    public Guild guild() {
-//        throw new IllegalStateException("No guild set in command locals");
 //    }
 //
 //    @Binding
@@ -193,47 +156,4 @@ public class DiscordCompleter extends BindingHelper {
 //        return GuildMessageChannel;
 //    }
 //
-//    @Binding
-//    public Message message(String message) {
-//        return DiscordUtil.getMessage(message);
-//    }
-//
-//    @Binding
-//    public MessageReceivedEvent event() {
-//        throw new IllegalStateException("No event set in command locals");
-//    }
-//
-//    @Binding
-//    @Me
-//    public MessageChannel channel() {
-//        throw new IllegalStateException("No channel set in command locals");
-//    }
-//
-////    @Binding
-////    @Me
-////    public Member member(@Me Guild guild, User user) {
-////        Member member = guild.getMember(user);
-////        if (member == null) throw new IllegalStateException("No member found for " + user.getName());
-////        return member;
-////    }
-//
-//    @Binding
-//    @Me
-//    public Member member(@Me Guild guild, @Me User user) {
-//        Member member = guild.getMember(user);
-//        if (member == null) throw new IllegalStateException("No member found for " + user.getName());
-//        return member;
-//    }
-//
-//    @Binding
-//    @Me
-//    public User user() {
-//        throw new IllegalStateException("No user set in command locals");
-//    }
-//
-//    @Binding
-//    @Me
-//    public Message message() {
-//        throw new IllegalStateException("No message set in command locals");
-//    }
 }

@@ -21,13 +21,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 
 public class ChannelManagerDelegate {
+    protected final ChannelManager parent;
+
+    public ChannelManagerDelegate(ChannelManager parent) {
+        this.parent = parent;
+    }
+
     @Nonnull
     public ChannelManager reset(long fields) {
         return parent.reset(fields);
@@ -258,11 +260,5 @@ public class ChannelManagerDelegate {
     @Nonnull
     public ScheduledFuture<?> queueAfter(long delay, @NotNull TimeUnit unit, @Nullable Consumer success, @Nullable Consumer failure, @Nullable ScheduledExecutorService executor) {
         return parent.queueAfter(delay, unit, success, failure, executor);
-    }
-
-    protected final ChannelManager parent;
-
-    public ChannelManagerDelegate(ChannelManager parent) {
-        this.parent = parent;
     }
 }

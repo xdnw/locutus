@@ -39,11 +39,12 @@ public class LeftAA extends Command {
 
     @Override
     public String desc() {
-        return "List the departures of nations from alliances\n" +
-                "Add `-a` to remove inactives\n" +
-                "Add `-v` to remove VM\n" +
-                "Add `-m` to remove members\n" +
-                "Add `-i` to list nation ids";
+        return """
+                List the departures of nations from alliances
+                Add `-a` to remove inactives
+                Add `-v` to remove VM
+                Add `-m` to remove members
+                Add `-i` to list nation ids""";
     }
 
     @Override
@@ -87,7 +88,7 @@ public class LeftAA extends Command {
             if (timeDiff == 0) return "Invalid time: `" + args.get(1) + "`";
             long cuttOff = System.currentTimeMillis() - timeDiff;
 
-            if (removes.isEmpty()) return "No history found";
+            if (removes.isEmpty()) return "No history found.";
             Set<DBNation> filter = null;
             if (args.size() == 3) {
                 filter = DiscordUtil.parseNations(guild, args.get(2));
@@ -120,9 +121,9 @@ public class LeftAA extends Command {
             DBNation nation = nationAA.getKey();
             ids.add(nation.getNation_id());
 
-            response.append(timeStr + " ago: " + nationAA.getKey().getNation() + " left " + nationAA.getValue().getName() + " | " + rank.name());
+            response.append(timeStr).append(" ago: ").append(nationAA.getKey().getNation()).append(" left ").append(nationAA.getValue().getName()).append(" | ").append(rank.name());
             if (showCurrentAA && nation.getAlliance_id() != 0) {
-                response.append(" and joined " + nation.getAllianceName());
+                response.append(" and joined ").append(nation.getAllianceName());
             }
             response.append("\n");
         }
@@ -130,7 +131,7 @@ public class LeftAA extends Command {
         if (flags.contains('i')) {
             DiscordUtil.upload(event.getChannel(), "ids.txt", StringMan.join(ids, ","));
         }
-        if (response.length() == 0) return "No history found in the specified timeframe";
+        if (response.length() == 0) return "No history found in the specified timeframe.";
 
         return response.toString();
     }

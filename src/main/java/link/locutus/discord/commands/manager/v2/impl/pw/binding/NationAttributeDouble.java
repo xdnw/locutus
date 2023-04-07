@@ -7,7 +7,7 @@ import java.util.function.Function;
 
 public class NationAttributeDouble extends NationAttribute<Double> {
     public NationAttributeDouble(String id, String desc, Function<DBNation, Double> parent) {
-        super(id, desc, Double.TYPE, (Function) parent);
+        super(id, desc, Double.TYPE, parent);
     }
 
     @Override
@@ -17,6 +17,6 @@ public class NationAttributeDouble extends NationAttribute<Double> {
 
     @Override
     public Double apply(DBNation nation) {
-        return (Double) super.apply(nation);
+        return super.apply(nation);
     }
 }

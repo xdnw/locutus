@@ -11,8 +11,10 @@ import net.dv8tion.jda.api.entities.User;
 public class AttackCommands {
     @Command(aliases = "groundsim")
     public String groundSim(int attSoldiersUnarmed, int attSoldiers, int attTanks, int defSoldiersUnarmed, int defSoldiers, int defTanks) {
-        if (attSoldiers != 0 && attSoldiersUnarmed != 0) return "You cannot attack with both armed and unarmed soldiers";
-        if (defSoldiers != 0 && defSoldiersUnarmed != 0) return "You cannot defend with both armed and unarmed soldiers";
+        if (attSoldiers != 0 && attSoldiersUnarmed != 0)
+            return "You cannot attack with both armed and unarmed soldiers.";
+        if (defSoldiers != 0 && defSoldiersUnarmed != 0)
+            return "You cannot defend with both armed and unarmed soldiers.";
 
         double attStr = attSoldiers * 1.75 + attSoldiersUnarmed + attTanks * 40;
         double defStr = defSoldiers * 1.75 + defSoldiersUnarmed + defTanks * 40;
@@ -26,7 +28,7 @@ public class AttackCommands {
                 if (odds <= 0) continue;
                 odds = Math.min(1, odds);
                 String pctStr = MathMan.format(odds * 100) + "%";
-                response.append("\n" + SuccessType.values[success] + "=" + pctStr);
+                response.append("\n").append(SuccessType.values[success]).append("=").append(pctStr);
             }
         }
 
@@ -37,10 +39,7 @@ public class AttackCommands {
         int reqUnarmedUF = (int) Math.ceil(defStr * 0.4);
         int reqArmedUF = (int) Math.ceil(defStr * 0.4 / 1.75);
 
-        response.append("\nNote:\n" +
-                " - Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed\n" +
-                " - Guaranteed IT needs 2.5x enemy (" + reqUnarmedIT + " unarmed, " + reqArmedIT + " armed)\n" +
-                " - Guaranteed UF needs 0.4x enemy (" + reqUnarmedUF + " unarmed, " + reqArmedUF + " armed)");
+        response.append("\nNote:\n" + " - Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed\n" + " - Guaranteed IT needs 2.5x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append(" - Guaranteed UF needs 0.4x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
 
         return response.toString();
     }
@@ -56,10 +55,10 @@ public class AttackCommands {
             if (odds <= 0) continue;
             odds = Math.min(1, odds);
             String pctStr = MathMan.format(odds * 100) + "%";
-            response.append("\n" + SuccessType.values[success] + "=" + pctStr);
+            response.append("\n").append(SuccessType.values[success]).append("=").append(pctStr);
         }
 
-        response.append("\n\nNote: For a guaranteed IT, you need 2.5x enemy strength");
+        response.append("\n\nNote: For a guaranteed IT, you need 2.5x enemy strength.");
 
         return response.toString();
     }
@@ -75,7 +74,7 @@ public class AttackCommands {
             if (odds <= 0) continue;
             odds = Math.min(1, odds);
             String pctStr = MathMan.format(odds * 100) + "%";
-            response.append("\n - " + SuccessType.values[success] + "=" + pctStr);
+            response.append("\n - ").append(SuccessType.values[success]).append("=").append(pctStr);
         }
 
         response.append("\n\nNote: For a guaranteed IT, you need 2.5x enemy strength");
@@ -84,12 +83,12 @@ public class AttackCommands {
     }
 
     public String nameSuccess(int type) {
-        switch (type) {
-            case 0: return "Failure";
-            case 1: return "Pyrrhic";
-            case 2: return "Moderate";
-            case 3: return "Immense";
-            default: return "UNKNOWN";
-        }
+        return switch (type) {
+            case 0 -> "Failure";
+            case 1 -> "Pyrrhic";
+            case 2 -> "Moderate";
+            case 3 -> "Immense";
+            default -> "UNKNOWN";
+        };
     }
 }

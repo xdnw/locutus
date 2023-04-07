@@ -12,6 +12,7 @@ public class FunctionConsumerParser<R> implements Parser<R> {
         this.key = returnKey;
         this.consumer = consumer;
     }
+
     @Override
     public R apply(ArgumentStack arg) {
         return consumer.apply(arg.getStore(), arg.consumeNext());

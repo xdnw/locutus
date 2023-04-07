@@ -43,7 +43,7 @@ public class BorgCommand extends Command {
         String[] Rs = {"\uD835\uDDCB", "\uD835\uDDB1", "R", "r", "\u200A", "\u200B", "\uFEFF", "\u180E"};
         String[] Gs = {"\uD835\uDDC0", "\uD835\uDDA6", "G", "g", "\u200A", "\u200B", "\uFEFF", "\u180E"};
 
-        String[][] CODES = new String[][] {
+        String[][] CODES = new String[][]{
                 Bs,
                 Os,
                 Rs,
@@ -52,37 +52,34 @@ public class BorgCommand extends Command {
         String msg = StringMan.join(args, " ");
 
         StringBuilder output = new StringBuilder();
-        if (true) {
-            String input = msg;
-            while (!input.isEmpty()) {
-                boolean found = false;
-                int id = 0;
-                for (int tmp = 0; tmp < 2; tmp++) {
-                    outer:
-                    for (int i = 0; i < CODES.length; i++) {
-                        String[] codei = CODES[i];
-                        for (int j = 0; j < codei.length; j++) {
-                            String codeij = codei[j];
-                            if (input.startsWith(codeij)) {
-                                input = input.substring(codeij.length());
-                                id += j << (tmp * 3);
-                                found = true;
-                                break outer;
-                            }
+        String input = msg;
+        while (!input.isEmpty()) {
+            boolean found = false;
+            int id = 0;
+            for (int tmp = 0; tmp < 2; tmp++) {
+                outer:
+                for (String[] codei : CODES) {
+                    for (int j = 0; j < codei.length; j++) {
+                        String codeij = codei[j];
+                        if (input.startsWith(codeij)) {
+                            input = input.substring(codeij.length());
+                            id += j << (tmp * 3);
+                            found = true;
+                            break outer;
                         }
                     }
                 }
-                if (!found) {
-                    output.setLength(0);
-                    break;
-                }
-                if (id == 0) output.append(" ");
-                else if (id <= 'z' + 1) output.append((char) ('a' + id - 1));
-                else output.append((char) '0' + id - 27);
             }
-            if (output.length() != 0) {
-                return "`" + output.toString() + "`\n\n - " + event.getAuthor().getName();
+            if (!found) {
+                output.setLength(0);
+                break;
             }
+            if (id == 0) output.append(" ");
+            else if (id <= 'z' + 1) output.append((char) ('a' + id - 1));
+            else output.append('0' + id - 27);
+        }
+        if (output.length() != 0) {
+            return "`" + output + "`\n\n - " + event.getAuthor().getName();
         }
         int i = 0;
 
@@ -104,6 +101,6 @@ public class BorgCommand extends Command {
                 output.append(letter);
             }
         }
-        return "`" + output.toString() + "`";
+        return "`" + output + "`";
     }
 }

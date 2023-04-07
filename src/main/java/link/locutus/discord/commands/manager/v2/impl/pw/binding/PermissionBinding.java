@@ -106,7 +106,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding
     @IsGuild
     public boolean checkGuild(@Me Guild guild, IsGuild perm) {
-        if (!Arrays.asList(perm.value()).contains(guild.getIdLong())) {
+        if (Arrays.stream(perm.value()).noneMatch(f -> f == guild.getIdLong())) {
             throw new IllegalCallerException("Guild does not have permission");
         }
         return true;
@@ -115,7 +115,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding
     @NotGuild
     public boolean checkNotGuild(@Me Guild guild, NotGuild perm) {
-        if (Arrays.asList(perm.value()).contains(guild.getIdLong())) {
+        if (Arrays.stream(perm.value()).noneMatch(f -> f == guild.getIdLong())) {
             throw new IllegalCallerException("Guild has permission denied");
         }
         return true;

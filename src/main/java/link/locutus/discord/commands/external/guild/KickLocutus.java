@@ -13,6 +13,7 @@ public class KickLocutus extends Command {
     public KickLocutus() {
         super(CommandCategory.LOCUTUS_ADMIN);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return super.checkPermission(server, user) && Roles.ADMIN.hasOnRoot(user);

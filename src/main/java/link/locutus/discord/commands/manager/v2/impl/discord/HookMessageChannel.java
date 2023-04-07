@@ -5,16 +5,7 @@ import link.locutus.discord.commands.manager.dummy.AdapterMessageAction;
 import link.locutus.discord.commands.manager.dummy.AdapterMessageUpdateAction;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageChannel;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildChannel;
-import net.dv8tion.jda.api.entities.ICategorizableChannel;
-import net.dv8tion.jda.api.entities.IPermissionContainer;
-import net.dv8tion.jda.api.entities.IPermissionHolder;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.PermissionOverride;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.managers.channel.ChannelManager;
@@ -32,6 +23,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 public class HookMessageChannel extends DelegateMessageChannel implements ICategorizableChannel, GuildChannel {
     private final InteractionHook hook;
@@ -50,7 +42,7 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
     @NotNull
     @Override
     public Guild getGuild() {
-        return hook.getInteraction().getGuild();
+        return Objects.requireNonNull(hook.getInteraction().getGuild());
     }
 
     @Nullable
@@ -104,8 +96,7 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
             if (manager instanceof ICategorizableChannelManager) {
                 return (ICategorizableChannelManager<?, ?>) manager;
             }
-            CategorizableChannelManagerDelegate delegate = new CategorizableChannelManagerDelegate(manager);
-            return delegate;
+            return new CategorizableChannelManagerDelegate(manager);
         }
         throw new UnsupportedOperationException("Not a guild channel");
     }
@@ -147,7 +138,7 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendMessageFormat(@NotNull String format, @NotNull Object... args) {
+    public MessageAction sendMessageFormat(@NotNull String format, @NotNull Object @NotNull ... args) {
         return new AdapterMessageAction(this, hook.sendMessageFormat(format, args));
     }
 
@@ -161,35 +152,35 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendMessageEmbeds(@NotNull MessageEmbed embed, @NotNull MessageEmbed... embeds) {
+    public MessageAction sendMessageEmbeds(@NotNull MessageEmbed embed, @NotNull MessageEmbed @NotNull ... embeds) {
         return new AdapterMessageAction(this, hook.sendMessageEmbeds(embed, embeds));
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendFile(@NotNull InputStream data, @NotNull String name, @NotNull AttachmentOption... options) {
+    public MessageAction sendFile(@NotNull InputStream data, @NotNull String name, @NotNull AttachmentOption @NotNull ... options) {
         return new AdapterMessageAction(this, hook.sendFile(data, name, options));
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendFile(@NotNull File file, @NotNull AttachmentOption... options) {
+    public MessageAction sendFile(@NotNull File file, @NotNull AttachmentOption @NotNull ... options) {
         return new AdapterMessageAction(this, hook.sendFile(file, options));
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendFile(@NotNull File file, @NotNull String name, @NotNull AttachmentOption... options) {
+    public MessageAction sendFile(@NotNull File file, @NotNull String name, @NotNull AttachmentOption @NotNull ... options) {
         return new AdapterMessageAction(this, hook.sendFile(file, name, options));
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction sendFile(@NotNull byte[] data, @NotNull String name, @NotNull AttachmentOption... options) {
+    public MessageAction sendFile(byte @NotNull [] data, @NotNull String name, @NotNull AttachmentOption @NotNull ... options) {
         return new AdapterMessageAction(this, hook.sendFile(data, name, options));
     }
 
@@ -217,21 +208,21 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageById(long messageId, Message message) {
+    public MessageAction editMessageById(long messageId, @NotNull Message message) {
         return new AdapterMessageUpdateAction(this, hook.editMessageById(messageId, message));
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageFormatById(@NotNull String messageId, @NotNull String format, @NotNull Object... args) {
+    public MessageAction editMessageFormatById(@NotNull String messageId, @NotNull String format, @NotNull Object @NotNull ... args) {
         return new AdapterMessageUpdateAction(this, hook.editMessageFormatById(messageId, format, args));
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageFormatById(long messageId, @NotNull String format, @NotNull Object... args) {
+    public MessageAction editMessageFormatById(long messageId, @NotNull String format, @NotNull Object @NotNull ... args) {
         return new AdapterMessageUpdateAction(this, hook.editMessageFormatById(messageId, format, args));
     }
 
@@ -252,14 +243,14 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageEmbedsById(@NotNull String messageId, @NotNull MessageEmbed... embeds) {
+    public MessageAction editMessageEmbedsById(@NotNull String messageId, @NotNull MessageEmbed @NotNull ... embeds) {
         return new AdapterMessageUpdateAction(this, hook.editMessageEmbedsById(messageId, embeds));
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageEmbedsById(long messageId, @NotNull MessageEmbed... embeds) {
+    public MessageAction editMessageEmbedsById(long messageId, @NotNull MessageEmbed @NotNull ... embeds) {
         return new AdapterMessageUpdateAction(this, hook.editMessageEmbedsById(messageId, embeds));
     }
 
@@ -280,14 +271,14 @@ public class HookMessageChannel extends DelegateMessageChannel implements ICateg
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageComponentsById(@NotNull String messageId, @NotNull LayoutComponent... components) {
+    public MessageAction editMessageComponentsById(@NotNull String messageId, @NotNull LayoutComponent @NotNull ... components) {
         return new AdapterMessageUpdateAction(this, hook.editMessageComponentsById(messageId, components));
     }
 
     @Override
     @CheckReturnValue
     @Nonnull
-    public MessageAction editMessageComponentsById(long messageId, @NotNull LayoutComponent... components) {
+    public MessageAction editMessageComponentsById(long messageId, @NotNull LayoutComponent @NotNull ... components) {
         return new AdapterMessageUpdateAction(this, hook.editMessageComponentsById(messageId, components));
     }
 
