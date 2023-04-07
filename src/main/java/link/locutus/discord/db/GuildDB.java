@@ -4580,7 +4580,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public Object parse(GuildDB db, String input) {
-                return MathMan.parseDouble(input);
+                Double value = MathMan.parseDouble(input);
+                if (value == null) {
+                    throw new IllegalArgumentException("Invalid number: `" + input + "`");
+                }
+                if (!Double.isFinite(value)) {
+                    throw new IllegalArgumentException("Invalid number (not finite): `" + input + "`");
+                }
+                if (value <= 0) {
+                    throw new IllegalArgumentException("Invalid number (must be positive): `" + input + "`");
+                }
+                return value;
             }
 
             @Override
