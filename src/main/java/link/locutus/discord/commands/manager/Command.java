@@ -1,5 +1,9 @@
 package link.locutus.discord.commands.manager;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
@@ -9,34 +13,31 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.User;
+import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public abstract class Command {
-    public final Set<Long> WHITELIST_USERS = new HashSet<>();
-    private final List<String> aliases;
     private static final Gson gson = new Gson();
     private static final JsonParser parser = new JsonParser();
+    public final Set<Long> WHITELIST_USERS = new HashSet<>();
+    private final List<String> aliases;
     private final Set<CommandCategory> categories;
+
+    public Command(Object... args) {
+        this.aliases = new ArrayList<>();
+        this.categories = new LinkedHashSet<>();
+        for (Object arg : args) {
+            if (arg instanceof String) aliases.add(arg.toString());
+            else if (arg instanceof CommandCategory) categories.add((CommandCategory) arg);
+        }
+        if (aliases.isEmpty()) {
+            aliases.add(getClass().getSimpleName().replace("Command", "").toLowerCase());
+        }
+    }
 
     public static Command create(ICommand command) {
         return new Command() {
@@ -45,10 +46,6 @@ public abstract class Command {
                 return command.onCommand(event, guild, author, me, args, flags);
             }
         };
-    }
-
-    public Set<CommandCategory> getCategories() {
-        return categories;
     }
 
     public static JsonElement j(String str) {
@@ -74,16 +71,8 @@ public abstract class Command {
         return gson.toJsonTree(result).getAsJsonObject();
     }
 
-    public Command(Object... args) {
-        this.aliases = new ArrayList<>();
-        this.categories = new LinkedHashSet<>();
-        for (Object arg : args) {
-            if (arg instanceof String) aliases.add(arg.toString());
-            else if (arg instanceof CommandCategory) categories.add((CommandCategory) arg);
-        }
-        if (aliases.isEmpty()) {
-            aliases.add(getClass().getSimpleName().replace("Command", "").toLowerCase());
-        }
+    public Set<CommandCategory> getCategories() {
+        return categories;
     }
 
     public String usage(String arg, MessageChannel channel) {
@@ -116,7 +105,7 @@ public abstract class Command {
     }
 
     public String usage() {
-        return usage((String) null, (MessageChannel) null);
+        return usage(null, (MessageChannel) null);
     }
 
     public String noPerm(String perm) {
@@ -133,8 +122,8 @@ public abstract class Command {
         }
         GuildDB guild = Locutus.imp().getGuildDB(server);
         if (guild.isWhitelisted()) return true;
-        Integer perm = guild.getPermission(getClass());
-        return perm != null && perm > 0;
+        int perm = guild.getPermission(getClass());
+        return perm > 0;
     }
 
     public boolean checkPermission(Guild server, User user) {

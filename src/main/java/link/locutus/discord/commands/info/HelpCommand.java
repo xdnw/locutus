@@ -44,7 +44,7 @@ public class HelpCommand extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         StringBuilder response = new StringBuilder();
         if (args.size() == 0) {
-            Set<CommandCategory> categories = new HashSet<CommandCategory>();
+            Set<CommandCategory> categories = new HashSet<>();
             Set<Command> cmds = new LinkedHashSet<>(manager.getCommandMap().values());
             cmds.removeIf(cmd -> {
                 try {
@@ -56,26 +56,13 @@ public class HelpCommand extends Command {
             for (Command cmd : cmds) categories.addAll(cmd.getCategories());
 
             for (CommandCategory category : categories) {
-                String categoryCase = WordUtils.capitalizeFully(category.name(), new char[]{'_'});
-                response.append("`" + Settings.commandPrefix(true) + "? " + categoryCase + "`").append("\n");
+                String categoryCase = WordUtils.capitalizeFully(category.name(), '_');
+                response.append("`").append(Settings.commandPrefix(true)).append("? ").append(categoryCase).append("`").append("\n");
             }
 
-
-//
-//            for (Command cmd : cmds) {
-//                response.append('\n')
-//                        .append(cmd.getAliases().get(0).toUpperCase());
-//                if (cmd.getAliases().size() > 1) {
-//                    response.append("\n\tAliases: ").append(StringMan.getString(cmd.getAliases()));
-//                }
-//                response.append("\n\tUsage: ").append(cmd.help());
-//                response.append("\n\tDesc: ").append(cmd.desc());
-//                response.append('\n');
-//            }
-
             response.append("\n").append("**You can specify multiple categories**");
-            response.append("\n").append("**For help on a specific command, use: `" + Settings.commandPrefix(true) + "? <command>`**");
-            response.append("\n").append("**To search for a cmd, use: `" + Settings.commandPrefix(true) + "? <search>`**");
+            response.append("\n").append("**For help on a specific command, use: `").append(Settings.commandPrefix(true)).append("? <command>`**");
+            response.append("\n").append("**To search for a cmd, use: `").append(Settings.commandPrefix(true)).append("? <search>`**");
             String footer = "Bot created and managed by the Interwebs Sourcery division of the Borg Collective. If you would like this bot in your server use the chant `" + Settings.commandPrefix(true) + "invite` and follow the summoning ritual instructions.";
             DiscordUtil.createEmbedCommandWithFooter(event.getChannel(), "Locutus Cats", response.toString().trim(), footer);
         } else {
@@ -88,7 +75,8 @@ public class HelpCommand extends Command {
                 try {
                     CommandCategory category = CommandCategory.valueOf(arg.toUpperCase());
                     requiredCategories.add(category);
-                } catch (IllegalArgumentException ignore) {}
+                } catch (IllegalArgumentException ignore) {
+                }
             }
             if (!requiredCategories.isEmpty()) {
                 LinkedHashSet<Command> commands = new LinkedHashSet<>(manager.getCommandMap().values());

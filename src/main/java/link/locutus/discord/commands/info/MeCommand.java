@@ -29,7 +29,7 @@ public class MeCommand extends Command {
 
     @Override
     public String desc() {
-        return "Get pnw info about yourself";
+        return "Get pnw info about yourself.";
     }
 
     @Override
