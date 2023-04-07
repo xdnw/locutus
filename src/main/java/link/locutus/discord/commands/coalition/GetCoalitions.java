@@ -88,9 +88,9 @@ public class GetCoalitions extends Command {
                 }
             }
 
-            response.append('\n').append("**" + coalition + "**: " + StringMan.join(names, ","));
+            response.append('\n').append("**").append(coalition).append("**: ").append(StringMan.join(names, ","));
         }
-        if (response.length() == 0) return "No coalitions found";
+        if (response.length() == 0) return "No coalitions found.";
         return response.toString().trim();
     }
 }
