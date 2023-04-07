@@ -1,21 +1,21 @@
 package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.config.Settings;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.Permission;
+<<<<<<< HEAD
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -24,37 +24,37 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+=======
+import net.dv8tion.jda.api.entities.*;
+>>>>>>> pr/15
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class WarRoom extends Command {
     public WarRoom() {
         super(CommandCategory.MILCOM, CommandCategory.MEMBER);
     }
+
     @Override
     public String help() {
         return "" + super.help() + " [target] [att1] [att2] [att3] ...\n" +
                 "OR\n" +
-                super.help() + " <sheet> <message>" ;
+                super.help() + " <sheet> <message>";
     }
 
     @Override
     public String desc() {
-        return "Create a war room\n" +
-                "Add `-p` to ping users that are added\n" +
-                "Add `-a` to skip adding users\n" +
-                "Add `-f` to force create channels (if checks fail)\n" +
-                "Add `-m` to send standard counter messages\n" +
-                "Add `-h:1` to change the header row (0 index)\n" +
-                "Add `filter:<filter>` to filter nations";
+        return """
+                Create a war room
+                Add `-p` to ping users that are added
+                Add `-a` to skip adding users
+                Add `-f` to force create channels (if checks fail)
+                Add `-m` to send standard counter messages
+                Add `-h:1` to change the header row (0 index)
+                Add `filter:<filter>` to filter nations.""";
     }
 
     @Override
@@ -67,7 +67,7 @@ public class WarRoom extends Command {
         if (args.isEmpty()) return usage();
 
         if ((flags.contains('p') || flags.contains('m')) && !Roles.MILCOM.has(event.getMember())) {
-            return "You need the milcom role to use `-p` or `-m`";
+            return "You need to have milcom role to use `-p` or `-m`.";
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory warCat = db.getWarChannel(true);
@@ -80,14 +80,14 @@ public class WarRoom extends Command {
         boolean addMember = !flags.contains('a');
         boolean addMessage = flags.contains('m');
         String headerStr = DiscordUtil.parseArg(args, "-h");
-        Integer headerRow = headerStr == null ? 0 : Integer.parseInt(headerStr);
+        int headerRow = headerStr == null ? 0 : Integer.parseInt(headerStr);
 
         String arg = args.get(0);
         if (arg.equalsIgnoreCase("close") || arg.equalsIgnoreCase("delete")) {
             WarCategory.WarRoom room = warCat.getWarRoom(event.getGuildChannel());
             if (room != null) {
-                room.delete("Closed by " + author.getName() + "#" + author.getDiscriminator());
-                return "Goodbye";
+                room.delete("");
+                return "Goodbye.";
             } else {
                 return "You are not in a war room!";
             }
@@ -97,16 +97,11 @@ public class WarRoom extends Command {
         if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             SpreadSheet sheet = SpreadSheet.create(arg);
             StringBuilder response = new StringBuilder();
-            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
-                @Override
-                public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String s) {
-                    response.append(s + "\n");
-                }
-            });
+            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
             if (response.length() != 0) {
                 DiscordUtil.sendMessage(event.getChannel(), response.toString());
                 if (!flags.contains('f')) {
-                    return "Add `-f` to force create the channels anyway";
+                    return "Add `-f` to force create the channels anyway.";
                 }
             }
 
@@ -125,12 +120,7 @@ public class WarRoom extends Command {
                 DBNation target = entry.getKey();
                 Set<DBNation> attackers = entry.getValue();
 
-                WarCategory.WarRoom channel = createChannel(warCat, author, guild, new Consumer<String>() {
-                    @Override
-                    public void accept(String s) {
-                        response.append(s + "\n");
-                    }
-                }, ping, addMember, addMessage, target, attackers);
+                WarCategory.WarRoom channel = createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
 
                 try {
                     if (args.get(1).length() > 1 && !args.get(1).equalsIgnoreCase("null")) {
@@ -152,25 +142,22 @@ public class WarRoom extends Command {
         for (int i = 1; i < args.size(); i++) {
             DBNation attacker = DiscordUtil.parseNation(args.get(i));
             if (attacker == null) {
-                return "Invalid attacker: `" + args.get(i) + "`. Maybe try using the nation id or link?";
+                return "Invalid attacker: `" + args.get(i) + "`. Maybe try using the nation id or the link.";
             }
             attackers.add(attacker);
         }
 
         StringBuilder response = new StringBuilder();
-        WarCategory.WarRoom channel = createChannel(warCat, author, guild, new Consumer<String>() {
-            @Override
-            public void accept(String s) {
-                response.append(s + "\n");
-            }
-        }, ping, addMember, addMessage, target, attackers);
+        WarCategory.WarRoom channel = createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
 
         response.append(channel.getChannel().getAsMention());
 
         me.setMeta(NationMeta.INTERVIEW_WAR_ROOM, (byte) 1);
 
-        if (!flags.contains('m') && db.getOrNull(GuildDB.Key.API_KEY) != null) response.append("\n - add `-m` to send standard counter instructions");
-        if (!flags.contains('p') && db.getOrNull(GuildDB.Key.API_KEY) != null) response.append("\n - add `-p` to ping users in the war channel");
+        if (!flags.contains('m') && db.getOrNull(GuildDB.Key.API_KEY) != null)
+            response.append("\n - add `-m` to send standard counter instructions");
+        if (!flags.contains('p') && db.getOrNull(GuildDB.Key.API_KEY) != null)
+            response.append("\n - add `-p` to ping users in the war channel");
 
         return response.toString();
     }
@@ -236,19 +223,19 @@ public class WarRoom extends Command {
                                     msg += " Ping " + econRoleName + " in " + rssChannel.getAsMention() + " to withdraw funds **BEFORE** you declare.";
                                 }
                             }
-                            if (grantChannel != null) msg += " Request funds from: " + grantChannel.getAsMention() + " **BEFORE** you declare.";
+                            if (grantChannel != null)
+                                msg += " Request funds from: " + grantChannel.getAsMention() + " **BEFORE** you declare.";
 
                             if (target.getGroundStrength(true, true) > attacker.getGroundStrength(true, false)) {
-                                msg += "\nThe enemy has more ground. You must ensure you have funds to switch to e.g. mmr=5551 and buy tanks after declaring";
+                                msg += "\nThe enemy has more ground. You must ensure you have funds to switch to e.g. mmr=5550 and buy tanks after declaring.";
                             }
 
                             String title = "Counter Attack/" + channel.getIdLong();
-                            StringBuilder body = new StringBuilder();
-                            body.append(info);
-                            body.append("\n\n" + msg);
-                            body.append("\n - target: " + declareUrl);
-                            body.append("\n\nCheck the war room for further details: " + channelUrl);
-                            String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body.toString()));
+                            String body = info +
+                                    "\n\n" + msg +
+                                    "\n - target: " + declareUrl +
+                                    "\n\nCheck the war room for further details: " + channelUrl;
+                            String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body));
 
                             try {
                                 attacker.sendMail(Locutus.imp().getRootAuth(), title, mailBody);
@@ -261,10 +248,6 @@ public class WarRoom extends Command {
                     }
                 }
             }
-        }
-
-        if (addMessage) {
-
         }
 
         return room;

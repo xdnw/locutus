@@ -10,8 +10,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -54,6 +54,7 @@ public class RoleAlias extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         if (args.size() > 3) return usage();
         User user = event.getAuthor();
+<<<<<<< HEAD
         Guild server = event.getGuild();
         GuildDB db = Locutus.imp().getGuildDB(event);
         Roles locutusRole = args.size() > 0 ? Roles.parse(args.get(0)) : null;
@@ -68,5 +69,61 @@ public class RoleAlias extends Command {
         }
         DBAlliance alliance = args.size() > 2 ? DBAlliance.parse(args.get(2), true) : null;
         return AdminCommands.aliasRole(user, server, db, locutusRole, role, alliance, removeRole);
+=======
+
+        if (!event.isFromGuild()) {
+            return "Can only run in a guild.";
+        }
+        Guild server = event.getGuild();
+        GuildDB db = Locutus.imp().getGuildDB(event);
+
+        if (args.size() != 2) {
+            List<Map.Entry<Roles, Long>> roles = db.getRoles();
+            StringBuilder response = new StringBuilder("Current aliases:").append('\n');
+            for (Map.Entry<Roles, Long> role : roles) {
+                Roles locRole = role.getKey();
+                GuildDB.Key key = locRole.getKey();
+
+                Role discordRole = server.getRoleById(role.getValue());
+                String roleName = discordRole == null ? "null" : discordRole.getName();
+                response.append(" - ").append(role.getKey().name().toLowerCase()).append(" > ").append(roleName);
+
+                if (key != null && db.getOrNull(key) == null) {
+                    response.append(" (missing: ").append(key.name()).append(")");
+                }
+                response.append('\n');
+            }
+            response.append("Available aliases: ").append(Roles.getValidRolesStringList()).append('\n');
+            response.append("Usage: `").append(Settings.commandPrefix(true)).append("aliasrole <").append(StringMan.join(Arrays.stream(Roles.values()).map(Enum::name).collect(Collectors.toList()), "|")).append("> <discord-role>`");
+            return response.toString().trim();
+        }
+        Roles role;
+        try {
+            role = Roles.valueOf(args.get(0).toUpperCase());
+        } catch (IllegalArgumentException ignore) {
+            return "Invalid role: ``" + args.get(0) + "`" + "`. Valid options are: " + Roles.getValidRolesStringList();
+        }
+
+        if (args.get(1).equalsIgnoreCase("null")) {
+            db.deleteRole(role);
+            return "Unregistered " + args.get(0);
+        }
+
+        Role discordRole = DiscordUtil.getRole(server, args.get(1));
+
+        if (discordRole == null) return "No single role found for: ``" + args.get(1) + "`" + "`";
+
+        Member member = server.getMember(user);
+
+        if (!Roles.ADMIN.hasOnRoot(user)) {
+            assert member != null;
+            if (!PermissionUtil.checkPermission(member, Permission.ADMINISTRATOR) && !PermissionUtil.checkPermission(member, Permission.MANAGE_SERVER) && !PermissionUtil.checkPermission(member, Permission.MANAGE_ROLES)) {
+                return "You are not allowed to manage the role: " + discordRole.getName();
+            }
+        }
+
+        db.addRole(role, discordRole.getIdLong());
+        return "Added role alias: " + role.name().toLowerCase() + " to " + discordRole.getName();
+>>>>>>> pr/15
     }
 }

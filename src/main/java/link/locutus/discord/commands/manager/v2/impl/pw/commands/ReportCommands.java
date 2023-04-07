@@ -32,9 +32,9 @@ public class ReportCommands {
 
     @Command
     public String list(@Switch("n") DBNation nation, @Switch("u") User user) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
-        if (nation == null || user == null) throw new IllegalArgumentException("Please specify a user or nation");
-        List<String> reportList = getReports().stream().filter(f -> (nation == null || f.nationId == nation.getId()) && (user == null || f.discordId == user.getIdLong())).map(Objects::toString).collect(Collectors.toList());
-        if (reportList.isEmpty()) return "No reports founds";
+        if (nation == null || user == null) throw new IllegalArgumentException("Please specify a user or nation.");
+        List<String> reportList = getReports().stream().filter(f -> f.nationId == nation.getId() && f.discordId == user.getIdLong()).map(Objects::toString).collect(Collectors.toList());
+        if (reportList.isEmpty()) return "No reports founds.";
 
         return "**" + reportList.size() + " reports**:\n" + String.join("\n", reportList);
     }
@@ -42,10 +42,12 @@ public class ReportCommands {
     @Command(desc = "Report a nation")
     public String create(@Me DBNation me, @Me User author, @Me GuildDB db, ReportType type, DBNation target, @TextArea String message, @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl, @Switch("u") User user, @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost, @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
         if (sheet == null) sheet = SpreadSheet.create(REPORT_SHEET);
-        if (message.charAt(0) == '=') return "Invalid message";
+        if (message.charAt(0) == '=') return "Invalid message.";
         if (message.length() < 25) return "Message is too short (25 characters minimum)";
-        if (forumPost != null && !forumPost.toLowerCase().contains("forums.politicsandwar.com/")) throw new IllegalArgumentException("`forumPost` must be a valid forum post URL. Provided: `" + forumPost + "`");
-        if (newsReport != null && !newsReport.toLowerCase().contains("https://discord.com/channels/")) throw new IllegalArgumentException("`newsReport` must be a valid discord message URL. Provided: `" + newsReport + "`");
+        if (forumPost != null && !forumPost.toLowerCase().contains("forums.politicsandwar.com/"))
+            throw new IllegalArgumentException("`forumPost` must be a valid forum post URL. Provided: `" + forumPost + "`");
+        if (newsReport != null && !newsReport.toLowerCase().contains("https://discord.com/channels/"))
+            throw new IllegalArgumentException("`newsReport` must be a valid discord message URL. Provided: `" + newsReport + "`");
 
         List<List<Object>> values = sheet.loadValues();
         List<Object> headerRow;
@@ -123,6 +125,17 @@ public class ReportCommands {
         }
 
         return result;
+
+    }
+
+    public enum ReportType {
+        MULTI,
+        REROLL,
+        STEALING,
+        DEFAULT,
+        LEAKING,
+        BEHAVIOR,
+        FA_BLUNDER
 
     }
 
@@ -212,16 +225,5 @@ public class ReportCommands {
             vote = Integer.parseInt(row.get(header.vote).toString());
             comment = row.get(header.comment).toString();
         }
-    }
-
-    public static enum ReportType {
-        MULTI,
-        REROLL,
-        STEALING,
-        DEFAULT,
-        LEAKING,
-        BEHAVIOR,
-        FA_BLUNDER
-
     }
 }

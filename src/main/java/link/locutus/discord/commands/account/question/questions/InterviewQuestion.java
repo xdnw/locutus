@@ -1,44 +1,37 @@
 package link.locutus.discord.commands.account.question.questions;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.Alliance;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.account.question.Question;
 import link.locutus.discord.commands.alliance.SetRank;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.domains.Alliance;
-import link.locutus.discord.apiv1.domains.Nation;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public enum InterviewQuestion implements Question {
-    INTRO("Hello, welcome to Gladiators! We'll run through the following:\n" +
-            " - A short interview\n" +
-            " - Learning the game\n" +
-            " - Your path to become a Gladiator and joining the Council\n", false) {
+    INTRO("""
+            Hello, welcome to Gladiators! We'll run through the following:
+             - A short interview
+             - Learning the game
+             - Your path to become a Gladiator and joining the Council
+            """, false) {
         @Override
         public String format(Guild guild, User author, DBNation me, GuildMessageChannel channel, String message) {
             Role role = Roles.INTERVIEWER.toRole(guild);
@@ -60,22 +53,18 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
+<<<<<<< HEAD
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty() || aaIds.contains(me.getAlliance_id())) return true;
 
+=======
+            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+            if (aaId == null || aaId.equals(me.getAlliance_id())) return true;
+>>>>>>> pr/15
             if (me.getAlliance_id() == 0) return false;
             throw new IllegalArgumentException("please leave your alliance first then " + getContent());
         }
     },
-
-//    REROLL("Why did you choose us?\n\n" +
-//            "*please type out your answer*", false) {
-//        @Override
-//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
-//            long latestId = channel.getLatestMessageIdLong();
-//        }
-//    },
-
     LONG_TERM("Did you like the game so far? Are you planning to be a long term player?", false, "Y", "N") {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
@@ -83,29 +72,13 @@ public enum InterviewQuestion implements Question {
                 Role role = Roles.TEMP.toRole(guild);
                 if (role != null) {
                     Member member = guild.getMember(author);
+                    assert member != null;
                     RateLimitUtil.queue(guild.addRoleToMember(member, role));
                 }
             }
             return true;
         }
     },
-
-//    ACTIVE("We value members that check in on discord regularly and seek advice on how to improve their nation or get more involved in the community. \n" +
-//            "If you go inactive for 7 days without warning, we will set you as applicant and wont protect you if you are attacked.\n\n" +
-//            "Can you be active on discord daily?", false, "Y", "N") {
-//        @Override
-//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
-//            if (input.equalsIgnoreCase("Y")) {
-//                Role role = Roles.TEMP.toRole(guild);
-//                if (role != null) {
-//                    Member member = guild.getMember(author);
-//                    guild.addRoleToMember(member, link.locutus.discord.util.RateLimitUtil.queue(role));
-//                }
-//            }
-//            return true;
-//        }
-//    },
-
     TAXES("A portion of your city income will be deposited into the alliance bank via taxes, and included in your personal " + CM.deposits.check.cmd.toSlashMention() + " (updated weekly)\n" +
             "We want to provide an efficient centralized economy and can send you resources to run/grow your nation.\n" +
             "Note: your profit from raiding or trading is never taxed.\n\n" +
@@ -185,7 +158,7 @@ public enum InterviewQuestion implements Question {
                 if (!aaIds.contains(me.getAlliance_id()) || me.getPosition() <= 1) {
                     Role iaRole = Roles.INTERVIEWER.toRole(guild);
                     User sudoUser = sudoer.getUser();
-                    if (sudoer != null && sudoer.getPosition() > 2 && sudoUser != null) {
+                    if (sudoer.getPosition() > 2 && sudoUser != null) {
                         Member sudoMember = guild.getMember(sudoUser);
                         if (sudoMember != null && sudoMember.getRoles().contains(iaRole)) {
                             try {
@@ -210,15 +183,21 @@ public enum InterviewQuestion implements Question {
 
             Role memberRole = Roles.MEMBER.toRole(guild);
             if (memberRole != null) {
+<<<<<<< HEAD
                 Member member = guild.getMember(author);
                 if (member == null || !member.getRoles().contains(memberRole)) return false;
+=======
+                return Objects.requireNonNull(guild.getMember(author)).getRoles().contains(memberRole);
+>>>>>>> pr/15
             }
             return true;
         }
     },
 
-    INTRODUCTION("By completing these queries, you can be promoted to GRADUATED and have the opportunity to become alliance gov\n\n" +
-            "To start off, please introduce yourself in <#{guild.introduction_channel}>", false),
+    INTRODUCTION("""
+            By completing these queries, you can be promoted to GRADUATED and have the opportunity to become alliance gov
+
+            To start off, please introduce yourself in <#{guild.introduction_channel}>""", false),
 
     INFO("Checkout <#{guild.info_channel}> to find out who your government members are, and who to ask for help", false),
 
@@ -227,7 +206,7 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             if (me.getCities() <= 1) {
-                if (me.getCities() <= 1) return false;
+                return me.getCities() > 1;
             }
             return true;
         }
@@ -242,9 +221,7 @@ public enum InterviewQuestion implements Question {
             NationColor color = me.getColor();
             Alliance alliance = Locutus.imp().getPnwApi().getAlliance(me.getAlliance_id());
             if (!color.name().equalsIgnoreCase(alliance.getColor()) && color != NationColor.BEIGE) {
-                if (!color.name().equalsIgnoreCase(alliance.getColor()) && color != NationColor.BEIGE) {
-                    return false;
-                }
+                return color.name().equalsIgnoreCase(alliance.getColor());
             }
             return true;
         }
@@ -269,16 +246,16 @@ public enum InterviewQuestion implements Question {
 
             if (me.getCities() >= 10) return true;
             if (me.getWarPolicy() != WarPolicy.PIRATE) {
-                if (me.getWarPolicy() != WarPolicy.PIRATE) {
-                    return false;
-                }
+                return me.getWarPolicy() == WarPolicy.PIRATE;
             }
             return true;
         }
     },
 
-    BARRACKS("Soldiers are the best unit for looting enemies, and are cheap. Get 5 barracks in each of your cities. <https://politicsandwar.com/cities/>\n\n" +
-            "*Note: You can sell off buildings, or buy more infrastructure if you are lacking building slots*", true) {
+    BARRACKS("""
+            Soldiers are the best unit for looting enemies, and are cheap. Get 5 barracks in each of your cities. <https://politicsandwar.com/cities/>
+
+            *Note: You can sell off buildings, or buy more infrastructure if you are lacking building slots*""", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             if (me.getCities() > 10) return true;
@@ -291,17 +268,16 @@ public enum InterviewQuestion implements Question {
                 totalBarracks += entry.getValue().get(Buildings.BARRACKS);
             }
             double avgBarracks = totalBarracks / cityMap.size();
-            if (avgBarracks <= 4) {
-                return false;
-            }
-            return true;
+            return !(avgBarracks <= 4);
         }
     },
 
 
-    SOLDIERS("You can buy some soldiers from the military tab: <https://politicsandwar.com/nation/military/>\n" +
-            "It takes 3 days to max out soldiers from 0 (though you can start raiding right away)\n\n" +
-            "Note: Your city needs to be powered to recruit units. Let us know if you need any help powering cities!", true) {
+    SOLDIERS("""
+            You can buy some soldiers from the military tab: <https://politicsandwar.com/nation/military/>
+            It takes 3 days to max out soldiers from 0 (though you can start raiding right away)
+
+            Note: Your city needs to be powered to recruit units. Let us know if you need any help powering cities!""", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             if (me.getCities() > 10) return true;
@@ -310,7 +286,7 @@ public enum InterviewQuestion implements Question {
                 if (me.getSoldiers() < perDay * 0.3) {
                     throw new IllegalArgumentException("**You still only have " + me.getSoldiers() + " soldiers**\n\n" + getContent());
                 }
-            };
+            }
             return true;
         }
     },
@@ -320,24 +296,16 @@ public enum InterviewQuestion implements Question {
             "tl;dr since you just have soldiers, do ground attacks. Inactive enemies don't generally fight back", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
-            GuildDB db = Locutus.imp().getGuildDB(guild);
             if (me.getOff() == 5 || me.getCities() >= 10) return true;
 
             return (me.getOff() >= 5);
         }
     },
+    DEPOSIT_RESOURCES("""
+            Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:
+            https://politicsandwar.com/alliance/id={guild.alliance_id}&display=bank
 
-//    PERFORM_ATTACKS("Now that you have declared your raids, you can perform your attacks. Inactive enemies won't fight back, and if you've picked targets with no ground, you can perform ground attacks to defeat them.\n" +
-//            "https://politicsandwar.com/nation/war/", true) {
-//        @Override
-//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
-//            return super.validate(guild, author, me, channel, input);
-//        }
-//    },
-
-    DEPOSIT_RESOURCES("Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:\n" +
-            "https://politicsandwar.com/alliance/id={guild.alliance_id}&display=bank\n\n" +
-            "*Note: deposit $1 if you don't need to safekeep*", true) {
+            *Note: deposit $1 if you don't need to safekeep*""", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -363,8 +331,10 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    WITHDRAW_DEPOSITS("You can request your funds by asking in <#{guild.resource_request_channel}>\n\n" +
-            "*Note: Below 7 cities, we can provide funds to get your two cities up and running, we don't do city grants initially since we want members to start off by raiding for $$$*", false) {
+    WITHDRAW_DEPOSITS("""
+            You can request your funds by asking in <#{guild.resource_request_channel}>
+
+            *Note: Below 7 cities, we can provide funds to get your two cities up and running, we don't do city grants initially since we want members to start off by raiding for $$$*""", false) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -386,36 +356,32 @@ public enum InterviewQuestion implements Question {
             return super.format(guild, author, me, channel, message);
         }
     },
-
-//    TRAINING_DISCORD("Checkout our training discord: <https://discord.gg/ZqbNBvb>", true) {
-//        @Override
-//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
-//            Member member = Locutus.imp().getDiscordApi().getGuildById(710321760519848009L).getMemberById(author.getIdLong());
-//            return member != null;
-//        }
-//    },
-
-    USEFUL_LINKS("Other useful links\n" +
-            "Wiki: https://politicsandwar.fandom.com/\n" +
-            "Forums: https://forum.politicsandwar.com/\n" +
-            "P&W Discord: https://discord.gg/H9XnGxc", false),
+    USEFUL_LINKS("""
+            Other useful links
+            Wiki: https://politicsandwar.fandom.com/
+            Forums: https://forum.politicsandwar.com/
+            P&W Discord: https://discord.gg/H9XnGxc""", false),
 
 
-    SPIES("Spies can discover enemy resource amounts and perform various sabotage operations (like destroying planes). " +
-            "You can do so daily, without using a war slot, or bringing you out of beige protection, and even against enemies who are under beige protection.\n\n" +
-            "You should always purchase max spies every day. Without Intelligence Agency you can buy up to 50 spies.\n\n" +
-            "Please purchase spies from the military tab if you have not:\n" +
-            "https://politicsandwar.com/nation/military/spies/", false) {
+    SPIES("""
+            Spies can discover enemy resource amounts and perform various sabotage operations (like destroying planes). You can do so daily, without using a war slot, or bringing you out of beige protection, and even against enemies who are under beige protection.
+
+            You should always purchase max spies every day. Without Intelligence Agency you can buy up to 50 spies.
+
+            Please purchase spies from the military tab if you have not:
+            https://politicsandwar.com/nation/military/spies/""", false) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             return me.updateSpies(true) > 0;
         }
     },
 
-    ESPIONAGE("Using the 2 spies you purchased, please perform a gather intelligence op against one of the nations you are fighting (covert)\n" +
-            " - go to their nation page, and click the espionage button\n" +
-            " - Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)\n\n" +
-            "Remember to purchase max spies every day", true) {
+    ESPIONAGE("""
+            Using the 2 spies you purchased, please perform a gather intelligence op against one of the nations you are fighting (covert)
+             - go to their nation page, and click the espionage button
+             - Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)
+
+            Remember to purchase max spies every day""", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_SPYOP) != null;
@@ -462,7 +428,6 @@ public enum InterviewQuestion implements Question {
             Set<Integer> infraLevels = new HashSet<>();
 
             boolean oddInfraAmounts = false;
-            boolean inefficientAmount = false;
 
             Map<Integer, JavaCity> cities = me.getCityMap(true, true);
             for (JavaCity city : cities.values()) {
@@ -472,16 +437,10 @@ public enum InterviewQuestion implements Question {
                 if (infra % 50 != 0) {
                     oddInfraAmounts = true;
                 }
-                if (infra % 100 != 0) {
-                    inefficientAmount = true;
-                }
             }
 
             StringBuilder response = new StringBuilder();
 
-            if (inefficientAmount) {
-//                response.append("Infrastructure is cheapest when purchased");
-            }
 
             if (infraLevels.size() > 1) {
                 response.append("By having different amounts of infrastructure in each city, you cannot import the same build into all of them.\n");
@@ -491,9 +450,7 @@ public enum InterviewQuestion implements Question {
             maxInfra = Math.min(maxAllowed, (50 * (((int) maxInfra + 49) / 50)));
 
             if (oddInfraAmounts) {
-                response.append("Each building requires 50 infrastructure to be built, but will continue to operate if infrastructure is lost. " +
-                        "It is a waste to purchase infrastructure up to an amount that is not divisible by 50.\n" +
-                        "Note: You can purchase up to a specified infra level by entering e.g. `@" + maxInfra + "`\n\n");
+                response.append("Each building requires 50 infrastructure to be built, but will continue to operate if infrastructure is lost. " + "It is a waste to purchase infrastructure up to an amount that is not divisible by 50.\n" + "Note: You can purchase up to a specified infra level by entering e.g. `@").append(maxInfra).append("`\n\n");
             }
 
             int[] mmr = {0, 0, 0, 0};
@@ -507,9 +464,7 @@ public enum InterviewQuestion implements Question {
             Integer cityId = cities.keySet().iterator().next();
             String cityUrl = PnwUtil.getCityUrl(cityId);
             String mmrStr = StringMan.join(mmr, "");
-            response.append("The `" + Settings.commandPrefix(true) + "OptimalBuild <city>` command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
-                    "`" + Settings.commandPrefix(true) + "OptimalBuild " + cityUrl + " infra=" + maxInfra + " mmr=" + mmrStr + "`\n\n" +
-                    "*Note: For help on using the command, use `" + Settings.commandPrefix(true) + "? optimalbuild`, you can also use the card in <#695194325193195580>");
+            response.append("The `").append(Settings.commandPrefix(true)).append("OptimalBuild <city>` command can be used to generate a build for a city. Let's try the command now, e.g.:\n").append("`").append(Settings.commandPrefix(true)).append("OptimalBuild ").append(cityUrl).append(" infra=").append(maxInfra).append(" mmr=").append(mmrStr).append("`\n\n").append("*Note: For help on using the command, use `").append(Settings.commandPrefix(true)).append("? optimalbuild`, you can also use the card in <#695194325193195580>");
 
             return response.toString();
         }
@@ -590,8 +545,6 @@ public enum InterviewQuestion implements Question {
             if (me.getCities() >= 10) return true;
             if (me.getDef() == 3) return true;
             throw new IllegalArgumentException("**You have not have 3 defensive wars yet. Note: the bot checks wars every 15m**\n\n" + getContent());
-//            List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
-//            wars.removeIf(w -> w.attacker_id == me.getNation_id() || w.status != WarStatus.ATTACKER_VICTORY);
         }
     },
 
@@ -642,9 +595,7 @@ public enum InterviewQuestion implements Question {
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             return false;
         }
-    }
-
-    ;
+    };
 
     private final String content;
     private final boolean validateOnInit;

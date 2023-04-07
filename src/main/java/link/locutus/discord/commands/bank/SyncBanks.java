@@ -11,7 +11,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -23,6 +22,7 @@ public class SyncBanks extends Command {
     public SyncBanks() {
         super(CommandCategory.ECON, CommandCategory.LOCUTUS_ADMIN);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return super.checkPermission(server, user) && Roles.ADMIN.hasOnRoot(user);
@@ -39,7 +39,17 @@ public class SyncBanks extends Command {
         DBAlliance aa = DBAlliance.parse(args.get(0), true);
         Long latest = args.size() == 2 ? Long.parseLong(args.get(1)) : null;
 
+<<<<<<< HEAD
         aa.getBank().sync(latest, false);
+=======
+        GuildDB db = Locutus.imp().getGuildDB(event);
+        Auth auth = db.getAuth(AlliancePermission.VIEW_BANK);
+        if (auth == null) return "No authentication found for this guild.";
+
+        event.getChannel().sendMessage("Syncing bank for " + db.getGuild());
+        OffshoreInstance bank = db.getHandler().getBank();
+        bank.sync(latest, false);
+>>>>>>> pr/15
         return "Done!";
     }
 }

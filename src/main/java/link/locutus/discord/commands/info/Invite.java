@@ -14,6 +14,7 @@ public class Invite extends Command {
     public Invite() {
         super(CommandCategory.GENERAL_INFO_AND_TOOLS);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;

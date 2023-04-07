@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 
 public class PrimitiveValidators extends BindingHelper {
-    @Binding(types={Integer.class})
+    @Binding(types = {Integer.class})
     @Range
     public static int intRange(int input, Range range) {
         if (input < range.min() || input > range.max()) {
@@ -15,7 +15,7 @@ public class PrimitiveValidators extends BindingHelper {
         return input;
     }
 
-    @Binding(types={Double.class})
+    @Binding(types = {Double.class})
     @Range
     public static double doubleRange(double input, Range range) {
         if (input < range.min() || input > range.max()) {
@@ -25,7 +25,7 @@ public class PrimitiveValidators extends BindingHelper {
         return input;
     }
 
-    @Binding(types={Long.class})
+    @Binding(types = {Long.class})
     @Range
     public static long longRange(long input, Range range) {
         if (input < range.min() || input > range.max()) {

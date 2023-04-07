@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Jokes extends Command {
@@ -15,7 +16,7 @@ public class Jokes extends Command {
 
     public Jokes() {
         super("joke", "pun", CommandCategory.FUN);
-        this.lines = FileUtil.readFile("/fun/jokes.txt").split("\\r?\\n");
+        this.lines = Objects.requireNonNull(FileUtil.readFile("/fun/jokes.txt")).split("\\r?\\n");
     }
 
     @Override

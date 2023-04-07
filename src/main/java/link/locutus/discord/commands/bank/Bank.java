@@ -1,6 +1,13 @@
 package link.locutus.discord.commands.bank;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -9,15 +16,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
-import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
-import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -39,7 +39,7 @@ public class Bank extends Command {
 
     @Override
     public String desc() {
-        return "View nation or AA bank contents";
+        return "View nation or AA bank contents.";
     }
 
     @Override
@@ -91,6 +91,20 @@ public class Bank extends Command {
             }
             totals = DBAlliance.getOrCreate(alliance).getStockpile();
         }
+<<<<<<< HEAD
+=======
+
+        if (nation == null || nation.getNation_id() != banker.getNation_id()) {
+            if (!Roles.ECON.has(author, guild) && !Roles.MILCOM.has(author, guild) && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild)) {
+                return "You do not have permission to check that account's stockpile.";
+            }
+        }
+
+        if (allowedApi != api && !Roles.ADMIN.hasOnRoot(user)) {
+            return "You do not have permission to view that bank: " + allowedApi + " != " + api;
+        }
+
+>>>>>>> pr/15
         String out = PnwUtil.resourcesToFancyString(totals);
         DiscordUtil.createEmbedCommand(event.getChannel(), args.get(0) + " stockpile", out);
         return null;

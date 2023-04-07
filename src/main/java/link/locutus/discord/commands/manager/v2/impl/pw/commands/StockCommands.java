@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+<<<<<<< HEAD
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
@@ -8,6 +9,11 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Step;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+=======
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.bank.BankWith;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+>>>>>>> pr/15
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
@@ -21,12 +27,19 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+<<<<<<< HEAD
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
+=======
+import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.MessageChannel;
+>>>>>>> pr/15
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.json.JSONObject;
 
 import java.io.IOException;
+<<<<<<< HEAD
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,14 +50,19 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+=======
+import java.util.*;
+>>>>>>> pr/15
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class StockCommands {
     @Command(desc = "Create a share buy offer")
-    public String buy(StockDB db, @Me DBNation me, Exchange exchange, double quantity, @Range(min=0.01) @Step(0.01) double maxprice) {
-        if (!exchange.canView(me)) return exchange.name + " requires you to be " + exchange.requiredRank + " to buy/sell";
-        if (exchange.id == ResourceType.MONEY.ordinal() || exchange.id == ResourceType.CREDITS.ordinal()) throw new IllegalArgumentException("Cannot buy/sell " + exchange.symbol);
+    public String buy(StockDB db, @Me DBNation me, Exchange exchange, double quantity, @Range(min = 0.01) @Step(0.01) double maxprice) {
+        if (!exchange.canView(me))
+            return exchange.name + " requires you to be " + exchange.requiredRank + " to buy/sell";
+        if (exchange.id == ResourceType.MONEY.ordinal() || exchange.id == ResourceType.CREDITS.ordinal())
+            throw new IllegalArgumentException("Cannot buy/sell " + exchange.symbol);
         Map.Entry<Long, Long> currentPrice = db.getCurrentPrice(exchange.id);
         long priceLong = (long) (maxprice * 100);
         long quantityLong = (long) (quantity * 100);
@@ -56,7 +74,7 @@ public class StockCommands {
             open.removeIf(f -> f.buyer != 0);
             open.removeIf(f -> f.price > priceLong);
             if (!open.isEmpty()) {
-                Collections.sort(open, (o1, o2) -> Long.compare(o1.price, o2.price));
+                open.sort(Comparator.comparingLong(o -> o.price));
                 for (StockTrade trade : open) {
                     // TODO dont buy from yourself
                     if (quantityLong <= 0) break;
@@ -90,9 +108,11 @@ public class StockCommands {
     }
 
     @Command(desc = "Create a sell offer. If buy offers are available for that price, it will be filled (with confirmation)")
-    public String sell(StockDB db, @Me DBNation me, Exchange exchange, double quantity, @Range(min=0.01) @Step(0.01) double minprice) {
-        if (!exchange.canView(me)) return exchange.name + " requires you to be " + exchange.requiredRank + " to buy/sell";
-        if (exchange.id == ResourceType.MONEY.ordinal() || exchange.id == ResourceType.CREDITS.ordinal()) throw new IllegalArgumentException("Cannot buy/sell " + exchange.symbol);
+    public String sell(StockDB db, @Me DBNation me, Exchange exchange, double quantity, @Range(min = 0.01) @Step(0.01) double minprice) {
+        if (!exchange.canView(me))
+            return exchange.name + " requires you to be " + exchange.requiredRank + " to buy/sell";
+        if (exchange.id == ResourceType.MONEY.ordinal() || exchange.id == ResourceType.CREDITS.ordinal())
+            throw new IllegalArgumentException("Cannot buy/sell " + exchange.symbol);
         Map.Entry<Long, Long> currentPrice = db.getCurrentPrice(exchange.id);
         long priceLong = (long) (minprice * 100);
         long quantityLong = (long) (quantity * 100);
@@ -104,7 +124,7 @@ public class StockCommands {
             open.removeIf(f -> f.seller != 0);
             open.removeIf(f -> f.price < priceLong);
             if (!open.isEmpty()) {
-                Collections.sort(open, (o1, o2) -> Long.compare(o2.price, o1.price));
+                open.sort((o1, o2) -> Long.compare(o2.price, o1.price));
                 for (StockTrade trade : open) {
                     // TODO dont buy from yourself
                     if (quantityLong <= 0) break;
@@ -146,9 +166,9 @@ public class StockCommands {
         StringBuilder response = new StringBuilder();
         for (StockTrade trade : myTrades) {
             if (db.deleteTrade(trade.tradeId)) {
-                response.append("Deleted trade:\n" + trade.toString());
+                response.append("Deleted trade:\n").append(trade);
             } else {
-                response.append("Failed to delete trade:\n" + trade.toString());
+                response.append("Failed to delete trade:\n").append(trade);
             }
         }
         return response.toString();
@@ -164,9 +184,9 @@ public class StockCommands {
         StringBuilder response = new StringBuilder();
         for (StockTrade trade : myTrades) {
             if (db.deleteTrade(trade.tradeId)) {
-                response.append("Deleted trade:\n" + trade.toString());
+                response.append("Deleted trade:\n").append(trade);
             } else {
-                response.append("Failed to delete trade:\n" + trade.toString());
+                response.append("Failed to delete trade:\n").append(trade);
             }
         }
         return response.toString();
@@ -180,12 +200,12 @@ public class StockCommands {
             return "You have no trade matching id: " + tradeId;
         }
         if (trade.buyer != 0 && trade.seller != 0) {
-            return "Your trade " + tradeId + " has already been finalized";
+            return "Your trade " + tradeId + " has already been finalized.";
         }
         if (db.deleteTrade(tradeId)) {
-            return "Deleted trade:\n" + trade.toString();
+            return "Deleted trade:\n" + trade;
         } else {
-            return "Failed to delete trade:\n" + trade.toString();
+            return "Failed to delete trade:\n" + trade;
         }
     }
 
@@ -202,11 +222,11 @@ public class StockCommands {
     private String info(@Me IMessageIO channel, StockDB db, @Me DBNation me, NationOrExchange nationOrExchange) {
         if (nationOrExchange.isExchange()) {
             Exchange exchange = nationOrExchange.getExchange();
-            if (!exchange.canView(me)) return "No permission for this exchange";
+            if (!exchange.canView(me)) return "No permission for this exchange.";
         }
         Map<Exchange, Long> myShares = db.getSharesByNation(nationOrExchange.getId());
         if (myShares.isEmpty()) {
-            return "You have no shares or resources in your account";
+            return "You have no shares or resources in your account.";
         }
 
         Map<ResourceType, Double> resourceShares = new LinkedHashMap<>();
@@ -227,7 +247,7 @@ public class StockCommands {
         if (!resourceShares.isEmpty()) {
             double rssValue = PnwUtil.convertedTotal(resourceShares);
             total += rssValue;
-            response.append("**Resources**: worth: ~$" + MathMan.format(rssValue)).append("\n");
+            response.append("**Resources**: worth: ~$").append(MathMan.format(rssValue)).append("\n");
             response.append(PnwUtil.resourcesToString(resourceShares)).append("\n");
         }
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
@@ -238,7 +258,7 @@ public class StockCommands {
 
             total += valuePerShare * (shares / 100d);
 
-            response.append("**" + exchange.symbol + ":** " + MathMan.format(shares / 100d) + "\n");
+            response.append("**").append(exchange.symbol).append(":** ").append(MathMan.format(shares / 100d)).append("\n");
         }
 
         String title = nationOrExchange.getName() + " shares";
@@ -248,14 +268,14 @@ public class StockCommands {
         return null;
     }
 
-    @Command(aliases = {"info", "exchangeinfo"}, desc="Show general info about an exchange")
+    @Command(aliases = {"info", "exchangeinfo"}, desc = "Show general info about an exchange")
     public String info(@Me IMessageIO channel, StockDB db, Exchange exchange) {
         String body = exchange.toString();
-        channel.create().embed(exchange.symbol, body.toString()).send();
+        channel.create().embed(exchange.symbol, body).send();
         return null;
     }
 
-    @Command(aliases = {"exchanges", "search", "find", "companies"}, desc="List exchanges matching input")
+    @Command(aliases = {"exchanges", "search", "find", "companies"}, desc = "List exchanges matching input")
     public String exchanges(StockDB db, @Me DBNation me, String filter) {
         filter = filter.toLowerCase();
         List<String> equals = new ArrayList<>();
@@ -269,23 +289,17 @@ public class StockCommands {
             String nameBold = name.replaceAll("(?i)(" + filter + ")", "\\*\\*$1\\*\\*");
             if (entry.getKey().equalsIgnoreCase(filter)) {
                 equals.add("**" + name + "**");
-            }
-            else if (entry.getKey().toLowerCase().contains(filter)) {
+            } else if (entry.getKey().toLowerCase().contains(filter)) {
                 int distance = StringMan.getLevenshteinDistance(filter, name.toLowerCase());
                 matches.add(new AbstractMap.SimpleEntry<>(nameBold, distance));
             } else if (exchange.description.toLowerCase().matches(".*\b" + filter + "\b.*")) {
                 desc.add(exchange.symbol);
             }
         }
-        Collections.sort(matches, new Comparator<Map.Entry<String, Integer>>() {
-            @Override
-            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
-                return Integer.compare(o1.getValue(), o2.getValue());
-            }
-        });
+        matches.sort(Comparator.comparingInt(Map.Entry::getValue));
         List<String> all = new ArrayList<>();
         all.addAll(equals);
-        all.addAll(matches.stream().map(f -> f.getKey()).collect(Collectors.toList()));
+        all.addAll(matches.stream().map(Map.Entry::getKey).toList());
         all.addAll(desc);
         if (!all.isEmpty()) {
             return "Matching exchanges:\n - " + StringMan.join(all, "\n - ");
@@ -323,8 +337,8 @@ public class StockCommands {
                 .addField("Selling", StringMan.join(highList, "\n"), true).build();
 
         channel.create().embed(embed)
-                        .commandButton(command, "Refresh")
-                                .send();
+                .commandButton(command, "Refresh")
+                .send();
         return null;
     }
 
@@ -340,15 +354,15 @@ public class StockCommands {
 
             Map.Entry<Long, Long> price = db.getCurrentPrice(type.ordinal());
             if (price.getKey() != null && (price.getKey() / 100d) > marketBuy) {
-                response.append("\nBuy " + type + " ingame @ $" + MathMan.format(marketBuy) + " and sell on exchange for $" + MathMan.format(price.getKey() / 100d));
+                response.append("\nBuy ").append(type).append(" ingame @ $").append(MathMan.format(marketBuy)).append(" and sell on exchange for $").append(MathMan.format(price.getKey() / 100d));
                 // buy ingame and sell stock
             }
             if (price.getValue() != null && (price.getValue() / 100d) < marketSell) {
-                response.append("\nBuy " + type + " on exchange @ $" + MathMan.format(price.getValue() / 100d) + " and sell on exchange for $" + MathMan.format(marketSell));
+                response.append("\nBuy ").append(type).append(" on exchange @ $").append(MathMan.format(price.getValue() / 100d)).append(" and sell on exchange for $").append(MathMan.format(marketSell));
                 // buy stock and sell ingame
             }
         }
-        if (response.length() == 0) return "Exchange prices all conform to ingame margins";
+        if (response.length() == 0) return "Exchange prices all conform to in-game margins.";
         return response.toString().trim();
     }
 
@@ -375,12 +389,12 @@ public class StockCommands {
         String refreshEmoji = "Refresh";
 
         channel.create().embed(
-                new EmbedBuilder().setTitle("Trade margin")
-        .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
-        .addField("Margin", StringMan.join(margin, "\n"), true).build()
+                        new EmbedBuilder().setTitle("Trade margin")
+                                .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
+                                .addField("Margin", StringMan.join(margin, "\n"), true).build()
                 )
-                        .commandButton(command, "Refresh")
-                                .send();
+                .commandButton(command, "Refresh")
+                .send();
         return null;
     }
 
@@ -436,28 +450,26 @@ public class StockCommands {
 
         HashMap<ResourceType, Double> totalVolume = new LinkedHashMap<>();
         for (ResourceType type : ResourceType.values()) {
-            double in  = inflows.getOrDefault(type, 0d);
-            double out  = outflow.getOrDefault(type, 0d);
+            double in = inflows.getOrDefault(type, 0d);
+            double out = outflow.getOrDefault(type, 0d);
             double total = Math.abs(in) + Math.abs(out);
             if (total != 0) totalVolume.put(type, total);
         }
 
-        StringBuilder response = new StringBuilder();
-        response
-                .append('\n').append("Buy (PPU):```")
-                .append(String.format("%16s", StringMan.getString(ppuBuy)))
-                .append("```")
-                .append(' ').append("Sell (PPU):```")
-                .append(String.format("%16s", StringMan.getString(ppuSell)))
-                .append("```")
-                .append(' ').append("Net inflows:```")
-                .append(String.format("%16s", StringMan.getString(netOutflows)))
-                .append("```")
-                .append(' ').append("Total Volume:```")
-                .append(String.format("%16s", StringMan.getString(totalVolume)))
-                .append("```");
-        response.append("Profit total: $").append(MathMan.format(profitTotal));
-        return response.toString().trim();
+        String response = '\n' + "Buy (PPU):```" +
+                String.format("%16s", StringMan.getString(ppuBuy)) +
+                "```" +
+                ' ' + "Sell (PPU):```" +
+                String.format("%16s", StringMan.getString(ppuSell)) +
+                "```" +
+                ' ' + "Net inflows:```" +
+                String.format("%16s", StringMan.getString(netOutflows)) +
+                "```" +
+                ' ' + "Total Volume:```" +
+                String.format("%16s", StringMan.getString(totalVolume)) +
+                "```" +
+                "Profit total: $" + MathMan.format(profitTotal);
+        return response.trim();
     }
 
     @Command(desc = "List average buy/sell price of an exchange over X days")
@@ -467,7 +479,8 @@ public class StockCommands {
         Map<Exchange, Double> low = new HashMap<>();
         Map<Exchange, Double> high = new HashMap<>();
         for (Exchange exchange : exchanges) {
-            if (!exchange.canView(me)) return exchange.name + " requires you to be " + exchange.requiredRank + " to view";
+            if (!exchange.canView(me))
+                return exchange.name + " requires you to be " + exchange.requiredRank + " to view";
             Map.Entry<Double, Double> price = db.getAveragePrice(exchange, time);
             if (price.getKey() != null) low.put(exchange, price.getKey());
             if (price.getValue() != null) high.put(exchange, price.getValue());
@@ -485,13 +498,13 @@ public class StockCommands {
         }
 
         channel.create().embed(new EmbedBuilder()
-                .setTitle("Trade average")
-                .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
-        .addField("Buying", StringMan.join(lowList, "\n"), true)
-        .addField("Selling", StringMan.join(highList, "\n"), true)
-                .build()
-        ).commandButton(command, "Refresh")
-                        .send();
+                        .setTitle("Trade average")
+                        .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
+                        .addField("Buying", StringMan.join(lowList, "\n"), true)
+                        .addField("Selling", StringMan.join(highList, "\n"), true)
+                        .build()
+                ).commandButton(command, "Refresh")
+                .send();
         return null;
     }
 
@@ -506,9 +519,9 @@ public class StockCommands {
 
         int perPage = 15;
         if (!onlySellOffers) {
-            if (buy.isEmpty()) result.append("No buy offers");
+            if (buy.isEmpty()) result.append("No buy offers.");
             else {
-                Collections.sort(buy, (o1, o2) -> Long.compare(o2.price, o1.price));
+                buy.sort((o1, o2) -> Long.compare(o2.price, o1.price));
                 String title = "Top Buy Offers";
                 List<String> results = new ArrayList<>();
 
@@ -522,9 +535,9 @@ public class StockCommands {
             }
         }
         if (!onlyBuyOffers) {
-            if (sell.isEmpty()) result.append("\nNo sell offers");
+            if (sell.isEmpty()) result.append("\nNo sell offers.");
             else {
-                Collections.sort(sell, Comparator.comparingLong(o -> o.price));
+                sell.sort(Comparator.comparingLong(o -> o.price));
                 String title = "Top Sell Offers";
                 List<String> results = new ArrayList<>();
 
@@ -544,7 +557,7 @@ public class StockCommands {
     public String mytrades(@Me IMessageIO channel, @Me JSONObject command, StockDB db, @Me DBNation nation, @Switch("b") boolean onlyBuyOffers, @Switch("s") boolean onlySellOffers, @Switch("p") int page) {
         ArrayList<StockTrade> trades = new ArrayList<>(db.getOpenTrades(nation.getNation_id()).values());
         if (trades.isEmpty()) return "No open trades";
-        Collections.sort(trades, (o1, o2) -> Double.compare(o2.date_offered, o1.date_offered));
+        trades.sort((o1, o2) -> Double.compare(o2.date_offered, o1.date_offered));
 
         List<StockTrade> buy = new ArrayList<>();
         List<StockTrade> sell = new ArrayList<>();
@@ -558,9 +571,9 @@ public class StockCommands {
 
         int perPage = 15;
         if (!onlySellOffers) {
-            if (buy.isEmpty()) result.append("No buy offers");
+            if (buy.isEmpty()) result.append("No buy offers.");
             else {
-                Collections.sort(buy, (o1, o2) -> Long.compare(o2.price, o1.price));
+                buy.sort((o1, o2) -> Long.compare(o2.price, o1.price));
                 String title = "Top Buy Offers";
                 List<String> results = new ArrayList<>();
 
@@ -574,9 +587,9 @@ public class StockCommands {
             }
         }
         if (!onlyBuyOffers) {
-            if (sell.isEmpty()) result.append("\nNo sell offers");
+            if (sell.isEmpty()) result.append("\nNo sell offers.");
             else {
-                Collections.sort(sell, Comparator.comparingLong(o -> o.price));
+                sell.sort(Comparator.comparingLong(o -> o.price));
                 String title = "Top Sell Offers";
                 List<String> results = new ArrayList<>();
 
@@ -599,12 +612,12 @@ public class StockCommands {
         trades.removeIf(f -> (f.is_buying ? f.buyer : f.seller) != id);
         if (trades.isEmpty()) return "No trade history";
 
-        Collections.sort(trades, (o1, o2) -> Double.compare(o2.date_bought, o1.date_bought));
+        trades.sort((o1, o2) -> Double.compare(o2.date_bought, o1.date_bought));
         List<String> results = new ArrayList<>();
 
         Map<Integer, Exchange> exchangeMap = new HashMap<>();
         for (StockTrade trade : trades) {
-            Exchange exchange = exchangeMap.computeIfAbsent(trade.company, f -> db.getExchange(f));
+            Exchange exchange = exchangeMap.computeIfAbsent(trade.company, db::getExchange);
             if (exchange != null && !exchange.canView(me)) continue;
             results.add(trade.toString());
         }
@@ -623,7 +636,7 @@ public class StockCommands {
         if (!exchange.canView(me)) return exchange.name + " requires you to be " + exchange.requiredRank + " to view";
 
         Map<Integer, Long> shareholders = db.getShareholdersByCorp(exchange.id);
-        if (shareholders.isEmpty()) return "No shareholders";
+        if (shareholders.isEmpty()) return "No shareholders.";
 
         List<String> results = new SummedMapRankBuilder<>(shareholders).sort().name(nationId -> PnwUtil.getName(nationId, false), f -> MathMan.format(f / 100d)).get();
 
@@ -639,7 +652,7 @@ public class StockCommands {
     @Command(desc = "List a nations shares")
     public String shares(@Me IMessageIO channel, @Me JSONObject command, StockDB db, NationOrExchange nation, @Switch("p") int page) {
         Map<Exchange, Long> shares = db.getSharesByNation(nation.getId());
-        if (shares.isEmpty()) return "No shareholders";
+        if (shares.isEmpty()) return "No shareholders.";
 
         List<String> results = new SummedMapRankBuilder<>(shares).sort().name(exchange -> exchange.symbol, f -> MathMan.format(f / 100d)).get();
 
@@ -656,16 +669,16 @@ public class StockCommands {
     // TODO withdraw from company to nation
 
     @Command(desc = "Give some of your shares to another nation")
-    @RolePermission(value={Roles.ECON}, root=true)
-    public String give(@Me IMessageIO channel, StockDB db, @Me DBNation me, NationOrExchange receiver, Exchange exchange, @Range(min=0.01) double amount, @Switch("f") boolean confirm, @Switch("a") boolean anonymous) {
+    @RolePermission(value = {Roles.ECON}, root = true)
+    public String give(@Me IMessageIO channel, StockDB db, @Me DBNation me, NationOrExchange receiver, Exchange exchange, @Range(min = 0.01) double amount, @Switch("f") boolean confirm, @Switch("a") boolean anonymous) {
         Map.Entry<Boolean, String> result = new NationOrExchange(me).give(me, receiver, exchange, amount, anonymous);
         return result.getValue();
     }
 
     @Command(desc = "Withdraw your cash/resources from the exchange")
     public String withdraw(@Me IMessageIO channel, @Me JSONObject command, StockDB db, @Me DBNation me, DBNation receiver, Map<ResourceType, Double> resources, @Switch("f") boolean force) throws IOException {
-        if (receiver.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
-        if (receiver.getVm_turns() != 0) throw new IllegalArgumentException("Receiver is on vacation mode");
+        if (receiver.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded.");
+        if (receiver.getVm_turns() != 0) throw new IllegalArgumentException("Receiver is on vacation mode.");
 
         if (!force) {
             String title = "Confirm transfer worth: $" + MathMan.format(PnwUtil.convertedTotal(resources));
@@ -679,6 +692,7 @@ public class StockCommands {
     }
 
     private String withdraw(StockDB db, DBNation sender, String receiver, Map<ResourceType, Double> resources) {
+<<<<<<< HEAD
 //        Map<Exchange, Long> shares = db.getSharesByNation(sender.getId());
 //        StringBuilder response = new StringBuilder();
 //
@@ -728,6 +742,55 @@ public class StockCommands {
 //        }
 //        return response.toString();
         return null;
+=======
+        Map<Exchange, Long> shares = db.getSharesByNation(sender.getId());
+        StringBuilder response = new StringBuilder();
+
+        synchronized (db) {
+            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
+                long current = shares.getOrDefault(entry.getKey().ordinal(), 0L);
+                long requiredLong = (long) (entry.getValue() * 100d);
+                if (requiredLong <= 0)
+                    throw new IllegalArgumentException("You must specify positive amounts to withdraw.");
+                if (requiredLong < current)
+                    throw new IllegalArgumentException("You do not have " + MathMan.format(entry.getValue()) + " " + entry.getKey().name());
+            }
+
+            GuildDB guildDb = Locutus.imp().getGuildDB(StockDB.ROOT_GUILD);
+            MessageChannel channel = guildDb.getOrThrow(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+
+            Map<ResourceType, Double> transfer = new HashMap<>();
+            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
+                ResourceType type = entry.getKey();
+                long amtLong = (long) (entry.getValue() * 100d);
+                if (db.transferShare(type.ordinal(), sender.getId(), 0, amtLong)) {
+                    transfer.put(type, entry.getValue());
+                } else {
+                    response.append("Your withdrawal of ").append(MathMan.format(entry.getValue())).append("x").append(type).append(" could not be processed. Please try again\n");
+                }
+            }
+
+            String title = "Withdraw ~$" + MathMan.format(PnwUtil.convertedTotal(transfer));
+
+            String body = sender.getUserDiscriminator() + "\n" +
+                    "From: " + sender.getNationUrlMarkup(true) + " | " + sender.getAllianceUrlMarkup(true) + "\n" +
+                    "To: " + receiver + "\n" +
+                    "Amount: `" + PnwUtil.resourcesToString(transfer) + "`" + "\n";
+
+            String emoji = "Confirm";
+
+            UUID token = UUID.randomUUID();
+            BankWith.authorized.add(token);
+            String transferStr = StringMan.getString(transfer);
+            String transferCmd = Settings.commandPrefix(true) + "transfer " + receiver + " " + transferStr + " #ignore -f -g:" + token;
+            String dmCmd = Settings.commandPrefix(true) + "dm " + sender.getNationUrl() + " 'Your withdrawal of `" + transferStr + "` has been processed'";
+            String command = transferCmd + "\n" + dmCmd;
+            DiscordUtil.createEmbedCommand(channel, title, body, emoji, command);
+
+            response.append("Requested withdrawal of: `").append(transferStr).append("`. Please wait...");
+        }
+        return response.toString();
+>>>>>>> pr/15
     }
 
     @Command(desc = "Withdraw your cash/resources from the exchange")
@@ -748,6 +811,6 @@ public class StockCommands {
             List<StockTrade> trades = db.getTradesBoughtByCorp(exchange.id, time);
         }
         // TODO graph of price history
-        return "TODO graph of price history";
+        return "TODO graph of price history.";
     }
 }

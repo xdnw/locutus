@@ -1,11 +1,11 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -13,29 +13,18 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AddBalance extends Command {
 
@@ -55,7 +44,7 @@ public class AddBalance extends Command {
 
     @Override
     public String desc() {
-        return "Modify a nation, alliance or guild's deposits";
+        return "Modify a nation, alliance or guild's deposits.";
     }
 
     @Override
@@ -80,7 +69,7 @@ public class AddBalance extends Command {
             return "Please use a note e.g. #deposit";
         }
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
-        if (guildDb == null) return "No guild";
+        if (guildDb == null) return "No guild.";
 
         OffshoreInstance offshore = guildDb.getOffshore();
 
@@ -108,7 +97,7 @@ public class AddBalance extends Command {
                     if (isGuild) arg = arg.toLowerCase().replace("guild:", "");
 
                     GuildDB otherGuildDb = Locutus.imp().getGuildDB(Long.parseLong(arg));
-                    if (otherGuildDb == null) return "Invalid guild id: " + otherGuildDb;
+                    if (otherGuildDb == null) return "Invalid guild id: `" + arg + "`";
                     Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
                     builder.add(otherGuildDb, transfer, note);
                 } else {
@@ -122,6 +111,10 @@ public class AddBalance extends Command {
             } else {
                 Map<ResourceType, Double> transfer = new HashMap<>();
                 if ((args.size() == 2 || args.size() == 3) && args.get(1).equalsIgnoreCase("*")) {
+<<<<<<< HEAD
+=======
+
+>>>>>>> pr/15
                     Set<Long> tracked = null;
                     if (args.size() == 3) {
                         tracked = new LinkedHashSet<>();
@@ -147,7 +140,7 @@ public class AddBalance extends Command {
                     return usage(channel);
                 }
                 transfer.entrySet().removeIf(entry -> entry.getValue() == 0);
-                if (transfer.isEmpty()) return "No amount specified";
+                if (transfer.isEmpty()) return "No amount specified.";
 
                 builder.add(nation, transfer, note);
             }
@@ -155,13 +148,13 @@ public class AddBalance extends Command {
 
         if ((!builder.getFundsToSendAAs().isEmpty() || !builder.getFundsToSendGuilds().isEmpty())) {
             if (offshore == null) {
-                return "Please run the addbalance command for alliances/guilds on the applicable offshore server";
+                return "Please run the addbalance command for alliances/guilds on the applicable offshore server.";
             }
             boolean isOffshore = guildDb.isOffshore();
-            if (!isOffshore) return "Please run the addbalance command for alliances/guilds on the applicable offshore server";
+            if (!isOffshore)
+                return "Please run the addbalance command for alliances/guilds on the applicable offshore server.";
         }
 
-        double[] total = builder.getTotal();
 
         DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
         if (!flags.contains('f')) {

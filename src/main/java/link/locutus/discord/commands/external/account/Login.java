@@ -7,19 +7,23 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+<<<<<<< HEAD
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.config.Settings;
+=======
+>>>>>>> pr/15
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBNation;
+<<<<<<< HEAD
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
+=======
+>>>>>>> pr/15
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -46,10 +50,42 @@ public class Login extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+<<<<<<< HEAD
         String[] split = DiscordUtil.trimContent(event.getMessage().getContentRaw()).split(" ", 3);
         String username = split[1];
         String password = split[2];
         return UnsortedCommands.login(new DiscordChannelIO(event), Locutus.imp().getDiscordDB(), me, guild, username, password);
+=======
+        try {
+            if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+            if (guild != null) {
+                return "This command must be used via private message with Locutus. DO NOT USE THIS COMMAND HERE";
+            }
+            GuildDB db = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
+            if (db == null) return "Your alliance " + me.getAlliance_id() + " is not registered with Locutus";
+            db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+            if (args.size() < 2) return usage(event);
+            Auth existingAuth = db.getAuth();
+            String[] split = DiscordUtil.trimContent(event.getMessage().getContentRaw()).split(" ", 3);
+            String username = split[1];
+            String password = split[2];
+
+            Auth auth = new Auth(me.getNation_id(), username, password);
+            ApiKeyPool.ApiKey key = auth.fetchApiKey();
+
+            Locutus.imp().getDiscordDB().addUserPass2(me.getNation_id(), username, password);
+
+            if (existingAuth != null) existingAuth.setValid(false);
+            Auth myAuth = me.getAuth(null);
+            if (myAuth != null) myAuth.setValid(false);
+
+            return "Login successful.";
+        } finally {
+            if (guild != null) {
+                RateLimitUtil.queue(event.getMessage().delete());
+            }
+        }
+>>>>>>> pr/15
     }
 }
 

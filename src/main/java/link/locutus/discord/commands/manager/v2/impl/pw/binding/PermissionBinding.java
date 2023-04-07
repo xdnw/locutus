@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+<<<<<<< HEAD
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.ClassPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
@@ -15,11 +16,13 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.NotGuild
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+=======
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
+>>>>>>> pr/15
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
@@ -29,13 +32,19 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+<<<<<<< HEAD
 import java.util.Map;
+=======
+import java.util.Objects;
+>>>>>>> pr/15
 import java.util.Set;
 
 public class PermissionBinding extends BindingHelper {
 
     @Binding
+<<<<<<< HEAD
     @ClassPermission
     public boolean checkClass(@Me GuildDB db, ClassPermission perm) {
         for (Class clazz : perm.value()) {
@@ -68,6 +77,8 @@ public class PermissionBinding extends BindingHelper {
 
 
     @Binding
+=======
+>>>>>>> pr/15
     @HasOffshore
     public static boolean hasOffshore(@Me GuildDB db, HasOffshore perm) {
         OffshoreInstance offshore = db.getOffshore();
@@ -75,9 +86,15 @@ public class PermissionBinding extends BindingHelper {
             StringBuilder response = new StringBuilder("No offshore is set.");
             response.append("\nSee: ").append(CM.offshore.add.cmd.toSlashMention());
             if (db.isValidAlliance()) {
+<<<<<<< HEAD
                 response.append("\nNote: Use this alliance id to use the alliance bank for withdrawals (or to create an offshoring point for other alliances you control)");
             } else if (!db.hasAlliance()) {
                 response.append("\nNote: Set the alliance for this guild using: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "");
+=======
+                response.append("\nNote: Use this alliance id to use the alliance bank for withdrawals, or to create an offshoring point for other alliances you control.");
+            } else if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) == null) {
+                response.append("\nNote: Set the alliance for this guild using: ").append(CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand());
+>>>>>>> pr/15
             }
             Set<String> publicOffshores = new HashSet<>();
             for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
@@ -102,12 +119,46 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
+    @Binding
+    @ClassPermission
+    public boolean checkClass(@Me GuildDB db, ClassPermission perm) {
+        for (Class clazz : perm.value()) {
+            if (db.getPermission(clazz) < 1)
+                throw new IllegalCallerException("Guild does not have " + clazz.getSimpleName());
+        }
+        return true;
+    }
+
+    @Binding
+    @IsAlliance
+    public boolean checkAlliance(@Me GuildDB db, IsAlliance perm) {
+        if (!db.isValidAlliance())
+            throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + "");
+        return true;
+    }
+
+    @Binding
+    @IsAuthenticated
+    public boolean isAuthenticated(@Me GuildDB db, IsAuthenticated perm) {
+        Auth auth = perm.value().length > 0 ? db.getAuth(perm.value()) : db.getAuth();
+        if (auth == null || !auth.isValid())
+            throw new IllegalArgumentException(db.getGuild() + " is not authenticaed. See: " + CM.credentials.login.cmd.toSlashMention() + "");
+        return true;
+    }
+
+    @Binding
+    @HasApi
+    public boolean hasApi(@Me GuildDB db, HasApi perm) {
+        if (db.getApi() == null)
+            throw new IllegalArgumentException("No api key set: " + CM.settings.cmd.create("API_KEY", null).toSlashCommand() + "");
+        return true;
+    }
 
     @Binding
     @IsGuild
     public boolean checkGuild(@Me Guild guild, IsGuild perm) {
-        if (!Arrays.asList(perm.value()).contains(guild.getIdLong())) {
-            throw new IllegalCallerException("Guild does not have permission");
+        if (Arrays.stream(perm.value()).noneMatch(f -> f == guild.getIdLong())) {
+            throw new IllegalCallerException("This guild does not have permission.");
         }
         return true;
     }
@@ -115,8 +166,8 @@ public class PermissionBinding extends BindingHelper {
     @Binding
     @NotGuild
     public boolean checkNotGuild(@Me Guild guild, NotGuild perm) {
-        if (Arrays.asList(perm.value()).contains(guild.getIdLong())) {
-            throw new IllegalCallerException("Guild has permission denied");
+        if (Arrays.stream(perm.value()).noneMatch(f -> f == guild.getIdLong())) {
+            throw new IllegalCallerException("This guild has permission denied.");
         }
         return true;
     }
@@ -125,7 +176,7 @@ public class PermissionBinding extends BindingHelper {
     @HasKey
     public boolean checkKey(@Me GuildDB db, @Me User author, HasKey perm) {
         if (perm.value() == null || perm.value().length == 0) {
-            throw new IllegalArgumentException("No key provided");
+            throw new IllegalArgumentException("No key provided.");
         }
         for (GuildDB.Key key : perm.value()) {
             Object value = db.getOrNull(key);
@@ -143,7 +194,7 @@ public class PermissionBinding extends BindingHelper {
     @WhitelistPermission
     public boolean checkWhitelistPermission(@Me GuildDB db, @Me User user, WhitelistPermission perm) {
         if (!db.isWhitelisted()) {
-            throw new IllegalCallerException("Guild is not whitelisted");
+            throw new IllegalCallerException("This guild is not whitelisted.");
         }
         if (!Roles.MEMBER.has(user, db.getGuild())) {
             throw new IllegalCallerException("You do not have " + Roles.MEMBER + " " + user.getAsMention());
@@ -171,7 +222,7 @@ public class PermissionBinding extends BindingHelper {
     @RankPermission
     public boolean checkRank(@Me Guild guild, RankPermission perm, @Me DBNation me) {
         if (me.getPosition() < perm.value().id) {
-            throw new IllegalCallerException("Your ingame alliance positions is below " + perm.value());
+            throw new IllegalCallerException("Your in-game alliance positions is below " + perm.value());
         }
         return true;
     }
@@ -187,7 +238,12 @@ public class PermissionBinding extends BindingHelper {
             guild = Locutus.imp().getServer();
         } else if (perm.guild() > 0) {
             guild = Locutus.imp().getDiscordApi().getGuildById(perm.guild());
+<<<<<<< HEAD
             if (guild == null) throw new IllegalCallerException("Guild " + perm.guild() + " does not exist" + " " + user.getAsMention() + " (are you sure Locutus is invited?)");
+=======
+            if (guild == null)
+                throw new IllegalCallerException("Guild " + perm.guild() + " does not exist" + " " + user.getAsMention());
+>>>>>>> pr/15
         }
         boolean hasAny = false;
         for (Roles requiredRole : perm.value()) {

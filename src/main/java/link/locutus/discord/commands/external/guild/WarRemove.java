@@ -28,10 +28,10 @@ public class WarRemove extends Command {
         if (args.size() != 1) return usage(event);
         GuildDB db = Locutus.imp().getGuildDB(event);
         WarCategory warChannels = db.getWarChannel();
-        if (warChannels == null) return "War channels are not enabled";
+        if (warChannels == null) return "War channels are not enabled.";
 
         WarCategory.WarRoom waRoom = warChannels.getWarRoom(event.getGuildChannel());
-        if (waRoom == null) return "This command must be run in a war room";
+        if (waRoom == null) return "This command must be run in a war room.";
 
         Set<DBNation> nation = DiscordUtil.parseNations(guild, args.get(0));
         return super.onCommand(event, guild, author, me, args, flags);

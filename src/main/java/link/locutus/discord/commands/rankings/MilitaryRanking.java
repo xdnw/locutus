@@ -1,6 +1,14 @@
 package link.locutus.discord.commands.rankings;
 
+import de.erichseifert.gral.data.DataTable;
+import de.erichseifert.gral.graphics.Insets2D;
+import de.erichseifert.gral.graphics.Location;
+import de.erichseifert.gral.io.plots.DrawableWriter;
+import de.erichseifert.gral.io.plots.DrawableWriterFactory;
+import de.erichseifert.gral.plots.BarPlot;
+import de.erichseifert.gral.plots.colors.ColorMapper;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -15,31 +23,14 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.CIEDE2000;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.web.WebUtil;
-import de.erichseifert.gral.data.DataTable;
-import de.erichseifert.gral.graphics.Insets2D;
-import de.erichseifert.gral.graphics.Location;
-import de.erichseifert.gral.io.plots.DrawableWriter;
-import de.erichseifert.gral.io.plots.DrawableWriterFactory;
-import de.erichseifert.gral.plots.BarPlot;
-import de.erichseifert.gral.plots.colors.ColorMapper;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Paint;
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 public class MilitaryRanking extends Command {
@@ -54,9 +45,10 @@ public class MilitaryRanking extends Command {
 
     @Override
     public String desc() {
-        return "Get the militirization levels of top 80 alliances\n" +
-                "Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
-                "Each alliance is grouped by sphere and color coded";
+        return """
+                Get the militirization levels of top 80 alliances.
+                Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
+                Each alliance is grouped by sphere and color coded.""";
     }
 
     @Override
@@ -135,12 +127,7 @@ public class MilitaryRanking extends Command {
             String colorStr = WebUtil.getColorHex(color);
 
             ArrayList<Map.Entry<Integer, NationList>> sphereAAs = new ArrayList<>(sphereAllianceMembers.get(sphereId).entrySet());
-            Collections.sort(sphereAAs, new Comparator<Map.Entry<Integer, NationList>>() {
-                @Override
-                public int compare(Map.Entry<Integer, NationList> o1, Map.Entry<Integer, NationList> o2) {
-                    return Double.compare(o2.getValue().getScore(), o1.getValue().getScore());
-                }
-            });
+            sphereAAs.sort((o1, o2) -> Double.compare(o2.getValue().getScore(), o1.getValue().getScore()));
             for (Map.Entry<Integer, NationList> aaEntry : sphereAAs) {
                 int aaId = aaEntry.getKey();
                 NationList nations = aaEntry.getValue();
@@ -171,7 +158,7 @@ public class MilitaryRanking extends Command {
                 row.add(soldierPct);
                 row.add(tankPct);
                 row.add(airPct);
-                row.add( navyPct);
+                row.add(navyPct);
 
                 double[] mmr = nations.getAverageMMR(false);
                 row.add(mmr[0] * 100 / Buildings.BARRACKS.cap(total::hasProject));
@@ -187,7 +174,7 @@ public class MilitaryRanking extends Command {
 
                 for (int i = 0; i < row.size(); i++) {
                     Object val = row.get(i);
-                    if (val instanceof Number && !Double.isFinite((double) ((Number) val).doubleValue())) {
+                    if (val instanceof Number && !Double.isFinite(((Number) val).doubleValue())) {
                         row.set(i, 0);
                     }
                 }
@@ -205,7 +192,7 @@ public class MilitaryRanking extends Command {
             for (int i = 1; i < values.size(); i++) {
                 List<Object> row = values.get(i);
                 String[] allianceSplit = ((String) row.get(0)).split("\"");
-                String alliance = allianceSplit.length > 2 ? allianceSplit[allianceSplit.length - 2] : "bloc average";
+                String alliance = allianceSplit.length > 2 ? allianceSplit[allianceSplit.length - 2] : "bloc average.";
                 Color color = Color.decode((String) row.get(1));
 
                 double total = 0;

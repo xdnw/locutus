@@ -59,9 +59,7 @@ public class Revenue extends Command {
 
         boolean force = flags.contains('f');
         boolean bonus = !flags.contains('b');
-        Iterator<String> iterator = args.iterator();
-        while (iterator.hasNext()) {
-            String next = iterator.next();
+        for (String next : args) {
             if (next.contains("http") || next.contains("{")) break;
         }
 
@@ -74,7 +72,6 @@ public class Revenue extends Command {
         StringBuilder response = new StringBuilder();
 
         Map<DBNation, Map<Integer, JavaCity>> cities = new HashMap<>();
-//        Collection<JavaCity> builds = new ArrayList<>();
         if (jsonStart != -1) {
             String buildJson = content.substring(jsonStart, jsonEnd + 1);
             CityBuild cityBuild = CityBuild.of(buildJson);
@@ -115,7 +112,7 @@ public class Revenue extends Command {
             }
 
             if (nations.size() > 250 && !Locutus.imp().getGuildDB(guild).isWhitelisted()) {
-                return ">250 nations. Please try using a filter";
+                return "Too many nations (max: 250), Please try using a filter";
             }
 
             if (nations.size() == 0) {
@@ -144,13 +141,7 @@ public class Revenue extends Command {
         for (Map.Entry<DBNation, Map<Integer, JavaCity>> entry : cities.entrySet()) {
             DBNation nation = entry.getKey();
 
-            Predicate<Project> hasProject = new Predicate<Project>() {
-                @Override
-                public boolean test(Project project) {
-                    return nation.hasProject(project);
-//                    return project != null && project.get(pnwNation) > 0;
-                }
-            };
+            Predicate<Project> hasProject = nation::hasProject;
 
             double rads = nation.getRads();
 
@@ -194,14 +185,13 @@ public class Revenue extends Command {
             response.append('\n').append("Military upkeep:")
                     .append("```").append(PnwUtil.resourcesToString(milUp)).append("```");
 
-            response.append('\n').append("Trade bonus: ```" + tradeBonus + "```");
+            response.append('\n').append("Trade bonus: ```").append(tradeBonus).append("```");
 
             Map<ResourceType, Double> total = PnwUtil.add(PnwUtil.resourcesToMap(cityProfit), PnwUtil.resourcesToMap(milUp));
             total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + tradeBonus);
 
             response.append('\n').append("Combined Total:")
-                    .append("```").append(PnwUtil.resourcesToString(total)).append("```")
-                    .append("Converted total: $" + MathMan.format(PnwUtil.convertedTotal(total)));
+                    .append("```").append(PnwUtil.resourcesToString(total)).append("```").append("Converted total: $").append(MathMan.format(PnwUtil.convertedTotal(total)));
         }
 
         {
@@ -217,9 +207,9 @@ public class Revenue extends Command {
             }
             if (taxable > consumeCost) {
                 double requiredTax = 100 * consumeCost / taxable;
-                response.append("\nEquilibrium taxrate: `" + MathMan.format(requiredTax) + "%`");
+                response.append("\nEquilibrium taxrate: `").append(MathMan.format(requiredTax)).append("%`");
             } else {
-                response.append("\n`warn: Revenue is not sustainable`");
+                response.append("\n`warn: Revenue is not sustainable.`");
             }
         }
 

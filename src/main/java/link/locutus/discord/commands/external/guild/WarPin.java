@@ -24,9 +24,10 @@ public class WarPin extends Command {
     public WarPin() {
         super(CommandCategory.MILCOM, CommandCategory.MEMBER);
     }
+
     @Override
     public String desc() {
-        return "Update the pin in the war room";
+        return "Update the pin in the war room.";
     }
 
     @Override
@@ -38,13 +39,13 @@ public class WarPin extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(event);
         WarCategory warChannels = db.getWarChannel();
-        if (warChannels == null) return "War channels are not enabled";
+        if (warChannels == null) return "War channels are not enabled.";
 
         WarCategory.WarRoom warRoom = warChannels.getWarRoom(event.getGuildChannel());
-        if (warRoom == null) return "This command must be run in a war room";
+        if (warRoom == null) return "This command must be run in a war room.";
 
         IMessageBuilder message = warRoom.updatePin(true);
-        if (message == null) return "No war pin found";
+        if (message == null) return "No war pin found.";
         TextChannel channel = warRoom.channel;
         String url = DiscordUtil.getChannelUrl(channel) + "/" + message.getId();
         return "Updated: " + url;
