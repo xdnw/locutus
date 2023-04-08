@@ -5,13 +5,14 @@ import io.javalin.http.Context;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.io.IOException;
+import java.util.Map;
 
 public interface IAuthHandler {
     void login(Context ctx);
 
     void logout(Context ctx);
 
-    JsonObject getDiscordUser(Context ctx) throws IOException;
+    Long getDiscordUser(Context ctx) throws IOException;
 
     DBNation getNation(Context ctx) throws IOException;
 }

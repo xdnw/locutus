@@ -1233,9 +1233,11 @@ public class UnsortedCommands {
                 depositsAccount != null ? depositsAccount.getUrl() : null,
                 useAllianceBank != null ? useAllianceBank.getUrl() : null,
                 useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
+                taxAccount != null ? taxAccount.getQualifiedName() : null,
                 Boolean.FALSE.toString(),
                 expire == null ? null : ("timestamp:" + expire),
                 String.valueOf(force),
+                null,
                 key.toString()
         ).toJson();
 

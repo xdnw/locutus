@@ -115,14 +115,14 @@ public class Placeholders<T> {
 
                 if (type == String.class) {
                     adapter = op.getStringPredicate(part2);
-                    boolean val2 = PrimitiveBindings.Boolean(part2);
                 } else if (type == boolean.class || type == Boolean.class) {
+                    boolean val2 = PrimitiveBindings.Boolean(part2);
                     adapter = op.getBooleanPredicate(val2);
                 } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
                     double val2 = MathMan.parseDouble(part2);
                     adapter = op.getNumberPredicate(val2);
                 } else {
-                    throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean.");
+                    throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean");
                 }
 
                 return nation -> adapter.test(func.apply(nation));

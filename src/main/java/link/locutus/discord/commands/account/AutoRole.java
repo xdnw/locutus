@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -94,7 +93,7 @@ public class AutoRole extends Command {
 
         } else {
             DBNation nation = DiscordUtil.parseNation(args.get(0));
-            if (nation == null) return "That nation isn't registered: " + CM.register.cmd.toSlashMention() + "");
+            if (nation == null) return "That nation isn't registered: " + CM.register.cmd.toSlashMention() + "";
             User user = nation.getUser();
             if (user == null) return "User is not registered.";
             Member member = db.getGuild().getMember(user);
@@ -118,7 +117,7 @@ public class AutoRole extends Command {
             response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null, null, null).toSlashCommand() + "");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildDB.Key.AUTONICK) + "");
-        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null).toSlashCommand() + "");
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
 
         return response.toString();
     }

@@ -249,15 +249,8 @@ public class PageHandler implements Handler {
 
         try {
             Context ctx = sse.ctx;
-            JsonObject userJson = authHandler.getDiscordUser(ctx);
-            if (userJson == null) {
-                sseMessage(sse, "Not registered", false);
-                return;
-            }
-            Long userId = Long.parseLong(userJson.get("id").getAsString());
-            User user = Locutus.imp().getDiscordApi().getUserById(userId);
-            DBNation nation = DiscordUtil.getNation(userId);
-            if (nation == null || user == null) {
+            DBNation nation = authHandler.getNation(ctx);
+            if (nation == null) {
                 sseMessage(sse, "User not verfied", false);
                 return;
             }
@@ -350,16 +343,15 @@ public class PageHandler implements Handler {
 
     public Map.Entry<Long, DBNation> getUserIdNationPair(Context ctx) {
         try {
-            JsonObject userJson = authHandler.getDiscordUser(ctx);
-            if (userJson == null) {
-                throw new IllegalArgumentException("Not  registered");
-            }
-            Long id = Long.parseLong(userJson.get("id").getAsString());
-            DBNation nation = DiscordUtil.getNation(id);
+            DBNation nation = authHandler.getNation(ctx);
             if (nation == null) {
+                throw new IllegalArgumentException("Nation not verified");
+            }
+            Long userId = nation.getUserId();
+            if (userId == null) {
                 throw new IllegalArgumentException("User not verified");
             }
-            return new AbstractMap.SimpleEntry<>(id, nation);
+            return new AbstractMap.SimpleEntry<>(userId, nation);
         } catch (IOException e) {
             throw new IllegalArgumentException("IO error: " + e.getMessage());
         }
@@ -411,18 +403,12 @@ public class PageHandler implements Handler {
     public void sse(SseClient2 sse) {
         try {
             Context ctx = sse.ctx;
-            JsonObject userJson = authHandler.getDiscordUser(ctx);
-            if (userJson == null) {
-                sseMessage(sse, "Not registered", false);
-                return;
-            }
-            Long id = Long.parseLong(userJson.get("id").getAsString());
-            DBNation nation = DiscordUtil.getNation(id);
+            DBNation nation = authHandler.getNation(ctx);
             if (nation == null) {
                 sseMessage(sse, "User not verfied", false);
                 return;
             }
-            ArgumentStack stack = createStack(nation, id, ctx);
+            ArgumentStack stack = createStack(nation, null, ctx);
             stack.consumeNext();
             List<String> args = stack.getRemainingArgs();
             CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
@@ -604,12 +590,17 @@ public class PageHandler implements Handler {
             locals = new LocalValueStore<>(store);
         }
         locals.addProvider(Key.of(Context.class), ctx);
+        User user = userId == null ? null : Locutus.imp().getDiscordApi().getUserById(userId);
 
+        if (nation == null && user != null) {
+            nation = DiscordUtil.getNation(user.getIdLong());
+        }
+        if (user == null && nation != null) {
+            user = nation.getUser();
+        }
         if (nation != null) {
             locals.addProvider(Key.of(DBNation.class, Me.class), nation);
         }
-
-        User user = Locutus.imp().getDiscordApi().getUserById(userId);
 
         if (user != null) {
             locals.addProvider(Key.of(User.class, Me.class), user);
@@ -643,11 +634,9 @@ public class PageHandler implements Handler {
         List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
         path.remove("cmd_page");
 
-        Map.Entry<Long, DBNation> userNationPair = getUserIdNationPair(sse.ctx);
-        long userId = userNationPair.getKey();
-        DBNation nation = userNationPair.getValue();
+        DBNation nation = authHandler.getNation(ctx);
 
-        LocalValueStore locals = setupLocals(null, nation, userId, ctx, path);
+        LocalValueStore locals = setupLocals(null, nation, null, ctx, path);
 
         CommandCallable cmd = commands.getCallable(path);
 

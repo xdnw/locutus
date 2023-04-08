@@ -101,8 +101,8 @@ public class MailCommand extends Command implements Noformat {
             } else {
                 key = ApiKeyPool.builder().addKey(myKey).build();
             }
-                return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey`";
             if (key == null) {
+                return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey`";
             }
 
 

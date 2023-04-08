@@ -47,7 +47,6 @@ import link.locutus.discord.commands.fun.Nev;
 import link.locutus.discord.commands.fun.SriCommand;
 import link.locutus.discord.commands.info.ChannelCount;
 import link.locutus.discord.commands.info.CityCost;
-import link.locutus.discord.commands.info.DummyCommand;
 import link.locutus.discord.commands.info.InfraCost;
 import link.locutus.discord.commands.info.Invite;
 import link.locutus.discord.commands.info.LandCost;
@@ -486,7 +485,7 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null).toSlashCommand() + ""));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + ""));
                 return true;
             } else if (!member.getRoles().contains(registeredRole)) {
                 RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName()));
@@ -690,7 +689,6 @@ public class CommandManager {
         this.register(new WeeklyInterest()); //
         this.register(new ImportEmoji());
         this.register(new Interview());
-        this.register(new DummyCommand());
         this.register(new HasRole());
         this.register(new FindTrader());
         this.register(new RegisterCommand(db));

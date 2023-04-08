@@ -114,11 +114,13 @@ public class TransferCommand extends Command {
                 nationAccount != null ? nationAccount.getUrl() : null,
                 allianceAccount != null ? allianceAccount.getUrl() : null,
                 offshoreAccount != null ? offshoreAccount.getUrl() : null,
+                taxAccount != null ? taxAccount.getQualifiedName() : null,
                 String.valueOf(onlyMissingFunds),
                 expire == null ? null : ("timestamp:" + expire),
                 token == null ? null : token.toString(),
                 String.valueOf(convertCash),
-                String.valueOf(bypassChecks)
+                String.valueOf(bypassChecks),
+                null
         ).toJson();
 
         return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, taxAccount, onlyMissingFunds, expire, token, convertCash, bypassChecks, false);

@@ -410,11 +410,13 @@ public class BankCommands {
                     depositsAccount != null ? depositsAccount.getUrl() : null,
                     useAllianceBank != null ? useAllianceBank.getUrl() : null,
                     useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
+                    taxAccount != null ? taxAccount.getQualifiedName() : null,
                     Boolean.FALSE.toString(),
                     expire == null ? null : "timestamp:" + expire,
                     null,
                     String.valueOf(convertToMoney),
-                    String.valueOf(bypassChecks)
+                    String.valueOf(bypassChecks),
+                    null
             ).toJson();
 
             return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, false, expire, null, convertToMoney, bypassChecks, force);
@@ -429,9 +431,11 @@ public class BankCommands {
                     depositsAccount != null ? depositsAccount.getUrl() : null,
                     useAllianceBank != null ? useAllianceBank.getUrl() : null,
                     useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
+                    taxAccount != null ? taxAccount.getQualifiedName() : null,
                     Boolean.FALSE.toString(),
                     expire == null ? null : ("timestamp:" + expire),
                     String.valueOf(force),
+                    null,
                     key.toString()
             ).toJson();
 
@@ -1152,7 +1156,7 @@ public class BankCommands {
                 }
                 Role role = Roles.MEMBER.toRole(guild);
                 if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " +
-                        "" + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null) + " set");
+                        "" + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null, null) + " set");
                 nations = new LinkedHashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
