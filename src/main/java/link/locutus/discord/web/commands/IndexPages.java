@@ -211,7 +211,7 @@ public class IndexPages {
 
     @Command()
     public Object logout(Context context) throws IOException {
-        WebRoot.getInstance().logout(context);
+        WebRoot.getInstance().getPageHandler().logout(context);
         return "Logging out. If you are not redirected, please visit <a href=\"" + Settings.INSTANCE.WEB.REDIRECT + "\">" + Settings.INSTANCE.WEB.REDIRECT + "</a>";
     }
 

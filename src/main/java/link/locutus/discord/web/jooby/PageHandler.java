@@ -327,7 +327,7 @@ public class PageHandler implements Handler {
                 MessageReaction.ReactionEmote emote = MessageReaction.ReactionEmote.fromUnicode(emoji, jda);
 
 
-                Locutus.imp().onMessageReact(sseMessage, user, emote, 0, false);
+                Locutus.imp().onMessageReact(sseMessage, nation.getUser(), emote, 0, false); // TODO make onMessageReact  accept nation
             }
         } catch (Throwable e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
@@ -470,28 +470,24 @@ public class PageHandler implements Handler {
     public void handle(@NotNull Context ctx) throws Exception {
         logger.info("Page method " + ctx.method());
         try {
-            JsonObject userJson = authHandler.getDiscordUser(ctx);
-            if (userJson == null) {
-                authHandler.login(ctx);
-                return;
-            }
-            Long id = Long.parseLong(userJson.get("id").getAsString());
-            User user = Locutus.imp().getDiscordApi().getUserById(id);
-            if (user == null) {
+            Long userId = authHandler.getDiscordUser(ctx, true);
+            if (userId == null) {
                 String url = "https://discord.gg/H9XnGxc";
                 ctx.result("Please join the Politics & War discord: " + MarkupUtil.htmlUrl(url, url));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;
             }
-            DBNation nation = DiscordUtil.getNation(id);
+            DBNation nation = DiscordUtil.getNation(userId);
             if (nation == null) {
+                User user = DiscordUtil.getUser(userId);
+                String username = user != null ? user.getName() + "#" + user.getDiscriminator() : "id:" + userId;
                 ctx.result("Please use <b>" + CM.register.cmd.toSlashMention() + "</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
-                        "You are currently signed in as " + user.getName() + "#" + user.getDiscriminator() + ": " + MarkupUtil.htmlUrl("Logout", Settings.INSTANCE.WEB.REDIRECT + "/logout"));
+                        "You are currently signed in as " + username + ": " + MarkupUtil.htmlUrl("Logout", Settings.INSTANCE.WEB.REDIRECT + "/logout"));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;
             }
 
-            handleCommand(nation, id, ctx);
+            handleCommand(nation, userId, ctx);
         } catch (Throwable e) {
             e.printStackTrace();
             throw e;

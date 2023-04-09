@@ -175,96 +175,96 @@ public class AuthHandler implements IAuthHandler {
     private final Map<UUID, Integer> nationTokens = new ConcurrentHashMap<>();
     private final Map<UUID, Long> userTokens = new ConcurrentHashMap<>();
 
-    private Map.Entry<Integer, Long> getAuth(Context context, boolean throwAuthError) {
-        Map<String, String> cookies = context.cookieMap();
-        String discordAuth = cookies.get(cookieId(CookieType.DISCORD));
-
-        Long userId = null;
-        Integer nationId = null;
-
-        // If discord auth exists
-        if (discordAuth != null) {
-            Long discordId = tokenHashes.get(discordAuth);
-            if (discordId != null) {
-                Map.Entry<String, JsonObject> userInfo = tokenToUserMap.get(discordId);
-                if (userInfo != null) {
-                    userInfo.getValue();
-                }
-            }
-        }
-
-        // if command auth exists
-        String commandAuth = cookies.get(cookieId(CookieType.COMMAND));
-
-        // if mail auth exists
-        String mailAuth = cookies.get(cookieId(CookieType.MAIL));
-
-
-        if (userId == null && nationId == null) {
-            // get the path
-            String path = context.path();
-
-            System.out.println(":||Path " + path);
-            if (path.equalsIgnoreCase("auth")) {
-                Map<String, List<String>> queryMap = context.queryParamMap();
-
-                String token = StringMan.join(queryMap.getOrDefault("token", new ArrayList<>()), ",");
-                // Check token in temporary map
-                if (token != null) {
-                    try {
-                        UUID uuid = UUID.fromString(token);
-                        Integer validatedNation = nationTokens.remove(uuid);
-                        Long validatedUser = userTokens.remove(uuid);
-
-                        if (validatedUser != null) {
-                            // set user cookie
-                        }
-
-                    } catch (IllegalArgumentException e) {
-                        // invalid token, ignore it
-                        e.printStackTrace();
-                    }
-                }
-
-                String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
-                String authType = StringMan.join(queryMap.getOrDefault("type", new ArrayList<>()), ",");
-
-
-            }
-            if (userId == null && nationId == null) {
-                // prompt for auth
-                String authPage = createAuthPage(context, null, null);
-                // set context to authPage
-                context.result(authPage);
-
-
-                if (throwAuthError) {
-                    throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
-                }
-
-                return null;
-            }
-        }
-
-        if (userId != null || nationId != null) {
-            if (nationId == null) {
-                // get nation from user id
-            }
-            if (userId == null) {
-                // get user id from nation
-            }
-
-            DBNation nation = null;
-            User user = null;
-
-            if (nation != null && user != null) {
-                return new AbstractMap.SimpleEntry<>(nationId, userId);
-            }
-            // delete cookies and prompt for auth
-        }
-
-
-    }
+//    private Map.Entry<Integer, Long> getAuth(Context context, boolean throwAuthError) {
+//        Map<String, String> cookies = context.cookieMap();
+//        String discordAuth = cookies.get(cookieId(CookieType.DISCORD));
+//
+//        Long userId = null;
+//        Integer nationId = null;
+//
+//        // If discord auth exists
+//        if (discordAuth != null) {
+//            Long discordId = tokenHashes.get(discordAuth);
+//            if (discordId != null) {
+//                Map.Entry<String, JsonObject> userInfo = tokenToUserMap.get(discordId);
+//                if (userInfo != null) {
+//                    userInfo.getValue();
+//                }
+//            }
+//        }
+//
+//        // if command auth exists
+//        String commandAuth = cookies.get(cookieId(CookieType.COMMAND));
+//
+//        // if mail auth exists
+//        String mailAuth = cookies.get(cookieId(CookieType.MAIL));
+//
+//
+//        if (userId == null && nationId == null) {
+//            // get the path
+//            String path = context.path();
+//
+//            System.out.println(":||Path " + path);
+//            if (path.equalsIgnoreCase("auth")) {
+//                Map<String, List<String>> queryMap = context.queryParamMap();
+//
+//                String token = StringMan.join(queryMap.getOrDefault("token", new ArrayList<>()), ",");
+//                // Check token in temporary map
+//                if (token != null) {
+//                    try {
+//                        UUID uuid = UUID.fromString(token);
+//                        Integer validatedNation = nationTokens.remove(uuid);
+//                        Long validatedUser = userTokens.remove(uuid);
+//
+//                        if (validatedUser != null) {
+//                            // set user cookie
+//                        }
+//
+//                    } catch (IllegalArgumentException e) {
+//                        // invalid token, ignore it
+//                        e.printStackTrace();
+//                    }
+//                }
+//
+//                String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
+//                String authType = StringMan.join(queryMap.getOrDefault("type", new ArrayList<>()), ",");
+//
+//
+//            }
+//            if (userId == null && nationId == null) {
+//                // prompt for auth
+//                String authPage = createAuthPage(context, null, null);
+//                // set context to authPage
+//                context.result(authPage);
+//
+//
+//                if (throwAuthError) {
+//                    throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
+//                }
+//
+//                return null;
+//            }
+//        }
+//
+//        if (userId != null || nationId != null) {
+//            if (nationId == null) {
+//                // get nation from user id
+//            }
+//            if (userId == null) {
+//                // get user id from nation
+//            }
+//
+//            DBNation nation = null;
+//            User user = null;
+//
+//            if (nation != null && user != null) {
+//                return new AbstractMap.SimpleEntry<>(nationId, userId);
+//            }
+//            // delete cookies and prompt for auth
+//        }
+//
+//
+//    }
 
     public Long getUserId(JsonObject user) {
         JsonElement idStr = user.get("id");
@@ -275,13 +275,13 @@ public class AuthHandler implements IAuthHandler {
     }
 
 
-    public JsonObject getDiscordUserJson(Context context) throws IOException {
+    public JsonObject getDiscordUserJson(Context context, boolean login) throws IOException {
         String addr = context.ip();
 //        if (addr.equals("0:0:0:0:0:0:0:1") || addr.equals("[0:0:0:0:0:0:0:1]") || addr.equals("127.0.0.1") || addr.equals("[127.0.0.1]")) {
 //            return JsonParser.parseString("{\"id\":\"664156861033086987\",\"username\":\"borg\",\"avatar\":\"14aa8f752d52c066ad5ccb87116c90fa\",\"discriminator\":\"5729\",\"public_flags\":128,\"flags\":128,\"locale\":\"en-US\",\"mfa_enabled\":true}").getAsJsonObject();
 //        }
         Map<String, String> cookies = context.cookieMap();
-        String cookieId = cookieId();
+        String cookieId = cookieId(CookieType.DISCORD);
         String cookieData = cookies.get(cookieId);
         if (cookieData != null) {
             Long discordId = tokenHashes.get(cookieData);
@@ -321,12 +321,17 @@ public class AuthHandler implements IAuthHandler {
             }
         }
 
+        if (login) {
+            login(context);
+        }
+
         return null;
     }
 
     @Override
-    public Long getDiscordUser(Context ctx) throws IOException {
-        JsonObject userJson = getDiscordUserJson(ctx);
+    public Long getDiscordUser(Context ctx, boolean login) throws IOException {
+        // tODO combine this with getDiscorduseer and move login stuff to here
+        JsonObject userJson = getDiscordUserJson(ctx, true);
         if (userJson == null) {
             return null;
         }

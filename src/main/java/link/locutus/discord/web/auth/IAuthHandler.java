@@ -12,7 +12,11 @@ public interface IAuthHandler {
 
     void logout(Context ctx);
 
-    Long getDiscordUser(Context ctx) throws IOException;
+    default Long getDiscordUser(Context ctx) throws IOException {
+        return getDiscordUser(ctx, false);
+    }
+
+    Long getDiscordUser(Context ctx, boolean login) throws IOException;
 
     DBNation getNation(Context ctx) throws IOException;
 }
