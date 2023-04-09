@@ -14,9 +14,12 @@ import java.util.List;
 import java.util.Map;
 
 public class ClearNicks extends Command {
+    private final Map<Long, String> previous = new HashMap<>();
+
     public ClearNicks() {
         super(CommandCategory.GUILD_MANAGEMENT);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return Roles.ADMIN.has(user, server);
@@ -26,8 +29,6 @@ public class ClearNicks extends Command {
     public String help() {
         return super.help();
     }
-
-    private Map<Long, String> previous = new HashMap<>();
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
@@ -59,6 +60,6 @@ public class ClearNicks extends Command {
         if (failed != 0) {
             return "Failed to clear " + failed + " nicknames for reason: " + msg;
         }
-        return "Cleared all nicknames (that I have permission to clear)!";
+        return "Cleared all possible nicknames!";
     }
 }

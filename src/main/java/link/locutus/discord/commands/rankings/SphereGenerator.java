@@ -9,18 +9,9 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.CIEDE2000;
 
-import java.awt.Color;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.awt.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
 public class SphereGenerator {
     private final Map<Integer, DBAlliance> alliances;
@@ -33,15 +24,6 @@ public class SphereGenerator {
 
     public SphereGenerator(int topX) {
         this(Locutus.imp().getNationDB().getAlliances(true, true, true, topX));
-    }
-
-    public Map.Entry<Integer, List<DBAlliance>> getSphere(DBAlliance alliance) {
-        for (Map.Entry<Integer, List<DBAlliance>> entry : alliancesBySphere.entrySet()) {
-            if (entry.getValue().contains(alliance)) {
-                return new AbstractMap.SimpleEntry<>(entry.getKey(), new ArrayList<>(entry.getValue()));
-            }
-        }
-        return null;
     }
 
     public SphereGenerator(Collection<DBAlliance> alliances) {
@@ -66,7 +48,7 @@ public class SphereGenerator {
                 if (!root.contains(toAdd)) root.add(toAdd);
             }
             if (originalRootSize != 0 && originalRootSize != root.size()) {
-                Collections.sort(root, (o1, o2) -> Double.compare(o2.getScore(), o1.getScore()));
+                root.sort((o1, o2) -> Double.compare(o2.getScore(), o1.getScore()));
             }
 
             {
@@ -105,6 +87,15 @@ public class SphereGenerator {
 
     }
 
+    public Map.Entry<Integer, List<DBAlliance>> getSphere(DBAlliance alliance) {
+        for (Map.Entry<Integer, List<DBAlliance>> entry : alliancesBySphere.entrySet()) {
+            if (entry.getValue().contains(alliance)) {
+                return new AbstractMap.SimpleEntry<>(entry.getKey(), new ArrayList<>(entry.getValue()));
+            }
+        }
+        return null;
+    }
+
     public DBAlliance getAlliance(int allianceId) {
         return alliances.get(allianceId);
     }
@@ -124,6 +115,7 @@ public class SphereGenerator {
     /**
      * 0 = sphere id
      * the rest of the keys are alliance ids
+     *
      * @param sphereId
      * @return
      */

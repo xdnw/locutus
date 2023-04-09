@@ -45,8 +45,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class ExchangeCommands {
-    @Command(desc = "Create an exchange")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @Command(desc = "Create an exchange.")
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String create(@Me Guild guild, @Me User user, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation nation, ExchangeCategory category, String symbol, @Switch("f") boolean force) {
         if (!symbol.matches("[a-zA-Z0-9_]+")) return "`" + symbol + "` does not match (letters, numbers, underscores)";
         if (MathMan.isInteger(symbol)) return "The exchange symbol `" + symbol + "` must contain at least one letter";
@@ -56,11 +56,12 @@ public class ExchangeCommands {
 
         long owner = guild.getOwnerIdLong();
         if (owner != user.getIdLong()) {
-            return "You cannot register a company for `" + guild.getName() + "` as you lack discord ownership.\nAre you sure you ran the command in the correct server?";
+            return "You cannot register a company for `" + guild.getName() + "` as you lack discord ownership.\n Be sure ot run the command in the correct server.";
         }
 
         List<Exchange> exchanges = db.getExchangesByOwner(me.getNation_id());
-        if (exchanges.size() >= 4) return "You already have 4 corporations. Please contact us if you wish to create more";
+        if (exchanges.size() >= 4)
+            return "You already have 4 corporations. Please contact us if you wish to create more.";
 
         exchange = new Exchange(category, symbol, "", nation.getNation_id(), guild.getIdLong());
         exchange.name = guild.getName();
@@ -83,24 +84,23 @@ public class ExchangeCommands {
                 "Color Roles: `" + Settings.commandPrefix(false) + "exchange color <rank> <color>`\n"
         ));
 
-        StringBuilder help = new StringBuilder("Created exchange: `" + symbol.toUpperCase() + "`. To have it listed on the exchange please complete the following:\n");
-        help.append(" - Join " + StockDB.INVITE + "\n");
-        help.append(" - Visit your channel and read the setup documentation: " + exchangeChannel.getAsMention() + "\n");
-        return help.toString();
+        String help = "Created exchange: `" + symbol.toUpperCase() + "`. To have it listed on the exchange please complete the following:\n" + " - Join " + StockDB.INVITE + "\n" +
+                " - Visit your channel and read the setup documentation: " + exchangeChannel.getAsMention() + "\n";
+        return help;
     }
 
     @Command(desc = "Autorole members for an exchange")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String autoRole(@Me GuildDB db, @Me Guild guildl, @Me Member member, @Me DBNation me, StockDB stockDB, @Me Exchange exchange) {
         exchange.autoRole(member);
         exchange.autoRole();
         StringBuilder response = new StringBuilder();
-        db.getAutoRoleTask().autoRole(member, f -> response.append(f + "\n"));
+        db.getAutoRoleTask().autoRole(member, f -> response.append(f).append("\n"));
         return response.toString().trim();
     }
 
     @Command(desc = "Destroy an exchange")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String drop(@Me Guild guild, @Me IMessageIO io, @Me DBNation me, @Me JSONObject command, StockDB db, @Me Exchange exchange, @Switch("f") boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         if (!force) {
@@ -115,8 +115,8 @@ public class ExchangeCommands {
         return "Deleted exchange: " + exchange.symbol;
     }
 
-    @Command(desc = "Transfer funds from this corp to the accounts of a nation or another corp")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @Command(desc = "Transfer funds from this corp to the accounts of a nation or another corp.")
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String transfer(@Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation me, @Me Exchange exchange, NationOrExchange receiver, Exchange resource, double amount, @Switch("f") boolean force) {
         if (!force) {
             String title = "Confirm transfer: " + MathMan.format(amount) + "x" + resource.name;
@@ -133,8 +133,8 @@ public class ExchangeCommands {
         return null; // TODO
     }
 
-    @Command(desc = "Deposit your funds into an exchange")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @Command(desc = "Deposit your funds into an exchange.")
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String deposit(@Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation me, @Me Exchange exchange, Exchange resource, double amount, @Switch("f") boolean force) {
         NationOrExchange receiver = new NationOrExchange(exchange);
         if (!force) {
@@ -148,7 +148,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Export shares to a spreadsheet")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String exportShares(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         synchronized (db) {
             return null; // TODO
@@ -156,7 +156,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Import shares from a spreadsheet")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String importShares(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         // publicly traded companies, only Root admin can import shares
         // private companies, heir can import shares
@@ -166,7 +166,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Bulk transfer shares/resources from a corp to nation/corp balances")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String transferBulk(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         synchronized (db) {
             return null; // TODO
@@ -174,7 +174,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Bulk withdraw resources from a corp to nations/alliances ingame")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String withdrawBulk(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         synchronized (db) {
             return null; // TODO
@@ -182,7 +182,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Disburse raw resources to nations")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String disburse(StockDB db, @Me DBNation me, @Me Exchange exchange, Set<DBNation> nations, int days) {
         synchronized (db) {
             return null; // TODO
@@ -190,7 +190,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Bulk transfer shares/resources from a corp to nations")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String dividends(StockDB db, @Me DBNation me, @Me Exchange exchange, double valuePerShare, @Default("true") boolean sendInactive, @Default("true") boolean sendGray) {
         synchronized (db) {
             return null; // TODO
@@ -198,7 +198,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Set exchange description")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String description(StockDB db, @Me DBNation me, @Me Exchange exchange, @TextArea String description) {
         if (!exchange.checkPermission(me, Rank.OFFICER)) return "You are not the officer of: " + exchange.name;
 
@@ -209,7 +209,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Set exchange name")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String name(StockDB db, @Me DBNation me, @Me Exchange exchange, String name) {
         if (!exchange.checkPermission(me, Rank.OFFICER)) return "You are not the officer of: " + exchange.name;
         exchange.name = name;
@@ -218,7 +218,7 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Transfer exchange ownership")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String owner(@Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation newOwner, @Switch("f") boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         User user = newOwner.getUser();
@@ -237,12 +237,12 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Set exchange guild/invite", aliases = {"guild", "invite"})
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String guild(@Me Guild guild, @Me User user, @Me TextChannel channel, StockDB db, @Me DBNation me, Exchange exchange) {
         if (!exchange.checkPermission(me, Rank.HEIR)) return "You are not the heir of: " + exchange.name;
         long owner = guild.getOwnerIdLong();
         if (owner != user.getIdLong()) {
-            return "You cannot register a company for `" + guild.getName() + "` as you lack discord ownership.\nAre you sure you ran the command in the correct server?";
+            return "You cannot register a company for `" + guild.getName() + "` as you lack discord ownership.\nBe sure to ran the command in the correct server.";
         }
         {
             boolean hasInvite = false;
@@ -256,7 +256,7 @@ public class ExchangeCommands {
             if (!hasInvite) {
                 Invite invite = RateLimitUtil.complete((channel).createInvite().setUnique(false).setMaxAge(Integer.MAX_VALUE).setMaxUses(0));
                 if (invite == null) {
-                    return "Could not create invite";
+                    return "Could not create a invite.";
                 }
             }
         }
@@ -268,12 +268,12 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Promote or demote", aliases = {"demote", "setrank"})
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String promote(StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation user, Rank rank) {
         if (!exchange.checkPermission(me, Rank.OFFICER)) return "You are not an officer of: " + exchange.name;
-        if (!exchange.checkPermission(me, rank)) return "You cannot promote someone higher than you";
+        if (!exchange.checkPermission(me, rank)) return "You can not promote someone higher than you.";
         Rank userRank = exchange.getRank(user);
-        if (!exchange.checkPermission(me, userRank)) return "You cannot modify the rank of someone higher than you.";
+        if (!exchange.checkPermission(me, userRank)) return "You can not modify the rank of someone higher than you.";
         if (rank == Rank.REMOVE) {
             exchange.removeOfficer(user.getNation_id());
             return "Removed " + user.getNation() + " from " + exchange.name;
@@ -290,18 +290,19 @@ public class ExchangeCommands {
         }
     }
 
-    @Command(desc = "Set company charter")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @Command(desc = "Set company charter.")
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String charter(StockDB db, @Me DBNation me, @Me Exchange exchange, String charter) {
         if (!exchange.checkPermission(me, Rank.OFFICER)) return "You are not the officer of: " + exchange.name;
-        if (!exchange.charter.startsWith("https://docs.google.com/")) return "Not a valid google docs link: `" + charter + "`";
+        if (!exchange.charter.startsWith("https://docs.google.com/"))
+            return "Not a valid google docs link: `" + charter + "`";
         exchange.charter = charter;
         db.addExchangeWithId(exchange);
         return "Set charter to: " + charter;
     }
 
     @Command(desc = "Set company website", aliases = {"demote", "setrank"})
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String website(StockDB db, @Me DBNation me, @Me Exchange exchange, String website) {
         if (!exchange.checkPermission(me, Rank.OFFICER)) return "You are not the officer of: " + exchange.name;
         exchange.charter = website;
@@ -310,9 +311,10 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Add stock to a nation/corp")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
-    public String addStock(@Me User user, @Me DBNation me, StockDB db, NationOrExchange nation, @Me Exchange exchange, @Range(min=0.01) double quantity) {
-        if (exchange.getRank(me).id < Rank.HEIR.id && !Roles.ECON.hasOnRoot(user)) return "You are not the heir of: " + exchange.name;
+    @RolePermission(guild = StockDB.ROOT_GUILD)
+    public String addStock(@Me User user, @Me DBNation me, StockDB db, NationOrExchange nation, @Me Exchange exchange, @Range(min = 0.01) double quantity) {
+        if (exchange.getRank(me).id < Rank.HEIR.id && !Roles.ECON.hasOnRoot(user))
+            return "You are not the heir of: " + exchange.name;
         if (exchange.id == ResourceType.CREDITS.ordinal()) throw new IllegalArgumentException("Cannot add credits");
 
         long existing = db.getSharesByNation(nation.getId(), exchange.id);
@@ -327,11 +329,11 @@ public class ExchangeCommands {
     }
 
     @Command(desc = "Add a resource to a nation (admin)")
-    @RolePermission(value={Roles.ECON}, guild=StockDB.ROOT_GUILD)
+    @RolePermission(value = {Roles.ECON}, guild = StockDB.ROOT_GUILD)
     public String addResources(StockDB db, DBNation nation, Map<ResourceType, Double> resources) {
-        if (resources.isEmpty()) return "No resources specified";
+        if (resources.isEmpty()) return "No resources specified.";
         for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-            if (entry.getKey() == ResourceType.CREDITS) throw new IllegalArgumentException("Cannot add credits");
+            if (entry.getKey() == ResourceType.CREDITS) throw new IllegalArgumentException("Can not add credits.");
         }
         Map<ResourceType, Double> added = new HashMap<>();
         Map<ResourceType, Double> failed = new HashMap<>();
@@ -347,22 +349,24 @@ public class ExchangeCommands {
         }
         StringBuilder response = new StringBuilder();
         if (!added.isEmpty()) {
-            response.append("Added: " + PnwUtil.resourcesToString(added)).append("\n");
+            response.append("Added: ").append(PnwUtil.resourcesToString(added)).append("\n");
         }
         if (!failed.isEmpty()) {
-            response.append("Failed: " + PnwUtil.resourcesToString(failed)).append("\n");
+            response.append("Failed: ").append(PnwUtil.resourcesToString(failed)).append("\n");
         }
         return response.toString().trim();
     }
 
     @Command(desc = "Add stock to a nation")
-    @RolePermission(guild=StockDB.ROOT_GUILD)
+    @RolePermission(guild = StockDB.ROOT_GUILD)
     public String color(@Me User user, @Me DBNation me, StockDB db, @Me Exchange exchange, Rank rank, Color color) {
-        if (exchange.getRank(me).id < Rank.HEIR.id && !Roles.ECON.hasOnRoot(user)) return "You are not the heir of: " + exchange.name;
+        if (exchange.getRank(me).id < Rank.HEIR.id && !Roles.ECON.hasOnRoot(user))
+            return "You are not the heir of: " + exchange.name;
 
         Map<Rank, Role> roles = exchange.getCompanyRoles();
         Role role = roles.get(rank);
-        if (role == null) return "No role found for: `" + rank + "`. Valid roles are: " + StringMan.getString(roles.keySet());
+        if (role == null)
+            return "No role found for: `" + rank + "`. Valid roles are: " + StringMan.getString(roles.keySet());
         role.getManager().setColor(color).complete();
         return "Set " + role.getName() + " to " + color;
 

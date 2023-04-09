@@ -26,6 +26,7 @@ public class Dm extends Command {
     public Dm() {
         super(CommandCategory.LOCUTUS_ADMIN);
     }
+
     @Override
     public String help() {
         return super.help() + " <user> <message>";
@@ -65,31 +66,25 @@ public class Dm extends Command {
         }
 
         if (mentions.size() > 1 && !flags.contains('f')) {
-            String title = "Send " + mentions.size() + " messages";
+            String title = "Send " + mentions.size() + " messages.";
             String pending = Settings.commandPrefix(true) + "pending " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
 
-            String embedTitle = title + " to nations";
-            if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances";
+            String embedTitle = title + " to nations.";
+            if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances.";
 
-            StringBuilder dmMsg = new StringBuilder();
-            dmMsg.append("content: ```" + body + "```");
+            String dmMsg = "content: ```" + body + "```";
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, dmMsg.toString(), "Next", pending);
+            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, dmMsg, "Next", pending);
             return null;
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
 
         for (User mention : mentions) {
-            mention.openPrivateChannel().queue(new Consumer<PrivateChannel>() {
-                @Override
-                public void accept(PrivateChannel channel) {
-                    RateLimitUtil.queue(channel.sendMessage(event.getAuthor().getAsMention() + " said: " + body + "\n\n(no reply)"));
-                }
-            });
+            mention.openPrivateChannel().queue(channel -> RateLimitUtil.queue(channel.sendMessage(event.getAuthor().getAsMention() + " said: " + body + "\n\n(no reply)")));
         }
         RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), "Sent " + mentions.size() + " messages"));
         return null;

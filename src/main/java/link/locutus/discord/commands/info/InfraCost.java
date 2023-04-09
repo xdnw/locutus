@@ -55,7 +55,7 @@ public class InfraCost extends Command {
 
         int current = Preconditions.checkNotNull(MathMan.parseInt(args.get(0)), "invalid amount: `" + args.get(0) + "`");
         int max = checkNotNull(MathMan.parseInt(args.get(1)), "invalid amount: `" + args.get(1) + "`");
-        if (max > 20000) throw new IllegalArgumentException("Max infra 20,000");
+        if (max > 20000) throw new IllegalArgumentException("Max infra 20,000.");
 
         boolean urban = false;
         boolean cce = false;

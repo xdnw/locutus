@@ -65,23 +65,23 @@ public class Placeholders<T> {
     public String getHtml(ValueStore store, String cmd, String parentId) {
         ParametricCallable callable = get(cmd);
         StringBuilder html = new StringBuilder(callable.toBasicHtml(store));
-        html.append("<select name=\"filter-operator\" for=\"" + parentId + "\" class=\"form-control\">");
+        html.append("<select name=\"filter-operator\" for=\"").append(parentId).append("\" class=\"form-control\">");
         for (Operation value : Operation.values()) {
             String selected = value == Operation.EQUAL ? "selected=\"selected\"" : "";
-            html.append("<option value=\"" + value.code + "\" " + selected + ">" + StringEscapeUtils.escapeHtml4(value.code) + "</option>");
+            html.append("<option value=\"").append(value.code).append("\" ").append(selected).append(">").append(StringEscapeUtils.escapeHtml4(value.code)).append("</option>");
         }
         html.append("</select>");
         Type type = callable.getReturnType();
         if (type == String.class) {
-            html.append("<input name=\"filter-value\" for=\"" + parentId + "\" required type=\"text\" class=\"form-control\"/>");
-        }  else if (type == boolean.class || type == Boolean.class) {
-            html.append("<select name=\"filter-value\" for=\"" + parentId + "\" required class=\"form-control\" /><option>true</option><option>false</option></select>");
+            html.append("<input name=\"filter-value\" for=\"").append(parentId).append("\" required type=\"text\" class=\"form-control\"/>");
+        } else if (type == boolean.class || type == Boolean.class) {
+            html.append("<select name=\"filter-value\" for=\"").append(parentId).append("\" required class=\"form-control\" /><option>true</option><option>false</option></select>");
         } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
-            html.append("<input name=\"filter-value\" for=\"" + parentId + "\" required type=\"number\" class=\"form-control\"/>");
+            html.append("<input name=\"filter-value\" for=\"").append(parentId).append("\" required type=\"number\" class=\"form-control\"/>");
         } else {
-            throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean");
+            throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean.");
         }
-        html.append("<button id=\"addfilter.submit\" for=\"" + parentId + "\" class=\"btn btn-primary\" >Add Filter</button>");
+        html.append("<button id=\"addfilter.submit\" for=\"").append(parentId).append("\" class=\"btn btn-primary\" >Add Filter</button>");
 
         return html.toString();
     }
@@ -94,10 +94,7 @@ public class Placeholders<T> {
         List<ParametricCallable> result = getParametricCallables();
         result.removeIf(cmd -> {
             Type type = cmd.getReturnType();
-            if (type == String.class || type == boolean.class || type == Boolean.class || type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
-                return false;
-            }
-            return true;
+            return type != String.class && type != boolean.class && type != Boolean.class && type != int.class && type != Integer.class && type != double.class && type != Double.class && type != long.class && type != Long.class;
         });
         return new ArrayList<>(result);
     }
@@ -118,16 +115,14 @@ public class Placeholders<T> {
 
                 if (type == String.class) {
                     adapter = op.getStringPredicate(part2);
-                }
-                else if (type == boolean.class || type == Boolean.class) {
                     boolean val2 = PrimitiveBindings.Boolean(part2);
+                } else if (type == boolean.class || type == Boolean.class) {
                     adapter = op.getBooleanPredicate(val2);
-                }
-                else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
+                } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
                     double val2 = MathMan.parseDouble(part2);
                     adapter = op.getNumberPredicate(val2);
                 } else {
-                    throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean");
+                    throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean.");
                 }
 
                 return nation -> adapter.test(func.apply(nation));

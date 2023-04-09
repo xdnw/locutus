@@ -1,27 +1,21 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBSpyUpdate;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.db.entities.DBSpyUpdate;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class FindSpyOp extends Command {
@@ -64,6 +58,7 @@ public class FindSpyOp extends Command {
             for (DBSpyUpdate update : updates) {
                 DBNation nation = DBNation.byId(update.nation_id);
                 if (nation == null) continue;
+                assert defender != null;
                 if (!defender.isInSpyRange(nation)) continue;
 
                 if (ids.contains(update.nation_id)) continue;
@@ -73,7 +68,7 @@ public class FindSpyOp extends Command {
             }
         }
 
-        if (updatesTmp.isEmpty()) return "No results (0)";
+        if (updatesTmp.isEmpty()) return "No results.";
 
         Map<DBNation, Map.Entry<Double, String>> allOdds = new HashMap<>();
 
@@ -82,7 +77,8 @@ public class FindSpyOp extends Command {
             long diff = entry.getValue();
 
             DBNation attacker = Locutus.imp().getNationDB().getNation(update.nation_id);
-            if (attacker == null || (defender != null && !attacker.isInSpyRange(defender)) || attacker.getNation_id() == defender.getNation_id()) continue;
+            if (attacker == null || !attacker.isInSpyRange(defender) || attacker.getNation_id() == defender.getNation_id())
+                continue;
 
             int spiesUsed = update.spies;
 
@@ -117,14 +113,12 @@ public class FindSpyOp extends Command {
 
             StringBuilder message = new StringBuilder();
 
-            if (foundOp) message.append("**");
-            message.append(MathMan.format(odds) + "%");
+            message.append(MathMan.format(odds)).append("%");
             if (spySatellite) message.append(" | SAT");
             if (intelligence) message.append(" | IA");
-            message.append(" | " + spiesUsed + "? spies (" + safety + ")");
+            message.append(" | ").append(spiesUsed).append("? spies (").append(safety).append(")");
             long diff_m = Math.abs(diff / TimeUnit.MINUTES.toMillis(1));
-            message.append(" | " + diff_m + "m");
-            if (foundOp) message.append("**");
+            message.append(" | ").append(diff_m).append("m");
 
             allOdds.put(attacker, new AbstractMap.SimpleEntry<>(ratio, message.toString()));
         }
@@ -140,7 +134,7 @@ public class FindSpyOp extends Command {
         for (Map.Entry<DBNation, Map.Entry<Double, String>> entry : sorted) {
             DBNation att = entry.getKey();
 
-            response.append(att.getNation() + " | " + att.getAllianceName() + "\n");
+            response.append(att.getNation()).append(" | ").append(att.getAllianceName()).append("\n");
             response.append(entry.getValue().getValue()).append("\n\n");
         }
 

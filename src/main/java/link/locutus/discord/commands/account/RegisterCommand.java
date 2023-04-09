@@ -41,7 +41,7 @@ public class RegisterCommand extends Command {
 
     @Override
     public String desc() {
-        return "Register your politicsandwar nation";
+        return "Register your in-game nation.";
     }
 
     @Override
@@ -56,7 +56,7 @@ public class RegisterCommand extends Command {
         if (args.size() >= 2) {
             User mention = DiscordUtil.getMention(args.get(0));
             if (mention == null) {
-                return "To manually register, use " + Settings.commandPrefix(true) + "validate @mention <nation-link>";
+                return "To manually register, use " + Settings.commandPrefix(true) + "register @mention <nation-link>.";
             }
             Integer nationId = DiscordUtil.parseNationId(args.get(1));
             if (nationId == null) {
@@ -73,10 +73,11 @@ public class RegisterCommand extends Command {
                         Role memberRole = Roles.MEMBER.toRole(guild);
                         Member mentionMember = guild.getMember(mention);
 
-                        if (mentionMember == null) return "User is not in server";
-                        if (appRole == null && memberRole == null) return "No applicant or member role exists";
-                        if (!mentionMember.getRoles().contains(appRole) && !mentionMember.getRoles().contains(memberRole)) return "User does not have applicant role";
-                        if (DiscordUtil.getNation(mention) != null) return "User is already registered";
+                        if (mentionMember == null) return "User is not in server.";
+                        if (appRole == null && memberRole == null) return "No applicant or member role exists.";
+                        if (!mentionMember.getRoles().contains(appRole) && !mentionMember.getRoles().contains(memberRole))
+                            return "User does not have applicant role.";
+                        if (DiscordUtil.getNation(mention) != null) return "User is already registered.";
                         DBNation mentionNation = DBNation.byId(nationId);
                         if (mentionNation == null) return "Invalid nation";
                         if (mentionNation.getUser() != null) return "Nation already registered: " + mentionNation.getNation() + " = " + mentionNation.getUser();
@@ -98,7 +99,7 @@ public class RegisterCommand extends Command {
         }
         if (args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.ADMIN.hasOnRoot(event.getAuthor())) {
-                return "No perm";
+                return "No permission.";
             }
 
             Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
@@ -193,7 +194,7 @@ public class RegisterCommand extends Command {
                 nation.setNation_id(nationId);
                 String pnwDiscordName = nation.fetchUsername();
                 if (pnwDiscordName == null || pnwDiscordName.isEmpty()) {
-                    return "Unable to fetch username. Please ensure you have `Discord Username` set in <https://politicsandwar.com/nation/edit/>";
+                    return "Unable to fetch username. Please ensure you have `Discord Username` set in <https://politicsandwar.com/nation/edit/>.";
                 }
                 boolean success = true;
 
@@ -202,20 +203,18 @@ public class RegisterCommand extends Command {
                     userName = "" + user.getIdLong();
                 }
                 if (!userName.equalsIgnoreCase(pnwDiscordName) && !pnwDiscordName.contains("" + user.getIdLong())) {
-                    return "Your user doesnt match: `" + pnwDiscordName + "` != `" + userName + "`\n\n" + errorMsg;
+                    return "Your user doesn't match: `" + pnwDiscordName + "` != `" + userName + "`\n\n" + errorMsg;
                 }
 
                 PNWUser pnwUser = new PNWUser(nationId, id, userName);
                 discordDb.addUser(pnwUser);
-                String registerMessage = nation.register(user, event.isFromGuild() ? db : null, notRegistered);;
+                String registerMessage = nation.register(user, event.isFromGuild() ? db : null, notRegistered);
 
                 if (!success) {
                     registerMessage += "\n" + "Error: " + errorMsg;
                 }
                 return registerMessage;
-            } catch (InsufficientPermissionException | HierarchyException e) {
-                return e.getMessage();
-            } catch (IOException e) {
+            } catch (InsufficientPermissionException | HierarchyException | IOException e) {
                 return e.getMessage();
             } catch (Throwable e) {
                 e.printStackTrace();

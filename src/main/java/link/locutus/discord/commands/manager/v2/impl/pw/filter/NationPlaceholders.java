@@ -3,13 +3,13 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -25,16 +25,11 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class NationPlaceholders extends Placeholders<DBNation> {
-    private Map<String, NationAttribute> customMetrics = new HashMap<>();
+    private final Map<String, NationAttribute> customMetrics = new HashMap<>();
 
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBNation.class, new DBNation(), store, validators, permisser);
     }
-
-//    public <T> NationMetric addMetric(String name, String desc, Class<T> type, Function<DBNation, T> func) {
-//        NationMetric metric = new NationMetric(name, desc, type, (Function<DBNation, Object>) func);
-//        customMetrics.put(name, metric);
-//    }
 
     public List<NationAttribute> getMetrics(ValueStore store) {
         List<NationAttribute> result = new ArrayList<>();
@@ -126,6 +121,6 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
         // todo
 
-        return DiscordUtil.format( guild, channel, author, me, arg);
+        return DiscordUtil.format(guild, channel, author, me, arg);
     }
 }

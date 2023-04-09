@@ -28,14 +28,14 @@ public class ChannelCount extends Command {
 
         List<Category> categories = guild.getCategories();
         for (Category category : categories) {
-            channelList.append(category.getName() + "\n");
+            channelList.append(category.getName()).append("\n");
 
             for (GuildChannel channel : category.getChannels()) {
                 String prefix = "+ ";
                 if (channel instanceof VoiceChannel) {
                     prefix = "\uD83D\uDD0A ";
                 }
-                channelList.append(prefix + channel.getName() + "\n");
+                channelList.append(prefix).append(channel.getName()).append("\n");
             }
 
             channelList.append("\n");

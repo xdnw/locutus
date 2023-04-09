@@ -36,11 +36,10 @@ public class GuildInfo extends Command {
         long id = Long.parseLong(args.get(0));
 
         guild = Locutus.imp().getDiscordApi().getGuildById(id);
-        if (guild == null) return "Guild not found";
+        if (guild == null) return "Guild not found.";
 
-        String title = guild.getName() + "/" + guild.getIdLong() + "\n" +
+        return guild.getName() + "/" + guild.getIdLong() + "\n" +
                 "Owner: " + guild.getOwner() + "\n" +
                 "Members: " + StringMan.getString(guild.getMembers());
-        return title;
     }
 }

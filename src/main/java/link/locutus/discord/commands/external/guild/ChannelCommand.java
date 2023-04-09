@@ -41,13 +41,14 @@ public class ChannelCommand extends Command {
 
     @Override
     public String desc() {
-        return "Create a channel in a category\n" +
-                "Add `-i` to add IA\n" +
-                "Add `-m` to add milcom\n" +
-                "Add `-f` to add FA\n" +
-                "Add `-e` to add econ\n" +
-                "Add `-a` to ping the author\n" +
-                "Add `-p` to ping the users added";
+        return """
+                Create a channel in a category
+                Add `-i` to add IA
+                Add `-m` to add milcom
+                Add `-f` to add FA
+                Add `-e` to add econ
+                Add `-a` to ping the author
+                Add `-p` to ping the users added""";
     }
 
     @Override
@@ -79,6 +80,7 @@ public class ChannelCommand extends Command {
 
         List<IPermissionHolder> holders = new ArrayList<>();
         holders.add(member);
+        assert member != null;
         holders.addAll(member.getRoles());
         holders.add(guild.getRolesByName("@everyone", false).get(0));
 
@@ -103,7 +105,7 @@ public class ChannelCommand extends Command {
         }
         if (createdChannel == null) {
             if (freeCategory == null) {
-                return "No free category";
+                return "No free category.";
             }
             if (!hasOverride) {
                 for (IPermissionHolder holder : holders) {

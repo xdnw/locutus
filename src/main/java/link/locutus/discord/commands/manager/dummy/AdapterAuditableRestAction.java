@@ -18,28 +18,22 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Collector;
 
 public class AdapterAuditableRestAction<T> implements AuditableRestAction<T> {
-    public static void setPassContext(boolean enable) {
-        RestAction.setPassContext(enable);
+    private final RestAction<T> parent;
+
+    public AdapterAuditableRestAction(RestAction<T> parent) {
+        this.parent = parent;
     }
 
     public static boolean isPassContext() {
         return RestAction.isPassContext();
     }
 
-    public static void setDefaultFailure(@Nullable Consumer<? super Throwable> callback) {
-        RestAction.setDefaultFailure(callback);
-    }
-
-    public static void setDefaultSuccess(@Nullable Consumer<Object> callback) {
-        RestAction.setDefaultSuccess(callback);
+    public static void setPassContext(boolean enable) {
+        RestAction.setPassContext(enable);
     }
 
     public static void setDefaultTimeout(long timeout, @NotNull TimeUnit unit) {
@@ -55,9 +49,17 @@ public class AdapterAuditableRestAction<T> implements AuditableRestAction<T> {
         return RestAction.getDefaultFailure();
     }
 
+    public static void setDefaultFailure(@Nullable Consumer<? super Throwable> callback) {
+        RestAction.setDefaultFailure(callback);
+    }
+
     @Nonnull
     public static Consumer<Object> getDefaultSuccess() {
         return RestAction.getDefaultSuccess();
+    }
+
+    public static void setDefaultSuccess(@Nullable Consumer<Object> callback) {
+        RestAction.setDefaultSuccess(callback);
     }
 
     @CheckReturnValue
@@ -92,16 +94,16 @@ public class AdapterAuditableRestAction<T> implements AuditableRestAction<T> {
     }
 
     @Override
+    @javax.annotation.Nullable
+    public BooleanSupplier getCheck() {
+        return parent.getCheck();
+    }
+
+    @Override
     @Nonnull
     public AdapterAuditableRestAction<T> setCheck(@Nullable BooleanSupplier checks) {
         parent.setCheck(checks);
         return this;
-    }
-
-    @Override
-    @javax.annotation.Nullable
-    public BooleanSupplier getCheck() {
-        return parent.getCheck();
     }
 
     @Override
@@ -232,10 +234,11 @@ public class AdapterAuditableRestAction<T> implements AuditableRestAction<T> {
         return parent.and(other);
     }
 
+    @SafeVarargs
     @Override
     @CheckReturnValue
     @Nonnull
-    public RestAction<List<T>> zip(@NotNull RestAction<? extends T> first, @NotNull RestAction<? extends T>... other) {
+    public final RestAction<List<T>> zip(@NotNull RestAction<? extends T> first, @NotNull RestAction<? extends T> @NotNull ... other) {
         return parent.zip(first, other);
     }
 
@@ -318,11 +321,5 @@ public class AdapterAuditableRestAction<T> implements AuditableRestAction<T> {
     @Nonnull
     public ScheduledFuture<?> queueAfter(long delay, @NotNull TimeUnit unit, @Nullable Consumer<? super T> success, @Nullable Consumer<? super Throwable> failure, @Nullable ScheduledExecutorService executor) {
         return parent.queueAfter(delay, unit, success, failure, executor);
-    }
-
-    private final RestAction<T> parent;
-
-    public AdapterAuditableRestAction(RestAction<T> parent) {
-        this.parent = parent;
     }
 }

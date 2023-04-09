@@ -5,11 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
@@ -22,21 +18,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
+import java.util.*;
 import java.util.function.Predicate;
-import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,82 +32,12 @@ public class ParametricCallable implements ICommand {
     private final Set<String> provideFlags;
     private final ArrayList<ParameterData> userParameters;
     private final Map<String, ParameterData> paramaterMap;
-    private String desc;
     private final String help;
     private final ArrayList<String> aliases;
     private final CommandCallable parent;
     private final Annotation[] annotations;
     private final Type returnType;
-
-    public static List<ParametricCallable> generateFromClass(CommandCallable parent, Object object, ValueStore store) {
-        List<ParametricCallable> cmds = new ArrayList<>();
-        for (Method method : object.getClass().getDeclaredMethods()) {
-            ParametricCallable parametric = generateFromMethod(parent, object, method, store);
-            if (parametric != null) cmds.add(parametric);
-        }
-        return cmds;
-    }
-
-    public static ParametricCallable generateFromMethod(CommandCallable parent, Object object, Method method, ValueStore store) {
-        Command cmdAnn = method.getAnnotation(Command.class);
-        if (cmdAnn != null) {
-            return new ParametricCallable(parent, store, object, method, cmdAnn);
-        }
-        return null;
-    }
-
-    private static String[] lookupParameterNames(Method method) {
-        Parameter[] params = method.getParameters();
-        String[] names=  new String[params.length];
-        for (int i = 0; i < params.length; i++) {
-            names[i] = params[i].getName();
-        }
-        return names;
-    }
-
-    public Type getReturnType() {
-        return returnType;
-    }
-
-    @Override
-    public String simpleDesc() {
-        if (desc != null && desc.indexOf('{') > 0) {
-            desc = desc.replace("{legacy_prefix}", Settings.commandPrefix(true) + "");
-            desc = desc.replace("{prefix}", Settings.commandPrefix(false) + "");
-
-            Pattern pattern = Pattern.compile("(\\{/[^}]+\\})");
-            Matcher matcher = pattern.matcher(desc);
-            desc = matcher.replaceAll(new Function<MatchResult, String>() {
-                @Override
-                public String apply(MatchResult matchResult) {
-                    String group = matchResult.group();
-                    group = group.substring(1, group.length() - 1);
-
-                    // validate command and arguments
-                    Locutus.imp().getCommandManager().getV2().validateSlashCommand(group.substring(1), true);
-
-                    return group;
-                }
-            });
-        }
-        return desc;
-    }
-
-
-    @Override
-    public String simpleHelp() {
-        return help;
-    }
-
-    @Override
-    public CommandCallable getParent() {
-        return parent;
-    }
-
-    @Override
-    public CommandCallable clone(CommandCallable parent, List<String> aliases) {
-         return new ParametricCallable(parent, this, aliases);
-    }
+    private String desc;
 
     public ParametricCallable(CommandCallable parent, ParametricCallable clone, List<String> aliases) {
         this.object = clone.object;
@@ -141,7 +54,6 @@ public class ParametricCallable implements ICommand {
         this.annotations = clone.annotations;
         this.returnType = clone.returnType;
     }
-
 
     public ParametricCallable(CommandCallable parent, ValueStore store, Object object, Method method, Command definition) {
 
@@ -198,7 +110,7 @@ public class ParametricCallable implements ICommand {
                 }
             }
 
-            Key key = Key.of(type, annotations);
+            Key<Object> key = Key.of(type, annotations);
             Parser binding = store.get(key);
             if (binding == null) {
                 throw new IllegalStateException("No binding found for " + key + " for command: " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
@@ -219,10 +131,9 @@ public class ParametricCallable implements ICommand {
 //             Keep track of optional parameters
             if (parameter.isOptional() && parameter.getFlag() == null) {
                 numOptional++;
-            } else {
-//                if (numOptional > 0 && parameter.getFlag() == null && binding.isConsumer(store)) {
-//                }
-            }
+            }  //                if (numOptional > 0 && parameter.getFlag() == null && binding.isConsumer(store)) {
+            //                }
+
 
             parameters[i] = parameter;
 
@@ -234,16 +145,79 @@ public class ParametricCallable implements ICommand {
             }
         }
 
-        this.aliases = new ArrayList<String>(Arrays.asList(definition.aliases()));
+        this.aliases = new ArrayList<>(Arrays.asList(definition.aliases()));
         if (aliases.isEmpty()) aliases.add(method.getName());
 
-        StringBuilder help = new StringBuilder();
-        help.append(definition.help());
-        this.help = help.toString();
+        this.help = definition.help();
 
-        StringBuilder desc = new StringBuilder();
-//        desc.append(ICommand.formatDescription(definition));
-        this.desc = desc.toString();
+        //        desc.append(ICommand.formatDescription(definition));
+        this.desc = "";
+    }
+
+    public static List<ParametricCallable> generateFromClass(CommandCallable parent, Object object, ValueStore store) {
+        List<ParametricCallable> cmds = new ArrayList<>();
+        for (Method method : object.getClass().getDeclaredMethods()) {
+            ParametricCallable parametric = generateFromMethod(parent, object, method, store);
+            if (parametric != null) cmds.add(parametric);
+        }
+        return cmds;
+    }
+
+    public static ParametricCallable generateFromMethod(CommandCallable parent, Object object, Method method, ValueStore store) {
+        Command cmdAnn = method.getAnnotation(Command.class);
+        if (cmdAnn != null) {
+            return new ParametricCallable(parent, store, object, method, cmdAnn);
+        }
+        return null;
+    }
+
+    private static String[] lookupParameterNames(Method method) {
+        Parameter[] params = method.getParameters();
+        String[] names = new String[params.length];
+        for (int i = 0; i < params.length; i++) {
+            names[i] = params[i].getName();
+        }
+        return names;
+    }
+
+    public Type getReturnType() {
+        return returnType;
+    }
+
+    @Override
+    public String simpleDesc() {
+        if (desc != null && desc.indexOf('{') > 0) {
+            desc = desc.replace("{legacy_prefix}", Settings.commandPrefix(true) + "");
+            desc = desc.replace("{prefix}", Settings.commandPrefix(false) + "");
+
+            Pattern pattern = Pattern.compile("(\\{/[^}]+})");
+            Matcher matcher = pattern.matcher(desc);
+            desc = matcher.replaceAll(matchResult -> {
+                String group = matchResult.group();
+                group = group.substring(1, group.length() - 1);
+
+                // validate command and arguments
+                Locutus.imp().getCommandManager().getV2().validateSlashCommand(group.substring(1), true);
+
+                return group;
+            });
+        }
+        return desc;
+    }
+
+    @Override
+    public String simpleHelp() {
+        return help;
+    }
+
+    @Override
+    public CommandCallable getParent() {
+        return parent;
+    }
+
+    @Override
+    public CommandCallable clone(CommandCallable parent, List<String> aliases) {
+        return new ParametricCallable(parent, this, aliases);
     }
 
     @Override
@@ -271,7 +245,7 @@ public class ParametricCallable implements ICommand {
         if (this.help.isEmpty()) {
             StringBuilder help = new StringBuilder(getFullPath());
             for (ParameterData parameter : parameters) {
-                Parser binding = parameter.getBinding();
+                Parser<?> binding = parameter.getBinding();
                 if (!binding.isConsumer(store)) continue;
                 String argFormat = parameter.isOptional() || parameter.isFlag() ? "[%s]" : "<%s>";
                 if (!parameter.isFlag() && parameter.getBinding().isConsumer(store)) {
@@ -293,7 +267,7 @@ public class ParametricCallable implements ICommand {
         StringBuilder expanded = new StringBuilder();
         expanded.append(simpleDesc());
         for (ParameterData parameter : parameters) {
-            Parser binding = parameter.getBinding();
+            Parser<?> binding = parameter.getBinding();
             if (!binding.isConsumer(store)) continue;
             expanded.append("\n");
             expanded.append(parameter.getExpandedDescription());
@@ -328,7 +302,7 @@ public class ParametricCallable implements ICommand {
     }
 
     public Map<ParameterData, Map.Entry<String, Object>> parseArgumentsToMap(ArgumentStack stack) {
-        ValueStore store = stack.getStore();
+        ValueStore<?> store = stack.getStore();
         validatePermissions(store, stack.getPermissionHandler());
 
         ValueStore locals = store;
@@ -338,8 +312,7 @@ public class ParametricCallable implements ICommand {
         ParameterData commandIndex = null;
 
         Map<String, String> flags = stack.consumeFlags(provideFlags, valueFlags);
-        for (int i = 0; i < parameters.length; i++) {
-            ParameterData parameter = parameters[i];
+        for (ParameterData parameter : parameters) {
             Key typeKey = parameter.getBinding().getKey();
             if (typeKey.getType() == JSONObject.class && typeKey.getAnnotation(Me.class) != null) {
                 commandIndex = parameter;
@@ -354,7 +327,7 @@ public class ParametricCallable implements ICommand {
                 unparsed = flags.get(parameter.getFlag());
                 if (unparsed == null) {
                     if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0) {
-                        unparsed =  parameter.getDefaultValueString();
+                        unparsed = parameter.getDefaultValueString();
                         value = locals.get(parameter.getBinding().getKey()).apply(stack.getStore(), unparsed);
                     } else if (!parameter.isConsumeFlag()) {
                         value = false;
@@ -384,7 +357,7 @@ public class ParametricCallable implements ICommand {
                     List<String> remaining = new ArrayList<>(stack.getRemainingArgs());
                     value = locals.get(parameter.getBinding().getKey()).apply(stack);
                     int numConsumed = originalRemaining - stack.remaining();
-                    unparsed =  String.join(" ", remaining.subList(0, numConsumed));
+                    unparsed = String.join(" ", remaining.subList(0, numConsumed));
                 } else {
                     value = null;
                 }
@@ -432,7 +405,7 @@ public class ParametricCallable implements ICommand {
         for (ParameterData parameter : parameters) {
             store.addProvider(ParameterData.class, parameter);
 
-            Parser binding = parameter.getBinding();
+            Parser<?> binding = parameter.getBinding();
             if (!binding.isConsumer(store)) continue;
 
             Key htmlKey = binding.getKey().append(HtmlInput.class);
@@ -449,16 +422,14 @@ public class ParametricCallable implements ICommand {
     public String toHtml(ValueStore store, PermissionHandler permHandler, String endpoint) {
         validatePermissions(store, permHandler);
 
-        StringBuilder response = new StringBuilder();
-        response.append("<form id='command-form' " + (endpoint != null ? "endpoint=\"" + endpoint + "\" " : "") + "onsubmit=\"return executeCommandFromArgMap(this)\" method=\"post\">");
-        response.append("<div class=\"\">");
-        response.append(toBasicHtml(store));
-        response.append("</div>");
-        response.append("<button type=\"submit\" class=\"btn btn-primary\">Submit</button>");
+        String response = "<form id='command-form' " + (endpoint != null ? "endpoint=\"" + endpoint + "\" " : "") + "onsubmit=\"return executeCommandFromArgMap(this)\" method=\"post\">" +
+                "<div class=\"\">" +
+                toBasicHtml(store) +
+                "</div>" +
+                "<button type=\"submit\" class=\"btn btn-primary\">Submit</button>" +
+                "</form>";
 
-        response.append("</form>");
-
-        return rocker.command.parametriccallable.template(store, this, response.toString()).render().toString();
+        return rocker.command.parametriccallable.template(store, this, response).render().toString();
     }
 
     public String stringifyArgumentMap(Map<String, String> combined, String delim) {
@@ -551,7 +522,8 @@ public class ParametricCallable implements ICommand {
                     args = new ArrayList<>(Collections.singletonList(arg));
                 } else {
                     args = new ArrayList<>();
-                    if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length > 0) args.addAll(Arrays.asList(parameter.getDefaultValue()));
+                    if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length > 0)
+                        args.addAll(Arrays.asList(parameter.getDefaultValue()));
                 }
                 if (!parameter.isOptional() || !args.isEmpty() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
                     if (parameter.getBinding().isConsumer(store) && args.isEmpty()) {

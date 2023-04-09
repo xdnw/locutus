@@ -15,6 +15,7 @@ public class SimpleNationPlaceholder<T> implements NationPlaceholder<T> {
         this.type = type;
         this.func = func;
     }
+
     @Override
     public String getName() {
         return name;

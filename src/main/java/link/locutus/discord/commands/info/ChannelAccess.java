@@ -20,7 +20,7 @@ public class ChannelAccess extends Command {
 
     @Override
     public String desc() {
-        return "Get a list of channels a user has access to";
+        return "Get a list of channels a user has access to.";
     }
 
     @Override
@@ -28,10 +28,6 @@ public class ChannelAccess extends Command {
         if (args.size() != 1) return usage(event);
         User user = DiscordUtil.getUser(args.get(0));
         if (user == null) return "Invalid usage `" + args.get(0) + "`";
-        for (GuildChannel channel : guild.getChannels()) {
-
-        }
-
         return super.onCommand(event, guild, author, me, args, flags);
     }
 }

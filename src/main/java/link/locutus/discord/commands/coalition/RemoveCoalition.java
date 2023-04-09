@@ -29,7 +29,7 @@ public class RemoveCoalition extends Command {
 
     @Override
     public String desc() {
-        return "Delete an entire coalition, or a coalition-alliance mapping";
+        return "Delete an entire coalition, or a coalition-alliance mapping.";
     }
 
     @Override
@@ -44,12 +44,14 @@ public class RemoveCoalition extends Command {
         Coalition.checkPermission(coalition, guild, author);
 
         switch (args.size()) {
-            default:
+            default -> {
                 return "Usage: " + Settings.commandPrefix(true) + "removecoalition <coalition> [alliance]";
-            case 1:
+            }
+            case 1 -> {
                 Locutus.imp().getGuildDB(event).removeCoalition(args.get(0));
                 return "Removed coalition: `" + coalition + "`";
-            case 2:
+            }
+            case 2 -> {
                 Set<Long> alliancesOrGuilds = new HashSet<>();
                 if (MathMan.isInteger(args.get(1)) && Long.parseLong(args.get(1)) > Integer.MAX_VALUE) {
                     alliancesOrGuilds.add(Long.parseLong(args.get(1)));
@@ -66,9 +68,10 @@ public class RemoveCoalition extends Command {
                 for (Long allianceOrGuild : alliancesOrGuilds) {
                     Locutus.imp().getGuildDB(event).removeCoalition(allianceOrGuild, coalition);
                     String name = allianceOrGuild <= Integer.MAX_VALUE ? PnwUtil.getName(allianceOrGuild, true) : allianceOrGuild + "";
-                    result.append("Removed `" + name + "`" + " from `" + coalition + "`").append("\n");
+                    result.append("Removed `").append(name).append("`").append(" from `").append(coalition).append("`").append("\n");
                 }
                 return result.toString();
+            }
         }
     }
 

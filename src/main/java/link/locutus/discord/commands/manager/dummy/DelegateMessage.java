@@ -1,34 +1,14 @@
 package link.locutus.discord.commands.manager.dummy;
 
+import gnu.trove.set.hash.TLongHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
 import link.locutus.discord.web.jooby.handler.IMessageOutput;
-import gnu.trove.set.hash.TLongHashSet;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
-import net.dv8tion.jda.api.entities.Category;
-import net.dv8tion.jda.api.entities.ChannelType;
-import net.dv8tion.jda.api.entities.Emote;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.IMentionable;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageActivity;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.MessageReaction;
-import net.dv8tion.jda.api.entities.MessageReference;
-import net.dv8tion.jda.api.entities.MessageSticker;
-import net.dv8tion.jda.api.entities.MessageType;
-import net.dv8tion.jda.api.entities.NewsChannel;
-import net.dv8tion.jda.api.entities.PrivateChannel;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.entities.ThreadChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
@@ -47,13 +27,111 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.InputStream;
 import java.time.OffsetDateTime;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Formatter;
-import java.util.List;
+import java.util.*;
 
 public class DelegateMessage implements Message {
+    private final Message parent;
+
+    public DelegateMessage(Message parent) {
+        this.parent = parent;
+    }
+
+    public static Message create(String cmd, Guild guild, User user, MessageChannel channel) {
+        String nonce = null;
+        Member member = guild == null || user == null ? null : guild.getMember(user);
+
+        return new ReceivedMessage(
+                0,
+                channel,
+                MessageType.DEFAULT,
+                null,
+                false,
+                false,
+                new TLongHashSet(),
+                new TLongHashSet(),
+                false,
+                false,
+                cmd,
+                null,
+                user,
+                member,
+                null,
+                OffsetDateTime.now(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                0, null
+        );
+    }
+
+    public static DelegateMessage createWithDummyChannel(String message, Guild guild, User user, IMessageOutput output, File fileDir) {
+        JoobyChannel channel = new JoobyChannel(guild, output, fileDir);
+        Message embedMessage = new MessageBuilder().setContent(message).build();
+        return create(embedMessage, guild, user, channel);
+    }
+
+    public static DelegateMessage create(Message message, String cmd, MessageChannel channel) {
+        return new DelegateMessage(message) {
+            @Nonnull
+            @Override
+            public String getContentRaw() {
+                return cmd;
+            }
+
+            @Nonnull
+            @Override
+            public MessageChannel getChannel() {
+                return channel;
+            }
+        };
+    }
+
+    public static DelegateMessage create(Message parent, String cmd, Guild guild, User user) {
+        return new DelegateMessage(parent) {
+            @Nonnull
+            @Override
+            public String getContentRaw() {
+                return cmd;
+            }
+
+            @Nonnull
+            @Override
+            public User getAuthor() {
+                return user;
+            }
+
+            @Nullable
+            @Override
+            public Member getMember() {
+                return guild != null ? guild.getMember(user) : null;
+            }
+        };
+    }
+
+    public static DelegateMessage create(Message parent, Guild guild, User user, MessageChannel channel) {
+        return new DelegateMessage(parent) {
+            @NotNull
+            @Override
+            public MessageChannel getChannel() {
+                return channel;
+            }
+
+            @Nonnull
+            @Override
+            public User getAuthor() {
+                return user;
+            }
+
+            @Nullable
+            @Override
+            public Member getMember() {
+                return guild != null ? guild.getMember(user) : null;
+            }
+        };
+    }
+
     @Override
     @Nullable
     public MessageReference getMessageReference() {
@@ -187,109 +265,6 @@ public class DelegateMessage implements Message {
     @CheckReturnValue
     public RestAction<ThreadChannel> createThreadChannel(String name) {
         return parent.createThreadChannel(name);
-    }
-
-    public static Message create(String cmd, Guild guild, User user, MessageChannel channel) {
-        String nonce = null;
-        Member member = guild == null || user == null ? null : guild.getMember(user);
-
-        ReceivedMessage msg = new ReceivedMessage(
-                0,
-                channel,
-                MessageType.DEFAULT,
-                null,
-                false,
-                false,
-                new TLongHashSet(),
-                new TLongHashSet(),
-                false,
-                false,
-                cmd,
-                nonce,
-                user,
-                member,
-                null,
-                OffsetDateTime.now(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                0, null
-        );
-        return msg;
-    }
-
-    public static DelegateMessage createWithDummyChannel(String message, Guild guild, User user, IMessageOutput output, File fileDir) {
-        JoobyChannel channel = new JoobyChannel(guild, output, fileDir);
-        Message embedMessage = new MessageBuilder().setContent(message).build();
-        return create(embedMessage, guild, user, channel);
-    }
-
-    public static DelegateMessage create(Message message, String cmd, MessageChannel channel) {
-        return new DelegateMessage(message) {
-            @Nonnull
-            @Override
-            public String getContentRaw() {
-                return cmd;
-            }
-
-            @Nonnull
-            @Override
-            public MessageChannel getChannel() {
-                return channel;
-            }
-        };
-    }
-
-    public static DelegateMessage create(Message parent, String cmd, Guild guild, User user) {
-        return new DelegateMessage(parent) {
-            @Nonnull
-            @Override
-            public String getContentRaw() {
-                return cmd;
-            }
-
-            @Nonnull
-            @Override
-            public User getAuthor() {
-                return user;
-            }
-
-            @Nullable
-            @Override
-            public Member getMember() {
-                return guild != null ? guild.getMember(user) : null;
-            }
-        };
-    }
-
-    public static DelegateMessage create(Message parent, Guild guild, User user, MessageChannel channel) {
-        return new DelegateMessage(parent) {
-            @NotNull
-            @Override
-            public MessageChannel getChannel() {
-                return channel;
-            }
-
-            @Nonnull
-            @Override
-            public User getAuthor() {
-                return user;
-            }
-
-            @Nullable
-            @Override
-            public Member getMember() {
-                return guild != null ? guild.getMember(user) : null;
-            }
-        };
-    }
-
-    private final Message parent;
-
-    public DelegateMessage(Message parent) {
-        this.parent = parent;
     }
 
     @Nullable
@@ -714,7 +689,8 @@ public class DelegateMessage implements Message {
     public long getIdLong() {
         try {
             if (parent != null) return parent.getIdLong();
-        } catch (UnsupportedOperationException e) {}
+        } catch (UnsupportedOperationException ignored) {
+        }
         return 0;
     }
 
