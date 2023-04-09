@@ -6,9 +6,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.javalin.http.Context;
 import io.javalin.http.UnauthorizedResponse;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -24,37 +24,40 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 
-import javax.security.auth.message.AuthException;
 import java.io.IOException;
-import java.net.UnknownServiceException;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class AuthHandler implements IAuthHandler {
     private final WebDB db;
+
+    private final Map<Long, Map.Entry<String, JsonObject>> tokenToUserMap = new ConcurrentHashMap<>();
+    private final Map<String, Long> tokenHashes = new ConcurrentHashMap<>();
+
+    private Map<String, String> ORIGINAL_PAGE = new ConcurrentHashMap<>();
+
+    private final Map<UUID, Auth> pendingWebCmdTokens = new ConcurrentHashMap<>();
+
+    private final Map<UUID, Auth> webCommandAuth;
 
     public AuthHandler(WebDB db) {
         this.db = db;
         for (Map.Entry<Long, Map.Entry<String, JsonObject>> entry : db.loadTokens().entrySet()) {
             addAccessToken(entry.getValue().getKey(), entry.getValue().getValue(), false);
         }
+        webCommandAuth = new ConcurrentHashMap<>(db.loadTempTokens());
     }
 
     public static final String AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize";
     public static final String TOKEN_URL = "https://discord.com/api/oauth2/token";
     public static final String API_URL = "https://discord.com/api/users/@me";
     public static String COOKIE_ID = "LCTS";
-
-    private final Map<Long, Map.Entry<String, JsonObject>> tokenToUserMap = new ConcurrentHashMap<>();
-    private final Map<String, Long> tokenHashes = new ConcurrentHashMap<>();
-
-    private Map<String, String> ORIGINAL_PAGE = new ConcurrentHashMap<>();
 
     @Override
     public void logout(Context context) {
@@ -66,9 +69,9 @@ public class AuthHandler implements IAuthHandler {
 
     @Override
     public void login(Context context) {
-        String url = context.fullUrl();
+        String url = context.url();
         if (!url.toLowerCase().contains("logout")) {
-            ORIGINAL_PAGE.put(context.ip(), url);
+            ORIGINAL_PAGE.put(context.ip(), context.url());
         }
 
         List<NameValuePair> params = new ArrayList<>();
@@ -86,8 +89,7 @@ public class AuthHandler implements IAuthHandler {
 
     private enum CookieType {
         DISCORD,
-        COMMAND,
-        MAIL,
+        URL,
     }
 
     private String cookieId(CookieType type) {
@@ -172,99 +174,143 @@ public class AuthHandler implements IAuthHandler {
                 .toString();
     }
 
-    private final Map<UUID, Integer> nationTokens = new ConcurrentHashMap<>();
-    private final Map<UUID, Long> userTokens = new ConcurrentHashMap<>();
+    private Auth getAuth(Context context, boolean allowRedirect) {
+        Map<String, String> cookies = context.cookieMap();
+        String discordAuth = cookies.get(cookieId(CookieType.DISCORD));
 
-//    private Map.Entry<Integer, Long> getAuth(Context context, boolean throwAuthError) {
-//        Map<String, String> cookies = context.cookieMap();
-//        String discordAuth = cookies.get(cookieId(CookieType.DISCORD));
+        String message = null;
+
+        // If discord auth exists
+        if (discordAuth != null) {
+            Long discordId = tokenHashes.get(discordAuth);
+            if (discordId != null) {
+                Map.Entry<String, JsonObject> userInfo = tokenToUserMap.get(discordId);
+                if (userInfo != null) {
+                    JsonObject json = userInfo.getValue();
+                    JsonElement idStr = json.get("id");
+                    if (idStr != null) {
+                        Long userId = Long.parseLong(idStr.getAsString());
+                        Auth auth = new Auth(null, userId, Long.MAX_VALUE);
+                        if (auth.isValid() && !auth.isExpired()) return auth;
+                    }
+                }
+            }
+            context.removeCookie(cookieId(CookieType.DISCORD));
+        }
+
+        {
+            // if command auth exists
+            String commandAuth = cookies.get(cookieId(CookieType.URL));
+            if (commandAuth != null) {
+                UUID uuid = UUID.fromString(commandAuth);
+                Auth  auth = webCommandAuth.get(uuid);
+                if (auth.isValid() && !auth.isExpired()) return auth;
+                context.removeCookie(cookieId(CookieType.URL));
+            }
+        }
+
+        Integer allianceIdFilter = null;
+        Integer nationIdFilter = null;
+        {
+            // get the path
+            String path = context.path();
+
+            System.out.println(":||Path " + path);
+            if (path.equalsIgnoreCase("auth")) {
+                Map<String, List<String>> queryMap = context.queryParamMap();
+
+                String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
+                if (allianceStr != null) {
+                    allianceIdFilter = PnwUtil.parseAllianceId(allianceStr);
+                }
+                String nationStr = StringMan.join(queryMap.getOrDefault("nation", new ArrayList<>()), ",");
+                if (nationStr != null) {
+                    nationIdFilter = PnwUtil.parseAllianceId(nationStr);
+                }
+
+                String token = StringMan.join(queryMap.getOrDefault("token", new ArrayList<>()), ",");
+                // Check token in temporary map
+                if (token != null) {
+                    try {
+                        UUID uuid = UUID.fromString(token);
+                        Auth  auth = pendingWebCmdTokens.remove(uuid);
+                        if (auth != null) {
+                            if (auth.timestamp() < System.currentTimeMillis() + TimeUnit.DAYS.toMinutes(15)) {
+                                Long userId = auth.userId();
+                                Integer nationId = auth.nationId();
+
+                                if (auth.getUser() == null && auth.getNation() == null) {
+                                    if (userId != null) {
+                                        message = "Could not find user for id: " + userId;
+                                        userId = null;
+                                    }
+                                    if (nationId != null) {
+                                        message = "Could not find nation for id: " + nationId;
+                                        nationId = null;
+                                    }
+                                    auth = null;
+                                } else {
+                                    UUID verifiedUid = UUID.randomUUID();
+                                    context.cookie(cookieId(CookieType.URL), verifiedUid.toString(), 60 * 60 * 24 * 30);
+                                    context.removeCookie(cookieId(CookieType.DISCORD));
+                                    webCommandAuth.put(verifiedUid, auth);
+                                    db.addTempToken(verifiedUid, auth);
+
+                                    if (allowRedirect) {
+                                        String redirect = getRedirect(context);
+                                        context.header("Location", redirect);
+                                        context.header("cache-control", "no-store");
+                                        context.redirect(redirect);
+
+                                        throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
+                                    }
+                                    if (auth.isValid() && !auth.isExpired()) return auth;
+                                }
+                            } else {
+                                message = "This authorization page has expired. Please try again.";
+                            }
+                        }
+                    } catch (IllegalArgumentException e) {
+                        // invalid token, ignore it
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        if (allowRedirect) {
+
+//            if (nationIdFilter != null) {
+//                DBNation nation = DBNation.byId(nationIdFilter);
+//                if (nation != null) {
 //
-//        Long userId = null;
-//        Integer nationId = null;
+//                    // Send mail
+//                    // redirect to mail page
 //
-//        // If discord auth exists
-//        if (discordAuth != null) {
-//            Long discordId = tokenHashes.get(discordAuth);
-//            if (discordId != null) {
-//                Map.Entry<String, JsonObject> userInfo = tokenToUserMap.get(discordId);
-//                if (userInfo != null) {
-//                    userInfo.getValue();
+//                    UUID uuid = UUID.randomUUID();
+//
 //                }
 //            }
-//        }
-//
-//        // if command auth exists
-//        String commandAuth = cookies.get(cookieId(CookieType.COMMAND));
-//
-//        // if mail auth exists
-//        String mailAuth = cookies.get(cookieId(CookieType.MAIL));
-//
-//
-//        if (userId == null && nationId == null) {
-//            // get the path
-//            String path = context.path();
-//
-//            System.out.println(":||Path " + path);
-//            if (path.equalsIgnoreCase("auth")) {
-//                Map<String, List<String>> queryMap = context.queryParamMap();
-//
-//                String token = StringMan.join(queryMap.getOrDefault("token", new ArrayList<>()), ",");
-//                // Check token in temporary map
-//                if (token != null) {
-//                    try {
-//                        UUID uuid = UUID.fromString(token);
-//                        Integer validatedNation = nationTokens.remove(uuid);
-//                        Long validatedUser = userTokens.remove(uuid);
-//
-//                        if (validatedUser != null) {
-//                            // set user cookie
-//                        }
-//
-//                    } catch (IllegalArgumentException e) {
-//                        // invalid token, ignore it
-//                        e.printStackTrace();
-//                    }
-//                }
-//
-//                String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
-//                String authType = StringMan.join(queryMap.getOrDefault("type", new ArrayList<>()), ",");
-//
-//
-//            }
-//            if (userId == null && nationId == null) {
-//                // prompt for auth
-//                String authPage = createAuthPage(context, null, null);
-//                // set context to authPage
-//                context.result(authPage);
-//
-//
-//                if (throwAuthError) {
-//                    throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
-//                }
-//
-//                return null;
-//            }
-//        }
-//
-//        if (userId != null || nationId != null) {
-//            if (nationId == null) {
-//                // get nation from user id
-//            }
-//            if (userId == null) {
-//                // get user id from nation
-//            }
-//
-//            DBNation nation = null;
-//            User user = null;
-//
-//            if (nation != null && user != null) {
-//                return new AbstractMap.SimpleEntry<>(nationId, userId);
-//            }
-//            // delete cookies and prompt for auth
-//        }
-//
-//
-//    }
+//            String authPage = createAuthPage(context, allianceIdFilter, nationIdFilter, message);
+//            // set context to authPage
+//            context.result(authPage);
+//            throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
+        }
+        return null;
+    }
+
+    private String getRedirect(Context context) {
+        String redirect = context.queryParam("redirect");
+        if (redirect == null || redirect.isEmpty()) {
+            String fingerprint = (context.ip() + context.userAgent());
+            String hash = Hashing.sha256().hashString(fingerprint, StandardCharsets.UTF_8).toString();
+            redirect = ORIGINAL_PAGE.remove(hash);
+            if (redirect == null || redirect.contains("auth") || redirect.contains("logout")) {
+                redirect = WebRoot.REDIRECT;
+            }
+        }
+        return redirect;
+    }
 
     public Long getUserId(JsonObject user) {
         JsonElement idStr = user.get("id");
@@ -315,6 +361,7 @@ public class AuthHandler implements IAuthHandler {
                 }
             } finally {
                 String redirect = ORIGINAL_PAGE.remove(context.ip());
+                if (redirect == null) redirect = WebRoot.REDIRECT;
                 context.header("Location", redirect);
                 context.header("cache-control", "no-store");
                 context.redirect(redirect);
