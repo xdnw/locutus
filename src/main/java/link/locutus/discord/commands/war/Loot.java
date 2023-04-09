@@ -79,9 +79,10 @@ public class Loot extends Command {
 
             double aaScore = alliance.getScore();
 
-            double ratio = (me.getScore() / aaScore) / (5);
+            double score = me.getScore();
+            double ratio = ((score * 10000) / aaScore) / 2d;
+            percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
 
-            percent = Math.min(ratio, 0.33);
         } else {
             DBNation enemy = Locutus.imp().getNationDB().getNation(id);
             if (enemy == null) return "Unknown nation: " + id;

@@ -338,7 +338,7 @@ public class SpyTracker {
 
                 System.out.println("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
 
-                SpyAlert alert = new SpyAlert(defender, unit, defensive.change, defensive.original, defensive.timestamp);
+                SpyAlert alert = new SpyAlert(defender, unit, defensive.original, defensive.change, defensive.timestamp);
 
                 if (unit == MilitaryUnit.SPIES) {
                     for (SpyActivity offensive : offensives) {
@@ -407,7 +407,7 @@ public class SpyTracker {
 
             String defSpiesStr;
             if (alert.unit == MilitaryUnit.SPIES) {
-                defSpiesStr = alert.original + "->" + (alert.original + alert.change);
+                defSpiesStr = alert.original + "->" + (alert.original - alert.change);
             } else {
                 defender.updateSpies(24);
                 defSpiesStr = "" + defender.getSpies();
@@ -443,7 +443,7 @@ public class SpyTracker {
                     }
                 }
                 int defUnitBefore = alert.original;
-                int defUnitNow = alert.original + alert.change;
+                int defUnitNow = alert.original - alert.change;
                 if (unit == MilitaryUnit.SPIES) {
 
                     // int spiesKilled, int defSpies, boolean spySat

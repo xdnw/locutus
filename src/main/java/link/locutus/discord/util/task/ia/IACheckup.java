@@ -854,7 +854,7 @@ public class IACheckup {
     private Map.Entry<Object, String> checkBuyRpc(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
         if (nation.getCities() > Projects.ACTIVITY_CENTER.maxCities()) return null;
         if (nation.getProjectTurns() > 0 || nation.getFreeProjectSlots() <= 0) return null;
-        return new AbstractMap.SimpleEntry<>("1", "Go to the projects tab and buy the resource production center");
+        return new AbstractMap.SimpleEntry<>("1", "Go to the projects tab and buy the Activity Center");
     }
 
     private Map.Entry<Object, String> checkBuyProject(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
