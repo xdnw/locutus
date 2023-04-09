@@ -906,11 +906,16 @@ public class PWBindings extends BindingHelper {
             }
             throw new IllegalArgumentException("No bracket found for `" + input + "`. Are you sure that tax rate exists ingame?");
         }
-        if (!input.contains("tax_id=")) {
-            throw new IllegalArgumentException("Invalid tax url `" + input + "`");
+        int taxId;
+        if (MathMan.isInteger(input)) {
+            taxId = Integer.parseInt(input);
+        } else {
+            if (!input.contains("tax_id=")) {
+                throw new IllegalArgumentException("Invalid tax url `" + input + "`");
+            }
+            String[] split = input.split("=");
+            taxId = Integer.parseInt(split[split.length - 1]);
         }
-        String[] split = input.split("=");
-        int taxId = Integer.parseInt(split[split.length - 1]);
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;
         throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()));
