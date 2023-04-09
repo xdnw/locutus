@@ -1793,8 +1793,8 @@ public class WarDB extends DBMainV2 {
         double aaScore = alliance.getScore();
         if (aaScore == 0) return Collections.emptyMap();
 
-        double ratio = (nationScore / aaScore) / (5);
-        double percent = Math.min(ratio, 0.33);
+        double ratio = ((nationScore * 10000) / aaScore) / 2d;
+        double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
         Map<ResourceType, Double> yourLoot = PnwUtil.resourcesToMap(allianceLoot);
         yourLoot = PnwUtil.multiply(yourLoot, percent);
         return yourLoot;
