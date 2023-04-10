@@ -1660,7 +1660,7 @@ public class BankCommands {
                 if (!receiver.isNation()) {
                     result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.INVALID_DESTINATION, "Cannot use `existingTaxAccount` for transfers to alliances");
                 } else {
-                    taxAccount = receiver.asNation().getTaxBracket();
+                    taxAccountFinal = receiver.asNation().getTaxBracket();
                 }
             }
 
