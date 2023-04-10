@@ -309,11 +309,11 @@ public class BankCommands {
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true, any = true)
     @IsAlliance
     public static String disburse(@Me User author, @Me GuildDB db, @Me IMessageIO io, @Me DBNation me,
-                           NationList nationList,
-                           @Range(min=0, max=7) double daysDefault,
-                           @Default("#tax") DepositType.DepositTypeInfo depositType,
-                           @Switch("d") boolean noDailyCash,
-                           @Switch("c") boolean noCash,
+                                  NationList nationList,
+                                  @Range(min=0, max=7) double daysDefault,
+                                  @Default("#tax") DepositType.DepositTypeInfo depositType,
+                                  @Switch("d") boolean noDailyCash,
+                                  @Switch("c") boolean noCash,
 
                            @Switch("n") DBNation depositsAccount,
                            @Switch("a") DBAlliance useAllianceBank,
@@ -489,23 +489,23 @@ public class BankCommands {
         int numRemoved = sizeOriginal - nations.size();
 
         List<String> header = new ArrayList<>(Arrays.asList(
-            "nation",
-            "tax_id",
-            "cities",
-            "avg_infra",
-            "avg_land",
-            "avg_buildings",
-            "avg_disease",
-            "avg_crime",
-            "avg_pollution",
-            "avg_population",
-            "mmr[unit]",
-            "mmr[build]",
-            "revenue[converted]",
-            "raws %",
-            "manu %",
-            "commerce %",
-            "optimal %"
+                "nation",
+                "tax_id",
+                "cities",
+                "avg_infra",
+                "avg_land",
+                "avg_buildings",
+                "avg_disease",
+                "avg_crime",
+                "avg_pollution",
+                "avg_population",
+                "mmr[unit]",
+                "mmr[build]",
+                "revenue[converted]",
+                "raws %",
+                "manu %",
+                "commerce %",
+                "optimal %"
         ));
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
@@ -693,19 +693,19 @@ public class BankCommands {
 
         SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.WARCHEST_SHEET);
         List<String> header = new ArrayList<>(Arrays.asList(
-            "nation",
-            "cities",
-            "mmr[build]",
-            "mmr[unit]",
-            "WC %",
-            "WC % (converted)",
-            "Revenue Contribution Individual %",
-            "Revenue Contribution Aggregate %",
-            "Missing WC",
-            "Excess WC",
-            "WC",
-            "Missing WC val",
-            "Excess WC val"
+                "nation",
+                "cities",
+                "mmr[build]",
+                "mmr[unit]",
+                "WC %",
+                "WC % (converted)",
+                "Revenue Contribution Individual %",
+                "Revenue Contribution Aggregate %",
+                "Missing WC",
+                "Excess WC",
+                "WC",
+                "Missing WC val",
+                "Excess WC val"
         ));
 
         sheet.setHeader(header);
@@ -788,8 +788,8 @@ public class BankCommands {
                            @Me User author, @Me DBNation me, @Me GuildDB guildDb, @NationDepositLimit Map<ResourceType, Double> transfer, @Default("#deposit") DepositType.DepositTypeInfo depositType,
 
                            @Switch("n") DBNation depositsAccount,
-                         @Switch("a") DBAlliance useAllianceBank,
-                         @Switch("o") DBAlliance useOffshoreAccount,
+                           @Switch("a") DBAlliance useAllianceBank,
+                           @Switch("o") DBAlliance useOffshoreAccount,
                            @Switch("t") TaxBracket taxAccount,
                            @Switch("ta") boolean existingTaxAccount,
 
@@ -797,8 +797,8 @@ public class BankCommands {
                            @Switch("e") @Timediff Long expire,
                            @Switch("g") UUID token,
                            @Switch("c") boolean convertCash,
-                            @Switch("b") boolean bypassChecks,
-                            @Switch("f") boolean force
+                           @Switch("b") boolean bypassChecks,
+                           @Switch("f") boolean force
     ) throws IOException {
         return transfer(channel, command, author, me, guildDb, me, transfer, depositType,
                 depositsAccount == null ? me : depositsAccount,
@@ -899,7 +899,7 @@ public class BankCommands {
     @Command(desc = "Transfer from the alliance bank (alliance deposits)")
     @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     public static String transfer(@Me IMessageIO channel, @Me JSONObject command,
-                           @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.DepositTypeInfo depositType,
+                                  @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.DepositTypeInfo depositType,
 
                            @Switch("n") DBNation nationAccount,
                            @Switch("a") DBAlliance senderAlliance,
@@ -1305,7 +1305,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Set nation's internal taxrate\n" +
-        "See also: `{prefix}SetTaxRate` and `{prefix}KeyStore TAX_BASE`")
+            "See also: `{prefix}SetTaxRate` and `{prefix}KeyStore TAX_BASE`")
     @RolePermission(value = Roles.ECON)
     public String setInternalTaxRate(@Me GuildDB db, Set<DBNation> nations, TaxRate taxRate) {
         if (taxRate.money < -1 || taxRate.money > 100 || taxRate.resources < -1 || taxRate.resources > 100) throw new IllegalArgumentException("Invalid taxrate: " + taxRate);
@@ -1435,8 +1435,8 @@ public class BankCommands {
 
 
         channel.create().embed(title, body)
-                        .commandButton(cmd, emoji)
-                                .send();
+                .commandButton(cmd, emoji)
+                .send();
         return null;
     }
 
@@ -1549,6 +1549,7 @@ public class BankCommands {
 
 
     public static String transferBulkWithErrors(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
+<<<<<<< HEAD
                                       @Switch("n") DBNation depositsAccount,
                                       @Switch("a") DBAlliance useAllianceBank,
                                       @Switch("o") DBAlliance useOffshoreAccount,
@@ -1611,8 +1612,8 @@ public class BankCommands {
             APPROVED_BULK_TRANSFER.put(key, transfers);
             String commandStr = command.put("force", "true").put("key", key).toString();
             msg.embed(title, desc.toString())
-                            .commandButton(commandStr, "Confirm")
-                                    .send();
+                    .commandButton(commandStr, "Confirm")
+                    .send();
             return null;
         }
         if (key != null) {
@@ -1736,7 +1737,7 @@ public class BankCommands {
             if (guild == null) return "No guild found for AA:" + alliance;
             offshore.disabledGuilds.remove(guild.getIdLong());
         } else {
-           return alliance + " must be a guild or alliance";
+            return alliance + " must be a guild or alliance";
         }
         return "Done!";
     }
@@ -1987,15 +1988,15 @@ public class BankCommands {
     @Command(desc = "Send from your nation's deposits to another account (internal transfer)")
     @RolePermission(value = Roles.ECON)
     public String send(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me,
-                         @AllianceDepositLimit Map<ResourceType, Double> amount,
-                         NationOrAllianceOrGuild receiver,
+                       @AllianceDepositLimit Map<ResourceType, Double> amount,
+                       NationOrAllianceOrGuild receiver,
 
-                         @Default Guild receiverGuild,
-                         @Default DBAlliance receiverAlliance,
+                       @Default Guild receiverGuild,
+                       @Default DBAlliance receiverAlliance,
 
-                         @Default DBAlliance senderAlliance,
+                       @Default DBAlliance senderAlliance,
 
-                         @Switch("f") boolean confirm) throws IOException {
+                       @Switch("f") boolean confirm) throws IOException {
         if (true) return "WIP";
         if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         return sendAA(offshore, channel, command, senderDB, user, alliance, rank, me, amount, receiver, receiverGuild, receiverAlliance, senderAlliance, me, confirm);
@@ -2004,15 +2005,15 @@ public class BankCommands {
     @Command(desc = "Send from your alliance offshore account to another account (internal transfer)")
     @RolePermission(value = Roles.ECON)
     public String sendAA(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me,
-                       @AllianceDepositLimit Map<ResourceType, Double> amount,
-                       NationOrAllianceOrGuild receiver,
-                       @Default Guild receiverGuild,
-                       @Default DBAlliance receiverAlliance,
+                         @AllianceDepositLimit Map<ResourceType, Double> amount,
+                         NationOrAllianceOrGuild receiver,
+                         @Default Guild receiverGuild,
+                         @Default DBAlliance receiverAlliance,
 
-                       @Default DBAlliance senderAlliance,
-                       @Default DBNation senderNation,
+                         @Default DBAlliance senderAlliance,
+                         @Default DBNation senderNation,
 
-                       @Switch("f") boolean confirm) throws IOException {
+                         @Switch("f") boolean confirm) throws IOException {
         if (true) return "WIP";
         if (OffshoreInstance.DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         if (receiverGuild != null && !receiver.isNation()) throw new IllegalArgumentException("Cannot specify receiver guild when receiver is not a nation");
@@ -2065,7 +2066,7 @@ public class BankCommands {
                            @Switch("d") boolean replyInDMs,
                            @Switch("e") boolean includeExpired,
                            @Switch("e") boolean includeIgnored
-                           ) throws IOException {
+    ) throws IOException {
         if (timeCutoff == null) timeCutoff = 0L;
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
         if (offshoreIds != null) offshoreIds = PnwUtil.expandCoalition(offshoreIds);
