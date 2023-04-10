@@ -344,7 +344,7 @@ public class TradeDB extends DBMainV2 {
         public String toSimpleString() {
             String result = "#" + id + ": `" +
                     PnwUtil.getName(nation, false) + "` " +
-                    (isBuy ? "Buying" : "Selling") + " " + 
+                    (isBuy ? "Buying" : "Selling") + " " +
                     MathMan.format(quantity) + "x " +
                     getResource() + " for " +
                     getPpuRangeStr(false);
@@ -577,8 +577,8 @@ public class TradeDB extends DBMainV2 {
     }
 
     public Map<ResourceType, Integer> getTradePrice(boolean isBuy) {
-            long date = System.currentTimeMillis();
-            Map<ResourceType, Integer> result = new EnumMap<>(ResourceType.class);
+        long date = System.currentTimeMillis();
+        Map<ResourceType, Integer> result = new EnumMap<>(ResourceType.class);
         try (PreparedStatement stmt = prepareQuery("select * FROM `TRADEPRICE_2` WHERE isBuy = ?")) {
             stmt.setBoolean(1, isBuy);
             try (ResultSet rs = stmt.executeQuery()) {
