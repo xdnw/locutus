@@ -90,7 +90,7 @@ public class PageHandler implements Handler {
 
     public PageHandler(WebRoot root) {
         this.root = root;
-        this.authHandler = new AuthHandler(root.getDb());
+        this.authHandler = new AuthHandler();
 
         this.store = new SimpleValueStore<>();
 

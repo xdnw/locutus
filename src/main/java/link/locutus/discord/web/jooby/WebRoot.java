@@ -53,7 +53,6 @@ public class WebRoot {
 
     private final PageHandler pageHandler;
     private final File fileRoot;
-    private final WebDB db;
     private final Javalin app;
 
     private static WebRoot INSTANCE;
@@ -100,13 +99,6 @@ public class WebRoot {
         }).start();
 
         this.pageHandler = new PageHandler(this);
-
-        try {
-            this.db = new WebDB();
-        } catch (SQLException | ClassNotFoundException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
 
         this.app.get("/auth**", new Handler() {
             @Override
@@ -255,10 +247,6 @@ public class WebRoot {
 
     public PageHandler getPageHandler() {
         return pageHandler;
-    }
-
-    public WebDB getDb() {
-        return db;
     }
 
     public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {

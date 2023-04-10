@@ -37,7 +37,7 @@ public class WebDB extends DBMainV3 {
 
         // create Auth db using executeStmt
         // not null long small, not null long big, long nullable nation_id, long nullable user_id, not null long timestamp
-        ctx().execute("CREATE TABLE IF NOT EXISTS `AUTH` (`SMALL` BIGINT NOT NULL, `BIG` BIGINT NOT NULL, `NATION_ID` BIGINT, `USER_ID` BIGINT, `TIMESTAMP` BIGINT NOT NULL, PRIMARY KEY (`small`, 'big`));");
+        ctx().execute("CREATE TABLE IF NOT EXISTS `AUTH` (`least` BIGINT NOT NULL, `most` BIGINT NOT NULL, `NATION_ID` BIGINT, `USER_ID` BIGINT, `TIMESTAMP` BIGINT NOT NULL, PRIMARY KEY (`least`, `most`))");
 
         deleteOldTempAuth();
     }
@@ -76,7 +76,7 @@ public class WebDB extends DBMainV3 {
         long small = uuid.getLeastSignificantBits();
         long big = uuid.getMostSignificantBits();
         // delete from AUTH table
-        ctx().execute("DELETE FROM `AUTH` WHERE `SMALL` = ? AND `BIG` = ?;", small, big);
+        ctx().execute("DELETE FROM `AUTH` WHERE `least` = ? AND `most` = ?;", small, big);
     }
 
     public void addTempToken(UUID uuid, IAuthHandler.Auth auth) {
@@ -86,7 +86,7 @@ public class WebDB extends DBMainV3 {
         Integer nationId = auth.nationId();
         Long userId = auth.userId();
         // insert into AUTH table
-        ctx().execute("INSERT INTO `AUTH` (`SMALL`, `BIG`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `NATION_ID` = ?, `USER_ID` = ?, `TIMESTAMP` = ?;", small, big, nationId, userId, timestamp, nationId, userId, timestamp);
+        ctx().execute("INSERT INTO `AUTH` (`least`, `most`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `NATION_ID` = ?, `USER_ID` = ?, `TIMESTAMP` = ?;", small, big, nationId, userId, timestamp, nationId, userId, timestamp);
     }
 
     public void deleteOldTempAuth() {
@@ -97,9 +97,9 @@ public class WebDB extends DBMainV3 {
     public Map<UUID, IAuthHandler.Auth> loadTempTokens() {
         Map<UUID, IAuthHandler.Auth> result = new ConcurrentHashMap<>();
         // select from AUTH table
-        ctx().select(asterisk()).from("AUTH").where("TIMESTAMP > ?;", getCutoff()).fetch().forEach(row -> {
-            long small = row.get("SMALL", Long.class);
-            long big = row.get("BIG", Long.class);
+        ctx().select(asterisk()).from("AUTH").where("TIMESTAMP > ?", getCutoff()).fetch().forEach(row -> {
+            long small = row.get("least", Long.class);
+            long big = row.get("most", Long.class);
             Integer nationId = row.get("NATION_ID", Integer.class);
             Long userId = row.get("USER_ID", Long.class);
             UUID uuid = new UUID(big, small);

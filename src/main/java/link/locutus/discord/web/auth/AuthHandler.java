@@ -26,6 +26,7 @@ import org.apache.http.message.BasicNameValuePair;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,8 +47,13 @@ public class AuthHandler implements IAuthHandler {
 
     private final Map<UUID, Auth> webCommandAuth;
 
-    public AuthHandler(WebDB db) {
-        this.db = db;
+    public AuthHandler() {
+        try {
+            this.db = new WebDB();
+        } catch (SQLException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        ;
         for (Map.Entry<Long, Map.Entry<String, JsonObject>> entry : db.loadTokens().entrySet()) {
             addAccessToken(entry.getValue().getKey(), entry.getValue().getValue(), false);
         }
