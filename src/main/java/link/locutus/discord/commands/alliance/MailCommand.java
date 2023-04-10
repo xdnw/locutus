@@ -43,7 +43,7 @@ public class MailCommand extends Command implements Noformat {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Locutus.imp().getGuildDB(server).hasAuth() && Roles.MAIL.has(user, server);
+        return Roles.MAIL.has(user, server);
     }
 
     @Override
@@ -68,12 +68,7 @@ public class MailCommand extends Command implements Noformat {
                     boolean hasPerms = (Roles.INTERNAL_AFFAIRS.hasOnRoot(author)) || (authDB != null && Roles.INTERNAL_AFFAIRS.has(author, authDB.getGuild()));
                     if (!hasPerms) return "You do not have permission to reply to this message.";
                 } else {
-                    try {
-                        auth = me.getAuth();
-                    } catch (IllegalArgumentException e) {
-                        auth = db.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
-                        if (auth == null) throw e;
-                    }
+                    auth = me.getAuth();
                 }
 
                 int messageId = Integer.parseInt(arg1.split("=")[1]);

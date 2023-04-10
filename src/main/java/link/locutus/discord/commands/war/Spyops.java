@@ -154,8 +154,8 @@ public class Spyops extends Command {
         Set<Integer> alliesCoalition = db.getCoalition("allies");
         if (alliesCoalition != null) allies.addAll(alliesCoalition);
         if (me.getAlliance_id() != 0) allies.add(me.getAlliance_id());
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId != null) allies.add(allianceId);
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (!aaIds.isEmpty()) allies.addAll(aaIds);
 
         Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id()).stream()
                 .map(dbWar -> dbWar.attacker_id == me.getNation_id() ? dbWar.defender_id : dbWar.attacker_id)

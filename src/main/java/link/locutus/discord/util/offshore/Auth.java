@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -845,6 +846,21 @@ public class Auth {
             if (receiverOffshore != offshore) {
                 throw new IllegalArgumentException("Receiver offshore does not match this guilds offshore");
             }
+            Set<Integer> aaIds = currentDB.getAllianceIds();
+            long senderId;
+            int senderType;
+            if (aaIds.isEmpty()) {
+                senderId = currentDB.getIdLong();
+                senderType = currentDB.getReceiverType();
+            } else if (aaIds.size() == 1) {
+                senderId = aaIds.iterator().next();
+                senderType = nation.getAlliance().getReceiverType();
+            } else if (aaIds.contains(senderNation.getAlliance_id())){
+                senderId = senderNation.getAlliance_id();
+                senderType = senderNation.getAlliance().getReceiverType();
+            } else {
+                throw new IllegalArgumentException("Sender " + senderNation.getQualifiedName() + " is not in alliances: " + StringMan.getString(aaIds));
+            }
 
             StringBuilder response = new StringBuilder("Checking trades...");
 
@@ -870,7 +886,7 @@ public class Auth {
                     }
                     if (PnwUtil.convertedTotal(toDeposit) == 0) return false;
 
-                    OffshoreInstance bank = authDb.getHandler().getBank();
+                    OffshoreInstance bank = nation.getAlliance().getBank();
                     if (bank != offshore) {
                         for (int i = 0; i < toDeposit.length; i++) {
                             if (toDeposit[i] < 0) toDeposit[i] = 0;
@@ -889,10 +905,11 @@ public class Auth {
                     String note = "#deposit";
 
                     response.append("\nAdding deposits:");
-                    offshore.getGuildDB().addTransfer(tx_datetime, currentDB, offshore.getGuildDB(), Auth.this.getNationId(), note, toDeposit);
+
+                    offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), Auth.this.getNationId(), note, toDeposit);
                     response.append("\n - Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
                     // add balance to expectedNation
-                    currentDB.addTransfer(tx_datetime, senderNation, currentDB, Auth.this.getNationId(), note, toDeposit);
+                    currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, Auth.this.getNationId(), note, toDeposit);
                     response.append("\n - Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
 
                     MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);

@@ -2,8 +2,9 @@ package link.locutus.discord.apiv3;
 
 import com.politicsandwar.graphql.model.BBGame;
 import com.politicsandwar.graphql.model.WarAttack;
-import com.politicsandwar.graphql.model.WarAttackResponseProjection;
-import de.siegmar.fastcsv.reader.*;
+import de.siegmar.fastcsv.reader.CloseableIterator;
+import de.siegmar.fastcsv.reader.CsvReader;
+import de.siegmar.fastcsv.reader.CsvRow;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
@@ -35,7 +36,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import javax.security.auth.login.LoginException;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -44,17 +47,48 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.*;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class DataDumpParser {
 
+    private final Map<Integer, Long> cityDateCache = new Int2LongOpenHashMap();
+    private final Map<Integer, Long> nationDateCache = new Int2LongOpenHashMap();
     private Map<Long, File> nationFilesByDay;
     private Map<Long, File> cityFilesByDay;
+
     public DataDumpParser() {
 
+    }
+
+    public static void main(String[] args) throws IOException, ParseException, NoSuchFieldException, IllegalAccessException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
+        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
+        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
+        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
+        Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = true;
+
+        Locutus.create().start();
+
+        DataDumpParser instance = new DataDumpParser().load();
+
+        {
+            instance.load();
+            instance.exportToTracker();
+            System.out.println("Done!");
+            System.exit(0);
+        }
+
+        // get loot info
+        Map<Integer, LootEntry> loot = Locutus.imp().getNationDB().getNationLootMap();
+        System.out.println("Loot entries " + loot.size());
+
+        long start = System.currentTimeMillis();
+
+        long diff = System.currentTimeMillis() - start;
+        System.out.println("Diff " + diff + "ms");
     }
 
     public DataDumpParser load() throws IOException, ParseException {
@@ -64,7 +98,8 @@ public class DataDumpParser {
     }
 
     public long getMinDate() {
-        if (nationFilesByDay == null || nationFilesByDay.isEmpty()) throw new IllegalStateException("Please load the data");
+        if (nationFilesByDay == null || nationFilesByDay.isEmpty())
+            throw new IllegalStateException("Please load the data");
         return TimeUtil.getTimeFromDay(nationFilesByDay.keySet().iterator().next());
     }
 
@@ -78,7 +113,7 @@ public class DataDumpParser {
         return nationFilesByDay = load("https://politicsandwar.com/data/nations/", new File("data/nations"));
     }
 
-    public void printActiveCitiesByDay() throws IOException, NoSuchFieldException, IllegalAccessException {
+    public void printActiveCitiesByDay() throws IOException {
         List<String> result = new ArrayList<>();
         Map<Long, Set<Integer>> activeByDay = Locutus.imp().getNationDB().getActivityByDay(0, f -> true);
         for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
@@ -92,32 +127,28 @@ public class DataDumpParser {
             String dateStr = TimeUtil.YYYY_MM_DD_FORMAT.format(new Date(timestamp));
 
 
-
             AtomicLong citiesToday = new AtomicLong(0);
-            readAll(entry.getValue(), new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
-                @Override
-                public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws NoSuchFieldException, IllegalAccessException, ParseException {
-                    NationHeader header = loadHeader(new NationHeader(), headerList);
-                    while (rows.hasNext()) {
-                        CsvRow row = rows.next();
-                        int nationId = Integer.parseInt(row.getField(header.nation_id));
-                        if (header.vm_turns != 0) {
-                            int vm = Integer.parseInt(row.getField(header.vm_turns));
-                            if (vm > 0) continue;
-                        } else {
-                            if (!activeToday.contains(nationId)) {
-                                continue;
-                            }
+            readAll(entry.getValue(), (headerList, rows) -> {
+                NationHeader header = loadHeader(new NationHeader(), headerList);
+                while (rows.hasNext()) {
+                    CsvRow row = rows.next();
+                    int nationId = Integer.parseInt(row.getField(header.nation_id));
+                    if (header.vm_turns != 0) {
+                        int vm = Integer.parseInt(row.getField(header.vm_turns));
+                        if (vm > 0) continue;
+                    } else {
+                        if (!activeToday.contains(nationId)) {
+                            continue;
                         }
-                        NationColor color = NationColor.valueOf(row.getField(header.color).toUpperCase(Locale.ROOT));
-                        if (color == NationColor.GRAY || color == NationColor.BEIGE) {
-                            if (!activeToday.contains(nationId)) {
-                                continue;
-                            }
-                        }
-                        int numCities = Integer.parseInt(row.getField(header.cities));
-                        citiesToday.addAndGet(numCities);
                     }
+                    NationColor color = NationColor.valueOf(row.getField(header.color).toUpperCase(Locale.ROOT));
+                    if (color == NationColor.GRAY || color == NationColor.BEIGE) {
+                        if (!activeToday.contains(nationId)) {
+                            continue;
+                        }
+                    }
+                    int numCities = Integer.parseInt(row.getField(header.cities));
+                    citiesToday.addAndGet(numCities);
                 }
             });
             result.add(dateStr + "\t" + citiesToday.get());
@@ -125,44 +156,27 @@ public class DataDumpParser {
         System.out.println(StringMan.join(result, "\n"));
     }
 
-    public Map<Long, Map<Integer, Continent>> getContinentByNationByDay() throws IOException, NoSuchFieldException, IllegalAccessException {
+    public Map<Long, Map<Integer, Continent>> getContinentByNationByDay() throws IOException {
         Map<Long, Map<Integer, Continent>> continentByNationByDay = new Long2ObjectOpenHashMap<>();
 
         for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
             long day = entry.getKey();
             System.out.println("Read " + day);
             Map<Integer, Continent> continentByNation = continentByNationByDay.computeIfAbsent(day, f -> new Int2ObjectOpenHashMap<>());
-            readAll(entry.getValue(), new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
-                @Override
-                public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws NoSuchFieldException, IllegalAccessException, ParseException {
-                    NationHeader header = loadHeader(new NationHeader(), headerList);
-                    while (rows.hasNext()) {
-                        CsvRow row = rows.next();
-                        int nationId = Integer.parseInt(row.getField(header.nation_id));
-                        Continent continent = Continent.parseV3(row.getField(header.continent));
-                        continentByNation.put(nationId, continent);
-                    }
+            readAll(entry.getValue(), (headerList, rows) -> {
+                NationHeader header = loadHeader(new NationHeader(), headerList);
+                while (rows.hasNext()) {
+                    CsvRow row = rows.next();
+                    int nationId = Integer.parseInt(row.getField(header.nation_id));
+                    Continent continent = Continent.parseV3(row.getField(header.continent));
+                    continentByNation.put(nationId, continent);
                 }
             });
         }
         return continentByNationByDay;
     }
 
-    private class MetricValue {
-        int alliance;
-        AllianceMetric metric;
-        long turn;
-        double value;
-
-        public MetricValue(int alliance, AllianceMetric metric, long turn, double value) {
-            this.alliance = alliance;
-            this.metric = metric;
-            this.turn = turn;
-            this.value = value;
-        }
-    }
-
-    public void backCalculateInfra() throws IOException, ParseException, NoSuchFieldException, IllegalAccessException {
+    public void backCalculateInfra() throws IOException, ParseException {
         load();
         for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
             File cityFile = cityFilesByDay.get(entry.getKey());
@@ -176,41 +190,35 @@ public class DataDumpParser {
             Map<Integer, Integer> nationAlliances = new Int2IntOpenHashMap();
 
             // nation, non vm, position >1, infra
-            readAll(entry.getValue(), new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
-                @Override
-                public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws Exception {
-                    NationHeader header = loadHeader(new NationHeader(), headerList);
-                    while (rows.hasNext()) {
-                        CsvRow row = rows.next();
+            readAll(entry.getValue(), (headerList, rows) -> {
+                NationHeader header = loadHeader(new NationHeader(), headerList);
+                while (rows.hasNext()) {
+                    CsvRow row = rows.next();
 
 
-                        int alliance = Integer.parseInt(row.getField(header.alliance_id));
-                        if (alliance == 0) continue;
-                        int vm = Integer.parseInt(row.getField(header.vm_turns));
-                        if (vm > 0) continue;
-                        int pos = Integer.parseInt(row.getField(header.alliance_position));
-                        if (pos <= Rank.APPLICANT.id) continue;
+                    int alliance = Integer.parseInt(row.getField(header.alliance_id));
+                    if (alliance == 0) continue;
+                    int vm = Integer.parseInt(row.getField(header.vm_turns));
+                    if (vm > 0) continue;
+                    int pos = Integer.parseInt(row.getField(header.alliance_position));
+                    if (pos <= Rank.APPLICANT.id) continue;
 
-                        int nationId = Integer.parseInt(row.getField(header.nation_id));
-                        nationAlliances.put(nationId, alliance);
-                    }
+                    int nationId = Integer.parseInt(row.getField(header.nation_id));
+                    nationAlliances.put(nationId, alliance);
                 }
             });
 
-            readAll(cityFile, new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
-                @Override
-                public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws Exception {
-                    CityHeader header = loadHeader(new CityHeader(), headerList);
-                    while (rows.hasNext()) {
-                        CsvRow row = rows.next();
+            readAll(cityFile, (headerList, rows) -> {
+                CityHeader header = loadHeader(new CityHeader(), headerList);
+                while (rows.hasNext()) {
+                    CsvRow row = rows.next();
 
-                        int nationId = Integer.parseInt(row.getField(header.nation_id));
-                        Integer aaId = nationAlliances.get(nationId);
-                        if (aaId == null) continue;
-                        double infra = Double.parseDouble(row.getField(header.infrastructure));
-                        numCities.put(aaId, numCities.getOrDefault(aaId, 0) + 1);
-                        infraTotal.put(aaId, infraTotal.getOrDefault(aaId, 0d) + infra);
-                    }
+                    int nationId = Integer.parseInt(row.getField(header.nation_id));
+                    Integer aaId = nationAlliances.get(nationId);
+                    if (aaId == null) continue;
+                    double infra = Double.parseDouble(row.getField(header.infrastructure));
+                    numCities.put(aaId, numCities.getOrDefault(aaId, 0) + 1);
+                    infraTotal.put(aaId, infraTotal.getOrDefault(aaId, 0d) + infra);
                 }
             });
 
@@ -230,14 +238,11 @@ public class DataDumpParser {
                     values.add(new MetricValue(aaId, AllianceMetric.INFRA_AVG, turn, average));
                 }
             }
-            Locutus.imp().getNationDB().executeBatch(values, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", new ThrowingBiConsumer<MetricValue, PreparedStatement>() {
-                @Override
-                public void acceptThrows(MetricValue value, PreparedStatement stmt) throws Exception {
-                    stmt.setInt(1, value.alliance);
-                    stmt.setInt(2, value.metric.ordinal());
-                    stmt.setLong(3, value.turn);
-                    stmt.setDouble(4, value.value);
-                }
+            Locutus.imp().getNationDB().executeBatch(values, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", (ThrowingBiConsumer<MetricValue, PreparedStatement>) (value, stmt) -> {
+                stmt.setInt(1, value.alliance);
+                stmt.setInt(2, value.metric.ordinal());
+                stmt.setLong(3, value.turn);
+                stmt.setDouble(4, value.value);
             });
         }
     }
@@ -281,7 +286,7 @@ public class DataDumpParser {
         return result;
     }
 
-    public void backCalculateRadiation() throws ParseException, IOException, NoSuchFieldException, IllegalAccessException {
+    public void backCalculateRadiation() throws ParseException, IOException {
         load();
         System.out.println("Updating attacks");
         Locutus.imp().getWarDb().updateAttacks(null);
@@ -295,7 +300,7 @@ public class DataDumpParser {
 
         long cutoff = minDate - TimeUnit.DAYS.toMillis(20);
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> f.attack_type == AttackType.NUKE && f.success > 0);
-        Collections.sort(attacks, Comparator.comparingLong(o -> o.epoch));
+        attacks.sort(Comparator.comparingLong(o -> o.epoch));
 
         long currTurn = TimeUtil.getTurn();
 
@@ -342,7 +347,7 @@ public class DataDumpParser {
         return warEndDates;
     }
 
-    public LootEstimateTracker exportToTracker() throws IOException, ParseException, NoSuchFieldException, IllegalAccessException {
+    public LootEstimateTracker exportToTracker() throws IOException, ParseException {
         load();
 
         long minDate = getMinDate();
@@ -371,12 +376,10 @@ public class DataDumpParser {
 
         long twoDays = TimeUnit.DAYS.toMillis(2);
 
+        //                throw new IllegalArgumentException("Call to get nation not allowed");
         LootEstimateTracker tracker = new LootEstimateTracker(true, 0L, false, f -> {
         }, (nationId, taxIds, doubles) -> System.out.println("Ignore saving tax rate"),
-            id -> {
-            return DBNation.byId(id);
-//                throw new IllegalArgumentException("Call to get nation not allowed");
-        });
+                DBNation::byId);
 
         for (Map.Entry<Integer, LootEntry> entry : minLootDate.entrySet()) {
             int nationId = entry.getKey();
@@ -500,10 +503,10 @@ public class DataDumpParser {
                 for (Map.Entry<Integer, DBNation> nationEntry : dayNations.entrySet()) {
                     int nationId = nationEntry.getKey();
                     DBNation currentNation = nationEntry.getValue();
-                    DBNation previousNation = previousNationsMap == null ? null : previousNationsMap.get(nationId);
+                    DBNation previousNation = previousNationsMap.get(nationId);
 
                     Map<Integer, DBCity> currentCities = dayCities.get(nationId);
-                    Map<Integer, DBCity> previousCities = previousCitiesMap == null ? null : previousCitiesMap.get(nationId);
+                    Map<Integer, DBCity> previousCities = previousCitiesMap.get(nationId);
 
                     if (currentNation != null && previousNation != null) {
 
@@ -563,8 +566,6 @@ public class DataDumpParser {
             }
 
 
-
-
             // when tax rate is resolved via estimate, don't use the estimate
 
             previousNationsMap = dayNations;
@@ -575,41 +576,35 @@ public class DataDumpParser {
 
         // loot_estimates int nation_id, double[] min, double[] max, double[] offset, long lastTurnRevenue, int tax_id
         // loot_estimate_by_tax_id, int nation_id, int tax_id, double[] resources,
-            // - when absolute, delete all tax loot estimates except current running
+        // - when absolute, delete all tax loot estimates except current running
         // tax_estimage: int tax_id, int minMoney, int maxMoney, int minRss, int maxRss
 
 
         // have a way to include guesses without throwing away the current margins
 
         // iterate over loot estimates and resolve tax rates
-        for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : legacyLoot.entrySet()) {
-
-        }
 
         // resolve the tracker queues
         // estimate tax rate from that
         return tracker;
     }
 
-    public Map<Long, Map<Integer, Map<Integer, Double>>> cityInfraByDay(BiPredicate<Long, Integer> dateNationFilter) throws IOException, ParseException, NoSuchFieldException, IllegalAccessException {
+    public Map<Long, Map<Integer, Map<Integer, Double>>> cityInfraByDay(BiPredicate<Long, Integer> dateNationFilter) throws IOException, ParseException {
         Map<Long, Map<Integer, Map<Integer, Double>>> result = new Long2ObjectOpenHashMap<>();
 
         for (Map.Entry<Long, File> entry : downloadCityFilesByDay().entrySet()) {
             System.out.println("File " + entry.getValue());
             long day = entry.getKey();
-            readAll(entry.getValue(), new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
-                @Override
-                public void acceptThrows(List<String> elem, CloseableIterator<CsvRow> rows) throws Exception {
-                    CityHeader header = loadHeader(new CityHeader(), elem);
-                    while (rows.hasNext()) {
-                        CsvRow row = rows.next();
-                        int nationId = Integer.parseInt(row.getField(header.nation_id));
-                        if (!dateNationFilter.test(day, nationId)) continue;
+            readAll(entry.getValue(), (elem, rows) -> {
+                CityHeader header = loadHeader(new CityHeader(), elem);
+                while (rows.hasNext()) {
+                    CsvRow row = rows.next();
+                    int nationId = Integer.parseInt(row.getField(header.nation_id));
+                    if (!dateNationFilter.test(day, nationId)) continue;
 
-                        int cityId = Integer.parseInt(row.getField(header.city_id));
-                        double infra = Double.parseDouble(row.getField(header.infrastructure));
-                        result.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new Int2ObjectOpenHashMap<>()).put(cityId, infra);
-                    }
+                    int cityId = Integer.parseInt(row.getField(header.city_id));
+                    double infra = Double.parseDouble(row.getField(header.infrastructure));
+                    result.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new Int2ObjectOpenHashMap<>()).put(cityId, infra);
                 }
             });
             return result;
@@ -618,7 +613,7 @@ public class DataDumpParser {
         return result;
     }
 
-    public void backCalculateBeigeDamage() throws IOException, ParseException, NoSuchFieldException, IllegalAccessException {
+    public void backCalculateBeigeDamage() throws IOException, ParseException {
         load();
         long min = getMinDate();
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(min, f -> f.attack_type == AttackType.VICTORY && f.infra_destroyed_value <= 0);
@@ -630,21 +625,13 @@ public class DataDumpParser {
 
         System.out.println("Attacks " + attacks.size());
 
-        Map<Long, Map<Integer, Map<Integer, Double>>> infraMap = cityInfraByDay(new BiPredicate<Long, Integer>() {
-            @Override
-            public boolean test(Long day, Integer nation) {
-                return nationsByDay.getOrDefault(day, Collections.emptySet()).contains(nation);
-            }
-        });
+        Map<Long, Map<Integer, Map<Integer, Double>>> infraMap = cityInfraByDay((day, nation) -> nationsByDay.getOrDefault(day, Collections.emptySet()).contains(nation));
 
-        attacks.removeIf(new Predicate<DBAttack>() {
-            @Override
-            public boolean test(DBAttack dbAttack) {
-                long day = TimeUtil.getDay(dbAttack.epoch);
-                Map<Integer, Map<Integer, Double>> infraDay = infraMap.get(day);
-                if (infraDay == null) return true;
-                return infraDay.containsKey(dbAttack.defender_nation_id);
-            }
+        attacks.removeIf(dbAttack -> {
+            long day = TimeUtil.getDay(dbAttack.epoch);
+            Map<Integer, Map<Integer, Double>> infraDay = infraMap.get(day);
+            if (infraDay == null) return true;
+            return infraDay.containsKey(dbAttack.defender_nation_id);
         });
 
         Map<Integer, DBAttack> attacksById = new HashMap<>();
@@ -652,16 +639,13 @@ public class DataDumpParser {
             attacksById.put(attack.war_attack_id, attack);
         }
 
-        List<Integer> attacksToFetch = new ArrayList<>(attacks.stream().map(f -> f.war_attack_id).collect(Collectors.toList()));
+        List<Integer> attacksToFetch = attacks.stream().map(f -> f.war_attack_id).collect(Collectors.toList());
         int amtPer = 999;
-        for (int i = 0; i < attacksToFetch.size(); i+=amtPer) {
+        for (int i = 0; i < attacksToFetch.size(); i += amtPer) {
             List<Integer> subList = attacksToFetch.subList(i, i + amtPer);
-            for (WarAttack attack : Locutus.imp().getV3().fetchAttacks(f -> f.setId(subList), new Consumer<WarAttackResponseProjection>() {
-                @Override
-                public void accept(WarAttackResponseProjection proj) {
-                    proj.id();
-                    proj.loot_info();
-                }
+            for (WarAttack attack : Locutus.imp().getV3().fetchAttacks(f -> f.setId(subList), proj -> {
+                proj.id();
+                proj.loot_info();
             })) {
                 int id = attack.getId();
                 String note = attack.getLoot_info();
@@ -690,104 +674,25 @@ public class DataDumpParser {
         }
 
 
-
     }
 
-    public static void main(String[] args) throws IOException, ParseException, NoSuchFieldException, IllegalAccessException, SQLException, LoginException, InterruptedException, ClassNotFoundException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
-        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-        Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = true;
-
-        Locutus.create().start();
-
-        DataDumpParser instance = new DataDumpParser().load();
-
-        {
-            instance.load();
-            instance.exportToTracker();
-//            Writer writer = new BufferedWriter(new FileWriter("C:/Users/jesse/Documents/GitHub/locutus/cities.csv"));
-//            writer.write("nation\tcity\tinfra\tdate\n");
-//            for (Map.Entry<Long, File> entry : instance.downloadCityFilesByDay().entrySet()) {
-//                System.out.println("File " + entry.getValue());
-//
-//
-//                instance.readAll(entry.getValue(), new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
-//                    @Override
-//                    public void acceptThrows(List<String> elem, CloseableIterator<CsvRow> rows) throws Exception {
-//                        CityHeader header = instance.loadHeader(new CityHeader(), elem);
-//                        while (rows.hasNext()) {
-//                            CsvRow row = rows.next();
-//                            int nationId = Integer.parseInt(row.getField(header.nation_id));
-//                            int cityId = Integer.parseInt(row.getField(header.city_id));
-//                            double infra = Double.parseDouble(row.getField(header.infrastructure));
-//                            writer.write(nationId + "\t" + cityId + "\t" + String.format("%.2f", infra) + "\t" + entry.getKey() + "\n");
-//                        }
-//
-//
-//                    }
-//                });
-//            }
-//            writer.close();
-
-//            instance.backCalculateRadiation();
-            System.out.println("Done!");
-            System.exit(0);
-        }
-
-        // get loot info
-        Map<Integer, LootEntry> loot = Locutus.imp().getNationDB().getNationLootMap();
-        System.out.println("Loot entries " + loot.size());
-//
-//        // get trades
-//        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(minDate);
-//
-//        // get bank records
-//        List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(minDate);
-//
-//        // get attacks
-//        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(minDate);
-//
-//        // baseball
-//        List<BBGame> games = Locutus.imp().getBaseballDB().getBaseballGames(f -> f.where(QueryCondition.greater("date", minDate)));
-//
-//        // previous
-//        Map<Integer, DBNation> nationsPrevious = new HashMap<>();
-//        Map<Integer, Map<Integer, DBCity>> citiesPrevious = new HashMap<>();
-//
-//        LootEstimateTracker estimator = new LootEstimateTracker(false, 0L, () -> new HashMap<>(), f -> {}, Locutus.imp().getNationDB()::getNation);
-
-//        instance.parseCitiesFile(new File("data/cities/cities-2022-04-21.csv"));
-
-        long start = System.currentTimeMillis();
-
-//        instance.parseCitiesFile(new File("data/cities/cities-2022-04-21.csv"));
-//        instance.parseNationFile(new File("data/nations/nations-2022-04-21.csv"));
-
-        long diff = System.currentTimeMillis() - start;
-        System.out.println("Diff " + diff + "ms");
-    }
-
-    public Map<Integer, Map<Integer, DBCity>> parseCitiesFile(File file, Predicate<Integer> allowedNationIds) throws IOException, NoSuchFieldException, IllegalAccessException {
+    public Map<Integer, Map<Integer, DBCity>> parseCitiesFile(File file, Predicate<Integer> allowedNationIds) throws IOException {
         Map<Integer, Map<Integer, DBCity>> result = new Int2ObjectOpenHashMap<>();
-        readAll(file, new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
-            @Override
-            public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws NoSuchFieldException, IllegalAccessException, ParseException {
-                CityHeader header = loadHeader(new CityHeader(), headerList);
-                while (rows.hasNext()) {
-                    CsvRow row = rows.next();
-                    int nationId = Integer.parseInt(row.getField(header.nation_id));
-                    if (allowedNationIds.test(nationId)) {
-                        DBCity city = loadCity(header, row);
-                        result.computeIfAbsent(nationId, k -> new Int2ObjectOpenHashMap<>()).put(city.id, city);
-                    }
+        readAll(file, (headerList, rows) -> {
+            CityHeader header = loadHeader(new CityHeader(), headerList);
+            while (rows.hasNext()) {
+                CsvRow row = rows.next();
+                int nationId = Integer.parseInt(row.getField(header.nation_id));
+                if (allowedNationIds.test(nationId)) {
+                    DBCity city = loadCity(header, row);
+                    result.computeIfAbsent(nationId, k -> new Int2ObjectOpenHashMap<>()).put(city.id, city);
                 }
             }
         });
         return result;
     }
 
-    public void readAll(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>> onEach) throws IOException, IllegalAccessException, NoSuchFieldException {
+    public void readAll(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>> onEach) throws IOException {
         try (CsvReader reader = CsvReader.builder().fieldSeparator(',').quoteCharacter('"').build(file.toPath())) {
             try (CloseableIterator<CsvRow> iter = reader.iterator()) {
                 CsvRow header = iter.next();
@@ -797,18 +702,15 @@ public class DataDumpParser {
         }
     }
 
-    public Map<Integer, DBNation> parseNationFile(File file, Predicate<Integer> allowedNationIds, boolean allowVm, boolean allowDeleted) throws IOException, ParseException, NoSuchFieldException, IllegalAccessException {
+    public Map<Integer, DBNation> parseNationFile(File file, Predicate<Integer> allowedNationIds, boolean allowVm, boolean allowDeleted) throws IOException {
         Map<Integer, DBNation> result = new Int2ObjectOpenHashMap<>();
-        readAll(file, new ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>>() {
-            @Override
-            public void acceptThrows(List<String> headerList, CloseableIterator<CsvRow> rows) throws NoSuchFieldException, IllegalAccessException, ParseException {
-                NationHeader header = loadHeader(new NationHeader(), headerList);
-                while (rows.hasNext()) {
-                    CsvRow row = rows.next();
-                    DBNation nation = loadNation(header, row, allowedNationIds, allowVm, allowDeleted);
-                    if (nation != null) {
-                        result.put(nation.getId(), nation);
-                    }
+        readAll(file, (headerList, rows) -> {
+            NationHeader header = loadHeader(new NationHeader(), headerList);
+            while (rows.hasNext()) {
+                CsvRow row = rows.next();
+                DBNation nation = loadNation(header, row, allowedNationIds, allowVm, allowDeleted);
+                if (nation != null) {
+                    result.put(nation.getId(), nation);
                 }
             }
         });
@@ -841,9 +743,10 @@ public class DataDumpParser {
     private void download(String fileUrl, File savePath) throws IOException {
         System.out.println("Saving " + savePath);
         byte[] bytes = FileUtil.readBytesFromUrl(fileUrl);
+        assert bytes != null;
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(bytes))) {
             ZipEntry entry = in.getNextEntry();
-            byte[] data = in.readNBytes((int) entry.getSize());
+            byte[] data = in.readNBytes((int) Objects.requireNonNull(entry).getSize());
             FileUtils.writeByteArrayToFile(savePath, data);
         }
     }
@@ -857,8 +760,6 @@ public class DataDumpParser {
         }
         return instance;
     }
-
-    private Map<Integer, Long> cityDateCache = new Int2LongOpenHashMap();
 
     public DBCity loadCity(CityHeader header, CsvRow row) throws ParseException {
         DBCity city = new DBCity();
@@ -903,8 +804,6 @@ public class DataDumpParser {
         return city;
     }
 
-    private Map<Integer, Long> nationDateCache = new Int2LongOpenHashMap();
-
     public DBNation loadNation(NationHeader header, CsvRow row, Predicate<Integer> allowedNationIds, boolean allowVm, boolean allowDeleted) throws ParseException {
         int vm_turns = Integer.MAX_VALUE;
         if (!allowVm) {
@@ -937,7 +836,6 @@ public class DataDumpParser {
         nation.setNation_id(nationId);
 
 
-
 //        nation.setDate();
         nation.setContinent(Continent.parseV3(row.getField(header.continent)));
         nation.setColor(NationColor.valueOf(row.getField(header.color).toUpperCase()));
@@ -953,39 +851,39 @@ public class DataDumpParser {
         nation.setWarPolicy(WarPolicy.parse(row.getField(header.war_policy)));
 
 
-        checkProject(nation, row, header.ironworks_np,Projects.IRON_WORKS);
-        checkProject(nation, row, header.bauxiteworks_np,Projects.BAUXITEWORKS);
-        checkProject(nation, row, header.arms_stockpile_np,Projects.ARMS_STOCKPILE);
-        checkProject(nation, row, header.emergency_gasoline_reserve_np,Projects.EMERGENCY_GASOLINE_RESERVE);
-        checkProject(nation, row, header.mass_irrigation_np,Projects.MASS_IRRIGATION);
-        checkProject(nation, row, header.international_trade_center_np,Projects.INTERNATIONAL_TRADE_CENTER);
-        checkProject(nation, row, header.missile_launch_pad_np,Projects.MISSILE_LAUNCH_PAD);
-        checkProject(nation, row, header.nuclear_research_facility_np,Projects.NUCLEAR_RESEARCH_FACILITY);
-        checkProject(nation, row, header.iron_dome_np,Projects.IRON_DOME);
-        checkProject(nation, row, header.vital_defense_system_np,Projects.VITAL_DEFENSE_SYSTEM);
-        checkProject(nation, row, header.intelligence_agency_np,Projects.INTELLIGENCE_AGENCY);
-        checkProject(nation, row, header.center_for_civil_engineering_np,Projects.CENTER_FOR_CIVIL_ENGINEERING);
-        checkProject(nation, row, header.propaganda_bureau_np,Projects.PROPAGANDA_BUREAU);
-        checkProject(nation, row, header.uranium_enrichment_program_np,Projects.URANIUM_ENRICHMENT_PROGRAM);
-        checkProject(nation, row, header.urban_planning_np,Projects.URBAN_PLANNING);
-        checkProject(nation, row, header.advanced_urban_planning_np,Projects.ADVANCED_URBAN_PLANNING);
-        checkProject(nation, row, header.space_program_np,Projects.SPACE_PROGRAM);
-        checkProject(nation, row, header.moon_landing_np,Projects.MOON_LANDING);
-        checkProject(nation, row, header.spy_satellite_np,Projects.SPY_SATELLITE);
-        checkProject(nation, row, header.pirate_economy_np,Projects.PIRATE_ECONOMY);
-        checkProject(nation, row, header.recycling_initiative_np,Projects.RECYCLING_INITIATIVE);
-        checkProject(nation, row, header.telecommunications_satellite_np,Projects.TELECOMMUNICATIONS_SATELLITE);
-        checkProject(nation, row, header.green_technologies_np,Projects.GREEN_TECHNOLOGIES);
-        checkProject(nation, row, header.clinical_research_center_np,Projects.CLINICAL_RESEARCH_CENTER);
-        checkProject(nation, row, header.specialized_police_training_program_np,Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM);
-        checkProject(nation, row, header.arable_land_agency_np,Projects.ARABLE_LAND_AGENCY);
-        checkProject(nation, row, header.advanced_engineering_corps_np,Projects.ADVANCED_ENGINEERING_CORPS);
-        checkProject(nation, row, header.government_support_agency_np,Projects.GOVERNMENT_SUPPORT_AGENCY);
-        checkProject(nation, row, header.research_and_development_center_np,Projects.RESEARCH_AND_DEVELOPMENT_CENTER);
-        checkProject(nation, row, header.resource_production_center_np,Projects.ACTIVITY_CENTER);
-        checkProject(nation, row, header.metropolitan_planning_np,Projects.METROPOLITAN_PLANNING);
-        checkProject(nation, row, header.military_salvage_np,Projects.MILITARY_SALVAGE);
-        checkProject(nation, row, header.fallout_shelter_np,Projects.FALLOUT_SHELTER);
+        checkProject(nation, row, header.ironworks_np, Projects.IRON_WORKS);
+        checkProject(nation, row, header.bauxiteworks_np, Projects.BAUXITEWORKS);
+        checkProject(nation, row, header.arms_stockpile_np, Projects.ARMS_STOCKPILE);
+        checkProject(nation, row, header.emergency_gasoline_reserve_np, Projects.EMERGENCY_GASOLINE_RESERVE);
+        checkProject(nation, row, header.mass_irrigation_np, Projects.MASS_IRRIGATION);
+        checkProject(nation, row, header.international_trade_center_np, Projects.INTERNATIONAL_TRADE_CENTER);
+        checkProject(nation, row, header.missile_launch_pad_np, Projects.MISSILE_LAUNCH_PAD);
+        checkProject(nation, row, header.nuclear_research_facility_np, Projects.NUCLEAR_RESEARCH_FACILITY);
+        checkProject(nation, row, header.iron_dome_np, Projects.IRON_DOME);
+        checkProject(nation, row, header.vital_defense_system_np, Projects.VITAL_DEFENSE_SYSTEM);
+        checkProject(nation, row, header.intelligence_agency_np, Projects.INTELLIGENCE_AGENCY);
+        checkProject(nation, row, header.center_for_civil_engineering_np, Projects.CENTER_FOR_CIVIL_ENGINEERING);
+        checkProject(nation, row, header.propaganda_bureau_np, Projects.PROPAGANDA_BUREAU);
+        checkProject(nation, row, header.uranium_enrichment_program_np, Projects.URANIUM_ENRICHMENT_PROGRAM);
+        checkProject(nation, row, header.urban_planning_np, Projects.URBAN_PLANNING);
+        checkProject(nation, row, header.advanced_urban_planning_np, Projects.ADVANCED_URBAN_PLANNING);
+        checkProject(nation, row, header.space_program_np, Projects.SPACE_PROGRAM);
+        checkProject(nation, row, header.moon_landing_np, Projects.MOON_LANDING);
+        checkProject(nation, row, header.spy_satellite_np, Projects.SPY_SATELLITE);
+        checkProject(nation, row, header.pirate_economy_np, Projects.PIRATE_ECONOMY);
+        checkProject(nation, row, header.recycling_initiative_np, Projects.RECYCLING_INITIATIVE);
+        checkProject(nation, row, header.telecommunications_satellite_np, Projects.TELECOMMUNICATIONS_SATELLITE);
+        checkProject(nation, row, header.green_technologies_np, Projects.GREEN_TECHNOLOGIES);
+        checkProject(nation, row, header.clinical_research_center_np, Projects.CLINICAL_RESEARCH_CENTER);
+        checkProject(nation, row, header.specialized_police_training_program_np, Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM);
+        checkProject(nation, row, header.arable_land_agency_np, Projects.ARABLE_LAND_AGENCY);
+        checkProject(nation, row, header.advanced_engineering_corps_np, Projects.ADVANCED_ENGINEERING_CORPS);
+        checkProject(nation, row, header.government_support_agency_np, Projects.GOVERNMENT_SUPPORT_AGENCY);
+        checkProject(nation, row, header.research_and_development_center_np, Projects.RESEARCH_AND_DEVELOPMENT_CENTER);
+        checkProject(nation, row, header.resource_production_center_np, Projects.ACTIVITY_CENTER);
+        checkProject(nation, row, header.metropolitan_planning_np, Projects.METROPOLITAN_PLANNING);
+        checkProject(nation, row, header.military_salvage_np, Projects.MILITARY_SALVAGE);
+        checkProject(nation, row, header.fallout_shelter_np, Projects.FALLOUT_SHELTER);
 
         checkProject(nation, row, header.ironworks_np, Projects.IRON_WORKS);
 
@@ -995,6 +893,20 @@ public class DataDumpParser {
     private void checkProject(DBNation nation, CsvRow row, int index, Project project) {
         if (index <= 0) return;
         if (Objects.equals(row.getField(index), "1")) nation.setProject(project);
+    }
+
+    private static class MetricValue {
+        int alliance;
+        AllianceMetric metric;
+        long turn;
+        double value;
+
+        public MetricValue(int alliance, AllianceMetric metric, long turn, double value) {
+            this.alliance = alliance;
+            this.metric = metric;
+            this.turn = turn;
+            this.value = value;
+        }
     }
 
     // nation_id,nation_name,leader_name,date_created,continent,latitude,longitude,leader_title,nation_title,score,population,flag_url,color,beige_turns_remaining,portrait_url,cities,gdp,currency,wars_won,wars_lost,alliance,alliance_id,alliance_position,soldiers,tanks,aircraft,ships,missiles,nukes,domestic_policy,war_policy,projects,ironworks_np,bauxiteworks_np,arms_stockpile_np,emergency_gasoline_reserve_np,mass_irrigation_np,international_trade_center_np,missile_launch_pad_np,nuclear_research_facility_np,iron_dome_np,vital_defense_system_np,intelligence_agency_np,center_for_civil_engineering_np,propaganda_bureau_np,uranium_enrichment_program_np,urban_planning_np,advanced_urban_planning_np,space_program_np,moon_landing_np,spy_satellite_np,pirate_economy_np,recycling_initiative_np,telecommunications_satellite_np,green_technologies_np,clinical_research_center_np,specialized_police_training_program_np,arable_land_agency_np,advanced_engineering_corps_np,vm_turns,government_support_agency_np,research_and_development_center_np,resource_production_center_np,metropolitan_planning_np,military_salvage_np,fallout_shelter_np

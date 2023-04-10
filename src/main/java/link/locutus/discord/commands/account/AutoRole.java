@@ -59,6 +59,7 @@ public class AutoRole extends Command {
         StringBuilder response = new StringBuilder();
 
         if (args.get(0).equalsIgnoreCase("*")) {
+            if (!Roles.INTERNAL_AFFAIRS.has(event.getMember())) return "No permission";
             Function<Long, Boolean> func = i -> {
                 task.autoRoleAll(new Consumer<>() {
                     private boolean messaged = false;
@@ -72,11 +73,10 @@ public class AutoRole extends Command {
                 });
                 return true;
             };
-            Roles.ADMIN.hasOnRoot(event.getAuthor());
             RateLimitUtil.queue(event.getChannel().sendMessage("Please wait..."));
             func.apply(0L);
 
-            if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
+            if (db.hasAlliance()) {
                 for (Map.Entry<Member, GuildDB.UnmaskedReason> entry : db.getMaskedNonMembers().entrySet()) {
                     response.append(entry.getKey().getAsMention());
                     DBNation nation = DiscordUtil.getNation(entry.getKey().getUser());
@@ -93,10 +93,11 @@ public class AutoRole extends Command {
 
         } else {
             DBNation nation = DiscordUtil.parseNation(args.get(0));
-            if (nation == null) return "User is not registered in-game.";
+            if (nation == null) return "That nation isn't registered: " + CM.register.cmd.toSlashMention() + "";
             User user = nation.getUser();
-            if (user == null) return "Nation is not registered.";
+            if (user == null) return "User is not registered.";
             Member member = db.getGuild().getMember(user);
+            if (member == null) return "Member not found in guild: " + user.getName() + "#" + user.getDiscriminator();
             List<String> output = new ArrayList<>();
             Consumer<String> out = output::add;
             task.autoRole(member, out);
@@ -109,13 +110,13 @@ public class AutoRole extends Command {
         response.append("Done!");
 
         if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: ").append(CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null).toSlashCommand());
-        } else response.append("\n - AutoRole Mode: ").append(db.getInfo(GuildDB.Key.AUTOROLE));
+            response.append("\n - AutoRole disabled. To enable it use: ").append(CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null, null, null).toSlashCommand());
+        } else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildDB.Key.AUTOROLE) + "");
         if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: ").append(CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null).toSlashCommand());
-        } else response.append("\n - AutoNick Mode: ").append(db.getInfo(GuildDB.Key.AUTONICK));
+            response.append("\n - AutoNick disabled. To enable it use: ").append(CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null, null, null).toSlashCommand());
+        } else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildDB.Key.AUTONICK) + "");
         if (Roles.REGISTERED.toRole(db) == null)
-            response.append("\n - Please set a registered role: ").append(CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "").toSlashCommand());
+            response.append("\n - Please set a registered role: ").append(CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null).toSlashCommand());
 
         return response.toString();
     }

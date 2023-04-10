@@ -151,10 +151,10 @@ public class AddBalanceBuilder {
     public AddBalanceBuilder reset(DBNation nation, Set<DepositType> types) {
         if (types.isEmpty()) throw new IllegalArgumentException("No types specified");
         Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
-        double[] deposits = depoByType.get(DepositType.DEPOSITS);
+        double[] deposits = depoByType.get(DepositType.DEPOSIT);
 
-        if (deposits != null && types.contains(DepositType.DEPOSITS)) {
-            add(nation, ResourceType.negative(deposits), "#" + DepositType.DEPOSITS.name().toLowerCase());
+        if (deposits != null && types.contains(DepositType.DEPOSIT)) {
+            add(nation, ResourceType.negative(deposits), "#" + DepositType.DEPOSIT.name().toLowerCase());
         }
 
         double[] tax = depoByType.get(DepositType.TAX);
@@ -332,7 +332,7 @@ public class AddBalanceBuilder {
                         GuildDB sender = entry.getKey();
                         String note = entry2.getKey();
                         double[] amount = entry2.getValue();
-                        db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
+                        db.addTransfer(tx_datetime, sender.getIdLong(), sender.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
                         totalAdded = PnwUtil.add(totalAdded, amount);
                         response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getGuild());
                     }

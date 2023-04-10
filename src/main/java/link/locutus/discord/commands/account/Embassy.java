@@ -36,7 +36,7 @@ public class Embassy extends Command {
         GuildDB db = Locutus.imp().getGuildDB(event);
         Category category = db.getOrThrow(GuildDB.Key.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "").toSlashCommand() + "";
+            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
         }
         if (args.size() == 1 && args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.ADMIN.has(event.getAuthor(), event.getGuild())) return "No permission.";

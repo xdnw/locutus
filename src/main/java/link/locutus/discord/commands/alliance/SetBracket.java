@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -8,9 +9,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -41,13 +43,13 @@ public class SetBracket extends Command {
                 "or to also set internal: `" + Settings.commandPrefix(true) + "SetTaxes @user 100/100 25/25`\n" +
                 "Notes:\n" +
                 " - Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
-                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildDB.Key.TAX_BASE.name(), null) + " (retroactive)\n" +
-                " - This command is not retroactive and overrides the alliance internal taxrate.";
+                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildDB.Key.TAX_BASE.name(), null, null, null) + " (retroactive)\n" +
+                " - This command is not retroactive and overrides the alliance internal taxrate";
     }
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Roles.ECON_LOW_GOV.has(user, server) || (Locutus.imp().getGuildDB(server).getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) == Boolean.TRUE && Roles.MEMBER.has(user, server));
+        return Roles.ECON_STAFF.has(user, server) || (Locutus.imp().getGuildDB(server).getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) == Boolean.TRUE && Roles.MEMBER.has(user, server));
     }
 
     @Override
@@ -59,19 +61,17 @@ public class SetBracket extends Command {
             return usage(event);
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        boolean isGov = Roles.ECON_LOW_GOV.has(author, guild) || Roles.INTERNAL_AFFAIRS.has(author, guild);
+        boolean isGov = Roles.ECON_STAFF.has(author, guild) || Roles.INTERNAL_AFFAIRS.has(author, guild);
         if (!isGov) {
-            if (me != nation) return "You are only allowed to set your own tax rate.";
+            if (me != nation) return "You are only allowed to set your own tax rate";
         }
         TaxRate taxBase = db.getHandler().getInternalTaxrate(nation.getNation_id());
         if (isGov) taxBase = new TaxRate(-1, -1);
 
-        int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-        if (aaId != nation.getAlliance_id()) return nation.getNation() + " is not in " + aaId;
-        Auth auth = db.getAuth(AlliancePermission.TAX_BRACKETS);
-        if (auth == null) return "No authentication enabled for this guild.";
+        DBAlliance alliance = nation.getAlliance();
+        if (!db.isAllianceId(alliance.getId())) return nation.getNation() + " is not in " + alliance;
 
-        Map<Integer, TaxBracket> brackets = auth.getTaxBrackets();
+        Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
 
         if (args.size() == 1) {
             StringBuilder response = new StringBuilder();
@@ -79,7 +79,7 @@ public class SetBracket extends Command {
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 String url = bracket.getUrl();
-                response.append("\n - ").append(MarkupUtil.markdownUrl("#" + bracket.taxId, url)).append(": ").append(bracket.moneyRate).append("/").append(bracket.rssRate).append(" (").append(bracket.getNations().size()).append(" nations) - ").append(bracket.getName());
+                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations) - " + bracket.getName());
             }
             return usage(event, response.toString());
         }
@@ -119,7 +119,7 @@ public class SetBracket extends Command {
             double depo = me.getNetDepositsConverted(db);
             if (depo < -200_000_000) {
                 if (bracket.moneyRate < 100 || bracket.rssRate < 100) {
-                    return "Nations in >200m debt must have a gov change their tax rate.";
+                    return "Nations in >200m debt must have a gov change their tax rate";
                 }
             }
         }
@@ -128,16 +128,16 @@ public class SetBracket extends Command {
 
         if (args.size() >= 3) {
             if (!isGov) {
-                return "You are only allowed to set your ingame taxrate.";
+                return "You are only allowed to set your ingame taxrate";
             }
             TaxRate internalRate = new TaxRate(args.get(2));
             if (internalRate.money < -1 || internalRate.money > 100) return "Invalid taxrate: " + internalRate;
             if (internalRate.resources < -1 || internalRate.resources > 100) return "Invalid taxrate: " + internalRate;
             db.setMeta(nation.getNation_id(), NationMeta.TAX_RATE, new byte[]{(byte) internalRate.money, (byte) internalRate.resources});
-            response.append("Set internal taxrate to ").append(internalRate).append("\n");
+            response.append("Set internal taxrate to " + internalRate + "\n");
         }
 
-        response.append(nation.setTaxBracket(bracket, auth));
+        response.append(alliance.setTaxBracket(bracket, nation));
         return response.toString();
     }
 }

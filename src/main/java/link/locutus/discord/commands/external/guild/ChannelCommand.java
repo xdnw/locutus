@@ -84,7 +84,7 @@ public class ChannelCommand extends Command {
         if (flags.contains('f')) roles.add(Roles.FOREIGN_AFFAIRS);
         if (flags.contains('e')) {
             roles.add(Roles.ECON);
-            roles.add(Roles.ECON_LOW_GOV);
+            roles.add(Roles.ECON_STAFF);
         }
         if (roles.isEmpty()) roles.add(Roles.INTERNAL_AFFAIRS);
 
@@ -123,7 +123,7 @@ public class ChannelCommand extends Command {
                     Locutus.imp().getCommandManager().run(finalEvent);
                 } else {
                     String key = "copypasta." + arg;
-                    String copyPasta = Locutus.imp().getGuildDB(event).getInfo(key);
+                    String copyPasta = Locutus.imp().getGuildDB(event).getInfo(key, true);
                     if (copyPasta != null) {
                         RateLimitUtil.queue(createdChannel.sendMessage(copyPasta));
                     }

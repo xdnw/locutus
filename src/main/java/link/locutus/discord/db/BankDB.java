@@ -33,6 +33,7 @@ import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.Condition;
+import org.jooq.GroupField;
 import org.jooq.Index;
 import org.jooq.InsertSetMoreStep;
 import org.jooq.Loader;
@@ -186,7 +187,7 @@ public class BankDB extends DBMainV3 {
             estimate.max_rss = (r.get(TAX_ESTIMATE.MAX_RSS));
             result.put(estimate.tax_id, estimate);
         }
-         return result;
+        return result;
     }
 
 //    public void importFromExternal(String fileName) throws SQLException, ClassNotFoundException {
@@ -224,18 +225,22 @@ public class BankDB extends DBMainV3 {
     public void updateBankRecs(int nationId, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
+        long start = System.currentTimeMillis();
         List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
         int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
+        System.out.println("Latest tx id: " + minId + " in " + (System.currentTimeMillis() - start) + "ms");
         List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
             @Override
             public void accept(BankrecsQueryRequest request) {
-                request.setOr_type(List.of(1));
-                request.setOr_id(List.of(nationId));
                 if (minId > 0) request.setMin_id(minId + 1);
+                request.setOr_id(List.of(nationId));
+//                request.setOr_type(List.of(1));
             }
         });
 
+        System.out.println("Fetched " + bankRecs.size() + " bank recs in " + (System.currentTimeMillis() - start) + "ms");
         saveBankRecs(bankRecs, eventConsumer);
+        System.out.println("Saved bank recs in " + (System.currentTimeMillis() - start) + "ms");
     }
 
     public void updateBankRecsv2(int nationId, Consumer<Event> eventConsumer) {
@@ -284,7 +289,6 @@ public class BankDB extends DBMainV3 {
 
     public void saveBankRecsV2(List<BankRecord> bankrecs, Consumer<Event> eventConsumer) {
         if (bankrecs.isEmpty()) return;
-        if (bankrecs.size() > 10) System.out.println("remove:|| save bank recs " + bankrecs.size());
         invalidateTXCache();
         List<Transaction2> transfers = new ArrayList<>();
         for (BankRecord bankrec : bankrecs) {
@@ -308,7 +312,6 @@ public class BankDB extends DBMainV3 {
 
     public void saveBankRecs(List<Bankrec> bankrecs, Consumer<Event> eventConsumer) {
         if (bankrecs.isEmpty()) return;
-        if (bankrecs.size() > 10) System.out.println("remove:|| save bank recs " + bankrecs.size());
         invalidateTXCache();
         List<Transaction2> transfers = new ArrayList<>();
         for (Bankrec bankrec : bankrecs) {
@@ -391,18 +394,18 @@ public class BankDB extends DBMainV3 {
                 if (banker != null) {
                     query += " AND banker_nation_id = " + banker;
                 }
-                    String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
-                    queryLegacy(queryAA,
-                            (ThrowingConsumer<PreparedStatement>) elem -> {
-                                elem.setLong(1, startDate == null ? 0 : startDate);
-                                elem.setLong(2, endDate == null ? 0 : endDate);
-                            },
-                            (ThrowingConsumer<ResultSet>) elem -> {
-                                while (elem.next()) {
-                                    results.add(new Transaction2(elem));
-                                }
+                String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
+                queryLegacy(queryAA,
+                        (ThrowingConsumer<PreparedStatement>) elem -> {
+                            elem.setLong(1, startDate == null ? 0 : startDate);
+                            elem.setLong(2, endDate == null ? 0 : endDate);
+                        },
+                        (ThrowingConsumer<ResultSet>) elem -> {
+                            while (elem.next()) {
+                                results.add(new Transaction2(elem));
                             }
-                    );
+                        }
+                );
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -415,10 +418,10 @@ public class BankDB extends DBMainV3 {
             if (tableExists("TRANSACTIONS_ALLIANCE_2")) {
                 ctx().deleteFrom(TRANSACTIONS_ALLIANCE_2)
                         .where(TRANSACTIONS_ALLIANCE_2.TX_DATETIME.gt(minDate).and(
-                                DSL.or(TRANSACTIONS_ALLIANCE_2.SENDER_ID.eq((long) allianceId).and(TRANSACTIONS_ALLIANCE_2.SENDER_TYPE.eq(2)),
-                                        (TRANSACTIONS_ALLIANCE_2.RECEIVER_ID.eq((long) allianceId).and(TRANSACTIONS_ALLIANCE_2.RECEIVER_TYPE.eq(2)))
+                                        DSL.or(TRANSACTIONS_ALLIANCE_2.SENDER_ID.eq((long) allianceId).and(TRANSACTIONS_ALLIANCE_2.SENDER_TYPE.eq(2)),
+                                                (TRANSACTIONS_ALLIANCE_2.RECEIVER_ID.eq((long) allianceId).and(TRANSACTIONS_ALLIANCE_2.RECEIVER_TYPE.eq(2)))
+                                        )
                                 )
-                            )
                         )
                         .execute();
             }
@@ -623,7 +626,7 @@ public class BankDB extends DBMainV3 {
     public List<Transaction2> getNationTransfers(int nationId, long minDateMs) {
         return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(
                 (TRANSACTIONS_2.RECEIVER_ID.eq((long) nationId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))).or
-                (TRANSACTIONS_2.SENDER_ID.eq((long) nationId).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)))
+                        (TRANSACTIONS_2.SENDER_ID.eq((long) nationId).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)))
         ), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
@@ -632,7 +635,7 @@ public class BankDB extends DBMainV3 {
 
         List<Transaction2> transactions = getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(
                 (TRANSACTIONS_2.RECEIVER_ID.in(nationIds).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))).or
-                (TRANSACTIONS_2.SENDER_ID.in(nationIds).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)))
+                        (TRANSACTIONS_2.SENDER_ID.in(nationIds).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)))
         ), TRANSACTIONS_2.TX_ID.desc(), null);
 
 
@@ -647,18 +650,18 @@ public class BankDB extends DBMainV3 {
         }
         return result;
     }
-//
+    //
     public List<Transaction2> getAllianceTransfers(int allianceId, long minDateMs) {
         return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(
-        (TRANSACTIONS_2.RECEIVER_ID.eq((long) allianceId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2))).or
-        (TRANSACTIONS_2.SENDER_ID.eq((long) allianceId).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)))), TRANSACTIONS_2.TX_ID.desc(), null);
+                (TRANSACTIONS_2.RECEIVER_ID.eq((long) allianceId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2))).or
+                        (TRANSACTIONS_2.SENDER_ID.eq((long) allianceId).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)))), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
     public int getTransactionsByNationCount(int nation) {
         return ctx().fetchCount(TRANSACTIONS_2,
                 DSL.or(TRANSACTIONS_2.SENDER_ID.eq((long) nation).and(TRANSACTIONS_2.SENDER_TYPE.eq(1))),
-                        TRANSACTIONS_2.RECEIVER_ID.eq((long) nation).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))
-                );
+                TRANSACTIONS_2.RECEIVER_ID.eq((long) nation).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))
+        );
     }
 
     public List<Transaction2> getTransactionsByBanker(int nation) {
@@ -678,11 +681,18 @@ public class BankDB extends DBMainV3 {
         Reference<Map.Entry<Integer, List<Transaction2>>> tmp = txNationCache;
         Map.Entry<Integer, List<Transaction2>> cached = tmp == null ? null : tmp.get();
         if (cached != null && cached.getKey() == nation) {
-            return cached.getValue();
+            List<Transaction2> value = cached.getValue();
+            if (limit > 0) {
+                // sort by tx_id desc
+                value.sort((o1, o2) -> Long.compare(o2.tx_id, o1.tx_id));
+                // return top limit
+                return value.subList(0, Math.min(limit, value.size()));
+            }
+            return value;
         }
         List<Transaction2> list = getTransactions(DSL.or(TRANSACTIONS_2.SENDER_ID.eq((long) nation).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)),
                 TRANSACTIONS_2.RECEIVER_ID.eq((long) nation).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))), TRANSACTIONS_2.TX_ID.desc(), limit > 0 ? limit : null);
-        txNationCache = new SoftReference<>(new AbstractMap.SimpleEntry<>(nation, new ArrayList<>(list)));
+        if (limit > 0) txNationCache = new SoftReference<>(new AbstractMap.SimpleEntry<>(nation, new ArrayList<>(list)));
         return list;
     }
 
@@ -700,6 +710,27 @@ public class BankDB extends DBMainV3 {
         return getTransactions(TRANSACTIONS_2.SENDER_ID.eq((long) alliance_id).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)));
     }
 
+    public Set<Integer> getReceiverNationIdFromAllianceReceivers(Set<Integer> allianceIds) {
+        if (allianceIds.size() == 0) throw new IllegalArgumentException("allianceIds must not be empty");
+        Condition condition;
+        if (allianceIds.size() == 1) {
+            int allianceId = allianceIds.iterator().next();
+            condition = TRANSACTIONS_2.RECEIVER_ID.eq((long) allianceId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2));
+        } else {
+            condition = TRANSACTIONS_2.RECEIVER_ID.in(allianceIds).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2));
+        }
+        GroupField groupBy = TRANSACTIONS_2.SENDER_ID;
+        Result<Record> rs = query(TRANSACTIONS_2, condition, null, null, groupBy);
+        Set<Integer> set = new HashSet<>();
+        for (Record r : rs) {
+            Transaction2 tx = Transaction2.fromTX2Table((Transactions_2Record) r);
+            if (tx.sender_type == 1) {
+                // ignore notes where it is bank loot
+                set.add((int) tx.sender_id);
+            }
+        }
+        return set;
+    }
     public List<Transaction2> getTransactionsByAllianceReceiver(int alliance_id) {
         return getTransactions(TRANSACTIONS_2.RECEIVER_ID.eq((long) alliance_id).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2)));
     }
@@ -864,19 +895,19 @@ public class BankDB extends DBMainV3 {
     public Map<Integer, TaxBracket> getTaxBracketsFromDeposits() {
         Map<Integer, TaxBracket> rates = new HashMap<>();
         ctx().select(TAX_DEPOSITS_DATE.TAX_ID, DSL.max(TAX_DEPOSITS_DATE.DATE), TAX_DEPOSITS_DATE.MONEYRATE, TAX_DEPOSITS_DATE.RESOUCERATE, TAX_DEPOSITS_DATE.ALLIANCE)
-        .from(TAX_DEPOSITS_DATE).groupBy(TAX_DEPOSITS_DATE.TAX_ID, TAX_DEPOSITS_DATE.MONEYRATE, TAX_DEPOSITS_DATE.RESOUCERATE).fetch().forEach(f -> {
-            int id = f.component1();
-            long date = f.component2();
-            int money = f.component3();
-            int rss = f.component4();
-            int alliance = f.component5();
+                .from(TAX_DEPOSITS_DATE).groupBy(TAX_DEPOSITS_DATE.TAX_ID, TAX_DEPOSITS_DATE.MONEYRATE, TAX_DEPOSITS_DATE.RESOUCERATE).fetch().forEach(f -> {
+                    int id = f.component1();
+                    long date = f.component2();
+                    int money = f.component3();
+                    int rss = f.component4();
+                    int alliance = f.component5();
 
-            TaxBracket existing = rates.get(id);
-            if (existing == null || existing.dateFetched < date) {
-                existing = new TaxBracket(id, alliance, "", money, rss, date);
-                rates.put(id, existing);
-            }
-        });
+                    TaxBracket existing = rates.get(id);
+                    if (existing == null || existing.dateFetched < date) {
+                        existing = new TaxBracket(id, alliance, "", money, rss, date);
+                        rates.put(id, existing);
+                    }
+                });
 
         return rates;
     }
@@ -1011,18 +1042,18 @@ public class BankDB extends DBMainV3 {
         Set<Subscription> list = new LinkedHashSet<>();
 
         ctx().selectFrom(SUBSCRIPTIONS)
-        .where(SUBSCRIPTIONS.ALLIANCEORNATION.eq(allianceOrNation))
-        .and(SUBSCRIPTIONS.ISNATION.bitAnd(type.mask).gt(0))
-        .and(SUBSCRIPTIONS.ISRECEIVE.eq(isReceive ? 1 : 0))
-        .and(SUBSCRIPTIONS.AMOUNT.eq(amount))
-        .and(SUBSCRIPTIONS.DATE.gt(date))
-        .fetch().forEach(rs -> {
-            try {
-                list.add(createSub(rs));
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        });
+                .where(SUBSCRIPTIONS.ALLIANCEORNATION.eq(allianceOrNation))
+                .and(SUBSCRIPTIONS.ISNATION.bitAnd(type.mask).gt(0))
+                .and(SUBSCRIPTIONS.ISRECEIVE.eq(isReceive ? 1 : 0))
+                .and(SUBSCRIPTIONS.AMOUNT.eq(amount))
+                .and(SUBSCRIPTIONS.DATE.gt(date))
+                .fetch().forEach(rs -> {
+                    try {
+                        list.add(createSub(rs));
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
         return list;
     }
 
@@ -1069,7 +1100,7 @@ public class BankDB extends DBMainV3 {
         return list;
     }
 
-//    public void addAllianceTransactionsLegacy3(List<Transaction2> transactions) {
+    //    public void addAllianceTransactionsLegacy3(List<Transaction2> transactions) {
 //        if (transactions.isEmpty()) return;
 //        long now = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(60);
 //        for (Transaction2 transaction : transactions) {

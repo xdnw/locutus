@@ -796,9 +796,6 @@ public class WarDB extends DBMainV2 {
         List<Integer> warIdsToUpdate = new ArrayList<>(999);
         for (DBWar war : mostActiveWars) latestWarId = Math.max(latestWarId, war.warId);
 
-        System.out.println("remove:|| updateActiveWars 2 " + ( - start + (start = System.currentTimeMillis())));
-
-
         for (int i = latestWarId + 1; i <= latestWarId + newWarsToFetch; i++) {
             warIdsToUpdate.add(i);
         }
@@ -814,15 +811,11 @@ public class WarDB extends DBMainV2 {
 
         Collections.sort(warIdsToUpdate);
 
-        System.out.println("remove:|| updateActiveWars 3 " + ( - start + (start = System.currentTimeMillis())));
-
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         List<War> wars = api.fetchWarsWithInfo(r -> {
             r.setId(warIdsToUpdate);
             r.setActive(false); // needs to be set otherwise inactive wars wont be fetched
         });
-
-        System.out.println("remove:|| updateActiveWars 4 " + ( - start + (start = System.currentTimeMillis())) + " | " + wars.size());
 
         if (wars.isEmpty()) {
             AlertUtil.error("Failed to fetch wars", new Exception());
@@ -835,8 +828,6 @@ public class WarDB extends DBMainV2 {
         for (DBWar war : dbWars) {
             activeWarsToFetch.remove(war.getWarId());
         }
-
-        System.out.println("remove:|| updateActiveWars 5 " + ( - start + (start = System.currentTimeMillis())));
 
         if (activeWarsToFetch.size() > 0) {
             int notDeleted = 0;
@@ -861,8 +852,6 @@ public class WarDB extends DBMainV2 {
                 AlertUtil.error("Unable to fetch " + notDeleted + "/" + numActive + " active wars:", new RuntimeException("Ignore if these wars correspond to deleted nations:\n" + StringMan.getString(activeWarsToFetch)));
             }
         }
-
-        System.out.println("remove:|| updateActiveWars 6 " + ( - start + (start = System.currentTimeMillis())));
 
         return true;
     }
@@ -953,7 +942,6 @@ public class WarDB extends DBMainV2 {
 
     public void saveWars(Collection<DBWar> values) {
         if (values.isEmpty()) return;
-        if (values.size() > 10) System.out.println("remove:|| Save wars " + values.size());
         for (DBWar war : values) {
             setWar(war);
         }
@@ -1235,7 +1223,6 @@ public class WarDB extends DBMainV2 {
 
     public void saveAttacks(Collection<DBAttack> values) {
         if (values.isEmpty()) return;
-        if (values.size() > 10) System.out.println("remove:|| Save attacks " + values.size());
 
         // sort attacks
         ArrayList<DBAttack> valuesList = new ArrayList<>(values);
@@ -1390,8 +1377,6 @@ public class WarDB extends DBMainV2 {
         List<DBAttack> dirtyCities = new ArrayList<>();
 
         synchronized (activeWars) {
-            System.out.println("remove:|| updateAttacks 3 " + ( - start + (start = System.currentTimeMillis())));
-
             Set<Integer> existingIds = new IntOpenHashSet();
             {
                 synchronized (allAttacks2) {
@@ -1403,8 +1388,6 @@ public class WarDB extends DBMainV2 {
                     }
                 }
             }
-
-            System.out.println("remove:|| updateAttacks 4 " + ( - start + (start = System.currentTimeMillis())));
 
             List<DBAttack> newAttacks;
             if (v2) {
@@ -1420,8 +1403,6 @@ public class WarDB extends DBMainV2 {
                         .fetchAttacksSince(maxId, f -> true)
                         .stream().filter(f -> !existingIds.contains(f.getAtt_id())).map(DBAttack::new).toList();
             }
-
-            System.out.println("remove:|| updateAttacks 5 " + ( - start + (start = System.currentTimeMillis())));
 
             Map<DBAttack, Double> attackInfraPctMembers = new HashMap<>();
 
@@ -1506,8 +1487,6 @@ public class WarDB extends DBMainV2 {
                 dbAttacks.add(attack);
             }
 
-            System.out.println("remove:|| updateAttacks 6 " + ( - start + (start = System.currentTimeMillis())));
-
             if (!attackInfraPctMembers.isEmpty()) { // update infra
 
                 // get infra before
@@ -1541,29 +1520,20 @@ public class WarDB extends DBMainV2 {
 
         saveWars(warsToSave);
 
-        System.out.println("remove:|| updateAttacks 7 " + ( - start + (start = System.currentTimeMillis())));
-
         if (runAlerts) {
             for (DBAttack attack : dirtyCities) {
                 Locutus.imp().getNationDB().markCityDirty(attack.defender_nation_id, attack.city_cached, attack.epoch);
             }
         }
 
-        System.out.println("remove:|| updateAttacks 8 " + ( - start + (start = System.currentTimeMillis())));
-
-
         { // add to db
             saveAttacks(dbAttacks);
         }
-
-        System.out.println("remove:|| updateAttacks 9 " + ( - start + (start = System.currentTimeMillis())));
 
         if (runAlerts && eventConsumer != null) {
             long start2 = System.currentTimeMillis();
             NationUpdateProcessor.updateBlockades();
             long diff = System.currentTimeMillis() - start2;
-
-            System.out.println("remove:|| updateAttacks 10 " + ( - start + (start = System.currentTimeMillis())));
 
             if (diff > 200) {
                 System.err.println("Took too long to update blockades (" + diff + "ms)");
@@ -1572,7 +1542,6 @@ public class WarDB extends DBMainV2 {
             for (DBAttack attack : dbAttacks) {
                 eventConsumer.accept(new AttackEvent(attack));
             }
-            System.out.println("remove:|| updateAttacks 11 " + ( - start + (start = System.currentTimeMillis())));
         }
         return true;
     }

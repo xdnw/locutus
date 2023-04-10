@@ -3,9 +3,9 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -22,10 +22,10 @@ public class CounterGenerator {
         Role role = Roles.MEMBER.toRole(guild);
 
         Set<Integer> allies = db.getAllies();
-        DBAlliance alliance = db.getAlliance();
+        AllianceList alliance = db.getAllianceList();
 
-        if (requireOnDiscord || alliance == null || allies.isEmpty()) {
-            if (role == null) throw new IllegalArgumentException("No member role has been set.");
+        if (requireOnDiscord || alliance == null || alliance.isEmpty() || allies.isEmpty()) {
+            if (role == null) throw new IllegalArgumentException("No member role setup");
             List<Member> members = guild.getMembersWithRoles(role);
             for (Member member : members) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());

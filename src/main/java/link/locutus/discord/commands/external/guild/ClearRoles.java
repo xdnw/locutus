@@ -16,6 +16,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ClearRoles extends Command {
     public ClearRoles() {
@@ -54,7 +55,7 @@ public class ClearRoles extends Command {
             return "Cleared all AA roles!";
         } else if (args.get(0).equalsIgnoreCase("UNREGISTERED")) {
             GuildDB db = Locutus.imp().getGuildDB(event);
-            int aaId = db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
+            Set<Integer> aaIds = db.getAllianceIds();
 
             Role memberRole = Roles.MEMBER.toRole(event.getGuild());
 
@@ -64,8 +65,8 @@ public class ClearRoles extends Command {
                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
                 List<Role> roles = member.getRoles();
                 if (roles.contains(memberRole)) {
-                    if (nation == null || nation.getAlliance_id() != aaId) {
-                        response.append("\nRemove member from ").append(member.getEffectiveName());
+                    if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
+                        response.append("\nRemove member from " + member.getEffectiveName());
                         RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, memberRole));
                     }
                 }

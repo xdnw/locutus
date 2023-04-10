@@ -1,17 +1,19 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.commands.bank.BankWith;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Step;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.commands.stock.StockTrade;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
@@ -19,14 +21,21 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -666,53 +675,55 @@ public class StockCommands {
     }
 
     private String withdraw(StockDB db, DBNation sender, String receiver, Map<ResourceType, Double> resources) {
-        Map<Exchange, Long> shares = db.getSharesByNation(sender.getId());
-        StringBuilder response = new StringBuilder();
-
-        synchronized (db) {
-            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-                long current = shares.getOrDefault(entry.getKey().ordinal(), 0L);
-                long requiredLong = (long) (entry.getValue() * 100d);
-                if (requiredLong <= 0)
-                    throw new IllegalArgumentException("You must specify positive amounts to withdraw.");
-                if (requiredLong < current)
-                    throw new IllegalArgumentException("You do not have " + MathMan.format(entry.getValue()) + " " + entry.getKey().name());
-            }
-
-            GuildDB guildDb = Locutus.imp().getGuildDB(StockDB.ROOT_GUILD);
-            MessageChannel channel = guildDb.getOrThrow(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-
-            Map<ResourceType, Double> transfer = new HashMap<>();
-            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-                ResourceType type = entry.getKey();
-                long amtLong = (long) (entry.getValue() * 100d);
-                if (db.transferShare(type.ordinal(), sender.getId(), 0, amtLong)) {
-                    transfer.put(type, entry.getValue());
-                } else {
-                    response.append("Your withdrawal of ").append(MathMan.format(entry.getValue())).append("x").append(type).append(" could not be processed. Please try again\n");
-                }
-            }
-
-            String title = "Withdraw ~$" + MathMan.format(PnwUtil.convertedTotal(transfer));
-
-            String body = sender.getUserDiscriminator() + "\n" +
-                    "From: " + sender.getNationUrlMarkup(true) + " | " + sender.getAllianceUrlMarkup(true) + "\n" +
-                    "To: " + receiver + "\n" +
-                    "Amount: `" + PnwUtil.resourcesToString(transfer) + "`" + "\n";
-
-            String emoji = "Confirm";
-
-            UUID token = UUID.randomUUID();
-            BankWith.authorized.add(token);
-            String transferStr = StringMan.getString(transfer);
-            String transferCmd = Settings.commandPrefix(true) + "transfer " + receiver + " " + transferStr + " #ignore -f -g:" + token;
-            String dmCmd = Settings.commandPrefix(true) + "dm " + sender.getNationUrl() + " 'Your withdrawal of `" + transferStr + "` has been processed'";
-            String command = transferCmd + "\n" + dmCmd;
-            DiscordUtil.createEmbedCommand(channel, title, body, emoji, command);
-
-            response.append("Requested withdrawal of: `").append(transferStr).append("`. Please wait...");
-        }
-        return response.toString();
+//        Map<Exchange, Long> shares = db.getSharesByNation(sender.getId());
+//        StringBuilder response = new StringBuilder();
+//
+//        synchronized (db) {
+//            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
+//                long current = shares.getOrDefault(entry.getKey().ordinal(), 0L);
+//                long requiredLong = (long) (entry.getValue() * 100d);
+//                if (requiredLong <= 0)
+//                    throw new IllegalArgumentException("You must specify positive amounts to withdraw");
+//                if (requiredLong < current)
+//                    throw new IllegalArgumentException("You do not have " + MathMan.format(entry.getValue()) + " " + entry.getKey().name());
+//            }
+//
+//            GuildDB guildDb = Locutus.imp().getGuildDB(StockDB.ROOT_GUILD);
+//            Map<Long, MessageChannel> channel = guildDb.getOrThrow(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+//
+//            Map<ResourceType, Double> transfer = new HashMap<>();
+//            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
+//                ResourceType type = entry.getKey();
+//                long amtLong = (long) (entry.getValue() * 100d);
+//                if (db.transferShare(type.ordinal(), sender.getId(), 0, amtLong)) {
+//                    transfer.put(type, entry.getValue());
+//                } else {
+//                    response.append("Your withdrawal of " + MathMan.format(entry.getValue()) + "x" + type + " could not be processed. Please try again\n");
+//                }
+//            }
+//
+//            String title = "Withdraw ~$" + MathMan.format(PnwUtil.convertedTotal(transfer));
+//
+//            StringBuilder body = new StringBuilder();
+//            body.append(sender.getUserDiscriminator()).append("\n");
+//            body.append("From: " + sender.getNationUrlMarkup(true) + " | " + sender.getAllianceUrlMarkup(true)).append("\n");
+//            body.append("To: " + receiver).append("\n");
+//            body.append("Amount: `" + PnwUtil.resourcesToString(transfer) + "`").append("\n");
+//
+//            String emoji = "Confirm";
+//
+//            UUID token = UUID.randomUUID();
+//            BankWith.authorized.add(token);
+//            String transferStr = StringMan.getString(transfer);
+//            String transferCmd = Settings.commandPrefix(true) + "transfer " + receiver + " " + transferStr + " #ignore -f -g:" + token;
+//            String dmCmd = Settings.commandPrefix(true) + "dm " + sender.getNationUrl() + " 'Your withdrawal of `" + transferStr + "` has been processed'";
+//            String command = transferCmd + "\n" + dmCmd;
+//            DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, command);
+//
+//            response.append("Requested withdrawal of: `" + transferStr + "`. Please wait");
+//        }
+//        return response.toString();
+        return null;
     }
 
     @Command(desc = "Withdraw your cash/resources from the exchange")

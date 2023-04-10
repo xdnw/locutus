@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 
 import java.util.AbstractMap;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -65,15 +66,8 @@ public interface NationOrAllianceOrGuildOrTaxid {
         long sender_id;
         int sender_type;
         if (isGuild()) {
-            GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                sender_id = aaId;
-                sender_type = 2;
-            } else {
-                sender_id = db.getGuild().getIdLong();
-                sender_type = 3;
-            }
+            sender_id = getIdLong();
+            sender_type = 3;
         } else if (isAlliance()) {
             sender_id = getAlliance_id();
             sender_type = 2;
@@ -105,9 +99,9 @@ public interface NationOrAllianceOrGuildOrTaxid {
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(true, 0, true));
+            AllianceList aaList = db.getAllianceList();
+            if (aaList != null && !aaList.isEmpty()) {
+                nations.addAll(aaList.getNations(true, 0, true));
             } else {
                 Guild guild = db.getGuild();
                 Role role = Roles.MEMBER.toRole(guild);
@@ -135,20 +129,21 @@ public interface NationOrAllianceOrGuildOrTaxid {
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(false, 0, false));
-            }
-            Guild guild = db.getGuild();
-            for (Member member : guild.getMembers()) {
-                DBNation nation = DiscordUtil.getNation(member.getUser());
-                if (nation != null) {
-                    nations.add(nation);
+            AllianceList aaList = db.getAllianceList();
+            if (aaList == null && !aaList.isEmpty()) {
+                for (Member member : db.getGuild().getMembers()) {
+                    DBNation nation = DiscordUtil.getNation(member.getUser());
+                    if (nation != null) {
+                        nations.add(nation);
+                    }
                 }
             }
+            return aaList.getNations();
         }
         else if (isAlliance()) {
             nations.addAll(asAlliance().getNations(false, 0, false));
+        } else if (isTaxid()) {
+            return asBracket().getNations();
         } else {
             throw new IllegalArgumentException("Unknwon type " + getIdLong());
         }

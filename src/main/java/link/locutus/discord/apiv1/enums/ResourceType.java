@@ -70,7 +70,7 @@ public enum ResourceType {
 
     public static boolean isEmpty(double[] resources) {
         for (double i : resources) {
-            if (Math.abs(i) > 0.01) return false;
+            if (Math.round(i * 100) != 0) return false;
         }
         return true;
     }
@@ -122,6 +122,16 @@ public enum ResourceType {
             resources[i] = -resources[i];
         }
         return resources;
+    }
+
+    public static boolean equals(Map<ResourceType, Double> amtA, Map<ResourceType, Double> amtB) {
+        for (ResourceType type : ResourceType.values) {
+            if (Math.round(100 * (amtA.getOrDefault(type, 0d) - amtB.getOrDefault(type, 0d))) != 0) {
+                System.out.println(type + " | " + amtA.getOrDefault(type, 0d) + " | " + amtB.getOrDefault(type, 0d) + " | " + Math.round(100 * (amtA.getOrDefault(type, 0d) - amtB.getOrDefault(type, 0d))));
+                return false;
+            }
+        }
+        return true;
     }
 
     public double[] toArray(double amt) {

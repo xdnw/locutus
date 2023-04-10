@@ -4,7 +4,6 @@
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Switch
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
-@import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission
 @import link.locutus.discord.db.BankDB
@@ -32,7 +31,7 @@
 @import java.util.ArrayList
 @import java.util.HashMap
 
-@args (GuildDB db, int aaId, Set<Integer> alliances, boolean requireGrant, boolean requireExpiry, boolean requireTagged,
+@args (GuildDB db, Set<Integer> alliances, boolean requireGrant, boolean requireExpiry, boolean requireTagged,
     Map<Integer, TaxBracket> brackets, List<BankDB.TaxDeposit> taxes, Map<Integer, TaxBracket> bracketsByNation, Map<Integer,
         List<DBNation>> nationsByBracket, List<DBNation> nations,
         Map<Integer, Map<Integer, Integer>> bracketToNationDepositCount, Map<Integer, Integer> allNationDepositCount,
@@ -43,8 +42,6 @@
 
 @rocker.main.template("Tax Expenses") -> {
 <div class="bg-white container mt-3 rounded shadow py-1">
-    <a href="https://politicsandwar.com/alliance/id=@(aaId)&display=taxes" class="btn btn-primary btn">View Tax Brackets <i class="bi bi-box-arrow-up-right text-light"></i></a>
-    <a href="https://politicsandwar.com/alliance/id=@(aaId)&display=banktaxes" class="btn btn-primary btn">View Tax Records <i class="bi bi-box-arrow-up-right text-light"></i></a>
 @if (requireGrant) {
     <kbd>requireGrant</kbd>
 }
@@ -64,7 +61,7 @@
 </div>
 
 <!--Total-->
-@rocker.guild.econ.taxexpensebracket.template(-1, "Total Tax", db, aaId, null,
+@rocker.guild.econ.taxexpensebracket.template(-1, "Total Tax", db, null,
 bracketsByNation, nations,
 allNationDepositCount,
 incomeTotal,
@@ -79,7 +76,7 @@ expensesByNation
     @if (expensesByBracket.get(entry.getKey()) == null && incomeByBracket.get(entry.getKey()) == null) {
         @continue
     }
-    @rocker.guild.econ.taxexpensebracket.template(entry.getKey(), "Bracket", db, aaId, entry.getValue(),
+    @rocker.guild.econ.taxexpensebracket.template(entry.getKey(), "Bracket", db, entry.getValue(),
             bracketsByNation, nationsByBracket.getOrDefault(entry.getKey(), new ArrayList<>()),
             bracketToNationDepositCount.getOrDefault(entry.getKey(), new HashMap<>()),
             incomeByBracket.getOrDefault(entry.getKey(), ResourceType.getBuffer()),

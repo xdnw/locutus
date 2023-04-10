@@ -7,6 +7,7 @@ import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -93,20 +94,17 @@ public class IACheckup {
     private Map<DBNation, Map<ResourceType, Double>> memberStockpile;
     private final GuildDB db;
 
-    private final DBAlliance alliance;
+    private final AllianceList alliance;
 
-    public IACheckup(GuildDB db, int allianceId, boolean useCache) throws IOException {
-        if (db == null) throw new IllegalStateException("No database found for: " + allianceId);
+    public IACheckup(GuildDB db, AllianceList alliance, boolean useCache) throws IOException {
+        if (db == null) throw new IllegalStateException("No database found");
+        if (alliance == null || alliance.isEmpty()) throw new IllegalStateException("No alliance found");
         this.db = db;
-        this.alliance = db.getAlliance();
+        this.alliance = alliance;
         memberStockpile = new HashMap<>();
         if (!useCache) {
             memberStockpile = alliance.getMemberStockpile();
         }
-    }
-
-    public IACheckup(int allianceId) throws IOException, ExecutionException, InterruptedException {
-        this(Locutus.imp().getGuildDBByAA(allianceId), allianceId, false);
     }
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Consumer<DBNation> onEach, boolean fast) throws InterruptedException, ExecutionException, IOException {
@@ -324,16 +322,16 @@ public class IACheckup {
     private Map<Integer, Alliance> alliances = new HashMap<>();
 
     private Map.Entry<Object, String> checkup(AuditType type, DBNation nation, Map<Integer, JavaCity> cities, List<Transaction2> transactions, Map<ResourceType, Double> stockpile, boolean individual, boolean fast) throws InterruptedException, ExecutionException, IOException {
-        System.out.println("remove:|| running checkup " + type + " | " + nation.getNation());
         boolean updateNation = individual && !fast;
 
         switch (type) {
             case CHECK_RANK: {
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (aaId == null) return null;
+                Set<Integer> aaIds = db.getAllianceIds();
+                if (aaIds.isEmpty()) return null;
 
-                if (nation.getAlliance_id() != aaId) {
-                    return new AbstractMap.SimpleEntry<>("APPLY", "Please apply to the alliance ingame: https://politicsandwar.com/alliance/join/id=" + aaId);
+                if (!aaIds.contains(nation.getAlliance_id())) {
+                    int id = aaIds.iterator().next();
+                    return new AbstractMap.SimpleEntry<>("APPLY", "Please apply to the alliance ingame: https://politicsandwar.com/alliance/join/id=" + id);
                 }
                 if (nation.getPosition() <= 1) {
                     return new AbstractMap.SimpleEntry<>("MEMBER", "Please discuss with your mentor about becoming a member");
@@ -487,10 +485,10 @@ public class IACheckup {
 //                return null;
 //            }
             case DEPOSIT_RESOURCES: {
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (aaId != null) {
+                Set<Integer> aaIds = db.getAllianceIds();
+                if (!aaIds.isEmpty()) {
                     for (Transaction2 transaction : transactions) {
-                        if (aaId.longValue() == transaction.receiver_id) return null;
+                        if (aaIds.contains((int) transaction.receiver_id)) return null;
                     }
                 }
                 String desc = "Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:\n" +
@@ -507,9 +505,7 @@ public class IACheckup {
             }
             case WITHDRAW_DEPOSITS: {
                 GuildMessageChannel channel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-                if (channel == null) return null;
-                Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (aaId == null) return null;
+                if (channel == null || !db.hasAlliance()) return null;
                 for (Transaction2 transaction : transactions) {
                     if (transaction.receiver_id == (long) nation.getNation_id()) return null;
                 }
@@ -628,7 +624,7 @@ public class IACheckup {
                 String desc ="During Peace time, you can find targets to gather intel on using:\n" +
                         "" + CM.spy.find.intel.cmd.toSlashMention() + "\n" +
                         "During wartime, you can find enemies to spy using:\n" +
-                        "" + CM.spy.find.target.cmd.create("enemies", "*", null, null, null) + "\n\n" +
+                        "" + CM.spy.find.target.cmd.create("enemies", "*", null, null, null, null) + "\n\n" +
                         "(You should conduct a spy op every day)";
                 return new AbstractMap.SimpleEntry<>(diff, desc);
             }
@@ -1121,7 +1117,7 @@ public class IACheckup {
         if (nation.getOff() >= targets.size() || targets.isEmpty()) return null;
         StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
-            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, "true", null, null, null, null).toSlashCommand();
+            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, null, null, "true", null, null, null).toSlashCommand();
             resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention() + "");
         } else hasEnemies = false;
         if (hasRaids) {

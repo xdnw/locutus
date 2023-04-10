@@ -29,4 +29,6 @@ public class Messages {
             " - Selling buildings (or replacing them with some cheaper alternative) or selling units you don't need\n" +
             " - Converted a credit to resources: <https://politicsandwar.com/donate/resources/>\n" +
             " - Switching your build to another power source (or buildings to mine e.g. uranium)";
+
+    public static String GLOBAL_ROLE_MAPPING_INFO = "A global role mapping to ID:0 (*) will grant access to that role for all registered alliances";
 }

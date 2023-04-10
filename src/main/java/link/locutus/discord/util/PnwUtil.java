@@ -125,8 +125,9 @@ public class PnwUtil {
                 other = Locutus.imp().getGuildDBByAA(id.intValue());
             }
             if (other != null) {
-                Integer allianceId = other.getOrNull(GuildDB.Key.ALLIANCE_ID);
-                if (allianceId != null) extra.add(allianceId.longValue());
+                for (Integer allianceId : other.getAllianceIds()) {
+                    extra.add(allianceId.longValue());
+                }
                 extra.add(other.getGuild().getIdLong());
             }
         }
@@ -275,17 +276,12 @@ public class PnwUtil {
         allowConversion sender is nation and alliance has conversion enabled
          */
         if (tracked == null) {
-            tracked = new HashSet<>();
-            tracked.addAll(guildDB.getCoalitionRaw(Coalition.TRACK_DEPOSITS));
-            tracked.add(guildDB.getGuild().getIdLong());
-            Integer aaId = guildDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) tracked.add(aaId.longValue());
-            tracked = expandCoalition(tracked);
+            tracked = guildDB.getTrackedBanks();
         }
         // TODO also update Grant.isNoteFromDeposits if this code is updated
 
         Map<String, String> notes = parseTransferHashNotes(note);
-        DepositType type = DepositType.DEPOSITS;
+        DepositType type = DepositType.DEPOSIT;
 
         for (Map.Entry<String, String> entry : notes.entrySet()) {
             String tag = entry.getKey();
@@ -317,7 +313,7 @@ public class PnwUtil {
                     if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
                         return;
                     }
-                    type = DepositType.DEPOSITS;
+                    type = DepositType.DEPOSIT;
                     continue;
                 case "#raws":
                 case "#raw":
@@ -338,7 +334,7 @@ public class PnwUtil {
                     if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
                         return;
                     }
-                    if (type == DepositType.DEPOSITS) {
+                    if (type == DepositType.DEPOSIT) {
                         type = DepositType.LOAN;
                     }
                     continue;
@@ -554,16 +550,17 @@ public class PnwUtil {
             if (split.length == 2) {
                 arg = split[1].replaceAll("/", "");
             }
-        } else {
-            DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(arg);
-            if (alliance != null) {
-                return alliance.getAlliance_id();
-            }
         }
         if (MathMan.isInteger(arg)) {
             try {
                 return Integer.parseInt(arg);
             } catch (NumberFormatException e) {}
+        }
+        {
+            DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(arg);
+            if (alliance != null) {
+                return alliance.getAlliance_id();
+            }
         }
         if (arg.contains("=HYPERLINK") && arg.contains("alliance/id=")) {
             String regex = "alliance/id=([0-9]+)";

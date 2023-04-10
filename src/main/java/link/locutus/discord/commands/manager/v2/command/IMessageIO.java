@@ -29,7 +29,6 @@ public interface IMessageIO {
         IMessageBuilder message = getMessage();
         TextChannel t = null;
         if (message == null || message.getAuthor() == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
-            System.out.println("remove:||Create new");
             message = create();
         } else {
             inline = true;

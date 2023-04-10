@@ -162,6 +162,36 @@ public class CommandManager2 {
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyList", "buy_list");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
+//        this.commands.registerSubCommands(new BuildCommands(), "build");
+//        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
+//
+//        this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertTKRSpySheet", "convertTKRSpySheet");
+//        this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertTKRSpySheet", "convertTKR");
+//
+//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncLootFromAttacks", "syncLootFromAttacks");
+//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTreasures", "treasures");
+//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncDiscordWithLocutus", "discord");
+//
+//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertAbsolute", "price");
+//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertMistrade", "mistrade");
+//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertDisparity", "margin");
+//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertNoOffer", "no_offers");
+//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertUndercut", "undercut");
+//        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "removeInvalidOffshoring", "removeinvalidoffshoring");
+//        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveServer", "leaveServer");
+//        this.commands.registerMethod(new UtilityCommands(), List.of("color"), "calculateColorRevenue", "revenue");
+//
+//        this.commands.registerMethod(new UnsortedCommands(), List.of("sheets_econ"), "taxRevenueSheet", "taxRevenue");
+//
+//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellOffer", "sell");
+//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyOffer", "buy");
+//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "deleteOffer", "delete");
+//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "offerInfo", "info");
+//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "updateOffer", "update");
+//
+//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyList", "buy_list");
+//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
+//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin"), "loginTimes", "list_login_times");
 

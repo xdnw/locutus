@@ -14,9 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TransferResources extends Command {
-    private final BankWith cmd;
+    private final TransferCommand cmd;
 
-    public TransferResources(BankWith cmd) {
+    public TransferResources(TransferCommand cmd) {
         super("tr", "transferresources", CommandCategory.ECON);
         this.cmd = cmd;
     }

@@ -72,16 +72,13 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         int sender_type;
         if (isGuild()) {
             GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                sender_id = aaId;
-                sender_type = 2;
-            } else {
-                sender_id = db.getGuild().getIdLong();
-                sender_type = 3;
+            if (db.hasAlliance()) {
+                throw new IllegalStateException("Alliance Guilds cannot be used as sender. Specify the alliance instead: " + db.getGuild());
             }
+            sender_id = db.getGuild().getIdLong();
+            sender_type = 3;
         } else if (isAlliance()) {
-            sender_id = getAlliance_id();
+            sender_id = getIdLong();
             sender_type = 2;
         } else if (isNation()) {
             sender_id = getId();
@@ -108,9 +105,9 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(true, 0, true));
+            AllianceList aaList = db.getAllianceList();
+            if (aaList != null && !aaList.isEmpty()) {
+                nations.addAll(aaList.getNations(true, 0, true));
             } else {
                 Guild guild = db.getGuild();
                 Role role = Roles.MEMBER.toRole(guild);
@@ -138,9 +135,9 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         if (isNation()) nations.add(asNation());
         else if (isGuild()) {
             GuildDB db = asGuild();
-            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (aaId != null) {
-                nations.addAll(DBAlliance.getOrCreate(aaId).getNations(false, 0, false));
+            Set<Integer> ids = db.getAllianceIds();
+            if (!ids.isEmpty()) {
+                nations.addAll(Locutus.imp().getNationDB().getNations(ids));
             }
             Guild guild = db.getGuild();
             for (Member member : guild.getMembers()) {

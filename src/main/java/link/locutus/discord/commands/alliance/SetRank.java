@@ -40,7 +40,7 @@ public class SetRank extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         GuildDB db = Locutus.imp().getGuildDB(server);
-        return db.isValidAlliance() && db.hasAuth() && (Roles.INTERNAL_AFFAIRS.has(user, server) || Roles.INTERNAL_AFFAIRS_STAFF.has(user, server));
+        return db.isValidAlliance() && (Roles.INTERNAL_AFFAIRS.has(user, server) || Roles.INTERNAL_AFFAIRS_STAFF.has(user, server));
     }
 
     @Override
@@ -48,7 +48,7 @@ public class SetRank extends Command {
         if (args.size() != 2) return usage();
         GuildDB db = Locutus.imp().getGuildDB(guild);
         DBNation nation = DiscordUtil.parseNation(args.get(0));
-        DBAlliancePosition position = PWBindings.position(db, args.get(1));
+        DBAlliancePosition position = PWBindings.position(db, me, args.get(1));
         return IACommands.setRank(event.getAuthor(), new DiscordChannelIO(event.getChannel(), event::getMessage), db, me, nation, position, flags.contains('f'), flags.contains('d'));
     }
 }

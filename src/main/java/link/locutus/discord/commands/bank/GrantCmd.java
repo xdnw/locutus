@@ -1,6 +1,30 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
+import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.MMRDouble;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.offshore.Grant;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.task.balance.GetCityBuilds;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -8,39 +32,32 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.MMRDouble;
-import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.offshore.Grant;
-import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.balance.GetCityBuilds;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class GrantCmd extends Command {
+    private final TransferCommand withdrawCommand;
 
-    public GrantCmd(BankWith withdrawCommand) {
+    public GrantCmd(TransferCommand withdrawCommand) {
         super("grant", "loan", CommandCategory.ECON);
+        this.withdrawCommand = withdrawCommand;
     }
 
     @Override
@@ -56,7 +73,7 @@ public class GrantCmd extends Command {
                 "Add `-e` or `#expire=60d` to have a grant's debt expire\n" +
                 "Add `-c` to have a grant count as cash value in " + CM.deposits.check.cmd.toSlashMention() + "\n" +
                 "Add `-o` to only send what funds they are missing for a grant\n" +
-                "Add `-m` to multiply the grant per city.";
+                "Add `-m` to multiply the grant per city";
     }
 
     @Override
@@ -66,19 +83,46 @@ public class GrantCmd extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        List<String> transferFlags = new ArrayList<>();
+        String expireStr = DiscordUtil.parseArg(args, "expire");
+        Long expire = expireStr == null ? null : System.currentTimeMillis() + TimeUtil.timeToSec(expireStr);
+        if (flags.contains('e')) {
+            expire = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(60);
+        }
+
+        DBNation nationAccount = null;
+        DBAlliance allianceAccount = null;
+        DBAlliance offshoreAccount = null;
+
+        String nationAccountStr = DiscordUtil.parseArg(args, "nation");
+        if (nationAccountStr != null) {
+            nationAccount = PWBindings.nation(author, nationAccountStr);
+        }
+
+        String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");
+        if (allianceAccountStr != null) {
+            allianceAccount = PWBindings.alliance(allianceAccountStr);
+        }
+
+        String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
+        if (offshoreAccountStr != null) {
+            offshoreAccount = PWBindings.alliance(offshoreAccountStr);
+        }
+
         Double factor = null;
 
         for (Iterator<String> iter = args.iterator(); iter.hasNext(); ) {
             String arg = iter.next().toLowerCase();
             if (arg.startsWith("-expire") || arg.startsWith("-e") || arg.startsWith("#expire")) {
-                transferFlags.add("#expire=" + arg.split("[:=]", 2)[1]);
+                expire = System.currentTimeMillis() + TimeUtil.timeToSec(arg.split("[:=]", 2)[1]);
                 iter.remove();
-            } else if (arg.endsWith("%")) {
+            }
+            else if (arg.endsWith("%")) {
                 arg = arg.substring(0, arg.length() - 1);
                 factor = PrimitiveBindings.Double(arg);
-                factor /= 100d;
-                iter.remove();
+                if (factor != null) {
+                    factor /= 100d;
+                    iter.remove();
+                }
             }
         }
         Double num;
@@ -86,11 +130,14 @@ public class GrantCmd extends Command {
             if (args.size() == 2) {
                 if (args.get(1).equalsIgnoreCase("project")) {
                     return "Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1";
-                } else if (args.get(1).equalsIgnoreCase("build") || (args.get(1).startsWith("{") && args.get(1).endsWith("}"))) {
+                }
+                else if (args.get(1).equalsIgnoreCase("build") || (args.get(1).startsWith("{") && args.get(1).endsWith("}"))) {
                     num = Double.MAX_VALUE;
-                } else if (args.get(1).equalsIgnoreCase("unit")) {
+                }
+                else if (args.get(1).equalsIgnoreCase("unit")) {
                     return "Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>";
-                } else if (args.get(1).equalsIgnoreCase("warchest")) {
+                }
+                else if (args.get(1).equalsIgnoreCase("warchest")) {
                     num = 1d;
                 } else {
                     return usage(event);
@@ -102,6 +149,7 @@ public class GrantCmd extends Command {
             num = MathMan.parseDouble(args.get(2));
             if (num == null || num <= 0) return "Invalid number: `" + args.get(2) + "`";
         }
+        if (num <= 0) return "Invalid positive number: " + num;
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
 
@@ -109,10 +157,10 @@ public class GrantCmd extends Command {
         String typeArg = args.get(1);
         if (me == null) {
             Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
-            Integer requiredAA = guildDb.getOrThrow(GuildDB.Key.ALLIANCE_ID);
-            if (!flags.contains('f')) nations.removeIf(f -> !requiredAA.equals(f.getAlliance_id()));
+            Set<Integer> requiredAAs = guildDb.getAllianceIds();
+            if (!flags.contains('f')) nations.removeIf(f -> !requiredAAs.contains(f.getAlliance_id()));
             if (nations.isEmpty()) return "Invalid nation: `" + args.get(0) + "`";
-            if (!Roles.ECON.has(author, guild)) return "No permission.";
+            if (!Roles.ECON.has(author, guild)) return "No permission (econ)";
 
             SpreadSheet sheet = SpreadSheet.create(guildDb, GuildDB.Key.GRANT_SHEET);
             sheet.clearAll();
@@ -133,7 +181,7 @@ public class GrantCmd extends Command {
                 row.add(nation.getCities());
                 row.add(nation.getAvg_infra());
                 try {
-                    Grant grant = generateGrant(typeArg, guildDb, nation, num, flags);
+                    Grant grant = generateGrant(typeArg, guildDb, nation, num, flags, false);
                     row.add(grant.getInstructions());
                     row.add(PnwUtil.convertedTotal(grant.cost()));
                     row.add(PnwUtil.resourcesToString(grant.cost()));
@@ -157,7 +205,7 @@ public class GrantCmd extends Command {
             return null;
         }
 
-        Grant grant = generateGrant(typeArg, guildDb, me, num, flags);
+        Grant grant = generateGrant(typeArg, guildDb, me, num, flags, true);
 
         Member member = null;
 
@@ -167,16 +215,16 @@ public class GrantCmd extends Command {
             if (user != null) {
                 member = guild.getMemberById(user.getDiscordId());
                 if (member == null) {
-                    throw new IllegalArgumentException("Not on this discord.");
+                    throw new IllegalArgumentException("Not on this discord");
                 }
             }
             if (noGrants != null && member != null && member.getRoles().contains(noGrants)) {
-                throw new IllegalArgumentException("The member has been marked as to not receive grants.");
+                throw new IllegalArgumentException("The member has been marked (with discord role) as to not receive grants");
             }
         }
 
         UUID uuid = UUID.randomUUID();
-        BankWith.authorized.add(uuid);
+        BankCommands.AUTHORIZED_TRANSFERS.put(uuid, grant);
 
         Map<ResourceType, Double> resources = PnwUtil.resourcesToMap(grant.cost());
 
@@ -184,24 +232,34 @@ public class GrantCmd extends Command {
             resources = PnwUtil.multiply(resources, factor);
         }
 
-        transferFlags.add("-g:" + uuid);
-        if (flags.contains('c')) transferFlags.add("-c");
-        if (flags.contains('e')) transferFlags.add("#expire=60d");
-        if (flags.contains('o')) transferFlags.add("-o");
-        String command = "_" + Settings.commandPrefix(true) + "transfer \"" + grant.getNote() + "\" " + me.getNationUrl() + " " + StringMan.getString(resources) + " " + StringMan.join(transferFlags, " ");
+        JSONObject command = CM.transfer.resources.cmd.create(
+                me.getUrl(),
+                PnwUtil.resourcesToString(resources),
+                grant.getType().toString(),
+                (nationAccount == null ? me : nationAccount).getUrl(),
+                allianceAccount != null ? allianceAccount.getUrl() : null,
+                offshoreAccount != null ? offshoreAccount.getUrl() : null,
+                String.valueOf(flags.contains('o')),
+                expire != null ? "timestamp:" + expire : null,
+                uuid.toString(),
+                String.valueOf(flags.contains('c')),
+                String.valueOf(flags.contains('f'))
+        ).toJson();
+        StringBuilder msg = new StringBuilder();
+        msg.append(PnwUtil.resourcesToString(resources)).append("\n")
+                .append("Current values for: " + me.getNation()).append('\n')
+                .append("Cities: " + me.getCities()).append('\n')
+                .append("Infra: " + me.getAvg_infra()).append('\n')
+        ;
 
-        String msg = PnwUtil.resourcesToString(resources) + "\n" +
-                "Current values for: " + me.getNation() + '\n' +
-                "Cities: " + me.getCities() + '\n' +
-                "Infra: " + me.getAvg_infra() + '\n' +
-                "\n**INSTRUCTIONS:** " + grant.getInstructions();
+        msg.append("\n**INSTRUCTIONS:** ").append(grant.getInstructions());
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), grant.title(), msg, "Confirm.", command, "Cancel.", " ");
+        new DiscordChannelIO(event).create().confirmation(grant.title(), msg.toString(), command).cancelButton().send();
 
         return null;
     }
 
-    public Grant generateGrant(String arg, GuildDB guildDb, DBNation me, double amt, Set<Character> flags) throws IOException, ExecutionException, InterruptedException {
+    public Grant generateGrant(String arg, GuildDB guildDb, DBNation me, double amt, Set<Character> flags, boolean single) throws IOException, ExecutionException, InterruptedException {
         Grant grant;
 
         boolean existing = flags.contains('o');
@@ -217,59 +275,82 @@ public class GrantCmd extends Command {
             Guild guild = guildDb.getGuild();
             Member member = guild.getMemberById(user.getDiscordId());
             if (member == null) {
-                throw new IllegalArgumentException("Not on this discord.");
+                throw new IllegalArgumentException("Not on this discord");
             }
         }
 
         Map<ResourceType, Double> resources = new HashMap<>();
 
         if (arg.equalsIgnoreCase("city")) {
-            if (me.getCityTurns() > 0 && me.getCities() >= 10 && !force)
-                throw new IllegalArgumentException("You still have a city timer.");
-            grant = new Grant(me, Grant.Type.CITY);
+            if (me.getCityTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a city timer");
+            int currentCity = me.getCities();
+            int numBuy = (int) amt;
+            if (numBuy >= 10) numBuy = numBuy - currentCity;
+
+            int maxBuy = Math.max(1, 10 - currentCity);
+            if (numBuy > maxBuy && !force) throw new IllegalArgumentException("Only " + maxBuy + " cities can be granted");
+            if (numBuy <= 0) throw new IllegalArgumentException("Already has " + currentCity + " cities");
+
+
+            grant = new Grant(me, DepositType.CITY.withAmount(currentCity + numBuy));
             grant.setAmount(amt);
             grant.addCity(me.getCities());
-            grant.setInstructions(grantCity(me, (int) amt, resources, force));
+            grant.setInstructions(grantCity(me, numBuy, resources, force));
         } else if (arg.equalsIgnoreCase("infra")) {
-            grant = new Grant(me, Grant.Type.INFRA);
+            // city id
+            // amt
+            grant = new Grant(me, DepositType.INFRA.withValue((int) amt, -1));
             grant.setAmount(amt);
-            grant.setInstructions(grantInfra(me, (int) amt, resources, force));
+            grant.setInstructions(grantInfra(me, (int) amt, resources, force, single));
             grant.setAllCities();
         } else if (arg.equalsIgnoreCase("land")) {
-            grant = new Grant(me, Grant.Type.LAND);
-            grant.setAmount(amt);
+            grant = new Grant(me, DepositType.LAND.withValue((int) amt, -1));
+            grant.setAmount((int) amt);
             grant.setInstructions(grantLand(me, (int) amt, resources, force));
             grant.setAllCities();
         } else if (arg.contains("mmrbuy=")) {
             MMRDouble mmr = MMRDouble.fromString(arg.split("=")[1]);
-            grant = new Grant(me, Grant.Type.WARCHEST);
+            grant = new Grant(me, DepositType.WARCHEST.withValue());
             grant.setAmount(amt);
             grant.setInstructions(grantMMRBuy(me, mmr, (int) amt, resources, force));
             grant.setAllCities();
         } else if (arg.contains("mmr=")) {
             MMRDouble mmr = MMRDouble.fromString(arg.split("=")[1]);
-            grant = new Grant(me, Grant.Type.WARCHEST);
+            grant = new Grant(me, DepositType.WARCHEST.withValue());
             grant.setAmount(amt);
             grant.setInstructions(grantMMR(me, mmr, (int) amt, resources, force));
             grant.setAllCities();
         } else if (arg.startsWith("{")) {
             if (arg.contains("infra_needed")) {
-                grant = new Grant(me, Grant.Type.BUILD);
                 JavaCity city = new JavaCity(arg);
                 city.setLand(0d);
 
                 city.validate(me.getContinent(), me::hasProject);
+
+                long pair = MathMan.pairInt((int) city.getInfra(), city.getLand().intValue());
+                int citiesAmt;
+
                 Map<Integer, JavaCity> from;
                 if (amt == Double.MAX_VALUE) {
                     from = new GetCityBuilds(me).adapt().get(me);
-
-                } else {
+                    citiesAmt = -1;
+                } else if (amt == 1) {
                     from = new HashMap<>();
                     JavaCity newCity = new JavaCity();
                     if (noInfra) newCity.setInfra(city.getInfra());
                     if (noLand) newCity.setLand(city.getLand());
                     from.put(0, newCity);
+                    citiesAmt = 1;
+                } else {
+                    citiesAmt = (int) amt;
+                    JavaCity found = me.getCityMap(true).get(citiesAmt);
+                    if (found == null) {
+                        throw new IllegalArgumentException("Invalid city id: " + amt + " (must be a valud city id, 1, or no value)");
+                    }
+                    from = Collections.singletonMap(citiesAmt, found);
                 }
+                grant = new Grant(me, DepositType.BUILD.withValue(pair, citiesAmt));
+
                 for (Map.Entry<Integer, JavaCity> entry : from.entrySet()) {
                     if (noInfra) entry.getValue().setInfra(city.getInfra());
                     if (noLand) entry.getValue().setLand(city.getLand());
@@ -280,7 +361,7 @@ public class GrantCmd extends Command {
                 grant.setInstructions(city.instructions(from, buffer));
                 resources = PnwUtil.resourcesToMap(buffer);
             } else {
-                grant = new Grant(me, Grant.Type.RESOURCES);
+                grant = new Grant(me, DepositType.GRANT.withValue());
                 grant.setInstructions("transfer resources");
                 resources = PnwUtil.parseResources(arg);
             }
@@ -288,11 +369,12 @@ public class GrantCmd extends Command {
             throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <json> 1");
         } else if (arg.equalsIgnoreCase("warchest")) {
             Map<ResourceType, Double> stockpile = me.getStockpile();
-            if (stockpile == null)
-                throw new IllegalArgumentException("Unable to fetch stockpile.");
+            if (stockpile == null) throw new IllegalArgumentException("Unable to fetch stockpile (are you sure they are a member?)");
             Map<ResourceType, Double> cityWc = guildDb.getPerCityWarchest(me);
             resources = PnwUtil.multiply(cityWc, (double) me.getCities());
             if (amt > 0 && amt != 1) {
+//                Double multiplier = MathMan.parseDouble(args.get(2));
+//                if (multiplier == null) return "Invalid multiplier: `" + args.get(2) + "`";
                 resources = PnwUtil.multiply(resources, amt);
             }
 
@@ -304,14 +386,13 @@ public class GrantCmd extends Command {
                     else resources.put(entry.getKey(), required);
                 }
             }
-            grant = new Grant(me, Grant.Type.WARCHEST);
+            grant = new Grant(me, DepositType.WARCHEST.withValue());
             grant.setInstructions("warchest");
         } else {
             Project project = Projects.get(arg);
             if (project == null) {
                 if (arg.equalsIgnoreCase("project")) {
-                    if (me.getProjectTurns() > 0 && me.getCities() >= 10 && !force)
-                        throw new IllegalArgumentException("You still have a project timer.");
+                    if (me.getProjectTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a project timer");
                     throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1");
                 }
                 if (arg.equalsIgnoreCase("unit")) {
@@ -321,7 +402,6 @@ public class GrantCmd extends Command {
                 MilitaryUnit unit = MilitaryUnit.get(arg);
                 if (unit == null) usage();
 
-                assert unit != null;
                 amt -= me.getUnits(unit);
                 if (amt <= 0) {
                     throw new IllegalArgumentException("You already have " + amt + " " + unit.name());
@@ -340,8 +420,7 @@ public class GrantCmd extends Command {
                         break;
                     case NUKE:
                     case MISSILE:
-                        if (!flags.contains('f'))
-                            throw new IllegalArgumentException("We do not approve grants for missiles or nukes.");
+                        if (!flags.contains('f')) throw new IllegalArgumentException("We do not approve grants for missiles/nukes");
                     case MONEY:
                         break;
                 }
@@ -350,7 +429,7 @@ public class GrantCmd extends Command {
                 }
 
                 resources = PnwUtil.resourcesToMap(unit.getCost((int) amt));
-                grant = new Grant(me, Grant.Type.UNIT);
+                grant = new Grant(me, DepositType.WARCHEST.withValue());
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {
                 if (me.projectSlots() <= me.getNumProjects() && !flags.contains('f')) {
@@ -375,7 +454,7 @@ public class GrantCmd extends Command {
                     resources = PnwUtil.multiply(resources, factor);
                 }
 
-                grant = new Grant(me, Grant.Type.PROJECT);
+                grant = new Grant(me, DepositType.PROJECT.withAmount(project.ordinal()));
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/projects/> and purchase " + project.name());
             }
         }
@@ -411,10 +490,10 @@ public class GrantCmd extends Command {
         }
 
         StringBuilder response = new StringBuilder();
-        response.append(" - mmr[unit]=").append(me.getMMR()).append("\n");
-        response.append(" - mmr[build]=").append(me.getMMRBuildingStr()).append("\n");
-        response.append(" - Cities: ").append(me.getCities()).append("\n\n");
-        response.append("Buy for mmr=").append(mmr.toString()).append(" for ").append(numBuys).append(" full buys\n");
+        response.append(" - mmr[unit]=" + me.getMMR() + "\n");
+        response.append(" - mmr[build]=" + me.getMMRBuildingStr() + "\n");
+        response.append(" - Cities: " + me.getCities() + "\n\n");
+        response.append("Buy for mmr=" + mmr.toString() + " for " + numBuys + " full buys\n");
 
         int cities = me.getCities();
         for (MilitaryUnit unit : MilitaryUnit.values()) {
@@ -423,10 +502,10 @@ public class GrantCmd extends Command {
             double numBuildings = mmr.get(unit) * cities;
             int numUnitsPerRebuy = (int) (Math.floor(building.max() * numBuildings));
             int numUnits = numUnitsPerRebuy * numBuys;
-            PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
-            response.append(" - ").append(numUnits).append(" x ").append(unit);
+            resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
+            response.append(" - " + numUnits + " x " + unit);
             if (numBuys != 1) {
-                response.append(" (").append(numUnitsPerRebuy).append(" per full buy)");
+                response.append(" (" + numUnitsPerRebuy + " per full buy)");
             }
             response.append("\n");
         }
@@ -440,11 +519,11 @@ public class GrantCmd extends Command {
         }
 
         StringBuilder response = new StringBuilder();
-        response.append("**Warchest for ").append(me.getNation()).append("**:\n");
-        response.append(" - mmr[unit]=").append(me.getMMR()).append("\n");
-        response.append(" - mmr[build]=").append(me.getMMRBuildingStr()).append("\n");
-        response.append(" - Cities: ").append(me.getCities()).append("\n\n");
-        response.append("Buy for mmr=").append(mmr.toString()).append(" over ").append(numBuys).append(" days\n");
+        response.append("**Warchest for " + me.getNation() + "**:\n");
+        response.append(" - mmr[unit]=" + me.getMMR() + "\n");
+        response.append(" - mmr[build]=" + me.getMMRBuildingStr() + "\n");
+        response.append(" - Cities: " + me.getCities() + "\n\n");
+        response.append("Buy for mmr=" + mmr.toString() + " over " + numBuys + " days\n");
 
         int cities = me.getCities();
         for (MilitaryUnit unit : MilitaryUnit.values()) {
@@ -453,10 +532,10 @@ public class GrantCmd extends Command {
             double numBuildings = mmr.get(unit) * cities;
             int numUnitsPerDay = (int) (Math.floor(building.perDay() * numBuildings));
             int numUnits = numUnitsPerDay * numBuys;
-            PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
-            response.append(" - ").append(numUnits).append(" x ").append(unit);
+            resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
+            response.append(" - " + numUnits + " x " + unit);
             if (numBuys != 1) {
-                response.append(" (").append(numUnitsPerDay).append(" per day)");
+                response.append(" (" + numUnitsPerDay + " per day)");
             }
             response.append("\n");
         }
@@ -494,17 +573,39 @@ public class GrantCmd extends Command {
 
         resources.put(ResourceType.MONEY, totalCost);
 
-        return "Go to your cities page and enter `@" + numBuy + "` into the land field.\n" +
+        StringBuilder response = new StringBuilder("Go to your cities page and enter `@" + numBuy + "` into the land field.\n" +
                 Projects.ARABLE_LAND_AGENCY + ": " + ala + "\n" +
                 Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec + "\n" +
                 DomesticPolicy.RAPID_EXPANSION + ": " + expansion + "\n" +
-                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                Projects.GOVERNMENT_SUPPORT_AGENCY +": " + me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY));
 
+//        if (numBuy > 2000) {
+//            JavaCity newCity = new JavaCity(myBuilds.values().iterator().next());
+//            newCity.setLand((double) numBuy);
+//            JavaCity optimal = newCity.optimalBuild(pnwNation, me, 10000);
+//            double[] newProfit = new double[ResourceType.values.length];
+//            if (optimal != null) {
+//                newProfit = optimal.profit(me, pnwNation, newProfit);
+//            }
+//
+//            double[] oldProfit = new double[ResourceType.values.length];
+//            for (Map.Entry<Integer, JavaCity> entry : myBuilds.entrySet()) {
+//                oldProfit = entry.getValue().profit(me, pnwNation, oldProfit);
+//            }
+//
+//            double profit = PnwUtil.convertedTotal(newProfit) * pnwNation.getCities() - PnwUtil.convertedTotal(oldProfit);
+//            response.append("\nProfit/day: $").append(MathMan.format(profit));
+//            double roi =( ((profit * 120 - totalCost) / totalCost) * 7 * 100 / 120);
+//            response.append("\nROI/120d: ").append(MathMan.format(roi)).append("%");
+//
+//        }
+
+        return response.toString();
     }
 
-    public String grantInfra(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws InterruptedException, ExecutionException, IOException {
+    public String grantInfra(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force, boolean fetchROI) throws InterruptedException, ExecutionException, IOException {
         if (me.getCities() < 9 && numBuy > 1700 && !force) {
-            throw new IllegalArgumentException("Please grant up to City 10 before buying infra.");
+            throw new IllegalArgumentException("Please grant up to C10 before buying infra.");
         }
         if (numBuy > 2500 && !force) {
             throw new IllegalArgumentException("Infra grants >2500 are not approved as they are unprofitable.");
@@ -520,7 +621,7 @@ public class GrantCmd extends Command {
             }
         }
 
-        if (totalCost <= 0) return "You already have " + numBuy + " in your cities.";
+        if (totalCost <= 0) return "You already have " + numBuy + " in your cities";
 
         boolean urbanization = me.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
         boolean gsa = me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
@@ -528,7 +629,7 @@ public class GrantCmd extends Command {
         boolean aec = me.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
 
         if (numBuy > 1700 && !urbanization && !force) {
-            throw new IllegalArgumentException("Please set Urbanization as your domestic policy.");
+            throw new IllegalArgumentException("Please set Urbanization as your domestic policy");
         }
 
         double factor = 1;
@@ -543,21 +644,44 @@ public class GrantCmd extends Command {
 
         resources.put(ResourceType.MONEY, totalCost);
 
-
-        return "Go to your cities page and enter `@" + numBuy + "` into the infrastructure field." +
+        StringBuilder response = new StringBuilder();
+        response.append("Go to your cities page and enter `@" + numBuy + "` into the infrastructure field." +
                 "\nUrbanization: " + urbanization +
                 "\n" + Projects.CENTER_FOR_CIVIL_ENGINEERING + ": " + cce + "\n" +
                 Projects.ADVANCED_ENGINEERING_CORPS + ": " + aec + "\n" +
-                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + gsa;
+                Projects.GOVERNMENT_SUPPORT_AGENCY + ": " + gsa);
+
+//        if (numBuy > 1500 && fetchROI) {
+//            JavaCity newCity = new JavaCity(myBuilds.values().iterator().next());
+//            newCity.clear();
+//            newCity.setInfra(numBuy);
+//            JavaCity optimal = newCity.optimalBuild(pnwNation, me, 10000);
+//            double[] newProfit = new double[ResourceType.values.length];
+//            if (optimal != null) {
+//                for (Map.Entry<Integer, JavaCity> entry : myBuilds.entrySet()) {
+//                    JavaCity newCityX = new JavaCity(optimal);
+//                    JavaCity oldCityX = entry.getValue();
+//                    newCityX.setAge(oldCityX.getAge());
+//                    newProfit = newCityX.profit(me, pnwNation, newProfit);
+//                }
+//            }
+//
+//            double[] oldProfit = new double[ResourceType.values.length];
+//            for (Map.Entry<Integer, JavaCity> entry : myBuilds.entrySet()) {
+//                oldProfit = entry.getValue().profit(me, pnwNation, oldProfit);
+//            }
+//
+//            double profit = PnwUtil.convertedTotal(newProfit) - PnwUtil.convertedTotal(oldProfit);
+//            response.append("\nProfit/day: $").append(MathMan.format(profit));
+//            double roi =( ((profit * 120 - totalCost) / totalCost) * 7 * 100 / 120);
+//            response.append("\nROI/120d: ").append(MathMan.format(roi)).append("%");
+//        }
+
+        return response.toString();
     }
 
-    public String grantCity(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) {
+    public String grantCity(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws IOException {
         int currentCity = me.getCities();
-        if (numBuy >= 10) numBuy = numBuy - currentCity;
-
-        int maxBuy = Math.max(1, 10 - currentCity);
-        if (numBuy > maxBuy && !force) throw new IllegalArgumentException("Only " + maxBuy + " cities can be granted.");
-        if (numBuy <= 0) throw new IllegalArgumentException("Already has " + currentCity + " cities.");
 
         boolean cp = me.hasProject(Projects.URBAN_PLANNING);
         boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
@@ -573,20 +697,20 @@ public class GrantCmd extends Command {
         StringBuilder result = new StringBuilder();
 
         if (currentCity >= Projects.URBAN_PLANNING.requiredCities() && !cp && !force) {
-            result.append(Projects.URBAN_PLANNING).append(" has not been built\n");
+            result.append(Projects.URBAN_PLANNING + " has not been built\n");
         }
 
         if (currentCity >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !acp && !force) {
-            result.append(Projects.ADVANCED_URBAN_PLANNING).append(" has not been built\n");
+            result.append(Projects.ADVANCED_URBAN_PLANNING + " has not been built\n");
         }
 
         if (currentCity >= Projects.METROPOLITAN_PLANNING.requiredCities() && !mp && !force) {
-            result.append(Projects.METROPOLITAN_PLANNING.requiredCities()).append(" has not been built\n");
+            result.append(Projects.METROPOLITAN_PLANNING.requiredCities() + " has not been built\n");
         }
 
 
         if (currentCity > 10 && !manifest && !force) {
-            throw new IllegalArgumentException("Please set Manifest Destiny as your domestic policy.");
+            throw new IllegalArgumentException("Please set Manifest Destiny as your domestic policy");
         }
 
         resources.put(ResourceType.MONEY, cost);
@@ -594,7 +718,7 @@ public class GrantCmd extends Command {
         if (numBuy == 1) {
             result.append("Then go to <https://politicsandwar.com/city/create/> and create your new city.");
         } else {
-            result.append("Then go to <https://politicsandwar.com/city/create/> and buy ").append(numBuy).append(" new cities.");
+            result.append("Then go to <https://politicsandwar.com/city/create/> and buy " + numBuy + " new cities.");
         }
         return result.toString();
     }

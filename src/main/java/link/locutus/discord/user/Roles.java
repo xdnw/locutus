@@ -1,8 +1,10 @@
 package link.locutus.discord.user;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
@@ -11,26 +13,30 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.List;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public enum Roles {
-    REGISTERED("auto role for anyone who is verified with the bot"),
-    MEMBER("Members can run commands"),
-    ADMIN("Admin has access to alliance / guild management commands"),
+    REGISTERED(0, "auto role for anyone who is verified with the bot"),
+    MEMBER(1, "Members can run commands"),
+    ADMIN(2, "Admin has access to alliance / guild management commands"),
 
-    MILCOM("Access to milcom related commands", GuildDB.Key.ALLIANCE_ID) {
+    MILCOM(3, "Access to milcom related commands", GuildDB.Key.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
-            return MILCOM_ADVISOR.has(member);
+            return MILCOM_NO_PINGS.has(member);
         }
     },
-    MILCOM_ADVISOR("Access to milcom related commands - doesn't receive pings", GuildDB.Key.ALLIANCE_ID),
-    ENEMY_BEIGE_ALERT_AUDITOR("Role to receive pings when an enemy gets beiged", GuildDB.Key.ENEMY_BEIGED_ALERT_VIOLATIONS),
+    MILCOM_NO_PINGS(4, "Access to milcom related commands - doesn't receive pings", GuildDB.Key.ALLIANCE_ID, "MILCOM_ADVISOR"),
 
-    ECON("Has access to econ gov commands", GuildDB.Key.ALLIANCE_ID),
-    ECON_LOW_GOV("Has access to basic econ commands", GuildDB.Key.ALLIANCE_ID) {
+    ECON(5, "Has access to econ gov commands", null),
+    ECON_STAFF(6, "Has access to basic econ commands", GuildDB.Key.ALLIANCE_ID, "ECON_LOW_GOV") {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -45,14 +51,14 @@ public enum Roles {
         }
     },
 
-    ECON_GRANT_ALERTS("Gets pinged for member grant requests", GuildDB.Key.ALLIANCE_ID),
-    ECON_DEPOSIT_ALERTS("Gets pinged when there is a deposit", GuildDB.Key.ALLIANCE_ID),
-    ECON_WITHDRAW_ALERTS("Gets pinged when there is a withdrawal", GuildDB.Key.ALLIANCE_ID),
-    ECON_WITHDRAW_SELF("Can withdraw own funds", GuildDB.Key.MEMBER_CAN_WITHDRAW),
-    ECON_GRANT_SELF("Role to allow member to grant themselves", GuildDB.Key.MEMBER_CAN_WITHDRAW),
+    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildDB.Key.ALLIANCE_ID),
+    ECON_DEPOSIT_ALERTS(8, "Gets pinged when there is a deposit", GuildDB.Key.ALLIANCE_ID),
+    ECON_WITHDRAW_ALERTS(9, "Gets pinged when there is a withdrawal", GuildDB.Key.ALLIANCE_ID),
+    ECON_WITHDRAW_SELF(10, "Can withdraw own funds", GuildDB.Key.MEMBER_CAN_WITHDRAW),
+    ECON_GRANT_SELF(11, "Role to allow member to grant themselves", GuildDB.Key.MEMBER_CAN_WITHDRAW),
 
-    FOREIGN_AFFAIRS("Role required to see other alliance's embassy channel", GuildDB.Key.ALLIANCE_ID),
-    FOREIGN_AFFAIRS_STAFF("Role for some basic FA commands", GuildDB.Key.ALLIANCE_ID) {
+    FOREIGN_AFFAIRS(12, "Role required to see other alliance's embassy channel", GuildDB.Key.ALLIANCE_ID),
+    FOREIGN_AFFAIRS_STAFF(13, "Role for some basic FA commands", GuildDB.Key.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -67,8 +73,8 @@ public enum Roles {
         }
     },
 
-    INTERNAL_AFFAIRS("Access to IA related commands", GuildDB.Key.ALLIANCE_ID),
-    INTERNAL_AFFAIRS_STAFF("Role for some basic IA commands", GuildDB.Key.ALLIANCE_ID) {
+    INTERNAL_AFFAIRS(14, "Access to IA related commands", GuildDB.Key.ALLIANCE_ID),
+    INTERNAL_AFFAIRS_STAFF(15, "Role for some basic IA commands", GuildDB.Key.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -83,17 +89,17 @@ public enum Roles {
         }
     },
 
-    APPLICANT("Applying to join the alliance (this role doesn't grant any elevated permissions)", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
-    INTERVIEWER("Role to get pinged when a user requests an interview", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
-    MENTOR("Role to get pinged when a user requests mentoring (can be same as interviewer)", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
-    GRADUATED("Members with this role will have their interview channels archived", GuildDB.Key.INTERVIEW_PENDING_ALERTS) {
+    APPLICANT(16, "Applying to join the alliance (this role doesn't grant any elevated permissions)", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
+    INTERVIEWER(17, "Role to get pinged when a user requests an interview", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
+    MENTOR(18, "Role to get pinged when a user requests mentoring (can be same as interviewer)", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
+    GRADUATED(19, "Members with this role will have their interview channels archived", GuildDB.Key.INTERVIEW_PENDING_ALERTS) {
         @Override
         public boolean has(Member member) {
             return super.has(member)
                     || Roles.MILCOM.has(member)
-                    || Roles.MILCOM_ADVISOR.has(member)
+                    || Roles.MILCOM_NO_PINGS.has(member)
                     || Roles.ECON.has(member)
-                    || Roles.ECON_LOW_GOV.has(member)
+                    || Roles.ECON_STAFF.has(member)
                     || Roles.FOREIGN_AFFAIRS.has(member)
                     || Roles.FOREIGN_AFFAIRS_STAFF.has(member)
                     || Roles.INTERNAL_AFFAIRS.has(member)
@@ -104,42 +110,47 @@ public enum Roles {
                     ;
         }
     },
-    RECRUITER("Role to get pinged for recruitment messages (if enabled)", GuildDB.Key.RECRUIT_MESSAGE_OUTPUT),
+    RECRUITER(20, "Role to get pinged for recruitment messages (if enabled)", GuildDB.Key.RECRUIT_MESSAGE_OUTPUT),
 
-    TRADE_ALERT("Gets pinged for trade alerts", GuildDB.Key.TRADE_ALERT_CHANNEL),
+    TRADE_ALERT(21, "Gets pinged for trade alerts", GuildDB.Key.TRADE_ALERT_CHANNEL),
 
-    BEIGE_ALERT("Gets pinged when a nation leaves beige (in their score range), and they have a slot free", GuildDB.Key.BEIGE_ALERT_CHANNEL),
-    BEIGE_ALERT_OPT_OUT("Overrides the beige alert role", GuildDB.Key.BEIGE_ALERT_CHANNEL),
+    BEIGE_ALERT(22, "Gets pinged when a nation leaves beige (in their score range), and they have a slot free", GuildDB.Key.BEIGE_ALERT_CHANNEL),
+    BEIGE_ALERT_OPT_OUT(23, "Overrides the beige alert role", GuildDB.Key.BEIGE_ALERT_CHANNEL),
 
-    BOUNTY_ALERT("Gets pings when bounties are placed in their score range"),
+    BOUNTY_ALERT(24, "Gets pings when bounties are placed in their score range"),
 //    MAP_FULL_ALERT("Gets pinged when you are on 12 MAPs in an offensive war", GuildDB.Key.MEMBER_AUDIT_ALERTS),
 
 //    WAR_ALERT("Opt out of received war target alerts", GuildDB.Key.ENEMY_ALERT_CHANNEL),
-    WAR_ALERT_OPT_OUT("Opt out of received war target alerts", GuildDB.Key.ENEMY_ALERT_CHANNEL),
-    AUDIT_ALERT_OPT_OUT("Opt out of received audit alerts", GuildDB.Key.MEMBER_AUDIT_ALERTS),
+    WAR_ALERT_OPT_OUT(25, "Opt out of received war target alerts", GuildDB.Key.ENEMY_ALERT_CHANNEL),
+    AUDIT_ALERT_OPT_OUT(26, "Opt out of received audit alerts", GuildDB.Key.MEMBER_AUDIT_ALERTS),
 
-    BLITZ_PARTICIPANT("Opt in to blitz participation (clear this regularly)", GuildDB.Key.ALLIANCE_ID),
-    BLITZ_PARTICIPANT_OPT_OUT("Opt in to blitz participation (clear this regularly)", GuildDB.Key.ALLIANCE_ID),
+    BLITZ_PARTICIPANT(27, "Opt in to blitz participation (clear this regularly)", GuildDB.Key.ALLIANCE_ID),
+    BLITZ_PARTICIPANT_OPT_OUT(28, "Opt in to blitz participation (clear this regularly)", GuildDB.Key.ALLIANCE_ID),
 
-    TEMP("Role to signify temporary member", GuildDB.Key.ALLIANCE_ID),
+    TEMP(29, "Role to signify temporary member", GuildDB.Key.ALLIANCE_ID),
 //    ACTIVE("Role to signify active member", GuildDB.Key.ALLIANCE_ID)
 
-    MAIL("Can use mail commands", GuildDB.Key.API_KEY),
+    MAIL(30, "Can use mail commands", GuildDB.Key.API_KEY),
 
-    BLOCKADED_ALERTS("Gets alerts when you are blockaded", GuildDB.Key.BLOCKADED_ALERTS),
-    UNBLOCKADED_ALERTS("Gets alerts when you are unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS),
+    BLOCKADED_ALERT(31, "Gets alerts when you are blockaded", GuildDB.Key.BLOCKADED_ALERTS, "BLOCKADED_ALERTS"),
+    UNBLOCKADED_ALERT(32, "Gets alerts when you are unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS, "UNBLOCKADED_ALERTS"),
 
-    UNBLOCKADED_GOV_ROLE_ALERTS("Gets alerts when any member is fully unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS),
+    UNBLOCKADED_GOV_ROLE_ALERT(33, "Gets alerts when any member is fully unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
 
 
-    TREASURE_ALERTS("Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildDB.Key.TREASURE_ALERT_CHANNEL),
-    TREASURE_ALERTS_OPT_OUT("Does not receive treasure alerts (even with the treasure alert role)", GuildDB.Key.TREASURE_ALERT_CHANNEL)
+    TREASURE_ALERT(34, "Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildDB.Key.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS"),
+    TREASURE_ALERT_OPT_OUT(35, "Does not receive treasure alerts (even with the treasure alert role)", GuildDB.Key.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS_OPT_OUT"),
+
+    ENEMY_BEIGE_ALERT_AUDITOR(36, "Role to receive pings when an enemy gets beiged", GuildDB.Key.ENEMY_BEIGED_ALERT_VIOLATIONS),
     ;
 
 
     public static Roles[] values = values();
     private final String desc;
     private final GuildDB.Key key;
+
+    private final int id;
+    private final String legacy_name;
 
     public static Roles getHighestRole(Member member) {
         for (int i = values.length - 1; i >= 0; i--) {
@@ -150,21 +161,105 @@ public enum Roles {
         return null;
     }
 
+    public int getId() {
+        return id;
+    }
+
+    private static final Map<Integer, Roles> ROLES_ID_MAP = new ConcurrentHashMap<>();
+
     public static String getValidRolesStringList() {
         return "\n - " + StringMan.join(Roles.values(), "\n - ");
     }
-    Roles(String desc) {
-        this(desc, null);
+    Roles(int id, String desc) {
+        this(id, desc, null);
+    }
+    Roles(int id, String desc, GuildDB.Key key) {
+        this(id, desc, key, null);
+    }
+    Roles(int id, String desc, GuildDB.Key key, String legacy_name) {
+        this.desc = desc;
+        this.key = key;
+        this.id = id;
+        this.legacy_name = legacy_name;
     }
 
 
-    Roles(String desc, GuildDB.Key key) {
-        this.desc = desc;
-        this.key = key;
+    public String getLegacyName() {
+        return legacy_name;
+    }
+
+    public static Roles getRoleByNameLegacy(String name) {
+        for (Roles role : values) {
+            if (role.name().equalsIgnoreCase(name) || (role.getLegacyName() != null && role.getLegacyName().equalsIgnoreCase(name))) {
+                return role;
+            }
+        }
+        return null;
+    }
+
+    public static Roles getRoleById(int id) {
+        Roles result = ROLES_ID_MAP.get(id);
+        if (ROLES_ID_MAP.isEmpty()) {
+            synchronized (ROLES_ID_MAP) {
+                for (Roles role : values) {
+                    ROLES_ID_MAP.put(role.getId(), role);
+                }
+            }
+        }
+        if (result == null) {
+            synchronized (ROLES_ID_MAP) {
+                result = ROLES_ID_MAP.get(id);
+            }
+        }
+        return result;
+    }
+
+    public String toDiscordRoleNameElseInstructions(Guild guild) {
+        Role role = toRole(guild);
+        if (role != null) {
+            return role.getName();
+        }
+        return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.create(name(), null, null);
     }
 
     public GuildDB.Key getKey() {
         return key;
+    }
+
+    public Set<Long> getAllowedAccounts(User user, Guild guild) {
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        if (db == null) return Collections.emptySet();
+        return getAllowedAccounts(user, db);
+    }
+
+    public AllianceList getAllianceList(User user, GuildDB db) {
+        AllianceList list = db.getAllianceList();
+        if (list == null || list.isEmpty()) return new AllianceList();
+        return list.subList(getAllowedAccounts(user, db).stream()
+                .map(Long::intValue)
+                .collect(Collectors.toSet()));
+
+    }
+
+    public Set<Long> getAllowedAccounts(User user, GuildDB db) {
+        Set<Integer> aaIds = db.getAllianceIds();
+        Set<Long> allowed = new HashSet<>();
+        if (aaIds.isEmpty()) {
+            if (has(user, db.getGuild())) {
+                allowed.add(db.getIdLong());
+            }
+            return allowed;
+        }
+        for (Integer aaId : aaIds) {
+            if (has(user, db.getGuild(), aaId)) {
+                allowed.add(aaId.longValue());
+            }
+        }
+        return allowed;
+    }
+
+    public String getDesc() {
+        return desc;
     }
 
     @Override
@@ -180,19 +275,16 @@ public enum Roles {
     public Role toRole(Guild guild) {
         return toRole(Locutus.imp().getGuildDB(guild));
     }
+    public Role toRole(int alliance) {
+        GuildDB db = Locutus.imp().getGuildDBByAA(alliance);
+        if (db == null) return null;
+        return db.getRole(this, (long) alliance);
+    }
 
+    @Deprecated
     public Role toRole(GuildDB db) {
         if (db == null) return null;
-        Long alias = db.getRoleAlias(this);
-        if (alias == null) {
-            List<Role> roles = db.getGuild().getRolesByName(this.name(), true);
-            if (!roles.isEmpty()) {
-                return roles.get(0);
-            }
-        } else {
-            return db.getGuild().getRoleById(alias);
-        }
-        return null;
+        return db.getRole(this, null);
     }
 
     public boolean hasOnRoot(User user) {
@@ -201,6 +293,22 @@ public enum Roles {
             return false;
         }
         return has(user, Locutus.imp().getServer());
+    }
+
+    public boolean has(User user, GuildDB server, int alliance) {
+        return has(user, server.getGuild(), alliance);
+    }
+
+    public boolean has(User user, Guild server, int alliance) {
+        Member member = server.getMember(user);
+        return member != null && has(member, alliance);
+    }
+
+    public boolean has(Member member, int alliance) {
+        if (has(member)) return true;
+        if (alliance == 0) return false;
+        Role role = Locutus.imp().getGuildDB(member.getGuild()).getRole(this, (long) alliance);
+        return role != null && member.getRoles().contains(role);
     }
 
     public boolean has(Member member) {
@@ -243,5 +351,9 @@ public enum Roles {
         }
         return has(server.getMember(user));
 
+    }
+
+    public Map<Long, Role> toRoleMap(GuildDB senderDB) {
+        return senderDB.getRoleMap(this);
     }
 }

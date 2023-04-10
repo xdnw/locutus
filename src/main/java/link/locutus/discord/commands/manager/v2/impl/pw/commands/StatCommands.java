@@ -441,7 +441,7 @@ public class StatCommands {
         Map<DBNation, Double> attributeByNation = new HashMap<>();
         for (DBNation nation : nations) {
             Double value = attribute.apply(nation);
-            if (value.isNaN() || value.isInfinite()) continue;
+            if (!Double.isFinite(value)) continue;
             attributeByNation.put(nation, value);
         }
 

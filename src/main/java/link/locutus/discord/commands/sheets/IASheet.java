@@ -10,6 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
@@ -46,22 +47,25 @@ public class IASheet extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(event);
         if (db == null) return "Not in guild";
-        Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-        if (allianceId == null) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>") + "";
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>", null, null) + "";
 
         if (args.size() != 1) return usage();
         List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
         for (DBNation nation : nations) {
-            if (nation.getAlliance_id() != allianceId) return "Nation not in AA: " + nation.getNationUrl();
+            if (!db.isAllianceId(nation.getAlliance_id())) {
+                return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID + "`";
+            }
         }
         nations.removeIf(f -> f.getPosition() <= 1 || f.getVm_turns() != 0);
         nations.sort(Comparator.comparingInt(DBNation::getCities));
 
-        IACheckup checkup = new IACheckup(allianceId);
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Updating..."));
 
         boolean individual = flags.contains('f') || nations.size() == 1;
+        IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> allianceAuditMap = checkup.checkup(nations, nation -> new Consumer<DBNation>() {
                     long start = System.currentTimeMillis();
                     @Override

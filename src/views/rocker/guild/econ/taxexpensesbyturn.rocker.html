@@ -4,7 +4,6 @@
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Switch
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
-@import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission
 @import link.locutus.discord.db.BankDB
@@ -33,7 +32,7 @@
 @import java.util.HashMap
 @import link.locutus.discord.db.entities.TaxRecordCategorizer2
 
-@args(String title, GuildDB db, int aaId, long start, long end, TaxRecordCategorizer2 categorized, Map<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> categorizedByTurnByBracket, Map<Integer, TaxBracket> brackets)
+@args(String title, GuildDB db, long start, long end, TaxRecordCategorizer2 categorized, Map<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> categorizedByTurnByBracket, Map<Integer, TaxBracket> brackets)
 
 @rocker.main.template(title) -> {
 @for (Map.Entry<Integer, Map<TaxRecordCategorizer2.TransactionType, double[][]>> entry : categorizedByTurnByBracket.entrySet()) {

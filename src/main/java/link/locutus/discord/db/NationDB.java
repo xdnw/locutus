@@ -542,7 +542,6 @@ public class NationDB extends DBMainV2 {
 
     public void saveAlliances(List<DBAlliance> alliances) {
         if (alliances.isEmpty()) return;
-        if (alliances.size() > 10) System.out.println("remove:|| save alliances " + alliances.size());
         executeBatch(alliances, "INSERT OR REPLACE INTO `ALLIANCES`(`id`, `name`, `acronym`, `flag`, `forum_link`, `discord_link`, `wiki_link`, `dateCreated`, `color`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (ThrowingBiConsumer<DBAlliance, PreparedStatement>) (alliance, stmt) -> {
             stmt.setInt(1, alliance.getId());
@@ -559,7 +558,6 @@ public class NationDB extends DBMainV2 {
 
     public void savePositions(List<DBAlliancePosition> positions) {
         if (positions.isEmpty()) return;
-        if (positions.size() > 10) System.out.println("remove:|| save positions " + positions.size());
         executeBatch(positions, "INSERT OR REPLACE INTO `POSITIONS`(`id`, `alliance_id`, `name`, `date_created`, `position_level`, `rank`, `permission_bits`) VALUES(?, ?, ?, ?, ?, ?, ?)",
                 (ThrowingBiConsumer<DBAlliancePosition, PreparedStatement>) (position, stmt) -> {
             stmt.setInt(1, position.getId());
@@ -574,7 +572,6 @@ public class NationDB extends DBMainV2 {
 
     public void saveTreaties(Collection<Treaty> treaties) {
         if (treaties.isEmpty()) return;
-        if (treaties.size() > 10) System.out.println("remove:|| save treaties " + treaties.size());
         executeBatch(treaties, "INSERT OR REPLACE INTO `TREATIES2`(`id`, `date`, `type`, `from_id`, `to_id`, `turn_ends`) VALUES(?, ?, ?, ?, ?, ?)",
                 (ThrowingBiConsumer<Treaty, PreparedStatement>) (treaty, stmt) -> {
                     stmt.setInt(1, treaty.getId());
@@ -654,6 +651,7 @@ public class NationDB extends DBMainV2 {
         long turn = TimeUtil.getTurn();
         for (com.politicsandwar.graphql.model.Treaty treaty : treatiesV3) {
             Treaty dbTreaty = new Treaty(treaty);
+            if (dbTreaty.isPending()) continue;
             if (dbTreaty.getTurnEnds() <= turn) continue;
 
             DBAlliance fromAA = getAlliance(dbTreaty.getFromId());
@@ -2730,7 +2728,7 @@ public class NationDB extends DBMainV2 {
         checkNotNull(metric);
         String query = "INSERT OR " + (ignore ? "IGNORE" : "REPLACE") + " INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)";
 
-        if (Double.isNaN(value)) {
+        if (!Double.isFinite(value)) {
             return;
         }
         update(query, new ThrowingConsumer<PreparedStatement>() {
@@ -3693,7 +3691,6 @@ public class NationDB extends DBMainV2 {
 
     public void saveCities(List<Map.Entry<Integer, DBCity>> cities) {
         if (cities.isEmpty()) return;
-        if (cities.size() > 10) System.out.println("Remove:|| Save cities " + cities.size());
         executeBatch(cities, "INSERT OR REPLACE INTO `CITY_BUILDS`(`id`, `nation`, `created`, `infra`, `land`, `powered`, `improvements`, `update_flag`, `nuke_date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<Map.Entry<Integer, DBCity>, PreparedStatement>() {
             @Override
             public void acceptThrows(Map.Entry<Integer, DBCity> entry, PreparedStatement stmt) throws Exception {
@@ -3776,7 +3773,6 @@ public class NationDB extends DBMainV2 {
 
     public int[] saveNations(Collection<DBNation> nations) {
         if (nations.isEmpty()) return new int[0];
-        if (nations.size() > 10) System.out.println("remove:|| Save nations " + nations.size());
         String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
         if (nations.size() == 1) {

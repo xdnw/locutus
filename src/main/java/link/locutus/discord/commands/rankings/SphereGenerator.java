@@ -35,7 +35,6 @@ public class SphereGenerator {
         this.alliancesBySphere = new HashMap<>();
 
         for (DBAlliance alliance : alliances) {
-            System.out.println("remove:||" + alliance.getName());
             this.alliances.put(alliance.getId(), alliance);
             List<DBAlliance> sphere = alliance.getSphereRankedCached(aaCache);
             int sphereId = sphere.get(0).getAlliance_id();

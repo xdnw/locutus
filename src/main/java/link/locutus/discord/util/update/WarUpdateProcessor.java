@@ -255,7 +255,6 @@ public class WarUpdateProcessor {
                 if (!toUpdate.isEmpty()) {
                     if (wars.size() > 25 && RateLimitUtil.getCurrentUsed() > 55) {
                         while (RateLimitUtil.getCurrentUsed(true) > 55) {
-                            System.out.println("Remove:|| Wait handle war rooms");
                             try {
                                 Thread.sleep(1000);
                             } catch (InterruptedException e) {
@@ -264,13 +263,11 @@ public class WarUpdateProcessor {
                             }
                         }
                     }
-                    System.out.println("Remove:|| War room update");
                     for (WarCategory warCat : toUpdate) {
                         warCat.update(pair.getKey(), pair.getValue());
                     }
                 }
             }
-            System.out.println("Remove:|| Done handle war rooms");
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -342,13 +339,13 @@ public class WarUpdateProcessor {
 
         for (Map.Entry<GuildHandler, List<Map.Entry<DBWar, DBWar>>> entry : defWarsByGuild.entrySet()) {
             GuildHandler handler = entry.getKey();
-            boolean limit = rateLimit || (handler.getDb().getOrNull(GuildDB.Key.ALLIANCE_ID) == null && (toCreate > 50 || toCreate < free));
+            boolean limit = rateLimit || (!handler.getDb().hasAlliance() && (toCreate > 50 || toCreate < free));
             handler.onDefensiveWarAlert(entry.getValue(), limit);
         }
 
         for (Map.Entry<GuildHandler, List<Map.Entry<DBWar, DBWar>>> entry : offWarsByGuild.entrySet()) {
             GuildHandler handler = entry.getKey();
-            boolean limit = rateLimit || (handler.getDb().getOrNull(GuildDB.Key.ALLIANCE_ID) == null && (toCreate > 50 || toCreate < free));
+            boolean limit = rateLimit || (!handler.getDb().hasAlliance() && (toCreate > 50 || toCreate < free));
             handler.onOffensiveWarAlert(entry.getValue(), limit);
         }
     }

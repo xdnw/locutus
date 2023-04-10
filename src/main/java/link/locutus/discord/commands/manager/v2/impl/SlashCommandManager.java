@@ -252,7 +252,6 @@ public class SlashCommandManager extends ListenerAdapter {
 
 
         Guild guild = root.getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER); // testing
-        System.out.println("remove:||Guild " + guild + " | " + toRegister.size());
         if (!toRegister.isEmpty()) {
 
             JDA api = Locutus.imp().getDiscordApi(guild.getIdLong());
@@ -366,7 +365,6 @@ public class SlashCommandManager extends ListenerAdapter {
                 desc = split[split.length - 1];
             }
             if (desc.isEmpty()) {
-                System.out.println("remove:||Desc is empty " + cmd.getMethod().getName() + " | " + param.getName());
                 desc = "_";
             }
 

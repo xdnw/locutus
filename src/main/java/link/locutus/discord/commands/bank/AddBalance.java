@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -77,7 +78,7 @@ public class AddBalance extends Command {
         String arg = args.get(0);
         if (arg.contains("tax_id=")) {
             int taxId = PnwUtil.parseTaxId(arg);
-            TaxBracket bracket = new TaxBracket(taxId, 0, "", 0, 0, 0L);
+            TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
             builder.add(bracket, PnwUtil.parseResources(args.get(1)), note);
         } else if (arg.contains("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             boolean negative = false;
@@ -110,7 +111,6 @@ public class AddBalance extends Command {
             } else {
                 Map<ResourceType, Double> transfer = new HashMap<>();
                 if ((args.size() == 2 || args.size() == 3) && args.get(1).equalsIgnoreCase("*")) {
-
                     Set<Long> tracked = null;
                     if (args.size() == 3) {
                         tracked = new LinkedHashSet<>();

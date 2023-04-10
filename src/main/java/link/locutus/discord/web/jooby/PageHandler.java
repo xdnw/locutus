@@ -527,8 +527,6 @@ public class PageHandler implements Handler {
     private void handleCommand(DBNation nation, Long id, Context ctx) {
         ArgumentStack stack = createStack(nation, id, ctx);
 
-        System.out.println("Stack:|| " + StringMan.getString(stack.getRemainingArgs()) + " | " + StringMan.getString(stack.getArgs()));
-
         try {
             ctx.header("Content-Type", "text/html;charset=UTF-8");
 

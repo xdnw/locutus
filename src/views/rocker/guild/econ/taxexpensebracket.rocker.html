@@ -5,7 +5,6 @@
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Switch
 @import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance
-@import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAuthenticated
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission
 @import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission
 @import link.locutus.discord.db.BankDB
@@ -31,7 +30,7 @@
 @import java.util.Set
 @import java.util.UUID
 
-@args (Object id, String title, GuildDB db, int aaId, TaxBracket bracket,
+@args (Object id, String title, GuildDB db, TaxBracket bracket,
 Map<Integer, TaxBracket> bracketsByNation, List<DBNation> nationsByBracket,
         Map<Integer, Integer> bracketToNationDepositCount,
         double[] income, Map<Integer,double[]> incomeByNation,

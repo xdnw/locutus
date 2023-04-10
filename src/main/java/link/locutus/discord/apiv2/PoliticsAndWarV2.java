@@ -1,70 +1,28 @@
 package link.locutus.discord.apiv2;
 
-import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.IPoliticsAndWar;
-import link.locutus.discord.apiv1.entities.ApiRecord;
-import link.locutus.discord.apiv1.entities.BankRecord;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.util.scheduler.ThrowingFunction;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.FileUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import link.locutus.discord.apiv1.IPoliticsAndWar;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.core.CacheClient;
 import link.locutus.discord.apiv1.core.QueryExecutor;
-import link.locutus.discord.apiv1.domains.AllCities;
-import link.locutus.discord.apiv1.domains.Alliance;
-import link.locutus.discord.apiv1.domains.AllianceMembers;
-import link.locutus.discord.apiv1.domains.Alliances;
-import link.locutus.discord.apiv1.domains.Applicants;
-import link.locutus.discord.apiv1.domains.Bank;
-import link.locutus.discord.apiv1.domains.City;
-import link.locutus.discord.apiv1.domains.Entity;
-import link.locutus.discord.apiv1.domains.Members;
-import link.locutus.discord.apiv1.domains.Nation;
-import link.locutus.discord.apiv1.domains.NationMilitary;
-import link.locutus.discord.apiv1.domains.Nations;
-import link.locutus.discord.apiv1.domains.TradeHistory;
-import link.locutus.discord.apiv1.domains.TradePrice;
-import link.locutus.discord.apiv1.domains.War;
-import link.locutus.discord.apiv1.domains.WarAttacks;
-import link.locutus.discord.apiv1.domains.Wars;
+import link.locutus.discord.apiv1.domains.*;
+import link.locutus.discord.apiv1.entities.ApiRecord;
+import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.queries.AllCitiesQuery;
-import link.locutus.discord.apiv1.queries.AllianceMembersQuery;
-import link.locutus.discord.apiv1.queries.AllianceQuery;
-import link.locutus.discord.apiv1.queries.AlliancesQuery;
-import link.locutus.discord.apiv1.queries.ApiQuery;
-import link.locutus.discord.apiv1.queries.ApplicantsQuery;
-import link.locutus.discord.apiv1.queries.BankQuery;
-import link.locutus.discord.apiv1.queries.CityQuery;
-import link.locutus.discord.apiv1.queries.MembersQuery;
-import link.locutus.discord.apiv1.queries.NationMilitaryQuery;
-import link.locutus.discord.apiv1.queries.NationQuery;
-import link.locutus.discord.apiv1.queries.NationsQuery;
-import link.locutus.discord.apiv1.queries.TradehistoryQuery;
-import link.locutus.discord.apiv1.queries.TradepriceQuery;
-import link.locutus.discord.apiv1.queries.WarAttacksQuery;
-import link.locutus.discord.apiv1.queries.WarQuery;
-import link.locutus.discord.apiv1.queries.WarsQuery;
+import link.locutus.discord.apiv1.queries.*;
+import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -74,6 +32,8 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     private final JsonParser parser;
     private final ApiKeyPool pool;
     private final QueryExecutor legacyV1;
+    Map<String, Set<List<StackTraceElement>>> methodToStacktrace = new ConcurrentHashMap<>();
+    Map<String, AtomicInteger> methodToCount = new ConcurrentHashMap<>();
 
     @Deprecated
     public PoliticsAndWarV2(String key, boolean test, boolean cache) {
@@ -155,7 +115,8 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
 
     public ApiRecord getApiRecord() {
         String json = read(QueryURLV2.BANK_RECORDS, Settings.INSTANCE.NATION_ID + "", null, false);
-        Type type = new TypeToken<ApiRecord>() {}.getType();
+        Type type = new TypeToken<ApiRecord>() {
+        }.getType();
         return getGson().fromJson(json, type);
     }
 
@@ -206,10 +167,6 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         }
     }
 
-    Map<String, Set<List<StackTraceElement>>> methodToStacktrace = new ConcurrentHashMap<>();
-
-    Map<String, AtomicInteger> methodToCount = new ConcurrentHashMap<>();
-
     private void incrementUsage(StackTraceElement[] stackTrace) {
         int clazzIndex = 0;
         for (int i = 0; i < stackTrace.length; i++) {
@@ -253,7 +210,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     @Override
-    public Nations getNationsByAlliance(boolean vm, int allianceId) throws IOException {
+    public Nations getNationsByAlliance(boolean vm, int allianceId) {
         return runWithKey(key -> (Nations) execute(new NationsQuery(vm, null, null, allianceId, key).build()));
     }
 
@@ -273,7 +230,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     @Override
-    public AllianceMembers getAllianceMembers(int allianceId) throws IOException {
+    public AllianceMembers getAllianceMembers(int allianceId) {
         AllianceMembers result = runWithKey(key -> (AllianceMembers) execute(new AllianceMembersQuery(allianceId, key).build()));
         DBAlliance.getOrCreate(allianceId).updateSpies(result);
         return result;
@@ -285,7 +242,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     @Override
-    public NationMilitary getAllMilitaries() throws IOException {
+    public NationMilitary getAllMilitaries() {
         return runWithKey(key -> (NationMilitary) execute(new NationMilitaryQuery(key).build()));
     }
 
@@ -295,7 +252,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     @Override
-    public Applicants getApplicants(int allianceId) throws IOException {
+    public Applicants getApplicants(int allianceId) {
         return runWithKey(key -> (Applicants) execute(new ApplicantsQuery(allianceId, key).build()));
     }
 
@@ -310,7 +267,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     @Override
-    public City getCity(int cityId) throws IOException {
+    public City getCity(int cityId) {
         return runWithKey(key -> (City) execute(new CityQuery(cityId, key).build()));
     }
 
@@ -325,12 +282,12 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     @Override
-    public Wars getWarsByAmount(int amount) throws IOException {
+    public Wars getWarsByAmount(int amount) {
         return runWithKey(key -> (Wars) execute(new WarsQuery(amount, null, key).build()));
     }
 
     @Override
-    public Wars getWarsByAlliance(Integer... alliance_ids) throws IOException {
+    public Wars getWarsByAlliance(Integer... alliance_ids) {
         return runWithKey(key -> (Wars) execute(new WarsQuery(-1, alliance_ids, key).build()));
     }
 
@@ -340,37 +297,37 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     @Override
-    public TradePrice getTradeprice(ResourceType resource) throws IOException {
+    public TradePrice getTradeprice(ResourceType resource) {
         return runWithKey(key -> (TradePrice) execute(new TradepriceQuery(resource, key).build()));
     }
 
     @Override
-    public TradeHistory getAllTradehistory() throws IOException {
+    public TradeHistory getAllTradehistory() {
         return runWithKey(key -> (TradeHistory) execute(new TradehistoryQuery(null, null, key).build()));
     }
 
     @Override
-    public TradeHistory getTradehistoryByType(ResourceType... resources) throws IOException {
+    public TradeHistory getTradehistoryByType(ResourceType... resources) {
         return runWithKey(key -> (TradeHistory) execute(new TradehistoryQuery(null, resources, key).build()));
     }
 
     @Override
-    public TradeHistory getTradehistoryByAmount(Integer amount) throws IOException {
+    public TradeHistory getTradehistoryByAmount(Integer amount) {
         return runWithKey(key -> (TradeHistory) execute(new TradehistoryQuery(amount, null, key).build()));
     }
 
     @Override
-    public TradeHistory getTradehistory(Integer amount, ResourceType... resources) throws IOException {
+    public TradeHistory getTradehistory(Integer amount, ResourceType... resources) {
         return runWithKey(key -> (TradeHistory) execute(new TradehistoryQuery(amount, resources, key).build()));
     }
 
     @Override
-    public WarAttacks getWarAttacks() throws IOException {
+    public WarAttacks getWarAttacks() {
         return runWithKey(key -> (WarAttacks) execute(new WarAttacksQuery(null, null, null, key).build()));
     }
 
     @Override
-    public WarAttacks getWarAttacksByWarId(int warId) throws IOException {
+    public WarAttacks getWarAttacksByWarId(int warId) {
         return runWithKey(key -> (WarAttacks) execute(new WarAttacksQuery(warId, null, null, key).build()));
     }
 
@@ -379,17 +336,17 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         return runWithKey(key -> (WarAttacks) execute(new WarAttacksQuery(null, minWarAttackId, null, key).build()));
     }
 
-    public WarAttacks getWarAttacksByMinMaxWarAttackId(int min, int max) throws IOException {
+    public WarAttacks getWarAttacksByMinMaxWarAttackId(int min, int max) {
         return runWithKey(key -> (WarAttacks) execute(new WarAttacksQuery(null, min, max, key).build()));
     }
 
     @Override
-    public WarAttacks getWarAttacksByMaxWarAttackId(int maxWarAttackId) throws IOException {
+    public WarAttacks getWarAttacksByMaxWarAttackId(int maxWarAttackId) {
         return runWithKey(key -> (WarAttacks) execute(new WarAttacksQuery(null, null, maxWarAttackId, key).build()));
     }
 
     @Override
-    public WarAttacks getWarAttacks(int warId, int minWarAttackId, int maxWarAttackId) throws IOException {
+    public WarAttacks getWarAttacks(int warId, int minWarAttackId, int maxWarAttackId) {
         return runWithKey(key -> (WarAttacks) execute(new WarAttacksQuery(warId, minWarAttackId, maxWarAttackId, key).build()));
     }
 

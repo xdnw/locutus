@@ -68,7 +68,7 @@ public class TaxBracketSheet extends Command {
         boolean failedFetch = true;
         Map<Integer, TaxBracket> brackets;
         try {
-            brackets = db.getAlliance().getTaxBrackets(false);
+            brackets = db.getAllianceList().getTaxBrackets(false);
             failedFetch = false;
         } catch (IllegalArgumentException e) {
             brackets = new LinkedHashMap<>();

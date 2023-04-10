@@ -5,7 +5,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
@@ -99,13 +98,13 @@ public class DepositsSheet extends Command {
 
         Set<DBNation> nations;
         if (args.isEmpty()) {
-            Integer allianceId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-            if (allianceId != null) {
-                nations = Locutus.imp().getNationDB().getNations(Collections.singleton(allianceId));
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (!aaIds.isEmpty()) {
+                nations = Locutus.imp().getNationDB().getNations(aaIds);
                 nations.removeIf(n -> n.getPosition() <= 1);
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "") + " set");
+                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null) + " set");
                 nations = new HashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -140,7 +139,7 @@ public class DepositsSheet extends Command {
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
             header.set(1, nation.getCities());
             header.set(2, nation.getAgeDays());
-            header.set(3, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSITS, buffer))));
+            header.set(3, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
             header.set(4, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
             header.set(5, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
             header.set(6, String.format("%.2f", PnwUtil.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
@@ -156,7 +155,7 @@ public class DepositsSheet extends Command {
                     case TAX:
                         if (noTaxes) continue;
                         break;
-                    case DEPOSITS:
+                    case DEPOSIT:
                         if (noDeposits) continue;
                         break;
                 }
@@ -202,9 +201,9 @@ public class DepositsSheet extends Command {
         if (offshore != null && offshore.getGuildDB() != db) {
             type = "offshored";
             aaDeposits = offshore.getDeposits(db);
-        } else if (db.isValidAlliance() && db.getOrNull(GuildDB.Key.API_KEY) != null){
+        } else if (db.isValidAlliance()){
             type = "bank stockpile";
-            aaDeposits = PnwUtil.resourcesToArray(db.getAlliance().getStockpile());
+            aaDeposits = PnwUtil.resourcesToArray(db.getAllianceList().getStockpile());
         } else aaDeposits = null;
         if (aaDeposits != null) {
             if (PnwUtil.convertedTotal(aaDeposits) > 0) {

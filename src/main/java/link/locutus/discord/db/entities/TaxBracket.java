@@ -87,7 +87,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
 
     public Set<DBNation> getNations() {
         if (taxId == 0) return Collections.emptySet();
-        if (getAlliance_id() == 0) {
+        if (getAlliance_id() != 0) {
             DBAlliance alliance = DBAlliance.get(allianceId);
             if (alliance != null) return alliance.getNations(f -> f.getTax_id() == taxId);
             return Collections.emptySet();
@@ -101,7 +101,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
 
     @Override
     public String toString() {
-        return ((name != null && !name.isEmpty()) ? (name + " - ") : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
+        return (allianceId > 0 ? DBAlliance.getOrCreate(allianceId).getQualifiedName() + " - " : "") + ((name != null && !name.isEmpty()) ? (name + " - ") : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
     }
 
     public TaxRate getTaxRate() {
@@ -114,5 +114,9 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
 
     public int getAlliance_id(boolean fetchIfUnknown) {
         return fetchIfUnknown ? getAlliance_id() : allianceId;
+    }
+
+    public DBAlliance getAlliance() {
+        return DBAlliance.getOrCreate(allianceId);
     }
 }
