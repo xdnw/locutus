@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -12,7 +13,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -37,7 +37,7 @@ public class SendTreaty extends Command {
 
     @Override
     public String desc() {
-        return "Send a treaty to an alliance";
+        return "Send a treaty to an alliance.";
     }
 
     @Override
@@ -46,7 +46,6 @@ public class SendTreaty extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
         Integer aaId = PnwUtil.parseAllianceId(args.get(0));
-        if (aaId == null) return "Invalid alliance: `" + args.get(0) + "`";
         TreatyType type;
         try {
             type = TreatyType.parse(args.get(1));
@@ -54,10 +53,10 @@ public class SendTreaty extends Command {
             return "Invalid treaty type: `" + args.get(1) + "`. Options: " + StringMan.getString(TreatyType.values());
         }
         int days = Integer.parseInt(args.get(2));
-        for (int i = 0; i < 3; i++) args.remove(0);
+        args.subList(0, 3).clear();
         String message = StringMan.join(args, " ");
         if (message.isEmpty() && !Roles.ADMIN.has(author, guild)) {
-            return "Admin is required to send a treaty with a message";
+            return "Admin is required to send a treaty with a message.";
         }
         return FACommands.sendTreaty(author, db, db.getAllianceList(), DBAlliance.getOrCreate(aaId), type, days, message);
     }

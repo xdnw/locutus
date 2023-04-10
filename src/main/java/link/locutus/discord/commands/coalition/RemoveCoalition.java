@@ -57,7 +57,7 @@ public class RemoveCoalition extends Command {
                     alliancesOrGuilds.add(Long.parseLong(args.get(1)));
                 } else {
                     Set<Integer> alliances = PnwUtil.parseAlliances(Locutus.imp().getGuildDB(guild), args.get(1));
-                    if (alliances == null || alliances.isEmpty()) {
+                    if (alliances.isEmpty()) {
                         return "Invalid alliance: `" + args.get(1) + "`";
                     }
                     for (Integer aaId : alliances) {

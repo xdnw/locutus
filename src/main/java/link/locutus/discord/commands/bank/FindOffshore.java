@@ -5,8 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -16,7 +16,6 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 public class FindOffshore extends Command {
     public FindOffshore() {
