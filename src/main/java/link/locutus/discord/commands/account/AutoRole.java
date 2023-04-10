@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.account;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -9,10 +10,9 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
@@ -110,9 +110,8 @@ public class AutoRole extends Command {
         response.append("Done!");
 
         if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null, null, null).toSlashCommand() + "");
-        }
-        else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildDB.Key.AUTOROLE) + "");
+            response.append("\n - AutoRole disabled. To enable it use: ").append(CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null, null, null).toSlashCommand());
+        } else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildDB.Key.AUTOROLE) + "");
         if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
             response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null, null, null).toSlashCommand() + "");
         }
