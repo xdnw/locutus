@@ -1,8 +1,16 @@
 package link.locutus.discord.commands.manager;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.account.*;
 import link.locutus.discord.commands.account.question.Interview;
+import link.locutus.discord.commands.alliance.*;
+import link.locutus.discord.commands.bank.*;
+import link.locutus.discord.commands.buildcmd.AddBuild;
+import link.locutus.discord.commands.buildcmd.AssignBuild;
+import link.locutus.discord.commands.buildcmd.DeleteBuild;
+import link.locutus.discord.commands.buildcmd.GetBuild;
 import link.locutus.discord.commands.external.account.Login;
 import link.locutus.discord.commands.external.account.Logout;
 import link.locutus.discord.commands.external.guild.CardCommand;
@@ -22,18 +30,9 @@ import link.locutus.discord.commands.account.GuildInfo;
 import link.locutus.discord.commands.account.HasRole;
 import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
-import link.locutus.discord.commands.alliance.Dm;
-import link.locutus.discord.commands.alliance.LeftAA;
-import link.locutus.discord.commands.alliance.ModifyTreaty;
-import link.locutus.discord.commands.alliance.SendTreaty;
-import link.locutus.discord.commands.alliance.SetBracket;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.sync.SyncTreaties;
-import link.locutus.discord.commands.alliance.Unregister;
-import link.locutus.discord.commands.bank.AddBalance;
-import link.locutus.discord.commands.bank.TransferResources;
 import link.locutus.discord.commands.info.CounterStats;
-import link.locutus.discord.commands.bank.FindOffshore;
 import link.locutus.discord.commands.external.guild.KickLocutus;
 import link.locutus.discord.commands.info.FindSpyOp;
 import link.locutus.discord.commands.external.guild.Mask;
@@ -86,22 +85,17 @@ import link.locutus.discord.commands.sheets.NationSheet;
 import link.locutus.discord.commands.sheets.NoteSheet;
 import link.locutus.discord.commands.sheets.ProjectSheet;
 import link.locutus.discord.commands.sheets.ROI;
-import link.locutus.discord.commands.bank.SafekeepCommand;
 import link.locutus.discord.commands.war.WarInfo;
 import link.locutus.discord.commands.external.guild.CheckPermission;
 import link.locutus.discord.commands.external.guild.KeyStore;
 import link.locutus.discord.commands.external.guild.Permission;
 import link.locutus.discord.commands.external.account.ForumScrape;
 import link.locutus.discord.commands.account.Say;
-import link.locutus.discord.commands.bank.Warchest;
 import link.locutus.discord.commands.fun.Jokes;
 import link.locutus.discord.commands.info.BeigeTurns;
 import link.locutus.discord.commands.info.Multi;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.rankings.AllianceLootRanking;
-import link.locutus.discord.commands.bank.Inflows;
-import link.locutus.discord.commands.bank.SyncBanks;
-import link.locutus.discord.commands.bank.TransferCommand;
 import link.locutus.discord.commands.info.Reroll;
 import link.locutus.discord.commands.account.CheckMail;
 import link.locutus.discord.commands.info.PendingCommand;
@@ -113,131 +107,61 @@ import link.locutus.discord.commands.account.RoleAlias;
 import link.locutus.discord.commands.coalition.GetCoalitions;
 import link.locutus.discord.commands.coalition.RemoveCoalition;
 import link.locutus.discord.commands.coalition.SetCoalition;
-import link.locutus.discord.commands.fun.BorgCommand;
-import link.locutus.discord.commands.rankings.InactiveAlliances;
-import link.locutus.discord.commands.rankings.NationLootRanking;
-import link.locutus.discord.commands.rankings.NetProfitPerWar;
-import link.locutus.discord.commands.rankings.UnitRanking;
-import link.locutus.discord.commands.rankings.ProlificOffshores;
-import link.locutus.discord.commands.rankings.TopAABeigeLoot;
-import link.locutus.discord.commands.rankings.WarCostRanking;
-import link.locutus.discord.commands.rankings.WarCostAB;
-import link.locutus.discord.commands.rankings.WarLossesPerCity;
-import link.locutus.discord.commands.sheets.SpySheet;
-import link.locutus.discord.commands.sheets.StockpileSheet;
-import link.locutus.discord.commands.sheets.TaxBracketSheet;
-import link.locutus.discord.commands.sheets.ValidateBlitzSheet;
-import link.locutus.discord.commands.sheets.ValidateSpyBlitzSheet;
-import link.locutus.discord.commands.sheets.WarCitySheet;
-import link.locutus.discord.commands.sheets.WarCostByAASheet;
-import link.locutus.discord.commands.sheets.WarCostByResourceSheet;
-import link.locutus.discord.commands.sheets.WarCostSheet;
-import link.locutus.discord.commands.sheets.CombatantSheet;
-import link.locutus.discord.commands.sheets.StrengthCitySheet;
-import link.locutus.discord.commands.sheets.WarSheet;
-import link.locutus.discord.commands.sync.SyncTaxes;
-import link.locutus.discord.commands.sync.SyncTrade;
-import link.locutus.discord.commands.sync.SyncUid;
-import link.locutus.discord.commands.sync.SyncWarRooms;
-import link.locutus.discord.commands.sync.SyncWars;
-import link.locutus.discord.commands.trade.FindProducer;
-import link.locutus.discord.commands.trade.FindTrader;
-import link.locutus.discord.commands.trade.GlobalTradeVolume;
-import link.locutus.discord.commands.trade.Inactive;
-import link.locutus.discord.commands.trade.TradeId;
-import link.locutus.discord.commands.trade.TradeMargin;
-import link.locutus.discord.commands.trade.TradePriceCmd;
-import link.locutus.discord.commands.trade.GlobalTradeAverage;
-import link.locutus.discord.commands.trade.ConvertedTotal;
-import link.locutus.discord.commands.trade.TradeRanking;
-import link.locutus.discord.commands.trade.Trending;
+import link.locutus.discord.commands.compliance.CheckCities;
+import link.locutus.discord.commands.external.guild.*;
+import link.locutus.discord.commands.fun.*;
+import link.locutus.discord.commands.info.*;
+import link.locutus.discord.commands.rankings.*;
+import link.locutus.discord.commands.sheets.*;
+import link.locutus.discord.commands.sync.*;
+import link.locutus.discord.commands.trade.*;
 import link.locutus.discord.commands.trade.sub.AlertTrades;
 import link.locutus.discord.commands.trade.sub.TradeSubscriptions;
 import link.locutus.discord.commands.trade.sub.UnsubTrade;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.commands.trade.subbank.BankSubscriptions;
 import link.locutus.discord.commands.trade.subbank.UnsubBank;
-import link.locutus.discord.commands.war.Counter;
-import link.locutus.discord.commands.war.CounterSpy;
-import link.locutus.discord.commands.war.Damage;
-import link.locutus.discord.commands.war.IntelOp;
-import link.locutus.discord.commands.war.Loot;
-import link.locutus.discord.commands.external.guild.MsgInfo;
-import link.locutus.discord.commands.war.Simulate;
-import link.locutus.discord.commands.account.Sudo;
-import link.locutus.discord.commands.fun.TagCommand;
-import link.locutus.discord.commands.buildcmd.AddBuild;
-import link.locutus.discord.commands.bank.Bank;
-import link.locutus.discord.commands.buildcmd.AssignBuild;
-import link.locutus.discord.commands.buildcmd.DeleteBuild;
-import link.locutus.discord.commands.buildcmd.GetBuild;
-import link.locutus.discord.commands.war.WarCommand;
-import link.locutus.discord.commands.info.MeCommand;
-import link.locutus.discord.commands.trade.MoneyTrades;
-import link.locutus.discord.commands.info.Revenue;
-import link.locutus.discord.commands.war.SpyCommand;
-import link.locutus.discord.commands.trade.TradeProfit;
-import link.locutus.discord.commands.war.Spyops;
-import link.locutus.discord.commands.info.Who;
-import link.locutus.discord.commands.compliance.CheckCities;
-import link.locutus.discord.commands.sync.SyncAttacks;
-import link.locutus.discord.commands.sync.SyncCommand;
-import link.locutus.discord.commands.bank.Deposits;
-import link.locutus.discord.commands.bank.Disperse;
-import link.locutus.discord.commands.alliance.EditAlliance;
-import link.locutus.discord.commands.alliance.MailCommand;
-import link.locutus.discord.commands.bank.Offshore;
-import link.locutus.discord.commands.alliance.SetRank;
-import link.locutus.discord.commands.sheets.BlitzSheet;
+import link.locutus.discord.commands.war.*;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
-import link.locutus.discord.commands.bank.GrantCmd;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class CommandManager {
     private final char prefix1;
     private final char prefix2;
-    private final Locutus locutus;
-    private Tag tag;
     private final ScheduledThreadPoolExecutor executor;
-    private Map<String, Command> commandMap;
-
+    private final Map<String, Command> commandMap;
     private final CommandManager2 modernized;
+    private Tag tag;
 
     public CommandManager(Locutus locutus) {
-        this.locutus = locutus;
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
         this.prefix2 = Settings.commandPrefix(false).charAt(0);
         this.commandMap = new LinkedHashMap<>();
-            this.executor = new ScheduledThreadPoolExecutor(256);
+        this.executor = new ScheduledThreadPoolExecutor(256);
 
         modernized = new CommandManager2().registerDefaults();
+    }
+
+    public static MessageReceivedEvent dummyEvent(Message parent, String cmd, Member member, long response) {
+        Message cmdMessage = DelegateMessage.create(parent, cmd, member.getGuild(), member.getUser());
+        return new DelegateMessageEvent(member.getGuild(), response, cmdMessage);
     }
 
     public ScheduledExecutorService getExecutor() {
@@ -263,14 +187,12 @@ public class CommandManager {
         return run(event, true, true);
     }
 
-
-
     public CommandManager2 getV2() {
         return modernized;
     }
 
     public boolean run(final MessageReceivedEvent event, final boolean async, final boolean noPermMsg) {
-        if (Settings.INSTANCE.ENABLED_COMPONENTS.TAG){
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.TAG) {
             getTag().checkTag(event);
         }
 
@@ -341,92 +263,85 @@ public class CommandManager {
             return false;
         }
 
-        Runnable task = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Message message = event.getMessage();
-                    String content = DiscordUtil.trimContent(message.getContentRaw());
-                    MessageReceivedEvent finalEvent = event;
+        Runnable task = () -> {
+            try {
+                Message message1 = event.getMessage();
+                String content1 = DiscordUtil.trimContent(message1.getContentRaw());
+                MessageReceivedEvent finalEvent = event;
 
-                    String arg0 = content.indexOf(' ') != -1 ? content.substring(0, content.indexOf(' ')) : content;
-                    if (arg0.isEmpty() || arg0.charAt(0) != prefix1) {
-                        return;
-                    }
-                    arg0 = arg0.substring(1);
+                String arg0 = content1.indexOf(' ') != -1 ? content1.substring(0, content1.indexOf(' ')) : content1;
+                if (arg0.isEmpty() || arg0.charAt(0) != prefix1) {
+                    return;
+                }
+                arg0 = arg0.substring(1);
 
-                    Command cmd = commandMap.get(arg0.toLowerCase());
-                    if (cmd == null) return;
+                Command cmd = commandMap.get(arg0.toLowerCase());
+                if (cmd == null) return;
 
-                    if (!cmd.checkPermission(msgGuild, msgUser)) {
-                        if (noPermMsg) {
-                            DBNation nation = DiscordUtil.getNation(msgUser);
-                            if (nation == null) {
-                                RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + ""));
-                                return;
-                            }
-                            if (msgGuild != null) {
-                                Member member = msgGuild.getMember(msgUser);
-                                if (member != null) {
-                                    if (sendPermissionMessage(cmd, event)) {
-                                        return;
-                                    }
+                if (!cmd.checkPermission(msgGuild, msgUser)) {
+                    if (noPermMsg) {
+                        DBNation nation1 = DiscordUtil.getNation(msgUser);
+                        if (nation1 == null) {
+                            RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + ""));
+                            return;
+                        }
+                        if (msgGuild != null) {
+                            Member member = msgGuild.getMember(msgUser);
+                            if (member != null) {
+                                if (sendPermissionMessage(cmd, event)) {
+                                    return;
                                 }
                             }
-                            RateLimitUtil.queue(event.getChannel().sendMessage(Messages.NOT_MEMBER));
                         }
+                        RateLimitUtil.queue(event.getChannel().sendMessage(Messages.NOT_MEMBER));
+                    }
+                    return;
+                }
+
+                DBNation nation1 = DiscordUtil.getNation(event);
+                if (nation1 != null && !(cmd instanceof RegisterCommand) && !(cmd instanceof Unregister) && !(cmd instanceof MeCommand) && !(cmd instanceof HelpCommand) && !(cmd instanceof Who) && !(cmd instanceof Embassy)) {
+                    if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation1.getAlliance_id()) || Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation1.getNation_id()) || Settings.INSTANCE.MODERATION.BANNED_USERS.contains(msgUser.getIdLong()))
                         return;
+                }
+
+                if (!(cmd instanceof Noformat)) {
+                    String formatted = DiscordUtil.format(msgGuild, channel, msgUser, nation1, content1);
+                    if (!content1.equals(formatted)) {
+                        message1 = DelegateMessage.create(message1, formatted, msgGuild, msgUser);
+                        assert msgGuild != null;
+                        finalEvent = new DelegateMessageEvent(msgGuild, event.getResponseNumber(), message1);
                     }
+                    content1 = formatted;
+                }
 
-                    DBNation nation = DiscordUtil.getNation(event);
-                    if (nation != null && !(cmd instanceof RegisterCommand) && !(cmd instanceof Unregister) && !(cmd instanceof MeCommand) && !(cmd instanceof HelpCommand) && !(cmd instanceof Who) && !(cmd instanceof Embassy)) {
-                        if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id()) || Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation.getNation_id()) || Settings.INSTANCE.MODERATION.BANNED_USERS.contains(msgUser.getIdLong()))
-                            return;
-                    }
+                List<String> split = StringMan.split(content1, ' ');
+                if (split.isEmpty()) {
+                    return;
+                }
 
-                    if (!(cmd instanceof Noformat)) {
-                        String formatted = DiscordUtil.format(msgGuild, channel, msgUser, nation, content);
-                        if (!content.equals(formatted)) {
-                            message = DelegateMessage.create(message, formatted, msgGuild, msgUser);
-                            finalEvent = new DelegateMessageEvent(msgGuild, event.getResponseNumber(), message);
-                        }
-                        content = formatted;
-                    }
+                List<String> args = split.subList(1, split.size());
 
-                    List<String> split = StringMan.split(content, ' ');
-//            for (int i = 0; i < split.size(); i++) {
-//                String word = split.get(i);
-////                split.set(i, word.replaceAll("\"", ""));
-//            }
-
-                    if (split.isEmpty()) {
-                        return;
-                    }
-
-                    List<String> args = split.subList(1, split.size());
-
-                    String result;
-                    try {
+                String result;
+                try {
 //                    DBNation me = DiscordUtil.getNation(finalEvent);
-                        System.out.println("Nation " + finalEvent.getAuthor() + ": " + content);
-                        result = cmd.onCommand(finalEvent, args);
-                    } catch (Throwable e) { // IllegalArgumentException | UnsupportedOperationException |
-                        e.printStackTrace();
-                        result = e.getClass().getSimpleName() + ": " + e.getMessage();
+                    System.out.println("Nation " + finalEvent.getAuthor() + ": " + content1);
+                    result = cmd.onCommand(finalEvent, args);
+                } catch (Throwable e) { // IllegalArgumentException | UnsupportedOperationException |
+                    e.printStackTrace();
+                    result = e.getClass().getSimpleName() + ": " + e.getMessage();
 //                } catch (Throwable e) {
 //                    finalEvent.getChannel().sendMessage(" <@!664156861033086987> (see error (log)"));
 //                    e.printStackTrace();
 //                    return;
-                    }
-                    if (result != null && !result.isEmpty()) {
-                        for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
-                            result = result.replaceAll(key, "");
-                        }
-                        DiscordUtil.sendMessage(finalEvent.getChannel(), result);
-                    }
-                } catch (Throwable e) {
-                    e.printStackTrace();
                 }
+                if (result != null && !result.isEmpty()) {
+                    for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
+                        result = result.replaceAll(key, "");
+                    }
+                    DiscordUtil.sendMessage(finalEvent.getChannel(), result);
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
             }
         };
         if (async) {
@@ -443,8 +358,7 @@ public class CommandManager {
         if (!event.isFromGuild()) return;
         Guild msgGuild = event.getGuild();
         MessageChannel channel = event.getChannel();
-        if (!(channel instanceof ICategorizableChannel)) return;
-        ICategorizableChannel GuildMessageChannel = (ICategorizableChannel) channel;
+        if (!(channel instanceof ICategorizableChannel GuildMessageChannel)) return;
 
         Category category = GuildMessageChannel.getParentCategory();
         if (category == null) return;
@@ -487,9 +401,12 @@ public class CommandManager {
             if (registeredRole == null) {
                 RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + ""));
                 return true;
-            } else if (!member.getRoles().contains(registeredRole)) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName()));
-                return true;
+            } else {
+                assert member != null;
+                if (!member.getRoles().contains(registeredRole)) {
+                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName()));
+                    return true;
+                }
             }
         }
         {
@@ -602,12 +519,12 @@ public class CommandManager {
                         GuildDB db = Locutus.imp().getGuildDB(event.getGuild());
                         if (db != null) {
                             RateLimitUtil.queue(event.getMessage().addReaction("\u2705"));
+                            assert value != null;
                             double converted = PnwUtil.convertedTotal(value.getValue());
                             double pct = attacker == null ? 0.10 : attacker.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
                             if (nation.asNation().getWarPolicy() == WarPolicy.MONEYBAGS) pct *= 0.6;
                             RateLimitUtil.queue(event.getMessage().getChannel().sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct)));
                         }
-                        return;
                     }
                 } catch (Throwable e) {
                     e.printStackTrace();
@@ -622,31 +539,11 @@ public class CommandManager {
             System.err.println(Arrays.toString(thread.getStackTrace()));
         }
         System.err.print("\n\nQueue: " + executor.getQueue().size() + " | Active: " + executor.getActiveCount() + " | task count: " + executor.getTaskCount());
-        executor.submit(new Runnable() {
-            @Override
-            public void run() {
-                System.err.println(" - COMMAND EXECUTOR RAN SUCCESSFULLY!!!");
-            }
-        });
+        executor.submit(() -> System.err.println(" - COMMAND EXECUTOR RAN SUCCESSFULLY!!!"));
     }
 
     public void registerCommands(DiscordDB db) {
-        // unknown ??
         this.register(new PendingCommand());
-        // admin not needed
-
-        // locutus legacy commands
-//        this.register(new DebugGetBank());
-//        this.register(new DebugLostWarTest());
-//        this.register(new DebugGraphTest());
-//        this.register(new DebugBeigeTest());
-//        this.register(new DebugGetRss());
-//        this.register(new DebugBoughtRss());
-//        this.register(new DebugFindInactiveOnes());
-        //        this.register(new DebugMail());
-//        this.register(new FindZeroes());
-//        this.register(new DebugScoreRange());
-//        this.register(new DebugTyping());
         this.register(new ForumScrape());
         this.register(new KickLocutus());
 
@@ -824,10 +721,6 @@ public class CommandManager {
         this.register(new InactiveAlliances());
 
 
-
-
-
-
         this.register(new WarCostByDay());
         this.register(new WarCostRankingByDay());
 
@@ -873,49 +766,40 @@ public class CommandManager {
 
     @Deprecated
     public String run(Guild guild, String content, DBNation nation, User user) throws Exception {
-        return DiscordUtil.withNation(nation, new Callable<String>() {
-            @Override
-            public String call() {
-                List<String> split = StringMan.split(content, ' ');
-                for (int i = 0; i < split.size(); i++) {
-                    split.set(i, split.get(i).replaceAll("\"", ""));
-                }
+        return DiscordUtil.withNation(nation, () -> {
+            List<String> split = StringMan.split(content, ' ');
+            split.replaceAll(s -> s.replaceAll("\"", ""));
 
-                if (split.isEmpty()) {
-                    return null;
-                }
+            if (split.isEmpty()) {
+                return null;
+            }
 
-                String arg0 = split.get(0);
-                if (arg0.isEmpty() || arg0.charAt(0) != prefix1) {
-                    return null;
-                }
-                arg0 = arg0.substring(1);
+            String arg0 = split.get(0);
+            if (arg0.isEmpty() || arg0.charAt(0) != prefix1) {
+                return null;
+            }
+            arg0 = arg0.substring(1);
 
-                Command cmd = commandMap.get(arg0.toLowerCase());
-                List<String> args = split.subList(1, split.size());
+            Command cmd = commandMap.get(arg0.toLowerCase());
+            List<String> args = split.subList(1, split.size());
 
-                if (cmd == null) {
-                    return null;
-                }
-                Member member = guild.getMember(user);
-                if (!cmd.checkPermission(guild, user)) {
-                    return Messages.NOT_MEMBER;
-                }
+            if (cmd == null) {
+                return null;
+            }
+            Member member = guild.getMember(user);
+            if (!cmd.checkPermission(guild, user)) {
+                return Messages.NOT_MEMBER;
+            }
 
-                MessageReceivedEvent dummy = dummyEvent(null, content, member, 0);
+            assert member != null;
+            MessageReceivedEvent dummy = dummyEvent(null, content, member, 0);
 
-                try {
-                    return cmd.onCommand(dummy, args);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return e.getMessage();
-                }
+            try {
+                return cmd.onCommand(dummy, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return e.getMessage();
             }
         });
-    }
-
-    public static MessageReceivedEvent dummyEvent(Message parent, String cmd, Member member, long response) {
-        Message cmdMessage = DelegateMessage.create(parent, cmd, member.getGuild(), member.getUser());
-        return new DelegateMessageEvent(member.getGuild(), response, cmdMessage);
     }
 }
