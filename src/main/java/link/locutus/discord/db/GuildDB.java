@@ -1095,13 +1095,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         Map<Long, List<InterviewMessage>> result = new LinkedHashMap<>();
         query("select * FROM INTERVIEW_MESSAGES2 ORDER BY date_created desc",
-        f -> {},
-        (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                InterviewMessage msg = new InterviewMessage(rs);
-                result.computeIfAbsent(msg.channelId, f -> new ArrayList<>()).add(msg);
-            }
-        });
+                f -> {},
+                (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        InterviewMessage msg = new InterviewMessage(rs);
+                        result.computeIfAbsent(msg.channelId, f -> new ArrayList<>()).add(msg);
+                    }
+                });
         return result;
     }
 
@@ -1160,23 +1160,23 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         query("select * FROM ANNOUNCEMENTS2 WHERE ann_id = ? ORDER BY date desc",
                 (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, ann_id),
                 (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                result.add(new Announcement(rs));
-            }
-        });
+                    while (rs.next()) {
+                        result.add(new Announcement(rs));
+                    }
+                });
         return result.isEmpty() ? null : result.get(0);
     }
 
     public Map<Integer, Announcement> getAnnouncementsByIds(Set<Integer> ids) {
         Map<Integer, Announcement> result = new LinkedHashMap<>();
         query("select * FROM ANNOUNCEMENTS2 WHERE ann_id in " + StringMan.getString(ids) + " ORDER BY date desc",
-        f -> {},
-        (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                Announcement ann = new Announcement(rs);
-                result.put(ann.id, ann);
-            }
-        });
+                f -> {},
+                (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        Announcement ann = new Announcement(rs);
+                        result.put(ann.id, ann);
+                    }
+                });
         return result;
     }
 
@@ -1242,12 +1242,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public List<Announcement.PlayerAnnouncement> getPlayerAnnouncementsByNation(int nationId, boolean requireActive) {
         List<Announcement.PlayerAnnouncement> result = new ArrayList<>();
         query("select * FROM ANNOUNCEMENTS_PLAYER2 WHERE receiver = ?" + (requireActive ? " AND `active` = true" : "") + " ORDER BY ann_id desc",
-        (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, nationId),
-        (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                result.add(new Announcement.PlayerAnnouncement(this, rs));
-            }
-        });
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, nationId),
+                (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        result.add(new Announcement.PlayerAnnouncement(this, rs));
+                    }
+                });
         Set<Integer> annIds = result.stream().map(f -> f.ann_id).collect(Collectors.toSet());
         Map<Integer, Announcement> announcements = getAnnouncementsByIds(annIds);
         Iterator<Announcement.PlayerAnnouncement> iter = result.iterator();
@@ -1264,7 +1264,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public List<DBLoan> getLoansByNation(int nationId) {
-            List<DBLoan> loans = new ArrayList<>();
+        List<DBLoan> loans = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where receiver = ? ORDER BY loan_id desc")) {
             stmt.setInt(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -1280,7 +1280,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public DBLoan getLoanById(int loanId) {
-            List<DBLoan> loans = new ArrayList<>();
+        List<DBLoan> loans = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where loan_id = ?")) {
             stmt.setInt(1, loanId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -1410,7 +1410,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //    }
 
     public DBLoan getLoanByMessageId(long loanId) {
-            List<DBLoan> loans = new ArrayList<>();
+        List<DBLoan> loans = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where message = ?")) {
             stmt.setLong(1, loanId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -1425,7 +1425,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public List<DBLoan> getExpiredLoans() {
-            List<DBLoan> loans = new ArrayList<>();
+        List<DBLoan> loans = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where due < ? AND repaid = 0")) {
             stmt.setLong(1, System.currentTimeMillis());
             try (ResultSet rs = stmt.executeQuery()) {
@@ -1468,7 +1468,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         if (this.autoRoleTask == null) {
             synchronized (this) {
                 if (this.autoRoleTask == null) {
-                     this.autoRoleTask = new AutoRoleTask(getGuild(), this);
+                    this.autoRoleTask = new AutoRoleTask(getGuild(), this);
                 }
             }
         }
@@ -1477,7 +1477,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public Map<ResourceType, Double> getPerCityWarchest(DBNation nation) {
         return getPerCityWarchest();
-}
+    }
 
     public Map<ResourceType, Double> getPerCityWarchest() {
         Map<ResourceType, Double> warchest = getOrNull(Key.WARCHEST_PER_CITY);
@@ -2236,7 +2236,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         // other stuff?
         return false;
     }
-    
+
     public boolean violatesDNR(DBNation defender) {
         Function<DBNation, Boolean> canRaid = getCanRaid();
         return !canRaid.apply(defender);
