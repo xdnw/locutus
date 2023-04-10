@@ -3342,8 +3342,10 @@ public class WarCommands {
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
         int result = nation.updateSpies(true, true);
+        Long turnUpdate = nation.getTurnUpdatedSpies();
+        long turnsAgo = TimeUtil.getTurn() - (turnUpdate == null ? 0 : turnUpdate);
 
-        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies.");
+        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies (updated: " + turnsAgo + " turns ago)");
         response.append("\nRecommended:");
 
         int minSafety = requiredSafety == null ? 1 : requiredSafety.id;

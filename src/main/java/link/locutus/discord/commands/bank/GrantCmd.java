@@ -74,7 +74,9 @@ public class GrantCmd extends Command {
                 "Add `-e` or `#expire=60d` to have a grant's debt expire\n" +
                 "Add `-c` to have a grant count as cash value in " + CM.deposits.check.cmd.toSlashMention() + "\n" +
                 "Add `-o` to only send what funds they are missing for a grant\n" +
-                "Add `-m` to multiply the grant per city";
+                "Add `-m` to multiply the grant per city\n" +
+                "Use `tax_id:1234` to specify tax account\n" +
+                "Use `-t` to specify receiver's tax account";
     }
 
     @Override
@@ -115,6 +117,9 @@ public class GrantCmd extends Command {
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
             taxAccount = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+        }
+        if (flags.contains('t')) {
+            if (taxAccount != null) return "You can't specify both `tax_id` and `-t`";
         }
 
 
@@ -248,6 +253,7 @@ public class GrantCmd extends Command {
                 allianceAccount != null ? allianceAccount.getUrl() : null,
                 offshoreAccount != null ? offshoreAccount.getUrl() : null,
                 taxAccount != null ? taxAccount.getQualifiedName() : null,
+                flags.contains('t') ? "true" : null,
                 String.valueOf(flags.contains('o')),
                 expire != null ? "timestamp:" + expire : null,
                 uuid.toString(),

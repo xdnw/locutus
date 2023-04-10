@@ -4478,4 +4478,8 @@ public class DBNation implements NationOrAlliance {
     public boolean isInWarRange(DBNation target) {
         return target.getScore() > getScore() * 0.75 && target.getScore() < getScore() * 1.25;
     }
+
+    public TaxBracket getTaxBracket() {
+        return new TaxBracket(tax_id, alliance_id, "", -1, -1, 0);
+    }
 }

@@ -49,7 +49,8 @@ public class Disperse extends Command {
                 "Add e.g. `nation:blah` to specify a nation account\n" +
                 "Add e.g. `alliance:blah` to specify an alliance account\n" +
                 "Add e.g. `offshore:blah` to specify an offshore account\n" +
-                "Add e.g. `tax_id:blah` to specify a tax bracket";
+                "Add e.g. `tax_id:blah` to specify a tax bracket\n" +
+                "Use `-t` to specify receiver's tax account";
     }
 
     @Override
@@ -118,6 +119,7 @@ public class Disperse extends Command {
                 allianceAccount,
                 offshoreAccount,
                 taxAccount,
+                flags.contains('t'),
                 null,
                 flags.contains('m'),
                 flags.contains('b'),

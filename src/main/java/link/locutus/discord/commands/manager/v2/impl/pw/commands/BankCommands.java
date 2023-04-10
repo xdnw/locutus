@@ -319,6 +319,7 @@ public class BankCommands {
                            @Switch("a") DBAlliance useAllianceBank,
                            @Switch("o") DBAlliance useOffshoreAccount,
                            @Switch("t") TaxBracket taxAccount,
+                           @Switch("ta") boolean existingTaxAccount,
                            @Switch("e") @Timediff Long expire,
                            @Switch("m") boolean convertToMoney,
                            @Switch("b") boolean bypassChecks,
@@ -411,6 +412,7 @@ public class BankCommands {
                     useAllianceBank != null ? useAllianceBank.getUrl() : null,
                     useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
                     taxAccount != null ? taxAccount.getQualifiedName() : null,
+                    existingTaxAccount + "",
                     Boolean.FALSE.toString(),
                     expire == null ? null : "timestamp:" + expire,
                     null,
@@ -419,7 +421,7 @@ public class BankCommands {
                     null
             ).toJson();
 
-            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, false, expire, null, convertToMoney, bypassChecks, force);
+            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, null, convertToMoney, bypassChecks, force);
         } else {
             UUID key = UUID.randomUUID();
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
@@ -432,6 +434,7 @@ public class BankCommands {
                     useAllianceBank != null ? useAllianceBank.getUrl() : null,
                     useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
                     taxAccount != null ? taxAccount.getQualifiedName() : null,
+                    existingTaxAccount + "",
                     Boolean.FALSE.toString(),
                     expire == null ? null : ("timestamp:" + expire),
                     String.valueOf(force),
@@ -439,7 +442,7 @@ public class BankCommands {
                     key.toString()
             ).toJson();
 
-            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, expire, convertToMoney, bypassChecks, force, key);
+            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key);
         }
     }
 
@@ -788,6 +791,7 @@ public class BankCommands {
                          @Switch("a") DBAlliance useAllianceBank,
                          @Switch("o") DBAlliance useOffshoreAccount,
                            @Switch("t") TaxBracket taxAccount,
+                           @Switch("ta") boolean existingTaxAccount,
 
                            @Switch("m") boolean onlyMissingFunds,
                            @Switch("e") @Timediff Long expire,
@@ -801,6 +805,7 @@ public class BankCommands {
                 useAllianceBank,
                 useOffshoreAccount,
                 taxAccount,
+                existingTaxAccount,
                 onlyMissingFunds,
                 expire,
                 token,
@@ -900,6 +905,7 @@ public class BankCommands {
                            @Switch("a") DBAlliance senderAlliance,
                            @Switch("o") DBAlliance allianceAccount,
                            @Switch("t") TaxBracket taxAccount,
+                           @Switch("ta") boolean existingTaxAccount,
 
                            @Switch("m") boolean onlyMissingFunds,
                            @Switch("e") @Timediff Long expire,
@@ -908,6 +914,11 @@ public class BankCommands {
 
                            @Switch("b") boolean bypassChecks,
                            @Switch("f") boolean force) throws IOException {
+        if (existingTaxAccount) {
+            if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
+            if (!receiver.isNation()) throw new IllegalArgumentException("You can only specify `existingTaxAccount` for a nation");
+            taxAccount = receiver.asNation().getTaxBracket();
+        }
         if (receiver.isAlliance() && onlyMissingFunds) {
             return "Option `-o` only applicable for nations";
         }
@@ -1527,12 +1538,13 @@ public class BankCommands {
                                       @Switch("a") DBAlliance useAllianceBank,
                                       @Switch("o") DBAlliance useOffshoreAccount,
                                       @Switch("t") TaxBracket taxAccount,
+                                      @Switch("ta") boolean existingTaxAccount,
                                       @Switch("e") @Timediff Long expire,
                                       @Switch("m") boolean convertToMoney,
                                       @Switch("b") boolean bypassChecks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key) throws IOException {
-        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, expire, convertToMoney, bypassChecks, force, key, new HashMap<>());
+        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, new HashMap<>());
     }
 
 
@@ -1541,12 +1553,16 @@ public class BankCommands {
                                       @Switch("a") DBAlliance useAllianceBank,
                                       @Switch("o") DBAlliance useOffshoreAccount,
                                       @Switch("t") TaxBracket taxAccount,
+                                      @Switch("ta") boolean existingTaxAccount,
                                       @Switch("e") @Timediff Long expire,
                                       @Switch("m") boolean convertToMoney,
                                       @Switch("b") boolean bypassChecks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key,
                                                 Map<NationOrAlliance, String> errors) throws IOException {
+        if (existingTaxAccount) {
+            if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
+        }
         double totalVal = 0;
 
         int nations = 0;
@@ -1638,26 +1654,37 @@ public class BankCommands {
             NationOrAlliance receiver = entry.getKey();
             double[] amount = PnwUtil.resourcesToArray(entry.getValue());
 
-            Map.Entry<OffshoreInstance.TransferStatus, String> result;
-            try {
-                result = offshore.transferFromNationAccountWithRoleChecks(
-                        user,
-                        depositsAccount,
-                        useOffshoreAccount,
-                        taxAccount,
-                        db,
-                        io.getIdLong(),
-                        receiver,
-                        amount,
-                        depositType,
-                        expire,
-                        null,
-                        convertToMoney,
-                        false,
-                        bypassChecks
-                );
-            } catch (IllegalArgumentException | IOException e) {
-                result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+            Map.Entry<OffshoreInstance.TransferStatus, String> result = null;
+            TaxBracket taxAccountFinal = taxAccount;
+            if (existingTaxAccount) {
+                if (!receiver.isNation()) {
+                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.INVALID_DESTINATION, "Cannot use `existingTaxAccount` for transfers to alliances");
+                } else {
+                    taxAccount = receiver.asNation().getTaxBracket();
+                }
+            }
+
+            if (result == null) {
+                try {
+                    result = offshore.transferFromNationAccountWithRoleChecks(
+                            user,
+                            depositsAccount,
+                            useOffshoreAccount,
+                            taxAccountFinal,
+                            db,
+                            io.getIdLong(),
+                            receiver,
+                            amount,
+                            depositType,
+                            expire,
+                            null,
+                            convertToMoney,
+                            false,
+                            bypassChecks
+                    );
+                } catch (IllegalArgumentException | IOException e) {
+                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+                }
             }
 
             output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + StringMan.getString(amount) + "\t" + result.getKey() + "\t" + "\"" + result.getValue() + "\"");

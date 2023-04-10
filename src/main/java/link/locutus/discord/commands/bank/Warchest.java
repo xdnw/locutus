@@ -60,7 +60,8 @@ public class Warchest extends Command {
                 "Add e.g. `nation:blah` to specify a nation account\n" +
                 "Add e.g. `alliance:blah` to specify an alliance account\n" +
                 "Add e.g. `offshore:blah` to specify an offshore account\n" +
-                "Add e.g. `tax_id:blah` to specify a tax bracket";
+                "Add e.g. `tax_id:blah` to specify a tax bracket\n" +
+                "add `-t` to use receivers tax bracket account";
     }
 
     @Override
@@ -90,6 +91,10 @@ public class Warchest extends Command {
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
             taxAccount = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+        }
+
+        if (flags.contains('t')) {
+            if (taxAccount != null) return "You can't specify both `tax_id` and `-t`";
         }
 
         if (args.size() < 3) {
@@ -130,6 +135,7 @@ public class Warchest extends Command {
                 allianceAccount,
                 offshoreAccount,
                 taxAccount,
+                flags.contains('t'),
                 null,
                 flags.contains('m'),
                 flags.contains('b'),

@@ -1371,8 +1371,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transferBulk")
         public static class bulk extends CommandRef {
             public static final bulk cmd = new bulk();
-            public bulk create(String sheet, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String expire, String convertToMoney, String bypassChecks, String force, String key) {
-                return createArgs("sheet", sheet, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "expire", expire, "convertToMoney", convertToMoney, "bypassChecks", bypassChecks, "force", force, "key", key);
+            public bulk create(String sheet, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String bypassChecks, String force, String key) {
+                return createArgs("sheet", sheet, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "bypassChecks", bypassChecks, "force", force, "key", key);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="warchest")
@@ -1422,8 +1422,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transfer")
         public static class resources extends CommandRef {
             public static final resources cmd = new resources();
-            public resources create(String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String taxAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks, String force) {
-                return createArgs("receiver", receiver, "transfer", transfer, "depositType", depositType, "nationAccount", nationAccount, "senderAlliance", senderAlliance, "allianceAccount", allianceAccount, "taxAccount", taxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "bypassChecks", bypassChecks, "force", force);
+            public resources create(String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks, String force) {
+                return createArgs("receiver", receiver, "transfer", transfer, "depositType", depositType, "nationAccount", nationAccount, "senderAlliance", senderAlliance, "allianceAccount", allianceAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "bypassChecks", bypassChecks, "force", force);
             }
         }
     }

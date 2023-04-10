@@ -910,11 +910,7 @@ public class PWBindings extends BindingHelper {
         if (MathMan.isInteger(input)) {
             taxId = Integer.parseInt(input);
         } else {
-            if (!input.contains("tax_id=")) {
-                throw new IllegalArgumentException("Invalid tax url `" + input + "`");
-            }
-            String[] split = input.split("=");
-            taxId = Integer.parseInt(split[split.length - 1]);
+            taxId = PnwUtil.parseTaxId(input);
         }
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;

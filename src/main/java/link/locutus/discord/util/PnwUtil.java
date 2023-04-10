@@ -1078,7 +1078,7 @@ public class PnwUtil {
     }
 
     public static int parseTaxId(String url) {
-        String regex = "tax_id=([0-9]+)";
+        String regex = "tax_id[=:]([0-9]+)";
         Matcher matcher = Pattern.compile(regex).matcher(url.toLowerCase(Locale.ROOT));
         if (matcher.find()) {
             int id = Integer.parseInt(matcher.group(1));

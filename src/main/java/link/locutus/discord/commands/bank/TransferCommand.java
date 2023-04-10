@@ -50,6 +50,7 @@ public class TransferCommand extends Command {
                 "Use `alliance:Rose` to specify alliance account\n" +
                 "Use `offshore:AllianceName` to specify offshore\n" +
                 "Use `tax_id:1234` to specify tax account\n" +
+                "Use `-t` to specify receiver's tax account" +
                 "Use `-o` to subtract their existing funds from the transfer amount";
     }
 
@@ -101,6 +102,12 @@ public class TransferCommand extends Command {
         String noteStr = args.get(args.size() - 1);
         DepositType.DepositTypeInfo depositType = PWBindings.DepositTypeInfo(noteStr);
 
+        if (flags.contains('t')) {
+            if (taxAccount != null) return "You can't specify both `tax_id` and `-t`";
+            if (!receiver.isNation()) return "You can only specify `-t` for a nation";
+            taxAccount = receiver.asNation().getTaxBracket();
+        }
+
         boolean onlyMissingFunds = flags.contains('o');
         boolean convertCash = flags.contains('c');
         boolean bypassChecks = flags.contains('f');
@@ -115,6 +122,7 @@ public class TransferCommand extends Command {
                 allianceAccount != null ? allianceAccount.getUrl() : null,
                 offshoreAccount != null ? offshoreAccount.getUrl() : null,
                 taxAccount != null ? taxAccount.getQualifiedName() : null,
+                null,
                 String.valueOf(onlyMissingFunds),
                 expire == null ? null : ("timestamp:" + expire),
                 token == null ? null : token.toString(),
@@ -123,6 +131,6 @@ public class TransferCommand extends Command {
                 null
         ).toJson();
 
-        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, taxAccount, onlyMissingFunds, expire, token, convertCash, bypassChecks, false);
+        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, taxAccount, false, onlyMissingFunds, expire, token, convertCash, bypassChecks, false);
     }
 }

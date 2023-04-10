@@ -1152,10 +1152,14 @@ public class UnsortedCommands {
                            @Switch("a") DBAlliance useAllianceBank,
                            @Switch("o") DBAlliance useOffshoreAccount,
                            @Switch("t") TaxBracket taxAccount,
+                           @Switch("ta") boolean existingTaxAccount,
                            @Switch("e") @Timediff Long expire,
                            @Switch("m") boolean convertToMoney,
                            @Switch("b") boolean bypassChecks,
                            @Switch("f") boolean force) throws Exception {
+        if (existingTaxAccount) {
+            if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
+        }
         if (note == null) note = DepositType.WARCHEST.withValue();
 
         Collection<DBNation> nationSet = new HashSet<>(nations.getNations());
@@ -1234,6 +1238,7 @@ public class UnsortedCommands {
                 useAllianceBank != null ? useAllianceBank.getUrl() : null,
                 useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
                 taxAccount != null ? taxAccount.getQualifiedName() : null,
+                existingTaxAccount + "",
                 Boolean.FALSE.toString(),
                 expire == null ? null : ("timestamp:" + expire),
                 String.valueOf(force),
@@ -1241,7 +1246,7 @@ public class UnsortedCommands {
                 key.toString()
         ).toJson();
 
-        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, expire, convertToMoney, bypassChecks, force, key, errors);
+        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, errors);
     }
 
     @Command
