@@ -7,23 +7,18 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.awt.Color;
+import java.awt.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public class UpdateEmbed extends Command {
     public UpdateEmbed() {
@@ -58,7 +53,7 @@ public class UpdateEmbed extends Command {
             String roleRaw = requiredRole.replaceAll("[<@>]", "");
             if (MathMan.isInteger(roleRaw)) {
                 Role role = guild.getRoleById(roleRaw);
-                if (role == null || !event.getMember().getRoles().contains(role)) {
+                if (role == null || !Objects.requireNonNull(event.getMember()).getRoles().contains(role)) {
                     return null;
                 }
             }
@@ -81,12 +76,12 @@ public class UpdateEmbed extends Command {
 
         String setTitle = DiscordUtil.parseArg(args, "title");
         if (setTitle != null) {
-            builder.setTitle(parse(setTitle.replace(("{title}"), embed.getTitle()), embed, message));
+            builder.setTitle(parse(setTitle.replace(("{title}"), Objects.requireNonNull(embed.getTitle())), embed, message));
         }
 
         String setDesc = DiscordUtil.parseArg(args, "description");
         if (setDesc != null) {
-            builder.setDescription(parse(setDesc.replace(("{description}"), embed.getDescription()), embed, message));
+            builder.setDescription(parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message));
         }
 
 

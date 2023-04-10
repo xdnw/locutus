@@ -52,4 +52,3 @@ public class Login extends Command {
         return UnsortedCommands.login(new DiscordChannelIO(event), Locutus.imp().getDiscordDB(), me, guild, username, password);
     }
 }
-

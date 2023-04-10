@@ -147,7 +147,7 @@ public class KeyStore extends Command implements Noformat {
     }
 
     private Map<CommandCategory, Map<GuildDB.Key, String>> getSheets(GuildDB db) {
-        Map<CommandCategory, Map<GuildDB.Key,String>> map = new LinkedHashMap<>();
+        Map<CommandCategory, Map<GuildDB.Key, String>> map = new LinkedHashMap<>();
         for (GuildDB.Key key : GuildDB.Key.values()) {
             if (key.name().toLowerCase().endsWith("_sheet")) {
                 String value = db.getOrNull(key, false);

@@ -20,6 +20,7 @@ public class MsgInfo extends Command {
     public MsgInfo() {
         super("msginfo", CommandCategory.DEBUG);
     }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "msginfo <message-link>";
