@@ -1493,8 +1493,11 @@ public class GuildHandler {
         Set<DBWar> dnrViolations = new HashSet<>();
 
         Function<DBNation, Boolean> dnr = getDb().getCanRaid();
-        Role milcomRole = Roles.MILCOM.toRole(guild);
-        Role faRole = Roles.FOREIGN_AFFAIRS.toRole(guild);
+
+        Guild alertGuild = (channel instanceof GuildMessageChannel) ? ((GuildMessageChannel) channel).getGuild() : guild;
+
+        Role milcomRole = Roles.MILCOM.toRole(alertGuild);
+        Role faRole = Roles.FOREIGN_AFFAIRS.toRole(alertGuild);
 
         Set<Integer> aaIds = db.getAllianceIds();
         WarCategory warCat = db.getWarChannel();
@@ -1871,7 +1874,7 @@ public class GuildHandler {
 
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
-            for (int id : db.getAllianceIds()) {
+            for (int id : aaIds) {
                 if (id != 0) tracked.add(id);
             }
         }

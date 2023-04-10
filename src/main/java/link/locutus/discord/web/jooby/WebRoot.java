@@ -6,6 +6,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.jooby.handler.LocutusSSLHandler;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import link.locutus.discord.web.jooby.handler.SseHandler2;
@@ -118,6 +119,25 @@ public class WebRoot {
         for (Map.Entry<Long, Map.Entry<String, JsonObject>> entry : db.loadTokens().entrySet()) {
             addAccessToken(entry.getValue().getKey(), entry.getValue().getValue(), false);
         }
+
+        this.app.get("/auth**", new Handler() {
+            @Override
+            public void handle(@NotNull Context context) throws Exception {
+                // getr query string
+                Map<String, List<String>> queryMap = context.queryParamMap();
+
+                String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
+                String authType = StringMan.join(queryMap.getOrDefault("type", new ArrayList<>()), ",");
+                // get auth type
+
+                // get alliance argument
+
+                // get nation argument, else prompt for nation name or id
+
+
+                context.result("Auth page content goes here");
+            }
+        });
 
         this.app.get("/bankrequests", new Handler() {
             @Override

@@ -27,7 +27,6 @@ public class ChannelAccess extends Command {
         if (args.size() != 1) return usage(event);
         User user = DiscordUtil.getUser(args.get(0));
         if (user == null) return "Invalid usage `" + args.get(0) + "`";
-        guild.getChannels();
         return super.onCommand(event, guild, author, me, args, flags);
     }
 }

@@ -157,15 +157,17 @@ public class SpyTracker {
     public class SpyActivity {
         private final int nationId;
         private final MilitaryUnit unit;
+        private final int original;
         private final int change;
         private final long timestamp;
         private final double score;
         private final boolean isKill;
         private List<Nation> nationActiveInfo;
 
-        public SpyActivity(int nationId, MilitaryUnit unit, int change, long timestamp, double score, boolean isKill) {
+        public SpyActivity(int nationId, MilitaryUnit unit, int original, int change, long timestamp, double score, boolean isKill) {
             this.nationId = nationId;
             this.unit = unit;
+            this.original = original;
             this.change = change;
             this.timestamp = timestamp;
             this.score = score;
@@ -190,14 +192,14 @@ public class SpyTracker {
 
         if (previousKills != null && kills > previousKills) {
             int change = kills - previousKills;
-            queue.add(new SpyActivity(nationId, unit, change, timestamp, score, true));
+            queue.add(new SpyActivity(nationId, unit, currentUnits, change, timestamp, score, true));
             System.out.println("Add activity kill " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
         }
 
         if (previousLosses != null && losses > previousLosses) {
             int change = losses - previousLosses;
             if (unit == MilitaryUnit.SPIES) {
-                SpyActivity activity = new SpyActivity(nationId, unit, change, timestamp, score, false);
+                SpyActivity activity = new SpyActivity(nationId, unit, currentUnits, change, timestamp, score, false);
                 System.out.println("Add activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
                 queue.add(activity);
 
@@ -219,7 +221,7 @@ public class SpyTracker {
                     if (currentUnits < min || currentUnits > max) return;
                 }
 
-                SpyActivity activity = new SpyActivity(nationId, unit, change, timestamp, score, false);
+                SpyActivity activity = new SpyActivity(nationId, unit, currentUnits, change, timestamp, score, false);
                 System.out.println("Add activity sold " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
                 queue.add(activity);
             }
@@ -336,7 +338,7 @@ public class SpyTracker {
 
                 System.out.println("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
 
-                SpyAlert alert = new SpyAlert(defender, unit, defensive.change, defensive.timestamp);
+                SpyAlert alert = new SpyAlert(defender, unit, defensive.original, defensive.change, defensive.timestamp);
 
                 if (unit == MilitaryUnit.SPIES) {
                     for (SpyActivity offensive : offensives) {
@@ -347,6 +349,8 @@ public class SpyTracker {
                         if (offensive.change == defensive.change) {
                             alert.exact.add(offensive);
                         } else {
+                            DBNation attacker = DBNation.byId(offensive.nationId);
+                            if (attacker != null && attacker.getAlliance_id() == defender.getAlliance_id()) continue;
                             alert.close.add(offensive);
                         }
                     }
@@ -396,22 +400,29 @@ public class SpyTracker {
         for (SpyAlert alert : alerts) {
             MilitaryUnit unit = alert.unit;
             DBNation defender = alert.defender;
-            defender.updateSpies();
 
             if (alert.exact.size() == 1) {
                 // TODO Log the spy op
             }
 
+            String defSpiesStr;
+            if (alert.unit == MilitaryUnit.SPIES) {
+                defSpiesStr = alert.original + "->" + (alert.original - alert.change);
+            } else {
+                defender.updateSpies(24);
+                defSpiesStr = "" + defender.getSpies();
+            }
+
             String title = "Possible " + alert.change + " x " + unit + " spied (Note: False positives are common)";
             StringBuilder body = new StringBuilder("**" + title + "**:\n");
-            body.append("\nDefender (" + defender.updateSpies(alert.unit == MilitaryUnit.SPIES ? 1 : 24) + " spies):" + defender.toMarkdown(false, true, true, true, true));
+            body.append("\nDefender (" + defSpiesStr + " spies):" + defender.toMarkdown(false, true, true, true, true));
             body.append("\ntimestamp:" + alert.timestamp + " (" + TimeUtil.YYYY_MM_DDTHH_MM_SSX.format(new Date(alert.timestamp)) + ")");
 
             // display recent wars (nation)
             // display current wars (nations / alliances)
 
             if (unit.getBuilding() != null) {
-                int defUnits = defender.getUnits(unit) + Math.abs(alert.change);
+                int defUnits = alert.original;
                 Map.Entry<Integer, Integer> killRangeNoSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, false);
                 Map.Entry<Integer, Integer> killRangeSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, true);
 
@@ -424,24 +435,21 @@ public class SpyTracker {
                 for (SpyActivity offensive : alert.exact) {
                     body.append("\n - " + alert.entryToString(offensive, null));
                 }
-            } else if (!alert.close.isEmpty()) {
-                body.append("\nAttackers (medium probability):");
-                for (SpyActivity offensive : alert.close) {
-                    body.append("\n - " + alert.entryToString(offensive, null));
-                }
             } else {
-                int defSpies = defender.getSpies();
-                if (unit == MilitaryUnit.SPIES) {
-                    defender.updateSpies(12);
-                    Long spiesUpdated = defender.getTurnUpdatedSpies();
-                    if (spiesUpdated != null && spiesUpdated >= TimeUtil.getTurn(System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(20))) {
-                        defSpies = Math.min(defender.maxSpies(), defSpies + Math.abs(alert.change));
+                if (!alert.close.isEmpty()) {
+                    body.append("\nAttackers (medium probability):");
+                    for (SpyActivity offensive : alert.close) {
+                        body.append("\n - " + alert.entryToString(offensive, null));
                     }
+                }
+                int defUnitBefore = alert.original;
+                int defUnitNow = alert.original - alert.change;
+                if (unit == MilitaryUnit.SPIES) {
 
                     // int spiesKilled, int defSpies, boolean spySat
                     int killed = Math.abs(alert.change);
-                    Map.Entry<Integer, Integer> rangeNoSat = SpyCount.getSpiesUsedRange(killed, defSpies, false);
-                    Map.Entry<Integer, Integer> rangeSat = SpyCount.getSpiesUsedRange(killed, defSpies, true);
+                    Map.Entry<Integer, Integer> rangeNoSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, false);
+                    Map.Entry<Integer, Integer> rangeSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, true);
                     body.append("\n**Attacker Spies Estimate:** ");
                     body.append(rangeNoSat.getKey() + " - " + rangeNoSat.getValue() + "(no SAT) | " + rangeSat.getKey() + " - " + rangeSat.getValue() + "(SAT)");
                     body.append("\n - Note: Unit counts may be incorrect (outdated/two attacks in quick succession)");
@@ -462,7 +470,7 @@ public class SpyTracker {
             MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
             if (channel == null && (!alert.exact.isEmpty() || unit == MilitaryUnit.SPIES)) {
                 channel = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL);
-                body.append("\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + "`");
+                body.append("\nSpy kills are not enabled (only units). See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + "`");
             }
             if (channel == null) continue;
 
@@ -477,16 +485,21 @@ public class SpyTracker {
         public final List<Map.Entry<DBNation, Long>> online = new ArrayList<>();
         private final DBNation defender;
         private final MilitaryUnit unit;
+        private final int original;
         private final int change;
         private final long timestamp;
 
-        public SpyAlert(DBNation defender, MilitaryUnit unit, int change, long timestamp) {
+        public SpyAlert(DBNation defender, MilitaryUnit unit, int original, int change, long timestamp) {
             this.defender = defender;
             this.unit = unit;
+            this.original = original;
             this.change = change;
             this.timestamp = timestamp;
         }
 
+        public int getOriginal() {
+            return original;
+        }
 
         public String entryToString(SpyActivity offensive, Map.Entry<Integer, Integer> killRange) {
             DBNation attacker = DBNation.byId(offensive.nationId);
@@ -495,7 +508,7 @@ public class SpyTracker {
         }
 
         public String entryToString(DBNation attacker, Map.Entry<Integer, Integer> killRange, long diff) {
-            int defSpies = defender.getSpies();
+            int defSpies = original;
             int attSpies = attacker.updateSpies(24);;
 
             double odds = SpyCount.getOdds(attSpies, defSpies, 3, SpyCount.Operation.getByUnit(unit), defender);

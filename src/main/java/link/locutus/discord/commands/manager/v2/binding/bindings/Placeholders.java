@@ -15,7 +15,12 @@ import link.locutus.discord.util.StringMan;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -110,8 +115,9 @@ public class Placeholders<T> {
 
                 if (type == String.class) {
                     adapter = op.getStringPredicate(part2);
+                    boolean val2 = PrimitiveBindings.Boolean(part2);
                 } else if (type == boolean.class || type == Boolean.class) {
-                    boolean val2 = Boolean.TRUE.equals(PrimitiveBindings.Boolean(part2));
+                    boolean val2 = false;
                     adapter = op.getBooleanPredicate(val2);
                 } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
                     double val2 = MathMan.parseDouble(part2);

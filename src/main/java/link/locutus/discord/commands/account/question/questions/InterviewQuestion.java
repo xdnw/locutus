@@ -55,10 +55,20 @@ public enum InterviewQuestion implements Question {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty() || aaIds.contains(me.getAlliance_id())) return true;
+
             if (me.getAlliance_id() == 0) return false;
             throw new IllegalArgumentException("please leave your alliance first then " + getContent());
         }
     },
+
+//    REROLL("Why did you choose us?\n\n" +
+//            "*please type out your answer*", false) {
+//        @Override
+//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+//            long latestId = channel.getLatestMessageIdLong();
+//        }
+//    },
+
     LONG_TERM("Did you like the game so far? Are you planning to be a long term player?", false, "Y", "N") {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
@@ -73,6 +83,23 @@ public enum InterviewQuestion implements Question {
             return true;
         }
     },
+
+//    ACTIVE("We value members that check in on discord regularly and seek advice on how to improve their nation or get more involved in the community. \n" +
+//            "If you go inactive for 7 days without warning, we will set you as applicant and wont protect you if you are attacked.\n\n" +
+//            "Can you be active on discord daily?", false, "Y", "N") {
+//        @Override
+//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+//            if (input.equalsIgnoreCase("Y")) {
+//                Role role = Roles.TEMP.toRole(guild);
+//                if (role != null) {
+//                    Member member = guild.getMember(author);
+//                    guild.addRoleToMember(member, link.locutus.discord.util.RateLimitUtil.queue(role));
+//                }
+//            }
+//            return true;
+//        }
+//    },
+
     TAXES("A portion of your city income will be deposited into the alliance bank via taxes, and included in your personal " + CM.deposits.check.cmd.toSlashMention() + " (updated weekly)\n" +
             "We want to provide an efficient centralized economy and can send you resources to run/grow your nation.\n" +
             "Note: your profit from raiding or trading is never taxed.\n\n" +
@@ -291,11 +318,18 @@ public enum InterviewQuestion implements Question {
             return (me.getOff() >= 5);
         }
     },
-    DEPOSIT_RESOURCES("""
-            Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:
-            https://politicsandwar.com/alliance/id={guild.alliance_id}&display=bank
 
-            *Note: deposit $1 if you don't need to safekeep*""", true) {
+//    PERFORM_ATTACKS("Now that you have declared your raids, you can perform your attacks. Inactive enemies won't fight back, and if you've picked targets with no ground, you can perform ground attacks to defeat them.\n" +
+//            "https://politicsandwar.com/nation/war/", true) {
+//        @Override
+//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+//            return super.validate(guild, author, me, channel, input);
+//        }
+//    },
+
+    DEPOSIT_RESOURCES("Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:\n" +
+            "https://politicsandwar.com/alliance/id={guild.alliance_id}&display=bank\n\n" +
+            "*Note: deposit $1 if you don't need to safekeep*", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -346,12 +380,14 @@ public enum InterviewQuestion implements Question {
             return super.format(guild, author, me, channel, message);
         }
     },
-    USEFUL_LINKS("""
-            Other useful links
-            Wiki: https://politicsandwar.fandom.com/
-            Forums: https://forum.politicsandwar.com/
-            P&W Discord: https://discord.gg/H9XnGxc""", false),
 
+//    TRAINING_DISCORD("Checkout our training discord: <https://discord.gg/ZqbNBvb>", true) {
+//        @Override
+//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+//            Member member = Locutus.imp().getDiscordApi().getGuildById(710321760519848009L).getMemberById(author.getIdLong());
+//            return member != null;
+//        }
+//    },
 
     SPIES("""
             Spies can discover enemy resource amounts and perform various sabotage operations (like destroying planes). You can do so daily, without using a war slot, or bringing you out of beige protection, and even against enemies who are under beige protection.
@@ -418,6 +454,7 @@ public enum InterviewQuestion implements Question {
             Set<Integer> infraLevels = new HashSet<>();
 
             boolean oddInfraAmounts = false;
+            boolean inefficientAmount = false;
 
             Map<Integer, JavaCity> cities = me.getCityMap(true, true);
             for (JavaCity city : cities.values()) {
@@ -427,10 +464,16 @@ public enum InterviewQuestion implements Question {
                 if (infra % 50 != 0) {
                     oddInfraAmounts = true;
                 }
+                if (infra % 100 != 0) {
+                    inefficientAmount = true;
+                }
             }
 
             StringBuilder response = new StringBuilder();
 
+            if (inefficientAmount) {
+//                response.append("Infrastructure is cheapest when purchased in multiples of 100");
+            }
 
             if (infraLevels.size() > 1) {
                 response.append("By having different amounts of infrastructure in each city, you cannot import the same build into all of them.\n");

@@ -694,14 +694,14 @@ public class WarCommands {
             response.append("<" + ally.getNationUrl() + ">");
             response.append(" | " + ally.getAllianceName());
             response.append("\n```")
-                    .append(String.format("%5s", (int) ally.getScore())).append(" ns").append(" | ")
-                    .append(String.format("%2s", ally.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                    .append(String.format("%6s", ally.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                    .append(String.format("%5s", ally.getTanks())).append(" \u2699").append(" | ")
-                    .append(String.format("%5s", ally.getAircraft())).append(" \u2708").append(" | ")
-                    .append(String.format("%4s", ally.getShips())).append(" \u26F5").append(" | ")
-                    .append(String.format("%1s", ally.getOff())).append(" \uD83D\uDDE1").append(" | ")
-                    .append(String.format("%1s", ally.getDef())).append(" \uD83D\uDEE1").append("``` ");
+            .append(String.format("%5s", (int) ally.getScore())).append(" ns").append(" | ")
+            .append(String.format("%2s", ally.getCities())).append(" \uD83C\uDFD9").append(" | ")
+            .append(String.format("%6s", ally.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
+            .append(String.format("%5s", ally.getTanks())).append(" \u2699").append(" | ")
+            .append(String.format("%5s", ally.getAircraft())).append(" \u2708").append(" | ")
+            .append(String.format("%4s", ally.getShips())).append(" \u26F5").append(" | ")
+            .append(String.format("%1s", ally.getOff())).append(" \uD83D\uDDE1").append(" | ")
+            .append(String.format("%1s", ally.getDef())).append(" \uD83D\uDEE1").append("``` ");
             String request = requested.get(ally);
             if (request != null) {
                 response.append(" - Requested Blockade Broken: `" + request + "`\n");
@@ -723,14 +723,14 @@ public class WarCommands {
                     response.append("**Enemy**: <" + enemy.getDeclareUrl() + "> | <" + enemy.getAllianceUrl() + ">");
 
                     response.append("\n```")
-                            .append(String.format("%5s", (int) enemy.getScore())).append(" ns").append(" | ")
-                            .append(String.format("%2s", enemy.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                            .append(String.format("%6s", enemy.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                            .append(String.format("%5s", enemy.getTanks())).append(" \u2699").append(" | ")
-                            .append(String.format("%5s", enemy.getAircraft())).append(" \u2708").append(" | ")
-                            .append(String.format("%4s", enemy.getShips())).append(" \u26F5").append(" | ")
-                            .append(String.format("%1s", enemy.getOff())).append(" \uD83D\uDDE1").append(" | ")
-                            .append(String.format("%1s", enemy.getDef())).append(" \uD83D\uDEE1").append("``` ");
+                    .append(String.format("%5s", (int) enemy.getScore())).append(" ns").append(" | ")
+                    .append(String.format("%2s", enemy.getCities())).append(" \uD83C\uDFD9").append(" | ")
+                    .append(String.format("%6s", enemy.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
+                    .append(String.format("%5s", enemy.getTanks())).append(" \u2699").append(" | ")
+                    .append(String.format("%5s", enemy.getAircraft())).append(" \u2708").append(" | ")
+                    .append(String.format("%4s", enemy.getShips())).append(" \u26F5").append(" | ")
+                    .append(String.format("%1s", enemy.getOff())).append(" \uD83D\uDDE1").append(" | ")
+                    .append(String.format("%1s", enemy.getDef())).append(" \uD83D\uDEE1").append("``` ");
 
                     double otherOdds = PnwUtil.getOdds(maxShips, enemy.getShips(), 3);
                     double myOdds = PnwUtil.getOdds(myShips, enemy.getShips(), 3);
@@ -879,39 +879,39 @@ public class WarCommands {
             }
             strength.put(nation, Math.pow(nation.getStrength(), 3));
         }
-        for (DBNation nation : nations) {
-            double counterStrength = 0;
-            double inactive0 = 0;
-            double inactive1 = 0;
-            double inactive2 = 0;
-            if (nation.getAlliance_id() != 0) {
-                List<DBNation> counters = countersByAlliance.get(nation.getAlliance_id());
-                if (counters != null) {
-                    counters = new ArrayList<>(counters);
-                    counters.remove(nation);
-                    int i = 0;
+         for (DBNation nation : nations) {
+             double counterStrength = 0;
+             double inactive0 = 0;
+             double inactive1 = 0;
+             double inactive2 = 0;
+             if (nation.getAlliance_id() != 0) {
+                 List<DBNation> counters = countersByAlliance.get(nation.getAlliance_id());
+                 if (counters != null) {
+                     counters = new ArrayList<>(counters);
+                     counters.remove(nation);
+                     int i = 0;
 
-                    for (DBNation other : counters) {
-                        if (other.getId() == nation.getId()) continue;
-                        if (i++ >= maxCounterSize) break;
-                        if (other.active_m() > 2880) {
-                            inactive0 += (1 + ((other.active_m() - 2880d) / 1440d));
-                        } else if (other.active_m() > 1440) {
-                            inactive1 += (1 + (other.active_m() - 1440d) / 1440d);
-                        } else {
-                            inactive2 += (1 + (other.active_m()) / 1440d);
-                        }
-                        counterStrength += Math.pow(other.getStrength(), 3);
-                    }
-                }
-            }
-            double logistics = inactive0 * 2 + inactive1 * 1 + inactive2 * 0.5;
-            if (logistics > 1) {
-                counterStrength = counterStrength * Math.pow(logistics, 0.95);
-            }
-            counterStrength += strength.get(nation) * (Math.pow(0.85, Math.min(3, nationsToBlitzWith.size())) / 0.85);
-            counterChance.add(new AbstractMap.SimpleEntry<>(nation, counterStrength));
-        }
+                     for (DBNation other : counters) {
+                         if (other.getId() == nation.getId()) continue;
+                         if (i++ >= maxCounterSize) break;
+                         if (other.active_m() > 2880) {
+                             inactive0 += (1 + ((other.active_m() - 2880d) / 1440d));
+                         } else if (other.active_m() > 1440) {
+                             inactive1 += (1 + (other.active_m() - 1440d) / 1440d);
+                         } else {
+                             inactive2 += (1 + (other.active_m()) / 1440d);
+                         }
+                         counterStrength += Math.pow(other.getStrength(), 3);
+                     }
+                 }
+             }
+             double logistics = inactive0 * 2 + inactive1 * 1 + inactive2 * 0.5;
+             if (logistics > 1) {
+                 counterStrength = counterStrength * Math.pow(logistics, 0.95);
+             }
+             counterStrength += strength.get(nation) * (Math.pow(0.85, Math.min(3, nationsToBlitzWith.size())) / 0.85);
+             counterChance.add(new AbstractMap.SimpleEntry<>(nation, counterStrength));
+         }
 
         // nationsToBlitzWith foreach nation.getStrength();
         double myStrength = nationsToBlitzWith.stream().mapToDouble(f -> Math.pow(f.getStrength(), 3)).sum();
@@ -1348,9 +1348,9 @@ public class WarCommands {
     }
 
     @Command(desc = "Find a nation to do a spy op against the specified enemy\n" +
-            "Op types: (INTEL,NUKE,MISSILE,SHIPS,AIRCRAFT,TANKS,SPIES,SOLDIER) or `*` (for all op types)\n" +
-            "The alliance argument is optional\n" +
-            "Use `success>80` to specify a cutoff for spyop success")
+                    "Op types: (INTEL,NUKE,MISSILE,SHIPS,AIRCRAFT,TANKS,SPIES,SOLDIER) or `*` (for all op types)\n" +
+                    "The alliance argument is optional\n" +
+                    "Use `success>80` to specify a cutoff for spyop success")
     @RolePermission(Roles.MEMBER)
     public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch("s") @Range(min=0, max=100) Integer minSuccess) throws ExecutionException, InterruptedException, IOException {
         if (operations.isEmpty()) throw new IllegalArgumentException("Valid operations: " + StringMan.getString(SpyCount.Operation.values()));
@@ -1452,11 +1452,11 @@ public class WarCommands {
     }
 
     @Command(aliases = {"spyop", "spyops"},
-            desc = "Find the optimal spy ops to use:\n" +
-                    "Use `*` for the alliance to only include active wars against allies\n" +
-                    "Use `*` for op type to automatically find the best op type\n" +
-                    "Use `success>80` to specify a cutoff for spyop success\n\n" +
-                    "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
+    desc = "Find the optimal spy ops to use:\n" +
+            "Use `*` for the alliance to only include active wars against allies\n" +
+            "Use `*` for op type to automatically find the best op type\n" +
+            "Use `success>80` to specify a cutoff for spyop success\n\n" +
+            "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
     @RolePermission(Roles.MEMBER)
     public String Spyops(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch("d") boolean directMesssage, @Switch("k") boolean prioritizeKills,
                          @Switch("n") DBNation attacker) throws ExecutionException, InterruptedException, IOException {
@@ -2718,8 +2718,8 @@ public class WarCommands {
             String confirmCommand = command.put("force", "true").toString();
 
             channel.create().confirmation(embedTitle, body.toString(), command)
-                    .append(author.getAsMention())
-                    .send();
+                            .append(author.getAsMention())
+                                    .send();
             return null;
         }
 
@@ -3408,7 +3408,7 @@ public class WarCommands {
             "Add `-w` to filter out weak attackers\n" +
             "Add `-a` to only list active nations (past hour)")
     public String counter(@Me DBNation me, @Me GuildDB db, DBNation target, @Default Set<DBNation> counterWith, @Switch("o")
-    boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping, @Switch("s") boolean allowSameAlliance) {
+            boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping, @Switch("s") boolean allowSameAlliance) {
         if (counterWith == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty()) {

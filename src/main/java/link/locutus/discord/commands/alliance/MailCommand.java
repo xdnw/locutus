@@ -13,8 +13,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.MailRespondTask;
 import net.dv8tion.jda.api.entities.Guild;
@@ -24,6 +24,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class MailCommand extends Command implements Noformat {
@@ -49,7 +50,7 @@ public class MailCommand extends Command implements Noformat {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() < 3) return usage(event);
-        String fromStr = DiscordUtil.parseArg(args, "from:");
+        String fromStr = DiscordUtil.parseArg(args, "from");
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
@@ -101,7 +102,7 @@ public class MailCommand extends Command implements Noformat {
                 key = ApiKeyPool.builder().addKey(myKey).build();
             }
             if (key == null) {
-                return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey.`";
+                return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey`";
             }
 
 

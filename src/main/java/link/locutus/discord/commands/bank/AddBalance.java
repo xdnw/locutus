@@ -97,7 +97,7 @@ public class AddBalance extends Command {
                     if (isGuild) arg = arg.toLowerCase().replace("guild:", "");
 
                     GuildDB otherGuildDb = Locutus.imp().getGuildDB(Long.parseLong(arg));
-                    if (otherGuildDb == null) return "Invalid guild id: " + null;
+                    if (otherGuildDb == null) return "Invalid guild id: `" + arg + "`";
                     Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(1));
                     builder.add(otherGuildDb, transfer, note);
                 } else {

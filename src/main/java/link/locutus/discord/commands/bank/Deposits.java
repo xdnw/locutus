@@ -373,5 +373,4 @@ public class Deposits extends Command {
 
         return null;
     }
-
 }

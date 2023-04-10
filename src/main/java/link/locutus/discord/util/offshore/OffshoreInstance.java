@@ -815,7 +815,7 @@ public class OffshoreInstance {
                     diff[i] = myDeposits[i] - myNewDeposits[i];
                 }
                 for (int i = 0; i < amount.length; i++) {
-                    if (Math.round(diff[i] * 100) != Math.round(amount[i] * 100)) {
+                    if (Math.round((diff[i] - amount[i]) * 100) > 1) {
                         return Map.entry(TransferStatus.OTHER, "Internal error: " + PnwUtil.resourcesToString(diff) + " != " + PnwUtil.resourcesToString(amount));
                     }
                 }
@@ -984,9 +984,9 @@ public class OffshoreInstance {
                 }
                 if (deposits[ResourceType.CREDITS.ordinal()] != 0)
                     throw new IllegalArgumentException("You cannot transfer credits");
-            }
 
-            disabledGuilds.put(senderDB.getGuild().getIdLong(), true);
+                disabledGuilds.put(senderDB.getGuild().getIdLong(), true);
+            }
 
             Map<ResourceType, Double> transfer = PnwUtil.resourcesToMap(amount);
 
@@ -1003,8 +1003,8 @@ public class OffshoreInstance {
                     double[] totalAddBalance = ResourceType.getBuffer();
                     addBalanceResult.forEach((a, b) -> ResourceType.add(totalAddBalance, b));
                     for (int i = 0; i < amount.length; i++) {
-                        if (Math.round(totalAddBalance[i] * 100) != Math.round(amount[i] * 100))
-                            throw new IllegalArgumentException("Error: Addbalance does not match" + MathMan.format(totalAddBalance[i]) + " != " + MathMan.format(amount[i]));
+                        if (Math.round((totalAddBalance[i] - amount[i]) * 100) > 1)
+                            throw new IllegalArgumentException("Error: Addbalance does not match (1) " + MathMan.format(totalAddBalance[i]) + " != " + MathMan.format(amount[i]));
                     }
                     // ensure the difference between depositsByAA and newDeposits match the addBalanceResult
                     for (int i = 0; i < amount.length; i++) {
@@ -1016,8 +1016,8 @@ public class OffshoreInstance {
                         for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : newDeposits.entrySet()) {
                             diff -= entry.getValue()[i];
                         }
-                        if (Math.round(diff * 100) != Math.round(totalAddBalance[i] * 100))
-                            throw new IllegalArgumentException("Error: Addbalance does not match" + MathMan.format(diff) + " != " + MathMan.format(totalAddBalance[i]));
+                        if (Math.round((diff - totalAddBalance[i]) * 100) > 1)
+                            throw new IllegalArgumentException("Error: Addbalance does not match (2) " + MathMan.format(diff) + " != " + MathMan.format(totalAddBalance[i]));
                     }
 
 
@@ -1044,7 +1044,6 @@ public class OffshoreInstance {
                 case AUTHORIZATION:
                 case CONFIRMATION:
                 default:
-
                 case OTHER:
                     log(senderDB, banker, receiver, "Unknown result: " + result + " | <@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
                 case SUCCESS:
@@ -1298,7 +1297,7 @@ public class OffshoreInstance {
             Map.Entry<TransferStatus, String> result = transferUnsafe(null, alliance, transfer, note);
             String msg = "`" + PnwUtil.resourcesToString(transfer) + "` -> " + alliance.getUrl() + "\n**" + result.getKey() + "**: " + result.getValue();
 
-            GuildMessageChannel logChannel = getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+            MessageChannel logChannel = getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
                 RateLimitUtil.queue(logChannel.sendMessage(msg));
             }
