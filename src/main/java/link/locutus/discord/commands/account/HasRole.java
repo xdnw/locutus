@@ -21,6 +21,7 @@ public class HasRole extends Command {
     public HasRole() {
         super(CommandCategory.INTERNAL_AFFAIRS, CommandCategory.USER_INFO);
     }
+
     @Override
     public String usage() {
         return super.usage() + " @user <role>";
