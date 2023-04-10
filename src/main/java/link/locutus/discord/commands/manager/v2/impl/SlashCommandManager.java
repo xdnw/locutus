@@ -250,19 +250,9 @@ public class SlashCommandManager extends ListenerAdapter {
         }
         System.out.println(builder);
 
-//        for (SlashCommandData cmd : toRegister) {
-//            String cmdData = cmd.toData().toString();
-//            if (cmdData.length() > 4000) {
-//                System.out.println("Command too long: " + cmd.getName() + " | " + cmdData.length());
-//                System.out.println(cmdData);
-//                System.exit(0);
-//            }
-//        }
 
         Guild guild = root.getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER); // testing
         if (!toRegister.isEmpty()) {
-//            CommandPrivilege.
-//            guild.updateCommandPrivileges(map);
 
             JDA api = Locutus.imp().getDiscordApi(guild.getIdLong());
 

@@ -1,39 +1,30 @@
 package link.locutus.discord.commands.rankings;
 
-import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.TimeUtil;
 import de.erichseifert.gral.data.DataTable;
 import de.erichseifert.gral.data.Row;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
+import link.locutus.discord.db.entities.AttackCost;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -151,10 +142,10 @@ public class WarCostByDay extends Command {
                 nameA = alliances1.size() == 1 ? alliances1.iterator().next().getNation() : args.get(0);
                 nameB = alliances2.size() == 1 ? alliances2.iterator().next().getNation() : args.get(1);
 
-                if (alliances1 == null || alliances1.isEmpty()) {
+                if (alliances1.isEmpty()) {
                     return "Invalid alliance: `" + args.get(0) + "`";
                 }
-                if (alliances2 == null || alliances2.isEmpty()) {
+                if (alliances2.isEmpty()) {
                     return "Invalid alliance: `" + args.get(1) + "`";
                 }
 
@@ -193,7 +184,7 @@ public class WarCostByDay extends Command {
             long turn = TimeUtil.getTurn(attack.epoch);
             long day = turn / 12;
             AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(finalNameA, finalNameB));
-            cost.addCost(attack, isPrimary, isSecondary);
+            cost.addCost(attack, Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
         }
 
         long min = Collections.min(warCostByDay.keySet());

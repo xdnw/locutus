@@ -90,20 +90,20 @@ import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 public class UtilityCommands {
     @Command(desc = "List the color blocs")
     public String calculateColorRevenue(@Default Set<DBNation> forceAqua,
-                             @Default Set<DBNation> forceBlack,
-                             @Default Set<DBNation> forceBlue,
-                             @Default Set<DBNation> forceBrown,
-                            @Default Set<DBNation> forceGreen,
-                             @Default Set<DBNation> forceLime,
-                             @Default Set<DBNation> forceMaroon,
-                             @Default Set<DBNation> forceOlive,
-                             @Default Set<DBNation> forceOrange,
-                             @Default Set<DBNation> forcePink,
-                             @Default Set<DBNation> forcePurple,
-                             @Default Set<DBNation> forceRed,
-                             @Default Set<DBNation> forceWhite,
-                             @Default Set<DBNation> forceYellow,
-                             @Default Set<DBNation> forceGrayOrBeige
+                                        @Default Set<DBNation> forceBlack,
+                                        @Default Set<DBNation> forceBlue,
+                                        @Default Set<DBNation> forceBrown,
+                                        @Default Set<DBNation> forceGreen,
+                                        @Default Set<DBNation> forceLime,
+                                        @Default Set<DBNation> forceMaroon,
+                                        @Default Set<DBNation> forceOlive,
+                                        @Default Set<DBNation> forceOrange,
+                                        @Default Set<DBNation> forcePink,
+                                        @Default Set<DBNation> forcePurple,
+                                        @Default Set<DBNation> forceRed,
+                                        @Default Set<DBNation> forceWhite,
+                                        @Default Set<DBNation> forceYellow,
+                                        @Default Set<DBNation> forceGrayOrBeige
     ) {
         Map<NationColor, Set<DBNation>> changeColors = new HashMap<>();
         changeColors.put(NationColor.AQUA, forceAqua);
@@ -279,7 +279,7 @@ public class UtilityCommands {
             valueTransferred.put((int) t.getSender(), valueTransferred.getOrDefault((int) t.getSender(), 0d) + value);
         }
 
-        
+
 
         new SummedMapRankBuilder<>(numTransactions).sort().name(new Function<Map.Entry<Integer, Integer>, String>() {
             @Override
@@ -784,7 +784,7 @@ public class UtilityCommands {
 
         String title = "Most " + offOrDef + "wars (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time) +")";
         if (normalizePerMember) title += "(per " + (ignore2dInactives ? "active " : "") + "nation)";
-        
+
         ranks.build(channel, command, title, true);
 
         return null;
@@ -864,7 +864,7 @@ public class UtilityCommands {
                         @Switch("i") Integer avg_infra,
                         @Switch("I") Integer infraTotal,
                         @Switch("b") String builtMMR
-                        ) {
+    ) {
         if (nation == null) {
             nation = new DBNation();
             nation.setMissiles(0);
@@ -1286,14 +1286,14 @@ public class UtilityCommands {
     }
 
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
-    desc = "Get detailed information about a nation\n" +
-            "Nation argument can be nation name, id, link, or discord tag\n" +
-            "Use `-l` to list the nations instead of just providing a summary\n" +
-            "Use `-r` to list discord tag (raw)\n" +
-            "Use `-p` to list discord tag (ping)\n" +
-            "Use `-i` to list individual nation info\n" +
-            "Use `-c` to list individual nation channels" +
-            "e.g. `{prefix}who @borg`")
+            desc = "Get detailed information about a nation\n" +
+                    "Nation argument can be nation name, id, link, or discord tag\n" +
+                    "Use `-l` to list the nations instead of just providing a summary\n" +
+                    "Use `-r` to list discord tag (raw)\n" +
+                    "Use `-p` to list discord tag (ping)\n" +
+                    "Use `-i` to list individual nation info\n" +
+                    "Use `-c` to list individual nation channels" +
+                    "e.g. `{prefix}who @borg`")
     public String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author,
                       Set<DBNation> nations,
                       @Default() NationPlaceholder sortBy,
@@ -1578,7 +1578,7 @@ public Map<ParametricCallable, String> getEndpoints() {
         IMessageBuilder msg = channel.create();
         StringBuilder result = new StringBuilder();
         sheet.attach(msg, result, false, 0);
-        
+
         result.append("Total: `" + PnwUtil.resourcesToString(total) + "`" +
                 "\nWorth: $" + MathMan.format(PnwUtil.convertedTotal(total)));
         result.append("\n\nUse " + CM.transfer.bulk.cmd.toSlashMention());
@@ -1588,8 +1588,8 @@ public Map<ParametricCallable, String> getEndpoints() {
         String emoji = "Confirm";
 
         msg.embed(title, result.toString())
-                        .commandButton(cmd, emoji)
-                                .send();
+                .commandButton(cmd, emoji)
+                .send();
 
         return null;
     }

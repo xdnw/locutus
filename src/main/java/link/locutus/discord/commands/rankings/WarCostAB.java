@@ -212,9 +212,9 @@ public class WarCostAB extends Command {
         String infoCmd = Settings.commandPrefix(true) + "warinfo " + warUrl.toUrl();
 
         io.create()
-            .embed(title, body)
-            .commandButton(cmd, reimburseEmoji)
-            .commandButton(infoCmd, infoEmoji)
-            .send();
+                .embed(title, body)
+                .commandButton(cmd, reimburseEmoji)
+                .commandButton(infoCmd, infoEmoji)
+                .send();
     }
 }
