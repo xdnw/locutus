@@ -78,7 +78,7 @@ public class TradeCommands {
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String sellList(TradeManager tMan, ResourceType youSell, @Default("MONEY") ResourceType youReceive, @Default Set<DBNation> allowedTraders,
-                          @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
+                           @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
         if (sortByLowestMaxPrice && sortByLowestMinPrice) {
             return "You can't sort by both lowest min and max price (pick one)";
         }
@@ -86,8 +86,8 @@ public class TradeCommands {
         Set<ResourceType> youReceiveSet = Collections.singleton(youReceive);
         Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(youSell, f ->
                 CollectionUtils.containsAny(f.getSelling(), youReceiveSet) &&
-                CollectionUtils.containsAny(f.getBuying(), youSellSet)
-                && (allowedTraders == null || allowedTraders.contains(f.getNation()))
+                        CollectionUtils.containsAny(f.getBuying(), youSellSet)
+                        && (allowedTraders == null || allowedTraders.contains(f.getNation()))
         );
         if (offers.isEmpty()) {
             return "No offers found";
@@ -257,7 +257,7 @@ public class TradeCommands {
             boolean isBuy = buyOrSell != null && buyOrSell.equalsIgnoreCase("BUYING");
             Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(f ->
                     f.nation == me.getNation_id() &&
-                    f.getResource() == deleteResource &&
+                            f.getResource() == deleteResource &&
                             (buyOrSell == null || (isBuy && f.isBuy)));
             offers.forEach(f -> idsToDelete.add(f.id));
         }
@@ -272,12 +272,12 @@ public class TradeCommands {
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String buyOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
-                      long quantity,
-                      @Switch("minPPU") Integer minPPU,
-                      @Switch("maxPPU") Integer maxPPU,
-                      @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
-                      @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
-                      @Switch("f") boolean force) {
+                           long quantity,
+                           @Switch("minPPU") Integer minPPU,
+                           @Switch("maxPPU") Integer maxPPU,
+                           @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
+                           @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
+                           @Switch("f") boolean force) {
         if (expire > TimeUnit.DAYS.toMillis(30)) {
             return "Expiry cannot be longer than 30 days.";
         }
@@ -351,12 +351,12 @@ public class TradeCommands {
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command
     public String sellOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
-                           long quantity,
-                           @Switch("minPPU") Integer minPPU,
-                           @Switch("maxPPU") Integer maxPPU,
-                           @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
-                           @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
-                           @Switch("f") boolean force) {
+                            long quantity,
+                            @Switch("minPPU") Integer minPPU,
+                            @Switch("maxPPU") Integer maxPPU,
+                            @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
+                            @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
+                            @Switch("f") boolean force) {
         if (expire > TimeUnit.DAYS.toMillis(30)) {
             return "Expiry cannot be longer than 30 days.";
         }
@@ -460,9 +460,9 @@ public class TradeCommands {
                 .addField("Low", StringMan.join(low, "\n"), true)
                 .addField("High", StringMan.join(high, "\n"), true).build();
         channel.create()
-                        .embed(embed)
-                        .commandButton(command, "Refresh")
-                                .send();
+                .embed(embed)
+                .commandButton(command, "Refresh")
+                .send();
         return null;
     }
 
@@ -502,9 +502,9 @@ public class TradeCommands {
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Global Trade Volume")
                 .addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true)
-        .addField("Daily", StringMan.join(daily, " "), true)
-        .addField("Weekly", StringMan.join(weekly, " "), true)
-        .build()
+                .addField("Daily", StringMan.join(daily, " "), true)
+                .addField("Weekly", StringMan.join(weekly, " "), true)
+                .build()
         ).commandButton(command, "Refresh").send();
 
         return null;
@@ -593,7 +593,7 @@ public class TradeCommands {
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Trade Margin")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
-        .addField("margin", StringMan.join(diffList, "\n"), true)
+                .addField("margin", StringMan.join(diffList, "\n"), true)
                 .build()
         ).commandButton(command, "Refresh").send();
 
@@ -628,9 +628,9 @@ public class TradeCommands {
 
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Trade Price")
-               .addField("Resource", StringMan.join(resourceNames, "\n"), true)
-        .addField(lowKey, StringMan.join(lowList, "\n"), true)
-        .addField(highKey, StringMan.join(highList, "\n"), true)
+                .addField("Resource", StringMan.join(resourceNames, "\n"), true)
+                .addField(lowKey, StringMan.join(lowList, "\n"), true)
+                .addField(highKey, StringMan.join(highList, "\n"), true)
                 .build()
         ).commandButton(command, "Refresh").send();
         return null;
@@ -1421,8 +1421,8 @@ public class TradeCommands {
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Trade Price")
                 .addField("Nation", StringMan.join(nationName, "\n"), true)
-        .addField("Amt", StringMan.join(amtList, "\n"), true)
-        .addField("Ppu", StringMan.join(ppuList, "\n"), true)
+                .addField("Amt", StringMan.join(amtList, "\n"), true)
+                .addField("Ppu", StringMan.join(ppuList, "\n"), true)
                 .build()
         ).commandButton(command, "Refresh").send();
         return null;

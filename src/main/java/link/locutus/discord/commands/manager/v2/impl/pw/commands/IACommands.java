@@ -1074,8 +1074,8 @@ public class IACommands {
 
                     CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, null, null, null, null, null, null, "true", null);
                     channel.create().embed(title, body)
-                                    .commandButton(cmd, "Disburse 3 days")
-                                            .send();
+                            .commandButton(cmd, "Disburse 3 days")
+                            .send();
                 }
             }
         }
@@ -1398,7 +1398,7 @@ public class IACommands {
         List<String> channels = guild.getTextChannels().stream().filter(f -> f.getMembers().contains(member)).map(f -> f.getAsMention()).collect(Collectors.toList());
         User user = member.getUser();
         return user.getName() + "#" + user.getDiscriminator() + " has access to:\n" +
-            StringMan.join(channels, "\n");
+                StringMan.join(channels, "\n");
     }
 
     @Command(desc = "Open a channel")

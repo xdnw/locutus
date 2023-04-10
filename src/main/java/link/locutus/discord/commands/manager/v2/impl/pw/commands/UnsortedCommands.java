@@ -144,17 +144,17 @@ public class UnsortedCommands {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
-            "ID",
-            "Name",
-            "Money Rate",
-            "Resource Rate",
-            "Alliance",
-            "Nations",
-            "Total[TAX]",
-            "Total[DEPOSITS]",
-            "Value[TAX]",
-            "Value[*]",
-            "Revenue Value"
+                "ID",
+                "Name",
+                "Money Rate",
+                "Resource Rate",
+                "Alliance",
+                "Nations",
+                "Total[TAX]",
+                "Total[DEPOSITS]",
+                "Value[TAX]",
+                "Value[*]",
+                "Revenue Value"
         ));
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
@@ -618,7 +618,7 @@ public class UnsortedCommands {
 
     @Command
     public String revenue(@Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User user, @Me DBNation me,
-                                NationList nations, @Switch("t") boolean includeUntaxable, @Switch("b") boolean excludeNationBonus) throws Exception {
+                          NationList nations, @Switch("t") boolean includeUntaxable, @Switch("b") boolean excludeNationBonus) throws Exception {
         ArrayList<DBNation> filtered = new ArrayList<>(nations.getNations());
         if (!includeUntaxable) {
             filtered.removeIf(f -> f.getAlliance_id() == 0 || f.getVm_turns() != 0);

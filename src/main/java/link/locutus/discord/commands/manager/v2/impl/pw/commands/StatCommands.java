@@ -2,22 +2,25 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
-import com.ptsmods.mysqlw.query.builder.SelectBuilder;
+import de.erichseifert.gral.data.DataTable;
+import de.erichseifert.gral.graphics.Insets2D;
+import de.erichseifert.gral.graphics.Location;
+import de.erichseifert.gral.io.plots.DrawableWriter;
+import de.erichseifert.gral.io.plots.DrawableWriterFactory;
+import de.erichseifert.gral.plots.BarPlot;
+import de.erichseifert.gral.plots.colors.ColorMapper;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.builder.*;
@@ -26,66 +29,31 @@ import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
-import de.erichseifert.gral.data.DataTable;
-import de.erichseifert.gral.graphics.Insets2D;
-import de.erichseifert.gral.graphics.Location;
-import de.erichseifert.gral.io.plots.DrawableWriter;
-import de.erichseifert.gral.io.plots.DrawableWriterFactory;
-import de.erichseifert.gral.plots.BarPlot;
-import de.erichseifert.gral.plots.colors.ColorMapper;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.ClassUtils;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Paint;
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.rankings.WarCostRanking.scale;
@@ -108,7 +76,7 @@ public class StatCommands {
         long minDay = TimeUtil.getDay(cutoff);
         long maxDay = TimeUtil.getDay();
         if (maxDay - minDay > 50000) {
-            throw new IllegalArgumentException("Too many days");
+            throw new IllegalArgumentException("Too many days.");
         }
         Map<Long, Integer> totalAttacksByDay = new HashMap<>();
         for (DBAttack attack : attacks) {
@@ -116,7 +84,7 @@ public class StatCommands {
             totalAttacksByDay.put(day, totalAttacksByDay.getOrDefault(day, 0) + 1);
         }
 
-        List<String> sheet = new ArrayList<>(Arrays.asList(
+        List<String> sheet = new ArrayList<>(List.of(
                 "Day,Attacks"
         ));
         TimeNumericTable<Void> table = new TimeNumericTable<>("Total attacks by day", "day", "attacks", "") {
@@ -141,6 +109,7 @@ public class StatCommands {
                 .send();
         return null;
     }
+
     @Command(desc = "Rank war costs between two parties")
     public String warCostRanking(@Me IMessageIO io, @Me User author, @Me JSONObject command,
                                  @Timestamp long timeStart, @Timestamp @Default Long timeEnd, @Default("*") Set<NationOrAlliance> coalition1, @Default("*") Set<NationOrAlliance> coalition2,
@@ -1419,8 +1388,6 @@ public class StatCommands {
                             } else if (includeGray) {
                                 cost = activeCost;
                             }
-                        } else if (enemyAttack) {
-//                            cost = attSuicides;
                         } else {
                             continue;
                         }

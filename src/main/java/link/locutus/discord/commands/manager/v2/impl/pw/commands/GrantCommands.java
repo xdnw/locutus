@@ -997,7 +997,7 @@ public class GrantCommands {
         response.append("activity[day]=" + MathMan.format(nation.avg_daily_login() * 100) + "%\n");
         return response + "<" + StringMan.join(pages, ">\n<") + ">";
     }
-//
+    //
     private Set<Integer> disabledNations = new HashSet<>();
 //
 //    @WhitelistPermission
