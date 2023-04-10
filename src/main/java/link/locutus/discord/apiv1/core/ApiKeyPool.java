@@ -7,15 +7,61 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import java.util.*;
 
 public class ApiKeyPool {
-    private List<ApiKey> apiKeyPool;
+    private final List<ApiKey> apiKeyPool;
     private int nextIndex;
 
+    public ApiKeyPool(Collection<ApiKey> keys) {
+        this.apiKeyPool = new ArrayList<>(keys);
+        this.nextIndex = 0;
+        if (apiKeyPool.size() == 0) {
+            throw new PoliticsAndWarAPIException("No API Key provided, Make sure apiKeyPool array is not empty.");
+        }
+    }
+
+    public static SimpleBuilder builder() {
+        return new SimpleBuilder();
+    }
+
+    public static ApiKeyPool create(int nationId, String key) {
+        return builder().addKey(nationId, key).build();
+    }
+
+    public static ApiKeyPool create(ApiKey key) {
+        return builder().addKey(key).build();
+    }
+
+    public List<ApiKey> getKeys() {
+        return apiKeyPool;
+    }
+
+    public synchronized ApiKey getNextApiKey() {
+        if (this.nextIndex >= this.apiKeyPool.size()) {
+            this.nextIndex = 0;
+        }
+        if (this.apiKeyPool.isEmpty())
+            throw new IllegalArgumentException("No API key found: " + CM.settings.cmd.create("API_KEY", null, null, null).toSlashCommand() + "`)");
+        ApiKey key = this.apiKeyPool.get(this.nextIndex++);
+        key.use();
+        return key;
+    }
+
+    public synchronized void removeKey(ApiKey key) {
+        key.setValid(false);
+        if (apiKeyPool.size() == 1) throw new IllegalArgumentException("Invalid API key.");
+        this.apiKeyPool.removeIf(f -> f.equals(key));
+    }
+
+    public int size() {
+        return apiKeyPool.size();
+    }
+
     public static class ApiKey {
-        private int nationId;
         private final String key;
+        private int nationId;
         private String botKey;
         private boolean valid;
         private int usage;
+
         public ApiKey(int nationId, String key, String botKey) {
             this.nationId = nationId;
             this.key = key;
@@ -76,26 +122,6 @@ public class ApiKeyPool {
         }
     }
 
-    public ApiKeyPool(Collection<ApiKey> keys) {
-        this.apiKeyPool = new ArrayList<>(keys);
-        this.nextIndex = 0;
-        if (apiKeyPool.size() == 0) {
-            throw new PoliticsAndWarAPIException("No API Key provided. Make sure apiKeyPool array is not empty");
-        }
-    }
-
-    public static SimpleBuilder builder() {
-        return new SimpleBuilder();
-    }
-
-    public static ApiKeyPool create(int nationId, String key) {
-        return builder().addKey(nationId, key).build();
-    }
-
-    public static ApiKeyPool create(ApiKey key) {
-        return builder().addKey(key).build();
-    }
-
     public static class SimpleBuilder {
         private final Map<String, ApiKey> keys = new LinkedHashMap<>();
 
@@ -139,35 +165,12 @@ public class ApiKeyPool {
         }
 
         public ApiKeyPool build() {
-            if (keys.isEmpty()) throw new IllegalArgumentException("No api keys were provided");
+            if (keys.isEmpty()) throw new IllegalArgumentException("No api keys were provided.");
             return new ApiKeyPool(keys.values());
         }
 
         public SimpleBuilder addKey(ApiKey key) {
             return addKey(key.nationId, key.key, key.botKey);
         }
-    }
-
-    public List<ApiKey> getKeys() {
-        return apiKeyPool;
-    }
-
-    public synchronized ApiKey getNextApiKey() {
-        if (this.nextIndex >= this.apiKeyPool.size()) {
-            this.nextIndex = 0;
-        }
-        if (this.apiKeyPool.isEmpty()) throw new IllegalArgumentException("No API key found (Is it set, or out of uses? `"+ CM.settings.cmd.create("API_KEY", null, null, null).toSlashCommand() + "`)");
-        ApiKey key = this.apiKeyPool.get(this.nextIndex++);
-        key.use();
-        return key;
-    }
-
-    public synchronized void removeKey(ApiKey key) {
-        key.setValid(false);
-        if (apiKeyPool.size() == 1) throw new IllegalArgumentException("Invalid API key");
-        this.apiKeyPool.removeIf(f -> f.equals(key));
-    }
-    public int size() {
-        return apiKeyPool.size();
     }
 }
