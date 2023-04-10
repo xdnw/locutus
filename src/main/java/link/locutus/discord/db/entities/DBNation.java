@@ -1388,7 +1388,7 @@ public class DBNation implements NationOrAlliance {
         if (lastTurn == null || (currentTurn - lastTurn.getLong() > turns)) {
             try {
                 if (getPositionEnum().id > Rank.APPLICANT.id) {
-                    if (getAlliance().updateSpies(false)) {
+                    if (getAlliance().updateSpies(false).contains(nation_id)) {
                         return spies;
                     }
                 }

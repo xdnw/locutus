@@ -408,8 +408,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return true;
     }
 
-    public boolean updateSpies(boolean updateManually) {
+    public Set<Integer> updateSpies(boolean updateManually) {
         PoliticsAndWarV3 api = getApi(AlliancePermission.SEE_SPIES);
+        Set<Integer> updated = new HashSet<>();
         if (api != null) {
             List<Nation> nations = api.fetchNations(f -> {
                 f.setAlliance_id(List.of(allianceId));
@@ -422,6 +423,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             for (Nation nation : nations) {
                 Integer spies = nation.getSpies();
                 if (spies != null) {
+                    updated.add(nation.getId());
                     DBNation locutusNation = DBNation.byId(nation.getId());
                     if (locutusNation != null) {
                         locutusNation.setSpies(spies, true);
@@ -430,13 +432,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 }
             }
             Locutus.imp().getNationDB().saveNations(toSave);
-            return true;
+            return updated;
         }
-        if (!updateManually) return false;
+        if (!updateManually) return updated;
         for (DBNation nation : getNations(true, 1440, true)) {
             nation.updateSpies();
+            updated.add(nation.getId());
         }
-        return true;
+        return updated;
     }
 
     public DBNation getTotal() {

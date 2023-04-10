@@ -135,7 +135,7 @@ public interface NationList {
         return total;
     }
 
-    default boolean updateSpies(boolean updateManually) {
+    default Set<Integer> updateSpies(boolean updateManually) {
         Set<DBNation> toUpdate = new HashSet<>(getNations());
         toUpdate.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 7200);
         Set<Integer> alliances = new HashSet<>();
@@ -144,19 +144,19 @@ public interface NationList {
                 alliances.add(nation.getAlliance_id());
             }
         }
+        Set<Integer> updated = new HashSet<>();
         boolean hasUpdated = false;
         for (Integer allianceId : alliances) {
-            if (DBAlliance.getOrCreate(allianceId).updateSpies(false)) {
-                toUpdate.removeIf(f -> f.getPosition() > Rank.APPLICANT.id && f.getAlliance_id() == allianceId);
-                hasUpdated = true;
-            }
+            Set<Integer> result = DBAlliance.getOrCreate(allianceId).updateSpies(false);
+            updated.addAll(result);
+            toUpdate.removeIf(f -> result.contains(f.getId()));
         }
         if (updateManually) {
             for (DBNation nation : toUpdate) {
-                hasUpdated = true;
                 nation.updateSpies();
+                updated.add(nation.getId());
             }
         }
-        return hasUpdated;
+        return updated;
     }
 }

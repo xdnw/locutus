@@ -52,6 +52,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.OffsetDateTime;
 import java.util.AbstractMap;
@@ -324,8 +325,8 @@ public class IACommands {
             if (!db.isAllianceId(nation.getAlliance_id()) || nation.getPosition() < 1) return "Nation is not a member: " + nation.getNationUrl() + "(see `#position>1,<args>`,";
         }
 
-        boolean result = new SimpleNationList(nations).updateSpies(false);
-        if (!result) {
+        Set<Integer> result = new SimpleNationList(nations).updateSpies(false);
+        if (result.isEmpty()) {
             return "Could not update spies (see " + CM.settings.cmd.create("API_KEY", null, null, null).toSlashCommand() + ")";
         }
 
@@ -333,12 +334,14 @@ public class IACommands {
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         Map<Integer, Integer> lastSpyCounts = Locutus.imp().getNationDB().getLastSpiesByNation(nationIds, dayCutoff);
 
+        List<String> errors = new ArrayList<>();
+        List<DBNation> notUpdated = new ArrayList<>();
         List<DBNation> lacking = new ArrayList<>();
-        int noData = 0;
         for (DBNation nation : nations) {
             Integer spies = nation.getSpies();
-            if (spies == null) {
-                noData++;
+            if (!result.contains(nation.getNation_id()) || spies == null) {
+                errors.add(nation.getNation() + "\t" + nation.getUrl() + "\t" + "UNABLE TO UPDATE SPIES");
+                notUpdated.add(nation);
                 continue;
             }
             int spyCap = nation.getSpyCap();
@@ -346,7 +349,7 @@ public class IACommands {
 
             Integer lastSpies = lastSpyCounts.get(nation.getNation_id());
             if (lastSpies == null) {
-                noData++;
+                errors.add(nation.getNation() + "\t" + nation.getUrl() + "\t" + "NO PREVIOUS DATA");
                 continue;
             }
             if (lastSpies.equals(spies) && spies < spyCap - 1) {
@@ -354,8 +357,15 @@ public class IACommands {
             }
         }
 
+        IMessageBuilder msg = channel.create();
+
+        if (!errors.isEmpty()) {
+            msg.file("errors.csv", "nation,url,error\n" + StringMan.join(errors, "\n"));
+        }
+
         if (lacking.isEmpty()) {
-            return "All nations have spies (no data for " + noData + "/" + nations.size() + " nations)";
+            msg.append("No results found").send();
+            return null;
         }
 
         Set<Integer> lackingIds = lacking.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
@@ -366,7 +376,8 @@ public class IACommands {
             response.append("\n" + nation.getNation() + ": " + nation.getSpies() + "/" + nation.getSpyCap());
         }
 
-        return response.toString();
+        msg.append(response.toString()).send();
+        return null;
     }
 
     @Command(desc = "Assign a mentor to a mentee")
