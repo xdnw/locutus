@@ -4,18 +4,14 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.commons.lang3.text.WordUtils;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class HelpCommand extends Command {
     private final CommandManager manager;
@@ -32,7 +28,7 @@ public class HelpCommand extends Command {
 
     @Override
     public String desc() {
-        return "Get command help";
+        return "Get a command help.";
     }
 
     @Override

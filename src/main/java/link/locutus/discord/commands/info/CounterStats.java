@@ -3,23 +3,15 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class CounterStats extends Command {
     public CounterStats() {
