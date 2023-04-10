@@ -4,19 +4,15 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import net.dv8tion.jda.api.entities.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
@@ -26,6 +22,7 @@ public class Embassy extends Command {
     public Embassy() {
         super(CommandCategory.FOREIGN_AFFAIRS, CommandCategory.USER_COMMANDS);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;
@@ -42,6 +39,7 @@ public class Embassy extends Command {
         if (category == null) {
             return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
         }
+        DBNation nation = me;
         if (args.size() == 1 && args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.ADMIN.has(event.getAuthor(), event.getGuild())) return "No permission.";
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(event.getGuild().getRoles());
@@ -59,7 +57,8 @@ public class Embassy extends Command {
             }
             return "Done!";
         } else if (args.size() == 1) {
-            if (Roles.ADMIN.has(event.getAuthor(), event.getGuild()));
+            nation = PWBindings.nation(event.getAuthor(), args.get(0));
+            if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(event.getAuthor(), event.getGuild())) return "You do not have FOREIGN_AFFAIRS";
         }
 
         if (me.getAlliance_id() == 0) {
