@@ -1,6 +1,9 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -8,19 +11,11 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class UnitHistory extends Command {

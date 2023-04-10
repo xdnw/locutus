@@ -1,36 +1,32 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.json.CityBuild;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.domains.City;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.json.CityBuild;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class Revenue extends Command {
     public Revenue() {
         super("revenue", "alliancerev", "income", CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.ECON);
     }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + "revenue [json|city-link|nation-link]";
@@ -38,9 +34,10 @@ public class Revenue extends Command {
 
     @Override
     public String desc() {
-        return "Get revenue. Use `-bonus` to ignore new nation bonuses\n" +
-                "Add `-b` to exclude nation bonus\n" +
-                "Add `-i` to include inactive/beige/gray/vm/apps";
+        return """
+                Get revenue. Use `-bonus` to ignore new nation bonuses
+                Add `-b` to exclude nation bonus
+                Add `-i` to include inactive/beige/gray/vm/apps""";
     }
 
     @Override

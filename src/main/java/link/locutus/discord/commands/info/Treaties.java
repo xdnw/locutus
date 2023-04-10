@@ -1,19 +1,15 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.PendingTreaty;
-import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.apiv1.enums.TreatyType;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -28,6 +24,7 @@ public class Treaties extends Command {
     public Treaties() {
         super(CommandCategory.FOREIGN_AFFAIRS, CommandCategory.GAME_INFO_AND_TOOLS);
     }
+
     @Override
     public boolean checkPermission(Guild server, User user) {
         return true;
@@ -50,7 +47,6 @@ public class Treaties extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Set<Integer> aaIds = db.getAllianceIds();
-
         Set<Treaty> allTreaties = new LinkedHashSet<>();
         Map<Integer, Treaty> treaties = new LinkedHashMap<>();
         for (Integer alliance : alliances) {
@@ -68,7 +64,7 @@ public class Treaties extends Command {
             response.append(from + " | " + type + " -> " + to).append("\n");
         }
 
-        if (allTreaties.isEmpty()) return "No treaties";
+        if (allTreaties.isEmpty()) return "No treaties.";
 
         String title = allTreaties.size() + " treaties";
         DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString());

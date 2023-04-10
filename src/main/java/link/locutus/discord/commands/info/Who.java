@@ -11,30 +11,26 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class Who extends Command {
-    private final SpyCommand spyCmd;
 
     public Who(SpyCommand spyCmd) {
         super("pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois", CommandCategory.GAME_INFO_AND_TOOLS);
-        this.spyCmd = spyCmd;
     }
 
     @Override
