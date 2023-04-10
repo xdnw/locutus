@@ -2464,7 +2464,6 @@ public class BankCommands {
     @Command
     @RolePermission(value = Roles.ADMIN)
     public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance offshoreAlliance, @Switch("f") boolean force) throws IOException {
-        if (nation.getAgeDays() < 100) return "Please contact <@664156861033086987> | borg#5729";
         if (root.isDelegateServer()) return "Cannot enable offshoring for delegate server (run this command in the root server)";
 
         IMessageBuilder confirmButton = io.create().confirmation(CM.offshore.add.cmd.create(offshoreAlliance.getId() + "", null));
