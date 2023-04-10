@@ -31,8 +31,6 @@ public class Response<T extends Entity> {
         JsonElement jsonElement = new JsonParser().parse(jsonStr);
         JsonObject jsonObject = jsonElement.getAsJsonObject();
 
-      if(!t.getClass().getName().equals(Wars.class.getName()) || !t.getClass().getName().equals(Alliances.class.getName()) ||
-          !t.getClass().getName().equals(Nations.class.getName())) {
         if (jsonObject.has("error") || jsonObject.has("error_message") ||
                 jsonObject.has("general_message") || jsonObject.has("message")) {
             if (jsonObject.has("general_message"))
