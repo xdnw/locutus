@@ -1,11 +1,11 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.apiv1.enums.SuccessType;
 import net.dv8tion.jda.api.entities.User;
 
 public class AttackCommands {

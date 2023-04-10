@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.buildcmd.AssignBuild;
 import link.locutus.discord.commands.buildcmd.GetBuild;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -9,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.CityRanges;
@@ -17,7 +15,6 @@ import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
-import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.io.IOException;
 import java.util.ArrayList;

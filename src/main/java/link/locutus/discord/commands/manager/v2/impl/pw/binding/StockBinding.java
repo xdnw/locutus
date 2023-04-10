@@ -36,7 +36,7 @@ public class StockBinding extends BindingHelper {
     public Exchange exchangeByContext(StockDB db, @Me Guild guild, @Me MessageChannel channel) {
         GuildDB rootGuild = Locutus.imp().getGuildDB(StockDB.ROOT_GUILD);
         if (rootGuild.getGuild().getIdLong() != guild.getIdLong()) {
-            throw new IllegalArgumentException("This command must be used inside the company channel on: <https://discord.gg/TAF5zkh6WJ>");
+            throw new IllegalArgumentException("This command must be used inside the company channel.");
         }
         String[] split = channel.getName().split("-");
         IllegalArgumentException err = new IllegalArgumentException("This command must be used inside the company channel in this guild.");

@@ -192,7 +192,7 @@ public class DiscordMessageBuilder implements IMessageBuilder {
     public IMessageBuilder commandButton(String command, String message) {
         if (command.length() > ID_MAX_LENGTH) {
             int id = remapLongCommands.size();
-            for (; remapLongCommands.containsKey(id + ""); id++);
+            for (; remapLongCommands.containsKey(id + ""); id++) ;
             String cmdLong = command;
             command = id + "";
             remapLongCommands.put(command, cmdLong);
