@@ -164,7 +164,7 @@ public class PoliticsAndWarV3 {
                         }
                     }
                     String message = errorMessages.isEmpty() ? errors.toString() : StringMan.join(errorMessages, "\n");
-                    throw new IllegalArgumentException(message.replace(pair.getKey(), "XXX"));
+                    rethrow(new IllegalArgumentException(message.replace(pair.getKey(), "XXX")), pair, true);
                 }
 
                 result = jacksonObjectMapper.readValue(body, resultBody);
@@ -241,21 +241,22 @@ public class PoliticsAndWarV3 {
     }
 
     private <T extends Throwable> void rethrow(T e, ApiKeyPool.ApiKey pair, boolean throwRuntime) {
+        String msg = e.getMessage();
         if (e.getMessage() != null &&
                 (StringUtils.containsIgnoreCase(e.getMessage(), pair.getKey()) ||
                 (pair.getBotKey() != null && StringUtils.containsIgnoreCase(e.getMessage(), pair.getBotKey())))) {
-            String msg = StringUtils.replaceIgnoreCase(e.getMessage(), pair.getKey(), "XXX");
+            msg = StringUtils.replaceIgnoreCase(e.getMessage(), pair.getKey(), "XXX");
             if (pair.getBotKey() != null) msg = StringUtils.replaceIgnoreCase(msg, pair.getBotKey(), "XXX");
-            if (pair.getKey() != null) {
-                Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(pair.getKey());
-                if (nation != null) {
-                    msg = msg + " (using key from: " + nation + ")";
-                }
-            }
-
-            throw new RuntimeException(msg);
+            throwRuntime = true;
         }
-        if (throwRuntime) throw new RuntimeException(e.getMessage());
+        if (msg == null) msg = "";
+        if (pair.getKey() != null) {
+            Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(pair.getKey());
+            if (nation != null) {
+                msg = msg + " (using key from: " + nation + ")";
+            }
+        }
+        if (throwRuntime) throw new RuntimeException(msg);
     }
 
     public <T extends GraphQLResult<?>> void handlePagination(Function<Integer, GraphQLRequest> requestFactory, Function<GraphQLError, ErrorResponse> errorBehavior, Class<T> resultBody, Predicate<T> hasMorePages, Consumer<T> onEachResult) {

@@ -766,6 +766,17 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return result;
     }
 
+    public PoliticsAndWarV3 getApiOrThrow(boolean preferKeyStore, AlliancePermission... permissions) {
+        if (preferKeyStore) {
+            GuildDB db = getGuildDB();
+            if (db != null) {
+                ApiKeyPool key = db.getApiKey(allianceId, permissions);
+                if (key != null) return new PoliticsAndWarV3(key);
+            }
+        }
+        return getApiOrThrow(permissions);
+    }
+
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
         PoliticsAndWarV3 api = getApi( permissions);
         if (api == null) {
@@ -1160,26 +1171,26 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public boolean setTaxBracket(TaxBracket required, DBNation nation) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.TAX_BRACKETS);
         com.politicsandwar.graphql.model.TaxBracket result = api.assignTaxBracket(required.taxId, nation.getNation_id());
         return result != null;
     }
 
     public Treaty sendTreaty(int allianceId, TreatyType type, String message, int days) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.MANAGE_TREATIES);
         com.politicsandwar.graphql.model.Treaty result = api.proposeTreaty(allianceId, days, type, message);
         return new Treaty(result);
     }
 
     public Treaty approveTreaty(int id) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.MANAGE_TREATIES);
         com.politicsandwar.graphql.model.Treaty result = api.approveTreaty(id);
         return new Treaty(result);
     }
 
 
     public Treaty cancelTreaty(int id) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.MANAGE_TREATIES);
         com.politicsandwar.graphql.model.Treaty result = api.cancelTreaty(id);
         return new Treaty(result);
     }
