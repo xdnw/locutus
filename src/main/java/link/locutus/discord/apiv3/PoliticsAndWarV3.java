@@ -3,14 +3,10 @@ package link.locutus.discord.apiv3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.StringMan;
@@ -18,11 +14,6 @@ import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.offshore.OffshoreInstance;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.HttpEntity;
@@ -39,7 +30,6 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
     static {
@@ -129,8 +119,8 @@ public class PoliticsAndWarV3 {
             }
         }
 
-        ResponseEntity<String> exchange = null;
-        T result = null;
+        ResponseEntity<String> exchange;
+        T result;
 
         int badKey = 0;
         int backOff = 0;
@@ -149,14 +139,14 @@ public class PoliticsAndWarV3 {
                         String.class);
 
                 String body = exchange.getBody();
-                JsonNode json = (ObjectNode) jacksonObjectMapper.readTree(body);
+                JsonNode json = jacksonObjectMapper.readTree(body);
 
                 if (json.has("errors")) {
                     System.out.println("Body " + exchange.getBody());
                     System.out.println("\n\n------\n");
                     System.out.println(graphQLRequest.toQueryString() + " | " + graphQLRequest.getRequest());
                     System.out.println("\n\n------\n");
-                    JsonNode errors = (JsonNode) json.get("errors");
+                    JsonNode errors = json.get("errors");
                     List<String> errorMessages = new ArrayList<>();
                     for (JsonNode error : errors) {
                         if (error.has("message")) {
@@ -191,7 +181,6 @@ public class PoliticsAndWarV3 {
                     throw e;
                 }
                 pool.removeKey(pair);
-                continue;
             } catch (HttpClientErrorException e) {
                 e.printStackTrace();
                 AlertUtil.error(e.getMessage(), e);
@@ -221,19 +210,19 @@ public class PoliticsAndWarV3 {
         HttpHeaders header = exchange.getHeaders();
         synchronized (rateLimitGlobal) {
             if (header.containsKey("X-RateLimit-Reset-After")) {
-                rateLimitGlobal.resetAfterMs = Long.parseLong(header.get("X-RateLimit-Reset-After").get(0)) * 1000L;
+                rateLimitGlobal.resetAfterMs = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset-After")).get(0)) * 1000L;
             }
             if (header.containsKey("X-RateLimit-Limit")) {
-                rateLimitGlobal.limit = Integer.parseInt(header.get("X-RateLimit-Limit").get(0));
+                rateLimitGlobal.limit = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Limit")).get(0));
             }
             if (header.containsKey("X-RateLimit-Remaining")) {
-                rateLimitGlobal.remaining = Integer.parseInt(header.get("X-RateLimit-Remaining").get(0));
+                rateLimitGlobal.remaining = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Remaining")).get(0));
             }
             if (header.containsKey("X-RateLimit-Reset")) {
-                rateLimitGlobal.resetMs = Long.parseLong(header.get("X-RateLimit-Reset").get(0)) * 1000L;
+                rateLimitGlobal.resetMs = Long.parseLong(Objects.requireNonNull(header.get("X-RateLimit-Reset")).get(0)) * 1000L;
             }
             if (header.containsKey("X-RateLimit-Interval")) {
-                rateLimitGlobal.intervalMs = Integer.parseInt(header.get("X-RateLimit-Interval").get(0)) * 1000;
+                rateLimitGlobal.intervalMs = Integer.parseInt(Objects.requireNonNull(header.get("X-RateLimit-Interval")).get(0)) * 1000;
             }
         }
 
@@ -264,7 +253,6 @@ public class PoliticsAndWarV3 {
         for (int page = 1; ; page++) {
             GraphQLRequest graphQLRequest = requestFactory.apply(page);
 
-            errorLoop:
             for (int i = 0; i < 5; i++) {
                 T result = readTemplate(graphQLRequest, resultBody);
 
@@ -294,7 +282,7 @@ public class PoliticsAndWarV3 {
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
-                            continue errorLoop;
+                            continue;
                         case EXIT:
                             break pageLoop;
                         case THROW:
@@ -492,20 +480,17 @@ public class PoliticsAndWarV3 {
     }
 
     public List<War> fetchWarsWithInfo(Consumer<WarsQueryRequest> filter) {
-        return fetchWars(WARS_PER_PAGE, filter, new Consumer<WarResponseProjection>() {
-            @Override
-            public void accept(WarResponseProjection p) {
-                p.id();
-                p.att_id();
-                p.def_id();
-                p.att_alliance_id();
-                p.def_alliance_id();
-                p.war_type();
-                p.att_peace();
-                p.def_peace();
-                p.winner_id();
-                p.date();
-            }
+        return fetchWars(WARS_PER_PAGE, filter, p -> {
+            p.id();
+            p.att_id();
+            p.def_id();
+            p.att_alliance_id();
+            p.def_alliance_id();
+            p.war_type();
+            p.att_peace();
+            p.def_peace();
+            p.winner_id();
+            p.date();
         }, f -> ErrorResponse.THROW, f -> true);
     }
 
@@ -550,48 +535,45 @@ public class PoliticsAndWarV3 {
     }
 
     public List<City> fetchCitiesWithInfo(Consumer<CitiesQueryRequest> filter, boolean cityInfo) {
-        return fetchCities(filter, new Consumer<CityResponseProjection>() {
-            @Override
-            public void accept(CityResponseProjection proj) {
-                proj.nation_id();
-                proj.id();
-                proj.infrastructure();
+        return fetchCities(filter, proj -> {
+            proj.nation_id();
+            proj.id();
+            proj.infrastructure();
 
-                if (cityInfo) {
-                    proj.date();
-                    proj.land();
-                    proj.powered();
+            if (cityInfo) {
+                proj.date();
+                proj.land();
+                proj.powered();
 
 //                    proj.nuke_date();
 
-                    proj.oil_power();
-                    proj.wind_power();
-                    proj.coal_power();
-                    proj.nuclear_power();
-                    proj.coal_mine();
-                    proj.lead_mine();
-                    proj.iron_mine();
-                    proj.bauxite_mine();
-                    proj.oil_well();
-                    proj.uranium_mine();
-                    proj.farm();
-                    proj.police_station();
-                    proj.hospital();
-                    proj.recycling_center();
-                    proj.subway();
-                    proj.supermarket();
-                    proj.bank();
-                    proj.shopping_mall();
-                    proj.stadium();
-                    proj.oil_refinery();
-                    proj.aluminum_refinery();
-                    proj.steel_mill();
-                    proj.munitions_factory();
-                    proj.barracks();
-                    proj.factory();
-                    proj.hangar();
-                    proj.drydock();
-                }
+                proj.oil_power();
+                proj.wind_power();
+                proj.coal_power();
+                proj.nuclear_power();
+                proj.coal_mine();
+                proj.lead_mine();
+                proj.iron_mine();
+                proj.bauxite_mine();
+                proj.oil_well();
+                proj.uranium_mine();
+                proj.farm();
+                proj.police_station();
+                proj.hospital();
+                proj.recycling_center();
+                proj.subway();
+                proj.supermarket();
+                proj.bank();
+                proj.shopping_mall();
+                proj.stadium();
+                proj.oil_refinery();
+                proj.aluminum_refinery();
+                proj.steel_mill();
+                proj.munitions_factory();
+                proj.barracks();
+                proj.factory();
+                proj.hangar();
+                proj.drydock();
             }
         });
     }
@@ -637,30 +619,27 @@ public class PoliticsAndWarV3 {
     }
 
     public Consumer<BankrecResponseProjection> createBankRecProjection() {
-        return new Consumer<BankrecResponseProjection>() {
-            @Override
-            public void accept(BankrecResponseProjection proj) {
-                proj.id();
-                proj.date();
-                proj.sender_id();
-                proj.sender_type();
-                proj.receiver_id();
-                proj.receiver_type();
-                proj.banker_id();
-                proj.note();
-                proj.money();
-                proj.coal();
-                proj.oil();
-                proj.uranium();
-                proj.iron();
-                proj.bauxite();
-                proj.lead();
-                proj.gasoline();
-                proj.munitions();
-                proj.steel();
-                proj.aluminum();
-                proj.food();
-            }
+        return proj -> {
+            proj.id();
+            proj.date();
+            proj.sender_id();
+            proj.sender_type();
+            proj.receiver_id();
+            proj.receiver_type();
+            proj.banker_id();
+            proj.note();
+            proj.money();
+            proj.coal();
+            proj.oil();
+            proj.uranium();
+            proj.iron();
+            proj.bauxite();
+            proj.lead();
+            proj.gasoline();
+            proj.munitions();
+            proj.steel();
+            proj.aluminum();
+            proj.food();
         };
     }
 
