@@ -3,8 +3,8 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.nation.MultiReport;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -16,6 +16,7 @@ public class Multi extends Command {
     public Multi() {
         super(CommandCategory.GAME_INFO_AND_TOOLS);
     }
+
     @Override
     public String help() {
         return Settings.commandPrefix(true) + getClass().getSimpleName() + " <nation>";
