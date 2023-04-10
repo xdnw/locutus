@@ -19,15 +19,6 @@ import java.util.Locale;
 import java.util.UUID;
 
 public class PrimitiveBindings extends BindingHelper {
-    @Binding
-    public ArgumentStack stack() {
-        throw new IllegalStateException("No ArgumentStack set in command locals");
-    }
-
-    @Binding
-    public List<String> all(@TextArea String string) {
-        return StringMan.split(string, ' ');
-    }
 
     /**
      * Gets a type from a {@link Binding}.

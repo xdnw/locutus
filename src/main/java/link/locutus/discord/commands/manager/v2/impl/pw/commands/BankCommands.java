@@ -1549,7 +1549,6 @@ public class BankCommands {
 
 
     public static String transferBulkWithErrors(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
-<<<<<<< HEAD
                                       @Switch("n") DBNation depositsAccount,
                                       @Switch("a") DBAlliance useAllianceBank,
                                       @Switch("o") DBAlliance useOffshoreAccount,
