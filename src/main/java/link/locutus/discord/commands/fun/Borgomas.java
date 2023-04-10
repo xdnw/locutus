@@ -1,19 +1,18 @@
 package link.locutus.discord.commands.fun;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
