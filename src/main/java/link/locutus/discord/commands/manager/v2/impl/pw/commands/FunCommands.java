@@ -1,35 +1,21 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.config.Messages;
-
 import link.locutus.discord.db.entities.DBNation;
-
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.user.Roles;
-
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.db.entities.NationMeta;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -110,7 +96,7 @@ public class FunCommands {
     @Command
     public String joke() {
         if (lines == null) {
-            lines = FileUtil.readFile("/fun/jokes.txt").split("\\r?\\n");
+            lines = Objects.requireNonNull(FileUtil.readFile("/fun/jokes.txt")).split("\\r?\\n");
         }
         return lines[ThreadLocalRandom.current().nextInt(lines.length)];
     }
@@ -134,37 +120,34 @@ public class FunCommands {
         };
 
         StringBuilder output = new StringBuilder();
-        if (true) {
-            String input = msg;
-            while (!input.isEmpty()) {
-                boolean found = false;
-                int id = 0;
-                for (int tmp = 0; tmp < 2; tmp++) {
-                    outer:
-                    for (int i = 0; i < CODES.length; i++) {
-                        String[] codei = CODES[i];
-                        for (int j = 0; j < codei.length; j++) {
-                            String codeij = codei[j];
-                            if (input.startsWith(codeij)) {
-                                input = input.substring(codeij.length());
-                                id += j << (tmp * 3);
-                                found = true;
-                                break outer;
-                            }
+        String input = msg;
+        while (!input.isEmpty()) {
+            boolean found = false;
+            int id = 0;
+            for (int tmp = 0; tmp < 2; tmp++) {
+                outer:
+                for (String[] codei : CODES) {
+                    for (int j = 0; j < codei.length; j++) {
+                        String codeij = codei[j];
+                        if (input.startsWith(codeij)) {
+                            input = input.substring(codeij.length());
+                            id += j << (tmp * 3);
+                            found = true;
+                            break outer;
                         }
                     }
                 }
-                if (!found) {
-                    output.setLength(0);
-                    break;
-                }
-                if (id == 0) output.append(" ");
-                else if (id <= 'z' + 1) output.append((char) ('a' + id - 1));
-                else output.append((char) '0' + id - 27);
             }
-            if (output.length() != 0) {
-                return "Output:\n" + output.toString();
+            if (!found) {
+                output.setLength(0);
+                break;
             }
+            if (id == 0) output.append(" ");
+            else if (id <= 'z' + 1) output.append((char) ('a' + id - 1));
+            else output.append('0' + id - 27);
+        }
+        if (output.length() != 0) {
+            return "Output:\n" + output;
         }
         int i = 0;
 
