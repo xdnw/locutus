@@ -2491,22 +2491,31 @@ public class BankCommands {
             }
 
             Set<Long> alliancesOrGuilds = root.getCoalitionRaw(Coalition.OFFSHORING);
+            outer:
             for (Long alliancesOrGuild : alliancesOrGuilds) {
+                GuildDB other;
                 if (alliancesOrGuild < Integer.MAX_VALUE) {
-                    GuildDB other = Locutus.imp().getGuildDBByAA(alliancesOrGuild.intValue());
-                    if (other != null) {
-                        alliancesOrGuild = other.getGuild().getIdLong();
-                    } else {
+                    other = Locutus.imp().getGuildDBByAA(alliancesOrGuild.intValue());
+                    if (other == null) {
                         continue;
                     }
+                } else {
+                    other = Locutus.imp().getGuildDB(alliancesOrGuild);
                 }
-                GuildDB other = Locutus.imp().getGuildDB(alliancesOrGuild);
+
                 if (other == null) {
                     continue;
                 }
-                Map.Entry<GuildDB, Integer> otherOffshore = other.getOffshoreDB();
-                if (otherOffshore == null || otherOffshore.getKey() == root) {
+                Set<Long> offshoreIds = other.getCoalitionRaw(Coalition.OFFSHORE);
+                for (int id : root.getAllianceIds()) {
+                    if (offshoreIds.contains((long) id)) {
+                        serverIds.add(alliancesOrGuild);
+                        continue outer;
+                    }
+                }
+                if (offshoreIds.contains(root.getIdLong())) {
                     serverIds.add(alliancesOrGuild);
+                    continue outer;
                 }
             }
 
@@ -2539,11 +2548,13 @@ public class BankCommands {
             newIds.removeAll(toUnregister);
             newIds.add(offshoreAlliance.getAlliance_id());
             root.setInfo(GuildDB.Key.ALLIANCE_ID, StringMan.join(newIds, ","));
+            root.addCoalition(offshoreAlliance.getAlliance_id(), Coalition.OFFSHORE);
+            root.addCoalition(offshoreAlliance.getAlliance_id(), Coalition.OFFSHORING);
 
             for (Long serverId : serverIds) {
                 GuildDB db = Locutus.imp().getGuildDB(serverId);
                 if (db == null) continue;
-                db.addCoalition(offshoreAlliance.getAlliance_id(), "offshore");
+                db.addCoalition(offshoreAlliance.getAlliance_id(), Coalition.OFFSHORE);
 
                 // Find the most stuited channel to post the announcement in
                 MessageChannel channel = db.getResourceChannel(0);
