@@ -49,19 +49,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class WebRoot {
-    private static final String authorizeURL = "https://discord.com/api/oauth2/authorize";
-    private static final String tokenURL = "https://discord.com/api/oauth2/token";
-    private static final String apiURLBase = "https://discord.com/api/users/@me";
-
     public static String REDIRECT = "https://locutus.link";
-    private static String COOKIE_ID = "LCTS";
+
     private final PageHandler pageHandler;
     private final File fileRoot;
-    private final WebDB db;
-
-    private final Map<Long, Map.Entry<String, JsonObject>> tokenToUserMap = new ConcurrentHashMap<>();
-    private final Map<String, Long> tokenHashes = new ConcurrentHashMap<>();
-
     private final Javalin app;
 
     private static WebRoot INSTANCE;
@@ -108,17 +99,6 @@ public class WebRoot {
         }).start();
 
         this.pageHandler = new PageHandler(this);
-
-        try {
-            this.db = new WebDB();
-        } catch (SQLException | ClassNotFoundException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-
-        for (Map.Entry<Long, Map.Entry<String, JsonObject>> entry : db.loadTokens().entrySet()) {
-            addAccessToken(entry.getValue().getKey(), entry.getValue().getValue(), false);
-        }
 
         this.app.get("/auth**", new Handler() {
             @Override
@@ -171,7 +151,7 @@ public class WebRoot {
         });
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
-        this.app.get("/logout", ctx -> logout(ctx));
+        this.app.get("/logout", ctx -> pageHandler.logout(ctx));
 
         this.app.get("/{guild_id}/sse/**", new SseHandler2(new Consumer<SseClient2>() {
             @Override
@@ -265,168 +245,8 @@ public class WebRoot {
 //        });
 //    }
 
-    private String cookieId(Context context) {
-        StringBuilder key = new StringBuilder();
-        key.append(COOKIE_ID);
-        key.append(Settings.INSTANCE.BOT_TOKEN.hashCode());
-
-        String hash = Hashing.sha256()
-                .hashString(key.toString(), StandardCharsets.UTF_8)
-                .toString();
-        return hash;
-    }
-
-    public JsonObject getUser(String accessToken) throws IOException {
-        CloseableHttpClient client = HttpClients.custom().build();
-
-        HttpUriRequest request = RequestBuilder.get()
-                .setUri(apiURLBase)
-                .setHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-                .addHeader("Authorization", "Bearer " + accessToken)
-                .build();
-
-        CloseableHttpResponse response = client.execute(request);
-        String json = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.ISO_8859_1);
-
-        JsonObject user  = JsonParser.parseString(json).getAsJsonObject();
-        if (user != null && user.get("id") != null) {
-            JsonElement idStr = user.get("id");
-            addAccessToken(accessToken, user, true);
-            return user;
-        }
-        return null;
-    }
-
-    public String getAccessToken(String code) throws IOException {
-        CloseableHttpClient client = HttpClients.custom().build();
-
-        HttpUriRequest request = RequestBuilder.post()
-                .setUri(tokenURL)
-                .setHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .addParameter("grant_type", "authorization_code")
-                .addParameter("client_id", Settings.INSTANCE.APPLICATION_ID + "")
-                .addParameter("client_secret", Settings.INSTANCE.CLIENT_SECRET)
-                .addParameter("redirect_uri", REDIRECT)
-                .addParameter("code", code)
-                .addParameter("scope", "identify guilds")
-
-                .build();
-
-        CloseableHttpResponse response = client.execute(request);
-
-        String json = new String(response.getEntity().getContent().readAllBytes());
-
-        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-
-        JsonElement accessToken = obj.get("access_token");
-
-        return accessToken == null ? null : accessToken.getAsString();
-    }
-
-    private void addAccessToken(String accessToken, JsonObject user, boolean updateDB) {
-        JsonElement idStr = user.get("id");
-        if (idStr != null) {
-            long id = Long.parseLong(idStr.getAsString());
-            tokenToUserMap.put(id, new AbstractMap.SimpleEntry<>(accessToken, user));
-
-            String hash = hash(id + accessToken);
-            tokenHashes.put(hash, id);
-
-            if (updateDB) {
-                db.addToken(id, accessToken, user);
-            }
-        }
-    }
-
-    private String hash(String key) {
-        return Hashing.sha256()
-                .hashString(key.toString(), StandardCharsets.UTF_8)
-                .toString();
-    }
-
-    public void logout(Context context) throws IOException {
-        String cookieId = cookieId(context);
-        context.removeCookie(cookieId);
-
-        context.redirect(REDIRECT);
-    }
-
-    public JsonObject getDiscordUser(Context context) throws IOException {
-        String addr = context.ip();
-//        if (addr.equals("0:0:0:0:0:0:0:1") || addr.equals("[0:0:0:0:0:0:0:1]") || addr.equals("127.0.0.1") || addr.equals("[127.0.0.1]")) {
-//            return JsonParser.parseString("{\"id\":\"664156861033086987\",\"username\":\"borg\",\"avatar\":\"14aa8f752d52c066ad5ccb87116c90fa\",\"discriminator\":\"5729\",\"public_flags\":128,\"flags\":128,\"locale\":\"en-US\",\"mfa_enabled\":true}").getAsJsonObject();
-//        }
-        Map<String, String> cookies = context.cookieMap();
-        String cookieId = cookieId(context);
-        String cookieData = cookies.get(cookieId);
-        if (cookieData != null) {
-            Long discordId = tokenHashes.get(cookieData);
-            if (discordId != null) {
-                Map.Entry<String, JsonObject> userInfo = tokenToUserMap.get(discordId);
-                if (userInfo != null) {
-                    return userInfo.getValue();
-                }
-            }
-        }
-
-        Map<String, List<String>> queries = context.queryParamMap();
-        List<String> code = queries.get("code");
-        if (code != null && code.size() == 1) {
-            try {
-                String codeSingle = code.get(0);
-                String access_token = getAccessToken(codeSingle);
-                if (access_token != null) {
-                    JsonObject user = getUser(access_token);
-
-                    JsonElement idStr = user.get("id");
-                    if (idStr != null) {
-                        long id = Long.parseLong(idStr.getAsString());
-                        String hash = hash(id + access_token);
-
-                        context.cookie(cookieId, hash, 60 * 60 * 24 * 30);
-
-                        addAccessToken(access_token, user, true);
-                        return user;
-                    }
-                }
-            } finally {
-                String redirect = ORIGINAL_PAGE.remove(context.ip());
-                context.header("Location", redirect);
-                context.header("cache-control", "no-store");
-                context.redirect(redirect);
-            }
-        }
-
-        return null;
-    }
-
     public PageHandler getPageHandler() {
         return pageHandler;
-    }
-
-    public WebDB getDb() {
-        return db;
-    }
-
-    private Map<String, String> ORIGINAL_PAGE = new ConcurrentHashMap<>();
-
-    public void login(Context context) {
-        String url = context.fullUrl();
-        if (!url.toLowerCase().contains("logout")) {
-            ORIGINAL_PAGE.put(context.ip(), url);
-        }
-
-        List<NameValuePair> params = new ArrayList<>();
-        params.add(new BasicNameValuePair("client_id", Settings.INSTANCE.APPLICATION_ID + ""));
-        params.add(new BasicNameValuePair("redirect_uri", REDIRECT));
-        params.add(new BasicNameValuePair("response_type", "code"));
-        params.add(new BasicNameValuePair("scope", "identify guilds"));
-        String query = URLEncodedUtils.format(params, "UTF-8");
-        String redirect = authorizeURL + "?" + query;
-        context.header("Location", redirect);
-        context.header("cache-control", "no-store");
-
-        context.redirect(redirect);
     }
 
     public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {

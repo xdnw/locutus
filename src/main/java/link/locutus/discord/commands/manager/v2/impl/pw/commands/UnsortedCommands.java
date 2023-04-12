@@ -1146,16 +1146,20 @@ public class UnsortedCommands {
     @HasOffshore
     @IsAlliance
     public static String warchest(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
-                                  NationList nations, Map<ResourceType, Double> resourcesPerCity, @Default DepositType.DepositTypeInfo note,
-                                  @Switch("s") boolean skipStockpile,
-                                  @Switch("n") DBNation depositsAccount,
-                                  @Switch("a") DBAlliance useAllianceBank,
-                                  @Switch("o") DBAlliance useOffshoreAccount,
-                                  @Switch("t") TaxBracket taxAccount,
-                                  @Switch("e") @Timediff Long expire,
-                                  @Switch("m") boolean convertToMoney,
-                                  @Switch("b") boolean bypassChecks,
-                                  @Switch("f") boolean force) throws Exception {
+                           NationList nations, Map<ResourceType, Double> resourcesPerCity, @Default DepositType.DepositTypeInfo note,
+                           @Switch("s") boolean skipStockpile,
+                           @Switch("n") DBNation depositsAccount,
+                           @Switch("a") DBAlliance useAllianceBank,
+                           @Switch("o") DBAlliance useOffshoreAccount,
+                           @Switch("t") TaxBracket taxAccount,
+                           @Switch("ta") boolean existingTaxAccount,
+                           @Switch("e") @Timediff Long expire,
+                           @Switch("m") boolean convertToMoney,
+                           @Switch("b") boolean bypassChecks,
+                           @Switch("f") boolean force) throws Exception {
+        if (existingTaxAccount) {
+            if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
+        }
         if (note == null) note = DepositType.WARCHEST.withValue();
 
         Collection<DBNation> nationSet = new HashSet<>(nations.getNations());
@@ -1233,13 +1237,16 @@ public class UnsortedCommands {
                 depositsAccount != null ? depositsAccount.getUrl() : null,
                 useAllianceBank != null ? useAllianceBank.getUrl() : null,
                 useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
+                taxAccount != null ? taxAccount.getQualifiedName() : null,
+                existingTaxAccount + "",
                 Boolean.FALSE.toString(),
                 expire == null ? null : ("timestamp:" + expire),
                 String.valueOf(force),
+                null,
                 key.toString()
         ).toJson();
 
-        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, expire, convertToMoney, bypassChecks, force, key, errors);
+        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, errors);
     }
 
     @Command

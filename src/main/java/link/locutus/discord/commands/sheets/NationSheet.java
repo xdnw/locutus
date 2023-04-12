@@ -88,9 +88,8 @@ public class NationSheet extends Command implements Noformat {
                 }
             }
             for (Integer allianceId : alliances) {
-                if (DBAlliance.getOrCreate(allianceId).updateSpies(false)) {
-                    toUpdate.removeIf(f -> f.getPosition() > Rank.APPLICANT.id && f.getAlliance_id() == allianceId);
-                }
+                Set<Integer> updated = DBAlliance.getOrCreate(allianceId).updateSpies(false);
+                toUpdate.removeIf(f -> updated.contains(f.getNation_id()));
             }
             for (DBNation nation : toUpdate) {
                 nation.updateSpies();

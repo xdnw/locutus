@@ -248,8 +248,8 @@ public class TaxRecordCategorizer2 {
         }
 
         this.alliances = new HashSet<>();
-        getAlliances().addAll(getAllianceIds());
-        getAlliances().addAll(db.getCoalition(Coalition.OFFSHORE));
+        alliances.addAll(aaIds);
+        alliances.addAll(db.getCoalition(Coalition.OFFSHORE));
 
         this.taxes = new ArrayList<>();
         for (int aaId : aaIds) {

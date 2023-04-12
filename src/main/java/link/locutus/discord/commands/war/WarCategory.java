@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -472,6 +473,11 @@ public class WarCategory {
     }
 
     public WarCategory.WarRoom createChannel(User author, Consumer<String> errorOutput, boolean ping, boolean addMember, boolean addMessage, DBNation target, Collection<DBNation> attackers) {
+        ApiKeyPool mailKey = db.getMailKey();
+        if (addMessage && mailKey == null) {
+            errorOutput.accept("No mail key available. See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.API_KEY + "`");
+            addMessage = false;
+        }
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory.WarRoom room = get(target, true, true, true, true);
         room.getChannel();
@@ -546,8 +552,7 @@ public class WarCategory {
                             String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body.toString()));
 
                             try {
-                                System.out.println("Send mail " + title);
-                                attacker.sendMail(Locutus.imp().getRootAuth(), title, mailBody);
+                                attacker.sendMail(mailKey, title, mailBody);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }

@@ -673,20 +673,21 @@ public class OffshoreInstance {
 
             Map<DepositType, double[]> bracketDeposits = senderDB.getTaxBracketDeposits(taxAccount.taxId, 0L, false, false);
             double[] taxDeposits = bracketDeposits.get(DepositType.TAX);
-            double taxDepoValue = PnwUtil.convertedTotal(taxDeposits);
+            double[] taxDepositsNormalized = PnwUtil.normalize(taxDeposits);
+            double taxDepoValue = PnwUtil.convertedTotal(taxDepositsNormalized);
             double[] missing = null;
             for (ResourceType type : ResourceType.values) {
-                if (Math.round(taxDeposits[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                if (Math.round(taxDepositsNormalized[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
                     if (missing == null) {
                         missing = ResourceType.getBuffer();
                     }
-                    missing[type.ordinal()] = amount[type.ordinal()] - taxDeposits[type.ordinal()];
+                    missing[type.ordinal()] = amount[type.ordinal()] - taxDepositsNormalized[type.ordinal()];
                 }
             }
             if (missing != null) {
                 if (!rssConversion) {
                     String msg = taxAccount.getQualifiedName() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
-                            CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null, null, null) +
+                            CM.deposits.check.cmd.create(taxAccount.getQualifiedName(), null, null, null, null, null, null, null, null) +
                             " ). RESOURCE_CONVERSION is disabled (see " +
                             CM.settings.cmd.create(GuildDB.Key.RESOURCE_CONVERSION.name(), "true", null, null) +
                             ")";

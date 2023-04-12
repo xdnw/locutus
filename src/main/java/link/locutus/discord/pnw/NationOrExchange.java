@@ -1,6 +1,7 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.StockDB;
@@ -111,7 +112,7 @@ public class NationOrExchange {
             if (receiver.isNation()) {
                 DBNation nation = receiver.getNation();
                 try {
-                    nation.sendMail(Locutus.imp().getRootAuth(), title, body.toString());
+                    nation.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, body.toString());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

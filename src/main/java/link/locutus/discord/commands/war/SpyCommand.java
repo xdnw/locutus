@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -19,6 +20,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,8 +88,10 @@ public class SpyCommand extends Command {
 
         DBNation nation = DBNation.byId(nationId);
         int result = nation.updateSpies(true, true);
+        Long turnUpdate = nation.getTurnUpdatedSpies();
+        long turnsAgo = TimeUtil.getTurn() - (turnUpdate == null ? 0 : turnUpdate);
 
-        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies.");
+        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies (updated: " + turnsAgo + " turns ago)");
         response.append("\nRecommended:");
 
         int minSafety = requiredSafety == null ? 1 : requiredSafety;

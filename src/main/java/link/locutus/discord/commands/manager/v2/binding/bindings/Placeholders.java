@@ -15,12 +15,7 @@ import link.locutus.discord.util.StringMan;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 import java.lang.reflect.Type;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -86,10 +81,6 @@ public class Placeholders<T> {
         return html.toString();
     }
 
-    public List<CommandCallable> getPlaceholderCallables() {
-        return new ArrayList<>(getParametricCallables());
-    }
-
     public List<CommandCallable> getFilterCallables() {
         List<ParametricCallable> result = getParametricCallables();
         result.removeIf(cmd -> {
@@ -115,15 +106,14 @@ public class Placeholders<T> {
 
                 if (type == String.class) {
                     adapter = op.getStringPredicate(part2);
-                    boolean val2 = PrimitiveBindings.Boolean(part2);
                 } else if (type == boolean.class || type == Boolean.class) {
-                    boolean val2 = false;
+                    boolean val2 = PrimitiveBindings.Boolean(part2);
                     adapter = op.getBooleanPredicate(val2);
                 } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
                     double val2 = MathMan.parseDouble(part2);
                     adapter = op.getNumberPredicate(val2);
                 } else {
-                    throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean.");
+                    throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean");
                 }
 
                 return nation -> adapter.test(func.apply(nation));

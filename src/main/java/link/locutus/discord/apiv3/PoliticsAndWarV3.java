@@ -145,7 +145,7 @@ public class PoliticsAndWarV3 {
                         }
                     }
                     String message = errorMessages.isEmpty() ? errors.toString() : StringMan.join(errorMessages, "\n");
-                    throw new IllegalArgumentException(message.replace(pair.getKey(), "XXX"));
+                    rethrow(new IllegalArgumentException(message.replace(pair.getKey(), "XXX")), pair, true);
                 }
 
                 result = jacksonObjectMapper.readValue(body, resultBody);
@@ -182,11 +182,11 @@ public class PoliticsAndWarV3 {
                 rethrow(e, pair, true);
             } catch (Throwable e) {
                 boolean remove = false;
-                if (e.getMessage().contains("The bot key you provided is not valid")) {
+                if (e.getMessage().contains("The bot key you provided is not valid.")) {
                     pair.deleteBotKey();
                     remove = true;
                 }
-                if (e.getMessage().contains("The API key you provided does not allow whitelisted access")) {
+                if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
                     remove = true;
                 }
                 if (badKey++ < 4 && pool.size() > 1) {
@@ -221,21 +221,22 @@ public class PoliticsAndWarV3 {
     }
 
     private <T extends Throwable> void rethrow(T e, ApiKeyPool.ApiKey pair, boolean throwRuntime) {
+        String msg = e.getMessage();
         if (e.getMessage() != null &&
                 (StringUtils.containsIgnoreCase(e.getMessage(), pair.getKey()) ||
                         (pair.getBotKey() != null && StringUtils.containsIgnoreCase(e.getMessage(), pair.getBotKey())))) {
-            String msg = StringUtils.replaceIgnoreCase(e.getMessage(), pair.getKey(), "XXX");
+            msg = StringUtils.replaceIgnoreCase(e.getMessage(), pair.getKey(), "XXX");
             if (pair.getBotKey() != null) msg = StringUtils.replaceIgnoreCase(msg, pair.getBotKey(), "XXX");
-            if (pair.getKey() != null) {
-                Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(pair.getKey());
-                if (nation != null) {
-                    msg = msg + " (using key from: " + nation + ")";
-                }
-            }
-
-            throw new RuntimeException(msg);
+            throwRuntime = true;
         }
-        if (throwRuntime) throw new RuntimeException(e.getMessage());
+        if (msg == null) msg = "";
+        if (pair.getKey() != null) {
+            Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(pair.getKey());
+            if (nation != null) {
+                msg = msg + " (using key from: " + nation + ")";
+            }
+        }
+        if (throwRuntime) throw new RuntimeException(msg);
     }
 
     public <T extends GraphQLResult<?>> void handlePagination(Function<Integer, GraphQLRequest> requestFactory, Function<GraphQLError, ErrorResponse> errorBehavior, Class<T> resultBody, Predicate<T> hasMorePages, Consumer<T> onEachResult) {
@@ -252,7 +253,7 @@ public class PoliticsAndWarV3 {
                     break pageLoop;
                 }
                 if (result.hasErrors()) {
-                    System.out.println("Error.");
+                    System.out.println("Has error ");
                     int maxBehavior = 0;
                     List<GraphQLError> errors = result.getErrors();
                     for (GraphQLError error : errors) {
@@ -340,7 +341,7 @@ public class PoliticsAndWarV3 {
                         .spawn_date()
                         .nation_id(),
                 TreasuresQueryResponse.class);
-        if (result.treasures() == null) throw new GraphQLException("Error fetching colors.");
+        if (result.treasures() == null) throw new GraphQLException("Error fetching colors");
         return result.treasures();
     }
 
@@ -724,51 +725,48 @@ public class PoliticsAndWarV3 {
     }
 
     public void fetchNationsWithInfo(Consumer<NationsQueryRequest> filter, Predicate<Nation> nationResults) {
-        fetchNations(NATIONS_PER_PAGE, filter, new Consumer<NationResponseProjection>() {
-            @Override
-            public void accept(NationResponseProjection projection) {
-                projection.id();
+        fetchNations(NATIONS_PER_PAGE, filter, projection -> {
+            projection.id();
 
-                projection.alliance_id();
+            projection.alliance_id();
 
-                projection.nation_name(); // m
-                projection.leader_name(); // m
+            projection.nation_name(); // m
+            projection.leader_name(); // m
 
-                projection.last_active();
-                projection.score();
-                projection.num_cities(); // TODO remove
-                projection.domestic_policy();
-                projection.war_policy();
-                projection.soldiers();
-                projection.tanks();
-                projection.aircraft();
-                projection.ships();
-                projection.missiles();
-                projection.nukes();
+            projection.last_active();
+            projection.score();
+            projection.num_cities(); // TODO remove
+            projection.domestic_policy();
+            projection.war_policy();
+            projection.soldiers();
+            projection.tanks();
+            projection.aircraft();
+            projection.ships();
+            projection.missiles();
+            projection.nukes();
 
-                projection.vacation_mode_turns(); // m
+            projection.vacation_mode_turns(); // m
 
-                projection.color();
-                projection.date(); // m
+            projection.color();
+            projection.date(); // m
 
-                projection.alliance_position();
-                projection.alliance_position_id();
+            projection.alliance_position();
+            projection.alliance_position_id();
 
-                projection.continent();
+            projection.continent();
 
-                projection.project_bits();
+            projection.project_bits();
 
-                projection.turns_since_last_project(); //
-                projection.turns_since_last_city(); //
-                projection.beige_turns();
+            projection.turns_since_last_project(); //
+            projection.turns_since_last_city(); //
+            projection.beige_turns();
 
-                projection.espionage_available();
+            projection.espionage_available();
 
-                projection.tax_id();
+            projection.tax_id();
 
-                projection.wars_won();
-                projection.wars_lost();
-            }
+            projection.wars_won();
+            projection.wars_lost();
         }, f -> ErrorResponse.THROW, nationResults);
     }
 
@@ -1305,7 +1303,7 @@ public class PoliticsAndWarV3 {
                         .bloc_name()
                         .turn_bonus(),
                 ColorsQueryResponse.class);
-        if (result.colors() == null) throw new GraphQLException("Error fetching colors");
+        if (result.colors() == null) throw new GraphQLException("Error fetching colors.");
         return result.colors();
     }
 

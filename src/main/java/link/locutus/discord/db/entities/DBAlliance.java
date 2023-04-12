@@ -408,8 +408,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return true;
     }
 
-    public boolean updateSpies(boolean updateManually) {
+    public Set<Integer> updateSpies(boolean updateManually) {
         PoliticsAndWarV3 api = getApi(AlliancePermission.SEE_SPIES);
+        Set<Integer> updated = new HashSet<>();
         if (api != null) {
             List<Nation> nations = api.fetchNations(f -> {
                 f.setAlliance_id(List.of(allianceId));
@@ -422,6 +423,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             for (Nation nation : nations) {
                 Integer spies = nation.getSpies();
                 if (spies != null) {
+                    updated.add(nation.getId());
                     DBNation locutusNation = DBNation.byId(nation.getId());
                     if (locutusNation != null) {
                         locutusNation.setSpies(spies, true);
@@ -430,13 +432,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 }
             }
             Locutus.imp().getNationDB().saveNations(toSave);
-            return true;
+            return updated;
         }
-        if (!updateManually) return false;
+        if (!updateManually) return updated;
         for (DBNation nation : getNations(true, 1440, true)) {
             nation.updateSpies();
+            updated.add(nation.getId());
         }
-        return true;
+        return updated;
     }
 
     public DBNation getTotal() {
@@ -761,6 +764,17 @@ public class DBAlliance implements NationList, NationOrAlliance {
             result.put(nation, PnwUtil.resourcesToMap(entry.getValue()));
         }
         return result;
+    }
+
+    public PoliticsAndWarV3 getApiOrThrow(boolean preferKeyStore, AlliancePermission... permissions) {
+        if (preferKeyStore) {
+            GuildDB db = getGuildDB();
+            if (db != null) {
+                ApiKeyPool key = db.getApiKey(allianceId, permissions);
+                if (key != null) return new PoliticsAndWarV3(key);
+            }
+        }
+        return getApiOrThrow(permissions);
     }
 
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
@@ -1157,26 +1171,26 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public boolean setTaxBracket(TaxBracket required, DBNation nation) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.TAX_BRACKETS);
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.TAX_BRACKETS);
         com.politicsandwar.graphql.model.TaxBracket result = api.assignTaxBracket(required.taxId, nation.getNation_id());
         return result != null;
     }
 
     public Treaty sendTreaty(int allianceId, TreatyType type, String message, int days) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.MANAGE_TREATIES);
         com.politicsandwar.graphql.model.Treaty result = api.proposeTreaty(allianceId, days, type, message);
         return new Treaty(result);
     }
 
     public Treaty approveTreaty(int id) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.MANAGE_TREATIES);
         com.politicsandwar.graphql.model.Treaty result = api.approveTreaty(id);
         return new Treaty(result);
     }
 
 
     public Treaty cancelTreaty(int id) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.MANAGE_TREATIES);
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.MANAGE_TREATIES);
         com.politicsandwar.graphql.model.Treaty result = api.cancelTreaty(id);
         return new Treaty(result);
     }

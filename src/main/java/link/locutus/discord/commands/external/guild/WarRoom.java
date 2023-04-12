@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -15,14 +16,7 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.PermissionOverride;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.io.IOException;
@@ -82,7 +76,7 @@ public class WarRoom extends Command {
         if (arg.equalsIgnoreCase("close") || arg.equalsIgnoreCase("delete")) {
             WarCategory.WarRoom room = warCat.getWarRoom(event.getGuildChannel());
             if (room != null) {
-                room.delete("");
+                room.delete("Closed by " + author.getName() + "#" + author.getDiscriminator());
                 return "Goodbye.";
             } else {
                 return "You are not in a war room!";
@@ -234,7 +228,7 @@ public class WarRoom extends Command {
                             String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body));
 
                             try {
-                                attacker.sendMail(Locutus.imp().getRootAuth(), title, mailBody);
+                                attacker.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, mailBody);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }

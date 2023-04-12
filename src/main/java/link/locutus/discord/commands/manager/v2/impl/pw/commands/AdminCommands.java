@@ -588,7 +588,7 @@ public class AdminCommands {
         }
 
         if (removeRole) {
-            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.create(locutusRole.name()).toSlashCommand() + "");
+            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.create(locutusRole.name(), null).toSlashCommand() + "");
         }
 
 
@@ -596,7 +596,7 @@ public class AdminCommands {
         String allianceStr = alliance == null ? "*" : alliance.getName() + "/" + aaId;
         db.addRole(locutusRole, discordRole, aaId);
         return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + " for alliance " + allianceStr + "\n" +
-                "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name()).toSlashCommand() + "";
+                "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name(), null).toSlashCommand() + "";
     }
 
     public String printApiStats(PoliticsAndWarV2 api) {

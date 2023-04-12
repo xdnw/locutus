@@ -32,6 +32,7 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.task.MailTask;
 import link.locutus.discord.util.task.balance.GetCityBuilds;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.trade.TradeManager;
@@ -1387,7 +1388,7 @@ public class DBNation implements NationOrAlliance {
         if (lastTurn == null || (currentTurn - lastTurn.getLong() > turns)) {
             try {
                 if (getPositionEnum().id > Rank.APPLICANT.id) {
-                    if (getAlliance().updateSpies(false)) {
+                    if (getAlliance().updateSpies(false).contains(nation_id)) {
                         return spies;
                     }
                 }
@@ -3110,7 +3111,6 @@ public class DBNation implements NationOrAlliance {
 
         long exponentialBackoff = 1000;
         while (true) {
-
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             Map<String, String> post = new HashMap<>();
             post.put("to", getNation_id() + "");
@@ -3134,6 +3134,7 @@ public class DBNation implements NationOrAlliance {
                     throw e;
                 }
             }
+            System.out.println("Result " + result);
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
                 pool.removeKey(pair);
@@ -3499,9 +3500,16 @@ public class DBNation implements NationOrAlliance {
     }
 
     public JsonObject sendMail(Auth auth, String subject, String body) throws IOException {
-        ApiKeyPool.ApiKey key = auth.fetchApiKey();
-
-        return sendMail(ApiKeyPool.create(key), subject, body);
+        String result = new MailTask(auth, this, subject, body, null).call();
+        System.out.println(":||Remove " + result);
+        if (result.contains("Message sent")) {
+            return JsonParser.parseString("{\"success\":true,\"to\":\"" + nation_id + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
+        }
+        // return new json object
+        JsonObject obj = new JsonObject();
+        // add error key with result
+        obj.addProperty("error", result);
+        return obj;
     }
 
     public Map.Entry<Integer, Integer> getCommends() throws IOException {
@@ -4469,5 +4477,9 @@ public class DBNation implements NationOrAlliance {
 
     public boolean isInWarRange(DBNation target) {
         return target.getScore() > getScore() * 0.75 && target.getScore() < getScore() * 1.25;
+    }
+
+    public TaxBracket getTaxBracket() {
+        return new TaxBracket(tax_id, alliance_id, "", -1, -1, 0);
     }
 }

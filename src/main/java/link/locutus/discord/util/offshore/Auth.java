@@ -159,6 +159,12 @@ public class Auth {
         return valid;
     }
 
+    public ApiKeyPool.ApiKey getApiKey() {
+        ApiKeyPool.ApiKey key = Locutus.imp().getDiscordDB().getApiKey(nationId);
+        if (key != null) return key;
+        return fetchApiKey();
+    }
+
     public synchronized ApiKeyPool.ApiKey fetchApiKey() {
         if (apiKey == null || apiKey.isEmpty()) {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/";

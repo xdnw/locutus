@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -38,6 +39,7 @@ public class Embassy extends Command {
         if (category == null) {
             return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
         }
+        DBNation nation;
         if (args.size() == 1 && args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.ADMIN.has(event.getAuthor(), event.getGuild())) return "No permission.";
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(event.getGuild().getRoles());
@@ -55,7 +57,9 @@ public class Embassy extends Command {
             }
             return "Done!";
         } else if (args.size() == 1) {
-            Roles.ADMIN.has(event.getAuthor(), event.getGuild());
+            nation = PWBindings.nation(event.getAuthor(), args.get(0));
+            if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(event.getAuthor(), event.getGuild()))
+                return "You do not have FOREIGN_AFFAIRS.";
         }
 
         if (me.getAlliance_id() == 0) {

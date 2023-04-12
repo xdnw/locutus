@@ -132,7 +132,7 @@ public class Deposits extends Command {
 
         for (String arg : split) {
             DBNation nation = DiscordUtil.parseNation(arg);
-            if (arg.contains("tax_id=")) {
+            if (arg.matches(".*tax_id[=:].*")) {
                 int taxId = PnwUtil.parseTaxId(arg);
 
                 Map<DepositType, double[]> deposits = guildDb.getTaxBracketDeposits(taxId, cutOff, includeExpired, includeIgnored);

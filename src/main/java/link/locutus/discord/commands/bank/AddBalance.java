@@ -76,7 +76,7 @@ public class AddBalance extends Command {
         AddBalanceBuilder builder = guildDb.addBalanceBuilder();
 
         String arg = args.get(0);
-        if (arg.contains("tax_id=")) {
+        if (arg.matches(".*tax_id[=:].*")) {
             int taxId = PnwUtil.parseTaxId(arg);
             TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
             builder.add(bracket, PnwUtil.parseResources(args.get(1)), note);

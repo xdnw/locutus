@@ -108,6 +108,32 @@ public class PrimitiveBindings extends BindingHelper {
         }
     }
 
+    @Timestamp
+    @Binding(types = {long.class}, examples = {"5d", "10h3m25s", "dd/MM/yyyy"})
+    public static Long timestamp(String argument) throws ParseException {
+        if (argument.equalsIgnoreCase("%epoch%")) {
+            return 0L;
+        }
+        if (argument.contains("/")) {
+            String[] split = argument.split("/");
+            if (split.length == 3) {
+                if (split[2].length() == 2) {
+                    return TimeUtil.parseDate(TimeUtil.DD_MM_YY, argument, false);
+                } else {
+                    return TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, argument, false);
+                }
+            } else {
+                throw new IllegalArgumentException("Invalid time format: " + argument);
+            }
+        }
+        if (argument.length() == 10 && argument.charAt(4) == '-' && argument.charAt(7) == '-') {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+            Date parsed = format.parse(argument);
+            return parsed.getTime();
+        }
+        return System.currentTimeMillis() - TimeUtil.timeToSec(argument) * 1000;
+    }
+
     @Binding
     public ArgumentStack stack() {
         throw new IllegalStateException("No ArgumentStack set in command locals.");
@@ -127,33 +153,5 @@ public class PrimitiveBindings extends BindingHelper {
     @Binding(types = {long.class}, examples = {"5d", "10h3m25s"})
     public Long timediff(String argument) {
         return TimeUtil.timeToSec(argument) * 1000;
-    }
-
-    @Timestamp
-    @Binding(types={long.class}, examples = {"5d", "10h3m25s", "dd/MM/yyyy"})
-    public static Long timestamp(String argument) throws ParseException {
-        if (argument.equalsIgnoreCase("%epoch%")) {
-            return 0L;
-        }
-        if (argument.contains("/")) {
-            long time = 0;
-            long date = 0;
-            String[] split = argument.split("/");
-            if (split.length == 3) {
-                if (split[2].length() == 2) {
-                    return TimeUtil.parseDate(TimeUtil.DD_MM_YY, argument, false);
-                } else {
-                    return TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, argument, false);
-                }
-            } else {
-                throw new IllegalArgumentException("Invalid time format: " + argument);
-            }
-        }
-        if (argument.length() == 10 && argument.charAt(4) == '-' && argument.charAt(7) == '-') {
-            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-            Date parsed = format.parse(argument);
-            return parsed.getTime();
-        }
-        return System.currentTimeMillis() - TimeUtil.timeToSec(argument) * 1000;
     }
 }

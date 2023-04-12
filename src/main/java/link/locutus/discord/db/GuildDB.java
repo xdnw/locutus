@@ -218,6 +218,27 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return guild;
     }
 
+    public ApiKeyPool getApiKey(int allianceId, AlliancePermission... perms) {
+        String[] keys = getOrNull(Key.API_KEY);
+        if (keys != null) {
+            for (String key : keys) {
+                Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+                if (nationIdFromKey != null) {
+                    DBNation nation = DBNation.byId(nationIdFromKey);
+                    if (nation != null) {
+                        if (nation.getAlliance_id() == allianceId) {
+                            DBAlliancePosition position = nation.getAlliancePosition();
+                            if (nation.getPositionEnum().id >= Rank.HEIR.id || (position != null && position.hasAllPermission(perms))) {
+                                return ApiKeyPool.create(nationIdFromKey, key);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     public ApiKeyPool getMailKey() {
         Set<Integer> aaIds = getAllianceIds();
         Set<Integer> allowedNations = Settings.INSTANCE.TASKS.MAIL.getInstances().stream().map(f -> f.NATION_ID).collect(Collectors.toSet());
@@ -3752,7 +3773,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String help() {
                 return "The #channel to receive alerts when a raid target leaves beige.\n" +
-                        "" + CM.role.setAlias.cmd.create(Roles.BEIGE_ALERT.name(), null, null) + " must also be set and have members in range";
+                        "" + CM.role.setAlias.cmd.create(Roles.BEIGE_ALERT.name(), null, null, null) + " must also be set and have members in range";
             }
         },
 

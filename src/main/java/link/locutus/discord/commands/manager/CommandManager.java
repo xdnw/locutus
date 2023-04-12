@@ -11,106 +11,22 @@ import link.locutus.discord.commands.buildcmd.AddBuild;
 import link.locutus.discord.commands.buildcmd.AssignBuild;
 import link.locutus.discord.commands.buildcmd.DeleteBuild;
 import link.locutus.discord.commands.buildcmd.GetBuild;
-import link.locutus.discord.commands.external.account.Login;
-import link.locutus.discord.commands.external.account.Logout;
-import link.locutus.discord.commands.external.guild.CardCommand;
-import link.locutus.discord.commands.external.guild.ChannelCommand;
-import link.locutus.discord.commands.external.guild.ClearNicks;
-import link.locutus.discord.commands.external.guild.ClearRoles;
-import link.locutus.discord.commands.external.guild.CopyPasta;
-import link.locutus.discord.commands.external.guild.ImportEmoji;
-import link.locutus.discord.commands.external.guild.Meta;
-import link.locutus.discord.commands.external.guild.SyncBounties;
-import link.locutus.discord.commands.external.guild.UpdateEmbed;
-import link.locutus.discord.commands.external.guild.WarCat;
-import link.locutus.discord.commands.external.guild.WarPin;
-import link.locutus.discord.commands.external.guild.WarRoom;
-import link.locutus.discord.commands.account.Embassy;
-import link.locutus.discord.commands.account.GuildInfo;
-import link.locutus.discord.commands.account.HasRole;
-import link.locutus.discord.commands.account.RunAllNations;
-import link.locutus.discord.commands.account.Runall;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.sync.SyncTreaties;
-import link.locutus.discord.commands.info.CounterStats;
-import link.locutus.discord.commands.external.guild.KickLocutus;
-import link.locutus.discord.commands.info.FindSpyOp;
-import link.locutus.discord.commands.external.guild.Mask;
-import link.locutus.discord.commands.sync.SyncMail;
-import link.locutus.discord.commands.war.WarCategory;
-import link.locutus.discord.commands.fun.Borgomas;
-import link.locutus.discord.commands.fun.Commend;
-import link.locutus.discord.commands.fun.Kev;
-import link.locutus.discord.commands.fun.Lury;
-import link.locutus.discord.commands.fun.Nev;
-import link.locutus.discord.commands.fun.SriCommand;
-import link.locutus.discord.commands.info.ChannelCount;
-import link.locutus.discord.commands.info.CityCost;
-import link.locutus.discord.commands.info.InfraCost;
-import link.locutus.discord.commands.info.Invite;
-import link.locutus.discord.commands.info.LandCost;
-import link.locutus.discord.commands.info.ProjectSlots;
-import link.locutus.discord.commands.info.Rebuy;
-import link.locutus.discord.commands.info.Score;
-import link.locutus.discord.commands.info.Treaties;
-import link.locutus.discord.commands.info.TurnTimer;
-import link.locutus.discord.commands.info.UnitHistory;
-import link.locutus.discord.commands.info.WeeklyInterest;
-import link.locutus.discord.commands.manager.dummy.DelegateMessage;
-import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.rankings.AllianceAttackTypeRanking;
-import link.locutus.discord.commands.rankings.AllianceLootLosses;
-import link.locutus.discord.commands.rankings.AttackTypeBreakdownAB;
-import link.locutus.discord.commands.rankings.LargestBanks;
-import link.locutus.discord.commands.rankings.MilitaryRanking;
-import link.locutus.discord.commands.rankings.MyLoot;
-import link.locutus.discord.commands.rankings.WarCostByDay;
-import link.locutus.discord.commands.rankings.WarRanking;
-import link.locutus.discord.commands.rankings.WarCostRankingByDay;
-import link.locutus.discord.commands.rankings.WarsByTier;
-import link.locutus.discord.commands.sheets.ActivitySheet;
-import link.locutus.discord.commands.sheets.AllianceSheet;
-import link.locutus.discord.commands.sheets.CoalitionSheet;
-import link.locutus.discord.commands.sheets.CounterSheet;
-import link.locutus.discord.commands.sheets.DepositsSheet;
-import link.locutus.discord.commands.sheets.DeserterSheet;
-import link.locutus.discord.commands.sheets.FASheet;
-import link.locutus.discord.commands.sheets.IASheet;
-import link.locutus.discord.commands.sheets.IntelOpSheet;
-import link.locutus.discord.commands.sheets.InterviewSheet;
-import link.locutus.discord.commands.sheets.MMRSheet;
-import link.locutus.discord.commands.sheets.MailTargets;
-import link.locutus.discord.commands.sheets.NationSheet;
-import link.locutus.discord.commands.sheets.NoteSheet;
-import link.locutus.discord.commands.sheets.ProjectSheet;
-import link.locutus.discord.commands.sheets.ROI;
-import link.locutus.discord.commands.war.WarInfo;
-import link.locutus.discord.commands.external.guild.CheckPermission;
-import link.locutus.discord.commands.external.guild.KeyStore;
-import link.locutus.discord.commands.external.guild.Permission;
-import link.locutus.discord.commands.external.account.ForumScrape;
-import link.locutus.discord.commands.account.Say;
-import link.locutus.discord.commands.fun.Jokes;
-import link.locutus.discord.commands.info.BeigeTurns;
-import link.locutus.discord.commands.info.Multi;
-import link.locutus.discord.commands.info.optimal.OptimalBuild;
-import link.locutus.discord.commands.rankings.AllianceLootRanking;
-import link.locutus.discord.commands.info.Reroll;
-import link.locutus.discord.commands.account.CheckMail;
-import link.locutus.discord.commands.info.PendingCommand;
-import link.locutus.discord.commands.info.HelpCommand;
-import link.locutus.discord.commands.fun.Tag;
-import link.locutus.discord.commands.account.AutoRole;
-import link.locutus.discord.commands.account.RegisterCommand;
-import link.locutus.discord.commands.account.RoleAlias;
 import link.locutus.discord.commands.coalition.GetCoalitions;
 import link.locutus.discord.commands.coalition.RemoveCoalition;
 import link.locutus.discord.commands.coalition.SetCoalition;
 import link.locutus.discord.commands.compliance.CheckCities;
+import link.locutus.discord.commands.external.account.ForumScrape;
+import link.locutus.discord.commands.external.account.Login;
+import link.locutus.discord.commands.external.account.Logout;
 import link.locutus.discord.commands.external.guild.*;
 import link.locutus.discord.commands.fun.*;
+import link.locutus.discord.commands.info.Invite;
 import link.locutus.discord.commands.info.*;
+import link.locutus.discord.commands.info.optimal.OptimalBuild;
+import link.locutus.discord.commands.manager.dummy.DelegateMessage;
+import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.rankings.*;
 import link.locutus.discord.commands.sheets.*;
 import link.locutus.discord.commands.sync.*;
@@ -150,7 +66,7 @@ public class CommandManager {
     private final CommandManager2 modernized;
     private Tag tag;
 
-    public CommandManager(Locutus locutus) {
+    public CommandManager() {
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
         this.prefix2 = Settings.commandPrefix(false).charAt(0);
         this.commandMap = new LinkedHashMap<>();
@@ -222,7 +138,7 @@ public class CommandManager {
                 return false;
             }
             if (content.contains("of your spies were captured and executed.")) {
-                handleSpyOp(event, content);
+                handleSpyOp();
                 return false;
             }
 
@@ -399,7 +315,7 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null).toSlashCommand() + ""));
+                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + ""));
                 return true;
             } else {
                 assert member != null;
@@ -479,7 +395,7 @@ public class CommandManager {
         return false;
     }
 
-    private void handleSpyOp(MessageReceivedEvent event, String content) {
+    private void handleSpyOp() {
 
     }
 
@@ -672,8 +588,6 @@ public class CommandManager {
         this.register(new GlobalTradeVolume());
         this.register(new GlobalTradeAverage());
         TransferCommand bankWith = new TransferCommand();
-//        this.register(new NAPViolations());
-//        this.register(new NAPDown()); // Outdated
         this.register(new CounterStats());
         this.register(new FindSpyOp());
         this.register(new FindOffshore());

@@ -13,6 +13,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.MMRDouble;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.entities.DBNation;
@@ -73,7 +74,9 @@ public class GrantCmd extends Command {
                 "Add `-e` or `#expire=60d` to have a grant's debt expire\n" +
                 "Add `-c` to have a grant count as cash value in " + CM.deposits.check.cmd.toSlashMention() + "\n" +
                 "Add `-o` to only send what funds they are missing for a grant\n" +
-                "Add `-m` to multiply the grant per city";
+                "Add `-m` to multiply the grant per city\n" +
+                "Use `tax_id:1234` to specify tax account\n" +
+                "Use `-t` to specify receiver's tax account";
     }
 
     @Override
@@ -88,10 +91,12 @@ public class GrantCmd extends Command {
         if (flags.contains('e')) {
             expire = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(60);
         }
+        GuildDB guildDb = Locutus.imp().getGuildDB(event);
 
         DBNation nationAccount = null;
         DBAlliance allianceAccount = null;
         DBAlliance offshoreAccount = null;
+        TaxBracket taxAccount = null;
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
@@ -107,6 +112,16 @@ public class GrantCmd extends Command {
         if (offshoreAccountStr != null) {
             offshoreAccount = PWBindings.alliance(offshoreAccountStr);
         }
+
+        String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
+        if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
+        if (taxIdStr != null) {
+            taxAccount = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+        }
+        if (flags.contains('t')) {
+            if (taxAccount != null) return "You can't specify both `tax_id` and `-t`";
+        }
+
 
         Double factor = null;
 
@@ -150,8 +165,6 @@ public class GrantCmd extends Command {
             if (num == null || num <= 0) return "Invalid number: `" + args.get(2) + "`";
         }
         if (num <= 0) return "Invalid positive number: " + num;
-
-        GuildDB guildDb = Locutus.imp().getGuildDB(event);
 
         me = DiscordUtil.parseNation(args.get(0));
         String typeArg = args.get(1);
@@ -239,11 +252,14 @@ public class GrantCmd extends Command {
                 (nationAccount == null ? me : nationAccount).getUrl(),
                 allianceAccount != null ? allianceAccount.getUrl() : null,
                 offshoreAccount != null ? offshoreAccount.getUrl() : null,
+                taxAccount != null ? taxAccount.getQualifiedName() : null,
+                flags.contains('t') ? "true" : null,
                 String.valueOf(flags.contains('o')),
                 expire != null ? "timestamp:" + expire : null,
                 uuid.toString(),
                 String.valueOf(flags.contains('c')),
-                String.valueOf(flags.contains('f'))
+                String.valueOf(flags.contains('f')),
+                "false"
         ).toJson();
         StringBuilder msg = new StringBuilder();
         msg.append(PnwUtil.resourcesToString(resources)).append("\n")

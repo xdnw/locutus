@@ -153,7 +153,7 @@ public class PermissionBinding extends BindingHelper {
 
     @Binding
     @CoalitionPermission(Coalition.ALLIES)
-    public boolean checkWhitelistPermission(@Me GuildDB db, @Me User user, CoalitionPermission perm) {
+    public boolean checkWhitelistPermission(@Me GuildDB db, CoalitionPermission perm) {
         if (db.getIdLong() == Settings.INSTANCE.ROOT_SERVER) return true;
         Coalition requiredCoalition = perm.value();
         Guild root = Locutus.imp().getServer();

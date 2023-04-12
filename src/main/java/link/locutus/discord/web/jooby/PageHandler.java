@@ -32,6 +32,8 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.auth.AuthHandler;
+import link.locutus.discord.web.auth.IAuthHandler;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.binding.NationListPages;
@@ -84,9 +86,11 @@ public class PageHandler implements Handler {
     private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
+    private final IAuthHandler authHandler;
 
     public PageHandler(WebRoot root) {
         this.root = root;
+        this.authHandler = new AuthHandler();
 
         this.store = new SimpleValueStore<>();
 
@@ -169,16 +173,18 @@ public class PageHandler implements Handler {
             if (cmdStr.charAt(0) == '$') cmdStr = Settings.commandPrefix(false) + cmdStr.substring(1);
 
             Context ctx = sse.ctx;
-            JsonObject userJson = root.getDiscordUser(ctx);
-            if (userJson == null) {
-                sseMessage(sse, "Not registered", false);
-                return;
-            }
-            Long userId = Long.parseLong(userJson.get("id").getAsString());
-            User user = Locutus.imp().getDiscordApi().getUserById(userId);
-            DBNation nation = DiscordUtil.getNation(userId);
-            if (nation == null || user == null) {
-                sseMessage(sse, "User not verfied", false);
+            DBNation nation = authHandler.getNation(ctx);
+//
+//            JsonObject userJson = authHandler.getDiscordUser(ctx);
+//            if (userJson == null) {
+//                sseMessage(sse, "Not registered", false);
+//                return;
+//            }
+//            Long userId = Long.parseLong(userJson.get("id").getAsString());
+//            User user = Locutus.imp().getDiscordApi().getUserById(userId);
+//            DBNation nation = DiscordUtil.getNation(userId);
+            if (nation == null) {
+                sseMessage(sse, "User not verified", false);
                 return;
             }
 
@@ -204,7 +210,10 @@ public class PageHandler implements Handler {
 
             Message embedMessage = new MessageBuilder().setContent(cmdStr).build();
             JoobyMessage sseMessage = new JoobyMessage(action, embedMessage, -1);
-            sseMessage.setUser(user);
+            User user = nation.getUser();
+            if (user != null) {
+                sseMessage.setUser(user);
+            }
             action.load(sseMessage);
 
             MessageReceivedEvent finalEvent = new DelegateMessageEvent(guildDb.getGuild(), -1, sseMessage);
@@ -240,15 +249,8 @@ public class PageHandler implements Handler {
 
         try {
             Context ctx = sse.ctx;
-            JsonObject userJson = root.getDiscordUser(ctx);
-            if (userJson == null) {
-                sseMessage(sse, "Not registered", false);
-                return;
-            }
-            Long userId = Long.parseLong(userJson.get("id").getAsString());
-            User user = Locutus.imp().getDiscordApi().getUserById(userId);
-            DBNation nation = DiscordUtil.getNation(userId);
-            if (nation == null || user == null) {
+            DBNation nation = authHandler.getNation(ctx);
+            if (nation == null) {
                 sseMessage(sse, "User not verfied", false);
                 return;
             }
@@ -325,7 +327,7 @@ public class PageHandler implements Handler {
                 MessageReaction.ReactionEmote emote = MessageReaction.ReactionEmote.fromUnicode(emoji, jda);
 
 
-                Locutus.imp().onMessageReact(sseMessage, user, emote, 0, false);
+                Locutus.imp().onMessageReact(sseMessage, nation.getUser(), emote, 0, false); // TODO make onMessageReact  accept nation
             }
         } catch (Throwable e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
@@ -341,17 +343,15 @@ public class PageHandler implements Handler {
 
     public Map.Entry<Long, DBNation> getUserIdNationPair(Context ctx) {
         try {
-            JsonObject userJson = userJson = root.getDiscordUser(ctx);
-
-            if (userJson == null) {
-                throw new IllegalArgumentException("Not  registered");
-            }
-            Long id = Long.parseLong(userJson.get("id").getAsString());
-            DBNation nation = DiscordUtil.getNation(id);
+            DBNation nation = authHandler.getNation(ctx);
             if (nation == null) {
+                throw new IllegalArgumentException("Nation not verified");
+            }
+            Long userId = nation.getUserId();
+            if (userId == null) {
                 throw new IllegalArgumentException("User not verified");
             }
-            return new AbstractMap.SimpleEntry<>(id, nation);
+            return new AbstractMap.SimpleEntry<>(userId, nation);
         } catch (IOException e) {
             throw new IllegalArgumentException("IO error: " + e.getMessage());
         }
@@ -403,18 +403,12 @@ public class PageHandler implements Handler {
     public void sse(SseClient2 sse) {
         try {
             Context ctx = sse.ctx;
-            JsonObject userJson = root.getDiscordUser(ctx);
-            if (userJson == null) {
-                sseMessage(sse, "Not registered", false);
-                return;
-            }
-            Long id = Long.parseLong(userJson.get("id").getAsString());
-            DBNation nation = DiscordUtil.getNation(id);
+            DBNation nation = authHandler.getNation(ctx);
             if (nation == null) {
                 sseMessage(sse, "User not verfied", false);
                 return;
             }
-            ArgumentStack stack = createStack(nation, id, ctx);
+            ArgumentStack stack = createStack(nation, null, ctx);
             stack.consumeNext();
             List<String> args = stack.getRemainingArgs();
             CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
@@ -463,7 +457,7 @@ public class PageHandler implements Handler {
     }
 
     @Command()
-    public Object command(@Me GuildDB db, @Me User user, ArgumentStack stack, Context ctx) {
+    public Object command(@Me GuildDB db, ArgumentStack stack, Context ctx) {
         List<String> args = stack.getRemainingArgs();
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
         CommandCallable cmd = manager.getCallable(args);
@@ -476,28 +470,24 @@ public class PageHandler implements Handler {
     public void handle(@NotNull Context ctx) throws Exception {
         logger.info("Page method " + ctx.method());
         try {
-            JsonObject userJson = root.getDiscordUser(ctx);
-            if (userJson == null) {
-                root.login(ctx);
-                return;
-            }
-            Long id = Long.parseLong(userJson.get("id").getAsString());
-            User user = Locutus.imp().getDiscordApi().getUserById(id);
-            if (user == null) {
+            Long userId = authHandler.getDiscordUser(ctx, true);
+            if (userId == null) {
                 String url = "https://discord.gg/H9XnGxc";
                 ctx.result("Please join the Politics & War discord: " + MarkupUtil.htmlUrl(url, url));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;
             }
-            DBNation nation = DiscordUtil.getNation(id);
+            DBNation nation = DiscordUtil.getNation(userId);
             if (nation == null) {
+                User user = DiscordUtil.getUser(userId);
+                String username = user != null ? user.getName() + "#" + user.getDiscriminator() : "id:" + userId;
                 ctx.result("Please use <b>" + CM.register.cmd.toSlashMention() + "</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
-                        "You are currently signed in as " + user.getName() + "#" + user.getDiscriminator() + ": " + MarkupUtil.htmlUrl("Logout", Settings.INSTANCE.WEB.REDIRECT + "/logout"));
+                        "You are currently signed in as " + username + ": " + MarkupUtil.htmlUrl("Logout", Settings.INSTANCE.WEB.REDIRECT + "/logout"));
                 ctx.header("Content-Type", "text/html;charset=UTF-8");
                 return;
             }
 
-            handleCommand(nation, id, ctx);
+            handleCommand(nation, userId, ctx);
         } catch (Throwable e) {
             e.printStackTrace();
             throw e;
@@ -596,12 +586,17 @@ public class PageHandler implements Handler {
             locals = new LocalValueStore<>(store);
         }
         locals.addProvider(Key.of(Context.class), ctx);
+        User user = userId == null ? null : Locutus.imp().getDiscordApi().getUserById(userId);
 
+        if (nation == null && user != null) {
+            nation = DiscordUtil.getNation(user.getIdLong());
+        }
+        if (user == null && nation != null) {
+            user = nation.getUser();
+        }
         if (nation != null) {
             locals.addProvider(Key.of(DBNation.class, Me.class), nation);
         }
-
-        User user = Locutus.imp().getDiscordApi().getUserById(userId);
 
         if (user != null) {
             locals.addProvider(Key.of(User.class, Me.class), user);
@@ -635,11 +630,9 @@ public class PageHandler implements Handler {
         List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
         path.remove("cmd_page");
 
-        Map.Entry<Long, DBNation> userNationPair = getUserIdNationPair(sse.ctx);
-        long userId = userNationPair.getKey();
-        DBNation nation = userNationPair.getValue();
+        DBNation nation = authHandler.getNation(ctx);
 
-        LocalValueStore locals = setupLocals(null, nation, userId, ctx, path);
+        LocalValueStore locals = setupLocals(null, nation, null, ctx, path);
 
         CommandCallable cmd = commands.getCallable(path);
 
@@ -672,5 +665,9 @@ public class PageHandler implements Handler {
         response.addProperty("action", "redirect");
         response.addProperty("value", redirect);
         sse.sendEvent(response);
+    }
+
+    public void logout(Context ctx) {
+        authHandler.logout(ctx);
     }
 }

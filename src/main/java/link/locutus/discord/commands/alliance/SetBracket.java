@@ -16,6 +16,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import net.dv8tion.jda.api.entities.Guild;
@@ -86,9 +87,8 @@ public class SetBracket extends Command {
 
         String arg = args.get(1);
         TaxBracket bracket = null;
-        if (MathMan.isInteger(arg) || arg.contains("tax_id=")) {
-            String[] split = arg.split("=");
-            int taxId = Integer.parseInt(split[split.length - 1]);
+        if (MathMan.isInteger(arg) || arg.matches(".*tax_id[=:].*")) {
+            int taxId = PnwUtil.parseTaxId(arg);
             bracket = brackets.get(taxId);
         } else {
             for (TaxBracket other : brackets.values()) {
