@@ -152,7 +152,7 @@ public final class Locutus extends ListenerAdapter {
         this.bankDb = new BankDB("bank");
         this.tradeManager = new TradeManager();
 
-        this.commandManager = new CommandManager(this);
+        this.commandManager = new CommandManager();
         this.commandManager.registerCommands(discordDB);
         if (Settings.INSTANCE.BOT_TOKEN.isEmpty()) {
             throw new IllegalStateException("Please set BOT_TOKEN in " + Settings.INSTANCE.getDefaultFile());

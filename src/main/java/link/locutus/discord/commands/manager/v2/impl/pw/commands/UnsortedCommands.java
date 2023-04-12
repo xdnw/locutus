@@ -6,91 +6,48 @@ import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
+import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.alliance.LeftAA;
-import link.locutus.discord.commands.bank.AddBalance;
-import link.locutus.discord.commands.bank.Disperse;
-import link.locutus.discord.commands.bank.Warchest;
-import link.locutus.discord.commands.compliance.CheckCities;
-import link.locutus.discord.commands.external.guild.CopyPasta;
 import link.locutus.discord.commands.external.guild.KeyStore;
-import link.locutus.discord.commands.info.Rebuy;
-import link.locutus.discord.commands.info.Reroll;
-import link.locutus.discord.commands.info.Revenue;
-import link.locutus.discord.commands.info.UnitHistory;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasKey;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.commands.trade.FindProducer;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AddBalanceBuilder;
-import link.locutus.discord.db.entities.DBAlliancePosition;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
-import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.db.entities.*;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -102,7 +59,169 @@ import java.util.stream.Collectors;
 
 public class UnsortedCommands {
 
-    @Command(desc ="View nation or AA bank contents")
+    private final Map<Long, String> previous = new HashMap<>();
+    private long previousNicksGuild = 0;
+
+    @Command(desc = "Login to allow locutus to run scripts through your account (Avoid using if possible)")
+    @RankPermission(Rank.OFFICER)
+    public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me, @Me Guild guild, String username, String password) {
+        IMessageBuilder msg = io.getMessage();
+        try {
+            if (msg != null) io.delete(msg.getId());
+        } catch (Throwable ignore) {
+        }
+        if (me == null || me.getPosition() < Rank.OFFICER.id) return "You are not an officer of an alliance";
+        if (guild != null) {
+            return "This command must be used via private message with Locutus. DO NOT USE THIS COMMAND HERE";
+        }
+        DBAlliance alliance = me.getAlliance();
+        Auth existingAuth = alliance.getAuth();
+        if (existingAuth != null) {
+            DBNation existingNation = existingAuth.getNation();
+            if (existingNation.getPositionEnum().id >= Rank.HEIR.id) {
+                return "You already have an heir logged in. Please ask them to logout first: " + existingNation.getNation();
+            }
+            DBAlliancePosition existingPosition = existingNation.getAlliancePosition();
+            if (existingPosition != null && existingPosition.hasAllPermission(AlliancePermission.CHANGE_PERMISSIONS, AlliancePermission.REMOVE_MEMBERS, AlliancePermission.ACCEPT_APPLICANTS)) {
+                return "You already have an officer logged in. Please ask them to logout first: " + existingNation.getNation();
+            }
+        }
+
+        Auth auth = new Auth(me.getNation_id(), username, password);
+        ApiKeyPool.ApiKey key = auth.fetchApiKey();
+
+        discordDB.addApiKey(me.getNation_id(), key.getKey());
+        discordDB.addUserPass2(me.getNation_id(), username, password);
+        if (existingAuth != null) existingAuth.setValid(false);
+        Auth myAuth = me.getAuth(null);
+        if (myAuth != null) myAuth.setValid(false);
+
+        return "Login successful.";
+    }
+
+    @Command(desc = "Generate an optimal build for a city")
+    @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
+    @HasOffshore
+    @IsAlliance
+    public static String warchest(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
+                                  NationList nations, Map<ResourceType, Double> resourcesPerCity, @Default DepositType.DepositTypeInfo note,
+                                  @Switch("s") boolean skipStockpile,
+                                  @Switch("n") DBNation depositsAccount,
+                                  @Switch("a") DBAlliance useAllianceBank,
+                                  @Switch("o") DBAlliance useOffshoreAccount,
+                                  @Switch("t") TaxBracket taxAccount,
+                                  @Switch("ta") boolean existingTaxAccount,
+                                  @Switch("e") @Timediff Long expire,
+                                  @Switch("m") boolean convertToMoney,
+                                  @Switch("b") boolean bypassChecks,
+                                  @Switch("f") boolean force) throws Exception {
+        if (existingTaxAccount) {
+            if (taxAccount != null)
+                throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
+        }
+        if (note == null) note = DepositType.WARCHEST.withValue();
+
+        Collection<DBNation> nationSet = new HashSet<>(nations.getNations());
+        Map<NationOrAlliance, String> errors = new HashMap<>();
+
+        boolean hasEcon = Roles.ECON.has(author, guild);
+        if (!hasEcon && (nationSet.size() != 1 || !nationSet.iterator().next().equals(me)))
+            return "You only have permission to send to your own nation";
+
+        Iterator<DBNation> iter = nationSet.iterator();
+        while (iter.hasNext()) {
+            DBNation nation = iter.next();
+            if (nation.getActive_m() > 7200) {
+                iter.remove();
+                errors.put(nation, "Nation is inactive: " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()));
+            } else if (nation.getPosition() <= 1) {
+                iter.remove();
+                errors.put(nation, "Nation is not a member");
+            } else if (nation.getVm_turns() != 0) {
+                iter.remove();
+                errors.put(nation, "Nation is in Vacation Mode");
+            }
+        }
+
+        if (nationSet.isEmpty()) {
+            return "No active members in bracket";
+        }
+
+        AllianceList aaList = db.getAllianceList().subList(nationSet);
+
+        Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
+        Map<DBNation, Map<ResourceType, Double>> memberResources2 = aaList.getMemberStockpile();
+
+        for (DBNation nation : nationSet) {
+            Map<ResourceType, Double> stockpile;
+            if (skipStockpile) {
+                stockpile = new HashMap<>();
+            } else {
+                stockpile = memberResources2.get(nation);
+                if (stockpile == null) {
+                    if (!aaList.isInAlliance(nation)) {
+                        errors.put(nation, "No stockpile information available (not in the guild's alliance)");
+                    } else {
+                        errors.put(nation, "No stockpile information available (are you sure a valid api key is set?)");
+                    }
+                    continue;
+                }
+                if (PnwUtil.convertedTotal(stockpile) < 0) {
+                    errors.put(nation, "Alliance information access is disabled from their **account** page");
+                    continue;
+                }
+                Map<ResourceType, Double> toSendCurrent = new HashMap<>();
+                for (ResourceType type : resourcesPerCity.keySet()) {
+                    double required = resourcesPerCity.getOrDefault(type, 0d) * nation.getCities();
+                    double current = stockpile.getOrDefault(type, 0d);
+                    if (required > current) {
+                        toSendCurrent.put(type, required - current);
+                    }
+                }
+                if (!toSendCurrent.isEmpty()) {
+                    fundsToSendNations.put(nation, toSendCurrent);
+                } else {
+                    errors.put(nation, "No funds need to be sent");
+                }
+            }
+        }
+
+        UUID key = UUID.randomUUID();
+        TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
+        BankCommands.APPROVED_BULK_TRANSFER.put(key, sheet.getTransfers());
+
+        JSONObject command = CM.transfer.bulk.cmd.create(
+                sheet.getSheet().getURL(),
+                note.toString(),
+                depositsAccount != null ? depositsAccount.getUrl() : null,
+                useAllianceBank != null ? useAllianceBank.getUrl() : null,
+                useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
+                taxAccount != null ? taxAccount.getQualifiedName() : null,
+                existingTaxAccount + "",
+                Boolean.FALSE.toString(),
+                expire == null ? null : ("timestamp:" + expire),
+                String.valueOf(force),
+                null,
+                key.toString()
+        ).toJson();
+
+        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, errors);
+    }
+
+    @Command
+    public static String reroll(@Me IMessageIO io, DBNation nation) {
+        long date = nation.getRerollDate();
+        if (date == Long.MAX_VALUE) {
+            return "No direct reroll found. See also: " + CM.nation.list.multi.cmd.toSlashMention();
+        }
+        String title = "`" + nation.getNation() + "` is a reroll";
+        String body = "Reroll date: " + DiscordUtil.timestamp(nation.getDate(), "d") + "\n" +
+                "Original creation date: " + DiscordUtil.timestamp(date, "d");
+        io.create().embed(title, body).send();
+        return null;
+    }
+
+    @Command(desc = "View nation or AA bank contents")
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String taxRevenueSheet(@Me IMessageIO io, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("f") boolean forceUpdate, @Switch("u") boolean includeUntaxable) throws GeneralSecurityException, IOException {
@@ -128,7 +247,7 @@ public class UnsortedCommands {
                 }
                 brackets.add(bracket);
             }
-        } else if (!aaIds.isEmpty()){
+        } else if (!aaIds.isEmpty()) {
             for (int aaId : aaIds) {
                 DBAlliance alliance = DBAlliance.get(aaId);
                 if (alliance != null) {
@@ -193,7 +312,7 @@ public class UnsortedCommands {
                 double rRate = (bracket.rssRate < 0 ? 100 : bracket.rssRate) / 100d;
                 double[] natRevenue = nation.getRevenue();
                 revenue[0] += Math.max(0, natRevenue[0]) * mRate;
-                for (int i = 1 ; i < natRevenue.length ; i++) {
+                for (int i = 1; i < natRevenue.length; i++) {
                     revenue[i] += Math.max(0, natRevenue[i]) * rRate;
                 }
             }
@@ -226,7 +345,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc ="View nation or AA bank contents")
+    @Command(desc = "View nation or AA bank contents")
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String stockpile(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, NationOrAlliance nationOrAlliance) throws IOException {
@@ -288,9 +407,7 @@ public class UnsortedCommands {
 
             message.append(PnwUtil.resourcesToString(totals));
 
-//            String infoCmd = Settings.commandPrefix(true) + "pw-who " + url;
-//            Message msg = PnwUtil.createEmbedCommand(channel, title, message.toString(), EMOJI_FOLLOW, followCmd, EMOJI_QUESTION, infoCmd);
-            out.append(title + ": " + message).append("\n");
+            out.append(title).append(": ").append(message).append("\n");
         }
     }
 
@@ -298,7 +415,7 @@ public class UnsortedCommands {
     public String inflows(@Me IMessageIO channel, Set<NationOrAlliance> nationOrAlliances, @Timestamp long cutoffMs, @Switch("i") boolean hideInflows, @Switch("o") boolean hideOutflows) {
         List<Transaction2> allTransfers = new ArrayList<>();
 
-        String selfName = StringMan.join(nationOrAlliances.stream().map(f -> f.getName()).collect(Collectors.toList()), ",");
+        String selfName = StringMan.join(nationOrAlliances.stream().map(NationOrAlliance::getName).collect(Collectors.toList()), ",");
         Set<Integer> self = new HashSet<>();
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
         Function<Integer, String> nationNameFunc = i -> {
@@ -306,7 +423,8 @@ public class UnsortedCommands {
             return nation == null ? Integer.toString(i) : nation.getNation();
         };
 
-        if (nationOrAlliances.size() > 15) return "Too many nations or alliances: " + nationOrAlliances.size() + " (try using explicit alliance notation e.g. `AA:1234`)";
+        if (nationOrAlliances.size() > 15)
+            return "Too many nations or alliances: " + nationOrAlliances.size() + " (try using explicit alliance notation e.g. `AA:1234`)";
 
         for (NationOrAlliance nationOrAlliance : nationOrAlliances) {
             self.add(nationOrAlliance.getId());
@@ -382,7 +500,7 @@ public class UnsortedCommands {
         }
     }
 
-    @Command(desc="Set your api and bot key\n" +
+    @Command(desc = "Set your api and bot key\n" +
             "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
     public String addApiKey(@Me JSONObject command, String apiKey, @Default String verifiedBotKey) {
         PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(apiKey, verifiedBotKey).build());
@@ -397,42 +515,6 @@ public class UnsortedCommands {
         }
 
         return "Set api key for " + PnwUtil.getName(nationId, false);
-    }
-
-    @Command(desc="Login to allow locutus to run scripts through your account (Avoid using if possible)")
-    @RankPermission(Rank.OFFICER)
-    public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me, @Me Guild guild, String username, String password) {
-        IMessageBuilder msg = io.getMessage();
-        try {
-            if (msg != null) io.delete(msg.getId());
-        } catch (Throwable ignore) {};
-        if (me == null || me.getPosition() < Rank.OFFICER.id) return "You are not an officer of an alliance";
-        if (guild != null) {
-            return "This command must be used via private message with Locutus. DO NOT USE THIS COMMAND HERE";
-        }
-        DBAlliance alliance = me.getAlliance();
-        Auth existingAuth = alliance.getAuth();;
-        if (existingAuth != null) {
-            DBNation existingNation = existingAuth.getNation();
-            if (existingNation.getPositionEnum().id >= Rank.HEIR.id) {
-                return "You already have an heir logged in. Please ask them to logout first: " + existingNation.getNation();
-            }
-            DBAlliancePosition existingPosition = existingNation.getAlliancePosition();
-            if (existingPosition != null && existingPosition.hasAllPermission(AlliancePermission.CHANGE_PERMISSIONS, AlliancePermission.REMOVE_MEMBERS, AlliancePermission.ACCEPT_APPLICANTS)) {
-                return "You already have an officer logged in. Please ask them to logout first: " + existingNation.getNation();
-            }
-        }
-
-        Auth auth = new Auth(me.getNation_id(), username, password);
-        ApiKeyPool.ApiKey key = auth.fetchApiKey();
-
-        discordDB.addApiKey(me.getNation_id(), key.getKey());
-        discordDB.addUserPass2(me.getNation_id(), username, password);
-        if (existingAuth != null) existingAuth.setValid(false);
-        Auth myAuth = me.getAuth(null);
-        if (myAuth != null) myAuth.setValid(false);
-
-        return "Login successful.";
     }
 
     @Command(desc = "Remove your login details from locutus")
@@ -493,17 +575,11 @@ public class UnsortedCommands {
         return null;
     }
 
-    public enum ClearRolesEnum {
-        UNUSED,
-        ALLIANCE,
-        UNREGISTERED
-    }
-
     @Command
     @RolePermission(Roles.ADMIN)
     public String clearAllianceRoles(@Me GuildDB db, @Me Guild guild, ClearRolesEnum type) {
         switch (type) {
-            case UNUSED: {
+            case UNUSED -> {
                 Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
                 for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                     if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
@@ -512,7 +588,7 @@ public class UnsortedCommands {
                 }
                 return "Cleared unused AA roles!";
             }
-            case ALLIANCE: {
+            case ALLIANCE -> {
                 Set<Integer> aaIds = db.getAllianceIds();
 
                 Role memberRole = Roles.MEMBER.toRole(guild);
@@ -524,7 +600,7 @@ public class UnsortedCommands {
                     List<Role> roles = member.getRoles();
                     if (roles.contains(memberRole)) {
                         if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
-                            response.append("\nRemove member from " + member.getEffectiveName());
+                            response.append("\nRemove member from ").append(member.getEffectiveName());
                             RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, memberRole));
                         }
                     }
@@ -532,20 +608,16 @@ public class UnsortedCommands {
                 response.append("\nDone!");
                 return response.toString();
             }
-            case UNREGISTERED: {
+            case UNREGISTERED -> {
                 Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
                 for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                     entry.getValue().delete().complete();
                 }
                 return "Cleared all AA roles!";
             }
-            default:
-                throw new IllegalArgumentException("Unknown type " + type);
+            default -> throw new IllegalArgumentException("Unknown type " + type);
         }
     }
-
-    private Map<Long, String> previous = new HashMap<>();
-    private long previousNicksGuild = 0;
 
     @Command
     @RolePermission(Roles.ADMIN)
@@ -565,13 +637,6 @@ public class UnsortedCommands {
                         nick = null;
                     } else {
                         nick = previous.get(member.getIdLong());
-//                        if (args.get(0).equalsIgnoreCase("*")) {
-//                            nick = previous.get(member.getIdLong());
-//                        } else {
-//                            previous.put(member.getIdLong(), member.getNickname());
-//                            nick = DiscordUtil.trimContent(event.getMessage().getContentRaw());
-//                            nick = nick.substring(nick.indexOf(' ') + 1);
-//                        }
                     }
                     member.modifyNickname(nick).complete();
                 } catch (Throwable e) {
@@ -605,7 +670,7 @@ public class UnsortedCommands {
     @Command(desc = "Modify a nation, alliance or guild's deposits")
     @RolePermission(Roles.ECON)
     public String addBalanceSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                                  SpreadSheet sheet, String note, @Switch("f") boolean force, @Switch("n") boolean negative) throws Exception {
+                                  SpreadSheet sheet, String note, @Switch("f") boolean force, @Switch("n") boolean negative) {
         List<String> errors = new ArrayList<>();
         AddBalanceBuilder builder = db.addBalanceBuilder().addSheet(sheet, negative, errors::add, !force, note);
         if (!force) {
@@ -615,6 +680,8 @@ public class UnsortedCommands {
         boolean hasEcon = Roles.ECON.has(author, guild);
         return builder.buildAndSend(me, hasEcon);
     }
+
+//    double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
 
     @Command
     public String revenue(@Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User user, @Me DBNation me,
@@ -660,11 +727,9 @@ public class UnsortedCommands {
         return null;
     }
 
-//    double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
-
     @Command
     public String cityRevenue(@Me Guild guild, @Me IMessageIO channel, @Me User user,
-                              CityBuild city, @Default("%user%") DBNation nation, @Switch("b") boolean excludeNationBonus) throws Exception {
+                              CityBuild city, @Default("%user%") DBNation nation, @Switch("b") boolean excludeNationBonus) {
         if (nation == null) return "Please use " + CM.register.cmd.toSlashMention();
         JavaCity jCity = new JavaCity(city);
 
@@ -672,7 +737,7 @@ public class UnsortedCommands {
 
         JavaCity.Metrics metrics = jCity.getMetrics(nation::hasProject);
         IMessageBuilder msg = channel.create()
-                .append("Daily city revenue ```" + city.toString() + "```")
+                .append("Daily city revenue ```" + city + "```")
                 .append("```").append(PnwUtil.resourcesToString(revenue)).append("```")
                 .append("Converted total: $" + MathMan.format(PnwUtil.convertedTotal(revenue)));
         if (metrics.powered != null && !metrics.powered) {
@@ -702,7 +767,7 @@ public class UnsortedCommands {
 
     @Command
     public String unitHistory(@Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                              DBNation nation, MilitaryUnit unit, @Switch("p") Integer page) throws Exception {
+                              DBNation nation, MilitaryUnit unit, @Switch("p") Integer page) {
         List<Map.Entry<Long, Integer>> history = nation.getUnitHistory(unit);
 
         long day = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
@@ -770,17 +835,17 @@ public class UnsortedCommands {
 
         if (unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE) {
             if (purchasedToday) {
-                footer.append("\n**note: " + unit.name().toLowerCase() + " purchased in the past 24h**");
+                footer.append("\n**note: ").append(unit.name().toLowerCase()).append(" purchased in the past 24h**");
             }
         }
 
         CM.unit.history cmd = CM.unit.history.cmd.create(nation.getNation_id() + "", unit.name(), null);
 
         String title = "`" + nation.getNation() + "` " + unit.name() + " history";
-        int perPage =15;
+        int perPage = 15;
         int pages = (results.size() + perPage - 1) / perPage;
         if (page == null) page = 0;
-        title += " (" + (page + 1) + "/" + pages +")";
+        title += " (" + (page + 1) + "/" + pages + ")";
 
         channel.create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send();
         return null;
@@ -797,7 +862,7 @@ public class UnsortedCommands {
                                @Switch("a") boolean listByNation,
                                @Switch("s") boolean listAverage,
                                @Switch("u") boolean uploadFile,
-                               @Switch("i") boolean includeInactive) throws Exception {
+                               @Switch("i") boolean includeInactive) {
         if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNations().values());
         ArrayList<DBNation> nations = new ArrayList<>(nationList.getNations());
         if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
@@ -864,7 +929,8 @@ public class UnsortedCommands {
     public String rebuy(@Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
                         DBNation nation) throws Exception {
         Map<Integer, Long> dcProb = nation.findDayChange();
-        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try " + CM.unit.history.cmd.toSlashMention() + "";
+        if (dcProb.isEmpty() || dcProb.size() == 12)
+            return "Unknown day change. Try " + CM.unit.history.cmd.toSlashMention() + "";
 
         if (dcProb.size() == 1) {
             Map.Entry<Integer, Long> entry = dcProb.entrySet().iterator().next();
@@ -883,7 +949,7 @@ public class UnsortedCommands {
             Long turn = entry.getValue();
             long timestamp = TimeUtil.getTimeFromTurn(turn);
             String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
-            body.append(dateStr + " | " + dcStr + "\n");
+            body.append(dateStr).append(" | ").append(dcStr).append("\n");
         }
         channel.create().embed(title, body.toString()).send();
         return null;
@@ -895,7 +961,7 @@ public class UnsortedCommands {
                          @Switch("a") boolean ignoreInactives,
                          @Switch("v") boolean ignoreVM,
                          @Switch("m") boolean ignoreMembers,
-                         @Switch("i") boolean listIds) throws Exception {
+                         @Switch("i") boolean listIds) {
         StringBuilder response = new StringBuilder();
         Map<Integer, Map.Entry<Long, Rank>> removes;
         List<Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
@@ -906,14 +972,7 @@ public class UnsortedCommands {
             removes = nation.getAllianceHistory();
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
                 DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
-                DBNation tmp = nation;
-                if (tmp == null) {
-                    tmp = new DBNation();
-                    tmp.setNation_id(nation.getNation_id());
-                    tmp.setAlliance_id(aa.getAlliance_id());
-                    tmp.setNation(nation.getNation_id() + "");
-                }
-                AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(tmp, aa);
+                AbstractMap.SimpleEntry<DBNation, DBAlliance> key = new AbstractMap.SimpleEntry<>(nation, aa);
                 Map.Entry<Long, Rank> value = entry.getValue();
                 toPrint.add(new AbstractMap.SimpleEntry<>(key, value));
             }
@@ -953,9 +1012,9 @@ public class UnsortedCommands {
             DBNation nation = nationAA.getKey();
             ids.add(nation.getNation_id());
 
-            response.append(timeStr + " ago: " + nationAA.getKey().getNation() + " left " + nationAA.getValue().getName() + " | " + rank.name());
+            response.append(timeStr).append(" ago: ").append(nationAA.getKey().getNation()).append(" left ").append(nationAA.getValue().getName()).append(" | ").append(rank.name());
             if (showCurrentAA && nation.getAlliance_id() != 0) {
-                response.append(" and joined " + nation.getAllianceName());
+                response.append(" and joined ").append(nation.getAllianceName());
             }
             response.append("\n");
         }
@@ -963,7 +1022,7 @@ public class UnsortedCommands {
         if (response.length() == 0) return "No history found in the specified timeframe";
         IMessageBuilder msg = io.create();
         if (listIds) {
-            msg.file("ids.txt",  StringMan.join(ids, ","));
+            msg.file("ids.txt", StringMan.join(ids, ","));
         }
         msg.append(response.toString()).send();
         return null;
@@ -972,7 +1031,7 @@ public class UnsortedCommands {
     @Command
     @RolePermission(Roles.MEMBER)
     public String copyPasta(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me Member member, @Me User author, @Me DBNation me,
-                            @Default String key, @Default @TextArea String message, @Default Set<Role> requiredRolesAny, NationPlaceholders placeholders, ValueStore store) throws Exception {
+                            @Default String key, @Default @TextArea String message, @Default Set<Role> requiredRolesAny, NationPlaceholders placeholders, ValueStore store) {
         if (key == null) {
 
             Map<String, String> copyPastas = db.getCopyPastas(member);
@@ -1035,7 +1094,8 @@ public class UnsortedCommands {
         if (missingRoles != null && !missingRoles.isEmpty()) {
             throw new IllegalArgumentException("You do not have the required roles to use this command: `" + StringMan.join(missingRoles, ",") + "`");
         }
-        if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
+        if (value == null)
+            return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
 
         value = placeholders.format(store, value);
 
@@ -1070,7 +1130,8 @@ public class UnsortedCommands {
         IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
 
         ApiKeyPool keys = mailResults ? db.getMailKey() : null;
-        if (mailResults && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
+        if (mailResults && keys == null)
+            throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
 
         CompletableFuture<IMessageBuilder> msg = channel.send("Please wait...");
 
@@ -1087,7 +1148,7 @@ public class UnsortedCommands {
                 auditResult = IACheckup.simplify(auditResult);
             }
 
-            if (!auditResult.isEmpty()) {
+            if (!Objects.requireNonNull(auditResult).isEmpty()) {
                 for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : auditResult.entrySet()) {
                     IACheckup.AuditType type = entry.getKey();
                     Map.Entry<Object, String> info = entry.getValue();
@@ -1142,128 +1203,6 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Generate an optimal build for a city")
-    @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
-    @HasOffshore
-    @IsAlliance
-    public static String warchest(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
-                           NationList nations, Map<ResourceType, Double> resourcesPerCity, @Default DepositType.DepositTypeInfo note,
-                           @Switch("s") boolean skipStockpile,
-                           @Switch("n") DBNation depositsAccount,
-                           @Switch("a") DBAlliance useAllianceBank,
-                           @Switch("o") DBAlliance useOffshoreAccount,
-                           @Switch("t") TaxBracket taxAccount,
-                           @Switch("ta") boolean existingTaxAccount,
-                           @Switch("e") @Timediff Long expire,
-                           @Switch("m") boolean convertToMoney,
-                           @Switch("b") boolean bypassChecks,
-                           @Switch("f") boolean force) throws Exception {
-        if (existingTaxAccount) {
-            if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
-        }
-        if (note == null) note = DepositType.WARCHEST.withValue();
-
-        Collection<DBNation> nationSet = new HashSet<>(nations.getNations());
-        Map<NationOrAlliance, String> errors = new HashMap<>();
-
-        boolean hasEcon = Roles.ECON.has(author, guild);
-        if (!hasEcon && (nationSet.size() != 1 || !nationSet.iterator().next().equals(me))) return "You only have permission to send to your own nation";
-
-        Iterator<DBNation> iter = nationSet.iterator();
-        while (iter.hasNext()) {
-            DBNation nation = iter.next();
-            if (nation.getActive_m() > 7200) {
-                iter.remove();
-                errors.put(nation, "Nation is inactive: " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m()));
-            } else if (nation.getPosition() <= 1) {
-                iter.remove();
-                errors.put(nation, "Nation is not a member");
-            } else if (nation.getVm_turns() != 0) {
-                iter.remove();
-                errors.put(nation, "Nation is in Vacation Mode");
-            }
-        }
-
-        if (nationSet.isEmpty()) {
-            return "No active members in bracket";
-        }
-
-        AllianceList aaList = db.getAllianceList().subList(nationSet);
-
-        Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
-        Map<DBNation, Map<ResourceType, Double>> memberResources2 = aaList.getMemberStockpile();
-
-        for (DBNation nation : nationSet) {
-            Map<ResourceType, Double> stockpile;
-            if (skipStockpile) {
-                stockpile = new HashMap<>();
-            } else {
-                stockpile = memberResources2.get(nation);
-                if (stockpile == null) {
-                    if (!aaList.isInAlliance(nation)) {
-                        errors.put(nation, "No stockpile information available (not in the guild's alliance)");
-                    } else {
-                        errors.put(nation, "No stockpile information available (are you sure a valid api key is set?)");
-                    }
-                    continue;
-                }
-                if (PnwUtil.convertedTotal(stockpile) < 0) {
-                    errors.put(nation, "Alliance information access is disabled from their **account** page");
-                    continue;
-                }
-                Map<ResourceType, Double> toSendCurrent = new HashMap<>();
-                for (ResourceType type : resourcesPerCity.keySet()) {
-                    double required = resourcesPerCity.getOrDefault(type, 0d) * nation.getCities();
-                    double current = stockpile.getOrDefault(type, 0d);
-                    if (required > current) {
-                        toSendCurrent.put(type, required - current);
-                    }
-                }
-                if (!toSendCurrent.isEmpty()) {
-                    fundsToSendNations.put(nation, toSendCurrent);
-                } else {
-                    errors.put(nation, "No funds need to be sent");
-                    continue;
-                }
-            }
-        }
-
-        UUID key = UUID.randomUUID();
-        TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
-        BankCommands.APPROVED_BULK_TRANSFER.put(key, sheet.getTransfers());
-
-        JSONObject command = CM.transfer.bulk.cmd.create(
-                sheet.getSheet().getURL(),
-                note.toString(),
-                depositsAccount != null ? depositsAccount.getUrl() : null,
-                useAllianceBank != null ? useAllianceBank.getUrl() : null,
-                useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
-                taxAccount != null ? taxAccount.getQualifiedName() : null,
-                existingTaxAccount + "",
-                Boolean.FALSE.toString(),
-                expire == null ? null : ("timestamp:" + expire),
-                String.valueOf(force),
-                null,
-                key.toString()
-        ).toJson();
-
-        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, errors);
-    }
-
-    @Command
-    public static String reroll(@Me IMessageIO io, DBNation nation) {
-        long date = nation.getRerollDate();
-        if (date == Long.MAX_VALUE) {
-            return "No direct reroll found. See also: " + CM.nation.list.multi.cmd.toSlashMention();
-        }
-        String title = "`" + nation.getNation() + "` is a reroll";
-        StringBuilder body = new StringBuilder();
-        body.append("Reroll date: " + DiscordUtil.timestamp(nation.getDate(), "d") + "\n");
-        body.append("Original creation date: " + DiscordUtil.timestamp(date, "d"));
-        io.create().embed(title, body.toString()).send();
-        return null;
-    }
-
-    @Command(desc = "Generate an optimal build for a city")
     @RolePermission(Roles.MEMBER)
     public String optimalBuild(@Me JSONObject command, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                                CityBuild build, @Default Integer days,
@@ -1276,7 +1215,7 @@ public class UnsortedCommands {
                                @Switch("c") Double crimeCap,
                                @Switch("p") Double minPopulation,
                                @Switch("r") Double radiation,
-                               @Switch("t")TaxRate taxRate,
+                               @Switch("t") TaxRate taxRate,
                                @Switch("u") boolean useRawsForManu,
                                @Switch("w") boolean writePlaintext,
                                @Switch("n") Set<Project> nationalProjects,
@@ -1298,8 +1237,8 @@ public class UnsortedCommands {
         if (crimeCap != null) cmd.add("crime<" + crimeCap);
         if (minPopulation != null) cmd.add("population>" + minPopulation);
         if (radiation != null) cmd.add("radiation=" + radiation);
-        if (taxRate != null) cmd.add("" + taxRate.toString());
-        if (useRawsForManu) cmd.add("manu=" + useRawsForManu);
+        if (taxRate != null) cmd.add("" + taxRate);
+        if (useRawsForManu) cmd.add("manu=" + true);
         if (writePlaintext) flags.add('p');
         if (nationalProjects != null) {
             for (Project project : nationalProjects) {
@@ -1307,9 +1246,8 @@ public class UnsortedCommands {
             }
         }
 
-        if (moneyPositive) cmd.add("cash=" + moneyPositive);
+        if (moneyPositive) cmd.add("cash=" + true);
         if (geographicContinent != null) cmd.add("continent=" + geographicContinent);
-
 
 
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
@@ -1326,6 +1264,12 @@ public class UnsortedCommands {
         if (hideSheetList) flags.add('s');
         if (showAll) flags.add('a');
         return new KeyStore().onCommand(io, guild, author, me, cmd, flags);
+    }
+
+    public enum ClearRolesEnum {
+        UNUSED,
+        ALLIANCE,
+        UNREGISTERED
     }
 
 }
