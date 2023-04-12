@@ -9,17 +9,9 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public interface IAuthHandler {
-    void login(Context ctx);
-
     void logout(Context ctx);
 
-    default Long getDiscordUser(Context ctx) throws IOException {
-        return getDiscordUser(ctx, false);
-    }
-
-    Long getDiscordUser(Context ctx, boolean login) throws IOException;
-
-    DBNation getNation(Context ctx) throws IOException;
+    Auth getAuth(Context ctx);
 
     public record Auth(Integer nationId, Long userId, long timestamp) {
 

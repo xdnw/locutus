@@ -32,9 +32,9 @@
         @for (Announcement.PlayerAnnouncement plrAnn : announcements) {
             @rocker.alliance.playerannouncement.template(db, plrAnn, true, false, true)
         }
-        <a class="btn btn-primary btn-sm" href="@(Settings.INSTANCE.WEB.REDIRECT)/@(db.getIdLong())/announcements/-a">View All Announcements</a>
+        <a class="btn btn-primary btn-sm" href="@(Settings.INSTANCE.WEB.REDIRECT)/announcements/-a">View All Announcements</a>
         @if (Roles.ADMIN.has(author, guild)) {
-            <a class="btn btn-danger btn-sm" href="@(Settings.INSTANCE.WEB.REDIRECT)/@(db.getIdLong())/manageannouncements">Manage Announcements</a>
+            <a class="btn btn-danger btn-sm" href="@(Settings.INSTANCE.WEB.REDIRECT)/manageannouncements">Manage Announcements</a>
         }
     </div>
     <div class="bg-white container mt-3 rounded shadow py-1">
@@ -70,7 +70,7 @@
         <b>Your deposits: </b>
         @(PnwUtil.resourcesToString(PnwUtil.normalize(deposits)))
     </p>
-    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/@(guild.getIdLong())/command/withdraw"  class="btn btn-primary btn">&#128279; Withdraw Funds</a>
+    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/command/withdraw"  class="btn btn-primary btn">&#128279; Withdraw Funds</a>
     <a href="https://politicsandwar.com/alliance/id=@(nation.getAlliance_id())&display=bank" class="btn btn-primary btn">Deposit Funds <i class="bi bi-box-arrow-up-right text-light"></i></a>
 </div>
 @if (offensives.size() + defensives.size() > 0) {
@@ -144,10 +144,10 @@
         }
     </p>
     <div class="list-group">
-    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/@db.getIdLong()/infragrants/@(nation.getNation_id())" class="link-primary list-group-item bg-light">&#127959;&#65039; Infra grants</a>
-    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/@db.getIdLong()/landgrants/@(nation.getNation_id())" class="link-primary list-group-item bg-light">&#127966;&#65039; Land grants</a>
-    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/@db.getIdLong()/citygrants/@(nation.getNation_id())" class="link-primary list-group-item bg-light">&#127961;&#65039; City grants</a>
-    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/@db.getIdLong()/projectgrants/@(nation.getNation_id())" class="link-primary list-group-item bg-light">&#128508; Project grants</a>
+    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/infragrants/@(nation.getNation_id())" class="link-primary list-group-item bg-light">&#127959;&#65039; Infra grants</a>
+    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/landgrants/@(nation.getNation_id())" class="link-primary list-group-item bg-light">&#127966;&#65039; Land grants</a>
+    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/citygrants/@(nation.getNation_id())" class="link-primary list-group-item bg-light">&#127961;&#65039; City grants</a>
+    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/projectgrants/@(nation.getNation_id())" class="link-primary list-group-item bg-light">&#128508; Project grants</a>
     </div>
 </div>
 }

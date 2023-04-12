@@ -153,27 +153,27 @@ public class WebRoot {
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
         this.app.get("/logout", ctx -> pageHandler.logout(ctx));
 
-        this.app.get("/{guild_id}/sse/**", new SseHandler2(new Consumer<SseClient2>() {
+        this.app.get("/sse/**", new SseHandler2(new Consumer<SseClient2>() {
             @Override
             public void accept(SseClient2 sse) {
                 pageHandler.sse(sse);
             }
         }));
 
-        this.app.get("/{guild_id}/sse_reaction**", new SseHandler2(new Consumer<SseClient2>() {
+        this.app.get("/sse_reaction**", new SseHandler2(new Consumer<SseClient2>() {
             @Override
             public void accept(SseClient2 sse) {
                 pageHandler.sseReaction(sse);
             }
         }));
-        this.app.get("/{guild_id}/sse_cmd_str**", new SseHandler2(new Consumer<SseClient2>() {
+        this.app.get("/sse_cmd_str**", new SseHandler2(new Consumer<SseClient2>() {
             @Override
             public void accept(SseClient2 sse) {
                 pageHandler.sseCmdStr(sse);
             }
         }));
 
-        this.app.get("cmd_page/{guild_id}/**", new SseHandler2(new Consumer<SseClient2>() {
+        this.app.get("command/**", new SseHandler2(new Consumer<SseClient2>() {
             @Override
             public void accept(SseClient2 sse) {
                 try {
@@ -199,10 +199,8 @@ public class WebRoot {
 
         for (String cmd : pageHandler.getCommands().getSubCommandIds()) {
             List<String> patterns = Arrays.asList(
-//                    "/" + cmd + "/**",
-//                    "/" + cmd,
-                    "/{guild_id}/" + cmd + "/**",
-                    "/{guild_id}/" + cmd
+                    "/page/" + cmd + "/**",
+                    "/page/" + cmd
             );
             for (String pattern : patterns) {
                 this.app.get(pattern, ctx -> {

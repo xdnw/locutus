@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
@@ -329,7 +330,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm,#position>1")
-    public static Set<DBNation> nations(@Me Guild guild, String input) {
+    public static Set<DBNation> nations(@Default @Me Guild guild, String input) {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, input);
         if (nations == null) throw new IllegalArgumentException("Invalid nations: " + input);
         return nations;

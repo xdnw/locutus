@@ -1,5 +1,6 @@
 package link.locutus.discord.web.jooby;
 
+import com.google.common.hash.Hashing;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -17,7 +18,6 @@ import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
@@ -28,17 +28,16 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.web.auth.AuthHandler;
-import link.locutus.discord.web.auth.IAuthHandler;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
-import link.locutus.discord.web.commands.binding.NationListPages;
-import link.locutus.discord.web.commands.binding.StringWebBinding;
-import link.locutus.discord.web.commands.binding.WebPrimitiveBinding;
+import link.locutus.discord.web.commands.NationListPages;
+import link.locutus.discord.web.commands.binding.DiscordWebBindings;
+import link.locutus.discord.web.commands.binding.JavalinBindings;
+import link.locutus.discord.web.commands.binding.PrimitiveWebBindings;
+import link.locutus.discord.web.commands.binding.WebPWBindings;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
 import link.locutus.discord.web.jooby.adapter.JoobyMessage;
 import link.locutus.discord.web.jooby.adapter.JoobyMessageAction;
@@ -65,7 +64,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.util.AbstractMap;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -86,11 +85,11 @@ public class PageHandler implements Handler {
     private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
-    private final IAuthHandler authHandler;
+//    private final IAuthHandler authHandler;
 
     public PageHandler(WebRoot root) {
         this.root = root;
-        this.authHandler = new AuthHandler();
+//        this.authHandler = new AuthHandler();
 
         this.store = new SimpleValueStore<>();
 
@@ -99,9 +98,11 @@ public class PageHandler implements Handler {
         new PWBindings().register(store);
         new SheetBindings().register(store);
         new StockBinding().register(store);
-        new JoobyBindings().register(store);
-        new WebPrimitiveBinding().register(store);
-        new StringWebBinding().register(store);
+
+        new DiscordWebBindings().register(store);
+        new JavalinBindings().register(store);
+        new PrimitiveWebBindings().register(store);
+        new WebPWBindings().register(store);
 
         this.validators = new ValidatorStore();
         new PrimitiveValidators().register(validators);
@@ -173,7 +174,6 @@ public class PageHandler implements Handler {
             if (cmdStr.charAt(0) == '$') cmdStr = Settings.commandPrefix(false) + cmdStr.substring(1);
 
             Context ctx = sse.ctx;
-            DBNation nation = authHandler.getNation(ctx);
 //
 //            JsonObject userJson = authHandler.getDiscordUser(ctx);
 //            if (userJson == null) {
@@ -183,15 +183,10 @@ public class PageHandler implements Handler {
 //            Long userId = Long.parseLong(userJson.get("id").getAsString());
 //            User user = Locutus.imp().getDiscordApi().getUserById(userId);
 //            DBNation nation = DiscordUtil.getNation(userId);
-            if (nation == null) {
-                sseMessage(sse, "User not verified", false);
-                return;
-            }
 
             String path = ctx.path();
             path = path.substring(1);
             List<String> args = new ArrayList<>(Arrays.asList(path.split("/")));
-
             if (args.isEmpty()) {
                 return;
             }
@@ -210,10 +205,6 @@ public class PageHandler implements Handler {
 
             Message embedMessage = new MessageBuilder().setContent(cmdStr).build();
             JoobyMessage sseMessage = new JoobyMessage(action, embedMessage, -1);
-            User user = nation.getUser();
-            if (user != null) {
-                sseMessage.setUser(user);
-            }
             action.load(sseMessage);
 
             MessageReceivedEvent finalEvent = new DelegateMessageEvent(guildDb.getGuild(), -1, sseMessage);
@@ -249,30 +240,14 @@ public class PageHandler implements Handler {
 
         try {
             Context ctx = sse.ctx;
-            DBNation nation = authHandler.getNation(ctx);
-            if (nation == null) {
-                sseMessage(sse, "User not verfied", false);
-                return;
-            }
             {
                 String path = ctx.path();
                 path = path.substring(1);
                 List<String> args = new ArrayList<>(Arrays.asList(path.split("/")));
-
                 if (args.isEmpty()) {
                     return;
                 }
-                String guildIdStr = args.get(0);
-                if (!MathMan.isInteger(guildIdStr)) {
-                    return;
-                }
-
-                GuildDB guildDb = Locutus.imp().getGuildDB(Long.parseLong(guildIdStr));
-                if (guildDb == null) {
-                    return;
-                }
-
-                JDA jda = guildDb.getGuild().getJDA();
+                JDA jda = Locutus.imp().getDiscordApi(Settings.INSTANCE.ROOT_SERVER);
 
                 DataObject json = DataObject.fromJson(msgJsonList.get(0));
                 MessageBuilder msgBuilder = new MessageBuilder();
@@ -306,7 +281,7 @@ public class PageHandler implements Handler {
                     msgBuilder.setEmbeds(embeds);
                 }
 
-                JoobyChannel channel = new JoobyChannel(guildDb.getGuild(), sse, root.getFileRoot());
+                JoobyChannel channel = new JoobyChannel(null, sse, root.getFileRoot());
                 JoobyMessageAction action = new JoobyMessageAction(jda, channel, root.getFileRoot(), sse);
                 action.setId(messageId);
 
@@ -327,7 +302,7 @@ public class PageHandler implements Handler {
                 MessageReaction.ReactionEmote emote = MessageReaction.ReactionEmote.fromUnicode(emoji, jda);
 
 
-                Locutus.imp().onMessageReact(sseMessage, nation.getUser(), emote, 0, false); // TODO make onMessageReact  accept nation
+                Locutus.imp().onMessageReact(sseMessage, null, emote, 0, false); // TODO make onMessageReact  accept nation
             }
         } catch (Throwable e) {
             logger.log(Level.SEVERE, e.getMessage(), e);
@@ -338,22 +313,6 @@ public class PageHandler implements Handler {
             } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
-        }
-    }
-
-    public Map.Entry<Long, DBNation> getUserIdNationPair(Context ctx) {
-        try {
-            DBNation nation = authHandler.getNation(ctx);
-            if (nation == null) {
-                throw new IllegalArgumentException("Nation not verified");
-            }
-            Long userId = nation.getUserId();
-            if (userId == null) {
-                throw new IllegalArgumentException("User not verified");
-            }
-            return new AbstractMap.SimpleEntry<>(userId, nation);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("IO error: " + e.getMessage());
         }
     }
 
@@ -403,12 +362,7 @@ public class PageHandler implements Handler {
     public void sse(SseClient2 sse) {
         try {
             Context ctx = sse.ctx;
-            DBNation nation = authHandler.getNation(ctx);
-            if (nation == null) {
-                sseMessage(sse, "User not verfied", false);
-                return;
-            }
-            ArgumentStack stack = createStack(nation, null, ctx);
+            ArgumentStack stack = createStack(null, null, ctx);
             stack.consumeNext();
             List<String> args = stack.getRemainingArgs();
             CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
@@ -470,24 +424,7 @@ public class PageHandler implements Handler {
     public void handle(@NotNull Context ctx) throws Exception {
         logger.info("Page method " + ctx.method());
         try {
-            Long userId = authHandler.getDiscordUser(ctx, true);
-            if (userId == null) {
-                String url = "https://discord.gg/H9XnGxc";
-                ctx.result("Please join the Politics & War discord: " + MarkupUtil.htmlUrl(url, url));
-                ctx.header("Content-Type", "text/html;charset=UTF-8");
-                return;
-            }
-            DBNation nation = DiscordUtil.getNation(userId);
-            if (nation == null) {
-                User user = DiscordUtil.getUser(userId);
-                String username = user != null ? user.getName() + "#" + user.getDiscriminator() : "id:" + userId;
-                ctx.result("Please use <b>" + CM.register.cmd.toSlashMention() + "</b> in " + MarkupUtil.htmlUrl("#bot-spam", "https://discord.com/channels/216800987002699787/400030171765276672/") + "\n" +
-                        "You are currently signed in as " + username + ": " + MarkupUtil.htmlUrl("Logout", Settings.INSTANCE.WEB.REDIRECT + "/logout"));
-                ctx.header("Content-Type", "text/html;charset=UTF-8");
-                return;
-            }
-
-            handleCommand(nation, userId, ctx);
+            handleCommand(null, null, ctx);
         } catch (Throwable e) {
             e.printStackTrace();
             throw e;
@@ -536,7 +473,7 @@ public class PageHandler implements Handler {
                 cmd.validatePermissions(stack.getStore(), permisser);
 
                 if (cmd != null) {
-                    String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/cmd_page";
+                    String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
                     ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
                 } else {
                     throw e2;
@@ -628,11 +565,9 @@ public class PageHandler implements Handler {
         String pathStr = ctx.path();
         if (pathStr.startsWith("/")) pathStr = pathStr.substring(1);
         List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
-        path.remove("cmd_page");
+        path.remove("command");
 
-        DBNation nation = authHandler.getNation(ctx);
-
-        LocalValueStore locals = setupLocals(null, nation, null, ctx, path);
+        LocalValueStore locals = setupLocals(null, null, null, ctx, path);
 
         CommandCallable cmd = commands.getCallable(path);
 
@@ -667,7 +602,30 @@ public class PageHandler implements Handler {
         sse.sendEvent(response);
     }
 
-    public void logout(Context ctx) {
-        authHandler.logout(ctx);
+    public void logout(Context context) {
+        for (CookieType type : CookieType.values()) {
+            context.removeCookie(cookieId(type));
+        }
+        context.redirect(WebRoot.REDIRECT);
+    }
+
+    public enum CookieType {
+        DISCORD_OAUTH,
+        URL_AUTH,
+        GUILD_ID,
+    }
+
+    public static String COOKIE_ID = "LCTS";
+
+    public static String cookieId(CookieType type) {
+        StringBuilder key = new StringBuilder(COOKIE_ID);
+        key.append(Settings.INSTANCE.BOT_TOKEN.hashCode());
+        if (type != CookieType.DISCORD_OAUTH) {
+            key.append(type.name());
+        }
+
+        return Hashing.sha256()
+                .hashString(key.toString(), StandardCharsets.UTF_8)
+                .toString();
     }
 }

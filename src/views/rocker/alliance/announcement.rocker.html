@@ -34,5 +34,5 @@ bg-secondary border-dark
     } else {
         <button cmd="$archiveAnnouncement @(announcement.id) false" type="button" class="btn btn-danger">Unarchive</button>
     }
-    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/@(db.getIdLong())/announcementvariations/@(announcement.id)" type="button" class="btn btn-primary">View Variations</a>
+    <a href="@(Settings.INSTANCE.WEB.REDIRECT)/announcementvariations/@(announcement.id)" type="button" class="btn btn-primary">View Variations</a>
 </div>

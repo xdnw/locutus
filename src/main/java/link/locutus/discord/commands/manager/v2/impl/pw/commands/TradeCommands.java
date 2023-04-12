@@ -1050,8 +1050,6 @@ public class TradeCommands {
         body.append("\nPress `" + emoji + "` to compare by day (200 days)");
 
 
-//        String cmd = "_" + Settings.commandPrefix(false) + "compareStockpileValueByDay " + PnwUtil.resourcesToString(stockpile) + " " + PnwUtil.resourcesToString(allDeposits) + " 200";
-
         CommandRef cmd = CM.trade.compareStockpileValueByDay.cmd.create(PnwUtil.resourcesToString(stockpile), PnwUtil.resourcesToString(allDeposits), "200");
 
         IMessageBuilder msg = channel.create().embed(title, body.toString())

@@ -323,44 +323,56 @@ public class ParametricCallable implements ICommand {
             String unparsed = null;
             Object value;
             // flags
-            if (parameter.isFlag()) {
-                unparsed = flags.get(parameter.getFlag());
-                if (unparsed == null) {
-                    if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0) {
-                        unparsed = parameter.getDefaultValueString();
+
+            System.out.println(":||Remove Param " + this.getPrimaryCommandId() + ": " + parameter.getName() + " | " + parameter.isOptional() + " | " + StringMan.getString(parameter.getDefaultValue()));
+            try {
+                if (parameter.isFlag()) {
+                    unparsed = flags.get(parameter.getFlag());
+                    if (unparsed == null) {
+                        if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0) {
+                            unparsed = parameter.getDefaultValueString();
+                            value = locals.get(parameter.getBinding().getKey()).apply(stack.getStore(), unparsed);
+                        } else if (!parameter.isConsumeFlag()) {
+                            value = false;
+                        } else {
+                            value = null;
+                        }
+                    } else {
                         value = locals.get(parameter.getBinding().getKey()).apply(stack.getStore(), unparsed);
-                    } else if (!parameter.isConsumeFlag()) {
-                        value = false;
+                    }
+                } else {
+                    if (!stack.hasNext() && parameter.isOptional()) {
+                        if (parameter.getDefaultValue() == null) {
+                            continue;
+                        } else {
+                            unparsed = parameter.getDefaultValueString();
+                            stack.add(parameter.getDefaultValue());
+                        }
+                    }
+                    if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
+                        if (parameter.getBinding().isConsumer(stack.getStore()) && !stack.hasNext()) {
+                            String name = parameter.getType().getTypeName();
+                            String[] split = name.split("\\.");
+                            name = split[split.length - 1];
+                            throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name, help(locals), desc(locals));
+                        }
+                        int originalRemaining = stack.remaining();
+                        List<String> remaining = new ArrayList<>(stack.getRemainingArgs());
+                        System.out.println("Key " + parameter.getBinding().getKey() + " | " + parameter.getName() + " | " + method.getName());
+                        value = locals.get(parameter.getBinding().getKey()).apply(stack);
+                        int numConsumed = originalRemaining - stack.remaining();
+                        unparsed = String.join(" ", remaining.subList(0, numConsumed));
                     } else {
                         value = null;
                     }
-                } else {
-                    value = locals.get(parameter.getBinding().getKey()).apply(stack.getStore(), unparsed);
                 }
-            } else {
-                if (!stack.hasNext() && parameter.isOptional()) {
-                    if (parameter.getDefaultValue() == null) {
-                        continue;
-                    } else {
-                        unparsed = parameter.getDefaultValueString();
-                        stack.add(parameter.getDefaultValue());
-                    }
+            } catch (IllegalStateException e) {
+                if (!parameter.isOptional() || parameter.getDefaultValue() != null) {
+                    System.out.println("Throw e");
+                    throw e;
                 }
-                if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
-                    if (parameter.getBinding().isConsumer(stack.getStore()) && !stack.hasNext()) {
-                        String name = parameter.getType().getTypeName();
-                        String[] split = name.split("\\.");
-                        name = split[split.length - 1];
-                        throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name, help(locals), desc(locals));
-                    }
-                    int originalRemaining = stack.remaining();
-                    List<String> remaining = new ArrayList<>(stack.getRemainingArgs());
-                    value = locals.get(parameter.getBinding().getKey()).apply(stack);
-                    int numConsumed = originalRemaining - stack.remaining();
-                    unparsed = String.join(" ", remaining.subList(0, numConsumed));
-                } else {
-                    value = null;
-                }
+                System.out.println("Dont throw e");
+                value = null;
             }
             try {
                 value = stack.getValidators().validate(parameter, locals, value);

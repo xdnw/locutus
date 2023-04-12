@@ -1281,8 +1281,8 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get info about your own nation")
-    public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation me) throws IOException {
-        return who(command, guild, channel, author, Collections.singleton(me), null, false, false, false, false, false, false, null);
+    public String me(@Me JSONObject command, @Default @Me Guild guild, @Me IMessageIO channel, @Me DBNation me) throws IOException {
+        return who(command, guild, channel, Collections.singleton(me), null, false, false, false, false, false, false, null);
     }
 
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
@@ -1294,7 +1294,7 @@ public class UtilityCommands {
                     "Use `-i` to list individual nation info\n" +
                     "Use `-c` to list individual nation channels" +
                     "e.g. `{prefix}who @borg`")
-    public String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author,
+    public String who(@Me JSONObject command, @Default @Me Guild guild, @Me IMessageIO channel,
                       Set<DBNation> nations,
                       @Default() NationPlaceholder sortBy,
                       @Switch("l") boolean list,
@@ -1329,8 +1329,6 @@ public Map<ParametricCallable, String> getEndpoints() {
 
         int perpage = 15;
         StringBuilder response = new StringBuilder();
-
-        boolean isAdmin = Roles.ADMIN.hasOnRoot(author);
 
 //        if (nationsOrAlliances.isEmpty()) {
 //            return "Not found: `" + Settings.commandPrefix(false) + "who <user>`";
@@ -1394,11 +1392,11 @@ public Map<ParametricCallable, String> getEndpoints() {
 
             response.append("Total for " + arg0 + ":").append('\n');
 
-            printAA(response, total, isAdmin);
+            printAA(response, total, true);
 
             response.append("Average for " + arg0 + ":").append('\n');
 
-            printAA(response, average, isAdmin);
+            printAA(response, average, true);
 
             // min score
             // max score
@@ -1425,8 +1423,8 @@ public Map<ParametricCallable, String> getEndpoints() {
                     }
                 }
             } else {
-                GuildDB db = Locutus.imp().getGuildDB(guild);
-                IACategory iaCat = listChannels ? db.getIACategory() : null;
+                GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
+                IACategory iaCat = listChannels && db != null ? db.getIACategory() : null;
                 for (DBNation nation : nations) {
                     String nationStr = list ? nation.getNationUrlMarkup(true) : "";
                     if (listMentions) {

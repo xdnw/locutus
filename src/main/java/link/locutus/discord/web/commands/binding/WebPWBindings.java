@@ -79,128 +79,16 @@ import static link.locutus.discord.web.WebUtil.createInput;
 import static link.locutus.discord.web.WebUtil.generateSearchableDropdown;
 import static link.locutus.discord.web.WebUtil.wrapLabel;
 
-public class WebPrimitiveBinding extends BindingHelper {
+public class WebPWBindings extends WebBindingHelper {
 
 
-    @HtmlInput
-    @Binding(types={int.class, Integer.class}, examples = {"3"})
-    public static String Integer(ParameterData param) {
-        return WebUtil.createInput(WebUtil.InputType.number, param, "step='1'");
-    }
 
-    @HtmlInput
-    @Binding(types={double.class, Double.class}, examples = {"3.0"})
-    public static String Double(ParameterData param) {
-        return WebUtil.createInput(WebUtil.InputType.number, param);
-    }
-
-    @HtmlInput
-    @Binding(types={long.class, Long.class}, examples = {"3.0"})
-    public static String Long(ParameterData param) {
-        return Integer(param);
-    }
-
-    @HtmlInput
-    @Binding(examples = {"true", "false"}, types = {boolean.class, Boolean.class})
-    public String Boolean(ParameterData param) {
-        String def = param.getDefaultValueString();
-        return WebUtil.createInput(WebUtil.InputType.checkbox, param, (def != null && def.equals("true") ? "checked " : ""));
-    }
-
-    @HtmlInput
-    @Binding(examples = {"#420420"}, types={Color.class})
-    public static String color(ParameterData param) {
-        return WebUtil.createInput(WebUtil.InputType.color, param);
-    }
-
-    @HtmlInput
-    @Binding(examples = {"8-4-4-4-12"}, types={UUID.class})
-    public static String uuid(ParameterData param) {
-        String pattern = "/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i";
-        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
-    }
-
-    @Timediff
-    @HtmlInput
-    @Binding(types={long.class, Long.class}, examples = {"5d", "10h3m25s"})
-    public static String timediff(ParameterData param) {
-        return WebUtil.createInputWithClass("input", WebUtil.InputType.date, param, "input-timediff", false);
-    }
-
-    @Timestamp
-    @HtmlInput
-    @Binding(types={long.class, Long.class}, examples = {"5d", "10h3m25s", "dd/MM/yyyy"})
-    public static String timestamp(ParameterData param) {
-        return WebUtil.createInput(WebUtil.InputType.date, param);
-    }
 
     /*
     --------------------------------------------------------------------
      */
 
-    private String formatGuildName(Guild guild) {
-        return DiscordUtil.toDiscordChannelString(guild.getName());
-    }
 
-    @HtmlInput
-    @Binding(types = {User.class})
-    public String user(@Me Guild guild, ParameterData param) {
-        Set<User> users = guild.getMembers().stream().map(f -> f.getUser()).collect(Collectors.toSet());
-        return WebUtil.generateSearchableDropdown(param, users, (obj, names, values, subtext) -> {
-            names.add(obj.getName());
-            values.add(obj.getAsMention());
-            DBNation nation = DiscordUtil.getNation(obj);
-            if (nation != null) {
-                subtext.add(nation.getNation() + " - " + nation.getAllianceName() + " - " + Rank.byId(nation.getPosition()));
-            } else {
-                subtext.add("");
-            }
-        });
-    }
-
-    @HtmlInput
-    @Binding(types = {Member.class})
-    public String member(@Me User user, @Me Guild guild, ParameterData param) {
-        List<Member> options = guild.getMembers();
-        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(obj.getEffectiveName());
-            values.add(obj.getAsMention());
-            DBNation nation = DiscordUtil.getNation(obj.getUser());
-            if (nation != null) {
-                subtext.add(nation.getNation() + " - " + nation.getAllianceName() + " - " + Rank.byId(nation.getPosition()));
-            } else {
-                subtext.add("");
-            }
-        });
-    }
-
-    @HtmlInput
-    @Binding(types=Category.class)
-    public String category(@Me Guild guild, ParameterData param) {
-        List<Category> options = guild.getCategories();
-        Filter filter = param.getAnnotation(Filter.class);
-        options = new ArrayList<>(options);
-        options.removeIf(f -> !f.getName().matches(filter.value()));
-        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(obj.getName());
-            values.add(obj.getIdLong());
-        });
-    }
-
-    @HtmlInput
-    @Binding(types=Guild.class)
-    public String guild(@Me User user, ParameterData param) {
-        List<Guild> options = user.getMutualGuilds();
-        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(formatGuildName(obj) + "/" + obj.getIdLong());
-            values.add(obj.getIdLong());
-
-            String sub = "<img class='guild-icon-inline' src='" + obj.getIconUrl() + "'>";
-            Set<Integer> alliances = Locutus.imp().getGuildDB(obj).getAllianceIds();
-            if (!alliances.isEmpty()) sub += "AA:" + StringMan.join(alliances, ",AA:");
-            subtext.add(sub);
-        });
-    }
 
     @HtmlInput
     @Binding(types = NationAttributeDouble.class)
@@ -213,82 +101,6 @@ public class WebPrimitiveBinding extends BindingHelper {
             String desc = obj.getDesc();
             subtext.add(desc);
         });
-    }
-
-    @HtmlInput
-    @Binding(types=TextChannel.class)
-    public String textChannel(@Me Guild guild, @Me User user, ParameterData param) {
-        List<MessageChannel> options = getGuildChannels(guild, user);
-        options.removeIf(f -> !(f instanceof TextChannel));
-        return channel(guild, user, param, options);
-    }
-
-    @HtmlInput
-    @Binding(types=ICategorizableChannel.class)
-    public String categorizableChannel(@Me Guild guild, @Me User user, ParameterData param) {
-        List<MessageChannel> options = getGuildChannels(guild, user);
-        options.removeIf(f -> !(f instanceof ICategorizableChannel));
-        return channel(guild, user, param, options);
-    }
-
-    @HtmlInput
-    @Binding(types=MessageChannel.class)
-    public String channel(@Me Guild guild, @Me User user, ParameterData param) {
-        return channel(guild, user, param, getGuildChannels(guild, user));
-    }
-
-    public List<MessageChannel> getGuildChannels(Guild guild, User user) {
-        Member member = guild.getMember(user);
-        if (member == null) throw new IllegalArgumentException("You are not a member");
-        List<MessageChannel> options = new ArrayList<>();
-        for (GuildChannel channel : guild.getChannels()) {
-            if (!(channel instanceof MessageChannel)) continue;
-            MessageChannel mc = (MessageChannel) channel;
-            if (member.hasAccess(channel)) {
-                options.add(mc);
-            }
-        }
-        return options;
-    }
-
-    public String channel(@Me Guild guild, @Me User user, ParameterData param, List<MessageChannel> options) {
-        if (options.isEmpty()) throw new IllegalArgumentException("You cannot view any channels");
-        Collections.sort(options, (o1, o2) -> {
-            GuildMessageChannel tc1 = (GuildMessageChannel) o1;
-            GuildMessageChannel tc2 = (GuildMessageChannel) o2;
-            Category cat1 = (tc1 instanceof ICategorizableChannel) ? ((ICategorizableChannel) tc1).getParentCategory() : null;
-            Category cat2 = (tc2 instanceof ICategorizableChannel) ? ((ICategorizableChannel) tc2).getParentCategory() : null;
-
-            if (cat1 != cat2) {
-                if (cat1 == null) return 1;
-                if (cat2 == null) return -1;
-                return Integer.compare(cat1.getPositionRaw(), cat2.getPositionRaw());
-            }
-            int pos1 = (tc1 instanceof IPositionableChannel) ? ((IPositionableChannel) tc1).getPositionRaw() : -1;
-            int pos2 = (tc2 instanceof IPositionableChannel) ? ((IPositionableChannel) tc2).getPositionRaw() : -1;
-            if (pos1 != pos2) {
-                return Integer.compare(pos1, pos2);
-            }
-            return Long.compare(tc1.getIdLong(), tc2.getIdLong());
-        });
-        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add("#" + obj.getName());
-            GuildMessageChannel tc = (GuildMessageChannel) obj;
-            values.add(tc.getAsMention());
-            Category cat = (tc instanceof ICategorizableChannel) ? ((ICategorizableChannel) tc).getParentCategory() : null;
-            if (cat != null) {
-                subtext.add(cat.getName());
-            } else {
-                subtext.add("");
-            }
-        });
-    }
-
-    @HtmlInput
-    @Binding(types=Message.class)
-    public String message(ParameterData param) {
-        String pattern = "https\\:\\/\\/discord\\.com\\/channels\\/[0-9]+\\/[0-9]+\\/[0-9]+";
-        return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
     }
 
 
@@ -418,7 +230,7 @@ public class WebPrimitiveBinding extends BindingHelper {
                 values.add(obj.getId());
                 subtext.add("nation - " + obj.asNation().getAllianceName());
             } else if (obj.isGuild()) {
-                names.add(formatGuildName(obj.asGuild().getGuild()));
+                names.add(DiscordWebBindings.formatGuildName(obj.asGuild().getGuild()));
                 values.add("guild:" + obj.getIdLong());
                 subtext.add("guild");
             } else if (obj.isTaxid()) {
@@ -516,44 +328,6 @@ public class WebPrimitiveBinding extends BindingHelper {
 
     }
 
-    public <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue) {
-        return multipleSelect(param, objects, toNameValue, false);
-    }
-
-    public <T> String multipleSelectEmum(Class<T> emum, ValueStore valueStore) {
-        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-        List<T> options = Arrays.asList(emum.getEnumConstants());
-        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.toString(), t.toString()), true);
-    }
-
-    public <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue, boolean multiple) {
-        if (true) {
-            return WebUtil.generateSearchableDropdown(param, objects, new QuadConsumer<T, JsonArray, JsonArray, JsonArray>() {
-                @Override
-                public void consume(T obj, JsonArray names, JsonArray values, JsonArray subtext) {
-                    Map.Entry<String, String> pair = toNameValue.apply(obj);
-                    names.add(pair.getKey());
-                    values.add(pair.getValue());
-                }
-            }, multiple);
-        }
-
-        UUID uuid = UUID.randomUUID();
-
-        String def = param.getDefaultValueString();
-        String valueStr = def != null ? " value=\"" + def + "\"" : "";
-        StringBuilder response = new StringBuilder("<select id=\"" + uuid + "\" class=\"form-control form-control-sm\" name=\"" + param.getName() + "\" " + valueStr + " " + (param.isOptional() ? "" : "required") + " " + (multiple ? " multiple" : "") + ">");
-
-        for (T object : objects) {
-            Map.Entry<String, String> pair = toNameValue.apply(object);
-            response.append("<option value=\"" + pair.getValue() + "\">" + pair.getKey() + "</option>");
-        }
-
-        response.append("</select>");
-
-        return WebUtil.wrapLabel(param, uuid, response.toString(), WebUtil.InlineMode.NONE);
-    }
-
     public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
     public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
 
@@ -581,7 +355,7 @@ public class WebPrimitiveBinding extends BindingHelper {
 
 
 
-    public WebPrimitiveBinding() {
+    public WebPWBindings() {
 
         try {
             {

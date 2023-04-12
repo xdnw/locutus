@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.util.math.ReflectionUtil;
 
 import java.lang.annotation.Annotation;
@@ -13,19 +14,36 @@ public class Key<T> {
     private final Binding binding;
     private final Annotation[] annotations;
 
+    private boolean isDefault;
+
     private Key(Type type, Class annotationClass) {
+        this(type, Collections.singletonList(annotationClass));
+    }
+    private Key(Type type, List<Class<?>> annotationClasses) {
         this.type = type;
-        this.annotationTypes = Collections.singleton(annotationClass);
+        this.annotationTypes = new HashSet<>(annotationClasses);
+        if (!this.annotationTypes.isEmpty()) {
+            Iterator<Class<?>> iter = this.annotationTypes.iterator();
+            while (iter.hasNext()) {
+                Class<?> f = iter.next();
+                if (Binding.class.isAssignableFrom(f)) {
+                    iter.remove();
+                } else if (Default.class.isAssignableFrom(f)) {
+                    iter.remove();
+                    isDefault = true;
+                }
+            }
+        }
         this.binding = null;
         this.annotations = null;
     }
 
+    public boolean isDefault() {
+        return isDefault;
+    }
+
     private Key(Type type, Class<?>... annotationClasses) {
-        this.type = type;
-        this.annotationTypes = new HashSet<>(Arrays.asList(annotationClasses));
-        if (!this.annotationTypes.isEmpty()) this.annotationTypes.removeIf(f -> f == Binding.class);
-        this.binding = null;
-        this.annotations = null;
+        this(type, Arrays.asList(annotationClasses));
     }
 
     private Key(Binding binding, Type type, Annotation... annotations) {
@@ -36,7 +54,19 @@ public class Key<T> {
         for (Annotation annotation : annotations) {
             annotationTypes.add(annotation.annotationType());
         }
-        if (!this.annotationTypes.isEmpty()) this.annotationTypes.removeIf(f -> f == Binding.class);
+        if (!this.annotationTypes.isEmpty()) {
+            Iterator<Class<?>> iter = this.annotationTypes.iterator();
+            while (iter.hasNext()) {
+                Class<?> f = iter.next();
+                if (Binding.class.isAssignableFrom(f)) {
+                    iter.remove();
+                } else if (Default.class.isAssignableFrom(f)) {
+                    iter.remove();
+                    isDefault = true;
+                }
+            }
+        }
+
     }
 
     public static <T> Key<T> of(Type type, Class annotationClass) {
@@ -114,7 +144,6 @@ public class Key<T> {
     @Override
     public int hashCode() {
         int result = type != null ? type.hashCode() : 0;
-        result = 31 * result + (annotationTypes != null ? annotationTypes.hashCode() : 0);
         return result;
     }
 

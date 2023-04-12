@@ -31,6 +31,7 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.util.*;
 import java.util.function.Supplier;
@@ -243,7 +244,7 @@ public class CommandManager2 {
         run(guild, event.getChannel(), user, event.getMessage(), io, fullCmdStr, async);
     }
 
-    private LocalValueStore createLocals(Guild guild, MessageChannel channel, User user, Message message, IMessageIO io, Map<String, String> fullCmdStr) {
+    private LocalValueStore createLocals(@Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, Map<String, String> fullCmdStr) {
         if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.contains(guild.getIdLong()))
             throw new IllegalArgumentException("Unsupported");
 
@@ -252,13 +253,15 @@ public class CommandManager2 {
         locals.addProvider(Key.of(PermissionHandler.class), permisser);
         locals.addProvider(Key.of(ValidatorStore.class), validators);
 
-        if (Settings.INSTANCE.MODERATION.BANNED_USERS.contains(user.getIdLong()))
-            throw new IllegalArgumentException("Unsupported");
-        DBNation nation = DiscordUtil.getNation(user);
-        if (nation != null) {
-            if (Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation.getId())
-                    || Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id())) {
+        if (user != null) {
+            if (Settings.INSTANCE.MODERATION.BANNED_USERS.contains(user.getIdLong()))
                 throw new IllegalArgumentException("Unsupported");
+            DBNation nation = DiscordUtil.getNation(user);
+            if (nation != null) {
+                if (Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation.getId())
+                        || Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id())) {
+                    throw new IllegalArgumentException("Unsupported");
+                }
             }
         }
 
@@ -268,8 +271,10 @@ public class CommandManager2 {
         if (channel != null) locals.addProvider(Key.of(MessageChannel.class, Me.class), channel);
         if (message != null) locals.addProvider(Key.of(Message.class, Me.class), message);
         if (guild != null) {
-            Member member = guild.getMember(user);
-            if (member != null) locals.addProvider(Key.of(Member.class, Me.class), member);
+            if (user != null) {
+                Member member = guild.getMember(user);
+                if (member != null) locals.addProvider(Key.of(Member.class, Me.class), member);
+            }
             locals.addProvider(Key.of(Guild.class, Me.class), guild);
             GuildDB db = Locutus.imp().getGuildDB(guild);
             if (db != null) {
@@ -329,7 +334,7 @@ public class CommandManager2 {
         else task.run();
     }
 
-    public void run(Guild guild, MessageChannel channel, User user, Message message, IMessageIO io, String path, Map<String, String> arguments, boolean async) {
+    public void run(@Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, String path, Map<String, String> arguments, boolean async) {
         Runnable task = () -> {
             try {
                 CommandCallable callable = commands.get(Arrays.asList(path.split(" ")));

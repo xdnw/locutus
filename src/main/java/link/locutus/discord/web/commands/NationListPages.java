@@ -1,4 +1,4 @@
-package link.locutus.discord.web.commands.binding;
+package link.locutus.discord.web.commands;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;

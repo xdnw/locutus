@@ -60,7 +60,7 @@ public class MethodParser<T> implements Parser<T> {
                 } else if (paramAnn.length == 0) {
                     paramKey = Key.of(binding, param);
                 } else {
-                    throw new UnsupportedOperationException("Only one annotation is permitted for " + method);
+                    paramKey = Key.of(binding, param, paramAnn);
                 }
                 this.params.add(paramKey);
             } else {
@@ -107,30 +107,37 @@ public class MethodParser<T> implements Parser<T> {
             for (int i = 0; i < params.size(); i++) {
                 Key paramKey = params.get(i);
                 Object arg;
-                if (paramKey == null || paramKey.getType() == String.class && paramKey.getAnnotations().length == 0) {
-                    arg = t;
-                } else if (paramKey.getAnnotations().length == 0 && paramKey.getType() == Method.class) {
-                    arg = method;
-                } else if (paramKey.getAnnotations().length == 0 && key.getAnnotationTypes().contains(paramKey.getType())) {
-                    Parser parser = store.get(paramKey);
-                    if (parser != null) {
-                        arg = parser.apply(store, t);
-                    } else {
-                        arg = key.getAnnotation(paramKey.getType());
-                    }
-                } else {
-                    Type type = paramKey.getType();
-                    Class clazz = ReflectionUtil.getClassType(type);
-                    if (clazz.isPrimitive()) clazz = Primitives.wrap(clazz);
-                    if (t != null && clazz == t.getClass() && paramKey.getAnnotations().length == 0) {
+                try {
+                    if (paramKey == null || paramKey.getType() == String.class && paramKey.getAnnotations().length == 0) {
                         arg = t;
-                    } else {
+                    } else if (paramKey.getAnnotations().length == 0 && paramKey.getType() == Method.class) {
+                        arg = method;
+                    } else if (paramKey.getAnnotations().length == 0 && key.getAnnotationTypes().contains(paramKey.getType())) {
                         Parser parser = store.get(paramKey);
-                        if (parser == null) {
-                            throw new IllegalStateException("No parser found for " + paramKey);
+                        if (parser != null) {
+                            arg = parser.apply(store, t);
+                        } else {
+                            arg = key.getAnnotation(paramKey.getType());
                         }
-                        arg = parser.apply(store, t);
+                    } else {
+                        Type type = paramKey.getType();
+                        Class clazz = ReflectionUtil.getClassType(type);
+                        if (clazz.isPrimitive()) clazz = Primitives.wrap(clazz);
+                        if (t != null && clazz == t.getClass() && paramKey.getAnnotations().length == 0) {
+                            arg = t;
+                        } else {
+                            Parser parser = store.get(paramKey);
+                            if (parser == null) {
+                                throw new IllegalArgumentException("No parser found for " + paramKey);
+                            }
+                            arg = parser.apply(store, t);
+                        }
                     }
+                } catch (IllegalStateException e) {
+                    if (!paramKey.isDefault()) {
+                        throw e;
+                    }
+                    arg = null;
                 }
                 args[i] = arg;
             }
@@ -150,19 +157,26 @@ public class MethodParser<T> implements Parser<T> {
             for (int i = 0; i < params.size(); i++) {
                 Key paramKey = params.get(i);
                 Object arg;
-                if (paramKey == null || paramKey.getType() == String.class && paramKey.getAnnotations().length == 0) {
-                    arg = stack.consumeNext();
-                } else if (paramKey.getAnnotations().length == 0 && paramKey.getType() == Method.class) {
-                    arg = method;
-                } else if (paramKey.getAnnotations().length == 0 && key.getAnnotationTypes().contains(paramKey.getType())) {
-                    Parser parser = stack.getStore().get(paramKey);
-                    if (parser != null) {
-                        arg = parser.apply(stack);
+                try {
+                    if (paramKey == null || paramKey.getType() == String.class && paramKey.getAnnotations().length == 0) {
+                        arg = stack.consumeNext();
+                    } else if (paramKey.getAnnotations().length == 0 && paramKey.getType() == Method.class) {
+                        arg = method;
+                    } else if (paramKey.getAnnotations().length == 0 && key.getAnnotationTypes().contains(paramKey.getType())) {
+                        Parser parser = stack.getStore().get(paramKey);
+                        if (parser != null) {
+                            arg = parser.apply(stack);
+                        } else {
+                            arg = key.getAnnotation(paramKey.getType());
+                        }
                     } else {
-                        arg = key.getAnnotation(paramKey.getType());
+                        arg = stack.consume(paramKey);
                     }
-                } else {
-                    arg = stack.consume(paramKey);
+                } catch (IllegalStateException e) {
+                    if (paramKey == null || !paramKey.isDefault()) {
+                        throw e;
+                    }
+                    arg = null;
                 }
                 args[i] = arg;
             }

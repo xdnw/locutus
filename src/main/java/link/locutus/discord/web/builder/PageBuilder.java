@@ -1,5 +1,7 @@
 package link.locutus.discord.web.builder;
 
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;

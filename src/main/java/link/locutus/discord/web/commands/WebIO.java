@@ -24,7 +24,7 @@ public class WebIO implements IMessageIO {
 
     @Override
     public IMessageBuilder create() {
-        return null;
+        return new WebMessage(this);
     }
 
     @Override

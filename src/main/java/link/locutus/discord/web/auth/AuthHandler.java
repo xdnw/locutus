@@ -6,14 +6,19 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.javalin.http.Context;
 import io.javalin.http.UnauthorizedResponse;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.task.mail.Mail;
+import link.locutus.discord.util.task.mail.SearchMailTask;
+import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import link.locutus.discord.web.test.WebDB;
-import net.dv8tion.jda.api.entities.User;
 import org.apache.http.HttpHeaders;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -31,9 +36,12 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+
+import static link.locutus.discord.web.jooby.PageHandler.cookieId;
 
 public class AuthHandler implements IAuthHandler {
     private final WebDB db;
@@ -63,51 +71,31 @@ public class AuthHandler implements IAuthHandler {
     public static final String AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize";
     public static final String TOKEN_URL = "https://discord.com/api/oauth2/token";
     public static final String API_URL = "https://discord.com/api/users/@me";
-    public static String COOKIE_ID = "LCTS";
-
     @Override
     public void logout(Context context) {
-        for (CookieType type : CookieType.values()) {
+        for (PageHandler.CookieType type : PageHandler.CookieType.values()) {
             context.removeCookie(cookieId(type));
         }
         context.redirect(WebRoot.REDIRECT);
     }
 
-    @Override
-    public void login(Context context) {
-        String url = context.url();
-        if (!url.toLowerCase().contains("logout")) {
-            ORIGINAL_PAGE.put(context.ip(), context.url());
-        }
-
+    private String getDiscordAuthUrl() {
         List<NameValuePair> params = new ArrayList<>();
         params.add(new BasicNameValuePair("client_id", Settings.INSTANCE.APPLICATION_ID + ""));
         params.add(new BasicNameValuePair("redirect_uri", WebRoot.REDIRECT));
         params.add(new BasicNameValuePair("response_type", "code"));
         params.add(new BasicNameValuePair("scope", "identify guilds"));
         String query = URLEncodedUtils.format(params, "UTF-8");
-        String redirect = AUTHORIZE_URL + "?" + query;
-        context.header("Location", redirect);
+        return AUTHORIZE_URL + "?" + query;
+    }
+
+//    @Override
+    public void login(Context context) {
+        ORIGINAL_PAGE.put(context.ip(), context.url());
+        String url = getDiscordAuthUrl();
+        context.header("Location", url);
         context.header("cache-control", "no-store");
-
-        context.redirect(redirect);
-    }
-
-    private enum CookieType {
-        DISCORD,
-        URL,
-    }
-
-    private String cookieId(CookieType type) {
-        StringBuilder key = new StringBuilder(COOKIE_ID);
-        key.append(Settings.INSTANCE.BOT_TOKEN.hashCode());
-        if (type != CookieType.DISCORD) {
-            key.append(type.name());
-        }
-
-        return Hashing.sha256()
-                .hashString(key.toString(), StandardCharsets.UTF_8)
-                .toString();
+        context.redirect(url);
     }
 
     public JsonObject getUser(String accessToken) throws IOException {
@@ -180,9 +168,18 @@ public class AuthHandler implements IAuthHandler {
                 .toString();
     }
 
-    private Auth getAuth(Context context, boolean allowRedirect) {
+    @Override
+    public Auth getAuth(Context ctx) {
+        try {
+            return getAuth(ctx, false);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private Auth getAuth(Context context, boolean allowRedirect) throws IOException {
         Map<String, String> cookies = context.cookieMap();
-        String discordAuth = cookies.get(cookieId(CookieType.DISCORD));
+        String discordAuth = cookies.get(cookieId(PageHandler.CookieType.DISCORD_OAUTH));
 
         String message = null;
 
@@ -201,21 +198,21 @@ public class AuthHandler implements IAuthHandler {
                     }
                 }
             }
-            context.removeCookie(cookieId(CookieType.DISCORD));
+            context.removeCookie(cookieId(PageHandler.CookieType.DISCORD_OAUTH));
         }
 
         {
             // if command auth exists
-            String commandAuth = cookies.get(cookieId(CookieType.URL));
+            String commandAuth = cookies.get(cookieId(PageHandler.CookieType.URL_AUTH));
             if (commandAuth != null) {
                 UUID uuid = UUID.fromString(commandAuth);
                 Auth  auth = webCommandAuth.get(uuid);
                 if (auth.isValid() && !auth.isExpired()) return auth;
-                context.removeCookie(cookieId(CookieType.URL));
+                context.removeCookie(cookieId(PageHandler.CookieType.URL_AUTH));
             }
         }
 
-        Integer allianceIdFilter = null;
+        Set<Integer> allianceIdFilter = null;
         Integer nationIdFilter = null;
         {
             // get the path
@@ -227,7 +224,7 @@ public class AuthHandler implements IAuthHandler {
 
                 String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
                 if (allianceStr != null) {
-                    allianceIdFilter = PnwUtil.parseAllianceId(allianceStr);
+                    allianceIdFilter = PnwUtil.parseAlliances(null, allianceStr);
                 }
                 String nationStr = StringMan.join(queryMap.getOrDefault("nation", new ArrayList<>()), ",");
                 if (nationStr != null) {
@@ -248,17 +245,15 @@ public class AuthHandler implements IAuthHandler {
                                 if (auth.getUser() == null && auth.getNation() == null) {
                                     if (userId != null) {
                                         message = "Could not find user for id: " + userId;
-                                        userId = null;
                                     }
                                     if (nationId != null) {
                                         message = "Could not find nation for id: " + nationId;
-                                        nationId = null;
                                     }
                                     auth = null;
                                 } else {
                                     UUID verifiedUid = UUID.randomUUID();
-                                    context.cookie(cookieId(CookieType.URL), verifiedUid.toString(), 60 * 60 * 24 * 30);
-                                    context.removeCookie(cookieId(CookieType.DISCORD));
+                                    context.cookie(cookieId(PageHandler.CookieType.URL_AUTH), verifiedUid.toString(), 60 * 60 * 24 * 30);
+                                    context.removeCookie(cookieId(PageHandler.CookieType.DISCORD_OAUTH));
                                     webCommandAuth.put(verifiedUid, auth);
                                     db.addTempToken(verifiedUid, auth);
 
@@ -281,27 +276,84 @@ public class AuthHandler implements IAuthHandler {
                         e.printStackTrace();
                     }
                 }
+
+                if (allowRedirect) {
+                    List<String> errors = new ArrayList<>();
+                    if (message != null) errors.add(message);
+
+                    if (nationIdFilter != null) {
+                        DBNation nation = DBNation.byId(nationIdFilter);
+                        if (nation != null) {
+                            UUID tmpUid = UUID.randomUUID();
+                            String authUrl = WebRoot.REDIRECT + "/auth?token=" + tmpUid + "&nation=" + nation.getNation_id();
+                            Auth auth = new Auth(nation.getNation_id(), null, System.currentTimeMillis());
+                            pendingWebCmdTokens.put(tmpUid, auth);
+
+                            String title = "Locutus Login | timestamp:" + System.currentTimeMillis();
+                            String body = "<b>DO NOT SHARE THIS URL OR OPEN IT IF YOU DID NOT REQUEST IT:</b><br>" +
+                                    MarkupUtil.htmlUrl("https://locutus.link | Verify Login", authUrl);
+
+                            ApiKeyPool pool = ApiKeyPool.create(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY);
+                            JsonObject result = nation.sendMail(pool, title, body);
+                            JsonElement success = result.get("success");
+                            if (success != null && success.getAsBoolean()) {
+                                List<Mail> mails = new SearchMailTask(Locutus.imp().getRootAuth(), title, true, true, false, null).call();
+
+                                String mailUrl;
+                                if (mails.size() > 0) {
+                                    mailUrl = WebRoot.REDIRECT + "/inbox/message/id=" + mails.get(0).id;
+                                } else {
+                                    mailUrl = WebRoot.REDIRECT + "/mail/inbox";
+                                }
+                                // set REDIRECT map to the current url
+                                ORIGINAL_PAGE.put(context.ip(), context.url());
+
+                                // redirect them to the mail page
+                                context.header("Location", mailUrl);
+                                context.header("cache-control", "no-store");
+                                context.redirect(mailUrl);
+
+                                throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
+                            } else {
+                                errors.add("Could not send mail to nation: " + nationIdFilter + " | " + result);
+                            }
+                        } else {
+                            errors.add("Could not find nation with id: " + nationIdFilter);
+                        }
+                    }
+
+                    // Error alerts
+
+                    // Please select your nation
+                    List<DBNation> nations;
+                    if (allianceIdFilter != null) {
+                        nations = new ArrayList<>(Locutus.imp().getNationDB().getNations(allianceIdFilter));
+                    } else {
+                        nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
+                    }
+                    // Sort nations by lasst_active (descending)
+
+                    // Name,Url
+
+
+                    // TODO return auth page
+
+//                    String authPage = createAuthPage(context, allianceIdFilter, nationIdFilter, message);
+//                    context.result(authPage);
+                    throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
+                }
             }
         }
 
         if (allowRedirect) {
+            String discordAuthUrl = getDiscordAuthUrl();
+            String mailAuthUrl = WebRoot.REDIRECT + "/auth";
 
-//            if (nationIdFilter != null) {
-//                DBNation nation = DBNation.byId(nationIdFilter);
-//                if (nation != null) {
-//
-//                    // Send mail
-//                    // redirect to mail page
-//
-//                    UUID uuid = UUID.randomUUID();
-//
-//                }
-//            }
-//            String authPage = createAuthPage(context, allianceIdFilter, nationIdFilter, message);
-//            // set context to authPage
-//            context.result(authPage);
-//            throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
+             String html = rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
+             context.result(html);
+            throw new UnauthorizedResponse("Authentication (1) page response returned to context. Catch this error");
         }
+
         return null;
     }
 
@@ -333,7 +385,7 @@ public class AuthHandler implements IAuthHandler {
 //            return JsonParser.parseString("{\"id\":\"664156861033086987\",\"username\":\"borg\",\"avatar\":\"14aa8f752d52c066ad5ccb87116c90fa\",\"discriminator\":\"5729\",\"public_flags\":128,\"flags\":128,\"locale\":\"en-US\",\"mfa_enabled\":true}").getAsJsonObject();
 //        }
         Map<String, String> cookies = context.cookieMap();
-        String cookieId = cookieId(CookieType.DISCORD);
+        String cookieId = cookieId(PageHandler.CookieType.DISCORD_OAUTH);
         String cookieData = cookies.get(cookieId);
         if (cookieData != null) {
             Long discordId = tokenHashes.get(cookieData);
@@ -381,8 +433,8 @@ public class AuthHandler implements IAuthHandler {
         return null;
     }
 
-    @Override
-    public Long getDiscordUser(Context ctx, boolean login) throws IOException {
+//    @Override
+    public Long getDiscordUser(Context ctx) throws IOException {
         // tODO combine this with getDiscorduseer and move login stuff to here
         JsonObject userJson = getDiscordUserJson(ctx, true);
         if (userJson == null) {
@@ -392,7 +444,7 @@ public class AuthHandler implements IAuthHandler {
         return userId;
     }
 
-    @Override
+//    @Override
     public DBNation getNation(Context ctx) throws IOException {
         Long userId = getDiscordUser(ctx);
         DBNation nation = DiscordUtil.getNation(userId);

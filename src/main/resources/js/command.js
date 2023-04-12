@@ -75,7 +75,7 @@ function loadButtons() {
             var outDiv = output != null ? document.getElementById(output) : null;
 
             var query = "cmd=" + encodeURIComponent(cmd);
-            domain = [location.protocol, '//', location.host].join('') + "/" + getGuildId() + "/sse_cmd_str?" + query;
+            domain = [location.protocol, '//', location.host].join('') + "/sse_cmd_str?" + query;
             if (this.hasAttribute("replace") && outDiv != null) {
                 outDiv.innerHTML = "";
             }
@@ -98,7 +98,7 @@ function onMessageReact(emoji, id, json, outDiv, button) {
     console.log("Message react: " + emoji + " | " + id);
 
     var query = "emoji=" + emoji + "&msg=" + encodeURIComponent(JSON.stringify(json));
-    domain = [location.protocol, '//', location.host].join('') + "/" + getGuildId() + "/sse_reaction?" + query;
+    domain = [location.protocol, '//', location.host].join('') + "/sse_reaction?" + query;
 
     console.log("DOMAIN: " + domain)
 
