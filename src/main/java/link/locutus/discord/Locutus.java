@@ -1156,8 +1156,6 @@ public final class Locutus extends ListenerAdapter {
         return true;
     }
 
-
-
     public void onMessageReact(Message message, User user, MessageReaction.ReactionEmote emote, long responseId, boolean async) {
         List<MessageEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) {

@@ -75,7 +75,7 @@ function loadButtons() {
             var outDiv = output != null ? document.getElementById(output) : null;
 
             var query = "cmd=" + encodeURIComponent(cmd);
-            domain = [location.protocol, '//', location.host].join('') + "/sse_cmd_str?" + query;
+            domain = [location.protocol, '//', location.host].join('') + "/sse?" + query;
             if (this.hasAttribute("replace") && outDiv != null) {
                 outDiv.innerHTML = "";
             }

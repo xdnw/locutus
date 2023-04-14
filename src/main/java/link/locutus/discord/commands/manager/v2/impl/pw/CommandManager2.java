@@ -26,6 +26,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -133,6 +134,8 @@ public class CommandManager2 {
 
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
+        this.commands.registerMethod(new TestCommands(), List.of("test"), "embed", "embed");
+
 //        this.commands.registerSubCommands(new BuildCommands(), "build");
 //        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
 //
@@ -244,11 +247,11 @@ public class CommandManager2 {
         run(guild, event.getChannel(), user, event.getMessage(), io, fullCmdStr, async);
     }
 
-    private LocalValueStore createLocals(@Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, Map<String, String> fullCmdStr) {
+    private LocalValueStore createLocals(@Nullable LocalValueStore<Object> existingLocals, @Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, @Nullable Map<String, String> fullCmdStr) {
         if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.contains(guild.getIdLong()))
             throw new IllegalArgumentException("Unsupported");
 
-        LocalValueStore<Object> locals = new LocalValueStore<>(store);
+        LocalValueStore<Object> locals = existingLocals == null ? new LocalValueStore<>(store) : existingLocals;
 
         locals.addProvider(Key.of(PermissionHandler.class), permisser);
         locals.addProvider(Key.of(ValidatorStore.class), validators);
@@ -263,11 +266,13 @@ public class CommandManager2 {
                     throw new IllegalArgumentException("Unsupported");
                 }
             }
+            locals.addProvider(Key.of(User.class, Me.class), user);
         }
 
-        locals.addProvider(Key.of(User.class, Me.class), user);
         locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
-        locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr));
+        if (fullCmdStr != null) {
+            locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr));
+        }
         if (channel != null) locals.addProvider(Key.of(MessageChannel.class, Me.class), channel);
         if (message != null) locals.addProvider(Key.of(Message.class, Me.class), message);
         if (guild != null) {
@@ -288,20 +293,25 @@ public class CommandManager2 {
         return locals;
     }
 
-    public void run(Guild guild, MessageChannel channel, User user, Message message, IMessageIO io, String fullCmdStr, boolean async) {
-        if (fullCmdStr.startsWith("{")) {
-            JSONObject json = new JSONObject(fullCmdStr);
-            Map<String, Object> arguments = json.toMap();
-            Map<String, String> stringArguments = new HashMap<>();
-            for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-                stringArguments.put(entry.getKey(), entry.getValue().toString());
-            }
+    public void run(@Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, String fullCmdStr, boolean async) {
+        LocalValueStore existingLocals = createLocals(null, guild, channel, user, message, io, null);
+        run(existingLocals, io, fullCmdStr, async);
+    }
 
-            String pathStr = arguments.remove("").toString();
-            run(guild, channel, user, message, io, pathStr, stringArguments, async);
-            return;
-        }
+    public void run(LocalValueStore<Object> existingLocals, IMessageIO io, String fullCmdStr, boolean async) {
         Runnable task = () -> {
+            if (fullCmdStr.startsWith("{")) {
+                JSONObject json = new JSONObject(fullCmdStr);
+                Map<String, Object> arguments = json.toMap();
+                Map<String, String> stringArguments = new HashMap<>();
+                for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+                    stringArguments.put(entry.getKey(), entry.getValue().toString());
+                }
+
+                String pathStr = arguments.remove("").toString();
+                run(existingLocals, io, pathStr, stringArguments, async);
+                return;
+            }
             List<String> args = StringMan.split(fullCmdStr, ' ');
             List<String> original = new ArrayList<>(args);
             CommandCallable callable = commands.getCallable(args, true);
@@ -310,23 +320,20 @@ public class CommandManager2 {
                 return;
             }
 
-            LocalValueStore<Object> locals = createLocals(guild, channel, user, message, io, Collections.emptyMap());
+            LocalValueStore locals = createLocals(existingLocals, null, null, null, null, io, null);
 
             if (callable instanceof ParametricCallable parametric) {
-
                 try {
                     ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
                     handleCall(io, () -> {
                         Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
                         Object[] parsed = parametric.argumentMapToArray(map);
-
                         return parametric.call(null, locals, parsed);
                     });
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
             } else if (callable instanceof CommandGroup group) {
-                System.out.println("Remove:|| group " + group.getPrimaryCommandId());
                 handleCall(io, group, locals);
             } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
         };
@@ -335,6 +342,11 @@ public class CommandManager2 {
     }
 
     public void run(@Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, String path, Map<String, String> arguments, boolean async) {
+        LocalValueStore existingLocals = createLocals(null, guild, channel, user, message, io, null);
+        run(existingLocals, io, path, arguments, async);
+    }
+
+    public void run(LocalValueStore<Object> existingLocals, IMessageIO io, String path, Map<String, String> arguments, boolean async) {
         Runnable task = () -> {
             try {
                 CommandCallable callable = commands.get(Arrays.asList(path.split(" ")));
@@ -349,13 +361,8 @@ public class CommandManager2 {
                 Map<String, String> finalArguments = new LinkedHashMap<>(arguments);
                 finalArguments.remove("");
 
-                LocalValueStore<Object> locals = createLocals(guild, channel, user, message, io, argsAndCmd);
+                LocalValueStore<Object> locals = createLocals(existingLocals, null, null, null, null, io, argsAndCmd);
                 if (callable instanceof ParametricCallable parametric) {
-                    if (message == null) {
-                        String cmdRaw = (path + " " + parametric.stringifyArgumentMap(finalArguments, " ")).trim();
-                        Message embedMessage = new MessageBuilder().setContent(Settings.commandPrefix(false) + cmdRaw).build();
-                        locals.addProvider(Key.of(Message.class, Me.class), embedMessage);
-                    }
                     handleCall(io, () -> {
                         Object[] parsed = parametric.parseArgumentMap(finalArguments, locals, validators, permisser);
                         return parametric.call(null, locals, parsed);

@@ -2,6 +2,8 @@ package link.locutus.discord.web.test;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.MessageBuilder;
@@ -16,9 +18,10 @@ public class TestCommands {
     }
 
     @Command
-    public String embedTest(@Me MessageChannel channel) {
-        Message msg = new MessageBuilder().setEmbeds(new EmbedBuilder().setTitle("test1").build(), new EmbedBuilder().setTitle("test2").build()).append("hello world 1").append("\n\nhello world 2").build();
-        RateLimitUtil.queue(channel.sendMessage(msg));
+    public String embed(@Me IMessageIO io, int myInput) {
+        CM.who cmd = CM.who.cmd.create("Borg", null, null, null, null, null, null, null, null);
+        String label = "mylabel";
+        io.create().embed("Title", "body: " + myInput).commandButton(cmd, label).send();
         return "Done!";
     }
 }

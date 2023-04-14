@@ -1867,6 +1867,15 @@ public class BankCommands {
         return StringMan.join(messages, "\n");
     }
 
+    public static void main(String[] args) {
+        String input = "60000a 40000s 14000m 10000g 16000b 22000i 15000l 30000u 12000o 23000c 175000f 103000000$";
+        Map<ResourceType, Double> rss = PnwUtil.parseResources(input);
+        System.out.println("Rss " + PnwUtil.resourcesToString(rss));
+
+        rss = PnwUtil.parseResources("60000a");
+        System.out.println("Rss " + PnwUtil.resourcesToString(rss));
+    }
+
     @Command(aliases = {"acceptTrades", "acceptTrade"})
     @RolePermission(value = Roles.MEMBER)
     public String acceptTrades(@Me GuildDB db, @Me DBNation me, DBNation receiver, @Switch("f") boolean force) throws Exception {

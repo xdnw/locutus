@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -60,6 +61,7 @@ import net.dv8tion.jda.api.utils.data.DataObject;
 import net.dv8tion.jda.internal.entities.EntityBuilder;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -72,6 +74,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -162,149 +165,68 @@ public class PageHandler implements Handler {
      * @throws InterruptedException
      * @throws IOException
      */
-    public void sseCmdStr(SseClient2 sse) {
-        Map<String, List<String>> queryMap = sse.ctx.queryParamMap();
-        List<String> cmds = queryMap.getOrDefault("cmd", Collections.emptyList());
-        if (cmds.size() != 1) return;
-
+    public void sse(SseClient2 sse) {
         try {
-            String cmdStr = cmds.get(0);
-            if (cmdStr.isEmpty()) return;
-            if (cmdStr.charAt(0) == '!') cmdStr = Settings.commandPrefix(true) + cmdStr.substring(1);
-            if (cmdStr.charAt(0) == '$') cmdStr = Settings.commandPrefix(false) + cmdStr.substring(1);
 
             Context ctx = sse.ctx;
-//
-//            JsonObject userJson = authHandler.getDiscordUser(ctx);
-//            if (userJson == null) {
-//                sseMessage(sse, "Not registered", false);
-//                return;
-//            }
-//            Long userId = Long.parseLong(userJson.get("id").getAsString());
-//            User user = Locutus.imp().getDiscordApi().getUserById(userId);
-//            DBNation nation = DiscordUtil.getNation(userId);
+            WebIO io = new WebIO(sse);
 
-            String path = ctx.path();
-            path = path.substring(1);
-            List<String> args = new ArrayList<>(Arrays.asList(path.split("/")));
-            if (args.isEmpty()) {
-                return;
-            }
-            String guildIdStr = args.get(0);
-            if (!MathMan.isInteger(guildIdStr)) {
-                return;
-            }
-
-            GuildDB guildDb = Locutus.imp().getGuildDB(Long.parseLong(guildIdStr));
-            if (guildDb == null) {
-                return;
-            }
-
-            JoobyChannel channel = new JoobyChannel(guildDb.getGuild(), sse, root.getFileRoot());
-            JoobyMessageAction action = new JoobyMessageAction(guildDb.getGuild().getJDA(), channel, root.getFileRoot(), sse);
-
-            Message embedMessage = new MessageBuilder().setContent(cmdStr).build();
-            JoobyMessage sseMessage = new JoobyMessage(action, embedMessage, -1);
-            action.load(sseMessage);
-
-            MessageReceivedEvent finalEvent = new DelegateMessageEvent(guildDb.getGuild(), -1, sseMessage);
-
-
-            Locutus.imp().getCommandManager().run(finalEvent, false, true);
-
-        } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                Thread.sleep(2000);
-                sse.ctx.res.getOutputStream().close();
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /**
-     * From argument list
-     * @param sse
-     * @throws InterruptedException
-     * @throws IOException
-     */
-    public void sseReaction(SseClient2 sse) {
-        Map<String, List<String>> queryMap = sse.ctx.queryParamMap();
-        List<String> emojiList = queryMap.getOrDefault("emoji", Collections.emptyList());
-        List<String> msgJsonList = queryMap.getOrDefault("msg", Collections.emptyList());
-        if (emojiList.size() != 1 || msgJsonList.size() != 1) {
-            return;
-        }
-
-        try {
-            Context ctx = sse.ctx;
-            {
-                String path = ctx.path();
-                path = path.substring(1);
-                List<String> args = new ArrayList<>(Arrays.asList(path.split("/")));
-                if (args.isEmpty()) {
+            Map<String, List<String>> queryMap = sse.ctx.queryParamMap();
+            List<String> cmds = queryMap.getOrDefault("cmd", Collections.emptyList());
+            if (cmds.isEmpty()) {
+                ArgumentStack stack = createStack(ctx);
+                String path = stack.consumeNext();
+                if (!path.equalsIgnoreCase("command")) {
+                    sseMessage(sse, "Invalid path (not command): " + path, false);
                     return;
                 }
-                JDA jda = Locutus.imp().getDiscordApi(Settings.INSTANCE.ROOT_SERVER);
 
-                DataObject json = DataObject.fromJson(msgJsonList.get(0));
-                MessageBuilder msgBuilder = new MessageBuilder();
-                EntityBuilder entBuilder = new EntityBuilder(jda);
+                List<String> args = stack.getRemainingArgs();
+                CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
+                Map.Entry<CommandCallable, String> cmdAndPath = manager.getCallableAndPath(args);
+                CommandCallable cmd = cmdAndPath.getKey();
 
-                long messageId = json.getLong("id");
+                try {
+                    cmd.validatePermissions(stack.getStore(), stack.getPermissionHandler());
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    sseMessage(sse, "No permission: " + e.getMessage(), false);
+                    return;
+                }
 
-                DataObject content = json.optObject("content").orElse(null);
-                if (content != null) {
-                    msgBuilder.setContent(content.toString());
+                if (cmd instanceof ParametricCallable) {
+                    ValueStore locals = stack.getStore();
+                    Map<String, String> fullCmdStr = parseQueryMap(locals, sse, ctx.queryParamMap());
+                    locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr));
+                    locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
+
+                    setupLocals(locals, ctx, null);
+
+                    ParametricCallable parametric = (ParametricCallable) cmd;
+
+                    Object[] parsed = parametric.parseArgumentMap(fullCmdStr, stack);
+                    Object result = parametric.call(null, stack.getStore(), parsed);
+                    if (result != null) {
+                        String formatted = (result + "").trim(); // MarkupUtil.markdownToHTML
+                        if (!formatted.isEmpty()) {
+                            sseMessage(sse, formatted, true);
+                        }
+                    }
                 } else {
-                    msgBuilder.setContent("");
+                    sseMessage(sse, "Invalid command: " + StringMan.getString(args), true);
                 }
 
-                List<MessageEmbed> embeds = new ArrayList<>();
-
-                DataObject embedJson = json.optObject("embed").orElse(null);
-                if (embedJson != null) {
-                    embedJson.put("type", "rich");
-                    embeds.add(entBuilder.createMessageEmbed(embedJson));
-                }
-                DataArray embedsData = json.optArray("embeds").orElse(null);
-                if (embedsData != null) {
-                    for (int i = 0; i < embedsData.length(); i++) {
-                        embedJson = embedsData.getObject(i);
-                        embedJson.put("type", "rich");
-                        embeds.add(entBuilder.createMessageEmbed(embedJson));
-                    }
-                }
-                if (embeds.size() > 0) {
-                    msgBuilder.setEmbeds(embeds);
-                }
-
-                JoobyChannel channel = new JoobyChannel(null, sse, root.getFileRoot());
-                JoobyMessageAction action = new JoobyMessageAction(jda, channel, root.getFileRoot(), sse);
-                action.setId(messageId);
-
-                Message embedMessage = msgBuilder.build();
-                JoobyMessage sseMessage = new JoobyMessage(action, embedMessage, messageId);
-                action.load(sseMessage);
-
-                DataArray reactionsData = json.optArray("reactions").orElse(null);
-                if (reactionsData != null) {
-                    for (int i = 0; i < reactionsData.length(); i++) {
-                        String unicode = reactionsData.getString(i);
-                        sseMessage.addReaction(unicode);
-                    }
-                }
-
-                String emojiUnparsed = emojiList.get(0);
-                String emoji = StringEscapeUtils.unescapeHtml4(emojiUnparsed);
-                MessageReaction.ReactionEmote emote = MessageReaction.ReactionEmote.fromUnicode(emoji, jda);
-
-
-                Locutus.imp().onMessageReact(sseMessage, null, emote, 0, false); // TODO make onMessageReact  accept nation
+            } else if (cmds.size() == 1){
+                CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
+                LocalValueStore<Object> locals = new LocalValueStore<>(store);
+                setupLocals(locals, ctx, null);
+                String cmdStr = cmds.get(0);
+                v2.run(locals, io, cmdStr, false);
+            } else {
+                sseMessage(sse, "Too many commands: " + StringMan.getString(cmds), false);
             }
         } catch (Throwable e) {
+            sseMessage(sse, "Error: " + e.getMessage(), false);
             logger.log(Level.SEVERE, e.getMessage(), e);
         } finally {
             try {
@@ -316,15 +238,90 @@ public class PageHandler implements Handler {
         }
     }
 
+//    /**
+//     * From argument list
+//     * @param sse
+//     * @throws InterruptedException
+//     * @throws IOException
+//     */
+//    public void sseReaction(SseClient2 sse) {
+//        Map<String, List<String>> queryMap = sse.ctx.queryParamMap();
+//        List<String> emojiList = queryMap.getOrDefault("emoji", Collections.emptyList());
+//        List<String> msgJsonList = queryMap.getOrDefault("msg", Collections.emptyList());
+//        if (emojiList.size() != 1 || msgJsonList.size() != 1) {
+//            return;
+//        }
+//
+//        try {
+//            Context ctx = sse.ctx;
+//            {
+//                String path = ctx.path();
+//                path = path.substring(1);
+//                List<String> args = new ArrayList<>(Arrays.asList(path.split("/")));
+//                if (args.isEmpty()) {
+//                    return;
+//                }
+//                DataObject json = DataObject.fromJson(msgJsonList.get(0));
+//
+//                long messageId = json.getLong("id");
+//
+//                List<MessageEmbed> embeds = new ArrayList<>();
+//
+//                DataObject embedJson = json.optObject("embed").orElse(null);
+//                if (embedJson != null) {
+//                    embedJson.put("type", "rich");
+//                    embeds.add(entBuilder.createMessageEmbed(embedJson));
+//                }
+//                DataArray embedsData = json.optArray("embeds").orElse(null);
+//                if (embedsData != null) {
+//                    for (int i = 0; i < embedsData.length(); i++) {
+//                        embedJson = embedsData.getObject(i);
+//                        embedJson.put("type", "rich");
+//                        embeds.add(entBuilder.createMessageEmbed(embedJson));
+//                    }
+//                }
+//                if (embeds.size() > 0) {
+//                    msgBuilder.setEmbeds(embeds);
+//                }
+//
+//                JoobyChannel channel = new JoobyChannel(null, sse, root.getFileRoot());
+//                JoobyMessageAction action = new JoobyMessageAction(jda, channel, root.getFileRoot(), sse);
+//                action.setId(messageId);
+//
+//                Message embedMessage = msgBuilder.build();
+//                JoobyMessage sseMessage = new JoobyMessage(action, embedMessage, messageId);
+//                action.load(sseMessage);
+//
+//                DataArray reactionsData = json.optArray("reactions").orElse(null);
+//                if (reactionsData != null) {
+//                    for (int i = 0; i < reactionsData.length(); i++) {
+//                        String unicode = reactionsData.getString(i);
+//                        sseMessage.addReaction(unicode);
+//                    }
+//                }
+//
+//                String emojiUnparsed = emojiList.get(0);
+//                String emoji = StringEscapeUtils.unescapeHtml4(emojiUnparsed);
+//                MessageReaction.ReactionEmote emote = MessageReaction.ReactionEmote.fromUnicode(emoji, jda);
+//
+//
+//                Locutus.imp().onMessageReact(sseMessage, null, emote, 0, false); // TODO make onMessageReact  accept nation
+//            }
+//        } catch (Throwable e) {
+//            logger.log(Level.SEVERE, e.getMessage(), e);
+//        } finally {
+//            try {
+//                Thread.sleep(2000);
+//                sse.ctx.res.getOutputStream().close();
+//            } catch (IOException | InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//    }
+
     public Map<String, String> parseQueryMap(ValueStore locals, @Nullable SseClient2 client, Map<String, List<String>> queryMap) {
         Map<String, List<String>> post = new HashMap<>(queryMap);
         post.entrySet().removeIf(f -> f.getValue().isEmpty() || (f.getValue().size() == 1 && f.getValue().get(0).isEmpty()));
-
-        Guild guild = (Guild) locals.getProvided(Key.of(Guild.class, Me.class));
-        if (client != null) {
-            JoobyChannel channel = new JoobyChannel(guild, client, root.getFileRoot());
-            locals.addProvider(Key.of(MessageChannel.class, Me.class), channel);
-        }
 
         Set<String> toJson = new HashSet<>();
         post.entrySet().removeIf(f -> f.getValue().isEmpty() || (f.getValue().size() == 1 && f.getValue().get(0).isEmpty()));
@@ -353,63 +350,6 @@ public class PageHandler implements Handler {
         return combined;
     }
 
-    /**
-     * From context argument MAP
-     * @param sse
-     * @throws InterruptedException
-     * @throws IOException
-     */
-    public void sse(SseClient2 sse) {
-        try {
-            Context ctx = sse.ctx;
-            ArgumentStack stack = createStack(null, null, ctx);
-            stack.consumeNext();
-            List<String> args = stack.getRemainingArgs();
-            CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
-            Map.Entry<CommandCallable, String> cmdAndPath = manager.getCallableAndPath(args);
-            CommandCallable cmd = cmdAndPath.getKey();
-
-            try {
-                cmd.validatePermissions(stack.getStore(), stack.getPermissionHandler());
-            } catch (Throwable e) {
-                e.printStackTrace();
-                sseMessage(sse, "No permission: " + e.getMessage(), false);
-                return;
-            }
-
-            if (cmd instanceof ParametricCallable) {
-                ValueStore locals = stack.getStore();
-                Map<String, String> combined = parseQueryMap(locals, sse, ctx.queryParamMap());
-
-                ParametricCallable parametric = (ParametricCallable) cmd;
-
-                String cmdRaw = parametric.stringifyArgumentMap(combined, " ");
-                Message embedMessage = new MessageBuilder().setContent(cmdRaw).build();
-                locals.addProvider(Key.of(Message.class, Me.class), embedMessage);
-
-                Object[] parsed = parametric.parseArgumentMap(combined, stack);
-                Object result = parametric.call(null, stack.getStore(), parsed);
-                if (result != null) {
-                    String formatted = (result + "").trim(); // MarkupUtil.markdownToHTML
-                    if (!formatted.isEmpty()) {
-                        sseMessage(sse, formatted, true);
-                    }
-                }
-            } else {
-                sseMessage(sse, "Invalid command: " + StringMan.getString(args), true);
-            }
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, e.getMessage(), e);
-        } finally {
-            try {
-                Thread.sleep(2000);
-                sse.ctx.res.getOutputStream().close();
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     @Command()
     public Object command(@Me GuildDB db, ArgumentStack stack, Context ctx) {
         List<String> args = stack.getRemainingArgs();
@@ -424,59 +364,62 @@ public class PageHandler implements Handler {
     public void handle(@NotNull Context ctx) throws Exception {
         logger.info("Page method " + ctx.method());
         try {
-            handleCommand(null, null, ctx);
+            handleCommand(ctx);
         } catch (Throwable e) {
             e.printStackTrace();
             throw e;
         }
     }
 
-    private ArgumentStack createStack(DBNation nation, Long id, Context ctx) {
+    private ArgumentStack createStack(Context ctx) {
         String content = ctx.path();
-        if (content.isEmpty() || content.equals("/")) content = "/index";
+        if (content.isEmpty() || content.equals("/")) content = "/page/index";
         content = content.substring(1);
         List<String> args = new ArrayList<>(Arrays.asList(content.split("/")));
         for (int i = 0; i < args.size(); i++) {
             args.set(i, URLDecoder.decode(args.get(i)));
         }
-        return createStack(nation, id, ctx, args);
+        return createStack(ctx, args);
     }
 
-    private ArgumentStack createStack(DBNation nation, Long id, Context ctx, List<String> args) {
+    private ArgumentStack createStack(Context ctx, List<String> args) {
         LocalValueStore<Object> locals = new LocalValueStore<>(store);
-        setupLocals(locals, nation, id, ctx, args);
+        setupLocals(locals, ctx, args);
 
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
         locals.addProvider(stack);
         return stack;
     }
 
-    private void handleCommand(DBNation nation, Long id, Context ctx) {
-        ArgumentStack stack = createStack(nation, id, ctx);
+    private void handleCommand(Context ctx) {
+        ArgumentStack stack = createStack(ctx);
 
         try {
             ctx.header("Content-Type", "text/html;charset=UTF-8");
-
-            List<String> args = new ArrayList<>(stack.getRemainingArgs());
-
-            try {
-                Object result = wrap(commands.call(stack), ctx);
-                if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
-                    ctx.result(result.toString());
+            String path = stack.consumeNext();
+            switch (path.toLowerCase(Locale.ROOT)) {
+                case "page" -> {
+                    Object result = wrap(commands.call(stack), ctx);
+                    if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
+                        ctx.result(result.toString());
+                    } else if (result != null) {
+                        throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
+                    } else {
+                        throw new IllegalArgumentException("Null result for : " + path);
+                    }
                 }
-            } catch (CommandUsageException e2) {
-                String handler = ctx.endpointHandlerPath();
-                logger.info("Handler " + handler);
-                e2.printStackTrace();
-                CommandCallable cmd = commands.getCallable(args);
+                case "command" -> {
+                    List<String> args = new ArrayList<>(stack.getRemainingArgs());
+                    CommandCallable cmd = commands.getCallable(args);
 
-                cmd.validatePermissions(stack.getStore(), permisser);
+                    cmd.validatePermissions(stack.getStore(), permisser);
 
-                if (cmd != null) {
-                    String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
-                    ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
-                } else {
-                    throw e2;
+                    if (cmd != null) {
+                        String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
+                        ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
+                    } else {
+                        throw new IllegalArgumentException("No command found for `/" + StringMan.join(args, " ") + "`");
+                    }
                 }
             }
         } catch (Throwable e) {
@@ -518,28 +461,13 @@ public class PageHandler implements Handler {
         return call;
     }
 
-    private LocalValueStore setupLocals(LocalValueStore<Object> locals, DBNation nation, Long userId, Context ctx, List<String> args) {
+    private ValueStore setupLocals(ValueStore<Object> locals, Context ctx, List<String> args) {
         if (locals == null) {
             locals = new LocalValueStore<>(store);
         }
         locals.addProvider(Key.of(Context.class), ctx);
-        User user = userId == null ? null : Locutus.imp().getDiscordApi().getUserById(userId);
-
-        if (nation == null && user != null) {
-            nation = DiscordUtil.getNation(user.getIdLong());
-        }
-        if (user == null && nation != null) {
-            user = nation.getUser();
-        }
-        if (nation != null) {
-            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
-        }
-
-        if (user != null) {
-            locals.addProvider(Key.of(User.class, Me.class), user);
-        }
         Map<String, String> path = ctx.pathParamMap();
-        if (path.containsKey("guild_id")) {
+        if (path.containsKey("guild_id") && args != null && !args.isEmpty()) {
             Long guildId = Long.parseLong(path.get("guild_id"));
             args.remove(guildId + "");
             GuildDB guildDb = Locutus.imp().getGuildDB(guildId);
@@ -550,56 +478,56 @@ public class PageHandler implements Handler {
 
             locals.addProvider(Key.of(Guild.class, Me.class), guild);
             locals.addProvider(Key.of(GuildDB.class, Me.class), guildDb);
-            if (user != null) {
-                Member member = guild.getMember(user);
-                if (member != null) {
-                    locals.addProvider(Key.of(Member.class, Me.class), member);
-                }
-            }
         }
         return locals;
     }
 
     public void sseCmdPage(SseClient2 sse) throws IOException {
-        Context ctx = sse.ctx;
-        String pathStr = ctx.path();
-        if (pathStr.startsWith("/")) pathStr = pathStr.substring(1);
-        List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
-        path.remove("command");
-
-        LocalValueStore locals = setupLocals(null, null, null, ctx, path);
-
-        CommandCallable cmd = commands.getCallable(path);
-
-        if (cmd == null) {
-            sseMessage(sse, "Command not found: " + path, false);
-            return;
-        }
-        if (!(cmd instanceof ParametricCallable)) {
-            sseMessage(sse, "Not a valid executable command", false);
-            return;
-        }
-
         try {
-            cmd.validatePermissions(locals, permisser);
+            Context ctx = sse.ctx;
+            String pathStr = ctx.path();
+            if (pathStr.startsWith("/")) pathStr = pathStr.substring(1);
+            List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
+            path.remove("command");
+
+            ValueStore locals = setupLocals(null, ctx, path);
+
+            System.out.println("1");
+            CommandCallable cmd = commands.getCallable(path);
+            System.out.println("2");
+
+            if (cmd == null) {
+                sseMessage(sse, "Command not found: " + path, false);
+                return;
+            }
+            if (!(cmd instanceof ParametricCallable)) {
+                sseMessage(sse, "Not a valid executable command", false);
+                return;
+            }
+
+            try {
+                cmd.validatePermissions(locals, permisser);
+            } catch (Throwable e) {
+                sseMessage(sse, "No permission (2): " + e.getMessage(), false);
+                return;
+            }
+
+            String redirectBase = Settings.INSTANCE.WEB.REDIRECT + "/command/" + cmd.getFullPath("/").toLowerCase() + "/";
+
+            Map<String, String> combined = parseQueryMap(locals, sse, ctx.queryParamMap());
+            ParametricCallable parametric = (ParametricCallable) cmd;
+            List<String> orderedArgs = parametric.orderArgumentMap(combined, false);
+
+            String redirect = redirectBase + StringMan.join(orderedArgs, "/");
+
+            JsonObject response = new JsonObject();
+            response.addProperty("action", "redirect");
+            response.addProperty("value", redirect);
+            sse.sendEvent(response);
         } catch (Throwable e) {
-            sseMessage(sse, "No permission (2): " + e.getMessage(), false);
-            return;
+            System.out.println("Handle errors");
+            handleErrors(e, sse.ctx);
         }
-
-        GuildDB db = (GuildDB) locals.getProvided(Key.of(GuildDB.class, Me.class));
-        String redirectBase = Settings.INSTANCE.WEB.REDIRECT + "/" + (db != null ? db.getIdLong() + "/" : "") + cmd.getFullPath("/").toLowerCase() + "/";
-
-        Map<String, String> combined = parseQueryMap(locals, sse, ctx.queryParamMap());
-        ParametricCallable parametric = (ParametricCallable) cmd;
-        List<String> orderedArgs = parametric.orderArgumentMap(combined, false);
-
-        String redirect = redirectBase + StringMan.join(orderedArgs, "/");
-
-        JsonObject response = new JsonObject();
-        response.addProperty("action", "redirect");
-        response.addProperty("value", redirect);
-        sse.sendEvent(response);
     }
 
     public void logout(Context context) {

@@ -100,25 +100,6 @@ public class WebRoot {
 
         this.pageHandler = new PageHandler(this);
 
-        this.app.get("/auth**", new Handler() {
-            @Override
-            public void handle(@NotNull Context context) throws Exception {
-                // getr query string
-                Map<String, List<String>> queryMap = context.queryParamMap();
-
-                String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
-                String authType = StringMan.join(queryMap.getOrDefault("type", new ArrayList<>()), ",");
-                // get auth type
-
-                // get alliance argument
-
-                // get nation argument, else prompt for nation name or id
-
-
-                context.result("Auth page content goes here");
-            }
-        });
-
         this.app.get("/bankrequests", new Handler() {
             @Override
             public void handle(@NotNull Context context) throws Exception {
@@ -160,29 +141,29 @@ public class WebRoot {
             }
         }));
 
-        this.app.get("/sse_reaction**", new SseHandler2(new Consumer<SseClient2>() {
-            @Override
-            public void accept(SseClient2 sse) {
-                pageHandler.sseReaction(sse);
-            }
-        }));
-        this.app.get("/sse_cmd_str**", new SseHandler2(new Consumer<SseClient2>() {
-            @Override
-            public void accept(SseClient2 sse) {
-                pageHandler.sseCmdStr(sse);
-            }
-        }));
+//        this.app.get("/sse_reaction**", new SseHandler2(new Consumer<SseClient2>() {
+//            @Override
+//            public void accept(SseClient2 sse) {
+//                pageHandler.sseReaction(sse);
+//            }
+//        }));
+//        this.app.get("/sse_cmd_str**", new SseHandler2(new Consumer<SseClient2>() {
+//            @Override
+//            public void accept(SseClient2 sse) {
+//                pageHandler.sseCmdStr(sse);
+//            }
+//        }));
 
-        this.app.get("command/**", new SseHandler2(new Consumer<SseClient2>() {
-            @Override
-            public void accept(SseClient2 sse) {
-                try {
-                    pageHandler.sseCmdPage(sse);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }));
+//        this.app.get("command/**", new SseHandler2(new Consumer<SseClient2>() {
+//            @Override
+//            public void accept(SseClient2 sse) {
+//                try {
+//                    pageHandler.sseCmdPage(sse);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }));
 
         this.app.get("/discordids", new Handler() {
             @Override
@@ -196,6 +177,21 @@ public class WebRoot {
                 context.result(result.toString().trim());
             }
         });
+
+        for (String cmd : Locutus.imp().getCommandManager().getV2().getCommands().getSubCommandIds()) {
+            List<String> patterns = Arrays.asList(
+                    "/command/" + cmd + "/**",
+                    "/command/" + cmd
+            );
+            for (String pattern : patterns) {
+                this.app.get(pattern, ctx -> {
+                    pageHandler.handle(ctx);
+                });
+                this.app.post(pattern, ctx -> {
+                    pageHandler.handle(ctx);
+                });
+            }
+        }
 
         for (String cmd : pageHandler.getCommands().getSubCommandIds()) {
             List<String> patterns = Arrays.asList(

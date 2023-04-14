@@ -548,10 +548,10 @@ public class CM {
                 return createArgs();
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="embedTest")
-        public static class embedTest extends CommandRef {
-            public static final embedTest cmd = new embedTest();
-            public embedTest create() {
+        @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="embed")
+        public static class embed extends CommandRef {
+            public static final embed cmd = new embed();
+            public embed create() {
                 return createArgs();
             }
         }

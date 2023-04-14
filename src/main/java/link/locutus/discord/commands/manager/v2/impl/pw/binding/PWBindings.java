@@ -69,7 +69,7 @@ import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
     @Binding(value = "City build json or url", examples = {"city/id=371923", "{city-json}", "city/id=1{json-modifiers}"})
-    public CityBuild city(@Me DBNation nation, @TextArea String input) {
+    public CityBuild city(@Default @Me DBNation nation, @TextArea String input) {
         // {city X Nation}
         int index = input.indexOf('{');
         String json;
@@ -84,7 +84,7 @@ public class PWBindings extends BindingHelper {
             int cityId = Integer.parseInt(input.split("=")[1]);
             DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
             if (city == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
-            build = city.toJavaCity(nation).toCityBuild();
+            build = city.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
         }
         if (json != null) {
             CityBuild build2 = CityBuild.of(json, true);
@@ -95,7 +95,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "City url", examples = {"city/id=371923"})
-    public DBCity cityUrl(@Me DBNation me, String input) {
+    public DBCity cityUrl(String input) {
         int cityId;
         if (input.contains("city/id=")) {
             cityId = Integer.parseInt(input.split("=")[1]);
@@ -167,7 +167,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
-    public static DBNation nation(@Me User selfUser, String input) {
+    public static DBNation nation(@Default @Me User selfUser, String input) {
         DBNation nation = DiscordUtil.parseNation(input);
         if (nation == null) {
             if (selfUser != null && input.equalsIgnoreCase("%user%")) {
@@ -337,7 +337,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm,#position>1")
-    public NationList nationList(@Me Guild guild, String input) {
+    public NationList nationList(@Default @Me Guild guild, String input) {
         return new SimpleNationList(nations(guild, input)).setFilter(input);
     }
 
@@ -360,7 +360,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm")
-    public Set<NationOrAlliance> nationOrAlliance(@Me Guild guild, String input) {
+    public Set<NationOrAlliance> nationOrAlliance(@Default @Me Guild guild, String input) {
         Set<NationOrAlliance> result = new LinkedHashSet<>();
 
         for (String group : input.split("\\|+")) {
@@ -399,16 +399,16 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm,647252780817448972")
-    public Set<NationOrAllianceOrGuild> nationOrAllianceOrGuild(@Me Guild guild, String input) {
+    public Set<NationOrAllianceOrGuild> nationOrAllianceOrGuild(@Default @Me Guild guild, String input) {
         return (Set) nationOrAllianceOrGuildOrTaxId(guild, input, false);
     }
 
     @Binding(examples = "borg,AA:Cataclysm,647252780817448972")
-    public Set<NationOrAllianceOrGuildOrTaxid> nationOrAllianceOrGuildOrTaxId(@Me Guild guild, String input) {
+    public Set<NationOrAllianceOrGuildOrTaxid> nationOrAllianceOrGuildOrTaxId(@Default @Me Guild guild, String input) {
         return nationOrAllianceOrGuildOrTaxId(guild, input, true);
     }
 
-    public static Set<NationOrAllianceOrGuildOrTaxid> nationOrAllianceOrGuildOrTaxId(@Me Guild guild, String input, boolean includeTaxId) {
+    public static Set<NationOrAllianceOrGuildOrTaxid> nationOrAllianceOrGuildOrTaxId(@Default @Me Guild guild, String input, boolean includeTaxId) {
         List<String> args = StringMan.split(input, ',');
         Set<NationOrAllianceOrGuildOrTaxid> result = new LinkedHashSet<>();
         List<String> remainder = new ArrayList<>();
@@ -466,7 +466,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "Cataclysm,790")
-    public static Set<DBAlliance> alliances(@Me Guild guild, String input) {
+    public static Set<DBAlliance> alliances(@Default @Me Guild guild, String input) {
         Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, input);
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
         Set<DBAlliance> alliances = new HashSet<>();
@@ -572,7 +572,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding
     @Me
-    public DBNation nation(@Me User user) {
+    public DBNation nation(@Default @Me User user) {
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) throw new IllegalArgumentException("Please use " + CM.register.cmd.toSlashMention() + "");
         return nation;
@@ -717,7 +717,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public static DBAlliancePosition position(@Me GuildDB db, @Me DBNation nation, String name) {
+    public static DBAlliancePosition position(@Me GuildDB db, @Default @Me DBNation nation, String name) {
         AllianceList alliances = db.getAllianceList();
         if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.ALLIANCE_ID);
 
@@ -729,7 +729,7 @@ public class PWBindings extends BindingHelper {
         Set<Integer> aaIds = new LinkedHashSet<>();
         if (aaId != null) aaIds.add(aaId);
         else {
-            if (alliances.contains(nation.getAlliance_id())) aaIds.add(nation.getAlliance_id());
+            if (nation != null && alliances.contains(nation.getAlliance_id())) aaIds.add(nation.getAlliance_id());
             aaIds.addAll(alliances.getIds());
         }
         DBAlliancePosition result = null;
@@ -804,24 +804,28 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public AllianceList allianceList(ParameterData param, @Me User user, @Me GuildDB db) {
+    public AllianceList allianceList(ParameterData param, @Default @Me User user, @Me GuildDB db) {
         AllianceList list = db.getAllianceList();
         if (list == null) {
             throw new IllegalArgumentException("This guild has no registered alliance. See " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.ALLIANCE_ID);
         }
         RolePermission perms = param.getAnnotation(RolePermission.class);
         if (perms != null) {
-            Set<Integer> allowedIds = new HashSet<>();
-            for (int aaId : list.getIds()) {
-                try {
-                    PermissionBinding.checkRole(db.getGuild(), perms, user, aaId);
-                    allowedIds.add(aaId);
-                } catch (IllegalArgumentException ignore) {}
+            if (user != null) {
+                Set<Integer> allowedIds = new HashSet<>();
+                for (int aaId : list.getIds()) {
+                    try {
+                        PermissionBinding.checkRole(db.getGuild(), perms, user, aaId);
+                        allowedIds.add(aaId);
+                    } catch (IllegalArgumentException ignore) {
+                    }
+                }
+                if (allowedIds.isEmpty()) {
+                    throw new IllegalArgumentException("You are lacking role permissions for the alliance ids: " + StringMan.getString(list.getIds()));
+                }
+                return new AllianceList(allowedIds);
             }
-            if (allowedIds.isEmpty()) {
-                throw new IllegalArgumentException("You are lacking role permissions for the alliance ids: " + StringMan.getString(list.getIds()));
-            }
-            return new AllianceList(allowedIds);
+            throw new IllegalArgumentException("Not registered");
         } else {
             throw new IllegalArgumentException("TODO: disable this error once i verify it works (see console for debug info)");
         }
@@ -892,7 +896,24 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public static TaxBracket bracket(@Me GuildDB db, String input) {
+    public static TaxBracket bracket(@Default @Me GuildDB db, String input) {
+        Integer taxId;
+        if (MathMan.isInteger(input)) {
+            taxId = Integer.parseInt(input);
+        } else if (input.toLowerCase(Locale.ROOT).contains("tax_id")) {
+            taxId = PnwUtil.parseTaxId(input);
+        } else {
+            taxId = null;
+        }
+        if (db == null) {
+            if (taxId == null) throw new IllegalArgumentException("Invalid tax id: `" + input + "`");
+            DBNation nation = Locutus.imp().getNationDB().getFirstNationMatching(f -> f.getTax_id() == taxId);
+            if (nation == null) {
+                throw new IllegalArgumentException("No nation found with tax id: `" + taxId + "`");
+            } else {
+                return new TaxBracket(taxId, nation.getAlliance_id(), "", -1, -1, 0L);
+            }
+        }
         Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
         if (input.matches("[0-9]+/[0-9]+")) {
             String[] split = input.split("/");
@@ -906,12 +927,6 @@ public class PWBindings extends BindingHelper {
                 }
             }
             throw new IllegalArgumentException("No bracket found for `" + input + "`. Are you sure that tax rate exists ingame?");
-        }
-        int taxId;
-        if (MathMan.isInteger(input)) {
-            taxId = Integer.parseInt(input);
-        } else {
-            taxId = PnwUtil.parseTaxId(input);
         }
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;

@@ -261,7 +261,7 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs stats between two coalitions")
-    public String myloot(@Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation nation,
+    public String myloot(@Me Guild guild, @Me IMessageIO channel, @Me DBNation nation,
                          Set<NationOrAlliance> coalition2, @Timestamp long timeStart,
                          @Default @Timestamp Long timeEnd,
                          @Switch("u") boolean ignoreUnits,
@@ -275,7 +275,7 @@ public class StatCommands {
                          @Switch("w") Set<WarType> allowedWarTypes,
                          @Switch("s") Set<WarStatus> allowedWarStatus,
                          @Switch("a") Set<AttackType> allowedAttackTypes) {
-        return warsCost(guild, channel, author, Collections.singleton(nation), coalition2, timeStart, timeEnd,
+        return warsCost(guild, channel, Collections.singleton(nation), coalition2, timeStart, timeEnd,
                 ignoreUnits, ignoreInfra, ignoreConsumption, ignoreLoot, listWarIds, showWarTypes,
                 allowedWarTypes, allowedWarStatus, allowedAttackTypes);
     }
@@ -294,7 +294,7 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs stats between two coalitions")
-    public String warsCost(@Me Guild guild, @Me IMessageIO channel, @Me User author,
+    public String warsCost(@Me Guild guild, @Me IMessageIO channel,
                            Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2, @Timestamp long timeStart,
                            @Default @Timestamp Long timeEnd,
                            @Switch("u") boolean ignoreUnits,

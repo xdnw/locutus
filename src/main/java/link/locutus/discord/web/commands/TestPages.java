@@ -5,11 +5,11 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 public class TestPages {
     @Command(desc = "Show running tax expenses by day by bracket")
     public Object testIndex() {
-        return "Test index";
+        return "Hello World";
     }
 
     @Command
     public Object testPost(String argument) {
-        return "Test post";
+        return "Test post: " + argument;
     }
 }

@@ -60,7 +60,11 @@ public interface CommandCallable {
             }
             String arg = args.remove(0);
             if (root instanceof CommandGroup) {
-                root = ((CommandGroup) root).get(arg);
+                CommandCallable tmp = ((CommandGroup) root).get(arg);
+                if (tmp == null) {
+                    throw new IllegalArgumentException("Command: " + root.getPrimaryCommandId() + " of type " + root.getClass().getSimpleName() + " has no subcommand matching: " + arg);
+                }
+                root = tmp;
             } else {
                 throw new IllegalArgumentException("Command: " + root.getPrimaryCommandId() + " of type " + root.getClass().getSimpleName() + " has no subcommand: " + arg);
             }

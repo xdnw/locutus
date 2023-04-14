@@ -45,7 +45,7 @@ public class AttackCommands {
     }
 
     @Command(aliases = {"airsim", "airstrikesim", "planesim"})
-    public String airSim(@Me GuildDB db, int attAircraft, int defAircraft) {
+    public String airSim(int attAircraft, int defAircraft) {
         double attStr = attAircraft;
         double defStr = defAircraft;
 
@@ -64,7 +64,7 @@ public class AttackCommands {
     }
 
     @Command(aliases = {"shipSim", "navalSim"})
-    public String navalSim(@Me GuildDB db, int attShips, int defShips) {
+    public String navalSim(int attShips, int defShips) {
         double attStr = attShips;
         double defStr = defShips;
 

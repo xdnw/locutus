@@ -22,9 +22,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public class StandardPlaceholders {
 
     @Command
-    String js(@Me User author, @TextArea String text) throws ScriptException {
+    String js(@Default @Me User author, @TextArea String text) throws ScriptException {
         if (text.contains("[a-zA-Z]+")) {
-            if (!Roles.ADMIN.hasOnRoot(author)) {
+            if (author == null || !Roles.ADMIN.hasOnRoot(author)) {
                 return null;
             }
         }
