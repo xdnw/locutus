@@ -37,7 +37,7 @@ public class TransferCommand extends Command {
 
     @Override
     public String help() {
-        return Settings.commandPrefix(true) + "transfer <alliance|nation> <resource> <amount>";
+        return Settings.commandPrefix(true) + "transfer <alliance|nation> <resource> <amount> <note>";
     }
 
     @Override

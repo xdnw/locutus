@@ -220,9 +220,11 @@ public class DepositsSheet extends Command {
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
 
                 }
+                footer.append("\n**Total " + type + " - nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+                footer.append("\n**Total " + type + " - nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
+            } else {
+                footer.append("\n**No funds are currently " + type + "**");
             }
-            footer.append("\n**Total " + type + " - nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-            footer.append("\n**Total " + type + " - nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
 
         sheet.attach(new DiscordChannelIO(event).create(), footer.toString()).send();

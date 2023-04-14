@@ -117,6 +117,88 @@ public class BankCommands {
 //        //  <nations> <raws-days> <warchest-per-city> <warchest-total> <warchest-modifier> <unit-resources> <note>
 //    }
 
+
+    @Command
+    @IsAlliance
+    public String taxInfo(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, DBNation nation) {
+        if (nation == null) nation = me;
+        if (nation.getId() != me.getId()) {
+            if (user == null) throw new IllegalArgumentException("You must be registered to check other nation's tax info: " + CM.register.cmd.toSlashMention());
+            if (db == null) throw new IllegalArgumentException("Checking other nation's tax info must be done within a discord server");
+            if (!Roles.ECON_STAFF.has(user, db.getGuild())) {
+                throw new IllegalArgumentException("No permission to check other nation's tax info. Missing: " + Roles.ECON_STAFF.toDiscordRoleNameElseInstructions(db.getGuild()));
+            }
+        }
+        List<String> responses = new ArrayList<>();
+
+        if (nation.getPositionEnum().id <= Rank.APPLICANT.id) {
+            responses.add("Applicants are not taxed. ");
+        } else {
+            DBAlliance alliance = nation.getAlliance();
+            Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(true);
+            TaxBracket bracket = brackets.get(nation.getTax_id());
+            if (bracket == null) {
+                bracket = nation.getTaxBracket();
+            }
+            String taxRateStr = bracket.moneyRate >= 0 ? String.format("%d/%d", bracket.moneyRate, bracket.moneyRate) : "Unknown";
+            responses.add(String.format("**Bracket** %s: %s (tax_id:%d)", bracket.getName(), taxRateStr, nation.getTax_id()));
+            if (nation.isGray()) {
+                responses.add("`note: GRAY nations do not pay taxes. ");
+            } else if (nation.isBeige()) {
+                responses.add("`note: BEIGE nations do not pay taxes`");
+            } else if (nation.allianceSeniority() < 3) {
+                responses.add("`note: Nations with <2 days alliance seniority do not pay taxes`");
+            }
+
+            if (db != null) {
+                TaxRate internal = db.getHandler().getInternalTaxrate(nation.getNation_id());
+
+                if (internal.money == -1 && internal.resources == -1) {
+                    responses.add("`note: your taxes do NOT go into your deposits`");
+                } else {
+                    responses.add(String.format("**Internal tax rate:** %d/%d", internal.money, internal.resources));
+                    boolean payAboveMsg = false;
+                    if (internal.money >= bracket.moneyRate) {
+                        responses.add("`note: no $ from taxes goes into your deposits as internal $ rate is higher than your in-game tax $ rate`");
+                    } else {
+                        payAboveMsg = true;
+                    }
+                    if (internal.resources >= bracket.rssRate) {
+                        responses.add("`note: no resources from taxes goes into your deposits as internal resource rate is higher than your in-game tax resources rate`");
+                    } else {
+                        payAboveMsg = true;
+                    }
+                    if (payAboveMsg) {
+                        responses.add("`note: A portion of $/resources above the internal tax rate goes to the alliance`");
+                    }
+                }
+                if (Roles.ECON.has(user, db.getGuild())) {
+                    int[] taxBase = db.getOrNull(GuildDB.Key.TAX_BASE);
+                    if (taxBase == null || ((internal.money == -1 && internal.resources == -1))) {
+                        responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.cmd.toSlashMention() + "` and key: " + GuildDB.Key.TAX_BASE + "`");
+                    }
+                    responses.add("\nTo view alliance wide bracket tax totals, use: " +
+                        CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null));
+                }
+            }
+        }
+
+        CM.deposits.check checkCmd = CM.deposits.check.cmd.create(nation.getId() + "", null, null, null, null, "true", null, null, null);
+        responses.add("\nTo view a breakdown of your deposits, use: " + checkCmd);
+
+        String title = "Tax info for " + nation.getName();
+        StringBuilder body = new StringBuilder();
+        body.append("**Nation:** ").append(nation.getNationUrlMarkup(true)).append("\n");
+        if (db != null && !db.isAllianceId(nation.getAlliance_id())) {
+            body.append("`note: nation is not in alliances: " + StringMan.getString(db.getAllianceIds()) + "`\n");
+        }
+        body.append(StringMan.join(responses, "\n"));
+
+        io.create().embed(title, body.toString()).send();
+        return null;
+    }
+
+
     @Command(desc = "Queue a transfer offshore (with authorization)\n" +
             "`aa-warchest` is how much to leave in the AA bank - in the form `{money=1,food=2}`\n" +
             "`#note` is what note to use for the transfer (defaults to deposit)")
@@ -1280,9 +1362,11 @@ public class BankCommands {
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
 
                 }
+                footer.append("\n**Total " + type + " - nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+                footer.append("\n**Total " + type + " - nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
+            } else {
+                footer.append("\n**No funds are currently " + type + "**");
             }
-            footer.append("\n**Total " + type + " - nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-            footer.append("\n**Total " + type + " - nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
         }
 
         sheet.attach(channel.create()).embed("Nation Deposits (With Alliance)", footer.toString())
@@ -2127,6 +2211,14 @@ public class BankCommands {
             TaxBracket bracket = nationOrAllianceOrGuild.asBracket();
             Map<DepositType, double[]> deposits = db.getTaxBracketDeposits(bracket.taxId, timeCutoff, includeExpired, includeIgnored);
             accountDeposits.putAll(deposits);
+
+            if (showTaxesSeparately) {
+                footers.add("#TAX is for the portion of tax income that does NOT go into member holdings");
+                footers.add("#DEPOSIT is for the portion of tax income in member holdings");
+            } else {
+                footers.add("Set 'showTaxesSeparately' to show separate sections for tax income allocated to member holdings");
+            }
+            footers.add("See " + CM.deposits.add.cmd.create("tax_id=" + nationOrAllianceOrGuild.getId(), null, "#TAX", null).toSlashCommand(false));
         }
 
         double[] total = new double[ResourceType.values.length];
@@ -2161,6 +2253,8 @@ public class BankCommands {
             if (categorized.containsKey(DepositType.TAX)) {
                 response.append("#TAX (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
+            } else if (nationOrAllianceOrGuild.isNation()) {
+                footers.add("No tax records are added to deposits");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
                 response.append("#LOAN/#GRANT (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))) + ")");
@@ -2497,9 +2591,6 @@ public class BankCommands {
                 GuildDB other;
                 if (alliancesOrGuild < Integer.MAX_VALUE) {
                     other = Locutus.imp().getGuildDBByAA(alliancesOrGuild.intValue());
-                    if (other == null) {
-                        continue;
-                    }
                 } else {
                     other = Locutus.imp().getGuildDB(alliancesOrGuild);
                 }
@@ -2510,12 +2601,12 @@ public class BankCommands {
                 Set<Long> offshoreIds = other.getCoalitionRaw(Coalition.OFFSHORE);
                 for (int id : root.getAllianceIds()) {
                     if (offshoreIds.contains((long) id)) {
-                        serverIds.add(alliancesOrGuild);
+                        serverIds.add(other.getIdLong());
                         continue outer;
                     }
                 }
                 if (offshoreIds.contains(root.getIdLong())) {
-                    serverIds.add(alliancesOrGuild);
+                    serverIds.add(other.getIdLong());
                     continue outer;
                 }
             }

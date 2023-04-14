@@ -35,6 +35,7 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -57,6 +58,7 @@ import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.jooq.meta.derby.sys.Sys;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -824,26 +826,49 @@ public class AdminCommands {
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listExpiredOffshores() {
-        StringBuilder response = new StringBuilder();
-
         OffshoreInstance offshore = Locutus.imp().getRootBank();
         GuildDB db = offshore.getGuildDB();
         Set<Long> coalitions = db.getCoalitionRaw(Coalition.OFFSHORING);
-        Set<Long> invalidIds = new HashSet<>();
-        Set<Long> inactiveIds = new HashSet<>();
-        Set<Long> unregistered = new HashSet<>();
-        Set<Long> threeMonthIds = new HashSet<>();
-        Set<Long> sixMonthIds = new HashSet<>();
-        Set<Long> nineMonthIds = new HashSet<>();
+
+        Map<Long, List<String>> notices = new HashMap<>();
+        Set<Long> printDeposits = new HashSet<>();
+        Set<Long> hasError = new HashSet<>();
 
         for (Long id : coalitions) {
+            List<String> notice = notices.computeIfAbsent(id, f -> new ArrayList<>());
             GuildDB otherDb = (id > Integer.MAX_VALUE) ? Locutus.imp().getGuildDB(id) : Locutus.imp().getGuildDBByAA(id.intValue());
             if (otherDb == null) {
-                invalidIds.add(id);
-                response.append("\nOther db is null: " + id);
+                notice.add(" - No database found");
+                hasError.add(id);
                 continue;
             }
+
+            if (id > Integer.MAX_VALUE) {
+                notice.add(" **CORPORATION**");
+            } else {
+                DBAlliance alliance = DBAlliance.get(id.intValue());
+                if (alliance == null || !alliance.exists()) {
+                    notice.add("\n - AA does not exist: " + id);
+                    printDeposits.add(id);
+                } else {
+                   notice.add(" **ALLIANCE**");
+                }
+            }
+
+            notice.add("\n - Guild: `" + otherDb.getGuild().toString() + "`");
             Set<Integer> aaIds = otherDb.getAllianceIds();
+            if (!aaIds.isEmpty()) {
+                List<String> aaNames = new ArrayList<>();
+                for (int aaId : aaIds) {
+                    DBAlliance aa = DBAlliance.get(aaId);
+                    if (aa == null) {
+                        aaNames.add(aaId + "");
+                    } else {
+                        aaNames.add(aa.getName() + "/" + aaId);
+                    }
+                }
+                notice.add("\n - Alliance: `" + StringMan.getString(aaNames) + "`");
+            }
 
             List<Transaction2> transactions;
             if (!aaIds.isEmpty()) {
@@ -853,175 +878,63 @@ public class AdminCommands {
             }
             transactions.removeIf(f -> f.tx_datetime > System.currentTimeMillis());
             transactions.removeIf(f -> f.receiver_id == f.banker_nation && f.tx_id > 0);
-            long latest = transactions.isEmpty() ? 0 : transactions.stream().mapToLong(f -> f.tx_datetime).max().getAsLong();
-            String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - latest);
-            if (latest < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)) {
-                threeMonthIds.add(id);
-            }
-            if (latest < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(60)) {
-                sixMonthIds.add(id);
-            }
-            if (latest < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(90)) {
-                nineMonthIds.add(id);
+            long latestTx = transactions.isEmpty() ? 0 : transactions.stream().mapToLong(f -> f.tx_datetime).max().getAsLong();
+            if (latestTx < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14)) {
+                String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - latestTx);
+                notice.add("\n - Latest Transfer: `" + timeStr + "`");
+                hasError.add(id);
+                printDeposits.add(id);
             }
 
-            if (id > Integer.MAX_VALUE) {
-                Member owner = otherDb.getGuild().getOwner();
+            Member owner = otherDb.getGuild().getOwner();
 
-                if (!aaIds.isEmpty()) {
-                    AllianceList alliance = new AllianceList(aaIds);
-                    Set<DBNation> nations = new HashSet<>(alliance.getNations());
-                    nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
-                    nations.removeIf(f -> f.getActive_m() > 10000);
-
-                    if (nations.isEmpty()) {
-                        inactiveIds.add(id);
-                        response.append("Inactive alliance (as guild) " + StringMan.getString(aaIds) + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong());
+            if (!aaIds.isEmpty()) {
+                AllianceList alliance = new AllianceList(aaIds);
+                Set<DBNation> nations = new HashSet<>(alliance.getNations());
+                nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
+                long minActiveM = Long.MAX_VALUE;
+                DBNation latestNation = null;
+                for (DBNation nation : nations) {
+                    if (nation.active_m() < minActiveM) {
+                        minActiveM = nation.active_m();
+                        latestNation = nation;
                     }
                 }
+                if (minActiveM > 10000) {
+                    notice.add("\n - Inactive Leadership: `" + (latestNation != null ? "<" + latestNation.getUrl() + ">" : null) + " | " + TimeUtil.secToTime(TimeUnit.MINUTES, minActiveM) + "`");
+                    printDeposits.add(id);
+                }
+            }
 
-                DBNation nation = DiscordUtil.getNation(owner.getUser());
-                if (nation == null) {
-                    unregistered.add(id);
-                    response.append("\nowner is unregistered: " + id + " | " + owner.getIdLong());
-                    continue;
-                }
-                if (nation.getActive_m() > 10000) {
-                    inactiveIds.add(id);
-                    response.append("\nowner is inactive: " + id + " | " + owner.getIdLong() + " | " + nation.getNationUrl() + " | " + nation.getActive_m() + "m");
-                    continue;
-                }
-            } else {
-                otherDb = Locutus.imp().getGuildDBByAA(id.intValue());
-                if (otherDb == null) {
-                    invalidIds.add(id);
-                    response.append("\nAA Other db is null: " + id);
-                    continue;
-                }
-
-                Member owner = otherDb.getGuild().getOwner();
-
-                if (!aaIds.isEmpty()) {
-                    AllianceList alliance = new AllianceList(aaIds);
-                    Set<DBNation> nations = new HashSet<>(alliance.getNations());
-                    nations.removeIf(f -> f.getPosition() < Rank.LEADER.id);
-                    nations.removeIf(f -> f.getActive_m() > 10000);
-
-                    if (nations.isEmpty()) {
-                        inactiveIds.add(id);
-                        response.append("Inactive alliance (as guild) " + StringMan.getString(aaIds) + " | " + db.getGuild().toString() + " | owner: " + owner.getIdLong() + " | (" + timeStr + ")");
-                    }
-                }
-
-                DBNation nation = DiscordUtil.getNation(owner.getUser());
-                if (nation == null) {
-                    if (aaIds.isEmpty()) {
-                        AllianceList alliance = new AllianceList(aaIds);
-                        if (alliance != null) {
-                            Set<DBNation> nations = alliance.getNations(f -> {
-                                if (f.active_m() > 10000) return false;
-                                if (f.getPosition() > Rank.MEMBER.id) return true;
-                                DBAlliancePosition p = f.getAlliancePosition();
-                                return p != null && p.hasPermission(AlliancePermission.WITHDRAW_BANK);
-                            });
-                            if (!nations.isEmpty()) nation = nations.iterator().next();
-                        }
-                    }
-                    if (nation == null) {
-                        unregistered.add(id);
-                        response.append("\nAA owner is unregistered: " + id + " | " + owner.getIdLong() + " | (" + timeStr + ")");
-                        continue;
-                    }
-                }
-                if (nation.getActive_m() > 10000) {
-                    inactiveIds.add(id);
-                    response.append("\nAA owner is inactive: " + id + " | " + owner.getIdLong() + " | " + nation.getNationUrl() + " | " + nation.getActive_m() + "m" + " | (" + timeStr + ")");
-                    continue;
-                }
-                DBAlliance alliance = DBAlliance.get(id.intValue());
-                if (alliance == null || !alliance.exists()) {
-                    invalidIds.add(id);
-                    response.append("\nAA does not exist: " + id + " | (" + timeStr + ")");
-                    continue;
-                }
+            DBNation nation = owner != null ? DiscordUtil.getNation(owner.getIdLong()) : null;
+            if (nation == null) {
+                notice.add("\n - Owner is Unregistered");
+                printDeposits.add(id);
+            } else if (nation.getActive_m() > 10000) {
+                notice.add("\n - Owner is inactive: <@" + owner.getIdLong() + "> | <" + nation.getNationUrl() + "> | `" + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "`");
+                printDeposits.add(id);
             }
         }
 
-        double[] totalInvalid = ResourceType.getBuffer();
-        double[] totalInactive = ResourceType.getBuffer();
-        double[] totalUnregistered = ResourceType.getBuffer();
-
-        double[] threeMonth = ResourceType.getBuffer();
-        double[] sixMonth = ResourceType.getBuffer();
-        double[] nineMonth = ResourceType.getBuffer();
-
-        for (long id : inactiveIds) {
-            Map<ResourceType, Double> depo;
-            if (id > Integer.MAX_VALUE) {
-                depo = offshore.getDeposits(id, false);
-            } else {
-                depo = offshore.getDeposits((int) id, false);
+        StringBuilder response = new StringBuilder();
+        for (long id : coalitions) {
+            if (!hasError.contains(id)) continue;
+            List<String> notes = notices.get(id);
+            response.append("\n\n**").append(id).append("**");
+            for (String note : notes) {
+                response.append(note);
             }
-            totalInactive = PnwUtil.add(totalInactive, PnwUtil.resourcesToArray(depo));
-        }
-
-        for (long id : invalidIds) {
-            Map<ResourceType, Double> depo;
-            if (id > Integer.MAX_VALUE) {
-                depo = offshore.getDeposits(id, false);
-            } else {
-                depo = offshore.getDeposits((int) id, false);
+            if (printDeposits.contains(id)) {
+                Map<ResourceType, Double> depo;
+                if (id > Integer.MAX_VALUE) {
+                    depo = offshore.getDeposits(id, false);
+                } else {
+                    depo = offshore.getDeposits((int) id, false);
+                }
+                response.append("\n - Deposits: `" + PnwUtil.resourcesToString(depo) + "` worth: `$" + MathMan.format(PnwUtil.convertedTotal(depo)) + "`");
             }
-            totalInvalid = PnwUtil.add(totalInvalid, PnwUtil.resourcesToArray(depo));
+            response.append("\n\n");
         }
-
-        for (long id : unregistered) {
-            Map<ResourceType, Double> depo;
-            if (id > Integer.MAX_VALUE) {
-                depo = offshore.getDeposits(id, false);
-            } else {
-                depo = offshore.getDeposits((int) id, false);
-            }
-            totalUnregistered = PnwUtil.add(totalUnregistered, PnwUtil.resourcesToArray(depo));
-        }
-
-        for (long id : threeMonthIds) {
-            Map<ResourceType, Double> depo;
-            if (id > Integer.MAX_VALUE) {
-                depo = offshore.getDeposits(id, false);
-            } else {
-                depo = offshore.getDeposits((int) id, false);
-            }
-            threeMonth = PnwUtil.add(threeMonth, PnwUtil.resourcesToArray(depo));
-        }
-
-        for (long id : sixMonthIds) {
-            Map<ResourceType, Double> depo;
-            if (id > Integer.MAX_VALUE) {
-                depo = offshore.getDeposits(id, false);
-            } else {
-                depo = offshore.getDeposits((int) id, false);
-            }
-            sixMonth = PnwUtil.add(sixMonth, PnwUtil.resourcesToArray(depo));
-        }
-
-        for (long id : nineMonthIds) {
-            Map<ResourceType, Double> depo;
-            if (id > Integer.MAX_VALUE) {
-                depo = offshore.getDeposits(id, false);
-            } else {
-                depo = offshore.getDeposits((int) id, false);
-            }
-            nineMonth = PnwUtil.add(nineMonth, PnwUtil.resourcesToArray(depo));
-        }
-
-        response.append("\n\nTotal invalid: " + PnwUtil.resourcesToString(totalInvalid));
-        response.append("\nTotal inactive: " + PnwUtil.resourcesToString(totalInactive));
-        response.append("\nTotal unregistered: " + PnwUtil.resourcesToString(totalUnregistered));
-        response.append("\n1 month: " + PnwUtil.resourcesToString(threeMonth));
-        response.append("\n2 month: " + PnwUtil.resourcesToString(sixMonth));
-        response.append("\n3 month: " + PnwUtil.resourcesToString(nineMonth));
-
 
         return response.toString();
     }

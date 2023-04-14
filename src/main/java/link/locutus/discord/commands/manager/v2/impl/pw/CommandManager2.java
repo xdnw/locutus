@@ -129,9 +129,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-
-
         this.commands.registerCommandsWithMapping(CM.class, false, false);
+                this.commands.registerMethod(new BankCommands(), List.of("tax"), "taxInfo", "info");
 //        this.commands.registerSubCommands(new BuildCommands(), "build");
 //        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
 //

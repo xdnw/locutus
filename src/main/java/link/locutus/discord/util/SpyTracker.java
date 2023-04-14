@@ -199,7 +199,7 @@ public class SpyTracker {
         if (previousLosses != null && losses > previousLosses) {
             int change = losses - previousLosses;
             if (unit == MilitaryUnit.SPIES) {
-                SpyActivity activity = new SpyActivity(nationId, unit, currentUnits, change, timestamp, score, false);
+                SpyActivity activity = new SpyActivity(nationId, unit, currentUnits + change, change, timestamp, score, false);
                 System.out.println("Add activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
                 queue.add(activity);
 
@@ -221,7 +221,7 @@ public class SpyTracker {
                     if (currentUnits < min || currentUnits > max) return;
                 }
 
-                SpyActivity activity = new SpyActivity(nationId, unit, currentUnits, change, timestamp, score, false);
+                SpyActivity activity = new SpyActivity(nationId, unit, currentUnits + change, change, timestamp, score, false);
                 System.out.println("Add activity sold " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
                 queue.add(activity);
             }

@@ -474,6 +474,7 @@ public class PnwUtil {
             }
         }
         arg = arg.trim();
+        String original = arg;
         if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
         arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         double sign = 1;
@@ -523,7 +524,18 @@ public class PnwUtil {
             }
             transfer = new Gson().fromJson(json.toString(), type);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid resource json: `" + arg + "` (" + e.getMessage() + ")");
+            if (original.toUpperCase(Locale.ROOT).matches("[0-9]+[ASMGBILUOCF$]([ ][0-9]+[ASMGBILUOCF$])*")) {
+                String[] split = original.split(" ");
+                transfer = new LinkedHashMap<>();
+                for (String s : split) {
+                    Character typeChar = s.charAt(s.length() - 1);
+                    ResourceType type1 = ResourceType.parseChar(typeChar);
+                    double amount = MathMan.parseDouble(s.substring(0, s.length() - 1));
+                    transfer.put(type1, amount);
+                }
+            } else {
+                throw new IllegalArgumentException("Invalid resource json: `" + arg + "` (" + e.getMessage() + ")");
+            }
         }
         if (transfer.containsKey(null)) {
             throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
