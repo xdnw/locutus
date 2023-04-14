@@ -120,7 +120,7 @@ public class BankCommands {
 
     @Command
     @IsAlliance
-    public String taxInfo(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, DBNation nation) {
+    public String taxInfo(@Me IMessageIO io, @Default @Me GuildDB db, @Me DBNation me, @Default @Me User user, DBNation nation) {
         if (nation == null) nation = me;
         if (nation.getId() != me.getId()) {
             if (user == null) throw new IllegalArgumentException("You must be registered to check other nation's tax info: " + CM.register.cmd.toSlashMention());
