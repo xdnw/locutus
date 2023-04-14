@@ -1507,7 +1507,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     if (guildAAIds == null) guildAAIds = getAllianceIds();
                     if (entry.getKey() == 0L) {
                         if (guildAAIds.isEmpty()) {
-                            return Collections.singleton(getIdLong());
+                            return new HashSet<>(Collections.singleton(getIdLong()));
                         }
                         for (Integer aaId : guildAAIds) allowedIds.add(aaId.longValue());
                         return allowedIds;
@@ -1632,6 +1632,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     accessTypeMap.put(aaId, AccessType.ECON);
                 }
             }
+            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, channelAccountIds, accessTypeMap.isEmpty());
+            if (withdrawAccount > 0) {
+                accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
+            }
+        } else {
             long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, channelAccountIds, accessTypeMap.isEmpty());
             if (withdrawAccount > 0) {
                 accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);

@@ -442,8 +442,8 @@ public class PWBindings extends BindingHelper {
                 }
             }
 
-            DBAlliance aa = alliance(arg);
             try {
+                DBAlliance aa = alliance(arg);
                 if (aa.exists()) {
                     result.add(aa);
                     continue;

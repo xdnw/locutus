@@ -534,14 +534,10 @@ public class WarDB extends DBMainV2 {
 
         boolean isOngoing = war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
 
-        boolean isAllianceLooted = false;
         boolean isActive = war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.DEFENDER_VICTORY || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
         for (DBAttack attack : attacks) {
             if (attack.attack_type == AttackType.VICTORY && attack.attacker_nation_id == war.attacker_id) {
                 war.status = WarStatus.ATTACKER_VICTORY;
-            }
-            if (attack.attack_type == AttackType.A_LOOT && attack.attacker_nation_id == war.attacker_id) {
-                isAllianceLooted = true;
             }
             if (attack.attacker_nation_id == war.defender_id) isActive = true;
             switch (attack.attack_type) {
@@ -1233,8 +1229,13 @@ public class WarDB extends DBMainV2 {
             if (attack.attack_type != AttackType.VICTORY && attack.attack_type != AttackType.A_LOOT) continue;
 
             Map<ResourceType, Double> loot = attack.getLoot();
-            if (loot == null || loot.isEmpty()) continue;
-            Double pct = attack.getLootPercent();
+            Double pct;
+            if (loot == null) {
+                loot = Collections.emptyMap();
+                pct = attack.getLootPercent();
+            } else {
+                pct = 1d;
+            }
             if (pct == 0) pct = 0.1;
             double factor = 1/pct;
 

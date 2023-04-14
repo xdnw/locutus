@@ -2508,9 +2508,9 @@ public class CM {
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="taxDeposits")
-        public static class deposists extends CommandRef {
-            public static final deposists cmd = new deposists();
-            public deposists create(String nations, String baseTaxRate, String startDate, String endDate, String sheet) {
+        public static class deposits extends CommandRef {
+            public static final deposits cmd = new deposits();
+            public deposits create(String nations, String baseTaxRate, String startDate, String endDate, String sheet) {
                 return createArgs("nations", nations, "baseTaxRate", baseTaxRate, "startDate", startDate, "endDate", endDate, "sheet", sheet);
             }
         }

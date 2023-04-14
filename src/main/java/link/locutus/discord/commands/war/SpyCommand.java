@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
@@ -56,9 +57,9 @@ public class SpyCommand extends Command {
             return "Usage: `" + Settings.commandPrefix(true) + "spy <nation-link> [num-used] [safety]`";
         }
 
-        Integer nationId = DiscordUtil.parseNationId(args.get(0));
-        if (nationId == null) {
-            return "invalid user/nation: " + nationId;
+        DBNation nation = PWBindings.nation(null, args.get(0));
+        if (nation == null) {
+            return "invalid user/nation: `" + args.get(0) + "`";
         }
         Integer cap = 60;
         if (args.size() >= 2) cap = MathMan.parseInt(args.get(1));
@@ -86,7 +87,7 @@ public class SpyCommand extends Command {
 
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
-        DBNation nation = DBNation.byId(nationId);
+
         int result = nation.updateSpies(true, true);
         Long turnUpdate = nation.getTurnUpdatedSpies();
         long turnsAgo = TimeUtil.getTurn() - (turnUpdate == null ? 0 : turnUpdate);
