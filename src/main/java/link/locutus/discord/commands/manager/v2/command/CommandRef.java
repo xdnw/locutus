@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
+import link.locutus.discord.web.jooby.WebRoot;
 import org.json.JSONObject;
 
 import java.util.Arrays;
@@ -100,5 +101,13 @@ public class CommandRef {
     @Override
     public String toString() {
         return toSlashCommand();
+    }
+
+    public String toPageUrl() {
+        return WebRoot.REDIRECT + "/page/" + path.replace(" ", "/");
+    }
+
+    public String toCommandUrl() {
+        return WebRoot.REDIRECT + "/command/" + path.replace(" ", "/");
     }
 }

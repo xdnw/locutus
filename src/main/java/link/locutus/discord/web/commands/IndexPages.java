@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Announcement;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -27,6 +28,8 @@ import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import io.javalin.http.Context;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringUtils;
@@ -200,13 +203,48 @@ public class IndexPages {
     }
 
     @Command()
-    public Object index(@Me User user) {
-        List<GuildDB> dbs = new ArrayList<>();
-        for (Guild guild : user.getMutualGuilds()) {
-            GuildDB db = Locutus.imp().getGuildDB(guild);
-            dbs.add(db);
+    public Object login(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
+        return "TODO";
+    }
+
+    @Command()
+    public Object guildSelect(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
+        if (user == null && nation == null) {
+            // need to login
+            // return WM login page
+            // throw error
+            return null;
         }
-        return rocker.guild.guilds.template(dbs).render().toString();
+        JDA jda = Locutus.imp().getDiscordApi().getApis().iterator().next();
+        String registerLink = (user == null || nation == null) ? CM.register.cmd.toCommandUrl() : null;
+        String locutusInvite = null;
+        String joinLink = nation != null && nation.getAlliance_id() == 0 ? Settings.INSTANCE.PNW_URL() + "/alliances/" : null;
+
+        Set<GuildDB> dbs = new LinkedHashSet<>();
+
+        if (current != null) {
+            dbs.add(current);
+        }
+
+        GuildDB allianceDb = null;
+
+        if (nation != null) {
+            DBAlliance alliance = nation.getAlliance();
+            if (alliance != null) {
+                allianceDb = alliance.getGuildDB();
+                if (allianceDb != null) {
+                    dbs.add(allianceDb);
+                    locutusInvite = jda.getInviteUrl(Permission.ADMINISTRATOR);
+                }
+            }
+        }
+        if (user != null) {
+            for (Guild guild : user.getMutualGuilds()) {
+                GuildDB db = Locutus.imp().getGuildDB(guild);
+                dbs.add(db);
+            }
+        }
+        return rocker.guild.guilds.template(dbs, current, allianceDb, registerLink, locutusInvite, joinLink).render().toString();
     }
 
     @Command()
@@ -300,17 +338,6 @@ public class IndexPages {
         // 2 view members
 
         return rocker.alliance.allianceindex.template(db, guild, alliance, user).render().toString();
-    }
-
-    @Command()
-    public Object testIndex(@Me User user) {
-//        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-//
-//        List<NationMetricDouble> metricsDouble = placeholders.getMetricsDouble(store);
-//        List<NationMetric> metricsString = placeholders.getMetrics(store);
-//        metricsString.removeIf(f -> f.getType() != String.class);
-
-        return "hello world";
     }
 
     public Object nationsEndpoint(String filters) {

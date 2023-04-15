@@ -5,7 +5,7 @@ import com.google.gson.JsonParser;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DBMain;
 import link.locutus.discord.db.DBMainV3;
-import link.locutus.discord.web.auth.IAuthHandler;
+import link.locutus.discord.web.commands.binding.AuthBindings;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
@@ -79,7 +79,7 @@ public class WebDB extends DBMainV3 {
         ctx().execute("DELETE FROM `AUTH` WHERE `least` = ? AND `most` = ?;", small, big);
     }
 
-    public void addTempToken(UUID uuid, IAuthHandler.Auth auth) {
+    public void addTempToken(UUID uuid, AuthBindings.Auth auth) {
         long timestamp = System.currentTimeMillis();
         long small = uuid.getLeastSignificantBits();
         long big = uuid.getMostSignificantBits();
@@ -94,8 +94,8 @@ public class WebDB extends DBMainV3 {
         ctx().execute("DELETE FROM `AUTH` WHERE `TIMESTAMP` < ?;", getCutoff());
     }
 
-    public Map<UUID, IAuthHandler.Auth> loadTempTokens() {
-        Map<UUID, IAuthHandler.Auth> result = new ConcurrentHashMap<>();
+    public Map<UUID, AuthBindings.Auth> loadTempTokens() {
+        Map<UUID, AuthBindings.Auth> result = new ConcurrentHashMap<>();
         // select from AUTH table
         ctx().select(asterisk()).from("AUTH").where("TIMESTAMP > ?", getCutoff()).fetch().forEach(row -> {
             long small = row.get("least", Long.class);
@@ -103,7 +103,7 @@ public class WebDB extends DBMainV3 {
             Integer nationId = row.get("NATION_ID", Integer.class);
             Long userId = row.get("USER_ID", Long.class);
             UUID uuid = new UUID(big, small);
-            IAuthHandler.Auth auth = new IAuthHandler.Auth(nationId, userId, Long.MAX_VALUE);
+            AuthBindings.Auth auth = new AuthBindings.Auth(nationId, userId, Long.MAX_VALUE);
             result.put(uuid, auth);
         });
         return result;

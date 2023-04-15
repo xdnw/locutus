@@ -88,11 +88,9 @@ public class PageHandler implements Handler {
     private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
-//    private final IAuthHandler authHandler;
 
     public PageHandler(WebRoot root) {
         this.root = root;
-//        this.authHandler = new AuthHandler();
 
         this.store = new SimpleValueStore<>();
 
@@ -394,6 +392,7 @@ public class PageHandler implements Handler {
     private void handleCommand(Context ctx) {
         ArgumentStack stack = createStack(ctx);
 
+        String message = null;
         try {
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.consumeNext();

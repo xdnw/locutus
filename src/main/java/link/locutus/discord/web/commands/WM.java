@@ -2,6 +2,7 @@ package link.locutus.discord.web.commands;
 
 import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import rocker.index;
 
 public class WM {
     @AutoRegister(clazz=link.locutus.discord.web.commands.EconPages.class,method="taxExpensesByTime")
@@ -277,10 +278,10 @@ public class WM {
             return createArgs();
         }
     }
-    @AutoRegister(clazz=link.locutus.discord.web.commands.IndexPages.class,method="index")
-    public static class index extends CommandRef {
-        public static final index cmd = new index();
-        public index create() {
+    @AutoRegister(clazz=link.locutus.discord.web.commands.IndexPages.class,method="guildSelect")
+    public static class guildSelect extends CommandRef {
+        public static final guildSelect cmd = new guildSelect();
+        public guildSelect create() {
             return createArgs();
         }
     }

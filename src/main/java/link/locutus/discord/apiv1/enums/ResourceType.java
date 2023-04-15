@@ -68,18 +68,6 @@ public enum ResourceType {
         }
         return null;
     }
-
-    public static final ResourceType parseChar(Character s) {
-        if (s == '$') return MONEY;
-        // ignore MONEY and CREDITS
-        for (ResourceType type : values) {
-            if (type == MONEY || type == CREDITS) continue;
-            if (Character.toLowerCase(type.getName().charAt(0)) == Character.toLowerCase(s)) {
-                return type;
-            }
-        }
-        return null;
-    }
     public static final ResourceType parse(String input) {
         if (input.equalsIgnoreCase("ALUMINIUM")) {
             return ALUMINUM;

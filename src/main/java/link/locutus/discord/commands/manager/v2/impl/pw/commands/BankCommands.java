@@ -117,7 +117,6 @@ public class BankCommands {
 //        //  <nations> <raws-days> <warchest-per-city> <warchest-total> <warchest-modifier> <unit-resources> <note>
 //    }
 
-
     @Command
     @IsAlliance
     public String taxInfo(@Me IMessageIO io, @Default @Me GuildDB db, @Me DBNation me, @Default @Me User user, DBNation nation) {
@@ -1949,15 +1948,6 @@ public class BankCommands {
                 " - Your internal tax rate will then determine what portion of city taxes go to your " + CM.deposits.check.cmd.toSlashMention() + "");
 
         return StringMan.join(messages, "\n");
-    }
-
-    public static void main(String[] args) {
-        String input = "60000a 40000s 14000m 10000g 16000b 22000i 15000l 30000u 12000o 23000c 175000f 103000000$";
-        Map<ResourceType, Double> rss = PnwUtil.parseResources(input);
-        System.out.println("Rss " + PnwUtil.resourcesToString(rss));
-
-        rss = PnwUtil.parseResources("60000a");
-        System.out.println("Rss " + PnwUtil.resourcesToString(rss));
     }
 
     @Command(aliases = {"acceptTrades", "acceptTrade"})
