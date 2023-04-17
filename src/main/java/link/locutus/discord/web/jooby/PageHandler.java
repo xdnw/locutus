@@ -2,7 +2,6 @@ package link.locutus.discord.web.jooby;
 
 import com.google.common.hash.Hashing;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
@@ -15,7 +14,6 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
-import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
@@ -29,37 +27,30 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
-import link.locutus.discord.web.commands.NationListPages;
+import link.locutus.discord.web.commands.binding.AuthBindings;
+import link.locutus.discord.web.commands.page.BankPages;
+import link.locutus.discord.web.commands.page.EconPages;
+import link.locutus.discord.web.commands.page.GrantPages;
+import link.locutus.discord.web.commands.page.IAPages;
+import link.locutus.discord.web.commands.page.IndexPages;
+import link.locutus.discord.web.commands.page.NationListPages;
 import link.locutus.discord.web.commands.binding.DiscordWebBindings;
 import link.locutus.discord.web.commands.binding.JavalinBindings;
 import link.locutus.discord.web.commands.binding.PrimitiveWebBindings;
 import link.locutus.discord.web.commands.binding.WebPWBindings;
-import link.locutus.discord.web.jooby.adapter.JoobyChannel;
-import link.locutus.discord.web.jooby.adapter.JoobyMessage;
-import link.locutus.discord.web.jooby.adapter.JoobyMessageAction;
+import link.locutus.discord.web.commands.page.StatPages;
+import link.locutus.discord.web.commands.page.TestPages;
+import link.locutus.discord.web.commands.page.TradePages;
+import link.locutus.discord.web.commands.page.WarPages;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import com.google.gson.JsonObject;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.MessageReaction;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.utils.data.DataArray;
-import net.dv8tion.jda.api.utils.data.DataObject;
-import net.dv8tion.jda.internal.entities.EntityBuilder;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
@@ -104,6 +95,8 @@ public class PageHandler implements Handler {
         new JavalinBindings().register(store);
         new PrimitiveWebBindings().register(store);
         new WebPWBindings().register(store);
+
+        new AuthBindings().register(store);
 
         this.validators = new ValidatorStore();
         new PrimitiveValidators().register(validators);
@@ -382,6 +375,7 @@ public class PageHandler implements Handler {
 
     private ArgumentStack createStack(Context ctx, List<String> args) {
         LocalValueStore<Object> locals = new LocalValueStore<>(store);
+
         setupLocals(locals, ctx, args);
 
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
@@ -464,6 +458,19 @@ public class PageHandler implements Handler {
         if (locals == null) {
             locals = new LocalValueStore<>(store);
         }
+        AuthBindings.Auth auth = AuthBindings.getAuth(ctx);
+        if (auth != null) {
+            locals.addProvider(Key.of(AuthBindings.Auth.class, Me.class), auth);
+            User user = auth.getUser();
+            DBNation nation = auth.getNation();
+            if (user != null) {
+                locals.addProvider(Key.of(User.class, Me.class), user);
+            }
+            if (nation != null) {
+                locals.addProvider(Key.of(DBNation.class, Me.class), nation);
+            }
+        }
+
         locals.addProvider(Key.of(Context.class), ctx);
         Map<String, String> path = ctx.pathParamMap();
         if (path.containsKey("guild_id") && args != null && !args.isEmpty()) {
@@ -531,7 +538,7 @@ public class PageHandler implements Handler {
 
     public void logout(Context context) {
         for (CookieType type : CookieType.values()) {
-            context.removeCookie(cookieId(type));
+            context.removeCookie(type.getCookieId());
         }
         context.redirect(WebRoot.REDIRECT);
     }
@@ -540,19 +547,35 @@ public class PageHandler implements Handler {
         DISCORD_OAUTH,
         URL_AUTH,
         GUILD_ID,
+
+        ;
+
+        private String cookieId;
+
+        // set cookie id
+        CookieType() {
+            cookieId = getCookieId(this);
+        }
+
+        public String getCookieId() {
+            return cookieId;
+        }
+
+        private String getCookieId(CookieType type) {
+            StringBuilder key = new StringBuilder(COOKIE_ID);
+            key.append(Settings.INSTANCE.BOT_TOKEN.hashCode());
+            if (type != CookieType.DISCORD_OAUTH) {
+                key.append(type.name());
+            }
+
+            return Hashing.sha256()
+                    .hashString(key.toString(), StandardCharsets.UTF_8)
+                    .toString();
+        }
+
     }
 
     public static String COOKIE_ID = "LCTS";
 
-    public static String cookieId(CookieType type) {
-        StringBuilder key = new StringBuilder(COOKIE_ID);
-        key.append(Settings.INSTANCE.BOT_TOKEN.hashCode());
-        if (type != CookieType.DISCORD_OAUTH) {
-            key.append(type.name());
-        }
 
-        return Hashing.sha256()
-                .hashString(key.toString(), StandardCharsets.UTF_8)
-                .toString();
-    }
 }

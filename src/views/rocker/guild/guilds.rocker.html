@@ -65,7 +65,7 @@ $(document).ready(function(){
     <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
             </div>
     </div>
-    @if (guildDbs.isEmpty() {
+    @if (guildDbs.isEmpty()) {
     <div class="p-1 my-1 alert alert-error alert-dismissible fade show" role="alert">
         <strong>No guilds found
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -78,7 +78,6 @@ $(document).ready(function(){
             <input class="form-control form-control-sm" id="myInput" type="text" placeholder="Search..">
         </div>
     </div>
-    }
     @for (GuildDB db : guildDbs) {
         <!--  Add argument to the guildentry template which sets the highlight flag and additional note -->
         <!-- if current is not null and matches db, set the highlight to "primary" and note to "Currently Selected"  -->

@@ -1233,7 +1233,7 @@ public class BankCommands {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
                 nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations(aaIds));
-                nations.removeIf(n -> n.getPosition() <= 1);
+                if (!includePastDepositors) nations.removeIf(n -> n.getPosition() <= 1);
 
                 if (includePastDepositors) {
                     Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(aaIds);

@@ -632,40 +632,11 @@ public class DiscordDB extends DBMainV2 {
     public PNWUser getUserFromNationId(int nationId) {
         updateUserCache();
         return userNationCache.get(nationId);
-//
-//        try (PreparedStatement stmt = prepareQuery("select * FROM USERS WHERE `nation_id` = ? order by case when discord_id is null then 1 else 0 end")) {
-//            stmt.setInt(1, nationId);
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    Long discordId = getLong(rs, "discord_id");
-//                    String name = rs.getString("discord_name");
-//                    return new PNWUser(nationId, discordId, name);
-//                }
-//            }
-//            return null;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
     }
 
     public PNWUser getUserFromDiscordId(long discordId) {
         updateUserCache();
         return userCache.get(discordId);
-//        try (PreparedStatement stmt = prepareQuery("select * FROM USERS WHERE `discord_id` = ?")) {
-//            stmt.setLong(1, discordId);
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    int nationId = rs.getInt("nation_id");
-//                    String name = rs.getString("discord_name");
-//                    return new PNWUser(nationId, discordId, name);
-//                }
-//            }
-//            return null;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
     }
 
     private ConcurrentHashMap<Long, PNWUser> userCache = new ConcurrentHashMap<>();

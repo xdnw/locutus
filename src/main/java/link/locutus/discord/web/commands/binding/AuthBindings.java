@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.javalin.http.Context;
+import io.javalin.http.RedirectResponse;
 import io.javalin.http.UnauthorizedResponse;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -30,6 +31,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.http.HttpHeaders;
 import org.apache.http.NameValuePair;
+import org.apache.http.client.RedirectException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
@@ -50,38 +52,48 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-import static link.locutus.discord.web.jooby.PageHandler.cookieId;
-
 public class AuthBindings extends WebBindingHelper {
 
     @Binding
     @Me
-    public User user(Context context, @Me @Default DBNation nation) {
+    public static User user(Context context, @Me @Default DBNation nation) {
+        String url;
         if (nation != null) {
             User user = nation.getUser();
             if (user != null) {
                 return user;
             }
-            // Register page
-            String url = CM.register.cmd.toCommandUrl();
-            context.redirect(url);
-            throw new UnauthorizedResponse("Please register your nation first: " + MarkupUtil.htmlUrl(url, url));
+            url =  WebRoot.REDIRECT + "/page/register";
+        } else {
+            url = WebRoot.REDIRECT + "/page/login";
         }
-        throw new IllegalStateException("No nation found in command locals");
-//        getAuth(context, false);
+        throw new RedirectResponse(0, url);
     }
     @Binding
     @Me
-    public DBNation nation(Context context, @Default @Me User user) {
-        DBNation nation = DiscordUtil.getNation(user);
-        if (nation == null) throw new IllegalArgumentException("Please use " + CM.register.cmd.toSlashMention() + "");
-        return nation;
+    public static DBNation nation(Context context, @Default @Me User user) {
+        String url;
+        if (user != null) {
+            DBNation nation = DiscordUtil.getNation(user);
+            if (nation != null) {
+                return nation;
+            }
+            url =  WebRoot.REDIRECT + "/page/register";
+        } else {
+            url = WebRoot.REDIRECT + "/page/login";
+        }
+        throw new RedirectResponse(0, url);
+    }
+
+    public static void setGuild(Context context, Guild guild) {
+        String guildCookieId = PageHandler.CookieType.GUILD_ID.getCookieId();
+        context.cookie(guildCookieId, String.valueOf(guild.getIdLong()), (int) TimeUnit.DAYS.toSeconds(30));
     }
 
     @Me
     @Binding
-    public Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user) {
-        String guildCookieId = cookieId(PageHandler.CookieType.GUILD_ID);
+    public static Guild guild(Context context, @Default @Me DBNation nation, @Default @Me User user) {
+        String guildCookieId = PageHandler.CookieType.GUILD_ID.getCookieId();
         String guildStr = context.cookie(guildCookieId);
         String message = null;
         if (guildStr != null && MathMan.isInteger(guildStr)) {
@@ -94,25 +106,10 @@ public class AuthBindings extends WebBindingHelper {
             }
         }
         if (user == null && nation == null) {
-            // auth page
+            throw new RedirectResponse(0, WebRoot.REDIRECT + "/page/login");
         }
 
-        // TODO have the guild select page show a link to register if you aren't already
-        // TODO have the guild select page show a message if you are not in an alliance
-
-        // TODO have the guild select page show if your alliance does not have Locutus
-        // TODO have the guild select page show your alliance guild
-
-        if (user == null && nation != null) {
-            // Register user or use nation's DB
-            GuildDB db = nation.getGuildDB();
-            if (db != null) {
-                return db.getGuild();
-            }
-        }
-//        String url = WM.guildindex.cmd.toPageUrl();
-//        context.redirect(url);
-        throw new IllegalStateException("No guild set in command locals");
+        throw new RedirectResponse(0, WM.guildSelect.cmd.toPageUrl());
     }
 
     public record Auth(Integer nationId, Long userId, long timestamp) {
@@ -134,40 +131,40 @@ public class AuthBindings extends WebBindingHelper {
         }
     }
 
-    private final WebDB webDb;
-    private final Map<Long, Map.Entry<String, JsonObject>> tokenToUserMap = new ConcurrentHashMap<>();
-    private final Map<String, Long> tokenHashes = new ConcurrentHashMap<>();
+    private static final WebDB webDb;
 
-    private Map<String, String> ORIGINAL_PAGE = new ConcurrentHashMap<>();
-
-    private final Map<UUID, Auth> pendingWebCmdTokens = new ConcurrentHashMap<>();
-
-    private final Map<UUID, Auth> webCommandAuth;
-
-    public AuthBindings(boolean ignore) {
+    static {
         try {
-            this.webDb = new WebDB();
+            webDb = new WebDB();
         } catch (SQLException | ClassNotFoundException e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
-        ;
         for (Map.Entry<Long, Map.Entry<String, JsonObject>> entry : webDb.loadTokens().entrySet()) {
             addAccessToken(entry.getValue().getKey(), entry.getValue().getValue(), false);
         }
         webCommandAuth = new ConcurrentHashMap<>(webDb.loadTempTokens());
     }
+    private static final Map<Long, Map.Entry<String, JsonObject>> tokenToUserMap = new ConcurrentHashMap<>();
+    private static final Map<String, Long> tokenHashes = new ConcurrentHashMap<>();
+
+    private static Map<String, String> ORIGINAL_PAGE = new ConcurrentHashMap<>();
+
+    private static final Map<UUID, Auth> pendingWebCmdTokens = new ConcurrentHashMap<>();
+
+    private static final Map<UUID, Auth> webCommandAuth;
 
     public static final String AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize";
     public static final String TOKEN_URL = "https://discord.com/api/oauth2/token";
     public static final String API_URL = "https://discord.com/api/users/@me";
-    public void logout(Context context) {
+    public static void logout(Context context) {
         for (PageHandler.CookieType type : PageHandler.CookieType.values()) {
-            context.removeCookie(cookieId(type));
+            context.removeCookie(type.getCookieId());
         }
         context.redirect(WebRoot.REDIRECT);
     }
 
-    private String getDiscordAuthUrl() {
+    public static String getDiscordAuthUrl() {
         List<NameValuePair> params = new ArrayList<>();
         params.add(new BasicNameValuePair("client_id", Settings.INSTANCE.APPLICATION_ID + ""));
         params.add(new BasicNameValuePair("redirect_uri", WebRoot.REDIRECT));
@@ -177,7 +174,7 @@ public class AuthBindings extends WebBindingHelper {
         return AUTHORIZE_URL + "?" + query;
     }
 
-    public void login(Context context) {
+    public static void login(Context context) {
         setRedirect(context);
         String url = getDiscordAuthUrl();
         context.header("cache-control", "no-store");
@@ -185,7 +182,7 @@ public class AuthBindings extends WebBindingHelper {
         throw new UnauthorizedResponse("Login via discord OAuth initiated. Redirect to " + url);
     }
 
-    public JsonObject getUser(String accessToken) throws IOException {
+    public static JsonObject getUser(String accessToken) throws IOException {
         CloseableHttpClient client = HttpClients.custom().build();
 
         HttpUriRequest request = RequestBuilder.get()
@@ -206,7 +203,7 @@ public class AuthBindings extends WebBindingHelper {
         return null;
     }
 
-    public String getAccessToken(String code) throws IOException {
+    public static String getAccessToken(String code) throws IOException {
         CloseableHttpClient client = HttpClients.custom().build();
 
         HttpUriRequest request = RequestBuilder.post()
@@ -234,7 +231,7 @@ public class AuthBindings extends WebBindingHelper {
 
 
 
-    private void addAccessToken(String accessToken, JsonObject userInfo, boolean updateDB) {
+    private static void addAccessToken(String accessToken, JsonObject userInfo, boolean updateDB) {
         JsonElement userIdStr = userInfo.get("id");
         if (userIdStr != null) {
             long userId = Long.parseLong(userIdStr.getAsString());
@@ -249,23 +246,24 @@ public class AuthBindings extends WebBindingHelper {
         }
     }
 
-    private String hash(String key) {
+    private static String hash(String key) {
         return Hashing.sha256()
                 .hashString(key.toString(), StandardCharsets.UTF_8)
                 .toString();
     }
 
-    public Auth getAuth(Context ctx) {
+    public static Auth getAuth(Context ctx) {
         try {
             return getAuth(ctx, false);
         } catch (IOException e) {
-            return null;
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
-    private Auth getAuth(Context context, boolean allowRedirect) throws IOException {
+    public static Auth getAuth(Context context, boolean allowRedirect) throws IOException {
         Map<String, String> cookies = context.cookieMap();
-        String oAuthCookieId = cookieId(PageHandler.CookieType.DISCORD_OAUTH);
+        String oAuthCookieId = PageHandler.CookieType.DISCORD_OAUTH.getCookieId();
         String discordAuth = cookies.get(oAuthCookieId);
 
         String message = null;
@@ -286,7 +284,7 @@ public class AuthBindings extends WebBindingHelper {
                     }
                 }
             }
-            context.removeCookie(cookieId(PageHandler.CookieType.DISCORD_OAUTH));
+            context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
         }
         {
             Map<String, List<String>> queries = context.queryParamMap();
@@ -313,12 +311,8 @@ public class AuthBindings extends WebBindingHelper {
                     }
                 } finally {
                     if (allowRedirect) {
-                        String redirect = ORIGINAL_PAGE.remove(context.ip());
-                        if (redirect == null) redirect = WebRoot.REDIRECT;
-                        context.header("Location", redirect);
-                        context.header("cache-control", "no-store");
-                        context.redirect(redirect);
-                        throw new UnauthorizedResponse("Discord OAuth `code` authentication redirect set in context. Catch this error");
+                        String redirect = getRedirect(context);
+                        throw new RedirectResponse(0, redirect);
                     }
                 }
             }
@@ -326,12 +320,12 @@ public class AuthBindings extends WebBindingHelper {
 
         {
             // if command auth exists
-            String commandAuth = cookies.get(cookieId(PageHandler.CookieType.URL_AUTH));
+            String commandAuth = cookies.get(PageHandler.CookieType.URL_AUTH.getCookieId());
             if (commandAuth != null) {
                 UUID uuid = UUID.fromString(commandAuth);
                 Auth  auth = webCommandAuth.get(uuid);
                 if (auth.isValid() && !auth.isExpired()) return auth;
-                context.removeCookie(cookieId(PageHandler.CookieType.URL_AUTH));
+                context.removeCookie(PageHandler.CookieType.URL_AUTH.getCookieId());
             }
         }
 
@@ -342,7 +336,7 @@ public class AuthBindings extends WebBindingHelper {
             String path = context.path();
 
             System.out.println(":||Path " + path);
-            if (path.equalsIgnoreCase("auth")) {
+            if (path.equalsIgnoreCase("login")) {
                 Map<String, List<String>> queryMap = context.queryParamMap();
 
                 String allianceStr = StringMan.join(queryMap.getOrDefault("alliance", new ArrayList<>()), ",");
@@ -375,18 +369,14 @@ public class AuthBindings extends WebBindingHelper {
                                     auth = null;
                                 } else {
                                     UUID verifiedUid = UUID.randomUUID();
-                                    context.cookie(cookieId(PageHandler.CookieType.URL_AUTH), verifiedUid.toString(), 60 * 60 * 24 * 30);
-                                    context.removeCookie(cookieId(PageHandler.CookieType.DISCORD_OAUTH));
+                                    context.cookie(PageHandler.CookieType.URL_AUTH.getCookieId(), verifiedUid.toString(), 60 * 60 * 24 * 30);
+                                    context.removeCookie(PageHandler.CookieType.DISCORD_OAUTH.getCookieId());
                                     webCommandAuth.put(verifiedUid, auth);
                                     webDb.addTempToken(verifiedUid, auth);
 
                                     if (allowRedirect) {
                                         String redirect = getRedirect(context);
-                                        context.header("Location", redirect);
-                                        context.header("cache-control", "no-store");
-                                        context.redirect(redirect);
-
-                                        throw new UnauthorizedResponse("URL Authentication page response returned to context. Catch this error");
+                                        throw new RedirectResponse(0, redirect);
                                     }
                                     if (auth.isValid() && !auth.isExpired()) return auth;
                                 }
@@ -408,7 +398,7 @@ public class AuthBindings extends WebBindingHelper {
                         DBNation nation = DBNation.byId(nationIdFilter);
                         if (nation != null) {
                             UUID tmpUid = UUID.randomUUID();
-                            String authUrl = WebRoot.REDIRECT + "/auth?token=" + tmpUid + "&nation=" + nation.getNation_id();
+                            String authUrl = WebRoot.REDIRECT + "/login?token=" + tmpUid + "&nation=" + nation.getNation_id();
                             Auth auth = new Auth(nation.getNation_id(), null, System.currentTimeMillis());
                             pendingWebCmdTokens.put(tmpUid, auth);
 
@@ -428,14 +418,7 @@ public class AuthBindings extends WebBindingHelper {
                                 } else {
                                     mailUrl = WebRoot.REDIRECT + "/mail/inbox";
                                 }
-                                // set REDIRECT map to the current url
-
-                                // redirect them to the mail page
-                                context.header("Location", mailUrl);
-                                context.header("cache-control", "no-store");
-                                context.redirect(mailUrl);
-
-                                throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
+                                throw new RedirectResponse(0, mailUrl);
                             } else {
                                 errors.add("Could not send mail to nation: " + nationIdFilter + " | " + result);
                             }
@@ -445,6 +428,7 @@ public class AuthBindings extends WebBindingHelper {
                     }
 
                     // Error alerts
+//                    errors
 
                     // Please select your nation
                     List<DBNation> nations;
@@ -461,7 +445,7 @@ public class AuthBindings extends WebBindingHelper {
 
 //                    String authPage = createAuthPage(context, allianceIdFilter, nationIdFilter, message);
 //                    context.result(authPage);
-                    throw new UnauthorizedResponse("Authentication page response returned to context. Catch this error");
+                    throw new RedirectResponse(0, "<TODO: show nation picker page here>");
                 }
             }
         }
@@ -470,24 +454,23 @@ public class AuthBindings extends WebBindingHelper {
             setRedirect(context);
 
             String discordAuthUrl = getDiscordAuthUrl();
-            String mailAuthUrl = WebRoot.REDIRECT + "/auth";
+            String mailAuthUrl = WebRoot.REDIRECT + "/login";
 
             String html = rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
-            context.result(html);
-            throw new UnauthorizedResponse("Authentication (1) page response returned to context. Catch this error");
+            throw new RedirectResponse(0, html);
         }
 
         return null;
     }
 
-    private String setRedirect(Context context) {
+    public static String setRedirect(Context context) {
         String fingerprint = (context.ip() + context.userAgent());
         String hash = Hashing.sha256().hashString(fingerprint, StandardCharsets.UTF_8).toString();
         ORIGINAL_PAGE.put(hash, context.url());
         return hash;
     }
 
-    private String getRedirect(Context context) {
+    public static String getRedirect(Context context) {
         String redirect = context.queryParam("redirect");
         if (redirect == null || redirect.isEmpty()) {
             String fingerprint = (context.ip() + context.userAgent());
@@ -498,85 +481,5 @@ public class AuthBindings extends WebBindingHelper {
             }
         }
         return redirect;
-    }
-
-    public Long getUserId(JsonObject user) {
-        JsonElement idStr = user.get("id");
-        if (idStr != null) {
-            return Long.parseLong(idStr.getAsString());
-        }
-        return null;
-    }
-
-
-    public JsonObject getDiscordUserJson(Context context, boolean login) throws IOException {
-//        String addr = context.ip();
-////        if (addr.equals("0:0:0:0:0:0:0:1") || addr.equals("[0:0:0:0:0:0:0:1]") || addr.equals("127.0.0.1") || addr.equals("[127.0.0.1]")) {
-////            return JsonParser.parseString("{\"id\":\"664156861033086987\",\"username\":\"borg\",\"avatar\":\"14aa8f752d52c066ad5ccb87116c90fa\",\"discriminator\":\"5729\",\"public_flags\":128,\"flags\":128,\"locale\":\"en-US\",\"mfa_enabled\":true}").getAsJsonObject();
-////        }
-        Map<String, String> cookies = context.cookieMap();
-        String cookieId = cookieId(PageHandler.CookieType.DISCORD_OAUTH);
-        String cookieData = cookies.get(cookieId);
-        if (cookieData != null) {
-            Long discordId = tokenHashes.get(cookieData);
-            if (discordId != null) {
-                Map.Entry<String, JsonObject> userInfo = tokenToUserMap.get(discordId);
-                if (userInfo != null) {
-                    return userInfo.getValue();
-                }
-            }
-        }
-
-        Map<String, List<String>> queries = context.queryParamMap();
-        List<String> code = queries.get("code");
-        if (code != null && code.size() == 1) {
-            try {
-                String codeSingle = code.get(0);
-                String access_token = getAccessToken(codeSingle);
-                if (access_token != null) {
-                    JsonObject user = getUser(access_token);
-
-                    JsonElement idStr = user.get("id");
-                    if (idStr != null) {
-                        long id = Long.parseLong(idStr.getAsString());
-                        String hash = hash(id + access_token);
-
-                        context.cookie(cookieId, hash, 60 * 60 * 24 * 30);
-
-                        addAccessToken(access_token, user, true);
-                        return user;
-                    }
-                }
-            } finally {
-                String redirect = ORIGINAL_PAGE.remove(context.ip());
-                if (redirect == null) redirect = WebRoot.REDIRECT;
-                context.header("Location", redirect);
-                context.header("cache-control", "no-store");
-                context.redirect(redirect);
-            }
-        }
-
-        if (login) {
-            login(context);
-        }
-
-        return null;
-    }
-
-    public Long getDiscordUser(Context ctx) throws IOException {
-        // tODO combine this with getDiscorduseer and move login stuff to here
-        JsonObject userJson = getDiscordUserJson(ctx, true);
-        if (userJson == null) {
-            return null;
-        }
-        Long userId = Long.parseLong(userJson.get("id").getAsString());
-        return userId;
-    }
-
-    //    @Override
-    public DBNation getNation(Context ctx) throws IOException {
-        Long userId = getDiscordUser(ctx);
-        DBNation nation = DiscordUtil.getNation(userId);
-        return nation;
     }
 }

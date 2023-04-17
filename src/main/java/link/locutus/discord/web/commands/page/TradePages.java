@@ -1,4 +1,4 @@
-package link.locutus.discord.web.commands;
+package link.locutus.discord.web.commands.page;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.MarkupUtil;

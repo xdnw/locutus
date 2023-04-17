@@ -1,4 +1,4 @@
-package link.locutus.discord.web.commands;
+package link.locutus.discord.web.commands.page;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -14,11 +14,13 @@ import link.locutus.discord.db.entities.Announcement;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.war.WarCard;
+import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.search.SearchResult;
 import link.locutus.discord.web.commands.search.SearchType;
 import link.locutus.discord.web.jooby.PageHandler;
@@ -44,7 +46,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class IndexPages {
+public class IndexPages extends PageHelper {
+
+    @Command
+    public Object index() {
+        return "Index page";
+    }
+
     @Command
     public Object search(@Me GuildDB db, String term) {
         // TODO simplify the code
@@ -203,8 +211,46 @@ public class IndexPages {
     }
 
     @Command()
-    public Object login(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
-        return "TODO";
+    public Object register(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
+        // if user is null, redirect to discord login
+        // if nation is null, redirect to login page
+
+        if (user == null) {
+            return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
+        }
+        if (nation == null) {
+            return PageHelper.redirect(context, WebRoot.REDIRECT + "/page/login");
+        }
+        return "You are already registered";
+//        PNWUser existingUser = Locutus.imp().getDiscordDB().getUser(user);
+//        PNWUser existingNation = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
+//
+//
+//
+//        AuthBindings.setRedirect(context);
+//
+//        String discordAuthUrl = AuthBindings.getDiscordAuthUrl();
+//        String mailAuthUrl = WebRoot.REDIRECT + "/page/login";
+//
+//        return rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
+    }
+
+    @Command()
+    public Object login(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
+        AuthBindings.Auth auth = AuthBindings.getAuth(context, true);
+        if (auth != null) {
+            // return and redirect
+            return PageHelper.redirect(context, AuthBindings.getRedirect(context));
+        } else {
+            // You are already logged in as
+            return "You are already logged in (2)";
+        }
+    }
+
+    @Command()
+    public Object guildSet(Context context, Guild guild) {
+        AuthBindings.setGuild(context, guild);
+        return PageHelper.redirect(context, AuthBindings.getRedirect(context));
     }
 
     @Command()
@@ -213,7 +259,7 @@ public class IndexPages {
             // need to login
             // return WM login page
             // throw error
-            return null;
+            return "You are already logged in (3)";
         }
         JDA jda = Locutus.imp().getDiscordApi().getApis().iterator().next();
         String registerLink = (user == null || nation == null) ? CM.register.cmd.toCommandUrl() : null;
