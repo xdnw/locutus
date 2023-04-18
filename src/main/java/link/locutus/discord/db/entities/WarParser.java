@@ -95,8 +95,8 @@ public class WarParser {
         for (Integer id : coal1Nations) coal1Names.add(PnwUtil.getName(id, false));
         for (Integer id : coal2Alliances) coal2Names.add("AA:" + PnwUtil.getName(id, true));
         for (Integer id : coal2Nations) coal2Names.add(PnwUtil.getName(id, false));
-        this.nameA = coal1Names.isEmpty() ? "*" : StringMan.join(coal1Names, ",");
-        this.nameB = coal1Names.isEmpty() ? "*" : StringMan.join(coal2Names, ",");
+        this.nameA = coal1Names.isEmpty() ? "*" : coal1Names.size() > 10 ? "col1" : StringMan.join(coal1Names, ",");
+        this.nameB = coal1Names.isEmpty() ? "*" : coal2Names.size() > 10 ? "col1" : StringMan.join(coal2Names, ",");
 
         this.isPrimary = w -> this.coal1Alliances.contains(w.attacker_aa) || this.coal1Nations.contains(w.attacker_id);
         this.isSecondary = w -> this.coal2Alliances.contains(w.attacker_aa) || this.coal2Nations.contains(w.attacker_id);

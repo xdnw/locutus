@@ -1587,7 +1587,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<Integer> aaIds = getAllianceIds();
         Set<Long> channelAccountIds = getResourceChannelAccounts(messageChannelIdOrNull);
         boolean isResourceChannel = channelAccountIds != null;
-        if (channelAccountIds == null) {
+        boolean requireAdmin = false;
+        if (channelAccountIds == null || channelAccountIds.isEmpty()) {
+            requireAdmin = getOrNull(Key.RESOURCE_REQUEST_CHANNEL) != null;
             channelAccountIds = new HashSet<>();
             if (!aaIds.isEmpty()) {
                 for (Integer aaId : aaIds) channelAccountIds.add(aaId.longValue());
@@ -1621,7 +1623,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             throw new IllegalArgumentException(msg);
         }
 
-
         if (Roles.ECON.has(banker, guild)) {
             for (long accountId : channelAccountIds) {
                 accessTypeMap.put(accountId, AccessType.ECON);
@@ -1632,12 +1633,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     accessTypeMap.put(aaId, AccessType.ECON);
                 }
             }
-            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, channelAccountIds, accessTypeMap.isEmpty());
+            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
             if (withdrawAccount > 0) {
                 accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
             }
         } else {
-            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, channelAccountIds, accessTypeMap.isEmpty());
+            long withdrawAccount = getMemberWithdrawAccount(banker, messageChannelIdOrNull, requireAdmin ? Collections.emptySet() : channelAccountIds, accessTypeMap.isEmpty());
             if (withdrawAccount > 0) {
                 accessTypeMap.putIfAbsent(withdrawAccount, AccessType.SELF);
             }

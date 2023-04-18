@@ -82,6 +82,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -122,6 +123,9 @@ public class DBNation implements NationOrAlliance {
     private int wars_won;
     private int wars_lost;
     private int tax_id;
+    private double gdp;
+    private double gni;
+
     private transient  DBNationCache cache;
 
     public void processTurnChange(long lastTurn, long turn, Consumer<Event> eventConsumer) {
@@ -157,7 +161,9 @@ public class DBNation implements NationOrAlliance {
                         long beigeTimer, long warPolicyTimer, long domesticPolicyTimer,
                         long colorTimer,
                         long espionageFull, int dc_turn, int wars_won, int wars_lost,
-                        int tax_id) {
+                        int tax_id,
+                    double gni,
+                    double gdp) {
         this.nation_id = nation_id;
         this.nation = nation;
         this.leader = leader;
@@ -193,6 +199,8 @@ public class DBNation implements NationOrAlliance {
         this.wars_won = wars_won;
         this.wars_lost = wars_lost;
         this.tax_id = tax_id;
+        this.gni = gni;
+        this.gdp = gdp;
     }
 
     public static DBNation createFromList(String coalition, Collection<DBNation> nations, boolean average) {
@@ -274,6 +282,8 @@ public class DBNation implements NationOrAlliance {
         this.wars_won = other.wars_won;
         this.wars_lost = other.wars_lost;
         this.tax_id = other.tax_id;
+        this.gni = other.gni;
+        this.gdp = other.gdp;
     }
 
     @Command
@@ -284,6 +294,24 @@ public class DBNation implements NationOrAlliance {
 //    public double getInfraCost(double from, double to) {
 //        double cost = PnwUtil.calculateInfra(from, to);
 //    }
+
+    @Command
+    public double getRevenueConverted() {
+        return PnwUtil.convertedTotal(getRevenue());
+    }
+
+    @Command
+    public double estimateGNI() {
+        double[] revenue = getRevenue();
+        double total = 0;
+        for (ResourceType type : ResourceType.values()) {
+            double amt = revenue[type.ordinal()];
+            if (amt != 0) {
+                total += amt * Locutus.imp().getTradeManager().getGamePrice(type);
+            }
+        }
+        return total;
+    }
 
     public long getLastFetchedUnitsMs() {
         return cache != null ? cache.lastCheckUnitMS : 0;
@@ -1271,6 +1299,16 @@ public class DBNation implements NationOrAlliance {
             if (eventConsumer != null) eventConsumer.accept(new NationChangeTaxBracketEvent(copyOriginal, this));
             dirty = true;
         }
+        if (nation.getGross_national_income() != null && Math.round((this.gni - nation.getGross_national_income()) * 100) != 0) {
+            this.setGNI(nation.getGross_national_income());
+            if (eventConsumer != null) eventConsumer.accept(new NationChangeGNIEvent(copyOriginal, this));
+            dirty = true;
+        }
+        if (nation.getGross_domestic_product() != null && Math.round((this.gdp - nation.getGross_domestic_product()) * 100) != 0) {
+            this.setGDP(nation.getGross_domestic_product());
+//            if (eventConsumer != null) eventConsumer.accept(new NationChangeGDPEvent(copyOriginal, this));
+            dirty = true;
+        }
         return dirty;
     }
     public DBAlliancePosition getAlliancePosition() {
@@ -1984,6 +2022,7 @@ public class DBNation implements NationOrAlliance {
         }
         return total;
     }
+
 
     @Command(desc = "Total population in all cities")
     public int getPopulation() {
@@ -4386,6 +4425,14 @@ public class DBNation implements NationOrAlliance {
         this.tax_id = tax_id;
     }
 
+    public void setGDP(double gdp) {
+        this.gdp = gdp;
+    }
+
+    public void setGNI(double gni) {
+        this.gni = gni;
+    }
+
     public GuildDB getGuildDB() {
         if (alliance_id == 0) return null;
         return Locutus.imp().getGuildDBByAA(alliance_id);
@@ -4481,5 +4528,10 @@ public class DBNation implements NationOrAlliance {
 
     public TaxBracket getTaxBracket() {
         return new TaxBracket(tax_id, alliance_id, "", -1, -1, 0);
+    }
+
+    @Command
+    public double getGNI() {
+        return gni;
     }
 }

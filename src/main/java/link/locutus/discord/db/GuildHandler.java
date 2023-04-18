@@ -2538,7 +2538,7 @@ public class GuildHandler {
     }
 
     public void processEscrow(DBNation receiver) {
-        GuildMessageChannel channel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+        MessageChannel channel = getDb().getResourceChannel(0);
         if (channel != null) {
             try {
                 boolean positive = false;

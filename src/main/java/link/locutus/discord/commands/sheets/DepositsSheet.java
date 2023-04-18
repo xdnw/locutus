@@ -116,7 +116,9 @@ public class DepositsSheet extends Command {
                 nations = new HashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
-                    nations.add(nation);
+                    if (nation != null) {
+                        nations.add(nation);
+                    }
                 }
                 if (nations.isEmpty()) return "No members found";
             }

@@ -1232,9 +1232,9 @@ public class WarDB extends DBMainV2 {
             Double pct;
             if (loot == null) {
                 loot = Collections.emptyMap();
-                pct = attack.getLootPercent();
-            } else {
                 pct = 1d;
+            } else {
+                pct = attack.getLootPercent();
             }
             if (pct == 0) pct = 0.1;
             double factor = 1/pct;

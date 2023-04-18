@@ -49,6 +49,6 @@ public class Login extends Command {
         String[] split = DiscordUtil.trimContent(event.getMessage().getContentRaw()).split(" ", 3);
         String username = split[1];
         String password = split[2];
-        return UnsortedCommands.login(new DiscordChannelIO(event), Locutus.imp().getDiscordDB(), me, guild, username, password);
+        return UnsortedCommands.login(new DiscordChannelIO(event), Locutus.imp().getDiscordDB(), me, username, password);
     }
 }

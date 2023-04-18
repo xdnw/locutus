@@ -172,8 +172,16 @@ public class Auth {
                 @Override
                 public String call() throws Exception {
                     try {
-                        Document dom = Jsoup.parse(Auth.this.readStringFromURL(url + "account/", emptyMap()));
+                        String html = Auth.this.readStringFromURL(url + "account/", emptyMap());
+                        Document dom = Jsoup.parse(html);
                         Elements tables = dom.select(".nationtable");
+                        if (tables.isEmpty()) {
+                            String alerts = PnwUtil.getAlert(dom);
+                            if (alerts == null || alerts.isEmpty()) {
+                                System.out.println(html);
+                            }
+                            throw new IllegalArgumentException("Error: " + alerts);
+                        }
                         Element apiTable = tables.get(tables.size() - 1);
                         return apiTable.select(".center").first().text();
                     } catch (IOException e) {
@@ -414,8 +422,14 @@ public class Auth {
 
             String token = dom.select("input[name=validation_token]").attr("value");
             if (token == null || token.isEmpty()) {
-                System.out.println(dom);
-                throw new IllegalArgumentException("No token found");
+                if (result.contains("/human/")) {
+                    throw new IllegalArgumentException("Captcha required (nation: " + PnwUtil.getName(this.nationId, false) + "/" + this.nationId + ") " + Settings.INSTANCE.PNW_URL() + "/human/");
+                }
+                String alert = PnwUtil.getAlert(dom);
+                if (alert == null || alert.isEmpty()) {
+                    System.out.println(result);;
+                }
+                throw new IllegalArgumentException("No token found: " + PnwUtil.getAlert(dom));
             }
 
             Map<String, String> post = new HashMap<>();

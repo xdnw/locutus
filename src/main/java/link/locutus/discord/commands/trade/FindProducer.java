@@ -44,7 +44,8 @@ public class FindProducer extends Command {
                 "Use `*` as all resources converted to weekly market median\n" +
                 "Use `-m` to not include military upkeep\n" +
                 "Use `-t` to not include trade bonus\n" +
-                "Use `-n` to not include new nation bonus\n" +
+                "Use `-b` to not include new nation bonus\n" +
+                "Use `-n` to include food consumption\n" +
                 "Use `-a` to list by nation instead of alliance\n" +
                 "Use `-s` to list the average instead of the sum\n" +
                 "Use `-i` to include gray/beige";
@@ -63,7 +64,8 @@ public class FindProducer extends Command {
 
         boolean militaryUpkeep = !flags.contains('m');
         boolean tradeBonus = !flags.contains('t');
-        boolean newNationBonus = !flags.contains('n');
+        boolean newNationBonus = !flags.contains('b');
+        boolean includeNegative = flags.contains('n');
 
         List<ResourceType> types = args.get(0).equals("*") ? ResourceType.valuesList : PWBindings.rssTypes(args.get(0));
         if (types.isEmpty()) return "Please provide more than one resource type: `" + args.get(0) + "`";
@@ -113,7 +115,7 @@ public class FindProducer extends Command {
                     value += PnwUtil.convertedTotal(type, profit[type.ordinal()]);
                 }
             }
-            if (value > 0) {
+            if (value > 0 || includeNegative) {
                 profitByNation.put(nation, value);
             }
         }
