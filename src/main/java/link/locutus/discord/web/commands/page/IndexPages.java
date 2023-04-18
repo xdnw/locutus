@@ -18,6 +18,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.web.commands.binding.AuthBindings;
@@ -211,14 +212,22 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object register(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
+    public Object register(Context context, @Default @Me AuthBindings.Auth auth, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
         // if user is null, redirect to discord login
         // if nation is null, redirect to login page
+        if (auth != null) {
+            User authUser = auth.getUser();
+            DBNation authNation = auth.getNation();
+            if (authUser != null && authNation != null) {
+
+            }
+        }
 
         if (user == null) {
             return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
         }
         if (nation == null) {
+            // todo fix this
             return PageHelper.redirect(context, WebRoot.REDIRECT + "/page/login");
         }
         return "You are already registered";
@@ -237,10 +246,17 @@ public class IndexPages extends PageHelper {
 
     @Command()
     public Object login(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
-        AuthBindings.Auth auth = AuthBindings.getAuth(context, true);
+        Map<String, List<String>> queries = context.queryParamMap();
+        boolean requireNation = queries.containsKey("nation");
+        boolean requireUser = queries.containsKey("discord");
+        System.out.println("AUTH BINDING 1");
+        AuthBindings.Auth auth = AuthBindings.getAuth(context, true, requireNation, requireUser);
         if (auth != null) {
             // return and redirect
-            return PageHelper.redirect(context, AuthBindings.getRedirect(context));
+            System.out.println("AUTH BINDING 2");
+            String url = AuthBindings.getRedirect(context);
+            System.out.println(":||Remove login URL " + url);
+            return PageHelper.redirect(context, url);
         } else {
             // You are already logged in as
             return "You are already logged in (2)";

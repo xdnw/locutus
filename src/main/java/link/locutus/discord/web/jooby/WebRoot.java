@@ -1,6 +1,9 @@
 package link.locutus.discord.web.jooby;
 
 
+import io.javalin.core.compression.Brotli;
+import io.javalin.core.compression.CompressionStrategy;
+import io.javalin.core.compression.Gzip;
 import io.javalin.http.Handler;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
@@ -67,7 +70,10 @@ public class WebRoot {
             REDIRECT = Settings.INSTANCE.WEB.REDIRECT + ":" + portHTTPS;
         } else if (portHTTPS <= 0) {
             REDIRECT = Settings.INSTANCE.WEB.REDIRECT + ":" + portMain;
+        } else {
+            REDIRECT = Settings.INSTANCE.WEB.REDIRECT;
         }
+
         INSTANCE = this;
 
         RockerRuntime.getInstance().setReloading(true);
@@ -85,12 +91,13 @@ public class WebRoot {
                 LocutusSSLHandler.configureServer(server, portMain, portHTTPS);
                 return server;
             });
+            config.compressionStrategy(CompressionStrategy.GZIP);
             for (Map.Entry<String, String> entry : staticFileMap.entrySet()) {
                 config.addStaticFiles(staticFiles -> {
                     staticFiles.hostedPath = entry.getValue();                   // change to host files on a subpath, like '/assets'
                     staticFiles.directory = entry.getKey();              // the directory where your files are located
                     staticFiles.location = Location.CLASSPATH;      // Location.CLASSPATH (jar) or Location.EXTERNAL (file system)
-                    staticFiles.precompress = !Settings.INSTANCE.WEB.DEVELOPMENT;                // if the files should be pre-compressed and cached in memory (optimization)
+                    staticFiles.precompress = true;                // if the files should be pre-compressed and cached in memory (optimization)
 //                staticFiles.aliasCheck = null;                  // you can configure this to enable symlinks (= ContextHandler.ApproveAliases())
 //                staticFiles.headers = Map.of(...);              // headers that will be set for the files
 //                staticFiles.skipFileFunction = req -> false;    // you can use this to skip certain files in the dir, based on the HttpServletRequest

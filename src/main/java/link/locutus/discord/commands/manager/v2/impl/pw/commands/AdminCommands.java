@@ -49,6 +49,7 @@ import link.locutus.discord.util.update.NationUpdateProcessor;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
+import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -124,7 +125,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncDiscordWithLocutus(@Default String url) throws IOException {
         if (url == null) {
-            url = "https://locutus.link/discordids";
+            url = WebRoot.REDIRECT + "/discordids";
         }
         int count = 0;
         // read string from url

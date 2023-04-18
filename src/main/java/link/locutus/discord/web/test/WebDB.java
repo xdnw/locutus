@@ -10,6 +10,7 @@ import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
 
+import javax.annotation.Nullable;
 import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.Map;
@@ -79,14 +80,28 @@ public class WebDB extends DBMainV3 {
         ctx().execute("DELETE FROM `AUTH` WHERE `least` = ? AND `most` = ?;", small, big);
     }
 
-    public void addTempToken(UUID uuid, AuthBindings.Auth auth) {
+    public void removeTempToken(@Nullable Integer nationId, @Nullable Long userId) {
+        if (userId == null && nationId == null) {
+            throw new IllegalArgumentException("Both userId and nationId are null");
+        }
+        // delete from AUTH table
+        if (userId != null) {
+            ctx().execute("DELETE FROM `AUTH` WHERE `USER_ID` = ?;", userId);
+        }
+        if (nationId != null) {
+            ctx().execute("DELETE FROM `AUTH` WHERE `NATION_ID` = ?;", nationId);
+        }
+    }
+
+    public synchronized void addTempToken(UUID uuid, AuthBindings.Auth auth) {
         long timestamp = System.currentTimeMillis();
         long small = uuid.getLeastSignificantBits();
         long big = uuid.getMostSignificantBits();
         Integer nationId = auth.nationId();
         Long userId = auth.userId();
         // insert into AUTH table
-        ctx().execute("INSERT INTO `AUTH` (`least`, `most`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `NATION_ID` = ?, `USER_ID` = ?, `TIMESTAMP` = ?;", small, big, nationId, userId, timestamp, nationId, userId, timestamp);
+        removeTempToken(nationId, userId);
+        ctx().execute("INSERT OR REPLACE INTO `AUTH` (`least`, `most`, `NATION_ID`, `USER_ID`, `TIMESTAMP`) VALUES (?, ?, ?, ?, ?) ", small, big, nationId, userId, timestamp);
     }
 
     public void deleteOldTempAuth() {

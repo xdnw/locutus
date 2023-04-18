@@ -1,6 +1,8 @@
 package link.locutus.discord.web.jooby;
 
 import com.google.common.hash.Hashing;
+import io.javalin.core.util.Header;
+import io.javalin.http.RedirectResponse;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -27,6 +29,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.*;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
@@ -384,10 +387,8 @@ public class PageHandler implements Handler {
     }
 
     private void handleCommand(Context ctx) {
-        ArgumentStack stack = createStack(ctx);
-
-        String message = null;
         try {
+            ArgumentStack stack = createStack(ctx);
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.consumeNext();
             switch (path.toLowerCase(Locale.ROOT)) {
@@ -421,6 +422,27 @@ public class PageHandler implements Handler {
     }
 
     private void handleErrors(Throwable e, Context ctx) {
+        while (e.getCause() != null) {
+            Throwable tmp = e.getCause();
+            if (tmp == e) break;
+            e = tmp;
+        }
+        if (e instanceof RedirectResponse redirectResponse) {
+            String msg = redirectResponse.getMessage();
+            if (msg.startsWith("<")) {
+                ctx.header("Content-Type", "text/html");
+                ctx.header(Header.CACHE_CONTROL, "no-cache");
+                ctx.result(msg);
+                return;
+            }
+            e.printStackTrace();
+            System.out.println("Redirect " + redirectResponse.getMessage());
+            ctx.redirect(redirectResponse.getMessage());
+            ctx.result("Redirecting to " + MarkupUtil.htmlUrl(msg, msg) + ". If you are not redirected, click the link.");
+            ctx.header(Header.CACHE_CONTROL, "no-cache");
+            return;
+        }
+
         e.printStackTrace();
 
         Map.Entry<String, String> entry = StringMan.stacktraceToString(e);

@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities;
 import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.Nation;
 import link.locutus.discord.Locutus;
+import link.locutus.discord._test._Custom;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -82,7 +83,9 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -992,16 +995,8 @@ public class DBNation implements NationOrAlliance {
             this.cities = nation.getCities();
 //            if (eventConsumer != null) eventConsumer.accept(new NationChangeCitiesEvent(copyOriginal, this));
         }
-        if (nation.getInfrastructure() != null) {
-            double currentInfra = getInfra();
-            if (Math.abs(currentInfra - nation.getInfrastructure()) >= 1) {
-                for (DBCity city : _getCitiesV3().values()) {
-                    Locutus.imp().getNationDB().markCityDirty(nation_id, city.id, System.currentTimeMillis());
-                }
-                dirty |= currentInfra > nation.getInfrastructure();
-            }
-        }
         if (nation.getScore() != null && nation.getScore() != this.score) {
+            this.score = nation.getScore();
             dirty = true;
         }
         if (nation.getVacmode() != null && nation.getVacmode() != this.getVm_turns()) {
@@ -1596,14 +1591,204 @@ public class DBNation implements NationOrAlliance {
         boolean update = updateThreshold == 0;
         if (!update && updateThreshold > 0) {
             Transaction2 tx = Locutus.imp().getBankDB().getLatestTransaction();
-            if (tx == null || tx.tx_datetime < last_active) update = true;
-            else if (System.currentTimeMillis() - tx.tx_datetime > updateThreshold) update = true;
+            if (updateThreshold < Long.MAX_VALUE) {
+                if (tx == null || tx.tx_datetime < last_active) update = true;
+                else if (System.currentTimeMillis() - tx.tx_datetime > updateThreshold) update = true;
+            }
         }
         if (update) {
             System.out.println("Update transactions");
             return updateTransactions();
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
+    }
+
+    public static class LoginFactor {
+        private final Function<DBNation, Double> function;
+        public final String name;
+        private final Map<DBNation, Double> functionCache;
+
+        public LoginFactor(String name, Function<DBNation, Double> function) {
+            this.name = name;
+            this.function = function;
+            this.functionCache = new HashMap<>();
+        }
+
+        public double get(DBNation nation) {
+            return functionCache.computeIfAbsent(nation, function);
+        }
+
+        public boolean matches(double candidate, double target) {
+            return candidate == target;
+        }
+    }
+
+    public static List<LoginFactor> getLoginFactors(DBNation nationOptional) {
+        List<LoginFactor> factors = new ArrayList<>();
+        factors.add(new LoginFactor("age", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                return (double) f.lastActiveMs() - f.getDate();
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate >= target;
+            }
+        });
+
+        factors.add(new LoginFactor("cities", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                return (double) f.getCities();
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate >= target;
+            }
+        });
+
+        if (nationOptional == null || nationOptional.getCities() <= 10) {
+            factors.add(new LoginFactor("projects", new Function<DBNation, Double>() {
+                @Override
+                public Double apply(DBNation f) {
+                    return f.getProjectBitMask() > 0 ? 1d : 0d;
+                }
+            }) {
+                @Override
+                public boolean matches(double candidate, double target) {
+                    return candidate == target;
+                }
+            });
+
+            factors.add(new LoginFactor("turtle", new Function<DBNation, Double>() {
+                @Override
+                public Double apply(DBNation f) {
+                    return f.getWarPolicy() == WarPolicy.TURTLE ? 1d : 0d;
+                }
+            }) {
+                @Override
+                public boolean matches(double candidate, double target) {
+                    return candidate == target;
+                }
+            });
+        }
+
+        factors.add(new LoginFactor("position", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                return (double) (Math.min(f.getPositionEnum().id, Rank.MEMBER.id));
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate >= target;
+            }
+        });
+
+        factors.add(new LoginFactor("alliancerank", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                DBAlliance alliance = f.getAlliance(false);
+                if (alliance != null) {
+                    return (double) Math.max(30, alliance.getRank());
+                }
+                return Double.MAX_VALUE;
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate <= target;
+            }
+        });
+
+        factors.add(new LoginFactor("lostwar", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                DBWar lastWar = Locutus.imp().getWarDb().getLastDefensiveWar(f.nation_id);
+                if (lastWar != null) {
+                    long warDiff = f.lastActiveMs() - TimeUnit.DAYS.toMillis(10);
+                    if (lastWar.date > warDiff) {
+                        if (lastWar.status == WarStatus.PEACE || lastWar.status == WarStatus.DEFENDER_VICTORY) {
+                            return -1d;
+                        } else {
+                            return 1d;
+                        }
+                    }
+                }
+                return 0d;
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate <= target;
+            }
+        });
+
+        factors.add(new LoginFactor("grayorbeige", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                return f.isGray() || f.isBeige() ? 1d : 0d;
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate == target;
+            }
+        });
+
+        factors.add(new LoginFactor("verified", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                return f.isVerified() ? 1d : 0d;
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate == target;
+            }
+        });
+
+        factors.add(new LoginFactor("lastoffensive", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                double days = f.daysSinceLastOffensive() - ((System.currentTimeMillis() - f.lastActiveMs()) / (double) TimeUnit.DAYS.toMillis(1));
+                return days;
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate <= target;
+            }
+        });
+
+        factors.add(new LoginFactor("lastbank", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                double days = f.daysSinceLastBankDeposit() - ((System.currentTimeMillis() - f.lastActiveMs()) / (double) TimeUnit.DAYS.toMillis(1));
+                return days;
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate <= target;
+            }
+        });
+
+        factors.add(new LoginFactor("lastlogin", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                double days = f.daysSince7ConsecutiveLogins() - ((System.currentTimeMillis() - f.lastActiveMs()) / (double) TimeUnit.DAYS.toMillis(1));
+                return days;
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return candidate <= target;
+            }
+        });
+        return factors;
     }
 
     @Deprecated
@@ -2680,6 +2865,54 @@ public class DBNation implements NationOrAlliance {
         return convertedTotal;
     }
 
+    public int getTurnsInactive(LootEntry loot) {
+        long turnInactive = TimeUtil.getTurn(lastActiveMs());
+        if (loot != null) {
+            long lootTurn = TimeUtil.getTurn(loot.getDate());
+            if (lootTurn > turnInactive) turnInactive = lootTurn;
+        }
+        long turnEntered = getEntered_vm();
+        long turnEnded = getLeaving_vm();
+
+        long turn = TimeUtil.getTurn();
+        if (getVm_turns() > 0) {
+            if (turnEntered > turnInactive) {
+                turnInactive = turn - (turnEntered - turnInactive);
+            } else {
+                turnInactive = turn;
+            }
+        } else if (turnEnded > turnInactive) {
+            turnInactive = turnEnded;
+        }
+        int turnsInactive = (int) (turn - turnInactive);
+        return turnsInactive;
+    }
+
+    @Command
+    public double[] getLootRevenueTotal() {
+        LootEntry loot = getBeigeLoot();
+        int turnsInactive = getTurnsInactive(loot);
+
+        double[] lootRevenue = loot == null ? ResourceType.getBuffer() : loot.getTotal_rss();
+        if (getPositionEnum().id > Rank.APPLICANT.id) {
+            DBAlliance alliance = getAlliance(false);
+            if (alliance != null) {
+                LootEntry aaLoot = alliance.getLoot();
+                double[] lootScaled =  aaLoot.getAllianceLootValue(getScore());
+                lootRevenue = PnwUtil.add(lootRevenue, lootScaled);
+            }
+
+        }
+        if (turnsInactive > 0) {
+            double[] revenue = getRevenue(turnsInactive + 24, true, true, false, true, false, false);
+            if (loot != null) {
+                revenue = PnwUtil.capManuFromRaws(revenue, loot.getTotal_rss());
+            }
+            lootRevenue = ResourceType.add(lootRevenue, revenue);
+        }
+        return lootRevenue;
+    }
+
     public double estimateRssLootValue(double[] knownResources, LootEntry lootHistory, double[] buffer, boolean fetchStats) {
         if (lootHistory != null) {
             double[] loot = lootHistory.getTotal_rss();
@@ -3099,15 +3332,15 @@ public class DBNation implements NationOrAlliance {
     }
 
     public JsonObject sendMail(ApiKeyPool pool, String subject, String message) throws IOException {
-//        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Settings.INSTANCE.API_KEY_PRIMARY)) {
-//            Auth auth = Locutus.imp().getRootAuth();
-//            if (auth != null) {
-//                String result = new MailTask(auth, this, subject, message, null).call();
-//                if (result.contains("Message sent")) {
-//                    return JsonParser.parseString("{\"success\":true,\"to\":\"" + nation_id + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
-//                }
-//            }
-//        }
+        if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Settings.INSTANCE.API_KEY_PRIMARY)) {
+            Auth auth = Locutus.imp().getRootAuth();
+            if (auth != null) {
+                String result = new MailTask(auth, this, subject, message, null).call();
+                if (result.contains("Message sent")) {
+                    return JsonParser.parseString("{\"success\":true,\"to\":\"" + nation_id + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
+                }
+            }
+        }
 
         long exponentialBackoff = 1000;
         while (true) {
@@ -3501,7 +3734,6 @@ public class DBNation implements NationOrAlliance {
 
     public JsonObject sendMail(Auth auth, String subject, String body) throws IOException {
         String result = new MailTask(auth, this, subject, body, null).call();
-        System.out.println(":||Remove " + result);
         if (result.contains("Message sent")) {
             return JsonParser.parseString("{\"success\":true,\"to\":\"" + nation_id + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
         }

@@ -6,6 +6,7 @@
 
 @args (String discordUrl, String mailUrl)
 @rocker.main.template("Pick a login method") -> {
+<div class="container rounded shadow bg-white p-1">
 <h3>How would you like to login?</h3>
 <a class="btn btn-primary" href="@(discordUrl)" role="button">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-discord" viewBox="0 0 16 16">
@@ -26,5 +27,5 @@
         <a href="https://discord.com/download">Download Discord</a>
     </p>
 </div>
-
+</div>
 }

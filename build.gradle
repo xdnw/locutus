@@ -75,7 +75,7 @@ dependencies {
         exclude module: 'opus-java'
     }
     implementation group: 'club.minnced', name: 'discord-webhooks', version: '0.7.2'
-
+    implementation 'com.nixxcode.jvmbrotli:jvmbrotli:0.2.0'
 
     implementation 'io.javalin:javalin:4.0.0.RC3'
     implementation 'io.javalin:javalin-parent:4.0.0.RC3'

@@ -1,11 +1,14 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.Map;
 
 public class LootEntry {
     private final int id;
@@ -27,7 +30,19 @@ public class LootEntry {
         total_rss = ArrayUtil.toDoubleArray(lootBytes);
         this.date = rs.getLong("date");
         this.type = NationLootType.values()[rs.getInt("type")];
+    }
 
+    public double[] getAllianceLootValue(double score) {
+        if (!isAlliance()) return ResourceType.getBuffer();
+        DBAlliance aa = DBAlliance.get(getId());
+        if (aa == null) return ResourceType.getBuffer();
+        double aaScore = aa.getScore();
+        if (aaScore == 0) return ResourceType.getBuffer();
+
+        double ratio = ((score * 10000) / aaScore) / 2d;
+        double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
+        double[] yourLoot = total_rss.clone();
+        return PnwUtil.multiply(yourLoot, percent);
     }
 
     public boolean isAlliance() {

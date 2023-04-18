@@ -138,7 +138,12 @@ public class Key<T> {
         Key key = (Key) o;
 
         if (!Objects.equals(type, key.type)) return false;
-        return annotationTypes.equals(key.annotationTypes);
+        if (key.annotationTypes == annotationTypes) return true;
+        if (annotationTypes.size() != key.annotationTypes.size()) return false;
+        for (Class<?> clazz : annotationTypes) {
+            if (!key.annotationTypes.contains(clazz)) return false;
+        }
+        return true;
     }
 
     @Override

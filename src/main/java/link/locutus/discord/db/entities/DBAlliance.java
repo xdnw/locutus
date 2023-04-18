@@ -3,8 +3,6 @@ package link.locutus.discord.db.entities;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
-import com.politicsandwar.graphql.model.NationResponseProjection;
-import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
@@ -24,18 +22,11 @@ import link.locutus.discord.event.alliance.*;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
-import link.locutus.discord.util.JsonUtil;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
-import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -68,6 +59,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
     private volatile long lastUpdated = 0;
     private OffshoreInstance bank;
 
+    private LootEntry lootEntry;
+    private boolean cachedLootEntry;
+
     public DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
         this.allianceId = alliance.getId();
         this.acronym = "";
@@ -88,6 +82,22 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 other.wiki_link,
                 other.dateCreated,
                 other.color);
+    }
+
+    public void setLoot(LootEntry lootEntry) {
+        this.lootEntry = lootEntry;
+        cachedLootEntry = true;
+    }
+
+    public LootEntry getLoot() {
+        if (cachedLootEntry) {
+            return lootEntry;
+        }
+        if (lootEntry == null) {
+            lootEntry = Locutus.imp().getNationDB().getAllianceLoot(allianceId);
+            cachedLootEntry = true;
+        }
+        return lootEntry;
     }
 
     public void setAAPage(String file) throws Exception{
@@ -964,10 +974,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     public Set<DBAlliancePosition> getPositions() {
         return new HashSet<>(Locutus.imp().getNationDB().getPositions(allianceId));
-    }
-
-    public LootEntry getLoot() {
-        return Locutus.imp().getNationDB().getAllianceLoot(allianceId);
     }
 
     public List<BankDB.TaxDeposit> updateTaxes() {

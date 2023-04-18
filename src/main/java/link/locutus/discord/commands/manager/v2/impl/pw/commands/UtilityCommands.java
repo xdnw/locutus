@@ -26,6 +26,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationScoreMap;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
@@ -79,8 +80,10 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -973,61 +976,114 @@ public class UtilityCommands {
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public String loot(@Me DBNation me, NationOrAlliance nationOrAlliance) {
-        double[] loot;
-        StringBuilder extraInfo = new StringBuilder();
-        double percent;
-        if (nationOrAlliance.isAlliance()) {
-            LootEntry allianceLoot = nationOrAlliance.asAlliance().getLoot();
-            if (allianceLoot == null) return "No loot history";
-            loot = allianceLoot.getTotal_rss();
-            Long date = allianceLoot.getDate();
-            extraInfo.append("Last looted: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date));
+    public static String loot(@Me DBNation me, NationOrAlliance nationOrAlliance, @Default Double nationScore, @Switch("p") boolean pirate) {
+        double[] totalStored = null;
+        double[] nationLoot = null;
+        double[] allianceLoot = null;
+        double[] revenue = null;
+        int revenueTurns = 0;
+        double[] total = ResourceType.getBuffer();
 
-            double aaScore = nationOrAlliance.asAlliance().getScore();
+        if (nationScore == null) nationScore = nationOrAlliance.isNation() ? nationOrAlliance.asNation().getScore() : me.getScore();
+        DBAlliance alliance = nationOrAlliance.isAlliance() ? nationOrAlliance.asAlliance() : nationOrAlliance.asNation().getAlliance(false);
 
-            double ratio = (me.getScore() / aaScore) / (5);
+        List<String> extraInfo = new ArrayList<>();
+        if (alliance != null) {
+            LootEntry aaLootEntry = nationOrAlliance.asAlliance().getLoot();
+            if (aaLootEntry != null) {
+                totalStored = aaLootEntry.getTotal_rss();
+                Long date = aaLootEntry.getDate();
+                extraInfo.add("Alliance Last looted: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date));
 
-            percent = Math.min(ratio, 0.33);
-        } else {
-            percent = me.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
+                double aaScore = nationOrAlliance.asAlliance().getScore();
+                double ratio = ((nationScore * 10000) / aaScore) / 2d;
+                double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
+                allianceLoot = PnwUtil.multiply(totalStored.clone(), percent);
+            } else {
+                extraInfo.add("Alliance has not been looted yet");
+            }
+        }
+        if (nationOrAlliance.isNation()) {
+            double percent = me.getWarPolicy() == WarPolicy.PIRATE || pirate ? 0.14 : 0.1;
             if (nationOrAlliance.asNation().getWarPolicy() == WarPolicy.MONEYBAGS) percent *= 0.6;
+            DBNation nation = nationOrAlliance.asNation();
 
             LootEntry lootInfo = Locutus.imp().getNationDB().getLoot(nationOrAlliance.getId());
-
-            double[] knownResources = new double[ResourceType.values.length];
-            double[] buffer = new double[knownResources.length];
-            double convertedTotal = nationOrAlliance.asNation().estimateRssLootValue(knownResources, lootInfo, buffer, true);
-            if (convertedTotal != 0) {
-                loot = knownResources;
-            } else {
-                loot = null;
-            }
-
             if (lootInfo != null) {
+                totalStored = lootInfo.getTotal_rss();
+                nationLoot = PnwUtil.multiply(totalStored.clone(), percent);
+
                 double originalValue = lootInfo.convertedTotal();
                 double originalLootable = originalValue * percent;
                 String type = lootInfo.getType().name();
-                extraInfo.append("Based on " + type);
-                extraInfo.append("(" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lootInfo.getDate()) + " ago)");
-                extraInfo.append(", worth: $" + MathMan.format(originalValue) + "($" + MathMan.format(originalLootable) + " lootable)");
-                if (nationOrAlliance.asNation().getActive_m() > 1440) extraInfo.append(" - inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nationOrAlliance.asNation().getActive_m()));
+                StringBuilder info = new StringBuilder();
+                info.append("Nation Loot from " + type);
+                info.append("(" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lootInfo.getDate()) + " ago)");
+                info.append(", worth: $" + MathMan.format(originalValue) + "($" + MathMan.format(originalLootable) + " lootable)");
+                if (nationOrAlliance.asNation().getActive_m() > 1440) info.append(" - inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nationOrAlliance.asNation().getActive_m()));
+                extraInfo.add(info.toString());
             } else {
-                extraInfo.append("No spy or beige loot found");;
+                extraInfo.add("No spy or beige loot found");
+            }
+
+            revenueTurns = nation.getTurnsInactive(lootInfo);
+            if (revenueTurns > 0) {
+                revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false);
+                if (lootInfo != null) {
+                    revenue = PnwUtil.capManuFromRaws(revenue, lootInfo.getTotal_rss());
+                }
+            }
+
+            if (nation.active_m() > 1440 && nation.active_m() < 20160) {
+                List<DBNation.LoginFactor> factors = DBNation.getLoginFactors(nation);
+
+                long turnNow = TimeUtil.getTurn();
+                int maxTurn = 30 * 12;
+                int candidateTurnInactive = (int) (turnNow - TimeUtil.getTurn(nation.lastActiveMs()));
+
+                Set<DBNation> activeNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < 1440);
+                Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() > 1440 && f.getVm_turns() == 0 && f.active_m() < TimeUnit.DAYS.toMinutes(30));
+                NationScoreMap<DBNation> inactiveByTurn = new NationScoreMap<DBNation>(nations1dInactive, f -> {
+                    return (double) (turnNow - TimeUtil.getTurn(f.lastActiveMs()));
+                }, 1, 1);
+
+                for (DBNation.LoginFactor factor : factors) {
+                    Predicate<DBNation> matches = f -> factor.matches(factor.get(nation), factor.get(f));
+                    BiFunction<Integer, Integer, Integer> sumFactor = inactiveByTurn.getSummedFunction(matches);
+
+                    int numCandidateActivity = sumFactor.apply(Math.min(maxTurn - 23, candidateTurnInactive), Math.min(maxTurn, candidateTurnInactive + 24));
+                    int numInactive = sumFactor.apply(14 * 12, 30 * 12) / (30 - 14);
+
+                    double loginPct = Math.max(0.05, numCandidateActivity > numInactive ? (double) (numInactive) / numCandidateActivity : 0) * 100;
+
+                    extraInfo.add("login factor (" + factor.name + "=" + MathMan.format(factor.get(nation)) + "): " + MathMan.format(loginPct) + "%");
+                }
             }
         }
 
         me.setMeta(NationMeta.INTERVIEW_LOOT, (byte) 1);
 
-        if (loot == null) {
+        if (nationLoot == null && allianceLoot == null) {
             return "No loot history";
         }
-        Map<ResourceType, Double> yourLoot = PnwUtil.resourcesToMap(loot);
-        yourLoot = PnwUtil.multiply(yourLoot, percent);
 
         StringBuilder response = new StringBuilder();
-        response.append("Total Stored: ```" + PnwUtil.resourcesToString(loot) + "```You could loot: " + "(worth ~$" + MathMan.format(PnwUtil.convertedTotal(yourLoot)) + ")" +"```" + PnwUtil.resourcesToString(yourLoot) + "```");
-        if (extraInfo.length() != 0) response.append("\n`Note: " + extraInfo +"`");
+
+        response.append("Total Stored: ```" + PnwUtil.resourcesToString(totalStored) + "``` ");
+        if (nationLoot != null) {
+            response.append("Nation Loot: ```" + PnwUtil.resourcesToString(nationLoot) + "``` (worth: $" + MathMan.format(PnwUtil.convertedTotal(nationLoot)) + ")");
+            PnwUtil.add(total, nationLoot);
+        }
+        if (allianceLoot != null) {
+            response.append("Alliance Loot: ```" + PnwUtil.resourcesToString(allianceLoot) + "``` (worth: $" + MathMan.format(PnwUtil.convertedTotal(allianceLoot)) + ")");
+            PnwUtil.add(total, allianceLoot);
+        }
+        if (revenue != null) {
+            response.append("Revenue (" + revenueTurns + " turns): ```" + PnwUtil.resourcesToString(revenue) + "``` (worth: $" + MathMan.format(PnwUtil.convertedTotal(revenue)) + ")");
+            PnwUtil.add(total, revenue);
+        }
+        response.append("Total Loot: ```" + PnwUtil.resourcesToString(total) + "``` (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
+        if (!extraInfo.isEmpty()) response.append("\n`notes:`\n` - " + StringMan.join(extraInfo, "\n` - ") +"`");
         return response.toString();
     }
 

@@ -170,6 +170,7 @@ public class MethodParser<T> implements Parser<T> {
                             arg = key.getAnnotation(paramKey.getType());
                         }
                     } else {
+                        System.out.println("Run parser " + key + " | " + paramKey);
                         arg = stack.consume(paramKey);
                     }
                 } catch (IllegalStateException e) {

@@ -16,8 +16,6 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
-import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -199,11 +197,11 @@ public class NationDB extends DBMainV2 {
 
     public boolean setCityInfraFromAttack(int nationId, int cityId, double infra, long timestamp, Consumer<Event> eventConsumer) {
         DBCity city = getDBCity(nationId, cityId);
-        if (city != null && city.fetched < timestamp && infra != city.infra) {
+        if (city != null && city.fetched < timestamp && Math.round(infra * 100) != Math.round(city.infra * 100)) {
             DBCity previous = new DBCity(city);
             city.infra = infra;
             if (eventConsumer != null) {
-                if (infra != previous.infra) {
+                if (Math.round(infra * 100) != Math.round(previous.infra * 100)) {
                     eventConsumer.accept(new CityInfraDamageEvent(nationId, previous, city));
                 }
             }
@@ -761,7 +759,7 @@ public class NationDB extends DBMainV2 {
             if (existing == null // New nation
                 || existing.getAlliance_id() != nation.getAlliance_id() // New alliance id
                 || existing.lastActiveMs() + 2000 < nation.getLast_active().toEpochMilli() // Active
-                || existing.getScore() != nation.getScore()
+                || Math.round(existing.getScore() * 100) != Math.round(nation.getScore() * 100)
             ) {
                 toUpdate.add(nation.getId());
             }
@@ -1551,6 +1549,7 @@ public class NationDB extends DBMainV2 {
                     if (entry.getValue().getVm_turns() <= 0) expected.add(entry.getValue().getNation_id());
                 }
             }
+            Set<Integer> dirtyNationCities = new HashSet<>();
             for (SNationContainer nation : nations) {
                 DBNation existing = getNation(nation.getNationid());
                 if (existing == null) {
@@ -1567,7 +1566,7 @@ public class NationDB extends DBMainV2 {
                         eventConsumer.accept(new NationCreateEvent(null, existing));
                     }
                     toSave.add(existing);
-
+                    System.out.println("Existing is null dirty");
                     dirtyNations.add(nation.getNationid());
                 } else {
                     expected.remove(existing.getNation_id());
@@ -1576,15 +1575,23 @@ public class NationDB extends DBMainV2 {
                         if (oldAAId != existing.getAlliance_id()) {
                             processNationAllianceChange(oldAAId, existing);
                         }
-                        dirtyNations.add(existing.getNation_id());
+//                        dirtyNations.add(existing.getNation_id());
                         toSave.add(existing);
+                    } else if (Math.round(100 * nation.getInfrastructure()) != Math.round(100 * existing.getInfra())) {
+                        dirtyNationCities.add(existing.getNation_id());
                     }
                 }
             }
 
             if (!toSave.isEmpty()) saveNations(toSave);
 
+            if (!dirtyNationCities.isEmpty()) {
+                System.out.println("Dirty cities " + dirtyNationCities.size());
+                updateCitiesOfNations(dirtyNationCities, true, eventConsumer);
+            }
+
             if (!expected.isEmpty()) {
+                System.out.println("Add dirty " + expected.size());
                 dirtyNations.addAll(expected);
             }
         } catch (IOException e) {
@@ -1707,7 +1714,7 @@ public class NationDB extends DBMainV2 {
 
     public void markDirtyIncorrectNations(boolean score, boolean cities) {
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
-            if (score && Math.abs(nation.estimateScore() - nation.getScore()) > 0.01) {
+            if (score && Math.round(100 * (nation.estimateScore() - nation.getScore())) > 0.01) {
                 dirtyNations.add(nation.getNation_id());
             } else if (cities && nation.getCities() != getCitiesV3(nation.getNation_id()).size()) {
                 dirtyNations.add(nation.getNation_id());
@@ -1788,7 +1795,7 @@ public class NationDB extends DBMainV2 {
             for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
                 DBNation prev = entry.getValue();
                 DBNation curr = entry.getKey();
-                if (prev == null || (Math.abs(curr.getScore() - prev.getScore()) >= 0.01 && Math.abs(curr.estimateScore() - curr.getScore()) >= 0.01)) {
+                if (prev == null || (Math.round((curr.getScore() - prev.getScore()) * 100) != 0 && Math.round(100 * (curr.estimateScore() - curr.getScore())) != 0)) {
                     fetchCitiesOfNations.add(curr.getNation_id());
                 }
             }
@@ -1799,7 +1806,7 @@ public class NationDB extends DBMainV2 {
                 "Cities: " + fetchCitiesOfNations.size());
 
 
-        if (!fetchCitiesOfNations.isEmpty() || (fetchCitiesIfNew && fetchMostActiveIfNoneOutdated)) {
+        if (!fetchCitiesOfNations.isEmpty() || (fetchMostActiveIfNoneOutdated)) {
             System.out.println("Update cities " + fetchCitiesOfNations.size());
             updateCitiesOfNations(fetchCitiesOfNations, true, eventConsumer);
         }
@@ -2560,14 +2567,6 @@ public class NationDB extends DBMainV2 {
         return result;
     }
 
-    public static void main(String[] args) {
-        Map<Integer, Double> score = new Int2ObjectOpenHashMap<>();
-        score.put(1, 2d);
-        score.put(2, 3d);
-        score = new SummedMapRankBuilder<>(score).sort().get();
-        System.out.println(StringMan.getString(score));
-    }
-
     public Map<Integer, ByteBuffer> getAllMeta(NationMeta key) {
         Map<Integer, ByteBuffer> results = new HashMap<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META where AND key = ?")) {
@@ -2927,7 +2926,12 @@ public class NationDB extends DBMainV2 {
     }
 
     public void saveAllianceLoot(int allianceId, long date, double[] loot, NationLootType type) {
-        saveLoot(-allianceId, date, loot, type);
+        LootEntry entry = new LootEntry(-allianceId, loot, date, type);
+        DBAlliance aa = DBAlliance.get(allianceId);
+        if (aa != null) {
+            aa.setLoot(entry);
+        }
+        saveNationLoot(List.of(entry));
     }
     public void saveLoot(int nationId, long date, double[] loot, NationLootType type) {
         LootEntry entry = new LootEntry(nationId, loot, date, type);

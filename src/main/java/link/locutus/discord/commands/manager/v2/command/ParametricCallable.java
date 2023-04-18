@@ -323,8 +323,6 @@ public class ParametricCallable implements ICommand {
             String unparsed = null;
             Object value;
             // flags
-
-            System.out.println(":||Remove Param " + this.getPrimaryCommandId() + ": " + parameter.getName() + " | " + parameter.isOptional() + " | " + StringMan.getString(parameter.getDefaultValue()));
             try {
                 if (parameter.isFlag()) {
                     unparsed = flags.get(parameter.getFlag());
