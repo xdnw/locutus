@@ -123,7 +123,7 @@ public class PoliticsAndWarV3 {
         T result;
 
         int badKey = 0;
-        int backOff = 0;
+        int backOff = 1;
         while (true) {
             ApiKeyPool.ApiKey pair = pool.getNextApiKey();
             String url = getUrl(pair.getKey());
@@ -161,7 +161,7 @@ public class PoliticsAndWarV3 {
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {
                 try {
-                    long timeout = (long) (60000 * Math.pow(2, backOff));
+                    long timeout = (60000L);
                     System.out.println(e.getMessage());
                     System.out.println("Hit rate limit 2 " + timeout + "ms");
                     Thread.sleep(timeout);
@@ -834,6 +834,8 @@ public class PoliticsAndWarV3 {
                 projection.espionage_available();
 
                 projection.tax_id();
+                projection.gross_national_income();
+//                projection.gross_domestic_product();
 
                 projection.wars_won();
                 projection.wars_lost();
@@ -1037,6 +1039,51 @@ public class PoliticsAndWarV3 {
                 MeQueryResponse.class);
         if (result.me() == null) throw new GraphQLException("Error fetching api key");
         return result.me();
+    }
+    public Tradeprice getTradePrice() {
+        List<Tradeprice> allResults = new ArrayList<>();
+
+        handlePagination(page -> {
+                    TradepricesQueryRequest request = new TradepricesQueryRequest();
+                    request.setFirst(1);
+                    request.setPage(page);
+
+                    TradepriceResponseProjection proj = new TradepriceResponseProjection()
+//                        .id()
+                            .coal()
+                            .oil()
+                            .uranium()
+                            .iron()
+                            .bauxite()
+                            .lead()
+                            .gasoline()
+                            .munitions()
+                            .steel()
+                            .aluminum()
+                            .food()
+                            .credits();
+
+                    TradepricePaginatorResponseProjection natPagRespProj = new TradepricePaginatorResponseProjection()
+                            .paginatorInfo(new PaginatorInfoResponseProjection()
+                                    .hasMorePages())
+                            .data(proj);
+
+                    return new GraphQLRequest(request, natPagRespProj);
+                }, f -> ErrorResponse.THROW, TradepricesQueryResponse.class,
+                response -> {
+//                    TradepricePaginator paginator = response.tradeprices();
+//                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return false;
+                }, result -> {
+                    TradepricePaginator paginator = result.tradeprices();
+                    if (paginator != null) {
+                        List<Tradeprice> results = paginator.getData();
+                        for (Tradeprice price : results) {
+                            allResults.add(price);
+                        }
+                    }
+                });
+        return allResults.get(0);
     }
 
     public GameInfo getGameInfo() {

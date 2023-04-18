@@ -637,6 +637,7 @@ public class NationDB extends DBMainV2 {
     public void updateTreaties(Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<com.politicsandwar.graphql.model.Treaty> treatiesV3 = v3.fetchTreaties(r -> {});
+        if (treatiesV3.isEmpty()) throw new IllegalStateException("No treaties returned from API! (updateTreaties())");
 
         // Don't call events if first time
         if (treatiesByAlliance.isEmpty()) eventConsumer = f -> {};
@@ -1534,7 +1535,9 @@ public class NationDB extends DBMainV2 {
                 rs.getInt("dc_turn"),
                 rs.getInt("wars_won"),
                 rs.getInt("wars_lost"),
-                rs.getInt("tax_id")
+                rs.getInt("tax_id"),
+                rs.getLong("gdp") / 100d,
+                0d
         );
     }
 
@@ -1972,9 +1975,15 @@ public class NationDB extends DBMainV2 {
                     .putColumn("dc_turn", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("wars_won", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("wars_lost", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("tax_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)));
+                    .putColumn("tax_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("gdp", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)));
+
             nationTable.create(getDb());
 
+            // add gdp column to NATIONS2 BIGINT NOT NULL default 0
+            try {
+                try (PreparedStatement close = prepareQuery("ALTER TABLE NATIONS2 ADD COLUMN `gdp` BIGINT NOT NULL DEFAULT 0" )) {close.execute();}
+            } catch (SQLException ignore) {}
 
             String warSnapShot = nationTable.setName("NATIONS_WAR_SNAPSHOT")
                     .putColumn("war_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
@@ -2527,6 +2536,8 @@ public class NationDB extends DBMainV2 {
                 0L,
                 0L,
                 espionageFull,
+                0,
+                0,
                 0,
                 0,
                 0,
@@ -3772,12 +3783,13 @@ public class NationDB extends DBMainV2 {
             stmt1.setInt(33, nation.getWars_won());
             stmt1.setInt(34, nation.getWars_lost());
             stmt1.setInt(35, nation.getTax_id());
+            stmt1.setLong(36, Math.round(100 * nation.getGNI()));
         };
     }
 
     public int[] saveNations(Collection<DBNation> nations) {
         if (nations.isEmpty()) return new int[0];
-        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id,gdp) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();

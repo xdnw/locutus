@@ -146,7 +146,7 @@ public class PermissionBinding extends BindingHelper {
             throw new IllegalCallerException("Guild is not whitelisted");
         }
         if (!Roles.MEMBER.has(user, db.getGuild())) {
-            throw new IllegalCallerException("You do not have " + Roles.MEMBER + " " + user.getAsMention());
+            throw new IllegalCallerException("You do not have " + Roles.MEMBER + " " + user.getAsMention() + " see: " + CM.role.setAlias.cmd.toSlashMention());
         }
         return true;
     }
@@ -194,7 +194,7 @@ public class PermissionBinding extends BindingHelper {
             if (allianceId != null && !requiredRole.has(user, guild, allianceId) ||
                     (!requiredRole.has(user, guild) && (!perm.alliance() || requiredRole.getAllowedAccounts(user, guild).isEmpty()))) {
                 if (perm.any()) continue;
-                throw new IllegalCallerException("You do not have " + requiredRole.name() + " on " + guild + " " + user.getAsMention());
+                throw new IllegalCallerException("You do not have " + requiredRole.name() + " on " + guild + " " + user.getAsMention() + " see: " + CM.role.setAlias.cmd.toSlashMention());
             } else {
                 hasAny = true;
             }

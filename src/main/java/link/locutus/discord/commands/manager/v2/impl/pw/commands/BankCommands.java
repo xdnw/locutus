@@ -201,7 +201,7 @@ public class BankCommands {
     @Command(desc = "Queue a transfer offshore (with authorization)\n" +
             "`aa-warchest` is how much to leave in the AA bank - in the form `{money=1,food=2}`\n" +
             "`#note` is what note to use for the transfer (defaults to deposit)")
-    @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_STAFF}, alliance = true)
+    @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_STAFF}, alliance = true, any=true)
     @HasOffshore
     @IsAlliance
     public static String offshore(@Me User user, @Me GuildDB db, @Default DBAlliance to, @Default("{}") Map<ResourceType, Double> warchest, @Default NationOrAllianceOrGuild account) throws IOException {
@@ -209,7 +209,7 @@ public class BankCommands {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
         }
         boolean memberCanOffshore = db.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE) == Boolean.TRUE;
-        Roles checkRole = memberCanOffshore && account != null ? Roles.MEMBER : Roles.ECON_STAFF;
+        Roles checkRole = memberCanOffshore && account == null ? Roles.MEMBER : Roles.ECON;
 
         AllianceList allianceList = checkRole.getAllianceList(user, db);
         if (allianceList == null || allianceList.isEmpty()) {
@@ -1252,7 +1252,9 @@ public class BankCommands {
                 nations = new LinkedHashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
-                    nations.add(nation);
+                    if (nation != null) {
+                        nations.add(nation);
+                    }
                 }
                 if (nations.isEmpty()) return "No members found";
 
@@ -2583,20 +2585,11 @@ public class BankCommands {
                 announceChannels.add(Settings.INSTANCE.DISCORD.CHANNEL.ADMIN_ALERTS);
             }
 
-            Set<Long> alliancesOrGuilds = root.getCoalitionRaw(Coalition.OFFSHORING);
             outer:
-            for (Long alliancesOrGuild : alliancesOrGuilds) {
-                GuildDB other;
-                if (alliancesOrGuild < Integer.MAX_VALUE) {
-                    other = Locutus.imp().getGuildDBByAA(alliancesOrGuild.intValue());
-                } else {
-                    other = Locutus.imp().getGuildDB(alliancesOrGuild);
-                }
-
-                if (other == null) {
-                    continue;
-                }
+            for (GuildDB other : Locutus.imp().getGuildDatabases().values()) {
                 Set<Long> offshoreIds = other.getCoalitionRaw(Coalition.OFFSHORE);
+                if (offshoreIds.isEmpty()) continue;
+
                 for (int id : root.getAllianceIds()) {
                     if (offshoreIds.contains((long) id)) {
                         serverIds.add(other.getIdLong());
@@ -2608,7 +2601,6 @@ public class BankCommands {
                     continue outer;
                 }
             }
-
 
             Set<Integer> aaIds = root.getAllianceIds();
             Set<Integer> toUnregister = new HashSet<>();

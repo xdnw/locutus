@@ -54,6 +54,9 @@ public class TradeManager {
     private int[] low, high;
     private double[] highAvg;
     private double[] lowAvg;
+
+    private double[] gameAvg;
+    private long gameAvgUpdated = 0;
     private final link.locutus.discord.db.TradeDB tradeDb;
 
     private Map<Integer, DBTrade> activeTradesById = new ConcurrentHashMap<>();
@@ -69,6 +72,38 @@ public class TradeManager {
         tradeDb.getMarketOffers().forEach(f -> {
             addBulkOffer(f, false, false);
         });
+    }
+
+    public double getGamePrice(ResourceType type) {
+        if (type == ResourceType.MONEY) return 1;
+        long turn = TimeUtil.getTurn();
+        if (gameAvg == null || (gameAvgUpdated < turn)) {
+            synchronized (this) {
+                if (gameAvg == null || (gameAvgUpdated < turn)) {
+                    double[] tmp = ResourceType.getBuffer();
+                    PoliticsAndWarV3 api = Locutus.imp().getV3();
+                    Tradeprice price = api.getTradePrice();
+
+                    tmp[ResourceType.MONEY.ordinal()] = 1;
+                    tmp[ResourceType.COAL.ordinal()] = price.getCoal();
+                    tmp[ResourceType.OIL.ordinal()] = price.getOil();
+                    tmp[ResourceType.URANIUM.ordinal()] = price.getUranium();
+                    tmp[ResourceType.IRON.ordinal()] = price.getIron();
+                    tmp[ResourceType.BAUXITE.ordinal()] = price.getBauxite();
+                    tmp[ResourceType.LEAD.ordinal()] = price.getLead();
+                    tmp[ResourceType.GASOLINE.ordinal()] = price.getGasoline();
+                    tmp[ResourceType.MUNITIONS.ordinal()] = price.getMunitions();
+                    tmp[ResourceType.STEEL.ordinal()] = price.getSteel();
+                    tmp[ResourceType.ALUMINUM.ordinal()] = price.getAluminum();
+                    tmp[ResourceType.FOOD.ordinal()] = price.getFood();
+                    tmp[ResourceType.CREDITS.ordinal()] = price.getCredits();
+
+                    gameAvgUpdated = turn;
+                    gameAvg = tmp;
+                }
+            }
+        }
+        return gameAvg[type.ordinal()];
     }
 
     public Set<TradeDB.BulkTradeOffer> getBulkOffers(ResourceType type, Predicate<TradeDB.BulkTradeOffer> filter) {
