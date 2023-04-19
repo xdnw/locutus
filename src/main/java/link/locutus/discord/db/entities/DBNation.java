@@ -1817,22 +1817,24 @@ public class DBNation implements NationOrAlliance {
             }
         });
 
-        factors.add(new LoginFactor("grayorbeige", new Function<DBNation, Double>() {
-            @Override
-            public Double apply(DBNation f) {
-                return f.isGray() || f.isBeige() ? 1d : 0d;
-            }
-        }) {
-            @Override
-            public boolean matches(double candidate, double target) {
-                return candidate == target;
-            }
+        if (nationOptional == null || nationOptional.isBeige() || nationOptional.isGray()) {
+            factors.add(new LoginFactor("grayorbeige", new Function<DBNation, Double>() {
+                @Override
+                public Double apply(DBNation f) {
+                    return f.isGray() || f.isBeige() ? 1d : 0d;
+                }
+            }) {
+                @Override
+                public boolean matches(double candidate, double target) {
+                    return (candidate == 0) || (target > 0);
+                }
 
-            @Override
-            public String toString(double value) {
-                return value > 0 ? "yes" : "no";
-            }
-        });
+                @Override
+                public String toString(double value) {
+                    return value > 0 ? "yes" : "no";
+                }
+            });
+        }
 
         factors.add(new LoginFactor("verified", new Function<DBNation, Double>() {
             @Override
@@ -1895,7 +1897,7 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return (candidate == 0) == (target == 0);
+                return candidate >= target;
             }
         });
 
