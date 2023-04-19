@@ -77,6 +77,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -976,7 +978,7 @@ public class UtilityCommands {
 
     @Command
     @RolePermission(Roles.MEMBER)
-    public static String loot(@Me DBNation me, NationOrAlliance nationOrAlliance, @Default Double nationScore, @Switch("p") boolean pirate) {
+    public static String loot(@Me IMessageIO output, @Me DBNation me, NationOrAlliance nationOrAlliance, @Default Double nationScore, @Switch("p") boolean pirate) {
         double[] totalStored = null;
         double[] nationLoot = null;
         double[] allianceLoot = null;
@@ -1036,40 +1038,11 @@ public class UtilityCommands {
                 revenue = PnwUtil.multiply(revenue, revenueFactor);
             }
 
-            if (nation.active_m() > 1440 && nation.active_m() < 20160) {
-                if (nation.active_m() < 10080) {
-                    Activity activity = nation.getActivity(14 * 12);
-                    double loginChance = activity.loginChance(12, true);
-                    double loginPct = (loginChance * 100);
-                    extraInfo.add("Prior Week Login History (next 12 turns): " + MathMan.format(loginPct) + "%");
-                }
-                List<DBNation.LoginFactor> factors = DBNation.getLoginFactors(nation);
-
-                long turnNow = TimeUtil.getTurn();
-                int maxTurn = 30 * 12;
-                int candidateTurnInactive = (int) (turnNow - TimeUtil.getTurn(nation.lastActiveMs()));
-
-//                Set<DBNation> activeNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < 1440);
-                Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() >= 1440 && f.getVm_turns() == 0 && f.active_m() <= TimeUnit.DAYS.toMinutes(30));
-                NationScoreMap<DBNation> inactiveByTurn = new NationScoreMap<DBNation>(nations1dInactive, f -> {
-                    return (double) (turnNow - TimeUtil.getTurn(f.lastActiveMs()));
-                }, 1, 1);
-
-                for (DBNation.LoginFactor factor : factors) {
-                    Predicate<DBNation> matches = f -> factor.matches(factor.get(nation), factor.get(f));
-                    BiFunction<Integer, Integer, Integer> sumFactor = inactiveByTurn.getSummedFunction(matches);
-
-                    int numCandidateActivity = sumFactor.apply(Math.min(maxTurn - 23, candidateTurnInactive), Math.min(maxTurn, candidateTurnInactive + 24));
-                    int numInactive = sumFactor.apply(14 * 12, 30 * 12) / (30 - 14);
-
-                    System.out.println(factor.name + " | " + numCandidateActivity + " | " + numInactive);
-                    System.out.println(":|| " + Math.min(maxTurn - 23, candidateTurnInactive) + " | " + Math.min(maxTurn, candidateTurnInactive + 24));
-                    System.out.println(inactiveByTurn.getMinScore() + " | " + inactiveByTurn.getMaxScore());
-
-                    double loginPct = Math.min(0.95, Math.max(0.05, numCandidateActivity > numInactive ? (1d - ((double) (numInactive) / (double) numCandidateActivity)) : 0)) * 100;
-
-                    extraInfo.add("quit chance (" + factor.name + "=" + factor.toString(factor.get(nation)) + "): " + MathMan.format(100 - loginPct) + "%");
-                }
+            if (nation.active_m() > 1440 && nation.active_m() < 10080) {
+                Activity activity = nation.getActivity(14 * 12);
+                double loginChance = activity.loginChance(12, true);
+                double loginPct = (loginChance * 100);
+                extraInfo.add("Prior Week Login History (next 12 turns): " + MathMan.format(loginPct) + "%");
             }
 
             // 100
@@ -1103,7 +1076,50 @@ public class UtilityCommands {
         }
         response.append("Total Loot (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + "): ```" + PnwUtil.resourcesToString(total) + "``` ");
         if (!extraInfo.isEmpty()) response.append("\n`notes:`\n` - " + StringMan.join(extraInfo, "`\n` - ") +"`");
-        return response.toString();
+
+        CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
+
+        if (nationOrAlliance.isNation() && nationOrAlliance.asNation().active_m() > 1440 && nationOrAlliance.asNation().active_m() < 20160) {
+            DBNation nation = nationOrAlliance.asNation();
+            Locutus.imp().getExecutor().submit(() -> {
+                List<DBNation.LoginFactor> factors = DBNation.getLoginFactors(nation);
+
+                long turnNow = TimeUtil.getTurn();
+                int maxTurn = 30 * 12;
+                int candidateTurnInactive = (int) (turnNow - TimeUtil.getTurn(nation.lastActiveMs()));
+
+                //                Set<DBNation> activeNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < 1440);
+                Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() >= 1440 && f.getVm_turns() == 0 && f.active_m() <= TimeUnit.DAYS.toMinutes(30));
+                NationScoreMap<DBNation> inactiveByTurn = new NationScoreMap<DBNation>(nations1dInactive, f -> {
+                    return (double) (turnNow - TimeUtil.getTurn(f.lastActiveMs()));
+                }, 1, 1);
+
+                List<String> append = new ArrayList<>();
+                for (DBNation.LoginFactor factor : factors) {
+                    Predicate<DBNation> matches = f -> factor.matches(factor.get(nation), factor.get(f));
+                    BiFunction<Integer, Integer, Integer> sumFactor = inactiveByTurn.getSummedFunction(matches);
+
+                    int numCandidateActivity = sumFactor.apply(Math.min(maxTurn - 23, candidateTurnInactive), Math.min(maxTurn, candidateTurnInactive + 24));
+                    int numInactive = Math.max(1, sumFactor.apply(14 * 12, 30 * 12) / (30 - 14));
+
+                    System.out.println(factor.name + " | " + numCandidateActivity + " | " + numInactive);
+                    System.out.println(":|| " + Math.min(maxTurn - 23, candidateTurnInactive) + " | " + Math.min(maxTurn, candidateTurnInactive + 24));
+                    System.out.println(inactiveByTurn.getMinScore() + " | " + inactiveByTurn.getMaxScore());
+
+                    double loginPct = Math.min(0.95, Math.max(0.05, numCandidateActivity > numInactive ? (1d - ((double) (numInactive) / (double) numCandidateActivity)) : 0)) * 100;
+
+                    append.add("quit chance (" + factor.name + "=" + factor.toString(factor.get(nation)) + "): " + MathMan.format(100 - loginPct) + "%");
+                }
+
+                try {
+                    msgFuture.get().append("\n` - " + StringMan.join(append, "`\n` - ") + "`").send();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+
+        return null;
     }
 
     @Command(desc = "Shows the cost of a project")
