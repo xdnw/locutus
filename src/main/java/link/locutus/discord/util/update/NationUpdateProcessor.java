@@ -49,6 +49,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import rocker.grant.nation;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
@@ -62,6 +63,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class NationUpdateProcessor {
@@ -558,41 +560,51 @@ public class NationUpdateProcessor {
                 if (guildDB.violatesDNR(defender) || (defender.getPosition() > 1 && defender.getActive_m() < 10000)) return;
 
                 Guild guild = guildDB.getGuild();
+                Set<Integer> ids = guildDB.getAllianceIds(false);
 
-                Role bountyRole = Roles.BEIGE_ALERT.toRole(guild);
-                if (bountyRole == null) return;
+                Role beigeAlert = Roles.BEIGE_ALERT.toRole(guild);
+                if (beigeAlert == null) return;
 
-                List<Member> members = guild.getMembersWithRoles(bountyRole);
+                List<Member> members = guild.getMembersWithRoles(beigeAlert);
                 StringBuilder mentions = new StringBuilder();
 
                 double minScore = defender.getScore() / 1.75;
                 double maxScore = defender.getScore() / 0.75;
 
-                Role optOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
+                Role beigeAlertOptOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
                 int membersInRange = 0;
 
-                for (Member member : members) {
-                    PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
-                    if (pnwUser == null) continue;
-                    DBNation nation = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
-                    if (nation == null || nation.getOff() >= nation.getMaxOff()) continue;
-                    if (nation.getScore() < minScore || nation.getScore() > maxScore) continue;
-                    if (optOut != null && member.getRoles().contains(optOut)) continue;
-                    if (nation.getOff() > 0 && Locutus.imp().getWarDb().getActiveWarByNation(nation.getNation_id(), defender.getNation_id()) != null) continue;
+                Function<DBNation, Boolean> canRaid = guildDB.getCanRaid();
 
-                    OnlineStatus status = member.getOnlineStatus();
-                    if (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE) continue;
+                Map<DBNation, Double> lootEstimateByNation = new HashMap<>();
+
+                Map<DBNation, Double> scoreLeewayMap = new HashMap<>();
+                Function<DBNation, Double> scoreLeewayFunc = f -> scoreLeewayMap.computeIfAbsent(f, n -> {
+                    ByteBuffer buf = n.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY);
+                    return buf == null ? 0 : buf.getDouble();
+                });
+
+                for (Member member : members) {
+                    DBNation attacker = DiscordUtil.getNation(member.getUser());
+                    if (attacker == null || attacker.getOff() >= attacker.getMaxOff()) continue;
+                    if (attacker.getScore() < minScore || attacker.getScore() > maxScore) continue;
+
+                    if (!LeavingBeigeAlert.testBeigeAlertAuto(guildDB, member, beigeAlert, beigeAlertOptOut, ids, false, false)) {
+                        continue;
+                    }
+
+                    NationMeta.BeigeAlertMode mode = attacker.getBeigeAlertMode(NationMeta.BeigeAlertMode.NONES);
+                    if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) continue;
+                    if (mode == null) mode = NationMeta.BeigeAlertMode.NONES;
 
                     membersInRange++;
 
-                    if ((nation.getAvg_infra() > 1250 && defender.getAlliance_id() != 0 && (defender.getPosition() > 1 || nation.getCities() > 7))
-                            || nation.getActive_m() > 2880
-//                                        || nation.getSoldiers() < defender.getSoldiers()
-                    ) continue;
+                    double requiredLoot = attacker.getBeigeAlertRequiredLoot();
+                    if (!LeavingBeigeAlert.testBeigeAlertAuto(attacker, defender, requiredLoot, mode, canRaid, scoreLeewayFunc, lootEstimateByNation, false)) {
+                        continue;
+                    }
 
-                    if (optOut != null && member.getRoles().contains(optOut)) continue;
-
-                    long pair = MathMan.pairInt(nation.getNation_id(), defender.getNation_id());
+                    long pair = MathMan.pairInt(attacker.getNation_id(), defender.getNation_id());
                     if (!pingFlag.containsKey(pair)) {
                         mentions.append(member.getAsMention() + " ");
                     }
@@ -601,7 +613,7 @@ public class NationUpdateProcessor {
                 if (membersInRange > 0) {
                     DiscordUtil.createEmbedCommand(channel, title, finalMsg);
                     if (mentions.length() != 0) {
-                        RateLimitUtil.queueWhenFree(channel.sendMessage("^ " + mentions + "(see pins to opt (out)"));
+                        RateLimitUtil.queueWhenFree(channel.sendMessage("^ " + mentions + " (Opt out via: " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + ")"));
                     }
                 }
             }

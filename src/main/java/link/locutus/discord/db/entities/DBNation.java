@@ -3662,6 +3662,15 @@ public class DBNation implements NationOrAlliance {
         return NationMeta.BeigeAlertMode.values()[value.get()];
     }
 
+    public double getBeigeAlertRequiredLoot() {
+        double requiredLoot = 15000000;
+        ByteBuffer requiredLootBuf = getMeta(NationMeta.BEIGE_ALERT_REQUIRED_LOOT);
+        if (requiredLootBuf != null) {
+            requiredLoot = requiredLootBuf.getDouble();
+        }
+        return requiredLoot;
+    }
+
     public NationMeta.BeigeAlertRequiredStatus getBeigeRequiredStatus(NationMeta.BeigeAlertRequiredStatus def) {
         ByteBuffer value = getMeta(NationMeta.BEIGE_ALERT_REQUIRED_STATUS);
         if (value == null) {

@@ -13,6 +13,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -113,7 +114,7 @@ public class LeavingBeigeAlert {
         }
 
 
-        double loot = lootEstimateByNation.computeIfAbsent(target, DBNation::lootTotal);
+        double loot = lootEstimateByNation.computeIfAbsent(target, f -> PnwUtil.convertedTotal(f.getLootRevenueTotal()));
         if (requiredLoot > 0) {
             if (loot < requiredLoot) {
                 if (throwError) throw new IllegalArgumentException("Target is below the loot threshold ($" + MathMan.format(loot) + " < $" + MathMan.format(requiredLoot) + "). See: " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention());
@@ -144,7 +145,7 @@ public class LeavingBeigeAlert {
             if (throwError) throw new IllegalArgumentException("You are not registered. See " + CM.register.cmd.toSlashMention());
             return false;
         }
-        if (!allianceIds.contains(attacker.getAlliance_id())) {
+        if (allianceIds != null && !allianceIds.contains(attacker.getAlliance_id())) {
             if (throwError) throw new IllegalArgumentException("You are not in any of the alliances: ID:" + StringMan.getString(allianceIds));
             return false;
         }

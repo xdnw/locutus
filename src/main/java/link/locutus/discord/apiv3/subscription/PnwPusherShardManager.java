@@ -8,6 +8,7 @@ import com.pusher.client.connection.ConnectionStateChange;
 import graphql.GraphQLException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
@@ -143,10 +144,12 @@ public class PnwPusherShardManager {
             });
             System.out.println("Loading alliances");
             for (DBAlliance alliance : nationDB.getAlliances()) {
-                try {
-                    setupSubscriptions(alliance);
-                } catch (Throwable e) {
-                    e.printStackTrace();
+                if (!alliance.getNations(f -> f.active_m() < 10000 && f.getPositionEnum().id > Rank.APPLICANT.id && f.getVm_turns() == 0).isEmpty()) {
+                    try {
+                        setupSubscriptions(alliance);
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
                 }
             }
             System.out.println("Done loading alliances");
