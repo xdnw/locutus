@@ -175,6 +175,9 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public Integer getNationFromApiKey(String key) {
+        return getNationFromApiKey(key, true);
+    }
+    public Integer getNationFromApiKey(String key, boolean allowFetch) {
         if (Settings.INSTANCE.API_KEY_PRIMARY.equalsIgnoreCase(key) && Settings.INSTANCE.NATION_ID > 0) {
             return Settings.INSTANCE.NATION_ID;
         }
@@ -190,14 +193,16 @@ public class DiscordDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        ApiKeyDetails keyStats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
-        if (keyStats != null && keyStats.getNation() != null && keyStats.getNation().getId() != null) {
-            if (keyStats.getNation().getId() > 0) {
-                int natId = keyStats.getNation().getId();
-                addApiKey(natId, keyStats.getKey());
-                return natId;
-            } else {
-                System.out.println("Invalid nation id " + keyStats);
+        if (allowFetch) {
+            ApiKeyDetails keyStats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
+            if (keyStats != null && keyStats.getNation() != null && keyStats.getNation().getId() != null) {
+                if (keyStats.getNation().getId() > 0) {
+                    int natId = keyStats.getNation().getId();
+                    addApiKey(natId, keyStats.getKey());
+                    return natId;
+                } else {
+                    System.out.println("Invalid nation id " + keyStats);
+                }
             }
         }
         return null;

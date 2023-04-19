@@ -115,6 +115,8 @@ public class NationDB extends DBMainV2 {
                 Locutus.imp().getWarDb().loadNukeDates();
             }
         });
+
+        deleteMetaForDeletedNations();
     }
 
     public void deleteExpiredTreaties(Consumer<Event> eventConsumer) {
@@ -2593,6 +2595,10 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
         }
         return results;
+    }
+
+    public void deleteMetaForDeletedNations() {
+        update("DELETE FROM NATION_META where id > 0 AND id not in (SELECT nation_id FROM NATIONS2)");
     }
 
     public void setMeta(int nationId, NationMeta key, byte[] value) {

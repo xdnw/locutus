@@ -392,7 +392,7 @@ public class BankDB extends DBMainV3 {
                     query += " AND receiver_type = " + receiver.getReceiverType();
                 }
                 if (banker != null) {
-                    query += " AND banker_nation_id = " + banker;
+                    query += " AND banker_nation_id = " + banker.getId();
                 }
                 String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
                 queryLegacy(queryAA,

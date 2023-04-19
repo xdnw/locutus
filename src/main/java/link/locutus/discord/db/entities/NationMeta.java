@@ -106,6 +106,8 @@ public enum NationMeta {
 
     RECRUIT_GOV_MESSAGE,
 
+    LOGIN_NOTIFY,
+
     ;
 
     public static NationMeta[] values = values();

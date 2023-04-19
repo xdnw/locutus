@@ -3,6 +3,7 @@ package link.locutus.discord.util.update;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
@@ -245,6 +246,7 @@ public class NationUpdateProcessor {
             }
         });
     }
+
     @Subscribe
     public void onNationChangeActive(NationChangeActiveEvent event) {
         DBNation previous = event.getPrevious();
@@ -253,6 +255,43 @@ public class NationUpdateProcessor {
         {
             long activeTurn = TimeUtil.getTurn(nation.lastActiveMs());
             Locutus.imp().getNationDB().setActivity(nation.getNation_id(), activeTurn);
+        }
+
+        Map<Long, Long> notifyMap = nation.getLoginNotifyMap();
+        if (notifyMap != null) {
+            nation.deleteMeta(NationMeta.LOGIN_NOTIFY);
+            if (!notifyMap.isEmpty()) {
+                String message = ("This is your login alert for:\n" + nation.toEmbedString(true));
+
+                for (Map.Entry<Long, Long> entry : notifyMap.entrySet()) {
+                    Long userId = entry.getKey();
+                    User user = Locutus.imp().getDiscordApi().getUserById(userId);
+                    DBNation attacker = DiscordUtil.getNation(userId);
+                    if (user == null || attacker == null) continue;
+
+
+                    boolean hasActiveWar = false;
+                    for (DBWar war : nation.getActiveWars()) {
+                        if (war.attacker_id == attacker.getNation_id() || war.defender_id == attacker.getNation_id()) {
+                            hasActiveWar = true;
+                            break;
+                        }
+                    }
+                    String messageCustom = message;
+                    if (hasActiveWar) {
+                        messageCustom += "\n**You have an active war with this nation.**";
+                    } else {
+                        messageCustom += "\n**You do NOT have an active war with this nation.**";
+                    }
+
+                    try {
+                        DiscordChannelIO channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel()), null);
+                        channel.send(messageCustom);
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
 
         if (nation.active_m() < 3) {

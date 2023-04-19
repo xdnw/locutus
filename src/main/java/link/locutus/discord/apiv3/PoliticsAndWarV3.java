@@ -240,7 +240,7 @@ public class PoliticsAndWarV3 {
         }
         if (msg == null) msg = "";
         if (pair.getKey() != null) {
-            Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(pair.getKey());
+            Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(pair.getKey(), false);
             if (nation != null) {
                 msg = msg + " (using key from: " + nation + ")";
             }

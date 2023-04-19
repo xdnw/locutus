@@ -1640,6 +1640,26 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
     }
 
+    public Map<Long, Long> getLoginNotifyMap() {
+        ByteBuffer existing = getMeta(NationMeta.LOGIN_NOTIFY);
+        Map<Long, Long> existingMap = new LinkedHashMap<>();
+        if (existing != null) {
+            while (existing.hasRemaining()) {
+                existingMap.put(existing.getLong(), existing.getLong());
+            }
+        } else {
+            return null;
+        }
+        existingMap.entrySet().removeIf(e -> e.getValue() < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
+        return existingMap;
+    }
+
+    public void setLoginNotifyMap(Map<Long, Long> map) {
+        ByteBuffer buffer = ByteBuffer.allocate(map.size() * 16);
+        map.forEach((k, v) -> buffer.putLong(k).putLong(v));
+        setMeta(NationMeta.LOGIN_NOTIFY, buffer.array());
+    }
+
     public static class LoginFactor {
         private final Function<DBNation, Double> function;
         public final String name;
@@ -1658,6 +1678,10 @@ public class DBNation implements NationOrAlliance {
         public boolean matches(double candidate, double target) {
             return candidate == target;
         }
+
+        public String toString(double value) {
+            return MathMan.format(value);
+        }
     }
 
     public static List<LoginFactor> getLoginFactors(DBNation nationOptional) {
@@ -1670,7 +1694,12 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate >= target;
+                return target >= candidate * 0.75 && target <= candidate * 1.5;
+            }
+
+            @Override
+            public String toString(double value) {
+                return TimeUtil.secToTime(TimeUnit.MILLISECONDS, (long) value);
             }
         });
 
@@ -1682,7 +1711,7 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate >= target;
+                return target >= candidate * 0.75 && target <= candidate * 1.5;
             }
         });
 
@@ -1697,6 +1726,11 @@ public class DBNation implements NationOrAlliance {
                 public boolean matches(double candidate, double target) {
                     return candidate == target;
                 }
+
+                @Override
+                public String toString(double value) {
+                    return value > 0 ? "yes" : "no";
+                }
             });
 
             factors.add(new LoginFactor("turtle", new Function<DBNation, Double>() {
@@ -1709,6 +1743,11 @@ public class DBNation implements NationOrAlliance {
                 public boolean matches(double candidate, double target) {
                     return candidate == target;
                 }
+
+                @Override
+                public String toString(double value) {
+                    return value > 0 ? "yes" : "no";
+                }
             });
         }
 
@@ -1720,7 +1759,12 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate >= target;
+                return candidate == target;
+            }
+
+            @Override
+            public String toString(double value) {
+                return Rank.byId((int) value).name();
             }
         });
 
@@ -1736,11 +1780,16 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate <= target;
+                return candidate >= target;
+            }
+
+            @Override
+            public String toString(double value) {
+                return value == Double.MAX_VALUE ? "none" : "#" + (int) value;
             }
         });
 
-        factors.add(new LoginFactor("lostwar", new Function<DBNation, Double>() {
+        factors.add(new LoginFactor("recentwar", new Function<DBNation, Double>() {
             @Override
             public Double apply(DBNation f) {
                 DBWar lastWar = Locutus.imp().getWarDb().getLastDefensiveWar(f.nation_id);
@@ -1759,7 +1808,12 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate <= target;
+                return candidate == target;
+            }
+
+            @Override
+            public String toString(double value) {
+                return value > 0 ? "lost" : value < 0 ? "won" : "no";
             }
         });
 
@@ -1773,6 +1827,11 @@ public class DBNation implements NationOrAlliance {
             public boolean matches(double candidate, double target) {
                 return candidate == target;
             }
+
+            @Override
+            public String toString(double value) {
+                return value > 0 ? "yes" : "no";
+            }
         });
 
         factors.add(new LoginFactor("verified", new Function<DBNation, Double>() {
@@ -1785,6 +1844,11 @@ public class DBNation implements NationOrAlliance {
             public boolean matches(double candidate, double target) {
                 return candidate == target;
             }
+
+            @Override
+            public String toString(double value) {
+                return value > 0 ? "yes" : "no";
+            }
         });
 
         factors.add(new LoginFactor("lastoffensive", new Function<DBNation, Double>() {
@@ -1796,7 +1860,12 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate <= target;
+                return (candidate > 10000 && target > 10000) || candidate <= target + 7;
+            }
+
+            @Override
+            public String toString(double value) {
+                return MathMan.format(value) +"d";
             }
         });
 
@@ -1809,11 +1878,28 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate <= target;
+                return (candidate > 10000 && target > 10000) || candidate <= target + 7;
+            }
+
+            @Override
+            public String toString(double value) {
+                return MathMan.format(value) +"d";
             }
         });
 
-        factors.add(new LoginFactor("lastlogin", new Function<DBNation, Double>() {
+        factors.add(new LoginFactor("aircraft", new Function<DBNation, Double>() {
+            @Override
+            public Double apply(DBNation f) {
+                return (double) f.getAircraft();
+            }
+        }) {
+            @Override
+            public boolean matches(double candidate, double target) {
+                return (candidate == 0) == (target == 0);
+            }
+        });
+
+        factors.add(new LoginFactor("consecutive", new Function<DBNation, Double>() {
             @Override
             public Double apply(DBNation f) {
                 double days = f.daysSince7ConsecutiveLogins() - ((System.currentTimeMillis() - f.lastActiveMs()) / (double) TimeUnit.DAYS.toMillis(1));
@@ -1822,7 +1908,12 @@ public class DBNation implements NationOrAlliance {
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate <= target;
+                return (candidate > 10000 && target > 10000) || candidate <= target + 7;
+            }
+
+            @Override
+            public String toString(double value) {
+                return value > Integer.MAX_VALUE ? "infrequent" : MathMan.format(value) +"d";
             }
         });
         return factors;
@@ -3100,7 +3191,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command
     public boolean isVerified() {
-        return getUser() != null;
+        return getDBUser() != null;
     }
 
     @Command

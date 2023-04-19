@@ -982,6 +982,7 @@ public class UtilityCommands {
         double[] allianceLoot = null;
         double[] revenue = null;
         int revenueTurns = 0;
+        double revenueFactor = 0;
         double[] total = ResourceType.getBuffer();
 
         if (nationScore == null) nationScore = nationOrAlliance.isNation() ? nationOrAlliance.asNation().getScore() : me.getScore();
@@ -989,13 +990,13 @@ public class UtilityCommands {
 
         List<String> extraInfo = new ArrayList<>();
         if (alliance != null) {
-            LootEntry aaLootEntry = nationOrAlliance.asAlliance().getLoot();
+            LootEntry aaLootEntry = alliance.getLoot();
             if (aaLootEntry != null) {
                 totalStored = aaLootEntry.getTotal_rss();
                 Long date = aaLootEntry.getDate();
                 extraInfo.add("Alliance Last looted: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date));
 
-                double aaScore = nationOrAlliance.asAlliance().getScore();
+                double aaScore = alliance.getScore();
                 double ratio = ((nationScore * 10000) / aaScore) / 2d;
                 double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
                 allianceLoot = PnwUtil.multiply(totalStored.clone(), percent);
@@ -1004,17 +1005,17 @@ public class UtilityCommands {
             }
         }
         if (nationOrAlliance.isNation()) {
-            double percent = me.getWarPolicy() == WarPolicy.PIRATE || pirate ? 0.14 : 0.1;
-            if (nationOrAlliance.asNation().getWarPolicy() == WarPolicy.MONEYBAGS) percent *= 0.6;
+            revenueFactor = me.getWarPolicy() == WarPolicy.PIRATE || pirate ? 0.14 : 0.1;
             DBNation nation = nationOrAlliance.asNation();
+            revenueFactor *= nation.lootModifier();
 
             LootEntry lootInfo = Locutus.imp().getNationDB().getLoot(nationOrAlliance.getId());
             if (lootInfo != null) {
                 totalStored = lootInfo.getTotal_rss();
-                nationLoot = PnwUtil.multiply(totalStored.clone(), percent);
+                nationLoot = PnwUtil.multiply(totalStored.clone(), revenueFactor);
 
                 double originalValue = lootInfo.convertedTotal();
-                double originalLootable = originalValue * percent;
+                double originalLootable = originalValue * revenueFactor;
                 String type = lootInfo.getType().name();
                 StringBuilder info = new StringBuilder();
                 info.append("Nation Loot from " + type);
@@ -1032,17 +1033,24 @@ public class UtilityCommands {
                 if (lootInfo != null) {
                     revenue = PnwUtil.capManuFromRaws(revenue, lootInfo.getTotal_rss());
                 }
+                revenue = PnwUtil.multiply(revenue, revenueFactor);
             }
 
             if (nation.active_m() > 1440 && nation.active_m() < 20160) {
+                if (nation.active_m() < 10080) {
+                    Activity activity = nation.getActivity(14 * 12);
+                    double loginChance = activity.loginChance(12, true);
+                    double loginPct = (loginChance * 100);
+                    extraInfo.add("Prior Week Login History (next 12 turns): " + MathMan.format(loginPct) + "%");
+                }
                 List<DBNation.LoginFactor> factors = DBNation.getLoginFactors(nation);
 
                 long turnNow = TimeUtil.getTurn();
                 int maxTurn = 30 * 12;
                 int candidateTurnInactive = (int) (turnNow - TimeUtil.getTurn(nation.lastActiveMs()));
 
-                Set<DBNation> activeNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < 1440);
-                Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() > 1440 && f.getVm_turns() == 0 && f.active_m() < TimeUnit.DAYS.toMinutes(30));
+//                Set<DBNation> activeNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < 1440);
+                Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() >= 1440 && f.getVm_turns() == 0 && f.active_m() <= TimeUnit.DAYS.toMinutes(30));
                 NationScoreMap<DBNation> inactiveByTurn = new NationScoreMap<DBNation>(nations1dInactive, f -> {
                     return (double) (turnNow - TimeUtil.getTurn(f.lastActiveMs()));
                 }, 1, 1);
@@ -1054,11 +1062,22 @@ public class UtilityCommands {
                     int numCandidateActivity = sumFactor.apply(Math.min(maxTurn - 23, candidateTurnInactive), Math.min(maxTurn, candidateTurnInactive + 24));
                     int numInactive = sumFactor.apply(14 * 12, 30 * 12) / (30 - 14);
 
-                    double loginPct = Math.max(0.05, numCandidateActivity > numInactive ? (double) (numInactive) / numCandidateActivity : 0) * 100;
+                    System.out.println(factor.name + " | " + numCandidateActivity + " | " + numInactive);
+                    System.out.println(":|| " + Math.min(maxTurn - 23, candidateTurnInactive) + " | " + Math.min(maxTurn, candidateTurnInactive + 24));
+                    System.out.println(inactiveByTurn.getMinScore() + " | " + inactiveByTurn.getMaxScore());
 
-                    extraInfo.add("login factor (" + factor.name + "=" + MathMan.format(factor.get(nation)) + "): " + MathMan.format(loginPct) + "%");
+                    double loginPct = Math.min(0.95, Math.max(0.05, numCandidateActivity > numInactive ? (1d - ((double) (numInactive) / (double) numCandidateActivity)) : 0)) * 100;
+
+                    extraInfo.add("quit chance (" + factor.name + "=" + factor.toString(factor.get(nation)) + "): " + MathMan.format(100 - loginPct) + "%");
                 }
             }
+
+            // 100
+            // 10
+            // 90% will login
+
+            // 15
+            // 10
         }
 
         me.setMeta(NationMeta.INTERVIEW_LOOT, (byte) 1);
@@ -1071,19 +1090,19 @@ public class UtilityCommands {
 
         response.append("Total Stored: ```" + PnwUtil.resourcesToString(totalStored) + "``` ");
         if (nationLoot != null) {
-            response.append("Nation Loot: ```" + PnwUtil.resourcesToString(nationLoot) + "``` (worth: $" + MathMan.format(PnwUtil.convertedTotal(nationLoot)) + ")");
+            response.append("Nation Loot (worth: $" + MathMan.format(PnwUtil.convertedTotal(nationLoot)) + "): ```" + PnwUtil.resourcesToString(nationLoot) + "``` ");
             PnwUtil.add(total, nationLoot);
         }
         if (allianceLoot != null) {
-            response.append("Alliance Loot: ```" + PnwUtil.resourcesToString(allianceLoot) + "``` (worth: $" + MathMan.format(PnwUtil.convertedTotal(allianceLoot)) + ")");
+            response.append("Alliance Loot (worth: $" + MathMan.format(PnwUtil.convertedTotal(allianceLoot)) + "): ```" + PnwUtil.resourcesToString(allianceLoot) + "``` ");
             PnwUtil.add(total, allianceLoot);
         }
         if (revenue != null) {
-            response.append("Revenue (" + revenueTurns + " turns): ```" + PnwUtil.resourcesToString(revenue) + "``` (worth: $" + MathMan.format(PnwUtil.convertedTotal(revenue)) + ")");
+            response.append("Revenue (" + revenueTurns + " turns @" + MathMan.format(revenueFactor) + "x, worth: $" + MathMan.format(PnwUtil.convertedTotal(revenue)) + ") ```" + PnwUtil.resourcesToString(revenue) + "``` ");
             PnwUtil.add(total, revenue);
         }
-        response.append("Total Loot: ```" + PnwUtil.resourcesToString(total) + "``` (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
-        if (!extraInfo.isEmpty()) response.append("\n`notes:`\n` - " + StringMan.join(extraInfo, "\n` - ") +"`");
+        response.append("Total Loot (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + "): ```" + PnwUtil.resourcesToString(total) + "``` ");
+        if (!extraInfo.isEmpty()) response.append("\n`notes:`\n` - " + StringMan.join(extraInfo, "`\n` - ") +"`");
         return response.toString();
     }
 
@@ -1337,7 +1356,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get info about your own nation")
-    public String me(@Me JSONObject command, @Default @Me Guild guild, @Me IMessageIO channel, @Me DBNation me) throws IOException {
+    public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me) throws IOException {
         return who(command, guild, channel, Collections.singleton(me), null, false, false, false, false, false, false, null);
     }
 
@@ -1350,7 +1369,7 @@ public class UtilityCommands {
                     "Use `-i` to list individual nation info\n" +
                     "Use `-c` to list individual nation channels" +
                     "e.g. `{prefix}who @borg`")
-    public String who(@Me JSONObject command, @Default @Me Guild guild, @Me IMessageIO channel,
+    public String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel,
                       Set<DBNation> nations,
                       @Default() NationPlaceholder sortBy,
                       @Switch("l") boolean list,

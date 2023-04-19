@@ -57,6 +57,7 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
@@ -93,6 +94,7 @@ import org.json.JSONObject;
 import rocker.guild.ia.message;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -101,6 +103,28 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class UnsortedCommands {
+
+    @Command
+    public String loginNotifier(@Me User user, @Me DBNation nation, DBNation target, @Switch("w") boolean doNotRequireWar) {
+        // ensure nation is fighting target
+        boolean isFighting = false;
+        for (DBWar war : target.getActiveWars()) {
+            if (war.attacker_id == nation.getId() || war.defender_id == nation.getId()) {
+                isFighting = true;
+                break;
+            }
+        }
+        if (!isFighting && !doNotRequireWar) {
+            return "You are not fighting " + target.getName() + "!";
+        }
+        synchronized (target) {
+            Map<Long, Long> existingMap = target.getLoginNotifyMap();
+            if (existingMap == null) existingMap = new LinkedHashMap<>();
+            existingMap.put(user.getIdLong(), System.currentTimeMillis());
+            target.setLoginNotifyMap(existingMap);
+        }
+        return "You will be notified when " + target.getName() + " logs in (within the next 5d).";
+    }
 
     @Command(desc ="View nation or AA bank contents")
     @RolePermission(Roles.MEMBER)

@@ -143,6 +143,15 @@ public class AuthBindings extends WebBindingHelper {
         }
     }
 
+    private static final Map<Long, Map.Entry<String, JsonObject>> tokenToUserMap = new ConcurrentHashMap<>();
+    private static final Map<String, Long> tokenHashes = new ConcurrentHashMap<>();
+
+    private static Map<String, String> ORIGINAL_PAGE = new ConcurrentHashMap<>();
+
+    private static final Map<UUID, Auth> pendingWebCmdTokens = new ConcurrentHashMap<>();
+
+    private static final Map<UUID, Auth> webCommandAuth;
+
     private static final WebDB webDb;
 
     static {
@@ -157,15 +166,6 @@ public class AuthBindings extends WebBindingHelper {
         }
         webCommandAuth = new ConcurrentHashMap<>(webDb.loadTempTokens());
     }
-    private static final Map<Long, Map.Entry<String, JsonObject>> tokenToUserMap = new ConcurrentHashMap<>();
-    private static final Map<String, Long> tokenHashes = new ConcurrentHashMap<>();
-
-    private static Map<String, String> ORIGINAL_PAGE = new ConcurrentHashMap<>();
-
-    private static final Map<UUID, Auth> pendingWebCmdTokens = new ConcurrentHashMap<>();
-
-    private static final Map<UUID, Auth> webCommandAuth;
-
     public static final String AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize";
     public static final String TOKEN_URL = "https://discord.com/api/oauth2/token";
     public static final String API_URL = "https://discord.com/api/users/@me";
