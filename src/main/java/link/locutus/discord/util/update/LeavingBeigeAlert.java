@@ -114,7 +114,7 @@ public class LeavingBeigeAlert {
         }
 
 
-        double loot = lootEstimateByNation.computeIfAbsent(target, f -> PnwUtil.convertedTotal(f.getLootRevenueTotal()));
+        double loot = lootEstimateByNation.computeIfAbsent(target, f -> f.lootTotal());
         if (requiredLoot > 0) {
             if (loot < requiredLoot) {
                 if (throwError) throw new IllegalArgumentException("Target is below the loot threshold ($" + MathMan.format(loot) + " < $" + MathMan.format(requiredLoot) + "). See: " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention());

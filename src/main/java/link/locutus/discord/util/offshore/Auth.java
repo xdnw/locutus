@@ -932,7 +932,7 @@ public class Auth {
                     currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, Auth.this.getNationId(), note, toDeposit);
                     response.append("\n - Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
 
-                    MessageChannel logChannel = offshore.getGuildDB().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                    MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
                     if (logChannel != null) {
                         RateLimitUtil.queue(logChannel.sendMessage(response));
                     }

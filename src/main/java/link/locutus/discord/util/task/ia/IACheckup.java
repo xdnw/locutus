@@ -504,7 +504,7 @@ public class IACheckup {
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case WITHDRAW_DEPOSITS: {
-                GuildMessageChannel channel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                MessageChannel channel = db.getResourceChannel(0);
                 if (channel == null || !db.hasAlliance()) return null;
                 for (Transaction2 transaction : transactions) {
                     if (transaction.receiver_id == (long) nation.getNation_id()) return null;

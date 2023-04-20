@@ -136,6 +136,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new BankCommands(), List.of("tax"), "taxInfo", "info");
 
         this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
+        this.commands.registerMethod(new IACommands(), List.of("sheets_ia"), "dayChangeSheet", "daychange");
 
 //        this.commands.registerSubCommands(new BuildCommands(), "build");
 //        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);

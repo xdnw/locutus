@@ -21,6 +21,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.*;
+import rocker.grant.cities;
 
 import java.io.IOException;
 import java.util.*;
@@ -355,10 +356,8 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    WITHDRAW_DEPOSITS("""
-            You can request your funds by asking in <#{guild.resource_request_channel}>
-
-            *Note: Below 7 cities, we can provide funds to get your two cities up and running, we don't do city grants initially since we want members to start off by raiding for $$$*""", false) {
+    WITHDRAW_DEPOSITS("You can request your funds by using: " + CM.transfer.self.cmd.toSlashMention() + "\n" +
+            "*Note: Below 7 cities, we can provide funds to get your two cities up and running, we don't do city grants initially since we want members to start off by raiding for $$$*", false) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);

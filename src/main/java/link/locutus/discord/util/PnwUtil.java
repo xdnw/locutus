@@ -1025,13 +1025,13 @@ public class PnwUtil {
         int numCities = bonus ? nation.getCities() : 10;
 
         // Project revenue
-        if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.ACTIVITY_CENTER)) {
-//            for (ResourceType type : ResourceType.values) {
-//                if (type.isRaw() && type.getBuilding().canBuild(nation.getContinent())) {
-//                    // profitBuffer[type.ordinal()] += turns * (Math.min(nation.getCities(), 10));
-//                }
-//            }
-        }
+//        if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.ACTIVITY_CENTER)) {
+////            for (ResourceType type : ResourceType.values) {
+////                if (type.isRaw() && type.getBuilding().canBuild(nation.getContinent())) {
+////                    // profitBuffer[type.ordinal()] += turns * (Math.min(nation.getCities(), 10));
+////                }
+////            }
+//        }
 
         // city revenue
         for (JavaCity build : cities) {

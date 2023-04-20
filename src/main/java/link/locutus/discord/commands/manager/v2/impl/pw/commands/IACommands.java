@@ -1,7 +1,11 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.NationResponseProjection;
+import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -26,6 +30,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -70,9 +75,72 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class IACommands {
+
+    @Command
+    @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
+    public void dayChangeSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+        }
+        Set<Integer> aaIdsProvided = nations.getAllianceIds();
+        AllianceList subList = db.getAllianceList().subList(aaIdsProvided);
+        Map<Integer, Double> timezones = new HashMap<>();
+
+
+        for (DBAlliance alliance : subList.getAlliances()) {
+            PoliticsAndWarV3 api = alliance.getApi(AlliancePermission.SEE_RESET_TIMERS);
+            if (api != null) {
+                for (Nation nation : api.fetchNations(new Consumer<NationsQueryRequest>() {
+                    @Override
+                    public void accept(NationsQueryRequest nationsQueryRequest) {
+                        nationsQueryRequest.setAlliance_id(List.of(alliance.getId()));
+                    }
+                }, new Consumer<NationResponseProjection>() {
+                    @Override
+                    public void accept(NationResponseProjection nationResponseProjection) {
+                        nationResponseProjection.id();
+                        nationResponseProjection.update_tz();
+                    }
+                })) {
+                    int id = nation.getId();
+                    Double timezone = nation.getUpdate_tz();
+                    if (timezone != null) {
+                        timezones.put(id, timezone);
+                    }
+                }
+            }
+        }
+
+
+        List<String> header = new ArrayList<>(Arrays.asList("nation", "discord", "timezone", "updated", "score", "cities", "active_m"));
+        sheet.addRow(header);
+
+        for (DBNation nation : nations.getNations()) {
+            Double timezone = timezones.get(nation);
+            boolean isApi = timezone != null;
+            if (timezone == null) {
+                timezone = -nation.getDc_turn() * 2d;
+            }
+            // markuputil nation name/url
+            header.set(0, MarkupUtil.sheetUrl(nation.getName(), nation.getUrl()));
+            header.set(1, nation.getUserDiscriminator());
+            header.set(2, MathMan.format(timezone));
+            header.set(3, isApi ? "API" : "UNKNOWN");
+            header.set(4, MathMan.format(nation.getScore()));
+            header.set(5, String.valueOf(nation.getCities()));
+            header.set(6, String.valueOf(nation.getActive_m()));
+            sheet.addRow(header);
+        }
+
+        sheet.clearAll();
+        sheet.set(0, 0);
+
+        sheet.attach(io.create()).append("Timezone is the UTC update timezone as displayed in-game on the account page").send();
+    }
 
     @Command(desc = "Add a role to all users in a server")
     @RolePermission(Roles.ADMIN)

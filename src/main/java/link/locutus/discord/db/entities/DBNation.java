@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.Nation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord._test._Custom;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
@@ -881,7 +882,9 @@ public class DBNation implements NationOrAlliance {
             this.ships += cast(other.ships).intValue();
             this.missiles += cast(other.missiles).intValue();
             this.nukes += cast(other.nukes).intValue();
-            setLeaving_vm(TimeUtil.getTurn() + other.getVm_turns());
+            if (other.getVm_turns() > 0) {
+                setLeaving_vm(TimeUtil.getTurn() + other.getVm_turns());
+            }
             this.spies += cast(other.spies).intValue();
             this.wars_won += other.wars_won;
             this.wars_lost += other.wars_lost;
@@ -1029,8 +1032,7 @@ public class DBNation implements NationOrAlliance {
         if (nation.getVacmode() != null && nation.getVacmode() != this.getVm_turns()) {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
-            long turnEnd = TimeUtil.getTurn() + nation.getVacmode();
-            this.setLeaving_vm(turnEnd);
+            this.setLeaving_vm(TimeUtil.getTurn() + nation.getVacmode());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeVacationEvent(copyOriginal, this));
         }
         if (nation.getMinutessinceactive() != null && nation.getMinutessinceactive() < this.active_m() - 3) {
@@ -1773,14 +1775,14 @@ public class DBNation implements NationOrAlliance {
             public Double apply(DBNation f) {
                 DBAlliance alliance = f.getAlliance(false);
                 if (alliance != null) {
-                    return (double) Math.max(30, alliance.getRank());
+                    return (double) alliance.getRank();
                 }
                 return Double.MAX_VALUE;
             }
         }) {
             @Override
             public boolean matches(double candidate, double target) {
-                return candidate >= target;
+                return Math.max(candidate, 30) >= Math.max(30, target);
             }
 
             @Override
@@ -2987,9 +2989,9 @@ public class DBNation implements NationOrAlliance {
         double[] knownResources = new double[ResourceType.values.length];
         double[] buffer = new double[knownResources.length];
         LootEntry loot = getBeigeLoot();
-        double convertedTotal = estimateRssLootValue(knownResources, loot, buffer, true) * 0.14;
+        double convertedTotal = loot.convertedTotal() * 0.14 * lootModifier();
 
-        if (getPosition() > 1) {
+        if (getPosition() > 1 && alliance_id != 0) {
             Map<ResourceType, Double> aaLoot = Locutus.imp().getWarDb().getAllianceBankEstimate(getAlliance_id(), getScore());
             convertedTotal += PnwUtil.convertedTotal(aaLoot);
         }
@@ -3015,16 +3017,37 @@ public class DBNation implements NationOrAlliance {
         } else if (turnEnded > turnInactive) {
             turnInactive = turnEnded;
         }
-        int turnsInactive = (int) (turn - turnInactive);
-        return turnsInactive;
+        return Math.min(12 * 90, (int) (turn - turnInactive));
+    }
+
+    private int getTurnsPowered(double[] rss) {
+        // 1 get power plant resource usage
+        double[] profitBuffer = ResourceType.getBuffer();
+        for (JavaCity city : getCityMap(false).values()) {
+            for (Building building : Buildings.values()) {
+                if (!(building instanceof PowerBuilding power)) {
+                    city.set(building, 0);
+                }
+            }
+            city.profit(continent, 0, 0, this::hasProject, profitBuffer, 1, 1, 1);
+        }
+        int turns = Integer.MAX_VALUE;
+        for (ResourceType type : ResourceType.values) {
+            if (type.isRaw() && type != ResourceType.FOOD) {
+                int newTurns = (int) Math.floor(rss[type.ordinal()] / profitBuffer[type.ordinal()]);
+                turns = Math.min(turns, newTurns);
+            }
+        }
+        return turns;
     }
 
     @Command
     public double[] getLootRevenueTotal() {
         LootEntry loot = getBeigeLoot();
         int turnsInactive = getTurnsInactive(loot);
+        double lootFactor = 0.14 * lootModifier();
 
-        double[] lootRevenue = loot == null ? ResourceType.getBuffer() : loot.getTotal_rss();
+        double[] lootRevenue = loot == null ? ResourceType.getBuffer() : PnwUtil.multiply(loot.getTotal_rss().clone(), lootFactor);
         if (getPositionEnum().id > Rank.APPLICANT.id) {
             DBAlliance alliance = getAlliance(false);
             if (alliance != null) {
@@ -3032,14 +3055,45 @@ public class DBNation implements NationOrAlliance {
                 double[] lootScaled =  aaLoot.getAllianceLootValue(getScore());
                 lootRevenue = PnwUtil.add(lootRevenue, lootScaled);
             }
-
         }
+
         if (turnsInactive > 0) {
-            double[] revenue = getRevenue(turnsInactive + 24, true, true, false, true, false, false);
+            int turnsOfRevenue = turnsInactive + 24;
+            // food
+            // power
+            int turnsFed = 60;
+            int turnsPowered = isPowered() ? Integer.MAX_VALUE : 60;
+            if (loot != null) {
+                turnsPowered = getTurnsPowered(loot.getTotal_rss());
+                double[] revenue = getRevenue(1, true, true, false, true, false, false);
+                if (revenue[ResourceType.FOOD.ordinal()] < 0) {
+                    turnsFed = (int) (loot.getTotal_rss()[ResourceType.FOOD.ordinal()] / -revenue[ResourceType.FOOD.ordinal()]);
+                } else {
+                    turnsFed = Integer.MAX_VALUE;
+                }
+            }
+
+            double[] revenue = ResourceType.getBuffer();
+            int turnsUnpowered = turnsOfRevenue - turnsPowered;
+            if (turnsUnpowered > 0) {
+                revenue = getRevenue(turnsUnpowered, true, true, false, true, false, false);
+                revenue = PnwUtil.capManuFromRaws(revenue, ResourceType.getBuffer());
+            }
+            {
+                revenue = PnwUtil.add(revenue, getRevenue(turnsPowered, true, true, false, true, false, false));
+            }
             if (loot != null) {
                 revenue = PnwUtil.capManuFromRaws(revenue, loot.getTotal_rss());
             }
-            lootRevenue = ResourceType.add(lootRevenue, revenue);
+            if (turnsFed < turnsOfRevenue) {
+                double unfedRatio = 1d - (double) turnsFed / (turnsInactive + 24d);
+                double revenueCutWhenUnfed = 0.33;
+                double revenueRatio = 1 - (1 - revenueCutWhenUnfed) * unfedRatio;
+                revenue[ResourceType.MONEY.ordinal()] *= revenueRatio;
+            }
+            for (int i = 0; i < lootRevenue.length; i++) {
+                lootRevenue[i] += revenue[i] * lootFactor;
+            }
         }
         return lootRevenue;
     }

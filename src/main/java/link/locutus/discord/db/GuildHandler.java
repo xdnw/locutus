@@ -2195,7 +2195,7 @@ public class GuildHandler {
                 getDb().addBalance(System.currentTimeMillis(), referrer, referred.getNation_id(), note, amt);
                 message += "\n - Added `" + PnwUtil.resourcesToString(amt) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(amt)) + " to " + referrer.getNation() + "'s account";
             }
-            GuildMessageChannel output = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+            MessageChannel output = getDb().getResourceChannel(0);
             if (output != null) {
                 message += "\n" + referrerUser.getAsMention();
                 RateLimitUtil.queueWhenFree(output.sendMessage(message));
@@ -2526,7 +2526,7 @@ public class GuildHandler {
         if (!db.hasAlliance()) return;
         Map<NationFilterString, double[]> rewards = getDb().getOrNull(GuildDB.Key.MEMBER_REWARDS);
         if (rewards == null || rewards.isEmpty()) return;
-        MessageChannel rssChannel = getDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+        MessageChannel rssChannel = getDb().getResourceChannel(0);
         if (rssChannel == null) return;
         Set<Integer> aaIds = db.getAllianceIds(true);
         if (aaIds.isEmpty()) return;

@@ -932,7 +932,7 @@ public class NationUpdateProcessor {
             });
 
             if (!adminInfo.isEmpty()) {
-                MessageChannel channel = Locutus.imp().getRootDb().getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+                MessageChannel channel = Locutus.imp().getRootDb().getResourceChannel(0);
                 if (channel != null) {
                     Message message = new MessageBuilder().append(new EmbedBuilder().setTitle(title, finalBody)).append("<@217897994375266304>\n" +
                             "See " + CM.offshore.unlockTransfers.cmd.toSlashMention() + "\n" +

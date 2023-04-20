@@ -830,7 +830,7 @@ public class DataDumpParser {
         if (vm_turns == Integer.MAX_VALUE) {
             int vm = Integer.parseInt(row.getField(header.vm_turns));
             if (vm > 0) {
-                nation.setLeaving_vm(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + vm));
+                nation.setLeaving_vm(TimeUtil.getTurn() + vm);
             }
         }
         nation.setNation_id(nationId);
