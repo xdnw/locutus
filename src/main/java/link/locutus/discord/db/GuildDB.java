@@ -29,6 +29,7 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.util.AuditType;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -3203,49 +3204,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 return "The channel to receive alerts when a nation deletes (in all of orbis)";
             }
         },
-
-        FA_CONTACT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TRANSFER_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        BANK_TRANSACTION_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        NOTE_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        IA_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        WAR_BUILDUP_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        GRANT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        COALITION_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        NATION_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        DESERTER_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        MAIL_RESPONSES_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        ALLIANCES_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        ROI_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TAX_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TAX_RECORD_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TAX_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        WAR_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        ACTIVE_COMBATANT_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        COUNTER_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        MMR_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        SPYOP_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        DEPOSITS_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TAX_BRACKET_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        STOCKPILE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        WAR_COST_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        CURRENT_LOOT_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        WAR_COST_BY_ALLIANCE_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        WAR_COST_BY_RESOURCE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        ACTIVITY_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        CITY_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        WAR_COST_BY_CITY_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        MILITARY_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        REVENUE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        REVENUE_BY_ALLIANCE(false, ALLIANCE_ID, CommandCategory.ECON),
-        PROJECT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        INTERVIEW_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        NATION_META_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        TRADE_PROFIT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TRADE_VOLUME_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        MMR_BY_SCORE_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        WARCHEST_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-
         AUTONICK() {
             @Override
             public String validate(GuildDB db, String value) {
@@ -3903,11 +3861,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         "To list nations current rates: " + CM.tax.listBracketAuto.cmd.toSlashMention() + "\n" +
                         "To bulk move nations: " + CM.nation.set.taxinternal.cmd.toSlashMention() + "\n" +
                         "Tax rate is in the form: `money/rss`\n" +
-                        "In the form:\n" +
-                        "```" +
+                        "In the form: \n" +
+                        "```\n" +
                         "#cities<10:100/100\n" +
                         "#cities>=10:25/25" +
-                        "```\n" +
+                        "\n```\n" +
                         "All nation filters are supported (e.g. roles)\n" +
                         "Priority is first to last (so put defaults at the bottom)");
 
@@ -3973,9 +3931,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         "To list nations current rates: " + CM.tax.listBracketAuto.cmd.toSlashMention() + "\n" +
                         "To bulk move nations: " + CM.nation.set.taxbracketAuto.cmd.toSlashMention() + "\n" +
                         "In the form:\n" +
-                        "```" +
+                        "```\n" +
                         "#cities<10:1234\n" +
-                        "#cities>=10:5678" +
+                        "#cities>=10:5678\n" +
                         "```\n" +
                         "All nation filters are supported\n" +
                         "Priority is first to last (so put defaults at the bottom)");
@@ -4022,9 +3980,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             public String help() {
                 StringBuilder response = new StringBuilder("A list of filters to required MMR.\n" +
                         "In the form:\n" +
-                        "```" +
+                        "```\n" +
                         "#cities<10:505X\n" +
-                        "#cities>=10:0250" +
+                        "#cities>=10:0250\n" +
                         "```\n" +
                         "All nation filters are supported");
 
@@ -4068,10 +4026,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             public String help() {
                 StringBuilder response = new StringBuilder("A list of city ranges to beige reasons that are permitted.\n" +
                         "In the form:\n" +
-                        "```" +
+                        "```\n" +
                         "c1-9:*\n" +
-                        "c10+:INACTIVE,VACATION_MODE,APPLICANT" +
-                        "```").append(" Options:\n");
+                        "c10+:INACTIVE,VACATION_MODE,APPLICANT\n" +
+                        "```\n").append(" Options:\n");
                 for (BeigeReason value : BeigeReason.values()) {
                     response.append(" - " + value.name() + ": " + value.getDescription()).append("\n");
                 }
@@ -4374,10 +4332,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String help() {
                 return "The #channel for users to request resources in.\n" +
-                        "For multiple alliances, use the form:```" +
+                        "For multiple alliances, use the form:\n```\n" +
                         "#defaultChannel\n" +
                         "alliance1:#channel\n" +
-                        "```";
+                        "```\n";
             }
         },
 
@@ -4836,7 +4794,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             @Override
             public String help() {
-                return "The reward (resources) for referring a nation in the form `{food=1,money=3.2}";
+                return "The reward (resources) for referring a nation in the form `{food=1,money=3.2}`";
             }
         },
 
@@ -4857,7 +4815,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             @Override
             public String help() {
-                return "The reward (resources) for mentoring a nation in the form `{food=1,money=3.2}";
+                return "The reward (resources) for mentoring a nation in the form `{food=1,money=3.2}`";
             }
         },
 
@@ -4968,8 +4926,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         "```\n" +
                         "#wars_won>50:{food=5,munitions=1}\n" +
                         "#cities>5,#correctalliancemmr=1:{coal=1}\n" +
-                        "" +
-                        "```";
+                        "```\n";
             }
         },
 
@@ -4994,6 +4951,48 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //            }
 //        },
 
+        FA_CONTACT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        TRANSFER_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        BANK_TRANSACTION_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        NOTE_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
+        IA_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
+        WAR_BUILDUP_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        GRANT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        COALITION_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        NATION_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        DESERTER_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        MAIL_RESPONSES_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
+        ALLIANCES_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        ROI_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        TAX_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        TAX_RECORD_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        TAX_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        WAR_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        ACTIVE_COMBATANT_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        COUNTER_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        MMR_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        SPYOP_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        DEPOSITS_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        TAX_BRACKET_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        STOCKPILE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        WAR_COST_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        CURRENT_LOOT_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        WAR_COST_BY_ALLIANCE_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        WAR_COST_BY_RESOURCE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        ACTIVITY_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        CITY_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        WAR_COST_BY_CITY_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        MILITARY_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        REVENUE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        REVENUE_BY_ALLIANCE(false, ALLIANCE_ID, CommandCategory.ECON),
+        PROJECT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        INTERVIEW_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
+        NATION_META_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
+        TRADE_PROFIT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        TRADE_VOLUME_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        MMR_BY_SCORE_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
+        WARCHEST_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+
 
         ;
 
@@ -5009,6 +5008,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             this.requiresSetup = requiresSetup;
             this.requires = dependsOn;
             this.category = perm;
+        }
+
+        @Override
+        public String toString() {
+            return name() + "\n> " + help() + "\n";
         }
 
         public <T> boolean hasPermission(GuildDB db, User author, T value) {

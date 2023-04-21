@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.page;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -9,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Announcement;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -48,6 +50,13 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class IndexPages extends PageHelper {
+
+    @Command
+    public Object argTypes() {
+        CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
+        ValueStore<Object> store = manager.getStore();
+        return "Index page";
+    }
 
     @Command
     public Object index() {

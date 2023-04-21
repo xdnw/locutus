@@ -134,6 +134,11 @@ public enum Coalition {
         return Roles.ADMIN.has(user, guild) ;
     }
 
+    @Override
+    public String toString() {
+        return name() + ": `" + desc + "`";
+    }
+
     public static Coalition getOrNull(String input) {
         try {
             return Coalition.valueOf(input.toUpperCase());

@@ -11,7 +11,7 @@ import java.security.GeneralSecurityException;
 import java.util.Set;
 
 public class SheetBindings extends BindingHelper {
-    @Binding
+    @Binding(value = "A google spreadsheet id or url", examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"})
     public SpreadSheet sheet(String input) throws GeneralSecurityException, IOException {
         String spreadsheetId;
         if (input.startsWith("sheet:")) {
@@ -22,7 +22,7 @@ public class SheetBindings extends BindingHelper {
         return SpreadSheet.create(input);
     }
 
-    @Binding
+    @Binding(value = "A google spreadsheet id or url. Must have a `nation` or `leader` column as well as the names of each resource", examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"})
     public TransferSheet transferSheet(String input) throws GeneralSecurityException, IOException {
         sheet(input); // validate
         TransferSheet sheet = new TransferSheet(input);

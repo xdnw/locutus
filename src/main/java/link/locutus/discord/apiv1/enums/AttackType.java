@@ -24,6 +24,11 @@ public enum AttackType {
     NUKE(12, 25, MilitaryUnit.NUKE),
     ;
 
+    @Override
+    public String toString() {
+        return name;
+    }
+
     public static AttackType fromV3(com.politicsandwar.graphql.model.AttackType v3) {
         switch (v3) {
             case AIRVINFRA:

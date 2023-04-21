@@ -92,7 +92,7 @@ public class PageHandler implements Handler {
         new DiscordBindings().register(store);
         new PWBindings().register(store);
         new SheetBindings().register(store);
-        new StockBinding().register(store);
+//        new StockBinding().register(store);
 
         new DiscordWebBindings().register(store);
         new JavalinBindings().register(store);

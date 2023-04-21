@@ -151,7 +151,7 @@ public class ParametricCallable implements ICommand {
         this.help = definition.help();
 
         //        desc.append(ICommand.formatDescription(definition));
-        this.desc = "";
+        this.desc = definition.desc();
     }
 
     public static List<ParametricCallable> generateFromClass(CommandCallable parent, Object object, ValueStore store) {
@@ -248,8 +248,12 @@ public class ParametricCallable implements ICommand {
                 Parser<?> binding = parameter.getBinding();
                 if (!binding.isConsumer(store)) continue;
                 String argFormat = parameter.isOptional() || parameter.isFlag() ? "[%s]" : "<%s>";
-                if (!parameter.isFlag() && parameter.getBinding().isConsumer(store)) {
-                    argFormat = String.format(argFormat, parameter.getName());
+                if (parameter.getBinding().isConsumer(store)) {
+                    if (!parameter.isFlag()) {
+                        argFormat = String.format(argFormat, parameter.getName());
+                    } else {
+                        argFormat = String.format(argFormat, "-" + parameter.getFlag() + " " + parameter.getName());
+                    }
                     help.append(" ").append(argFormat);
                 }
             }

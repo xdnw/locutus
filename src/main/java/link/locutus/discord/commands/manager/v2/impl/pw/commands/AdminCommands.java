@@ -63,6 +63,7 @@ import org.jooq.meta.derby.sys.Sys;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,8 +91,11 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command
-    public String loginTimes(@Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, SpreadSheet sheet) throws IOException {
+    @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range")
+    public String loginTimes(@Me GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+        }
         // time cutoff < 30d
         if (System.currentTimeMillis() - cutoff > TimeUnit.DAYS.toMillis(30)) {
             return "Cutoff must be within the last 30 days";
@@ -215,7 +219,7 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command
+    @Command(desc = "Set the archive status of a Locutus announcement")
     @RolePermission(any = true, value = {Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ADMIN, Roles.FOREIGN_AFFAIRS, Roles.ECON})
     public String archiveAnnouncement(@Me GuildDB db, int announcementId, @Default Boolean archive) {
         if (archive == null) archive = true;
@@ -223,16 +227,28 @@ public class AdminCommands {
         return (archive ? "Archived" : "Unarchived") + " announcement with id: #" + announcementId;
     }
 
-    @Command(desc = "Send an announcement to multiple nations, with random variations for opsec")
+    @Command(desc = "Send an announcement to multiple nations, with random variations for each receiver\n")
     @RolePermission(Roles.ADMIN)
     @HasApi
-    public String announce(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO currentChannel, @Me User author, NationList nationList, @Arg("The subject used if DM fails") String subject, String announcement, String replacements, @Switch("v") @Default("0") Integer requiredVariation, @Switch("r") @Default("0") Integer requiredDepth, @Switch("s") Long seed, @Switch("m") boolean sendMail, @Switch("d") boolean sendDM, @Switch("f") boolean force) throws IOException {
+    public String announce(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO currentChannel,
+                           @Me User author,
+                           NationList sendTo,
+                           @Arg("The subject used for sending an in-game mail if a discord direct message fails") String subject,
+                           @Arg("The message you want to send") @TextArea String announcement,
+                           @Arg("Lines of replacement words or phrases, separated by `|` for each variation\n" +
+                                   "Add multiple lines for each replacement you want") @TextArea String replacements,
+                           @Arg("The required number of differences between each message") @Switch("v") @Default("0") Integer requiredVariation,
+                           @Arg("The required depth of changes from the original message") @Switch("r") @Default("0") Integer requiredDepth,
+                           @Arg("Variation seed. The same seed will produce the same variations, otherwise results are random") @Switch("s") Long seed,
+                           @Arg("If messages are sent in-game") @Switch("m") boolean sendMail,
+                           @Arg("If messages are sent via discord direct message") @Switch("d") boolean sendDM,
+                           @Switch("f") boolean force) throws IOException {
         ApiKeyPool keys = db.getMailKey();
         if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
         Set<Integer> aaIds = db.getAllianceIds();
 
         List<String> errors = new ArrayList<>();
-        Collection<DBNation> nations = nationList.getNations();
+        Collection<DBNation> nations = sendTo.getNations();
         for (DBNation nation : nations) {
             User user = nation.getUser();
             if (user == null) {
@@ -324,7 +340,7 @@ public class AdminCommands {
             output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
         }
 
-        int annId = db.addAnnouncement(author, subject, announcement, replacements, nationList.getFilter());
+        int annId = db.addAnnouncement(author, subject, announcement, replacements, sendTo.getFilter());
         for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
             byte[] diff = StringMan.getDiffBytes(announcement, entry.getValue());
             db.addPlayerAnnouncement(entry.getKey(), annId, diff);
@@ -364,9 +380,9 @@ public class AdminCommands {
 //        }
 //    }
 
-    @Command
+    @Command(desc = "Add or remove a role from a set of members on discord")
     @RolePermission(Roles.ADMIN)
-    public String mask(@Me Member me, @Me GuildDB db, Set<Member> members, Role role, boolean value, String reason) {
+    public String mask(@Me Member me, @Me GuildDB db, Set<Member> members, Role role, boolean value) {
         List<Role> myRoles = me.getRoles();
         List<String> response = new ArrayList<>();
         for (Member member : members) {
@@ -405,7 +421,10 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command
+    @Command(desc = "Edit an attribute of your in-game alliance\n" +
+            "Attributes match the in-game fields and are case sensitive\n" +
+            "Run the command without arguments to get a list of attributes"
+    )
     @RolePermission(Roles.ADMIN)
     public String editAlliance(@Me GuildDB db, @Me User author, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
         if (!db.isAllianceId(alliance.getAlliance_id())) {
@@ -436,9 +455,9 @@ public class AdminCommands {
         return response.toString();
     }
 
-    @Command(desc = "Remove a discord role Locutus uses")
+    @Command(desc = "Remove a discord role Locutus uses for command permissions")
     @RolePermission(Roles.ADMIN)
-    public String unregisterRole(@Me User user, @Me Guild guild, @Me GuildDB db, Roles locutusRole, @Default DBAlliance alliance) {
+    public String unregisterRole(@Me User user, @Me Guild guild, @Me GuildDB db, Roles locutusRole, @Arg("Only remove a role mapping for this alliance") @Default DBAlliance alliance) {
         return aliasRole(user, guild, db, locutusRole, null, alliance, true);
     }
 
@@ -478,9 +497,9 @@ public class AdminCommands {
         return " - " + StringMan.join(response, "\n - ");
     }
 
-    @Command(desc = "Set the discord roles Locutus uses")
+    @Command(desc = "Set the discord roles Locutus uses for command permissions")
     @RolePermission(Roles.ADMIN)
-    public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Default() DBAlliance alliance, @Switch("r") boolean removeRole) {
+    public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
         if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
             return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
         }
@@ -705,14 +724,14 @@ public class AdminCommands {
         return "Done (see console)";
     }
 
-    @Command()
+    @Command(desc = "Test your alliance recruitment message by sending it to the bot creator's nation")
     @RolePermission(value = Roles.ADMIN)
     public String testRecruitMessage(@Me GuildDB db) throws IOException {
         JsonObject response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNation(Settings.INSTANCE.NATION_ID));
         return response.toString();
     }
 
-    @Command(desc = "Purge channels older than the time specified")
+    @Command(desc = "Purge a category's channels older than the time specified")
     @RolePermission(value = Roles.ADMIN)
     public String debugPurgeChannels(Category category, @Range(min=60) @Timestamp long cutoff) {
         long now = System.currentTimeMillis();
@@ -791,11 +810,12 @@ public class AdminCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Remove deleted alliances or guilds from a coalition\n" +
+            "Note: Do not remove deleted offshores or banks if you want to use their previous transactions in deposit calculations")
     @RolePermission(value = Roles.ADMIN)
-    public String removeInvalidOffshoring(@Me GuildDB db) {
+    public String removeInvalidOffshoring(@Me GuildDB db, Coalition coalition) {
         Set<Long> toRemove = new HashSet<>();
-        for (long id : db.getCoalitionRaw(Coalition.OFFSHORING)) {
+        for (long id : db.getCoalitionRaw(coalition)) {
             GuildDB otherDb;
             if (id > Integer.MAX_VALUE) {
                 otherDb = Locutus.imp().getGuildDB(id);
@@ -808,7 +828,7 @@ public class AdminCommands {
         }
         System.out.println(StringMan.getString(toRemove));
         for (long id : toRemove) {
-            db.removeCoalition(id, Coalition.OFFSHORING);
+            db.removeCoalition(id,coalition);
         }
         return "Removed `" + StringMan.join(toRemove, ",") + "` from " + Coalition.OFFSHORING;
 
@@ -1060,8 +1080,8 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command(desc = "List authenticated users in the guild")
-    @RolePermission(value = Roles.ADMIN)
+    @Command(desc = "List users in the guild that have provided login credentials to locutus")
+    @RolePermission(value = Roles.ADMIN, root = true)
     public String listAuthenticated(@Me GuildDB db) {
         List<Member> members = db.getGuild().getMembers();
 

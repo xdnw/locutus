@@ -1,5 +1,8 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import java.util.Map;
+import java.util.Set;
+
 public class DelegateValueStore<T> implements ValueStore<T> {
     private final ValueStore<T> parent;
 
@@ -19,5 +22,10 @@ public class DelegateValueStore<T> implements ValueStore<T> {
     @Override
     public <V extends T> Parser<V> get(Key<V> key) {
         return parent.get(key);
+    }
+
+    @Override
+    public Map<Key, Parser> getParsers() {
+        return parent.getParsers();
     }
 }

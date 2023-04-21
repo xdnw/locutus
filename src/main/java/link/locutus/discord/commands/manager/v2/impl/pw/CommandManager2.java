@@ -53,7 +53,7 @@ public class CommandManager2 {
         new DiscordBindings().register(store);
         new PWBindings().register(store);
         new SheetBindings().register(store);
-        new StockBinding().register(store);
+//        new StockBinding().register(store);
 
         this.validators = new ValidatorStore();
         new PrimitiveValidators().register(validators);

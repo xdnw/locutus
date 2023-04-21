@@ -1283,9 +1283,9 @@ public class CM {
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="removeInvalidOffshoring")
-        public static class removeinvalidoffshoring extends CommandRef {
-            public static final removeinvalidoffshoring cmd = new removeinvalidoffshoring();
-            public removeinvalidoffshoring create() {
+        public static class clear_deleted_coalition_entries extends CommandRef {
+            public static final clear_deleted_coalition_entries cmd = new clear_deleted_coalition_entries();
+            public clear_deleted_coalition_entries create() {
                 return createArgs();
             }
         }

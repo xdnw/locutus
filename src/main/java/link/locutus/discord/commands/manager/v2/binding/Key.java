@@ -2,11 +2,13 @@ package link.locutus.discord.commands.manager.v2.binding;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Key<T> {
     private final Type type;
@@ -158,5 +160,14 @@ public class Key<T> {
                 "type=" + type +
                 ", annotationTypes=" + annotationTypes +
                 '}';
+    }
+
+    public String toSimpleString() {
+        StringBuilder name = new StringBuilder();
+        name.append(type.getTypeName());
+        if (!annotationTypes.isEmpty()) {
+            name.append("[" + annotationTypes.stream().map(Class::getSimpleName).collect(Collectors.joining(",")) + "]");
+        }
+        return name.toString().replaceAll("[a-z_A-Z0-9.]+\\.([a-z_A-Z0-9]+)", "$1").replaceAll("[a-z_A-Z0-9]+\\$([a-z_A-Z0-9]+)", "$1");
     }
 }
