@@ -59,8 +59,8 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.commands.rankings.WarCostRanking.scale;
 
 public class StatCommands {
-    @Command
-    public String warAttacksByDay(@Me IMessageIO io, @Default Set<DBNation> nations, @Default @Timestamp Long cutoff, @Default Set<AttackType> allowedTypes) throws IOException {
+    @Command(desc = "Display a graph of the number of attacks by the specified nations per day over a time period")
+    public String warAttacksByDay(@Me IMessageIO io, @Default Set<DBNation> nations, @Arg("How long ago to start the graph from") @Default @Timestamp Long cutoff, @Arg("Restrict to a list of attack types") @Default Set<AttackType> allowedTypes) throws IOException {
         if (cutoff == null) cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
         List<DBAttack> attacks;
         if (nations != null) {
@@ -112,7 +112,8 @@ public class StatCommands {
 
     @Command(desc = "Rank war costs between two parties")
     public String warCostRanking(@Me IMessageIO io, @Me User author, @Me JSONObject command,
-                                 @Timestamp long timeStart, @Timestamp @Default Long timeEnd, @Default("*") Set<NationOrAlliance> coalition1, @Default("*") Set<NationOrAlliance> coalition2,
+                                 @Timestamp long timeStart, @Timestamp @Default Long timeEnd,
+                                 @Default("*") Set<NationOrAlliance> coalition1, @Default("*") Set<NationOrAlliance> coalition2,
                                  @Switch("i") boolean excludeInfra,
                                  @Switch("c") boolean excludeConsumption,
                                  @Switch("l") boolean excludeLoot,

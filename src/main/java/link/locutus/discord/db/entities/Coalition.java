@@ -67,13 +67,13 @@ public enum Coalition {
     OFFSHORE("Alliances that this guild offshores to") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
-            return Roles.hasAny(user, guild, Roles.ADMIN, Roles.ECON);
+            return Roles.hasAny(user, guild, Roles.ADMIN);
         }
     },
     OFFSHORING("Alliances that offshore to this alliance's bank") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
-            return Roles.hasAny(user, guild, Roles.ADMIN, Roles.ECON);
+            return Roles.hasAny(user, guild, Roles.ADMIN);
         }
     },
 
