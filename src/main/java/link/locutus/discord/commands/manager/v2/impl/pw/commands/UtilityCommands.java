@@ -1222,7 +1222,7 @@ public class UtilityCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON,Roles.FOREIGN_AFFAIRS}, any=true)
     @Command(desc = "Create an alliance sheet.\n" +
-            "See `{prefix}placeholders Alliance` for a list of placeholders")
+            "See <https://github.com/xdnw/locutus/wiki/Nation-Filters> for a list of placeholders")
     @WhitelistPermission
     public String AllianceSheet(NationPlaceholders placeholders, ValueStore store, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
                                 @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, IllegalAccessException {

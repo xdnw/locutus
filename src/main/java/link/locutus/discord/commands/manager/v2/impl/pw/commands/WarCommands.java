@@ -132,7 +132,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Only get the automatic beige alerts if you have the specified status on discord\n" +
-            "Note: You will still receive alerts for targets you have subscribed to via `{prefix}beigeReminder <nation>`",
+            "Note: You will still receive alerts for targets you have subscribed to via `{prefix}alerts beige beigereminders`",
             aliases = {"beigeAlertRequiredStatus", "setBeigeAlertRequiredStatus"})
     @WhitelistPermission
     @CoalitionPermission(Coalition.RAIDPERMS)
@@ -462,7 +462,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Request your blockade be broken within a specific timeframe\n" +
-            "e.g. `{prefix}UnblockadeMe 4day \"i am low on warchest\"`")
+            "e.g. `{prefix}war blockade request diff:4day note:i am low on warchest`")
     @RolePermission(Roles.MEMBER)
     public String unblockadeMe(@Me GuildDB db, @Me DBNation me, @Me User author, @Timediff long diff, @TextArea String note, @Switch("f") boolean force) throws IOException {
         if (diff > TimeUnit.DAYS.toMillis(5)) {
@@ -1194,7 +1194,7 @@ public class WarCommands {
 
     @Command(desc = "Find a high infra target\n" +
             "optional alliance and sorting (default: active nations, sorted by top city infra).\n\t" +
-            "To see a list of coalitions, use `{prefix}coalitions`.\n\t" +
+            "To see a list of coalitions, use `{prefix}coalition list`.\n\t" +
             "Add `-a` To include applicants\n" +
             "Add `-i` to include inactives\n" +
             "Add `-w` to filter out nations with strong ground\n" +
@@ -1457,7 +1457,7 @@ public class WarCommands {
             "Use `*` for the alliance to only include active wars against allies\n" +
             "Use `*` for op type to automatically find the best op type\n" +
             "Use `success>80` to specify a cutoff for spyop success\n\n" +
-            "e.g. `{prefix}spyop enemies spies` | `{prefix}spyop enemies * -s`")
+            "e.g. `{prefix}spy find target targets:enemies operations:spies`")
     @RolePermission(Roles.MEMBER)
     public String Spyops(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch("d") boolean directMesssage, @Switch("k") boolean prioritizeKills,
                          @Switch("n") DBNation attacker) throws ExecutionException, InterruptedException, IOException {
@@ -1767,7 +1767,7 @@ public class WarCommands {
             "`<ignore-topX>` - filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
             "Add `-l` to remove targets with loot history\n" +
             "Add `-d` to list targets currently on the dnr\n\n" +
-            "e.g. `{prefix}IntelOpSheet 10d 'Error 404' 25`")
+            "e.g. `{prefix}sheets_milcom intelopsheet time:10d attacker:Rose dnrtopx:25`")
     @RolePermission(Roles.MILCOM)
     public String IntelOpSheet(@Me IMessageIO io, @Me GuildDB db, @Timestamp long time, Set<DBNation> attackers, @Default() Integer dnrTopX,
                                @Switch("l") boolean ignoreWithLootHistory, @Switch("d") boolean ignoreDNR, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -3751,7 +3751,7 @@ public class WarCommands {
 
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Run this command in a war room to assign it to a category\n" +
-            "`{prefix}WarCat raid`")
+            "`{prefix}war room setcategory category:raid`")
     public String warcat(@Me WarCategory warCat, @Me WarCategory.WarRoom waRoom, @Me TextChannel channel, @Filter("warcat.*") Category category) {
         if (category.equals(channel.getParentCategory())) {
             return "Already in category: " + category.getName();

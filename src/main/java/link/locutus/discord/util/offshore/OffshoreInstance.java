@@ -979,7 +979,8 @@ public class OffshoreInstance {
                 deposits = PnwUtil.normalize(deposits); // normalize
                 for (int i = 0; i < amount.length; i++) {
                     if (Math.round(amount[i] * 100) != 0 && Math.round(deposits[i] * 100) < Math.round(amount[i] * 100))
-                        throw new IllegalArgumentException("You do not have " + MathMan.format(amount[i]) + "x" + ResourceType.values[i] + ", only " + MathMan.format(deposits[i]) + " (normalized)");
+                        throw new IllegalArgumentException("You do not have " + MathMan.format(amount[i]) + "x" + ResourceType.values[i] + ", only " + MathMan.format(deposits[i]) + " (normalized)\n" +
+                                "Note: Account balance is managed on the offshore server (" + getGuildDB().getGuild() + ") and can be adjusted via " + CM.deposits.add.cmd.toSlashMention());
                     if (!Double.isFinite(amount[i]) || Math.round(amount[i] * 100) < 0)
                         throw new IllegalArgumentException(amount[i] + " is not a valid positive amount");
                 }

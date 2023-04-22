@@ -93,7 +93,7 @@ public class FunCommands {
         return message;
     }
 
-    @Command
+    @Command(desc = "Get a random joke from the joke file")
     public String joke() {
         if (lines == null) {
             lines = Objects.requireNonNull(FileUtil.readFile("/fun/jokes.txt")).split("\\r?\\n");

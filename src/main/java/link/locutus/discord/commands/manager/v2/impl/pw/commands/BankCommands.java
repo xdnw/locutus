@@ -1400,7 +1400,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Set nation's internal taxrate\n" +
-            "See also: `{prefix}SetTaxRate` and `{prefix}KeyStore TAX_BASE`")
+            "See also: `{prefix}nation set taxbracket` and `{prefix}settings key:TAX_BASE`")
     @RolePermission(value = Roles.ECON)
     public String setInternalTaxRate(@Me GuildDB db, Set<DBNation> nations, TaxRate taxRate) {
         if (taxRate.money < -1 || taxRate.money > 100 || taxRate.resources < -1 || taxRate.resources > 100) throw new IllegalArgumentException("Invalid taxrate: " + taxRate);
@@ -1637,7 +1637,6 @@ public class BankCommands {
                                       @Arg("The alliance account to deduct from") @Switch("o") DBAlliance useOffshoreAccount,
                                       @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                                       @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-                                      @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
                                       @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
 
                                       @Switch("m") boolean convertToMoney,

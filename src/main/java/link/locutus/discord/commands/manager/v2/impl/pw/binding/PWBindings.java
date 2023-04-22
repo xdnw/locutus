@@ -147,7 +147,7 @@ public class PWBindings extends BindingHelper {
 
     }
 
-    @Binding(value = "City ranges", examples = {"c1-10", "c11+"})
+    @Binding(value = "A range of city counts (inclusive)", examples = {"c1-10", "c11+"})
     public CityRanges CityRanges(String input) {
         return CityRanges.parse(input);
     }

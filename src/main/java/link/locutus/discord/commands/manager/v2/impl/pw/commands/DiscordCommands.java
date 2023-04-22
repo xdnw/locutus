@@ -34,7 +34,13 @@ import java.util.function.Function;
 public class DiscordCommands {
     @Command(desc = "Modify the permissions for a list of nations in a channel.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public static String channelPermissions(@Me Member author, @Me Guild guild, TextChannel channel, Set<DBNation> nations, Permission permission, @Switch("n") boolean negate, @Switch("r") boolean removeOthers, @Switch("l") boolean listChanges, @Switch("p") boolean pingAddedUsers) {
+    public static String channelPermissions(@Me Member author, @Me Guild guild, TextChannel channel, Set<DBNation> nations, Permission permission,
+                                            @Arg("Negate the permission") @Switch("n") boolean negate,
+                                            @Arg("Remove the permission from all other users")
+                                            @Switch("r") boolean removeOthers,
+                                            @Arg("Log the changes to user permissions that are made")
+                                            @Switch("l") boolean listChanges,
+                                            @Switch("p") boolean pingAddedUsers) {
         if (!author.hasPermission(channel, Permission.MANAGE_PERMISSIONS))
             throw new IllegalArgumentException("You do not have " + Permission.MANAGE_PERMISSIONS + " in " + channel.getAsMention());
 
@@ -98,7 +104,7 @@ public class DiscordCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Have locutus say the provided message, with placeholders replaced.")
     public String say(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation me, @TextArea String msg) {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
@@ -148,7 +154,7 @@ public class DiscordCommands {
             `.{prefix}command` to keep the card upon use
 
             Example:
-            `{prefix}embed 'Some Title' 'My First Embed' '~{prefix}embedsay Hello {nation}' '{prefix}embedsay Goodbye {nation}'`""",
+            `{prefix}embed 'Some Title' 'My First Embed' '~{prefix}fun say Hello {nation}' '{prefix}fun say "Goodbye {nation}"'`""",
             aliases = {"card", "embed"})
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String card(@Me IMessageIO channel, String title, String body, @TextArea List<String> commands) {
@@ -178,10 +184,10 @@ public class DiscordCommands {
     @Command(desc = "Create a channel with name in a specified category and ping the specified roles upon creation.")
     public String channel(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me JSONObject command, @Me User author, @Me Guild guild, @Me IMessageIO output, @Me DBNation nation,
                           String channelName, Category category, @Default String copypasta,
-                          @Switch("i") boolean addIA,
+                          @Switch("i") boolean addInternalAffairsRole,
                           @Switch("m") boolean addMilcom,
-                          @Switch("f") boolean addFa,
-                          @Switch("e") boolean addEa,
+                          @Switch("f") boolean addForeignAffairs,
+                          @Switch("e") boolean addEcon,
                           @Switch("p") boolean pingRoles,
                           @Switch("a") boolean pingAuthor
 
@@ -212,10 +218,10 @@ public class DiscordCommands {
         }
 
         Set<Roles> roles = new HashSet<>();
-        if (addIA) roles.add(Roles.INTERNAL_AFFAIRS);
+        if (addInternalAffairsRole) roles.add(Roles.INTERNAL_AFFAIRS);
         if (addMilcom) roles.add(Roles.MILCOM);
-        if (addFa) roles.add(Roles.FOREIGN_AFFAIRS);
-        if (addEa) roles.add(Roles.ECON);
+        if (addForeignAffairs) roles.add(Roles.FOREIGN_AFFAIRS);
+        if (addEcon) roles.add(Roles.ECON);
         if (roles.isEmpty()) roles.add(Roles.INTERNAL_AFFAIRS);
 
         GuildMessageChannel createdChannel = null;
@@ -265,7 +271,7 @@ public class DiscordCommands {
         return channel;
     }
 
-    @Command(desc = "Get info from a locutus embed.")
+    @Command(desc = "Get info about a locutus embed")
     @RolePermission(value = Roles.ADMIN)
     public String embedInfo(Message message) {
         List<MessageEmbed> embeds = message.getEmbeds();
@@ -284,7 +290,7 @@ public class DiscordCommands {
         return "```" + cmd + "```";
     }
 
-    @Command
+    @Command(desc = "Update a locutus embed")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String updateEmbed(@Me Guild guild, @Me User user, @Me IMessageIO io, @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title, @Switch("d") String desc) {
         IMessageBuilder message = io.getMessage();
@@ -349,7 +355,7 @@ public class DiscordCommands {
         return "Unregistered " + nationUser.getAsMention() + " from " + nation.getNationUrl();
     }
 
-    @Command(desc = "Register with your Politics And War nation.")
+    @Command(desc = "Register your discord user with your Politics And War nation.")
     public String register(@Me GuildDB db, @Me User user, /* @Default("%user%")  */ DBNation nation) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nation.getNation_id()) == null;
         String fullDiscriminator = user.getName() + "#" + user.getDiscriminator();
@@ -434,15 +440,15 @@ public class DiscordCommands {
         return response.toString();
     }
 
-    @Command()
+    @Command(desc = "Move a discord channel up 1 position")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String channelUp(@Me TextChannel channel) {
         RateLimitUtil.queue(channel.getManager().setPosition(channel.getPositionRaw() - 1));
         return null;
     }
 
-    @Command()
-    @RolePermission(value = Roles.INTERNAL_AFFAIRS)
+    @Command(desc = "Delete a discord channel")
+    @RolePermission(value = Roles.ADMIN)
     public String deleteChannel(@Me Guild guild, @Me User user, @Me Member member, MessageChannel channel) {
         GuildMessageChannel text = (GuildMessageChannel) channel;
         String[] split = text.getName().split("-");
@@ -455,16 +461,16 @@ public class DiscordCommands {
 
     }
 
-    @Command()
+    @Command(desc = "Move a discord channel down 1 position")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String channelDown(@Me TextChannel channel) {
         RateLimitUtil.queue(channel.getManager().setPosition(channel.getPositionRaw() + 1));
         return null;
     }
 
-    @Command()
+    @Command(desc = "Send a message to the interview channels of the nations specified")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
-    public String interviewMessage(@Me GuildDB db, Set<DBNation> nations, String message, @Switch("p") boolean ping) {
+    public String interviewMessage(@Me GuildDB db, Set<DBNation> nations, String message, @Switch("p") boolean pingMentee) {
         Map<DBNation, IAChannel> map = db.getIACategory().getChannelMap();
         int num = 0;
         for (DBNation nation : nations) {
@@ -475,7 +481,7 @@ public class DiscordCommands {
                 try {
                     String localMessage = message;
                     User user = nation.getUser();
-                    if (ping && user != null) {
+                    if (pingMentee && user != null) {
                         localMessage += "\n" + user.getAsMention();
                     }
                     RateLimitUtil.queue(channel.sendMessage(localMessage));
@@ -488,7 +494,7 @@ public class DiscordCommands {
         return "Done. Sent " + num + " messaged!";
     }
 
-    @Command()
+    @Command(desc = "Set the category for a discord channel")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String channelCategory(@Me Guild guild, @Me Member member, @Me TextChannel channel, Category category) {
         if (channel.getParentCategory() != null && channel.getParentCategory().getIdLong() == category.getIdLong()) {
