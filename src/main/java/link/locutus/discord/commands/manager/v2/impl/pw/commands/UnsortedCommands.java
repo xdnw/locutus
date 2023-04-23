@@ -531,7 +531,7 @@ public class UnsortedCommands {
                         entry.getValue().delete().complete();
                     }
                 }
-                return "Cleared unused AA roles!";
+                return "Cleared unused Alliance roles!";
             }
             case ALLIANCE: {
                 Set<Integer> aaIds = db.getAllianceIds();

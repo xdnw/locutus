@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -61,7 +62,7 @@ public class TradeCommands {
 
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command
+    @Command(desc = "List the Locutus trade offers you have on discord")
     public String myOffers(TradeManager tMan, @Me DBNation me) {
         Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(f -> f.nation == me.getNation_id());
         if (offers.isEmpty()) {
@@ -76,9 +77,17 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command
-    public String sellList(TradeManager tMan, ResourceType youSell, @Default("MONEY") ResourceType youReceive, @Default Set<DBNation> allowedTraders,
-                           @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
+    @Command(desc = "List the Locutus offers nations have on discord for you selling a given resource")
+    public String sellList(TradeManager tMan,
+                           ResourceType youSell,
+                           @Default("MONEY") ResourceType youReceive,
+                           @Default Set<DBNation> allowedTraders,
+                           @Arg("Sort the offers by the lowest minimum offer price\n" +
+                                   "Comparison prices for resources are converted to weekly average cash equivalent")
+                           @Switch("l") boolean sortByLowestMinPrice,
+                           @Arg("Sort the offers by the lowest maximum offer price\n" +
+                                   "Comparison prices for resources are converted to weekly average cash equivalent")
+                           @Switch("h") boolean sortByLowestMaxPrice) {
         if (sortByLowestMaxPrice && sortByLowestMinPrice) {
             return "You can't sort by both lowest min and max price (pick one)";
         }
@@ -113,9 +122,14 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command
+    @Command(desc = "List the Locutus offers nations have on discord for you buying a given resource")
     public String buyList(TradeManager tMan, ResourceType youBuy, @Default("MONEY") ResourceType youProvide, @Default Set<DBNation> allowedTraders,
-                          @Switch("l") boolean sortByLowestMinPrice, @Switch("h") boolean sortByLowestMaxPrice) {
+                          @Arg("Sort the offers by the lowest minimum offer price\n" +
+                                  "Comparison prices for resources are converted to weekly average cash equivalent")
+                          @Switch("l") boolean sortByLowestMinPrice,
+                          @Arg("Sort the offers by the lowest maximum offer price\n" +
+                                  "Comparison prices for resources are converted to weekly average cash equivalent")
+                          @Switch("h") boolean sortByLowestMaxPrice) {
         if (sortByLowestMaxPrice && sortByLowestMinPrice) {
             return "You can't sort by both lowest min and max price (pick one)";
         }
@@ -146,13 +160,24 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command
+    @Command(desc = "Update one of your Locutus trade offers on discord")
     public String updateOffer(@Me JSONObject command, TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
-                              int offerId, Long quantity,
+                              @Arg("The id of your trade offer")
+                              int offerId,
+                              @Arg("The quantity of the resource you are exchanging")
+                              Long quantity,
+                              @Arg("The minimum price per unit you are exchanging for")
                               @Switch("minPPU") Integer minPPU,
+                              @Arg("The maximum price per unit you are exchanging for")
                               @Switch("maxPPU") Integer maxPPU,
-                              @Switch("n") Boolean negotiable, @Switch("e") @Timediff Long expire,
-                              @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
+                              @Arg("If prices are negotiable")
+                              @Switch("n") Boolean negotiable,
+                              @Arg("When the offer is no longer available")
+                              @Switch("e") @Timediff Long expire,
+                              @Arg("The resources you will accept in return")
+                              @Switch("x") List<ResourceType> exchangeFor,
+                              @Arg("The equivalent price per unit you will accept for each resource")
+                              @Switch("p") Map<ResourceType, Double> exchangePPU,
                               @Switch("f") boolean force) {
         TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(offerId);
         if (offer == null) {
@@ -225,8 +250,10 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command
-    public String offerInfo(@Me JSONObject command, TradeManager tMan, @Me IMessageIO io, int offerId) {
+    @Command(desc = "View the details of a Locutus trade offer on discord")
+    public String offerInfo(@Me JSONObject command, TradeManager tMan, @Me IMessageIO io, 
+                            @Arg("The id of a trade offer")
+                            int offerId) {
         TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(offerId);
         if (offer == null) {
             return "No offer found with ID " + offerId;
@@ -239,9 +266,14 @@ public class TradeCommands {
 
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command
+    @Command(desc = "Delete one of your Locutus trade offers on discord")
     public String deleteOffer(TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
-                              @Default ResourceType deleteResource, @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell, @Switch("i") Integer deleteId) {
+                              @Arg("The resource you want to remove all your offers of")
+                              @Default ResourceType deleteResource,
+                              @Arg("Remove BUYING or SELLING of that resource")
+                              @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell,
+                              @Arg("The offer id you want to delete")
+                              @Switch("i") Integer deleteId) {
         Set<Integer> idsToDelete = new HashSet<>();
         if (deleteId != null) {
             TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(deleteId);
@@ -270,13 +302,22 @@ public class TradeCommands {
 
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command
+    @Command(desc = "Create a Locutus trade offer on discord for buying a resource")
     public String buyOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
-                           long quantity,
-                           @Switch("minPPU") Integer minPPU,
-                           @Switch("maxPPU") Integer maxPPU,
-                           @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
-                           @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
+                           @Arg("The quantity of the resource you are receiving")
+                               Long quantity,
+                           @Arg("The minimum price per unit you are exchanging for")
+                               @Switch("minPPU") Integer minPPU,
+                           @Arg("The maximum price per unit you are exchanging for")
+                               @Switch("maxPPU") Integer maxPPU,
+                           @Arg("If prices are negotiable")
+                               @Switch("n") Boolean negotiable,
+                           @Arg("When the offer is no longer available")
+                               @Switch("e") @Timediff Long expire,
+                           @Arg("The resources you will exchange for")
+                               @Switch("x") List<ResourceType> exchangeFor,
+                           @Arg("The equivalent price per unit you will accept for each resource")
+                               @Switch("p") Map<ResourceType, Double> exchangePPU,
                            @Switch("f") boolean force) {
         if (expire > TimeUnit.DAYS.toMillis(30)) {
             return "Expiry cannot be longer than 30 days.";
@@ -349,13 +390,22 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command
+    @Command(desc = "Create a Locutus trade offer on discord for selling a resource")
     public String sellOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
-                            long quantity,
-                            @Switch("minPPU") Integer minPPU,
-                            @Switch("maxPPU") Integer maxPPU,
-                            @Switch("n") boolean negotiable, @Switch("e") @Timediff @Default("7d") Long expire,
-                            @Switch("x") List<ResourceType> exchangeFor, @Switch("p") Map<ResourceType, Double> exchangePPU,
+                            @Arg("The quantity of the resource you are sending")
+                            Long quantity,
+                            @Arg("The minimum price per unit you are exchanging for")
+                                @Switch("minPPU") Integer minPPU,
+                            @Arg("The maximum price per unit you are exchanging for")
+                                @Switch("maxPPU") Integer maxPPU,
+                            @Arg("If prices are negotiable")
+                                @Switch("n") Boolean negotiable,
+                            @Arg("When the offer is no longer available")
+                                @Switch("e") @Timediff Long expire,
+                            @Arg("The resources you will exchange for")
+                                @Switch("x") List<ResourceType> exchangeFor,
+                            @Arg("The equivalent price per unit you will accept for each resource")
+                                @Switch("p") Map<ResourceType, Double> exchangePPU,
                             @Switch("f") boolean force) {
         if (expire > TimeUnit.DAYS.toMillis(30)) {
             return "Expiry cannot be longer than 30 days.";
@@ -428,8 +478,10 @@ public class TradeCommands {
     }
 
 
-    @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"})
-    public String GlobalTradeAverage(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager, @Timestamp long time) {
+    @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"}, desc = "Get the average trade price of resources over a period of time")
+    public String GlobalTradeAverage(@Me JSONObject command, @Me IMessageIO channel,
+                                     @Arg("Time to average over (from today)")
+                                     @Timestamp long time) {
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = Locutus.imp().getTradeManager().getAverage(time);
 
         Map<ResourceType, Double> lowMap = averages.getKey();
@@ -466,10 +518,10 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(aliases = {"GlobalTradeVolume", "gtv", "tradevolume"})
+    @Command(aliases = {"GlobalTradeVolume", "gtv", "tradevolume"},
+            desc = "Get the change in trade volume of each resource over a period of time")
     public String GlobalTradeVolume(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager) {
         TradeManager trader = Locutus.imp().getTradeManager();
-        String refreshEmoji = "Refresh";
 
         List<String> resourceNames = new ArrayList<>();
         List<String> daily = new ArrayList<>();
@@ -510,8 +562,16 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Show resource value", aliases = {"resourcevalue", "convertedtotal"})
-    public String convertedTotal(Map<ResourceType, Double> resources, @Switch("n") boolean normalize, @Switch("b") boolean useBuyPrice, @Switch("s") boolean useSellPrice, @Switch("t") ResourceType convertType) {
+    @Command(desc = "Show the total market value of resource amounts", aliases = {"resourcevalue", "convertedtotal"})
+    public String convertedTotal(Map<ResourceType, Double> resources,
+                                 @Arg("Remove negative amounts and return the scaled resource amounts of equivalent value")
+                                 @Switch("n") boolean normalize,
+                                 @Arg("Use the average buying price")
+                                 @Switch("b") boolean useBuyPrice,
+                                 @Arg("Use the average selling price")
+                                 @Switch("s") boolean useSellPrice,
+                                 @Arg("Show total value in a resource instead of money")
+                                 @Switch("t") ResourceType convertType) {
         if (normalize) {
             double total = PnwUtil.convertedTotal(resources);
             if (total <= 0) {
@@ -563,8 +623,10 @@ public class TradeCommands {
         return result.toString();
     }
 
-    @Command(desc = "Get the buy/sell margin for each resource")
-    public String tradeMargin(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager, @Switch("p") boolean usePercent) {
+    @Command(desc = "Get the margin between buy and sell for each resource")
+    public String tradeMargin(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager,
+                              @Arg("Display the margin percent instead of absolute difference")
+                              @Switch("p") boolean usePercent) {
         TradeManager trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "Refresh";
 
@@ -600,7 +662,7 @@ public class TradeCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Get the current top buy and sell price of each resource")
     public String tradePrice(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager) {
         String refreshEmoji = "Refresh";
 
@@ -637,7 +699,11 @@ public class TradeCommands {
     }
 
     @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.", aliases = {"TradeRanking", "TradeProfitRanking"})
-    public String tradeRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Timestamp long time, @Switch("a") boolean groupByAlliance, @Switch("u") boolean uploadFile) {
+    public String tradeRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations,
+                               @Arg("Date to start from")
+                               @Timestamp long time,
+                               @Arg("Group by alliance instead of nation")
+                               @Switch("a") boolean groupByAlliance, @Switch("u") boolean uploadFile) {
         Function<DBNation, Integer> groupBy = groupByAlliance ? groupBy = f -> f.getAlliance_id() : f -> f.getNation_id();
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
         Map<Integer, TradeRanking.TradeProfitContainer> tradeContainers = new HashMap<>();
@@ -717,19 +783,12 @@ public class TradeCommands {
         return null;
     }
 
-    public static class TradeProfitContainer {
-        public Map<ResourceType, Long> netOutflows = new HashMap<>();
-        public Map<ResourceType, Long> inflows = new HashMap<>();
-        public Map<ResourceType, Long> outflow = new HashMap<>();
-        public Map<ResourceType, Long> purchases = new HashMap<>();
-        public Map<ResourceType, Long> purchasesPrice = new HashMap<>();
-        public Map<ResourceType, Long> sales = new HashMap<>();
-        public Map<ResourceType, Long> salesPrice = new HashMap<>();
-    }
-
-    @Command
+    @Command(desc = "Generate a google sheet of the amount traded of each resource at each price point over a period of time\n" +
+            "Credits are grouped by 10,000, food by 10, everything else is actual price")
     @RolePermission(Roles.MEMBER)
-    public String trending(@Me IMessageIO channel, @Me GuildDB db, @Timestamp long time) throws GeneralSecurityException, IOException {
+    public String trending(@Me IMessageIO channel, @Me GuildDB db,
+                           @Arg("Date to start from")
+                           @Timestamp long time) throws GeneralSecurityException, IOException {
         Map<ResourceType, Map<Integer, LongAdder>> sold = new EnumMap<>(ResourceType.class);
         Map<ResourceType, Map<Integer, LongAdder>> bought = new EnumMap<>(ResourceType.class);
 
@@ -823,8 +882,10 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.")
-    public String tradeProfit(@Me GuildDB db, Set<DBNation> nations, @Timestamp long time) throws GeneralSecurityException, IOException {
+    @Command(desc = "View an accumulation of all the net trades nations have made over a time period")
+    public String tradeProfit(@Me GuildDB db, Set<DBNation> nations,
+                              @Arg("Date to start from")
+                              @Timestamp long time) throws GeneralSecurityException, IOException {
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
 
         List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(time);
@@ -924,8 +985,13 @@ public class TradeCommands {
     }
 
 
-    @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation.")
-    public String moneyTrades(TradeManager manager, DBNation nation, @Timestamp long time, @Switch("f") boolean forceUpdate, @Switch("a") boolean addBalance) throws IOException {
+    @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation\n" +
+            "Money trades are selling resources for close to $0 or buying for very large money amounts")
+    public String moneyTrades(TradeManager manager, DBNation nation,
+                              @Arg("Date to start from")
+                              @Timestamp long time, @Switch("f") boolean forceUpdate,
+                              @Arg("Return a deposits add command for each grouping")
+                              @Switch("a") boolean addBalance) throws IOException {
         if (forceUpdate) {
             manager.updateTradeList(Event::post);
         }
@@ -978,7 +1044,7 @@ public class TradeCommands {
         return response.toString().trim();
     }
 
-    @Command
+    @Command(desc = "Compare the stockpile in the offshore alliance in-game bank to the total account balances of all offshoring alliances/guilds")
     @RolePermission(Roles.ECON)
     public String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db) throws IOException {
         Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
@@ -1063,9 +1129,9 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Generate a graph comparing two resource stockpiles by day")
+    @Command(desc = "Generate a graph comparing market values of two resource amounts by day")
     @RolePermission(value = Roles.MEMBER)
-    public String compareStockpileValueByDay(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int days) throws IOException, GeneralSecurityException {
+    public String compareStockpileValueByDay(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int numDays) throws IOException, GeneralSecurityException {
         Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
@@ -1073,7 +1139,7 @@ public class TradeCommands {
         resources.remove(ResourceType.CREDITS);
         resources.remove(ResourceType.MONEY);
 
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
 
         for (ResourceType type : resources) {
             double curAvg = manager.getHighAvg(type);
@@ -1138,15 +1204,15 @@ public class TradeCommands {
         return "Done!";
     }
 
-    @Command(desc = "Generate a graph of average trade price (buy/sell) by day")
+    @Command(desc = "Generate a graph of average buy and sell trade price by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int days) throws IOException, GeneralSecurityException {
-        if (days <= 1) return "Invalid number of days";
+    public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int numDays) throws IOException, GeneralSecurityException {
+        if (numDays <= 1) return "Invalid number of days";
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
         if (resources.isEmpty()) return "Invalid resources";
 
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
 
         Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
@@ -1193,11 +1259,13 @@ public class TradeCommands {
         return "Done!";
     }
 
-    @Command(desc = "Generate a graph of average trade margin (buy/sell) by day")
+    @Command(desc = "Generate a graph of average trade buy and sell margin by day")
     @RolePermission(value = Roles.MEMBER)
-    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min=1, max=300) int days, @Default("true") boolean percent) throws IOException, GeneralSecurityException {
+    public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min=1, max=300) int numDays,
+                                   @Arg("Use the margin percent instead of absolute difference")
+                                   @Default("true") boolean percent) throws IOException, GeneralSecurityException {
         long now = System.currentTimeMillis();
-        long cutoff = now - TimeUnit.DAYS.toMillis(days + 1);
+        long cutoff = now - TimeUnit.DAYS.toMillis(numDays + 1);
 
         List<DBTrade> allOffers = manager.getTradeDb().getTrades(cutoff);
         Map<Long, List<DBTrade>> offersByDay = new LinkedHashMap<>();
@@ -1284,19 +1352,19 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Generate a graph of average trade volume (buy/sell) by day")
+    @Command(desc = "Generate a graph of average trade buy and sell volume by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
+    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays) throws IOException, GeneralSecurityException {
         String title = "volume by day";
-        rssTradeByDay(title, channel, days, offers -> manager.volumeByResource(offers));
+        rssTradeByDay(title, channel, numDays, offers -> manager.volumeByResource(offers));
         return null;
     }
 
-    @Command(desc = "Generate a graph of average trade total (buy/sell) by day")
+    @Command(desc = "Generate a graph of average trade buy and sell total by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int days) throws IOException, GeneralSecurityException {
+    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays) throws IOException, GeneralSecurityException {
         String title = "total by day";
-        rssTradeByDay(title, channel, days, offers -> manager.totalByResource(offers));
+        rssTradeByDay(title, channel, numDays, offers -> manager.totalByResource(offers));
         return null;
     }
 
@@ -1374,15 +1442,23 @@ public class TradeCommands {
         return offersByDay;
     }
 
-    @Command(desc = "List nations who have bought/sold the most of a resource over a period")
+    @Command(desc = "List nations who have bought and sold the most of a resource over a period")
     @RolePermission(value = Roles.MEMBER)
-    public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db, ResourceType type, boolean isBuy, @Timestamp long cutoff, @Switch("a") boolean groupByAlliance, @Switch("p") boolean includeMoneyTrades) {
+    public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db,
+                             ResourceType type,
+                             @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell,
+                             @Arg("Date to start from")
+                             @Timestamp long cutoff,
+                             @Arg("Group rankings by each nation's current alliance")
+                             @Switch("a") boolean groupByAlliance,
+                             @Arg("Include trades done outside of standard market prices")
+                             @Switch("p") boolean includeMoneyTrades) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<DBTrade> offers = db.getTrades(cutoff);
         if (!includeMoneyTrades) {
             offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
         }
-        int findsign = isBuy ? 1 : -1;
+        int findsign = buyOrSell.equalsIgnoreCase("BUYING") ? 1 : -1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
         Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
@@ -1426,10 +1502,14 @@ public class TradeCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Create an alert when an in-game trade for a resource at an absolute price point")
     @RolePermission(Roles.TRADE_ALERT)
     @WhitelistPermission
-    public String tradeAlertAbsolute(TradeDB db, @Me User  author, ResourceType resource, @ArgChoice(value={"BUY", "SELL"}) String buyOrSell, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+    public String tradeAlertAbsolute(TradeDB db, @Me User  author, ResourceType resource, @ArgChoice(value={"BUY", "SELL"}) String buyOrSell, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow,
+                                     @Arg("Price per unit")
+                                     int ppu,
+                                     @Arg("How long to subscribe for")
+                                     @Timediff long duration) {
         boolean isBuy = buyOrSell.equalsIgnoreCase("buy");
         if (!isBuy && !buyOrSell.equalsIgnoreCase("sell")) {
             return "Invalid category `" + buyOrSell + "`" + ". Must be either `buy` or `sell`";
@@ -1450,10 +1530,14 @@ public class TradeCommands {
                 "\nCheck your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`";
     }
 
-    @Command
+    @Command(desc = "Create an alert when an in-game trade for a resource is past the top price point of the opposite buy or sell offer")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertMistrade(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+    public String tradeAlertMistrade(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow,
+                                     @Arg("Price per unit")
+                                     int ppu,
+                                     @Arg("How long to subscribe for")
+                                     @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
             return "You can only subscribe for a maximum of 30 days";
@@ -1470,10 +1554,14 @@ public class TradeCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Create an alert for specific differences between buy and sell prices for in-game resource trades")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertDisparity(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow, int ppu, @Timediff long duration) {
+    public String tradeAlertDisparity(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={">", ">=", "<", "<="}) String aboveOrBelow,
+                                      @Arg("Price per unit")
+                                      int ppu,
+                                       @Arg("How long to subscribe for")
+                                      @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
             return "You can only subscribe for a maximum of 30 days";
@@ -1490,10 +1578,12 @@ public class TradeCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Create an alert when there are no standing offers for resources in-game")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertNoOffer(TradeDB db, @Me User  author, List<ResourceType> resources, @Timediff long duration) {
+    public String tradeAlertNoOffer(TradeDB db, @Me User  author, List<ResourceType> resources,
+                                    @Arg("How long to subscribe for")
+                                    @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
             return "You can only subscribe for a maximum of 30 days";
@@ -1507,10 +1597,12 @@ public class TradeCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Create an alert when a top offer you have in-game is undercut by another nation")
     @RolePermission(Roles.MEMBER)
     @WhitelistPermission
-    public String tradeAlertUndercut(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={"BUY", "SELL", "*"}) String buyOrSell, @Timediff long duration) {
+    public String tradeAlertUndercut(TradeDB db, @Me User  author, List<ResourceType> resources, @ArgChoice(value={"BUY", "SELL", "*"}) String buyOrSell,
+                                     @Arg("How long to subscribe for")
+                                     @Timediff long duration) {
         long date = System.currentTimeMillis() + duration;
         if (duration > TimeUnit.DAYS.toMillis(30)) {
             return "You can only subscribe for a maximum of 30 days";

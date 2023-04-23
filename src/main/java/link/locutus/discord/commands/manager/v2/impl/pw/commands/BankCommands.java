@@ -400,8 +400,8 @@ public class BankCommands {
                                   @Arg("Do not send ANY money") @Switch("c") boolean noCash,
 
                            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-                           @Arg("The alliance bank to send from") @Switch("a") DBAlliance useAllianceBank,
-                           @Arg("The alliance account to deduct from") @Switch("o") DBAlliance useOffshoreAccount,
+                           @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+                           @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
                            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
@@ -879,8 +879,8 @@ public class BankCommands {
                            @Me User author, @Me DBNation me, @Me GuildDB guildDb, @NationDepositLimit Map<ResourceType, Double> transfer, @Default("#deposit") DepositType.DepositTypeInfo depositType,
 
                            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-                           @Arg("The alliance bank to send from") @Switch("a") DBAlliance useAllianceBank,
-                           @Arg("The alliance account to deduct from") @Switch("o") DBAlliance useOffshoreAccount,
+                           @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+                           @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
                            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                            @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
@@ -991,10 +991,9 @@ public class BankCommands {
     @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     public static String transfer(@Me IMessageIO channel, @Me JSONObject command,
                                   @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.DepositTypeInfo depositType,
-
                                   @Arg("The nation account to deduct from") @Switch("n") DBNation nationAccount,
-                                  @Arg("The alliance bank to send from") @Switch("a") DBAlliance senderAlliance,
-                                  @Arg("The alliance account to deduct from") @Switch("o") DBAlliance allianceAccount,
+                                  @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance senderAlliance,
+                                  @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance allianceAccount,
                                   @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                                   @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                   @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
@@ -1633,8 +1632,8 @@ public class BankCommands {
     public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
 
                                       @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-                                      @Arg("The alliance bank to send from") @Switch("a") DBAlliance useAllianceBank,
-                                      @Arg("The alliance account to deduct from") @Switch("o") DBAlliance useOffshoreAccount,
+                                      @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+                                      @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
                                       @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                                       @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                       @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
@@ -1649,8 +1648,8 @@ public class BankCommands {
 
     public static String transferBulkWithErrors(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
                                         @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-                                        @Arg("The alliance bank to send from") @Switch("a") DBAlliance useAllianceBank,
-                                        @Arg("The alliance account to deduct from") @Switch("o") DBAlliance useOffshoreAccount,
+                                        @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+                                        @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
                                         @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                                         @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                         @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
@@ -2728,7 +2727,7 @@ public class BankCommands {
         OffshoreInstance currentOffshore = root.getOffshore();
         if (currentOffshore != null) {
             if (currentOffshore.getAllianceId() == offshoreAlliance.getAlliance_id()) {
-                return "This guild is already the offshore for this server";
+                return "That guild is already the offshore for this server";
             }
             Set<Integer> aaIds = root.getAllianceIds();
 
