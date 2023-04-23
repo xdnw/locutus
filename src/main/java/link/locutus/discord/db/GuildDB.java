@@ -4251,6 +4251,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public Object parse(GuildDB db, String input) {
+                Role interviewerRole = Roles.INTERVIEWER.toRole(db.getGuild());
+                if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(db.getGuild());
+                if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(db.getGuild());
+                if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(db.getGuild());
+                if (interviewerRole == null) {
+                    throw new IllegalArgumentException("Please use: " + CM.role.setAlias.cmd.toSlashMention() + " to set one of the following:\n" +
+                     StringMan.join(Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS), ", "));
+                }
                 return DiscordUtil.getChannel(db.getGuild(), input);
             }
 

@@ -97,6 +97,14 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
             return "Unable to find or create channel: " + reason;
         }
 
+        Role applicantRole = Roles.APPLICANT.toRole(db.getGuild());
+        if (applicantRole != null) {
+            Member member = guild.getMember(user);
+            if (member == null || !member.getRoles().contains(applicantRole)) {
+                db.getGuild().addRoleToMember(user.getIdLong(), applicantRole).queue();
+            }
+        }
+
         return channel.getAsMention();
     }
 }
