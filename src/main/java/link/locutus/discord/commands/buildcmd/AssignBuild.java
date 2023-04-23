@@ -6,6 +6,9 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -28,7 +31,7 @@ public class AssignBuild extends Command {
         super("AssignBuild", "build", CommandCategory.ECON, CommandCategory.MEMBER);
     }
 
-    public static String build(GuildDB db, DBNation me, int cities, String arg) throws InterruptedException, ExecutionException, IOException {
+    public static String build(@Me IMessageIO io, GuildDB db, DBNation me, int cities, String arg) throws InterruptedException, ExecutionException, IOException {
         JavaCity to = null;
 
         if (arg.contains("/city/")) {
@@ -57,7 +60,11 @@ public class AssignBuild extends Command {
 
         double[] totalArr = new double[ResourceType.values.length];
         Map<Integer, JavaCity> from = me.getCityMap(true);
-        return to.instructions(from, totalArr);
+        String instructions = to.instructions(from, totalArr);
+        String emoji = "Grant";
+        String command = Settings.commandPrefix(true) + "grant %user% " + to.toJson();
+        io.create().embed("Build", instructions).commandButton(command, emoji).send();
+        return null;
     }
 
     @Override
@@ -83,7 +90,7 @@ public class AssignBuild extends Command {
         }
         GuildDB db = Locutus.imp().getGuildDB(event);
 
-        return build(db, me, me.getCities(), args.get(0));
+        return build(new DiscordChannelIO(event), db, me, me.getCities(), args.get(0));
     }
 
     @Override
