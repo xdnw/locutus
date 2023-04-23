@@ -80,8 +80,8 @@ public class BuildCommands {
 
     @Command(desc = "Have the bot provide a pre set build based on city count")
     @RolePermission(Roles.MEMBER)
-    public String assign(@Me GuildDB db, String category, @Default("%user%") DBNation nation, @Default Integer cities) throws IOException, ExecutionException, InterruptedException {
-        return AssignBuild.build(db, nation, cities == null ? nation.getCities() : cities, category);
+    public String assign(@Me IMessageIO io, @Me GuildDB db, String category, @Default("%user%") DBNation nation, @Default Integer cities) throws IOException, ExecutionException, InterruptedException {
+        return AssignBuild.build(io, db, nation, cities == null ? nation.getCities() : cities, category);
     }
 
     @Command(desc = "Print the current city builds being used by a nation")

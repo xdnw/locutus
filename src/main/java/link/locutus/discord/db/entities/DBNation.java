@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.Nation;
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord._test._Custom;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -126,9 +127,8 @@ public class DBNation implements NationOrAlliance {
     private int wars_won;
     private int wars_lost;
     private int tax_id;
-    private double gdp;
+//    private double gdp;
     private double gni;
-
     private transient  DBNationCache cache;
 
     public void processTurnChange(long lastTurn, long turn, Consumer<Event> eventConsumer) {
@@ -203,7 +203,7 @@ public class DBNation implements NationOrAlliance {
         this.wars_lost = wars_lost;
         this.tax_id = tax_id;
         this.gni = gni;
-        this.gdp = gdp;
+//        this.gdp = gdp;
     }
 
     public static DBNation createFromList(String coalition, Collection<DBNation> nations, boolean average) {
@@ -286,7 +286,7 @@ public class DBNation implements NationOrAlliance {
         this.wars_lost = other.wars_lost;
         this.tax_id = other.tax_id;
         this.gni = other.gni;
-        this.gdp = other.gdp;
+//        this.gdp = other.gdp;
     }
 
     @Command
@@ -1300,11 +1300,11 @@ public class DBNation implements NationOrAlliance {
             if (eventConsumer != null) eventConsumer.accept(new NationChangeGNIEvent(copyOriginal, this));
             dirty = true;
         }
-        if (nation.getGross_domestic_product() != null && Math.round((this.gdp - nation.getGross_domestic_product()) * 100) != 0) {
-            this.setGDP(nation.getGross_domestic_product());
-//            if (eventConsumer != null) eventConsumer.accept(new NationChangeGDPEvent(copyOriginal, this));
-            dirty = true;
-        }
+//        if (nation.getGross_domestic_product() != null && Math.round((this.gdp - nation.getGross_domestic_product()) * 100) != 0) {
+//            this.setGDP(nation.getGross_domestic_product());
+////            if (eventConsumer != null) eventConsumer.accept(new NationChangeGDPEvent(copyOriginal, this));
+//            dirty = true;
+//        }
         return dirty;
     }
     public DBAlliancePosition getAlliancePosition() {
@@ -1459,19 +1459,48 @@ public class DBNation implements NationOrAlliance {
         setMeta(key, value.getBytes(StandardCharsets.ISO_8859_1));
     }
 
+    public boolean setMetaRaw(int id, byte[] value) {
+        Int2ObjectArrayMap<byte[]> metaCache = getCache(true).metaCache;
+        boolean changed = false;
+        if (metaCache == null) {
+            cache.metaCache = metaCache = new Int2ObjectArrayMap<>();
+            changed = true;
+        } else {
+            byte[] existing = metaCache.get(id);
+            changed = existing == null || !Arrays.equals(existing, value);
+        }
+        if (changed) {
+            metaCache.put(id, value);
+            return true;
+        }
+        return false;
+    }
+
     public void setMeta(NationMeta key, byte... value) {
-        Locutus.imp().getNationDB().setMeta(nation_id, key, value);
-//        Locutus.imp().getDiscordDB().setInfo(key + "." + getNation_id(), new String(value));
-//        Locutus.imp().getDiscordDB().flush();
+        if (setMetaRaw(key.ordinal(), value)) {
+            Locutus.imp().getNationDB().setMeta(nation_id, key, value);
+        }
     }
 
     public ByteBuffer getMeta(NationMeta key) {
-        byte[] result = Locutus.imp().getNationDB().getMeta(nation_id, key);
+        if (cache == null) {
+            return null;
+        }
+        if (cache.metaCache == null) {
+            return null;
+        }
+        byte[] result = cache.metaCache.get(key.ordinal());
         return result == null ? null : ByteBuffer.wrap(result);
     }
 
     public void deleteMeta(NationMeta key) {
-        Locutus.imp().getNationDB().deleteMeta(nation_id, key);
+        if (cache != null) {
+            if (cache.metaCache != null) {
+                if (cache.metaCache.remove(key.ordinal()) != null) {
+                    Locutus.imp().getNationDB().deleteMeta(nation_id, key);
+                }
+            }
+        }
     }
 
     @Command(desc = "Last fetched spy count")
@@ -2989,7 +3018,7 @@ public class DBNation implements NationOrAlliance {
         double[] knownResources = new double[ResourceType.values.length];
         double[] buffer = new double[knownResources.length];
         LootEntry loot = getBeigeLoot();
-        double convertedTotal = loot.convertedTotal() * 0.14 * lootModifier();
+        double convertedTotal = loot == null ? 0 : loot.convertedTotal() * 0.14 * lootModifier();
 
         if (getPosition() > 1 && alliance_id != 0) {
             Map<ResourceType, Double> aaLoot = Locutus.imp().getWarDb().getAllianceBankEstimate(getAlliance_id(), getScore());
@@ -4154,7 +4183,10 @@ public class DBNation implements NationOrAlliance {
 
     public Map.Entry<Integer, Rank> getAlliancePosition(long date) {
         Map<Integer, Map.Entry<Long, Rank>> history = getAllianceHistory();
+        return getAlliancePosition(history);
+    }
 
+    public Map.Entry<Integer, Rank> getAlliancePosition(Map<Integer, Map.Entry<Long, Rank>> history) {
         int latestAA = alliance_id;
         Rank latestRank = getPositionEnum();
         long latestDate = System.currentTimeMillis();
@@ -4812,9 +4844,9 @@ public class DBNation implements NationOrAlliance {
         this.tax_id = tax_id;
     }
 
-    public void setGDP(double gdp) {
-        this.gdp = gdp;
-    }
+//    public void setGDP(double gdp) {
+//        this.gdp = gdp;
+//    }
 
     public void setGNI(double gni) {
         this.gni = gni;

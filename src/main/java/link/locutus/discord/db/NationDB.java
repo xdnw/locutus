@@ -116,7 +116,9 @@ public class NationDB extends DBMainV2 {
             }
         });
 
-        deleteMetaForDeletedNations();
+        System.out.println("Loading meta...");
+        loadAndPurgeMeta();
+        System.out.println("Done loading nations/meta");
     }
 
     public void deleteExpiredTreaties(Consumer<Event> eventConsumer) {
@@ -2580,25 +2582,37 @@ public class NationDB extends DBMainV2 {
         return result;
     }
 
-    public Map<Integer, ByteBuffer> getAllMeta(NationMeta key) {
-        Map<Integer, ByteBuffer> results = new HashMap<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META where AND key = ?")) {
-            stmt.setInt(1, key.ordinal());
+    public void loadAndPurgeMeta() {
+        List<Integer> toDelete = new ArrayList<>();
+
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt("id");
-                    ByteBuffer buf = ByteBuffer.wrap(rs.getBytes("meta"));
-                    results.put(id, buf);
+                    byte[] data = rs.getBytes("meta");
+
+                    if (id > 0) {
+                        DBNation nation = nationsById.get(id);
+                        if (nation != null) {
+                            nation.setMetaRaw(id, data);
+                        } else {
+                            toDelete.add(id);
+                        }
+                    } else {
+                        DBAlliance alliance = alliancesById.get(id);
+                        if (alliance != null) {
+                            alliance.setMetaRaw(id, data);
+                        } else {
+                            toDelete.add(id);
+                        }
+                    }
+
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return results;
-    }
-
-    public void deleteMetaForDeletedNations() {
-        update("DELETE FROM NATION_META where id > 0 AND id not in (SELECT nation_id FROM NATIONS2)");
+        update("DELETE FROM NATION_META where id in " + StringMan.getString(toDelete));
     }
 
     public void setMeta(int nationId, NationMeta key, byte[] value) {
@@ -2614,24 +2628,6 @@ public class NationDB extends DBMainV2 {
             stmt.setInt(2, ordinal);
             stmt.setBytes(3, value);
         });
-    }
-
-    public byte[] getMeta(int nationId, NationMeta key) {
-        return getMeta(nationId, key.ordinal());
-    }
-    public byte[] getMeta(int nationId, int ordinal) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META where id = ? AND key = ?")) {
-            stmt.setInt(1, nationId);
-            stmt.setInt(2, ordinal);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return rs.getBytes("meta");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     public void deleteMeta(int nationId, NationMeta key) {
@@ -3540,6 +3536,31 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
+
+    public Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> getRemovesByAlliance(Set<Integer> alliances, long cutoff) {
+        return getRemovesByAlliance(Locutus.imp().getNationDB().getRemovesByNationAlliance(alliances, cutoff));
+    }
+    public Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> getRemovesByAlliance(Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> removes) {
+        Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> removesByAlliance = new HashMap<>();
+        for (Map.Entry<Integer, Map<Integer, Map.Entry<Long, Rank>>> entry : removes.entrySet()) {
+            int nationId = entry.getKey();
+            Map<Integer, Map.Entry<Long, Rank>> allianceRanks = entry.getValue();
+
+            for (Map.Entry<Integer, Map.Entry<Long, Rank>> allianceRank : allianceRanks.entrySet()) {
+                int allianceId = allianceRank.getKey();
+                Map.Entry<Long, Rank> dateRank = allianceRank.getValue();
+                long date = dateRank.getKey();
+                Rank rank = dateRank.getValue();
+
+                AbstractMap.SimpleEntry<Integer, Rank> natRank = new AbstractMap.SimpleEntry<>(nationId, rank);
+                AbstractMap.SimpleEntry<Long, Map.Entry<Integer, Rank>> dateNationRank = new AbstractMap.SimpleEntry<>(date, natRank);
+
+                List<Map.Entry<Long, Map.Entry<Integer, Rank>>> kickDates = removesByAlliance.computeIfAbsent(allianceId, k -> new ArrayList<>());
+                kickDates.add(dateNationRank);
+            }
+        }
+        return removesByAlliance;
     }
 
     public Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> getRemovesByNationAlliance(Set<Integer> alliances, long cutoff) {

@@ -294,7 +294,7 @@ public class IACategory {
         String key = "copypasta.interview";
         String body = db.getInfo(key, true);
         if (body != null) {
-            String title = "Welcome to Paradise " + user.getName();
+            String title = "Welcome to " + guild.getName() + " " + user.getName();
             msg.embed(title, body);
         }
 

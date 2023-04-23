@@ -1079,7 +1079,7 @@ public class BankCommands {
         if (PnwUtil.convertedTotal(transfer) > 1000000000L
                 && userId != Settings.INSTANCE.ADMIN_USER_ID
                 && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BANK_USERS.contains(userId)
-                && !isGrant
+                && !isGrant && offshore.getAllianceId() == Settings.INSTANCE.ALLIANCE_ID()
         ) {
             return "Transfer too large. Please specify a smaller amount";
         }

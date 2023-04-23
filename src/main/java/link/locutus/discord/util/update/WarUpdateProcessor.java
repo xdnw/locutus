@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -913,10 +914,7 @@ public class WarUpdateProcessor {
 
         for (Map.Entry<DBAlliance, Double> entry : warRatio.entrySet()) {
             DBAlliance aa = entry.getKey();
-            Set<DBNation> nations = new HashSet<>(aa.getNations(true, 1440, true));
-            nations.removeIf(DBNation::isGray);
-            DBNation total = new SimpleNationList(nations).getTotal();
-            Double ratio = entry.getValue();
+            Set<DBNation> nations = aa.getNations(f -> f.isGray() || f.getPositionEnum().id <= Rank.APPLICANT.id || f.active_m() > 1440 || f.getVm_turns() > 0);
 
             List<DBWar> active = aa.getActiveWars();
             List<DBWar> notableWars = new ArrayList<>();
@@ -967,9 +965,12 @@ public class WarUpdateProcessor {
             boolean warring = isAtWar.getOrDefault(alliance, false);
             if (lastWarring && lastWarRatio > 0.2) warring = true;
 
-
-            alliance.setMeta(AllianceMeta.LAST_BLITZ_PCT, currentRatio);
-            alliance.setMeta(AllianceMeta.IS_WARRING, (byte) (warring ? 1 : 0));
+            if (currentRatio > lastWarRatio || warring != lastWarring) {
+                alliance.setMeta(AllianceMeta.LAST_BLITZ_PCT, currentRatio);
+            }
+            if (warring != lastWarring) {
+                alliance.setMeta(AllianceMeta.IS_WARRING, (byte) (warring ? 1 : 0));
+            }
             if (warring) alliance.setMeta(AllianceMeta.LAST_AT_WAR_TURN, currentTurn);
 
             String body = warInfo.get(alliance);

@@ -1735,16 +1735,23 @@ public Map<ParametricCallable, String> getEndpoints() {
     }
 
     @Command(desc = "List alliances by their new members over a timeframe")
-    public String recruitmentRankings(@Me User author, @Me IMessageIO channel, @Me JSONObject command, @Timestamp long cutoff, @Default("80") int topX, @Switch("u") boolean uploadFile) {
+    public String recruitmentRankings(@Me User author, @Me IMessageIO channel, @Me JSONObject command, @Timestamp long cutoff, @Range(min=1, max=150) @Default("80") int topX, @Switch("u") boolean uploadFile) {
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
 
         Map<DBAlliance, Integer> rankings = new HashMap<DBAlliance, Integer>();
+
+        System.out.println("Getting removes");
+        Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
+        Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> removesByNation = Locutus.imp().getNationDB().getRemovesByNationAlliance(aaIds, cutoff);
+        Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(removesByNation);
+        System.out.println("Done fetching removes ");
 
         for (DBAlliance alliance : alliances) {
             Set<Integer> applied = new HashSet<>();
             Set<DBNation> potentialMembers = new HashSet<>();
 
-            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> rankChanges = alliance.getRankChanges();
+            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> rankChanges = removes.getOrDefault(alliance.getId(), new ArrayList<>());
+
             for (Map.Entry<Long, Map.Entry<Integer, Rank>> change : rankChanges) {
                 Map.Entry<Integer, Rank> natRank = change.getValue();
                 int nationId = natRank.getKey();
@@ -1766,7 +1773,7 @@ public Map<ParametricCallable, String> getEndpoints() {
 
             int total =0;
             for (DBNation nation : potentialMembers) {
-                Map.Entry<Integer, Rank> position = nation.getAlliancePosition(cutoff);
+                Map.Entry<Integer, Rank> position = nation.getAlliancePosition(removesByNation.getOrDefault(nation.getNation_id(), new HashMap<>()));
                 if (position.getKey() == alliance.getAlliance_id() && position.getValue().id >= Rank.MEMBER.id) continue;
                 total++;
             }

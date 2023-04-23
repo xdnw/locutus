@@ -613,7 +613,7 @@ public class NationUpdateProcessor {
                 if (membersInRange > 0) {
                     DiscordUtil.createEmbedCommand(channel, title, finalMsg);
                     if (mentions.length() != 0) {
-                        RateLimitUtil.queueWhenFree(channel.sendMessage("^ " + mentions + " (Opt out via: " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + ")"));
+                        RateLimitUtil.queueWhenFree(channel.sendMessage("^ " + mentions + " (Opt out via: " + CM.alerts.beige.beigeAlertOptOut.cmd.toSlashMention() + ")"));
                     }
                 }
             }

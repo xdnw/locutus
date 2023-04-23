@@ -3708,7 +3708,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public boolean allowed(GuildDB db) {
-                return db.isWhitelisted();
+                return true;
             }
         },
 
@@ -4098,7 +4098,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public <T> boolean hasPermission(GuildDB db, User author, T value) {
-                return db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS);
+                return true;
             }
 
             @Override
@@ -4780,7 +4780,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         REWARD_REFERRAL(false, MEMBER_LEAVE_ALERT_CHANNEL, CommandCategory.ECON) {
             @Override
             public boolean allowed(GuildDB db) {
-                return db.isWhitelisted();
+                return true;
             }
 
             @Override
@@ -4801,7 +4801,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         REWARD_MENTOR(false, Key.INTERVIEW_PENDING_ALERTS, CommandCategory.ECON) {
             @Override
             public boolean allowed(GuildDB db) {
-                return db.isWhitelisted();
+                return true;
             }
 
             @Override
