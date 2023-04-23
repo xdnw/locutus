@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -1872,6 +1873,27 @@ public class WarCommands {
         sheet.set(0, 0);
 
         sheet.attach(io.create()).send();
+        return null;
+    }
+
+
+    @Command(desc = "Convert hidude's sheet format to Locutus")
+    @RolePermission(Roles.MILCOM)
+    public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+                                        @Arg("If results (left column) are grouped by the attacker instead of the defender")
+                                        @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
+        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsDTC(input, groupByAttacker, forceUpdate);
+
+        if (output == null) {
+            output = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+        }
+
+        generateSpySheet(output, spyOpsFiltered, groupByAttacker);
+
+        output.clearAll();
+        output.set(0, 0);
+
+        output.send(io, null, author.getAsMention()).send();
         return null;
     }
 

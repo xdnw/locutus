@@ -412,6 +412,39 @@ public class SpyBlitzGenerator {
         return spyOpsFiltered;
     }
 
+    public static Map<DBNation, List<Spyop>> getTargetsDTC(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
+        List<List<Object>> rows = sheet.get("A:Z", f -> f.setValueRenderOption("FORMULA"));
+
+        List<Spyop> allOps = new ArrayList<>();
+        Set<DBNation> update = forceUpdate ? new HashSet<>() : null;
+
+        List<Object> header = rows.get(4);
+        for (int i = 5; i < rows.size(); i++) {
+            List<Object> row = rows.get(i);
+            if (row.size() < 9) continue;
+
+            DBNation attacker = DiscordUtil.parseNation(row.get(0).toString());
+
+            Spyop op1 = createOp(attacker, row.get(2) + "", row.get(3) + "", row.get(4) + "", update);
+            Spyop op2 = createOp(attacker, row.get(6) + "", row.get(7) + "", row.get(8) + "", update);
+
+            if (op1 == null) System.out.println("OP is null");
+
+            if (op1 != null) allOps.add(op1);
+            if (op1 != null) allOps.add(op2);
+        }
+
+        Map<DBNation, List<Spyop>> spyOpsFiltered = new LinkedHashMap<>();
+        for (Spyop op : allOps) {
+            if (groupByAttacker) {
+                spyOpsFiltered.computeIfAbsent(op.attacker, f -> new ArrayList<>()).add(op);
+            } else {
+                spyOpsFiltered.computeIfAbsent(op.defender, f -> new ArrayList<>()).add(op);
+            }
+        }
+        return spyOpsFiltered;
+    }
+
     public static Map<DBNation, List<Spyop>> getTargetsHidude(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
 
         List<List<Object>> rows = sheet.get("A:Z", f -> f.setValueRenderOption("FORMULA"));
@@ -449,10 +482,14 @@ public class SpyBlitzGenerator {
         if (split.length < 4) return null;
 
         String url = split[1];
-        DBNation target = DiscordUtil.parseNation(url);
-        if (target == null) return null;
 
         String type = split[3].toLowerCase();
+        return createOp(att, url, type, safetyStr, update);
+    }
+
+    private static Spyop createOp(DBNation att, String targetStr, String type, String safetyStr, Set<DBNation> update) {
+        DBNation target = DiscordUtil.parseNation(targetStr);
+        if (target == null) return null;
 
         SpyCount.Operation op;
         if (type.contains("spies")) {
