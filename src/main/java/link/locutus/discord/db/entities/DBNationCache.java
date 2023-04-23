@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.util.TimeUtil;
@@ -9,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 public class DBNationCache {
+    public Int2ObjectArrayMap<byte[]> metaCache;
     public long lastCheckEspionageFull;
 
 //    public long lastCheckSpyCasualtiesMs;

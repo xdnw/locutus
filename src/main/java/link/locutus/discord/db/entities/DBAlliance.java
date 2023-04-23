@@ -3,8 +3,12 @@ package link.locutus.discord.db.entities;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
+import it.unimi.dsi.fastutil.ints.Int2ByteArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ByteArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.domains.Alliance;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
@@ -58,9 +62,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
     private NationColor color;
     private volatile long lastUpdated = 0;
     private OffshoreInstance bank;
-
     private LootEntry lootEntry;
     private boolean cachedLootEntry;
+    private Int2ObjectOpenHashMap<byte[]> metaCache = null;
 
     public DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
         this.allianceId = alliance.getId();
@@ -675,15 +679,38 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public void deleteMeta(AllianceMeta key) {
-        Locutus.imp().getNationDB().deleteMeta(-allianceId, key.ordinal());
+        if (metaCache != null && metaCache.remove(key.ordinal()) != null) {
+            Locutus.imp().getNationDB().deleteMeta(-allianceId, key.ordinal());
+        }
+    }
+
+    public boolean setMetaRaw(int id, byte[] value) {
+        if (metaCache == null) {
+            synchronized (this) {
+                if (metaCache == null) {
+                    metaCache = new Int2ObjectOpenHashMap<>();
+                }
+            }
+        }
+        byte[] existing = metaCache.isEmpty() ? null : metaCache.get(id);
+        if (existing == null || !Arrays.equals(existing, value)) {
+            metaCache.put(id, value);
+            return true;
+        }
+        return false;
     }
 
     public void setMeta(AllianceMeta key, byte... value) {
-        Locutus.imp().getNationDB().setMeta(-allianceId, key.ordinal(), value);
+        if (setMetaRaw(key.ordinal(), value)) {
+            Locutus.imp().getNationDB().setMeta(-allianceId, key.ordinal(), value);
+        }
     }
 
     public ByteBuffer getMeta(AllianceMeta key) {
-        byte[] result = Locutus.imp().getNationDB().getMeta(-allianceId, key.ordinal());
+        if (metaCache == null) {
+            return null;
+        }
+        byte[] result = metaCache.get(key.ordinal());
         return result == null ? null : ByteBuffer.wrap(result);
     }
 
