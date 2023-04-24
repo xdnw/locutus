@@ -4033,6 +4033,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 for (BeigeReason value : BeigeReason.values()) {
                     response.append(" - " + value.name() + ": " + value.getDescription()).append("\n");
                 }
+                response.append("\nAlso set: " + CM.coalition.create.cmd.toSlashMention() + " with " + Coalition.ENEMIES);
                 return response.toString();
             }
         },

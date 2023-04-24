@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -28,7 +29,9 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationScoreMap;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -100,19 +103,23 @@ import java.util.stream.Collectors;
 
 public class WarCommands {
 
-    @Command(desc = "Allow receiving automatic beige alerts a certain amount below your current war range")
+    @Command(desc = "Allow receiving automatic beige alerts a certain nation score below your current war range")
     @WhitelistPermission
     @CoalitionPermission(Coalition.RAIDPERMS)
-    public String setBeigeAlertScoreLeeway(@Me DBNation me, double scoreLeeway) {
+    public String setBeigeAlertScoreLeeway(@Me DBNation me,
+                                           @Range(min=0) double scoreLeeway) {
         me.setMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY, scoreLeeway);
         return "Set beige alert score leeway to " + MathMan.format(scoreLeeway) + "ns";
     }
 
     @Command(desc = "Set the required amount of loot for automatic beige alerts\n" +
-            "Defaults to 15m", aliases = {"beigeAlertRequiredLoot", "setBeigeAlertRequiredLoot"})
+            "Defaults to $15m", aliases = {"beigeAlertRequiredLoot", "setBeigeAlertRequiredLoot"})
     @WhitelistPermission
     @CoalitionPermission(Coalition.RAIDPERMS)
-    public String beigeAlertRequiredLoot(@Me DBNation me, double requiredLoot) {
+    public String beigeAlertRequiredLoot(@Me DBNation me,
+                                         @Arg("Require the target to have at least this much estimated loot\n" +
+                                                 "Resources are valued at weekly market average prices")
+                                         double requiredLoot) {
         me.setMeta(NationMeta.BEIGE_ALERT_REQUIRED_LOOT, requiredLoot);
         return "Set beige alert required loot to $" + MathMan.format(requiredLoot);
     }
@@ -131,7 +138,7 @@ public class WarCommands {
         return "Set beige alert mode to " + mode;
     }
 
-    @Command(desc = "Only get the automatic beige alerts if you have the specified status on discord\n" +
+    @Command(desc = "Only get the automatic beige alerts if you have the online status on discord\n" +
             "Note: You will still receive alerts for targets you have subscribed to via `{prefix}alerts beige beigereminders`",
             aliases = {"beigeAlertRequiredStatus", "setBeigeAlertRequiredStatus"})
     @WhitelistPermission
@@ -156,7 +163,7 @@ public class WarCommands {
         return response.toString();
     }
 
-    @Command(desc = "Remove a beige reminder", aliases = {"removeBeigeReminder", "deleteBeigeReminder"})
+    @Command(desc = "Remove your beige reminders", aliases = {"removeBeigeReminder", "deleteBeigeReminder"})
     public String removeBeigeReminder(@Me DBNation me, Set<DBNation> nationsToRemove) {
         Set<DBNation> reminders = Locutus.imp().getNationDB().getBeigeRemindersByAttacker(me);
         Set<DBNation> toRemove = new HashSet<>();
@@ -178,7 +185,13 @@ public class WarCommands {
     @WhitelistPermission
     @CoalitionPermission(Coalition.RAIDPERMS)
     @RolePermission(Roles.BEIGE_ALERT)
-    public String beigeReminder(@Me GuildDB db, @Me DBNation me, @Filter("*,#color=beige,#vm_turns=0,#warrange={score}||*,#vm_turns>0,#vm_turns<168,#warrange={score}") Set<DBNation> targets, @Default Double requiredLoot, @Switch("s") boolean allowOutOfScore) {
+    public String beigeReminder(@Me GuildDB db, @Me DBNation me,
+                                @Filter("*,#color=beige,#vm_turns=0,#warrange={score}||*,#vm_turns>0,#vm_turns<168,#warrange={score}") Set<DBNation> targets,
+                                @Arg("Require targets to have at least this much loot\n" +
+                                 "Resources are valued at weekly market average prices")
+                                @Default Double requiredLoot,
+                                @Arg("Allow targets this much ns below your score range")
+                                @Switch("s") boolean allowOutOfScore) {
         // Check db can do beige alerts
         LeavingBeigeAlert.testBeigeAlert(db, true);
 
@@ -200,7 +213,7 @@ public class WarCommands {
         }
 
         if (targets.isEmpty()) {
-            return "No suitable targets found. Are you sure you specified a nation you are allowed to raid that is currently in beige?";
+            return "No suitable targets found. Are you sure you specified a nation you are allowed to raid (see guild DNR) that is currently in beige and within your score range?";
         }
 
         StringBuilder response = new StringBuilder();
@@ -241,9 +254,12 @@ public class WarCommands {
         return response.toString();
     }
 
-    @Command(desc = "Get a raw list of nones in war range. This is not sorted by loot")
+    @Command(desc = "Get a raw list of alliance-less nations in war range. This is NOT sorted by loot")
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
-    public String raidNone(@Me User author, @Me GuildDB db, @Me DBNation me, Set<DBNation> nations, @Default("5") Integer numResults, @Switch("s") Double score) {
+    public String raidNone(@Me User author, @Me GuildDB db, @Me DBNation me,
+                           @Default("*") Set<DBNation> nations, @Default("5") Integer numResults,
+                           @Arg("The score to use for war range. Defaults to your score")
+                           @Switch("s") Double score) {
         if (score == null) score = me.getScore();
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
@@ -302,14 +318,16 @@ public class WarCommands {
         return response.toString();
     }
 
-    @Command(desc = "List your wars you can possible beige")
+    @Command(desc = "List your wars you are allowed to beige\n" +
+            "As set by this guild's configured beige policy: `ALLOWED_BEIGE_REASONS`")
     @RolePermission(Roles.MEMBER)
-    public String canIBeige(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default DBNation nation) {
+    public String canIBeige(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
+                            @Arg("The nation which is beiging\n" +
+                                    "Defaults to your own nation")
+                            @Default DBNation nation) {
         if (nation == null) nation = me;
         if (nation.getNumWars() == 0) return nation.getNation() + " is not in any wars";
         if (db.getCoalition(Coalition.ENEMIES).contains(nation.getAlliance_id())) return "This command takes your own nation as the argument, not the enemy";
-
-        Map<CityRanges, Set<BeigeReason>> allowedRanges = db.getOrThrow(GuildDB.Key.ALLOWED_BEIGE_REASONS);
 
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
@@ -362,7 +380,15 @@ public class WarCommands {
     private static Map<Integer, Long> alreadySpied = new ConcurrentHashMap<>();
     @Command(desc = "Find nations to gather intel on (sorted by infra * days since last intel)")
     @RolePermission(Roles.MEMBER)
-    public String intel(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default Integer dnrTopX, @Switch("d") boolean useDNR, @Switch("n") DBNation attacker, @Switch("s") Double score) {
+    public String intel(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
+                        @Arg("Exclude nations in the top X alliances (or direct allies)")
+                        @Default Integer dnrTopX,
+                        @Arg("If the alliance Do Not Raid settings are ignore")
+                        @Switch("d") boolean ignoreDNR,
+                        @Arg("The nation gathering intel")
+                        @Switch("n") DBNation attacker,
+                        @Arg("The score range of the nation gathering intel")
+                        @Switch("s") Double score) {
         DBNation finalNation = attacker == null ? me : attacker;
         double finalScore = score == null ? finalNation.getScore() : score;
         if (dnrTopX == null) {
@@ -378,7 +404,7 @@ public class WarCommands {
         Set<Integer> enemyCoalitions = db.getCoalition("enemies");
         Set<Integer> targetCoalitions = db.getCoalition("targets");
 
-        if (useDNR) {
+        if (!ignoreDNR) {
             enemies.removeIf(f -> !raidList.apply(f));
         }
 
@@ -441,7 +467,7 @@ public class WarCommands {
         return "No results found";
     }
 
-    @Command(desc = "Cancel your unblockade request")
+    @Command(desc = "Cancel your requests to have your blockades broken")
     @RolePermission(Roles.MEMBER)
     public String cancelUnblockadeRequest(@Me DBNation me, @Me GuildDB db, @Me User author) {
         Map.Entry<Long, String> existing = me.getUnblockadeRequest();
@@ -488,8 +514,8 @@ public class WarCommands {
         }
 
         TextChannel unblockadeChannel = db.getOrNull(GuildDB.Key.UNBLOCKADE_REQUESTS);
+        StringBuilder response = new StringBuilder();
         if (unblockadeChannel != null) {
-            StringBuilder response = new StringBuilder();
 
             response.append("**ALLY **");
             response.append(author.getAsMention());
@@ -551,24 +577,40 @@ public class WarCommands {
             }
             Role milcom = Roles.MILCOM.toRole(db);
             if (milcom != null) response.append(milcom.getAsMention());
-
-            RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));
+        } else {
+            response.append("Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP);
+            response.append("\nNote: No blockade request channel set. Add one via " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.UNBLOCKADE_REQUESTS + "\n");
 
         }
-
-
-        return "Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP;
+        RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));
+        return null;
     }
 
-    @Command(desc = "Find blockade targets")
+    @Command(desc = "Find nations blockading your allies\n" +
+            "Allies with requests to have their blockade lifted are prioritized")
     @RolePermission(Roles.MEMBER)
     public String unblockade(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me IMessageIO channel,
-                             Set<DBNation> allies,
+                             @Arg("The nations to check for blockades")
+                             @Default Set<DBNation> allies,
+                             @Arg("The list of enemies to check blockading\n" +
+                                     "Defaults to all nations")
                              @Default("*") Set<DBNation> targets,
+                             @Arg("The number of ships used to break the blockade\n" +
+                                     "Defaults to your current number of ships")
                              @Switch("s") Integer myShips,
                              @Switch("r") @Default("5") Integer numResults) throws IOException {
+        if (allies == null) {
+            allies = new HashSet<>();
+            allies.addAll(Locutus.imp().getNationDB().getNations(db.getAllies(true)));
+        }
+        if (allies.isEmpty()) {
+            return "No allies were provided (See: " + CM.coalition.create.cmd.toSlashMention() + " with " + Coalition.ALLIES + ")";
+        }
         allies.removeIf(f -> f.getActive_m() > 1440 || f.getVm_turns() > 0 || f.getPosition() <= 1);
         allies.removeIf(f -> !f.isBlockaded());
+        if (allies.isEmpty()) {
+            return "No allies are blockaded";
+        }
 
         if(myShips== null) myShips = me.getShips();
 
@@ -939,16 +981,23 @@ public class WarCommands {
         return counterChance;
     }
 
-    @Command(desc = "Find nations who aren't protected, or are in an alliance unable to provide suitable counters")
+    @Command(desc = "Find nations who aren't protected, or are in an alliance unable to provide suitable counters\n" +
+            "Not suitable if you have no military")
     @RolePermission(Roles.MEMBER)
-//    @CoalitionPermission(Coalition.RAIDPERMS)
     public String unprotected(@Me IMessageIO channel, @Me GuildDB db, Set<DBNation> targets, @Me DBNation me,
                               @Switch("r") @Default("10") @Range(min=1, max=25) Integer numResults,
+                              @Arg("Ignore the configured Do Not Raid list")
                               @Switch("d") boolean ignoreDNR,
+                              @Arg("Include allies for finding suitable counters")
                               @Switch("a") boolean includeAllies,
+                              @Arg("The nations attacking\n" +
+                               "Defaults to your nation")
                               @Switch("n") Set<DBNation> nationsToBlitzWith,
+                              @Arg("The maximum allowed military strength of the target nation relative to you")
                               @Switch("s") @Default("1.2") Double maxRelativeTargetStrength,
+                              @Arg("The maximum allowed military strength of counters relative to you")
                               @Switch("c") @Default("1.2") Double maxRelativeCounterStrength,
+                              @Arg("Only list targets within range of ALL attackers")
                               @Switch("w") boolean withinAllAttackersRange,
                               @Switch("f") boolean force
     ) {
@@ -1018,22 +1067,29 @@ public class WarCommands {
         return response.toString();
     }
 
-    @Command(desc="Find a weaker war target that you can hit, who is in a specified alliance/coalition/none/*\n" +
-            "Defualts to `enemies` coalition\n" +
-            "Add `-i` to include inactives\n" +
-            "Add `-a` to include applicants\n" +
-            "Add `-p` to only include priority targets\n" +
-            "Add `-w` to only list weak enemies\n" +
-            "Add `-c` to only list enemies with less cities")
+    @Command(desc="Find a war target that you can hit, who is in a specified alliance/coalition/none/*\n" +
+            "Defaults to `enemies` coalition")
     @RolePermission(Roles.MEMBER)
     public String war(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
+                      @Arg("Score to search for targets within war range of\n" +
+                              "Defaults to your score")
                       @Switch("r") Double attackerScore,
+                      @Arg("Include inactive nations in the search\n" +
+                              "Defaults to false")
                       @Switch("i") boolean includeInactives,
+                        @Arg("Include applicants in the search\n" +
+                                "Defaults to false")
                       @Switch("a") boolean includeApplicants,
+                      @Arg("Only list targets with offensive wars they are winning")
                       @Switch("p") boolean onlyPriority,
+                      @Arg("Only list targets weaker than you")
                       @Switch("w") boolean onlyWeak,
+                        @Arg("Only list targets with less cities than you")
                       @Switch("c") boolean onlyLessCities,
+                      @Arg("Return results in direct message")
                       @Switch("d") boolean resultsInDm,
+                      @Arg("Include nations much stronger than you in the search\n" +
+                              "Defaults to false")
                       @Switch("s") boolean includeStrong) throws IOException, ExecutionException, InterruptedException {
         if (resultsInDm) {
             IMessageIO parent = channel;
@@ -1192,23 +1248,32 @@ public class WarCommands {
     }
 
 
-    @Command(desc = "Find a high infra target\n" +
-            "optional alliance and sorting (default: active nations, sorted by top city infra).\n\t" +
+    @Command(desc = "Find a high infrastructure target\n" +
+            "optional alliance and sorting (default: active nations, sorted by damage stimate).\n\t" +
             "To see a list of coalitions, use `{prefix}coalition list`.\n\t" +
-            "Add `-a` To include applicants\n" +
-            "Add `-i` to include inactives\n" +
-            "Add `-w` to filter out nations with strong ground\n" +
-            "Add `-s` to filter out nations with >2 ships\n" +
-            "Add `-m` to sort by mean infra instead of city max\n" +
-            "Add `-c` to sort by city max instead of damage estimate\n" +
-            "Add `-b` to include beige targets" +
-            "Add `-s 1234` to filter by war range (score)")
+            "Damage estimate is based on attacks you can perform (i.e. if you are stronger or have the project for missiles/nukes), and chance of success")
     @RolePermission(Roles.MEMBER)
-    public String damage(@Me IMessageIO channel, @Me DBNation me, @Me User author, Set<DBNation> nations, @Switch("a") boolean includeApps,
-                         @Switch("i") boolean includeInactives, @Switch("w") boolean filterWeak, @Switch("n") boolean noNavy,
-                         @Switch("m") boolean targetMeanInfra, @Switch("c") boolean targetCityMax, @Switch("b") boolean includeBeige,
+    public String damage(@Me IMessageIO channel, @Me DBNation me, @Me User author, Set<DBNation> nations,
+                         @Arg("Include targets which are applicants")
+                         @Switch("a") boolean includeApps,
+                         @Arg("Include targets which are inactive")
+                         @Switch("i") boolean includeInactives,
+                         @Arg("Remove nations with stronger ground than you")
+                         @Switch("w") boolean filterWeak,
+                         @Arg("Only include enemies with no navy")
+                         @Switch("n") boolean noNavy,
+                         @Arg("Sort results by average infrastructure instead of damage estimate")
+                         @Switch("m") boolean targetMeanInfra,
+                         @Arg("Sort results by top city infrastructure instead of damage estimate")
+                         @Switch("c") boolean targetCityMax,
+                         @Arg("Include targets currently on beige")
+                         @Switch("b") boolean includeBeige,
                          @Switch("d") boolean resultsInDm,
+                         @Arg("Score to search for targets within war range of\n" +
+                                 "Defaults to your score")
                          @Switch("s") Double warRange,
+                         @Arg("Exclude targets with ships equal to this multiple relative to yours\n" +
+                                 "i.e. `1.0` would be nations with ships equal or less than yours")
                          @Switch("n") Double relativeNavalStrength) {
         nations.removeIf(f -> f.getDef() >= 3);
         nations.removeIf(f -> f.getVm_turns() != 0);
@@ -1348,12 +1413,21 @@ public class WarCommands {
         return cost;
     }
 
-    @Command(desc = "Find a nation to do a spy op against the specified enemy\n" +
+    @Command(desc = "Find nations to do a spy op against the specified enemy\n" +
                     "Op types: (INTEL,NUKE,MISSILE,SHIPS,AIRCRAFT,TANKS,SPIES,SOLDIER) or `*` (for all op types)\n" +
                     "The alliance argument is optional\n" +
                     "Use `success>80` to specify a cutoff for spyop success")
     @RolePermission(Roles.MEMBER)
-    public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation enemy, Set<SpyCount.Operation> operations, @Default Set<DBNation> counterWith, @Switch("s") @Range(min=0, max=100) Integer minSuccess) throws ExecutionException, InterruptedException, IOException {
+    public String Counterspy(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
+                             @Arg("The enemy to spy")
+                             DBNation enemy,
+                             @Arg("The allowed spy operations")
+                             Set<SpyCount.Operation> operations,
+                             @Arg("The nations doing the spy ops on the enemy\n" +
+                              "Defaults to nations in the alliance")
+                             @Default Set<DBNation> counterWith,
+                             @Arg("Required success rate for the spy op")
+                             @Switch("s") @Range(min=0, max=100) Integer minSuccess) throws ExecutionException, InterruptedException, IOException {
         if (operations.isEmpty()) throw new IllegalArgumentException("Valid operations: " + StringMan.getString(SpyCount.Operation.values()));
         if (counterWith == null) {
             counterWith = new HashSet<>(Locutus.imp().getNationDB().getNations(db.getAllianceIds()));
@@ -1453,13 +1527,25 @@ public class WarCommands {
     }
 
     @Command(aliases = {"spyop", "spyops"},
-    desc = "Find the optimal spy ops to use:\n" +
-            "Use `*` for the alliance to only include active wars against allies\n" +
+    desc = "List enemies and spy operation by the highest damage:\n" +
+            "Use `*` for the alliance to target enemies with active wars against allies\n" +
             "Use `*` for op type to automatically find the best op type\n" +
-            "Use `success>80` to specify a cutoff for spyop success\n\n" +
+            "Use e.g. `80` as the `requiredSuccess` to only list operations above 80% success\n\n" +
             "e.g. `{prefix}spy find target targets:enemies operations:spies`")
     @RolePermission(Roles.MEMBER)
-    public String Spyops(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, Set<DBNation> targets, Set<SpyCount.Operation> operations, @Default("40") @Range(min=0,max=100) int requiredSuccess, @Switch("d") boolean directMesssage, @Switch("k") boolean prioritizeKills,
+    public String Spyops(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
+                         @Arg("The allowed targets")
+                         Set<DBNation> targets,
+                         @Arg("The allowed operations")
+                         Set<SpyCount.Operation> operations,
+                         @Arg("The required chance of success for an operation")
+                         @Default("40") @Range(min=0,max=100) int requiredSuccess,
+                         @Arg("Return results as a discord direct message")
+                         @Switch("d") boolean directMesssage,
+                         @Arg("Sort by unit kills instead of damage")
+                         @Switch("k") boolean prioritizeKills,
+                         @Arg("The nation doing the spy operation\n" +
+                                 "Defaults to your nation")
                          @Switch("n") DBNation attacker) throws ExecutionException, InterruptedException, IOException {
         DBNation finalNation = attacker == null ? me : attacker;
 
@@ -1629,7 +1715,7 @@ public class WarCommands {
     }
 
     // Command that generates a sheet of raidable targets
-    @Command(desc = "Generate a sheet of raid targets")
+//    @Command(desc = "Generate a sheet of raid targets")
     @RolePermission(Roles.MILCOM)
     public String raidSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> attackers, Set<DBNation> targets, @Range(min=1,max=25) @Default("5") int numTargets, @Switch("i") boolean includeInactiveAttackers, @Switch("a") boolean includeApplicantAttackers, @Switch("b") boolean includeBeigeAttackers) throws GeneralSecurityException, IOException {
         if (!includeInactiveAttackers) {
@@ -1769,8 +1855,16 @@ public class WarCommands {
             "Add `-d` to list targets currently on the dnr\n\n" +
             "e.g. `{prefix}sheets_milcom intelopsheet time:10d attacker:Rose dnrtopx:25`")
     @RolePermission(Roles.MILCOM)
-    public String IntelOpSheet(@Me IMessageIO io, @Me GuildDB db, @Timestamp long time, Set<DBNation> attackers, @Default() Integer dnrTopX,
-                               @Switch("l") boolean ignoreWithLootHistory, @Switch("d") boolean ignoreDNR, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String IntelOpSheet(@Me IMessageIO io, @Me GuildDB db, @Timestamp long time, Set<DBNation> attackers,
+                               @Arg("Exclude nations in the top X alliances (or direct allies)")
+                               @Default() Integer dnrTopX,
+                               @Arg("If nations with loot history are ignored")
+                               @Switch("l") boolean ignoreWithLootHistory,
+                               @Arg("If the alliance Do Not Raid settings are checked")
+                               @Switch("d") boolean ignoreDNR,
+                               @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+
+        if (ignoreWithLootHistory) time = 0;
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
         }
@@ -1796,13 +1890,12 @@ public class WarCommands {
         enemies.removeIf(f -> f.getAvg_infra() < 300);
         enemies.removeIf(f -> f.getDef() >= 3);
 
-        long currentDate = System.currentTimeMillis();
         Map<DBNation, Double> opValueMap = new HashMap<>();
 
         Iterator<DBNation> iter = enemies.iterator();
         while (iter.hasNext()) {
             DBNation nation = iter.next();
-            Map.Entry<Double, Boolean> opValue = nation.getIntelOpValue();
+            Map.Entry<Double, Boolean> opValue = nation.getIntelOpValue(time);
             if (opValue == null) {
                 iter.remove();
 
@@ -1875,9 +1968,11 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert hidude's sheet format to locutus")
+    @Command(desc = "Convert hidude's sheet format to Locutus")
     @RolePermission(Roles.MILCOM)
-    public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
+    public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+                                        @Arg("If results (left column) are grouped by the attacker instead of the defender")
+                                        @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsHidude(input, groupByAttacker, forceUpdate);
 
         if (output == null) {
@@ -1895,7 +1990,9 @@ public class WarCommands {
 
     @Command(desc = "Convert TKR's sheet format to locutus")
     @RolePermission(Roles.MILCOM)
-    public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
+    public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+                                     @Arg("If results (left column) are grouped by the attacker instead of the defender")
+                                     @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, forceUpdate);
 
         if (output == null) {
@@ -1911,35 +2008,23 @@ public class WarCommands {
         return null;
     }
 
-    private void createOp(DBNation att, DBNation def, String type, String safety) {
-        type = type.toLowerCase();
-        SpyCount.Operation op;
-        if (type.contains("spies")) {
-            op = SpyCount.Operation.SPIES;
-        } else if (type.contains("tank")) {
-            op = SpyCount.Operation.TANKS;
-        } else if (type.contains("nuke") || type.contains("nuclear")) {
-            op = SpyCount.Operation.NUKE;
-        } else if (type.contains("missile")) {
-            op = SpyCount.Operation.MISSILE;
-        } else if (type.contains("soldier")) {
-            op = SpyCount.Operation.SOLDIER;
-        } else if (type.contains("ship") || type.contains("navy")) {
-            op = SpyCount.Operation.SHIPS;
-        } else if (type.contains("aircraft") || type.contains("plane")) {
-            op = SpyCount.Operation.AIRCRAFT;
-        } else if (type.contains("intel")) {
-            op = SpyCount.Operation.INTEL;
-        } else {
-            throw new IllegalArgumentException("Unknown op type " + type);
-        }
-
-//        spyOp = new SpyCount.SpyOp(op)
-    }
-
-    @Command(desc = "List only spy targets for your specific alliance")
+    @Command(desc = "Generate a subset of a spy sheet for only certain attackers or defenders")
     @RolePermission(Roles.MILCOM)
-    public String listSpyTargets(@Me IMessageIO io, @Me User author, @Me GuildDB db, SpreadSheet spySheet, Set<DBNation> attackers, @Default("*") Set<DBNation> defenders, @Switch("h") Integer headerRow, @Switch("s") SpreadSheet output, @Switch("a") boolean groupByAttacker) throws GeneralSecurityException, IOException {
+    public String listSpyTargets(@Me IMessageIO io, @Me User author, @Me GuildDB db,
+                                 @Arg("The current spy sheet")
+                                 SpreadSheet spySheet,
+                                 @Arg("Which attackers to include")
+                                 Set<DBNation> attackers,
+                                 @Arg("Which defenders to include\n" +
+                                         "Default: All")
+                                 @Default("*") Set<DBNation> defenders,
+                                 @Arg("The row the header is on\n" +
+                                         "Default: 1st row")
+                                 @Switch("h") Integer headerRow,
+                                 @Arg("Sheet to put the subset in")
+                                 @Switch("s") SpreadSheet output,
+                                 @Arg("Group the spy operations (left column) by attacker")
+                                 @Switch("a") boolean groupByAttacker) throws GeneralSecurityException, IOException {
         if (headerRow == null) headerRow = 0;
         Map<DBNation, Set<Spyop>> spyOps = SpyBlitzGenerator.getTargets(spySheet, headerRow, false);
 
@@ -1976,15 +2061,24 @@ public class WarCommands {
 
     }
 
-    @Command(desc = "Generate a spy blitz sheet")
+    @Command(desc = "Generate a spy blitz sheet with the defender on the left and attackers on the right")
     @RolePermission(Roles.MILCOM)
-    public String SpySheet(@Me IMessageIO io, @Me User author, @Me GuildDB db, Set<DBNation> attackers, Set<DBNation> defenders, @Default("nuke,missile,ships,aircraft,tanks,spies") Set<SpyCount.Operation> allowedTypes,
+    public String SpySheet(@Me IMessageIO io, @Me User author, @Me GuildDB db,
+                           Set<DBNation> attackers,
+                           Set<DBNation> defenders,
+                           @Arg("Allowed spy operations")
+                           @Default("nuke,missile,ships,aircraft,tanks,spies") Set<SpyCount.Operation> allowedTypes,
+                           @Arg("Force an update of all participant spy count")
                            @Switch("f") boolean forceUpdate,
+                           @Arg("Check the defensive spy slots")
                            @Switch("e") boolean checkEspionageSlots,
 //                           @Switch("r") Integer requiredSpies,
+                           @Arg("Prioritize unit kills instead of damage")
                            @Switch("k") boolean prioritizeKills,
                            @Switch("s") SpreadSheet sheet,
-                           @Switch("d") @Default("3") Integer maxDef,
+                           @Arg("Max Attackers to assign per defender")
+                           @Range(min=1) @Switch("d") @Default("3") Integer maxDef,
+                           @Arg("Prioritize defenders in these alliances")
                            @Switch("p") Set<DBAlliance> prioritizeAlliances) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
@@ -2093,19 +2187,25 @@ public class WarCommands {
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
-    @Command(desc = "Generate a sheet of nation activity from a nation id\n" +
-            "(use normal activity sheet unless you need the activity of a deleted nation)   ")
-    public String ActivitySheetFromId(@Me IMessageIO io, @Me GuildDB db, int nationId, @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
+            "Note: use the other activity sheet need info of a deleted nation\n" +
+            "Days represent the % of that day a nation logs in (UTC)\n" +
+            "Numbers represent the % of that turn a nation logs in")
+    public String ActivitySheetFromId(@Me IMessageIO io, @Me GuildDB db, int nationId,
+                                      @Arg("Date to start from")
+                                      @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         DBNation nation = new DBNation();
         nation.setNation_id(nationId);
         return ActivitySheet(io, db, Collections.singleton(nation), trackTime, sheet);
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
-    @Command(desc = "Generate a sheet of nation activity\n" +
+    @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in")
-    public String ActivitySheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String ActivitySheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+                                @Arg("Date to start from")
+                                @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVITY_SHEET);
         }
@@ -2168,11 +2268,11 @@ public class WarCommands {
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
-    @Command(desc = "Generate a sheet of alliance/nation/city MMR\n" +
-            "Add `-f` to force an update\n" +
-            "Add `-c` to list it by cities")
+    @Command(desc = "Generate a sheet of alliance/nation/city military unit and building counts (MMR)")
     public String MMRSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet,
-                           @Switch("f") boolean forceUpdate, @Switch("c") boolean showCities) throws GeneralSecurityException, IOException {
+                           @Switch("f") boolean forceUpdate,
+                           @Arg("List the military building count of each city instead of each nation")
+                           @Switch("c") boolean showCities) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.MMR_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "city",
@@ -2361,11 +2461,17 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command
-    public String DeserterSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBAlliance> alliances, @Timestamp long cuttOff,
+    @Command(desc = "Generate a sheet of nations who have left the provided alliances over a timeframe")
+    public String DeserterSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBAlliance> alliances,
+                                @Arg("Date to start from")
+                                @Timestamp long cuttOff,
+                                @Arg("Only check these nations")
                                 @Default("*") Set<DBNation> filter,
+                                @Arg("Ignore inactive nations")
                                 @Switch("a") boolean ignoreInactive,
+                                @Arg("Ignore vacation mode nations")
                                 @Switch("v") boolean ignoreVM,
+                                @Arg("Ignore nations that are member in an alliance")
                                 @Switch("n") boolean ignoreMembers) throws IOException, GeneralSecurityException {
         Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Map<Integer, Map.Entry<Long, Rank>> removes = new HashMap<>();
@@ -2468,17 +2574,28 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command(desc = "List of nations and their relative military")
-    public String combatantSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBAlliance> alliances) {
-        Set<Integer> alliancesIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
-        List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliancesIds, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
+    @Command(desc = "Generate a sheet of nations and their military units relative to the nations they are fighting")
+    public String combatantSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+                                 @Arg("Include inactive nations (2 days)")
+                                 @Switch("i") boolean includeInactive,
+                                 @Switch("a") boolean includeApplicants) {
+        if (!includeInactive) nations.removeIf(f -> f.active_m() > 2880);
+        if (!includeApplicants) nations.removeIf(f -> f.getPositionEnum().id <= Rank.APPLICANT.id);
+        nations.removeIf(f -> f.getVm_turns() > 0);
+
+        Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+        Collection<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(nationIds::contains, f -> switch (f.status) {
+            case DEFENDER_OFFERED_PEACE, ACTIVE, ATTACKER_OFFERED_PEACE -> true;
+            default ->  false;
+
+        }).values();
         wars.removeIf(w -> {
             DBNation n1 = Locutus.imp().getNationDB().getNation(w.attacker_id);
             DBNation n2 = Locutus.imp().getNationDB().getNation(w.defender_id);
             if (n1 == null || n2 == null) {
                 return true;
             }
-            DBNation self = alliances.contains(n1.getAlliance_id()) ? n1 : n2;
+            DBNation self = nations.contains(n1) ? n1 : n2;
             return n1.getActive_m() > 4320 || n2.getActive_m() > 4320 || self.getPosition() <= 1;
         });
 
@@ -2486,7 +2603,6 @@ public class WarCommands {
 
         Map<DBWar, WarCard> warMap = new HashMap<>();
 
-        int i = 0;
         for (DBWar war : wars) {
             WarCard card = new WarCard(war, true);
             if (!card.isActive()) continue;
@@ -2645,9 +2761,14 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command(desc = "Run checks on a spy blitz sheet.\nChecks that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.\n" +
+    @Command(desc = "Run checks on a spy blitz sheet.\n" +
+            "Checks that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.\n" +
             "Add `true` for the day-change argument to double the offensive op limit")
-    public String validateSpyBlitzSheet(@Me GuildDB db, SpreadSheet sheet, @Default("false") boolean dayChange, @Default("*") Set<DBNation> filter) {
+    public String validateSpyBlitzSheet(@Me GuildDB db, SpreadSheet sheet,
+                                        @Arg("If the sheet is for attacks at day change")
+                                        @Default("false") boolean dayChange,
+                                        @Arg("Only allow attacking these nations")
+                                        @Default("*") Set<DBNation> filter) {
         StringBuilder response = new StringBuilder();
 
         Function<DBNation, Integer> maxWarsFunc = new Function<DBNation, Integer>() {
@@ -2675,14 +2796,42 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command
-    public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me IMessageIO channel,
-                              @Default String warsheet, @Default String spysheet,
-                              @Default("*") Set<DBNation> allowedNations, @Default("") String header,
-                              @Switch("l") boolean sendFromLocalAccount,
+    @Command(desc = "Send spy or war blitz sheets to individual nations")
+    public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me IMessageIO channel, @Me DBNation me,
+                              @Arg("Url of the war blitz sheet to send")
+                              @Default SpreadSheet blitzSheet,
+                              @Arg("Url of the spy sheet to send")
+                              @Default SpreadSheet spySheet,
+                              @Arg("What nations to send to")
+                              @Default("*") Set<DBNation> allowedNations,
+                              @Arg("Text to prepend to the target instructions being sent")
+                              @Default("") String header,
+
+                              @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount,
+                              @Arg("The api key to use to send the mail") @Switch("a") String apiKey,
                               @Switch("f") boolean force,
+                              @Arg("Send instructions as direct message on discord")
                               @Switch("d") boolean dm) throws IOException, GeneralSecurityException {
-        if (!Roles.MAIL.has(author, guild)) {
+
+        ApiKeyPool.ApiKey myKey = me.getApiKey(false);
+        ApiKeyPool key = null;
+        if (apiKey != null) {
+            Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(apiKey);
+            if (nation == null) return "Invalid API key";
+            key = ApiKeyPool.create(nation, apiKey);
+        }
+        if (key == null) {
+            if ((sendFromGuildAccount || myKey == null)) {
+                key = db.getMailKey();
+            } else {
+                key = ApiKeyPool.builder().addKey(myKey).build();
+            }
+        }
+        if (key == null){
+            return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + " or specify `sendFromGuildAccount` or `apiKey` in the command";
+        }
+
+        if (header != null && !header.isEmpty() && !Roles.MAIL.has(author, guild)) {
             return "You need the MAIL role on discord (see " + CM.role.setAlias.cmd.toSlashMention() + ") to add the custom message: `" + header + "`";
         }
         Map<DBNation, Set<DBNation>> warDefAttMap = new HashMap<>();
@@ -2691,24 +2840,19 @@ public class WarCommands {
 
         if (dm && !Roles.ADMIN.hasOnRoot(author)) return "You do not have permission to dm users";
 
-        if (warsheet != null) {
-            SpreadSheet blitzSheet = SpreadSheet.create(warsheet);
+        if (blitzSheet != null) {
             warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, 1.75, true, true, false, f -> true, (a, b) -> {});
         }
 
-        if (spysheet != null) {
-            SpreadSheet spySheetObj = SpreadSheet.create(spysheet);
+        if (spySheet != null) {
             try {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheetObj, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
-                spyOps = SpyBlitzGenerator.getTargets(spySheetObj, 0);
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
+                spyOps = SpyBlitzGenerator.getTargets(spySheet, 0);
             } catch (NullPointerException e) {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheetObj, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
-                spyOps = SpyBlitzGenerator.getTargets(spySheetObj, 4);
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {});
+                spyOps = SpyBlitzGenerator.getTargets(spySheet, 4);
             }
         }
-
-        ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
         Map<DBNation, Set<DBNation>> spyAttDefMap = BlitzGenerator.reverse(spyDefAttMap);
@@ -2866,7 +3010,7 @@ public class WarCommands {
             String body = entry.getValue().getValue();
 
             try {
-                attacker.sendMail(keys, subject, body);
+                attacker.sendMail(key, subject, body);
             } catch (Throwable e) {
                 mailErrors.put(attacker, (e.getMessage() + " ").split("\n")[0]);
                 continue;
@@ -2927,7 +3071,14 @@ public class WarCommands {
     @RolePermission(Roles.MILCOM)
     @Command(desc="Run checks on a blitz sheet\n" +
             "Check that all nations are in range of their blitz targets, are still in the alliance and have no more than the provided number of offensive wars")
-    public String ValidateBlitzSheet(SpreadSheet sheet, @Default("3") int maxWars, @Default("*") Set<DBNation> nationsFilter, @Switch("h") Integer headerRow) {
+    public String ValidateBlitzSheet(SpreadSheet sheet,
+                                     @Arg("Max wars per attacker")
+                                     @Default("3") int maxWars,
+                                     @Arg("Only allow attacking these nations")
+                                     @Default("*") Set<DBNation> nationsFilter,
+                                     @Arg("Which row of the sheet has the header\n" +
+                                             "Default: 1st row")
+                                     @Switch("h") Integer headerRow) {
         Function<DBNation, Boolean> isValidTarget = f -> nationsFilter.contains(f);
 
         StringBuilder response = new StringBuilder();
@@ -2957,33 +3108,57 @@ public class WarCommands {
     }
 
 
-    @Command(desc = "Generates a Blitz sheet.\n" +
-            "`attackers`: are the nations that should be used for the attackers (can be a google sheet)\n" +
-            "`defenders`: are the nations that should be used for the defenders\n" +
-            "`max-off`: How many offensive slots a nation can have (defaults to 3)\n" +
-            "`same-aa-priority`: Value between 0 and 1 to prioritize assigning a target to nations in the same AA\n" +
-            "`same-activity-priority`: Value between 0 and 1 to prioritize assigning targets to nations with similar activity patterns\n" +
-            "`turn`: The turn in the day (between 0 and 11) when you expect the blitz to happen\n" +
-            "`att-activity-threshold`: A value between 0 and 1 to filter out attackers below this level of daily activity (default: 0.5, which is 50%)\n" +
-            "`def-activity-threshold`: A value between 0 and 1 to filter out defenders below this level of activity (default: 0.1)\n" +
-            "`guilds`: A comma separated list of discord guilds (their id), to use to check nation activity/roles (nations must be registered)\n\n" +
-            "Add `-w` to process existing wars\n" +
-            "Add `-e` to only assign down declares")
+    @Command(desc = "Generates a a blitz sheet\n" +
+            "A blitz sheet contains a list of defenders (left column) and auto assigns attackers (right columns)\n" +
+            "Note: If the blitz sheet generated has a lot of city updeclares or unslotted enemies it is recommended to go through and remove low priority defenders\n" +
+            " - Low priority could be enemies without a recent offensive war, inactive, low military, or poor activity\n" +
+            " - Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`" +
+            "Note: To avoid updeclares enable `onlyEasyTargets`")
     @RolePermission(Roles.MILCOM)
-    public String blitzSheet(@Me IMessageIO io, @Me User author, @Me GuildDB db, Set<DBNation> attNations, Set<DBNation> defNations, @Default("3") @Range(min=1,max=5) int maxOff,
-                             @Default("0") double sameAAPriority, @Default("0") double sameActivityPriority, @Default("-1") @Range(min=-1,max=11) int turn,
-                             @Default("0") double attActivity, @Default("0") double defActivity,
+    public String blitzSheet(@Me IMessageIO io, @Me User author, @Me GuildDB db,
+                             @Arg("Nations that should be used for the attackers\n" +
+                                     "It is recommended to use a google sheet of the attackers available")
+                             NationList attNations,
+
+                             @Arg("Nations that should be used for the defenders\n" +
+                                     "It is recommended to use a google sheet of the priority defenders (unless you are sure you can hit every nation)")
+                             NationList defNations,
+                             @Arg("How many offensive slots a nation can have (defaults to 3)")
+                             @Default("3") @Range(min=1,max=5) int maxOff,
+                             @Arg("Value between 0 and 1 to prioritize assigning a target to nations in the same alliance\n" +
+                                     "Default: 0")
+                             @Default("0") double sameAAPriority,
+                             @Arg("Value between 0 and 1 to prioritize assigning targets to nations with similar activity patterns\n" +
+                                     "Recommended not to use if you know who is attacking")
+                             @Default("0") double sameActivityPriority,
+                             @Arg("The turn in the day (between 0 and 11) when you expect the blitz to happen")
+                             @Default("-1") @Range(min=-1,max=11) int turn,
+                             @Arg("A value between 0 and 1 to filter out attackers below this level of daily activity (default: 0, which is 0%)\n" +
+                                     "Recommend using if you did not provide a sheet of attackers")
+                             @Default("0") double attActivity,
+                             @Arg("A value between 0 and 1 to filter out defenders below this level of activity (default: 0)\n" +
+                                     "Recommend using if you did not provide a sheet of defenders")
+                             @Default("0") double defActivity,
+                             @Arg("Factor in existing wars of attackers and defenders\n" +
+                                     "i.e. To determine slots available and nation strength")
                              @Switch("w") boolean processActiveWars,
+                             @Arg("Only assign down declares")
                              @Switch("e") boolean onlyEasyTargets,
+                             @Arg("Maximum ratio of defender cities to attacker\n" +
+                                     "e.g. A value of 1.5 means defenders can have 1.5x more cities than the attacker")
                              @Switch("c") Double maxCityRatio,
+                             @Arg("Maximum ratio of defender ground strength to attacker\n" +
+                                     "e.g. A value of 1.5 means defenders can have 1.5x more ground strength than the attacker")
                              @Switch("g") Double maxGroundRatio,
+                             @Arg("Maximum ratio of defender aircraft to attacker\n" +
+                                     "e.g. A value of 1.5 means defenders can have 1.5x more aircraft than the attacker")
                              @Switch("a") Double maxAirRatio,
                              @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         Set<Long> guilds = new HashSet<>();
 
         BlitzGenerator blitz = new BlitzGenerator(turn, maxOff, sameAAPriority, sameActivityPriority, attActivity, defActivity, guilds, processActiveWars);
-        blitz.addNations(attNations, true);
-        blitz.addNations(defNations, false);
+        blitz.addNations(attNations.getNations(), true);
+        blitz.addNations(defNations.getNations(), false);
         if (processActiveWars) blitz.removeSlotted();
 
         Map<DBNation, List<DBNation>> targets;
@@ -3093,10 +3268,16 @@ public class WarCommands {
         return note.toString();
     }
 
-    @Command(desc = "List active wars\n" +
+    @Command(desc = "Generate a sheet of active wars between two coalitions (allies, enemies)\n" +
             "Add `-i` to list concluded wars")
     @RolePermission(Roles.MILCOM)
-    public String warSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> allies, Set<DBNation> enemies, @Default("5d") @Timestamp long cutoff, @Switch("i") boolean includeConcludedWars, @Switch("s") String sheetId) throws GeneralSecurityException, IOException {
+    public String warSheet(@Me IMessageIO io, @Me GuildDB db,
+                           Set<DBNation> allies,
+                           Set<DBNation> enemies,
+                           @Arg("Cutoff date for wars (default 5 days ago)")
+                           @Default("5d") @Timestamp long cutoff,
+                           @Switch("i") boolean includeConcludedWars,
+                           @Switch("s") String sheetId) throws GeneralSecurityException, IOException {
         long now = System.currentTimeMillis();
 
         WarParser parser1 = WarParser.ofAANatobj(null, allies, null, enemies, cutoff, now);
@@ -3222,13 +3403,24 @@ public class WarCommands {
 //    }
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc = "Generate a sheet with a list of nations attacking\n" +
+    @Command(desc = "Generate a sheet with a list of nations attacking `allies`\n" +
             "(Defaults to those attacking allies)\n" +
             "Please still check the war history in case it is not valid to counter (and add a note to the note column indicating such)\n" +
             "Add `-a` to filter out applicants\n" +
             "Add `-i` to filter out inactive members\n" +
             "Add `-e` to include enemies not attacking")
-    public String counterSheet(@Me IMessageIO io, @Me GuildDB db, @Default() Set<DBNation> enemyFilter, @Default() Set<DBAlliance> allies, @Switch("a") boolean excludeApplicants, @Switch("i") boolean excludeInactives, @Switch("e") boolean includeAllEnemies, @Switch("s") String sheetUrl) throws IOException, GeneralSecurityException {
+    public String counterSheet(@Me IMessageIO io, @Me GuildDB db,
+                               @Arg("Only include these attackers")
+                               @Default() Set<DBNation> enemyFilter,
+                               @Arg("Show attackers against these alliances")
+                               @Default() Set<DBAlliance> allies,
+                               @Arg("Exclude applicants")
+                               @Switch("a") boolean excludeApplicants,
+                               @Arg("Exclude inactive nations (3.4 days)")
+                               @Switch("i") boolean excludeInactives,
+                               @Arg("Include enemies not attacking")
+                               @Switch("e") boolean includeAllEnemies,
+                               @Switch("s") String sheetUrl) throws IOException, GeneralSecurityException {
         boolean includeProtectorates = true;
         boolean includeCoalition = true;
         boolean includeMDP = true;
@@ -3451,7 +3643,7 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Show the war card for a war by id")
+    @Command(desc = "Show a war card embed on discord for a war by id")
     public String warcard(@Me IMessageIO channel, int warId) throws IOException {
         new WarCard(warId).embed(channel, false);
         return null;
@@ -3472,7 +3664,11 @@ public class WarCommands {
             "Nation argument can be nation name, id, link, or discord tag\n" +
             "If `spies-used` is provided, it will cap the odds at using that number of spies\n" +
             "`safety` defaults to what has the best net. Options: quick, normal, covert")
-    public String spies(@Me DBNation me, DBNation nation, @Default("60") int spiesUsed, @Default() SpyCount.Safety requiredSafety) throws IOException {
+    public String spies(@Me DBNation me, DBNation nation,
+                        @Arg("Show odds for this spy count")
+                        @Default("60") int spiesUsed,
+                        @Arg("Show odds for at least this safety level")
+                        @Default() SpyCount.Safety requiredSafety) throws IOException {
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
         int result = nation.updateSpies(true, true);
@@ -3525,12 +3721,28 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc="Get a list of nations to counter\n" +
+    @Command(desc="Get a list of nations to counter a war\n" +
             "Add `-o` to ignore nations with 5 offensive slots\n" +
             "Add `-w` to filter out weak attackers\n" +
             "Add `-a` to only list active nations (past hour)")
-    public String counterWar(@Me DBNation me, @Me GuildDB db, DBWar war, @Default Set<DBNation> counterWith, @Switch("o")
-    boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping, @Switch("s") boolean allowSameAlliance) {
+    public String counterWar(@Me DBNation me, @Me GuildDB db,
+                             DBWar war,
+                             @Arg("Nations to counter with\n" +
+                                     "Default: This guild's alliance nations")
+                             @Default Set<DBNation> counterWith,
+                             @Arg("Show counters from nations at max offensive wars\n" +
+                                     "i.e. They can counter when they finish a war")
+                             @Switch("o") boolean allowAttackersWithMaxOffensives,
+                             @Arg("Remove countering nations weaker than the enemy")
+                             @Switch("w") boolean filterWeak,
+                             @Arg("Remove countering nations that are inactive (2 days)")
+                             @Switch("a") boolean onlyActive,
+                             @Arg("Remove countering nations NOT registered with Locutus")
+                             @Switch("d") boolean requireDiscord,
+                             @Arg("Include the discord mention of countering nations")
+                             @Switch("p") boolean ping,
+                             @Arg("Include counters from the same alliance as the defender")
+                             @Switch("s") boolean allowSameAlliance) {
         Set<Integer> allies = db.getAllies(true);
         int enemyId = allies.contains(war.attacker_aa) ? war.defender_id : war.attacker_id;
         DBNation enemy = DBNation.byId(enemyId);
@@ -3539,12 +3751,27 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc="Get a list of nations to counter\n" +
+    @Command(desc="Get a list of nations to counter an enemy\n" +
             "Add `-o` to ignore nations with 5 offensive slots\n" +
             "Add `-w` to filter out weak attackers\n" +
             "Add `-a` to only list active nations (past hour)")
-    public String counter(@Me DBNation me, @Me GuildDB db, DBNation target, @Default Set<DBNation> counterWith, @Switch("o")
-            boolean allowAttackersWithMaxOffensives, @Switch("w") boolean filterWeak, @Switch("a") boolean onlyActive, @Switch("d") boolean requireDiscord, @Switch("p") boolean ping, @Switch("s") boolean allowSameAlliance) {
+    public String counter(@Me DBNation me, @Me GuildDB db, DBNation target,
+                          @Arg("Nations to counter with\n" +
+                                  "Default: This guild's alliance nations")
+                          @Default Set<DBNation> counterWith,
+                          @Arg("Show counters from nations at max offensive wars\n" +
+                                  "i.e. They can counter when they finish a war")
+                          @Switch("o") boolean allowAttackersWithMaxOffensives,
+                          @Arg("Remove countering nations weaker than the enemy")
+                          @Switch("w") boolean filterWeak,
+                          @Arg("Remove countering nations that are inactive (2 days)")
+                          @Switch("a") boolean onlyActive,
+                          @Arg("Remove countering nations NOT registered with Locutus")
+                          @Switch("d") boolean requireDiscord,
+                          @Arg("Include the discord mention of countering nations")
+                          @Switch("p") boolean ping,
+                          @Arg("Include counters from the same alliance as the defender")
+                          @Switch("s") boolean allowSameAlliance) {
         if (counterWith == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty()) {
@@ -3573,7 +3800,7 @@ public class WarCommands {
 
         if (onlyActive) counterWith.removeIf(f -> !f.isOnline());
         counterWith.removeIf(nation -> nation.getScore() < scoreMin || nation.getScore() > scoreMax);
-        if (!allowAttackersWithMaxOffensives) counterWith.removeIf(nation -> nation.getOff() >= (nation.hasProject(Projects.PIRATE_ECONOMY) ? 6 : 5));
+        if (!allowAttackersWithMaxOffensives) counterWith.removeIf(nation -> nation.getOff() >= nation.getMaxOff());
         counterWith.removeIf(nation -> nation.getAlliance_id() == 0);
         counterWith.removeIf(nation -> nation.getActive_m() > TimeUnit.DAYS.toMinutes(2));
         counterWith.removeIf(nation -> nation.getVm_turns() != 0);
@@ -3638,8 +3865,18 @@ public class WarCommands {
             "Add `-a` to skip adding users\n" +
             "Add `-m` to send standard counter messages")
     public String autocounter(@Me IMessageIO channel, @Me JSONObject command, @Me WarCategory warCat, @Me DBNation me, @Me User author, @Me GuildDB db,
-                              DBNation enemy, @Default Set<DBNation> attackers, @Default("3") @Range(min=0) int max
-            , @Switch("p") boolean pingMembers, @Switch("a") boolean skipAddMembers, @Switch("m") boolean sendMail) {
+                              DBNation enemy,
+                              @Arg("Nations to counter with\n" +
+                                      "Default: This guild's alliance nations")
+                              @Default Set<DBNation> attackers,
+                              @Arg("Max number of nations to counter with")
+                              @Default("3") @Range(min=0) int max,
+                              @Arg("Ping the countering nations on discord")
+                              @Switch("p") boolean pingMembers,
+                              @Arg("Do not add countering nations to a war room for the enemy")
+                              @Switch("a") boolean skipAddMembers,
+                              @Arg("Send counter message ingame to the nations countering")
+                              @Switch("m") boolean sendMail) {
         if (attackers == null) {
             AllianceList alliance = db.getAllianceList();
             if (alliance != null && !alliance.isEmpty()) {
@@ -3654,7 +3891,7 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc = "Sorts the war rooms into  the correct category\n" +
+    @Command(desc = "Sorts the war rooms into the correct discord category\n" +
             "e.g. `warcat-c1-10`")
     public String sortWarRooms(@Me WarCategory warCat) {
         int moved = warCat.sort();
@@ -3669,8 +3906,26 @@ public class WarCommands {
             "Add `-f` to force create channels (if checks fail)\n" +
             "Add `-m` to send standard counter messages")
     public String warroom(@Me IMessageIO channel, @Me JSONObject command, @Me WarCategory warCat, @Me DBNation me, @Me User author, @Me GuildDB db,
-                          DBNation enemy, Set<DBNation> attackers, @Default("3") @Range(min=0) int max,
-                          @Switch("f") boolean force, @Switch("w") boolean excludeWeakAttackers, @Switch("d") boolean requireDiscord, @Switch("o") boolean allowAttackersWithMaxOffensives, @Switch("p") boolean pingMembers, @Switch("a") boolean skipAddMembers, @Switch("m") boolean sendMail) {
+                          DBNation enemy,
+                          @Arg("Nations to counter with\n" +
+                          "Default: This guild's alliance nations")
+                          Set<DBNation> attackers,
+                          @Arg("Max number of nations to counter with")
+                          @Default("3") @Range(min=0) int max,
+                          @Switch("f") boolean force,
+                          @Arg("Remove countering nations weaker than the enemy")
+                          @Switch("w") boolean excludeWeakAttackers,
+                          @Arg("Remove countering nations NOT registered with Locutus")
+                          @Switch("d") boolean requireDiscord,
+                          @Arg("Show counters from nations at max offensive wars\n" +
+                                  "i.e. They can counter when they finish a war")
+                          @Switch("o") boolean allowAttackersWithMaxOffensives,
+                          @Arg("Ping the countering nations on discord")
+                          @Switch("p") boolean pingMembers,
+                          @Arg("Do not add countering nations to a war room for the enemy")
+                          @Switch("a") boolean skipAddMembers,
+                          @Arg("Send counter message ingame to the nations countering")
+                          @Switch("m") boolean sendMail) {
         List<DBNation> attackersSorted = new ArrayList<>(attackers);
 
         if (excludeWeakAttackers) {
@@ -3743,7 +3998,7 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MEMBER)
-    @Command(desc = "Update the pin in the war room")
+    @Command(desc = "Update the pin in the current war room channel")
     public String warpin(@Me WarCategory.WarRoom warRoom) {
         IMessageBuilder message = warRoom.updatePin(true);
         return "Updated: " + DiscordUtil.getChannelUrl(warRoom.channel) + "/" + message.getId();
@@ -3752,7 +4007,9 @@ public class WarCommands {
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Run this command in a war room to assign it to a category\n" +
             "`{prefix}war room setcategory category:raid`")
-    public String warcat(@Me WarCategory warCat, @Me WarCategory.WarRoom waRoom, @Me TextChannel channel, @Filter("warcat.*") Category category) {
+    public String warcat(@Me WarCategory warCat, @Me WarCategory.WarRoom waRoom, @Me TextChannel channel,
+                         @Arg("The category to move this channel to")
+                         @Filter("warcat.*") Category category) {
         if (category.equals(channel.getParentCategory())) {
             return "Already in category: " + category.getName();
         }
@@ -3765,8 +4022,11 @@ public class WarCommands {
     private Map<Long, List<String>> blitzTargetCache = new HashMap<>();
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc = "Generate a list of possible blitz targets (for practice)", aliases = {"blitzpractice","blitztargets"})
-    public String BlitzPractice(@Me GuildDB db, int topX, @Me IMessageIO channel, @Me JSONObject command, @Switch("p") Integer page) {
+    @Command(desc = "Generate a list of possible alliance blitz targets (for practice)\n" +
+            "Target alliances are sorted by free war slots", aliases = {"blitzpractice","blitztargets"})
+    public String BlitzPractice(@Me GuildDB db,
+                                @Arg("Exclude the top X alliances (by active nation score)")
+                                int topX, @Me IMessageIO channel, @Me JSONObject command, @Switch("p") Integer page) {
         Set<Integer> dnr = db.getCoalition("allies");
 
         List<String> results = blitzTargetCache.getOrDefault(db.getGuild().getIdLong() + topX, new ArrayList<>());

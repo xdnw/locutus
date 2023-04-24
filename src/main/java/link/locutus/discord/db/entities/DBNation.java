@@ -480,13 +480,17 @@ public class DBNation implements NationOrAlliance {
      * @return
      */
     public Map.Entry<Double, Boolean> getIntelOpValue() {
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14);
+        return getIntelOpValue(cutoff);
+    }
+
+    public Map.Entry<Double, Boolean> getIntelOpValue(long cutoff) {
         if (active_m() < 4320) return null;
         if (getVm_turns() > 12) return null;
         if (getActive_m() > 385920) return null;
 //        if (!isGray()) return null;
         if (getDef() == 3) return null;
         long currentDate = System.currentTimeMillis();
-        long cutoff = currentDate - TimeUnit.DAYS.toMillis(14);
 
         LootEntry loot = Locutus.imp().getNationDB().getLoot(getNation_id());
         if (loot != null && loot.getDate() > cutoff) return null;

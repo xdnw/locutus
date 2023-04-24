@@ -142,7 +142,6 @@ public class GuildHandler {
         GuildMessageChannel alertChannel = getDb().getOrNull(GuildDB.Key.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return;
 
-
         Role appRole = Roles.APPLICANT.toRole(getGuild());
         if (appRole == null) return;
 
