@@ -4985,7 +4985,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         WAR_COST_BY_CITY_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
         MILITARY_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
         REVENUE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        REVENUE_BY_ALLIANCE(false, ALLIANCE_ID, CommandCategory.ECON),
         PROJECT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
         INTERVIEW_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
         NATION_META_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),

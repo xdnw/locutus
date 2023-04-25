@@ -94,7 +94,7 @@ public class FACommands {
         return "Approved:\n - " + StringMan.join(changed, "\n - ");
     }
 
-    @Command
+    @Command(desc = "Cancel a treaty in-game")
     @IsAlliance
     @RolePermission(Roles.FOREIGN_AFFAIRS)
     public static String cancelTreaty(@Arg("The alliance to cancel a treaty of\ni.e. Your alliance") @RolePermission(Roles.FOREIGN_AFFAIRS) AllianceList receiver, @Arg("The other alliance the treaty is with") Set<DBAlliance> senders) {

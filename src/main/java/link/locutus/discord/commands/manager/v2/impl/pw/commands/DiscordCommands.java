@@ -335,7 +335,7 @@ public class DiscordCommands {
         return arg;
     }
 
-    @Command
+    @Command(desc = "Return the discord invite link for Locutus")
     public String invite() {
         return "<https://docs.google.com/document/d/1Qq6Qe7KtCy-Dlqktz8bhNfrUpcbf7oM8F6gRVNR28Dw/edit?usp=sharing>";
     }

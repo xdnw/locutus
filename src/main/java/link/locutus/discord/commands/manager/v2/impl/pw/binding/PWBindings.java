@@ -774,7 +774,7 @@ public class PWBindings extends BindingHelper {
         return emum(Continent.class, input);
     }
 
-    @Binding(value = "Spy operation type")
+    @Binding(value = "Math comparison operation")
     public Operation op(String input) {
         return emum(Operation.class, input);
     }

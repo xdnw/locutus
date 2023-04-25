@@ -2384,13 +2384,6 @@ public class CM {
         }
     }
     public static class continent{
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="nap")
-        public static class nap extends CommandRef {
-            public static final nap cmd = new nap();
-            public nap create() {
-                return createArgs();
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="radiation")
         public static class radiation extends CommandRef {
             public static final radiation cmd = new radiation();

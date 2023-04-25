@@ -63,12 +63,12 @@ public class PrimitiveBindings extends BindingHelper {
      * @return a number
      * @throws IllegalArgumentException thrown on parse error
      */
-    @Binding(types = {double.class}, examples = {"3.0", "3*4.5-6/2", "50.3m"}, value = "A decimal number between " + Double.MIN_VALUE + " and " + Double.MAX_VALUE)
+    @Binding(types = {double.class}, examples = {"3.0", "3*4.5-6/2", "50.3m"}, value = "A decimal number")
     public static Double Double(String input) {
         return Number(input).doubleValue();
     }
 
-    @Binding(types = {int.class}, examples = {"3", "3*4-6/2", "50.3m"}, value = "A whole number between " + Integer.MIN_VALUE + " and " + Integer.MAX_VALUE)
+    @Binding(types = {int.class}, examples = {"3", "3*4-6/2", "50.3m"}, value = "A whole number")
     public static Integer Integer(String input) {
         return Number(input).intValue();
     }
@@ -83,7 +83,7 @@ public class PrimitiveBindings extends BindingHelper {
         }
     }
 
-    @Binding(types = {long.class}, examples = {"3", "3*4-6/2", "50.3k"}, value = "A whole number between " + Long.MIN_VALUE + " and " + Long.MAX_VALUE)
+    @Binding(types = {long.class}, examples = {"3", "3*4-6/2", "50.3k"}, value = "A whole number")
     public static Long Long(String input) {
         try {
             return Long.parseLong(input);

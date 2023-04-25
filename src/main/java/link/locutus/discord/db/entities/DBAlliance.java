@@ -262,6 +262,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public static DBAlliance getOrCreate(int aaId) {
+        if (aaId == 0) return new DBAlliance(0, "None", "", "", "", "", "", 0, NationColor.GRAY);
         return Locutus.imp().getNationDB().getOrCreateAlliance(aaId);
     }
 

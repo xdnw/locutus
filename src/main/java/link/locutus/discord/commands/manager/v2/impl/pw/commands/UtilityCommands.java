@@ -529,7 +529,8 @@ public class UtilityCommands {
         return "Set " + offshore.getName() + " as an offshore for " + parent.getName();
     }
 
-    @Command
+    @Command(desc = "Return potential offshores for a list of enemy alliances\n" +
+            "If allies are specified, only offshores that are not allied with any of the allies will be returned")
     @RolePermission(value = {Roles.ECON, Roles.MILCOM}, any = true)
     public String findOffshores(@Timestamp long cutoff, Set<DBAlliance> enemiesList, @Default() Set<DBAlliance> alliesList) {
         if (alliesList == null) alliesList = Collections.emptySet();
@@ -747,14 +748,22 @@ public class UtilityCommands {
 
         return "**" + title + "**\n" + response.toString();
     }
-    @Command
+    @Command(desc = "Rank the number of wars between two coalitions by nation or alliance\n" +
+            "Defaults to alliance ranking")
     public String warRanking(@Me JSONObject command, @Me IMessageIO channel, @Timestamp long time, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders,
+                             @Arg("Only include offensive wars in the ranking")
                              @Switch("o") boolean onlyOffensives,
+                             @Arg("Only include defensive wars in the ranking")
                              @Switch("d") boolean onlyDefensives,
+                             @Arg("Rank the average wars per alliance member")
                              @Switch("n") boolean normalizePerMember,
+                             @Arg("Ignore inactive nations when determining alliance member counts")
                              @Switch("i") boolean ignore2dInactives,
+                             @Arg("Rank by nation instead of alliance")
                              @Switch("a") boolean rankByNation,
+                             @Arg("Only rank these war types")
                              @Switch("t") WarType warType,
+                             @Arg("Only rank wars with these statuses")
                              @Switch("s") Set<WarStatus> statuses) {
         WarParser parser = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
         Map<Integer, DBWar> wars = parser.getWars();
@@ -814,7 +823,12 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing infra (from current to max)", aliases = {"InfraCost", "infrastructurecost", "infra", "infrastructure", "infracosts"})
-    public String InfraCost(@Range(min=0, max=40000) int currentInfra, @Range(min=0, max=40000) int maxInfra, @Default("false") boolean urbanization, @Default("false") boolean cce, @Default("false") boolean aec, @Default("false") boolean gsa, @Switch("c") @Default("1") int cities) {
+    public String InfraCost(@Range(min=0, max=40000) int currentInfra, @Range(min=0, max=40000) int maxInfra,
+                            @Default("false") boolean urbanization,
+                            @Default("false") boolean center_for_civil_engineering,
+                            @Default("false") boolean advanced_engineering_corps,
+                            @Default("false") boolean government_support_agency,
+                            @Switch("c") @Default("1") int cities) {
         if (maxInfra > 40000) throw new IllegalArgumentException("Max infra 40000");
 
         double total = 0;
@@ -824,12 +838,12 @@ public class UtilityCommands {
         double discountFactor = 1;
         if (urbanization) {
             discountFactor -= 0.05;
-            if (gsa) {
+            if (government_support_agency) {
                 discountFactor -= 0.025;
             }
         }
-        if (cce) discountFactor -= 0.05;
-        if (aec) discountFactor -= 0.05;
+        if (center_for_civil_engineering) discountFactor -= 0.05;
+        if (advanced_engineering_corps) discountFactor -= 0.05;
 
         total = total * discountFactor * cities;
 
@@ -837,7 +851,13 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing land (from current to max)", aliases = {"LandCost", "land", "landcosts"})
-    public String LandCost(@Range(min=0, max=40000) int currentLand, @Range(min=0, max=40000) int maxLand, @Default("false") boolean rapidExpansion, @Default("false") boolean ala, @Default("false") boolean aec, @Default("false") boolean gsa, @Switch("c") @Default("1") int cities) {
+    public String LandCost(@Range(min=0, max=40000) int currentLand,
+                           @Range(min=0, max=40000) int maxLand,
+                           @Default("false") boolean rapidExpansion,
+                           @Default("false") boolean arable_land_agency,
+                           @Default("false") boolean advanced_engineering_corps,
+                           @Default("false") boolean government_support_agency,
+                           @Switch("c") @Default("1") int cities) {
         if (maxLand > 40000) throw new IllegalArgumentException("Max land 40000");
 
         double total = 0;
@@ -847,10 +867,10 @@ public class UtilityCommands {
         double discountFactor = 1;
         if (rapidExpansion) {
             discountFactor -= 0.05;
-            if (gsa) discountFactor -= 0.025;
+            if (government_support_agency) discountFactor -= 0.025;
         }
-        if (ala) discountFactor -= 0.05;
-        if (aec) discountFactor -= 0.05;
+        if (arable_land_agency) discountFactor -= 0.05;
+        if (advanced_engineering_corps) discountFactor -= 0.05;
 
         total = total * discountFactor * cities;
 
@@ -977,9 +997,15 @@ public class UtilityCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Get nation or bank loot history")
     @RolePermission(Roles.MEMBER)
-    public static String loot(@Me IMessageIO output, @Me DBNation me, NationOrAlliance nationOrAlliance, @Default Double nationScore, @Switch("p") boolean pirate) {
+    public static String loot(@Me IMessageIO output, @Me DBNation me, NationOrAlliance nationOrAlliance,
+                              @Arg("Score of the defeated nation\n" +
+                                      "i.e. For determining bank loot percent")
+                              @Default Double nationScore,
+                              @Arg("Loot with pirate war policy\n" +
+                                      "Else: Uses your war policy")
+                              @Switch("p") boolean pirate) {
         double[] totalStored = null;
         double[] nationLoot = null;
         double[] allianceLoot = null;

@@ -37,6 +37,10 @@ public class MarkupUtil {
         return result == null ? source : result;
     }
 
+    public static String spoiler(String title, String body) {
+        return String.format("<details><summary>%s</summary>%s</details>", title, body);
+    }
+
     public static String messageToHtml(MessageEmbed embed) {
         StringBuilder r = new StringBuilder();
         r.append("<div style=\"background-color:#EEE;padding:5px;border:4px groove #CCC;\" class=\"img-rounded\">");
