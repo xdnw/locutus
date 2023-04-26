@@ -813,7 +813,12 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing infra (from current to max)", aliases = {"InfraCost", "infrastructurecost", "infra", "infrastructure", "infracosts"})
-    public String InfraCost(@Range(min=0, max=40000) int currentInfra, @Range(min=0, max=40000) int maxInfra, @Default("false") boolean urbanization, @Default("false") boolean cce, @Default("false") boolean aec, @Default("false") boolean gsa, @Switch("c") @Default("1") int cities) {
+    public String InfraCost(@Range(min=0, max=40000) int currentInfra, @Range(min=0, max=40000) int maxInfra,
+                            @Default("false") boolean urbanization,
+                            @Default("false") boolean center_for_civil_engineering,
+                            @Default("false") boolean advanced_engineering_corps,
+                            @Default("false") boolean government_support_agency,
+                            @Switch("c") @Default("1") int cities) {
         if (maxInfra > 40000) throw new IllegalArgumentException("Max infra 40000");
 
         double total = 0;
@@ -823,12 +828,12 @@ public class UtilityCommands {
         double discountFactor = 1;
         if (urbanization) {
             discountFactor -= 0.05;
-            if (gsa) {
+            if (government_support_agency) {
                 discountFactor -= 0.025;
             }
         }
-        if (cce) discountFactor -= 0.05;
-        if (aec) discountFactor -= 0.05;
+        if (center_for_civil_engineering) discountFactor -= 0.05;
+        if (advanced_engineering_corps) discountFactor -= 0.05;
 
         total = total * discountFactor * cities;
 
@@ -836,7 +841,13 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing land (from current to max)", aliases = {"LandCost", "land", "landcosts"})
-    public String LandCost(@Range(min=0, max=40000) int currentLand, @Range(min=0, max=40000) int maxLand, @Default("false") boolean rapidExpansion, @Default("false") boolean ala, @Default("false") boolean aec, @Default("false") boolean gsa, @Switch("c") @Default("1") int cities) {
+    public String LandCost(@Range(min=0, max=40000) int currentLand,
+                           @Range(min=0, max=40000) int maxLand,
+                           @Default("false") boolean rapidExpansion,
+                           @Default("false") boolean arable_land_agency,
+                           @Default("false") boolean advanced_engineering_corps,
+                           @Default("false") boolean government_support_agency,
+                           @Switch("c") @Default("1") int cities) {
         if (maxLand > 40000) throw new IllegalArgumentException("Max land 40000");
 
         double total = 0;
@@ -846,10 +857,10 @@ public class UtilityCommands {
         double discountFactor = 1;
         if (rapidExpansion) {
             discountFactor -= 0.05;
-            if (gsa) discountFactor -= 0.025;
+            if (government_support_agency) discountFactor -= 0.025;
         }
-        if (ala) discountFactor -= 0.05;
-        if (aec) discountFactor -= 0.05;
+        if (arable_land_agency) discountFactor -= 0.05;
+        if (advanced_engineering_corps) discountFactor -= 0.05;
 
         total = total * discountFactor * cities;
 
@@ -1031,7 +1042,7 @@ public class UtilityCommands {
 
             revenueTurns = nation.getTurnsInactive(lootInfo);
             if (revenueTurns > 0) {
-                revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false);
+                revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false, false);
                 if (lootInfo != null) {
                     revenue = PnwUtil.capManuFromRaws(revenue, lootInfo.getTotal_rss());
                 }

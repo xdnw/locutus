@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AccessType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
@@ -90,6 +91,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.PnwUtil.convertedTotal;
@@ -495,7 +497,7 @@ public class BankCommands {
                     taxAccount != null ? taxAccount.getQualifiedName() : null,
                     existingTaxAccount + "",
                     Boolean.FALSE.toString(),
-                    expire == null ? null : "timestamp:" + expire,
+                    expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     null,
                     String.valueOf(convertToMoney),
                     String.valueOf(bypassChecks),
@@ -517,7 +519,7 @@ public class BankCommands {
                     taxAccount != null ? taxAccount.getQualifiedName() : null,
                     existingTaxAccount + "",
                     Boolean.FALSE.toString(),
-                    expire == null ? null : ("timestamp:" + expire),
+                    expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     String.valueOf(force),
                     null,
                     key.toString()
@@ -2574,7 +2576,7 @@ public class BankCommands {
             }
         }
 
-        if (root.isOffshore() && (offshoreDB == null || (offshoreDB == root))) {
+        if (root.isOffshore(true) && (offshoreDB == null || (offshoreDB == root))) {
             if (nation.getAlliance_id() != offshoreAlliance.getAlliance_id()) {
                 throw new IllegalArgumentException("You must be in the provided alliance: " + offshoreAlliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }

@@ -2300,6 +2300,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public boolean isOffshore() {
+        return isOffshore(false);
+    }
+    public boolean isOffshore(boolean allowInvalid) {
         if (isDelegateServer()) return false;
 
         Set<Long> offshoring = getCoalitionRaw(Coalition.OFFSHORING);
@@ -2307,14 +2310,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<Long> offshore = getCoalitionRaw(Coalition.OFFSHORE);
         if (offshore.isEmpty()) return false;
 
-        if (getOrNull(Key.API_KEY) == null || !isValidAlliance()) {
+        if (getOrNull(Key.API_KEY) == null || (!allowInvalid && !isValidAlliance())) {
             return false;
         }
 
         Set<Integer> aaIds = getAllianceIds();
         if (aaIds.isEmpty()) return false;
         for (int aaId : aaIds) {
-            DBAlliance alliance = DBAlliance.get(aaId);
+            DBAlliance alliance = allowInvalid ? DBAlliance.getOrCreate(aaId) : DBAlliance.get(aaId);
             if (alliance == null) continue;
 
             // ensure offshore and offshoring contain this aaid

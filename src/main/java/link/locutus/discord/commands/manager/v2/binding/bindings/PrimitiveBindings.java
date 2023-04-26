@@ -126,7 +126,7 @@ public class PrimitiveBindings extends BindingHelper {
 
     @Timediff
     @Binding(types = {long.class}, examples = {"5d", "10h3m25s"})
-    public Long timediff(String argument) {
+    public static Long timediff(String argument) {
         return TimeUtil.timeToSec(argument) * 1000;
     }
 

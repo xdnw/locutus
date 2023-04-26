@@ -649,8 +649,8 @@ public class UnsortedCommands {
         double[] milUp = new double[ResourceType.values.length];
         int tradeBonusTotal = 0;
         for (DBNation nation : filtered) {
-            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false));
-            ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false));
+            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, false));
+            ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, false));
             tradeBonusTotal += nation.getColor().getTurnBonus() * 12;
         }
         double[] total = ResourceType.builder().add(cityProfit).add(milUp).addMoney(tradeBonusTotal).build();
@@ -1260,7 +1260,7 @@ public class UnsortedCommands {
                 taxAccount != null ? taxAccount.getQualifiedName() : null,
                 existingTaxAccount + "",
                 Boolean.FALSE.toString(),
-                expire == null ? null : ("timestamp:" + expire),
+                expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                 String.valueOf(force),
                 null,
                 key.toString()

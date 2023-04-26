@@ -418,12 +418,20 @@ public class SpyBlitzGenerator {
         List<Spyop> allOps = new ArrayList<>();
         Set<DBNation> update = forceUpdate ? new HashSet<>() : null;
 
+        System.out.println("Rows " + rows.size());
         List<Object> header = rows.get(4);
         for (int i = 5; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
-            if (row.size() < 9) continue;
+            if (row.size() < 9) {
+                System.out.println("Row incorrect size " + row.size() + " " + row);
+                continue;
+            }
 
             DBNation attacker = DiscordUtil.parseNation(row.get(0).toString());
+            if (attacker == null) {
+                System.out.println("Attacker is null " + row.get(0));
+                continue;
+            }
 
             Spyop op1 = createOp(attacker, row.get(2) + "", row.get(3) + "", row.get(4) + "", update);
             Spyop op2 = createOp(attacker, row.get(6) + "", row.get(7) + "", row.get(8) + "", update);

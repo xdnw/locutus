@@ -21,6 +21,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
 import org.json.JSONObject;
 
@@ -275,12 +276,35 @@ public class DiscordCommands {
         String title = embed.getTitle();
         String desc = embed.getDescription();
         Map<String, String> reactions = DiscordUtil.getReactions(embed);
+        Map<String, String> commands = new HashMap<>();
 
-        if (reactions == null) {
+        if (reactions == null || reactions.isEmpty()) {
             return "No embed commands found.";
         }
 
-        String cmd = CM.embed.commands.cmd.create(title, desc, StringMan.join(reactions.values(), "\" \"")).toSlashMention();
+        List<Button> buttons = message.getButtons();
+        for (Button button : buttons) {
+            String id = button.getId();
+            if (id == null) continue;
+            System.out.println("ID " + id);
+            if (id.isBlank()) {
+                commands.put(button.getLabel(), "");
+            } else if (MathMan.isInteger(id)) {
+                String cmd = reactions.get(id);
+                if (cmd != null) {
+                    commands.put(button.getLabel(), cmd);
+                } else {
+                    commands.put(button.getLabel(), id);
+                }
+            } else {
+                commands.put(button.getLabel(), id);
+            }
+        }
+        if (buttons.isEmpty()) {
+            commands.putAll(reactions);
+        }
+
+        String cmd = CM.embed.commands.cmd.create(title, desc, StringMan.join(commands.values(), "\" \"")).toSlashCommand();
         return "```" + cmd + "```";
     }
 

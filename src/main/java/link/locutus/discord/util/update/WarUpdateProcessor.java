@@ -971,7 +971,7 @@ public class WarUpdateProcessor {
             if (warring != lastWarring) {
                 alliance.setMeta(AllianceMeta.IS_WARRING, (byte) (warring ? 1 : 0));
             }
-            if (warring) alliance.setMeta(AllianceMeta.LAST_AT_WAR_TURN, currentTurn);
+            if (lastWarTurn != currentTurn) alliance.setMeta(AllianceMeta.LAST_AT_WAR_TURN, currentTurn);
 
             String body = warInfo.get(alliance);
 

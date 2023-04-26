@@ -114,12 +114,10 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public String format(ValueStore<?> store, String arg) {
-        Guild guild = store.getProvided(Key.of(Me.class, Guild.class));
-        MessageChannel channel = store.getProvided(Key.of(Me.class, MessageChannel.class));
-        User author = store.getProvided(Key.of(Me.class, User.class));
-        DBNation me = store.getProvided(Key.of(Me.class, DBNation.class));
-
-        // todo
+        Guild guild = store.getProvided(Key.of(Guild.class, Me.class));
+        MessageChannel channel = store.getProvided(Key.of(MessageChannel.class, Me.class));
+        User author = store.getProvided(Key.of(User.class, Me.class));
+        DBNation me = store.getProvided(Key.of(DBNation.class, Me.class));
 
         return DiscordUtil.format(guild, channel, author, me, arg);
     }
