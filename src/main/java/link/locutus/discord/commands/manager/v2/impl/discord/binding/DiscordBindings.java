@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 public class DiscordBindings extends BindingHelper {
-    @Binding(examples = {"@user", "nation"})
+    @Binding(examples = {"@user", "borg"}, value = "A discord user mention, or if a nation name, id or url if they are registered")
     public static User user(@Me User selfUser, String name) {
         User user = DiscordUtil.getUser(name);
         if (user == null) {
@@ -37,7 +37,7 @@ public class DiscordBindings extends BindingHelper {
         return user;
     }
 
-    @Binding(examples = "@member")
+    @Binding(examples = {"@member", "borg"}, value = "A discord user mention, or if a nation name, id or url if they are registered")
     public static Member member(@Me Guild guild, @Me User selfUser, String name) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
         User user = user(selfUser, name);
@@ -46,7 +46,7 @@ public class DiscordBindings extends BindingHelper {
         return member;
     }
 
-    @Binding(examples = "@role")
+    @Binding(examples = {"@role", "role"}, value = "A discord role name or mention")
     public static Role role(@Me Guild guild, String role) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
         Role discordRole = DiscordUtil.getRole(guild, role);
@@ -54,7 +54,7 @@ public class DiscordBindings extends BindingHelper {
         return discordRole;
     }
 
-    @Binding(examples = "@role1,@role2")
+    @Binding(examples = "@role1,@role2", value = "A comma separated list of discord role names or mentions")
     public static Set<Role> roles(@Me Guild guild, String input) {
         Set<Role> roles = new LinkedHashSet<>();
         for (String arg : input.split(",")) {
@@ -63,12 +63,12 @@ public class DiscordBindings extends BindingHelper {
         return roles;
     }
 
-    @Binding
+    @Binding(value = "A discord role permission")
     public Permission key(String input) {
         return emum(Permission.class, input);
     }
 
-    @Binding
+    @Binding(value = "A discord category name or mention", examples = "category-name")
     public Category category(ParameterData param, Guild guild, String category) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
         if (category.charAt(0) == '<' && category.charAt(category.length() - 1) == '>') {
@@ -94,12 +94,12 @@ public class DiscordBindings extends BindingHelper {
         return categories.get(0);
     }
 
-    @Binding
+    @Binding(value = "A discord user online status")
     public OnlineStatus onlineStatus(String input) {
         return StringMan.parseUpper(OnlineStatus.class, input);
     }
 
-    @Binding(examples = "@member1,@member2")
+    @Binding(examples = {"@member1,@member2", "`*`"}, value = "A comma separated list of discord user mentions, or if a nation name, id or url if they are registered")
     public Set<Member> members(@Me Guild guild, String input) {
         Set<Member> members = new LinkedHashSet<>();
         for (String arg : input.split("[|]+")) {
@@ -129,7 +129,7 @@ public class DiscordBindings extends BindingHelper {
         return Locutus.imp().getDiscordApi();
     }
 
-    @Binding(examples = "647252780817448972")
+    @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
     public Guild guild(long guildId) {
         Guild guild = Locutus.imp().getDiscordApi().getGuildById(guildId);
         if (guild == null) throw new IllegalArgumentException("No guild found for: " + guildId);
@@ -142,14 +142,14 @@ public class DiscordBindings extends BindingHelper {
         throw new IllegalStateException("No guild set in command locals.");
     }
 
-    @Binding(examples = "#channel")
+    @Binding(examples = "#channel", value = "A discord channel name or mention")
     public MessageChannel channel(@Me Guild guild, String channel) {
         MessageChannel GuildMessageChannel = DiscordUtil.getChannel(guild, channel);
         if (GuildMessageChannel == null) throw new IllegalArgumentException("No channel found for " + channel);
         return GuildMessageChannel;
     }
 
-    @Binding(examples = "#channel")
+    @Binding(examples = "#channel", value = "A discord guild channel name or mention")
     public TextChannel textChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
         if (channel == null) throw new IllegalArgumentException("No channel found for " + null);
@@ -158,7 +158,7 @@ public class DiscordBindings extends BindingHelper {
         return (TextChannel) channel;
     }
 
-    @Binding(examples = "#channel")
+    @Binding(examples = "#channel", value = "A categorized discord guild channel name or mention")
     public ICategorizableChannel categorizableChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
         if (channel == null) throw new IllegalArgumentException("No channel found for " + null);
@@ -167,7 +167,7 @@ public class DiscordBindings extends BindingHelper {
         return (ICategorizableChannel) channel;
     }
 
-    @Binding(examples = "https://discord.com/channels/647252780817448972/973848742769885194/975827690877780050")
+    @Binding(examples = "https://discord.com/channels/647252780817448972/973848742769885194/975827690877780050", value = "A discord message url")
     public Message message(String message) {
         return DiscordUtil.getMessage(message);
     }
@@ -208,14 +208,6 @@ public class DiscordBindings extends BindingHelper {
         if (!(channel instanceof TextChannel))
             throw new IllegalArgumentException("This command can only be used in a guild text channel.");
         return (TextChannel) channel;
-    }
-
-
-    @Binding
-    public Member memberInput(@Me Guild guild, User user) {
-        Member member = guild.getMember(user);
-        if (member == null) throw new IllegalStateException("No member found for " + user.getName());
-        return member;
     }
 
     @Binding

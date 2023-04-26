@@ -3,14 +3,17 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import net.dv8tion.jda.api.entities.User;
 
 public class AttackCommands {
-    @Command(aliases = "groundsim")
-    public String groundSim(int attSoldiersUnarmed, int attSoldiers, int attTanks, int defSoldiersUnarmed, int defSoldiers, int defTanks) {
+    @Command(aliases = "groundsim", desc = "Simulate a ground attack with the given attacker and defender troops\n" +
+            "Halve the tank number if the opponent has air control\n" +
+            "Note: Use math via: `50/2`")
+    public String groundSim(@Range(min = 0) int attSoldiersUnarmed, @Range(min = 0) int attSoldiers, @Range(min = 0) int attTanks, @Range(min = 0) int defSoldiersUnarmed, @Range(min = 0) int defSoldiers, @Range(min = 0) int defTanks) {
         if (attSoldiers != 0 && attSoldiersUnarmed != 0)
             return "You cannot attack with both armed and unarmed soldiers.";
         if (defSoldiers != 0 && defSoldiersUnarmed != 0)
@@ -44,7 +47,7 @@ public class AttackCommands {
         return response.toString();
     }
 
-    @Command(aliases = {"airsim", "airstrikesim", "planesim"})
+    @Command(aliases = {"airsim", "airstrikesim", "planesim"}, desc = "Simulate an airstrike with the given attacker and defender aircraft")
     public String airSim(int attAircraft, int defAircraft) {
         double attStr = attAircraft;
         double defStr = defAircraft;
@@ -63,7 +66,7 @@ public class AttackCommands {
         return response.toString();
     }
 
-    @Command(aliases = {"shipSim", "navalSim"})
+    @Command(aliases = {"shipSim", "navalSim"}, desc = "Simulate a naval battle with the given attacker and defender ships")
     public String navalSim(int attShips, int defShips) {
         double attStr = attShips;
         double defStr = defShips;

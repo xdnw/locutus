@@ -45,7 +45,7 @@ public class AddBalanceBuilder {
         this.db = db;
     }
 
-    public AddBalanceBuilder add(NationOrAllianceOrGuild account, double[] amount, String note) {
+    public AddBalanceBuilder add(NationOrAllianceOrGuildOrTaxid account, double[] amount, String note) {
         return add(account, PnwUtil.resourcesToMap(amount), note);
     }
 
@@ -373,8 +373,8 @@ public class AddBalanceBuilder {
                 "\nTotal added: `" + PnwUtil.resourcesToString(totalAdded) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalAdded));
     }
 
-    public AddBalanceBuilder add(Set<NationOrAllianceOrGuild> accounts, Map<ResourceType, Double> amount, String note) {
-        for (NationOrAllianceOrGuild account : accounts) {
+    public AddBalanceBuilder add(Set<NationOrAllianceOrGuildOrTaxid> accounts, Map<ResourceType, Double> amount, String note) {
+        for (NationOrAllianceOrGuildOrTaxid account : accounts) {
             add(account, amount, note);
         }
         return this;

@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -80,7 +81,8 @@ import java.util.stream.Collectors;
 
 public class IACommands {
 
-    @Command
+    @Command(desc = "Generate a sheet of nations and their day change\n" +
+            "Nations not in an alliance registered to this guild can only show the public day change estimate based on unit purchases")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     public void dayChangeSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
@@ -142,7 +144,7 @@ public class IACommands {
         sheet.attach(io.create()).append("Timezone is the UTC update timezone as displayed in-game on the account page").send();
     }
 
-    @Command(desc = "Add a role to all users in a server")
+    @Command(desc = "Add a discord role to all users in a server")
     @RolePermission(Roles.ADMIN)
     public String addRoleToAllMembers(@Me Guild guild, Role role) {
         int amt = 0;
@@ -154,9 +156,9 @@ public class IACommands {
         }
         return "Added " + amt + " roles to members (note: it may take a few minutes to update)";
     }
-    @Command
+    @Command(desc = "View a list of reactions on a message sent by or mentioning Locutus")
     @RolePermission(Roles.ADMIN)
-    public String msgInfo(@Me IMessageIO channel, Message message, @Switch("i") boolean useIds) {
+    public String msgInfo(@Me IMessageIO channel, Message message, @Arg("List the ids of users who reacted")@Switch("i") boolean useIds) {
         StringBuilder response = new StringBuilder();
 
         List<MessageReaction> reactions = message.getReactions();
@@ -198,7 +200,7 @@ public class IACommands {
             Roles.FOREIGN_AFFAIRS,
             Roles.FOREIGN_AFFAIRS_STAFF,
     }, any = true)
-    public String closeInactiveChannels(@Me GuildDB db, @Me IMessageIO outputChannel, Category category, @Timediff long age, @Switch("f") boolean force) {
+    public String closeInactiveChannels(@Me GuildDB db, @Me IMessageIO outputChannel, Category category, @Arg("Close channels older than age") @Timediff long age, @Switch("f") boolean force) {
         long cutoff = System.currentTimeMillis() - age;
 
         IMessageBuilder msg = outputChannel.create();
@@ -219,7 +221,7 @@ public class IACommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "List the self roles that you can assign yourself via Locutus")
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
@@ -246,37 +248,37 @@ public class IACommands {
 
     @Command(desc = "Allow a role to add/remove roles from users")
     @RolePermission(Roles.ADMIN)
-    public String addAssignableRole(@Me GuildDB db, Role govRole, Set<Role> assignableRoles) {
+    public String addAssignableRole(@Me GuildDB db, @Arg("Require this role in order to use the specified self roles") Role requireRole, Set<Role> assignableRoles) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null) assignable = new HashMap<>();
 
-        assignable.computeIfAbsent(govRole, f -> new HashSet<>()).addAll(assignableRoles);
+        assignable.computeIfAbsent(requireRole, f -> new HashSet<>()).addAll(assignableRoles);
 
         String value = GuildDB.Key.ASSIGNABLE_ROLES.toString(assignable);
         db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
 
-        return StringMan.getString(govRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
+        return StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
                 " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "";
     }
 
     @Command(desc = "Remove a role from adding/removing specified roles\n" +
             "(having manage roles perm on discord overrides this)")
     @RolePermission(Roles.ADMIN)
-    public String removeAssignableRole(@Me GuildDB db, Role govRole, Set<Role> assignableRoles) {
+    public String removeAssignableRole(@Me GuildDB db, Role requireRole, Set<Role> assignableRoles) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null) assignable = new HashMap<>();
 
-        if (!assignable.containsKey(govRole)) {
-            return govRole + " does not have any roles it can assign";
+        if (!assignable.containsKey(requireRole)) {
+            return requireRole + " does not have any roles it can assign";
         }
 
         StringBuilder response = new StringBuilder();
-        Set<Role> current = assignable.get(govRole);
+        Set<Role> current = assignable.get(requireRole);
 
         for (Role role : assignableRoles) {
             if (current.contains(role)) {
                 current.remove(role);
-                response.append("\n" + govRole + " can no longer assign " + role);
+                response.append("\n" + requireRole + " can no longer assign " + role);
             } else {
                 response.append("\nUnable to remove " + role + " (no mapping found)");
             }
@@ -289,8 +291,8 @@ public class IACommands {
                 " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "";
     }
 
-    @Command(desc = "Add role to a user\n" +
-            "See: `{prefix}listAssignableRoles`")
+    @Command(desc = "Add discord role to a user\n" +
+            "See: `{prefix}self list`")
     public String addRole(@Me GuildDB db, @Me Member author, Member member, Role addRole) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null) return "`!KeyStore ASSIGNABLE_ROLES` is not set`";
@@ -314,7 +316,7 @@ public class IACommands {
     }
 
     @Command(desc = "Remove a role to a user\n" +
-            "See: `{prefix}listAssignableRoles`")
+            "See: `{prefix}self list`")
     @RolePermission(value = {
             Roles.INTERNAL_AFFAIRS_STAFF,
             Roles.INTERNAL_AFFAIRS,
@@ -356,7 +358,7 @@ public class IACommands {
         return "Opted out of beige alerts";
     }
 
-    @Command(desc = "Unassign a mentee from any mentor")
+    @Command(desc = "Unassign a mentee from all mentors")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     public String unassignMentee(@Me GuildDB db, @Me Guild guild, @Me DBNation nation, DBNation mentee) {
         ByteBuffer mentorBuf = db.getNationMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR);
@@ -385,10 +387,10 @@ public class IACommands {
         return "Set " + mentee.getNation() + "'s mentor to null";
     }
 
-    @Command(desc = "Returns the audit excerpt and only lists nations who haven't bought spies")
+    @Command(desc = "Returns the audit excerpt and lists nations who have not bought spies")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     @IsAlliance
-    public String hasNotBoughtSpies(@Me IMessageIO channel, @Me GuildDB db, @Me Guild guild, Set<DBNation> nations) {
+    public String hasNotBoughtSpies(@Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations) {
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id()) || nation.getPosition() < 1) return "Nation is not a member: " + nation.getNationUrl() + "(see `#position>1,<args>`,";
         }
@@ -493,13 +495,17 @@ public class IACommands {
 
     @Command(desc = "List mentors and their respective mentees", aliases = {"mymentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
-    public String myMentees(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentees, @Default("2w") @Timediff long timediff) throws InterruptedException, ExecutionException, IOException {
+    public String myMentees(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentees, @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff) throws InterruptedException, ExecutionException, IOException {
         return listMentors(guild, db, me,Collections.singleton(me), mentees, timediff, db.isWhitelisted(), true, false);
     }
 
     @Command(desc = "List mentors and their respective mentees", aliases = {"listMentors", "mentors", "mentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
-    public String listMentors(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees, @Default("2w") @Timediff long timediff, @Switch("a") boolean includeAudit, @Switch("u") boolean ignoreUnallocatedMembers, @Switch("i") boolean listIdleMentors) throws IOException, ExecutionException, InterruptedException {
+    public String listMentors(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees,
+                              @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff,
+                              @Arg("Include an audit summary with the list") @Switch("a") boolean includeAudit,
+                              @Arg("Do NOT list members without a mentor") @Switch("u") boolean ignoreUnallocatedMembers,
+                              @Arg("List mentors without any active mentees") @Switch("i") boolean listIdleMentors) throws IOException, ExecutionException, InterruptedException {
         if (includeAudit && !db.isWhitelisted()) return "No permission to include audits";
 
         IACategory iaCat = db.getIACategory();
@@ -739,7 +745,8 @@ public class IACommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Ranking of nations by how many incentives they have received\n" +
+            "Settings: `REWARD_MENTOR` and `REWARD_REFERRAL`")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     public String incentiveRanking(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, @Timestamp long timestamp) {
         List<Transaction2> transactions = db.getTransactions(timestamp, false);
@@ -771,10 +778,10 @@ public class IACommands {
 
 
 
-    @Command
+    @Command(desc = "Reply to an in-game mail message")
     @RolePermission(Roles.MAIL)
     @IsAlliance
-    public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me IMessageIO channel, DBNation receiver, String url, String message, @Switch("s") DBNation sender) throws IOException {
+    public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me IMessageIO channel, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
         if (!url.contains("message/id=")) return "URL must be a message url";
         int messageId = Integer.parseInt(url.split("=")[1]);
 
@@ -795,7 +802,7 @@ public class IACommands {
     }
 
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
-            "e.g. `{prefix}lootValueSheet #cities<10,#position>1,#active_m<2880,someAlliance`")
+            "e.g. `{prefix}sheets_milcom lootvaluesheet #cities<10,#position>1,#active_m<2880,someAlliance`")
     @RolePermission(Roles.MILCOM)
     public String lootValueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         attackers.removeIf(f -> f.getActive_m() > 10000);
@@ -860,8 +867,8 @@ public class IACommands {
         return null;
     }
 
-    @Command
-    public String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Switch("l") boolean notLocal, @Switch("a") String apiKey) throws IOException {
+    @Command(desc = "Send in-game mail to a list of nations")
+    public String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         message = MarkupUtil.transformURLIntoLinks(message);
 
         ApiKeyPool.ApiKey myKey = me.getApiKey(false);
@@ -873,7 +880,7 @@ public class IACommands {
             key = ApiKeyPool.create(nation, apiKey);
         }
         if (key == null) {
-            if ((notLocal || myKey == null)) {
+            if ((sendFromGuildAccount || myKey == null)) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
                     return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.credentials.addApiKey.cmd.toSlashMention() + " to add your own key";
                 }
@@ -923,12 +930,12 @@ public class IACommands {
 
     @Command(desc = "List or set your tax bracket.\n" +
             "Notes:\n" +
-            " - Internal tax rate affects what portion of taxes are not included in `{prefix}deposits` (typically used when 100/100 taxes)\n" +
-            " - Set the alliance internal tax rate with: `{prefix}KeyStore TAX_BASE` (retroactive)\n" +
+            " - Internal tax rate affects what portion of taxes are not included in `{prefix}deposits check` (typically used when 100/100 taxes)\n" +
+            " - Set the alliance internal tax rate with: `{prefix}settings key:TAX_BASE` (retroactive)\n" +
             " - This command is not retroactive and overrides the alliance internal taxrate", aliases = {"SetBracket", "SetTaxes", "SetTaxRate", "SetTaxBracket"})
     @RolePermission(Roles.MEMBER)
     @IsAlliance
-    public String setBracket(@Me GuildDB db, @Me User author, @Me DBNation me, @Filter("{guild_alliance_id}") Set<DBNation> nations, @Default TaxBracket bracket, @Default TaxRate internalRate) throws IOException {
+    public String setBracket(@Me GuildDB db, @Me User author, @Me DBNation me, @Filter("{guild_alliance_id}") Set<DBNation> nations, @Default TaxBracket bracket, @Default TaxRate internalTaxRate) throws IOException {
         if (nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
         DBNation single = nations.size() == 1 ? nations.iterator().next() : null;
 
@@ -937,7 +944,7 @@ public class IACommands {
             if (db.getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_SET_BRACKET.name(), null, null, null) + ")";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
         }
-        if (internalRate != null && !isGov) {
+        if (internalTaxRate != null && !isGov) {
             return "You are only allowed to set your tax bracket";
         }
         Integer aaId = null;
@@ -953,12 +960,12 @@ public class IACommands {
         }
         DBAlliance alliance = DBAlliance.getOrCreate(aaId);
 
-        if (internalRate != null) {
-            if (internalRate.money < -1 || internalRate.money > 100) {
-                return "Invalid internal taxrate: " + internalRate;
+        if (internalTaxRate != null) {
+            if (internalTaxRate.money < -1 || internalTaxRate.money > 100) {
+                return "Invalid internal taxrate: " + internalTaxRate;
             }
-            if (internalRate.resources < -1 || internalRate.resources > 100) {
-                return "Invalid internal taxrate: " + internalRate;
+            if (internalTaxRate.resources < -1 || internalTaxRate.resources > 100) {
+                return "Invalid internal taxrate: " + internalTaxRate;
             }
         }
 
@@ -1002,9 +1009,9 @@ public class IACommands {
                 }
             }
 
-            if (internalRate != null) {
-                db.setMeta(nation.getNation_id(), NationMeta.TAX_RATE, new byte[]{(byte) internalRate.money, (byte) internalRate.resources});
-                response.append("Set internal taxrate to " + internalRate + "\n");
+            if (internalTaxRate != null) {
+                db.setMeta(nation.getNation_id(), NationMeta.TAX_RATE, new byte[]{(byte) internalTaxRate.money, (byte) internalTaxRate.resources});
+                response.append("Set internal taxrate to " + internalTaxRate + "\n");
             }
 
             boolean result = alliance.setTaxBracket(bracket, nation);
@@ -1016,10 +1023,10 @@ public class IACommands {
 
     private static final PassiveExpiringMap<Long, Integer> demotions = new PassiveExpiringMap<Long, Integer>(60, TimeUnit.MINUTES);;
 
-    @Command(desc = "Set the rank of a player in the alliance.", aliases = {"rank", "setrank", "rankup"})
+    @Command(desc = "Set the in-game position of a player in the alliance.", aliases = {"rank", "setrank", "rankup"})
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     @IsAlliance
-    public static String setRank(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation nation, DBAlliancePosition position, @Switch("f") boolean force, @Switch("d") boolean doNotUpdateDiscord) throws IOException {
+    public static String setRank(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation nation, DBAlliancePosition position, @Switch("f") boolean force, @Arg("Do NOT add/remove the corresponding locutus role") @Switch("d") boolean doNotUpdateDiscord) throws IOException {
         int allianceId = position.getAlliance_id();
         if (allianceId <= 0) allianceId = nation.getAlliance_id();
         if (nation.getAlliance_id() != position.getAlliance_id()) {
@@ -1177,10 +1184,11 @@ public class IACommands {
     }
 
 
-    @Command(desc = "Get the top X inactive players. Use `-a` to include applicants")
-    public void inactive(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Default("7") int days, @Switch("a") boolean includeApplicants, @Switch("v") boolean includeVacationMode, @Switch("p") int page) {
+    @Command(desc = "Get the top inactive players")
+    public void inactive(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Arg("Required days inactive") @Default("7") int days, @Switch("a") boolean includeApplicants, @Switch("v") boolean includeVacationMode, @Switch("p") int page) {
         if (!includeApplicants) nations.removeIf(f -> f.getPosition() <= 1);
         if (!includeVacationMode) nations.removeIf(f -> f.getVm_turns() > 0);
+        nations.removeIf(f -> f.getActive_m() * TimeUnit.DAYS.toMinutes(1) < days);
 
         List<DBNation> nationList = new ArrayList<>(nations);
         nationList.sort((o1, o2) -> Integer.compare(o2.getActive_m(), o1.getActive_m()));
@@ -1193,9 +1201,9 @@ public class IACommands {
 
     }
 
-    @Command(desc = "Set the interview category for an interview channel", aliases = {"iacat", "interviewcat", "interviewcategory"})
+    @Command(desc = "Set the discord category for an interview channel", aliases = {"iacat", "interviewcat", "interviewcategory"})
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String iaCat(@Me IMessageIO channel, @Filter("interview.") Category category, @Me GuildDB db) {
+    public String iaCat(@Me IMessageIO channel, @Filter("interview.") Category category) {
         if (!(channel instanceof ICategorizableChannel)) return "This channel cannot be categorized";
         ICategorizableChannel tc = ((ICategorizableChannel) channel);
         RateLimitUtil.queue(tc.getManager().setParent(category));
@@ -1204,7 +1212,12 @@ public class IACommands {
 
     @Command(desc = "Bulk send the result of a Locutus command to a list of nations")
     @RolePermission(value=Roles.ADMIN)
-    public String mailCommandOutput(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me User author, @Me IMessageIO channel, Set<DBNation> nations, String subject, @TextArea String command, @TextArea String body, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String mailCommandOutput(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me User author, @Me IMessageIO channel,
+                                    @Arg("Nations to mail command results to") Set<DBNation> nations,
+                                    String subject,
+                                    @Arg("The locutus command to run") String command,
+                                    @Arg("Message to send along with the command result")
+                                    @TextArea String body, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.MAIL_RESPONSES_SHEET);
         }
@@ -1295,7 +1308,7 @@ public class IACommands {
         return "Errors\n - " + StringMan.join(errorMsgs, "\n - ");
     }
 
-    @Command(desc = "Bulk send ingame mail from a google sheet\n" +
+    @Command(desc = "Bulk send in-game mail from a google sheet\n" +
             "Columns: nation, subject, body")
     @HasApi
     @RolePermission(Roles.ADMIN)
@@ -1422,7 +1435,7 @@ public class IACommands {
         return response.toString();
     }
 
-    @Command(desc = "List members in a channel")
+    @Command(desc = "List members who can see a discord channel")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ADMIN}, any = true)
     public String channelMembers(@Me GuildDB db, MessageChannel channel) {
         Set<Integer> aaIds = db.getAllianceIds();
@@ -1439,7 +1452,7 @@ public class IACommands {
         return StringMan.join(results, "\n");
     }
 
-    @Command(desc = "List all channels and what members have access to each")
+    @Command(desc = "List all guild channels and what members have access to each")
     @RolePermission(value = {Roles.ADMIN}, any = true)
     public String allChannelMembers(@Me GuildDB db) {
         Set<Integer> aaIds = db.getAllianceIds();
@@ -1460,7 +1473,7 @@ public class IACommands {
         return result.toString();
     }
 
-    @Command(desc = "List channel a member has access to")
+    @Command(desc = "List discord channels a member has access to")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ADMIN}, any = true)
     public String memberChannels(@Me Guild guild, Member member) {
         List<String> channels = guild.getTextChannels().stream().filter(f -> f.getMembers().contains(member)).map(f -> f.getAsMention()).collect(Collectors.toList());
@@ -1469,7 +1482,7 @@ public class IACommands {
                 StringMan.join(channels, "\n");
     }
 
-    @Command(desc = "Open a channel")
+    @Command(desc = "Move an interview channel from the `interview-archive` category")
     @RolePermission(Roles.MEMBER)
     public String open(@Me GuildDB db, @Me User author, @Me Guild guild, @Me IMessageIO channel, @Default Category category) {
         if (!(channel instanceof TextChannel)) {
@@ -1496,7 +1509,7 @@ public class IACommands {
         return "Reopened channel";
     }
 
-    @Command(desc = "Close a channel")
+    @Command(desc = "Close a war room, interview or embassy discord channel")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON, Roles.ECON_STAFF}, any=true)
     public String close(@Me GuildDB db, @Me GuildMessageChannel channel, @Switch("f") boolean forceDelete) {
         if (!(channel instanceof TextChannel)) {
@@ -1582,7 +1595,7 @@ public class IACommands {
     }
 
     @Command(desc = "Create an interview channel")
-    public String interview(@Me GuildDB db, @Me User selfUser, @Default("%user%") User user) {
+    public String interview(@Me GuildDB db, @Default("%user%") User user) {
         IACategory iaCat = db.getIACategory(true, true, true);
 
         if (iaCat.getCategories().isEmpty()) {
@@ -1603,7 +1616,7 @@ public class IACommands {
         return channel.getAsMention();
     }
 
-    @Command(aliases = {"syncInterviews", "syncInterview"})
+    @Command(aliases = {"syncInterviews", "syncInterview"}, desc = "Force an update of all interview channels and print the results")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
     public String syncInterviews(@Me IMessageIO channel, @Me GuildDB db) {
         IACategory iaCat = db.getIACategory();
@@ -1613,7 +1626,7 @@ public class IACommands {
         return "Done!";
     }
 
-    @Command
+    @Command(desc = "Set yourself as the referrer for a user")
     @RolePermission(value = { Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERVIEWER, Roles.MENTOR, Roles.RECRUITER }, any = true)
     public String setReferrer(@Me GuildDB db, @Me DBNation me, User user) {
         if (!db.isValidAlliance()) return "Note: No alliance registered to guild";
@@ -1626,14 +1639,16 @@ public class IACommands {
         return null;
     }
 
-    @Command(aliases = {"sortInterviews", "sortInterview"})
+    @Command(aliases = {"sortInterviews", "sortInterview"}, desc = "Sort the interview channels to an audit category\n" +
+            "An appropriate discord category must exist in the form: `interview-CATEGORY`\n" +
+            "Allowed categories: `INACTIVE,ENTRY,RAIDS,BANK,SPIES,BUILD,COUNTERS,TEST,ARCHIVE`")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String sortInterviews(@Me GuildMessageChannel channel, @Me IMessageIO io, @Me GuildDB db, @Default("true") boolean sortCategoried) {
+    public String sortInterviews(@Me GuildMessageChannel channel, @Me IMessageIO io, @Me GuildDB db, @Arg("Sort channels already in a category") @Default("true") boolean sortCategorized) {
         IACategory iaCat = db.getIACategory();
         iaCat.purgeUnusedChannels(io);
         iaCat.load();
         if (iaCat.isInCategory(channel)) {
-            iaCat.sort(io, Collections.singleton((TextChannel) channel), sortCategoried);
+            iaCat.sort(io, Collections.singleton((TextChannel) channel), sortCategorized);
         } else {
             iaCat.sort(io, iaCat.getAllChannels(), true);
         }
@@ -1642,7 +1657,7 @@ public class IACommands {
 
     @Command(desc = "List the interview channels, by category + activity")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String iachannels(@Me User author, @Me Guild guild, @Me GuildDB db, String filter, @Default("1d") @Timediff long time) throws IOException, GeneralSecurityException {
+    public String iachannels(@Me User author, @Me Guild guild, @Me GuildDB db, String filter, @Arg("Highlight channels inactive for longer than the time specified") @Default("1d") @Timediff long time) throws IOException, GeneralSecurityException {
         try {
             if (!filter.isEmpty()) filter += ",*";
             Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, filter);

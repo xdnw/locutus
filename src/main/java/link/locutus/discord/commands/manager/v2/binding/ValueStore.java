@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public interface ValueStore<T> {
@@ -36,4 +38,6 @@ public interface ValueStore<T> {
         }
         return (V) get((Key) key).apply(this, null);
     }
+
+    Map<Key, Parser> getParsers();
 }

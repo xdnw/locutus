@@ -459,6 +459,9 @@ public class StringMan {
         if (obj.getClass() == String.class) {
             return (String) obj;
         }
+        if (obj instanceof Enum<?>) {
+            return ((Enum<?>) obj).name();
+        }
         if (obj.getClass().isArray()) {
             StringBuilder result = new StringBuilder();
             String prefix = "";

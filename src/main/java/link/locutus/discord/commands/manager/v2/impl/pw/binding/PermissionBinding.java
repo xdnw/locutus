@@ -35,7 +35,7 @@ import java.util.Set;
 
 public class PermissionBinding extends BindingHelper {
 
-    @Binding
+    @Binding(value = "Must be used in a guild with a classpath permission set by a bot developer")
     @ClassPermission
     public boolean checkClass(@Me GuildDB db, ClassPermission perm) {
         for (Class clazz : perm.value()) {
@@ -44,7 +44,7 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding
+    @Binding(value = "Must be used in a guild registered to a valid in-game alliance")
     @IsAlliance
     public boolean checkAlliance(@Me GuildDB db, IsAlliance perm) {
         if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "");
@@ -59,7 +59,7 @@ public class PermissionBinding extends BindingHelper {
 //        return true;
 //    }
 
-    @Binding
+    @Binding(value = "Must be used in a guild with a valid API_KEY configured")
     @HasApi
     public boolean hasApi(@Me GuildDB db, HasApi perm) {
         if (db.getOrNull(GuildDB.Key.API_KEY) == null) throw new IllegalArgumentException("No api key set: " + CM.settings.cmd.create(GuildDB.Key.API_KEY.name(), null, null, null).toSlashCommand() + "");
@@ -67,7 +67,7 @@ public class PermissionBinding extends BindingHelper {
     }
 
 
-    @Binding
+    @Binding(value = "Must be used in a Guild with a valid Locutus managed offshore setup")
     @HasOffshore
     public static boolean hasOffshore(@Me GuildDB db, HasOffshore perm) {
         OffshoreInstance offshore = db.getOffshore();
@@ -103,7 +103,7 @@ public class PermissionBinding extends BindingHelper {
     }
 
 
-    @Binding
+    @Binding(value = "Must be run in a guild matching the provided ids")
     @IsGuild
     public boolean checkGuild(@Me Guild guild, IsGuild perm) {
         if (Arrays.stream(perm.value()).noneMatch(f -> f == guild.getIdLong())) {
@@ -112,7 +112,7 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding
+    @Binding(value = "Cannot be run in guilds matching the provided ids")
     @NotGuild
     public boolean checkNotGuild(@Me Guild guild, NotGuild perm) {
         if (Arrays.stream(perm.value()).noneMatch(f -> f == guild.getIdLong())) {
@@ -121,7 +121,7 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding
+    @Binding(value = "Must be run in a guild that has configured the provided settings")
     @HasKey
     public boolean checkKey(@Me GuildDB db, @Me User author, HasKey perm) {
         if (perm.value() == null || perm.value().length == 0) {
@@ -139,7 +139,7 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding
+    @Binding("Must be run in a guild whitelisted by the bot developer")
     @WhitelistPermission
     public boolean checkWhitelistPermission(@Me GuildDB db, @Me User user, WhitelistPermission perm) {
         if (!db.isWhitelisted()) {
@@ -151,7 +151,7 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding
+    @Binding("Must be run in a guild added to a coalition by the bot developer")
     @CoalitionPermission(Coalition.ALLIES)
     public boolean checkWhitelistPermission(@Me GuildDB db, CoalitionPermission perm) {
         if (db.getIdLong() == Settings.INSTANCE.ROOT_SERVER) return true;
@@ -167,7 +167,8 @@ public class PermissionBinding extends BindingHelper {
         return false;
     }
 
-    @Binding
+    @Binding("Must be registered to a nation with an in-game rank equal to or above the provided rank\n" +
+            "Default: MEMBER")
     @RankPermission
     public boolean checkRank(@Me Guild guild, RankPermission perm, @Me DBNation me) {
         if (me.getPosition() < perm.value().id) {
@@ -176,7 +177,11 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding
+    @Binding("Must have the provided Locutus roles on discord\n" +
+            "If `any` is set then you only need one of the roles instead of all\n" +
+            "If `root` is set you need the role on the Locutus server\n" +
+            "If `guild` is set you need the role in the guild matching that id\n" +
+            "If `alliance` is set you need the role in the guild for that alliance")
     @RolePermission
     public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user) {
         return checkRole(guild, perm, user, null);

@@ -13,7 +13,7 @@ import link.locutus.discord.user.Roles;
 import net.dv8tion.jda.api.entities.User;
 
 public class PlayerSettingCommands {
-    @Command
+    @Command(desc = "Mark an announcement by Locutus as read/unread")
     @RolePermission(Roles.MEMBER)
     public String readAnnouncement(@Me GuildDB db, @Me DBNation nation, int ann_id, @Default Boolean markRead) {
         if (markRead == null) markRead = true;
@@ -22,15 +22,15 @@ public class PlayerSettingCommands {
     }
 
     @Command(desc = "Opt out of war room relays and ia channel logging")
-    public String optOut(@Me User user, DiscordDB db, @Default("true") boolean value) {
-        byte[] data = new byte[]{(byte) (value ? 1 : 0)};
+    public String optOut(@Me User user, DiscordDB db, @Default("true") boolean optOut) {
+        byte[] data = new byte[]{(byte) (optOut ? 1 : 0)};
         db.setInfo(DiscordMeta.OPT_OUT, user.getIdLong(), data);
-        if (value) {
+        if (optOut) {
             for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
                 guildDB.deleteInterviewMessages(user.getIdLong());
             }
         }
-        return "Set " + DiscordMeta.OPT_OUT + " to " + value;
+        return "Set " + DiscordMeta.OPT_OUT + " to " + optOut;
     }
 
 }

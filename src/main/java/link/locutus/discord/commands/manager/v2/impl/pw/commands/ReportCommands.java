@@ -29,7 +29,7 @@ public class ReportCommands {
 //
 //    }
 
-    @Command
+    @Command(desc = "List the user reports made to Locutus for a nation or user")
     public String list(@Switch("n") DBNation nation, @Switch("u") User user) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
         if (nation == null || user == null) throw new IllegalArgumentException("Please specify a user or nation.");
         List<String> reportList = getReports().stream().filter(f -> f.nationId == nation.getId() && f.discordId == user.getIdLong()).map(Objects::toString).collect(Collectors.toList());
@@ -38,8 +38,16 @@ public class ReportCommands {
         return "**" + reportList.size() + " reports**:\n" + String.join("\n", reportList);
     }
 
-    @Command(desc = "Report a nation")
-    public String create(@Me DBNation me, @Me User author, @Me GuildDB db, ReportType type, DBNation target, @TextArea String message, @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl, @Switch("u") User user, @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost, @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
+    @Command(desc = "Report a nation to Locutus")
+    public String create(@Me DBNation me, @Me User author, @Me GuildDB db,
+                         ReportType type,
+                         @Arg("Nation to report") DBNation target,
+                         @Arg("Description of report") @TextArea String message,
+                         @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
+                         @Arg("User to report") @Switch("u") User user,
+                         @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost,
+                         @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport,
+                         @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
         if (sheet == null) sheet = SpreadSheet.create(REPORT_SHEET);
         if (message.charAt(0) == '=') return "Invalid message.";
         if (message.length() < 25) return "Message is too short (25 characters minimum)";

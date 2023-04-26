@@ -25,6 +25,7 @@ import link.locutus.discord.commands.info.Revenue;
 import link.locutus.discord.commands.info.UnitHistory;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -67,6 +68,7 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -104,7 +106,8 @@ import java.util.stream.Collectors;
 
 public class UnsortedCommands {
 
-    @Command
+    @Command(desc = "Get an alert on discord when a target logs in within the next 5 days\n" +
+            "Useful if you want to know when they might defeat you in war or perform an attack")
     public String loginNotifier(@Me User user, @Me DBNation nation, DBNation target, @Switch("w") boolean doNotRequireWar) {
         // ensure nation is fighting target
         boolean isFighting = false;
@@ -126,10 +129,13 @@ public class UnsortedCommands {
         return "You will be notified when " + target.getName() + " logs in (within the next 5d).";
     }
 
-    @Command(desc ="View nation or AA bank contents")
+    @Command(desc ="Generate a google sheet of tax revenue for a list of nations")
     @RolePermission(Roles.MEMBER)
     @IsAlliance
-    public String taxRevenueSheet(@Me IMessageIO io, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("f") boolean forceUpdate, @Switch("u") boolean includeUntaxable) throws GeneralSecurityException, IOException {
+    public String taxRevenueSheet(@Me IMessageIO io, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("f") boolean forceUpdate,
+                                  @Arg("Include the potential revenue of untaxable nations\n" +
+                                          "Assumes 100/100)")
+                                  @Switch("u") boolean includeUntaxable) throws GeneralSecurityException, IOException {
         Set<TaxBracket> brackets = new HashSet<>();
         Set<Integer> aaIds = db.getAllianceIds(true);
         Set<Integer> alliancesUpdated = new HashSet<>();
@@ -250,7 +256,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc ="View nation or AA bank contents")
+    @Command(desc ="View the resources in a nation or alliance")
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String stockpile(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, NationOrAlliance nationOrAlliance) throws IOException {
@@ -318,8 +324,14 @@ public class UnsortedCommands {
         }
     }
 
-    @Command(desc = "List the inflows of a nation or alliance over a period of time")
-    public String inflows(@Me IMessageIO channel, Set<NationOrAlliance> nationOrAlliances, @Timestamp long cutoffMs, @Switch("i") boolean hideInflows, @Switch("o") boolean hideOutflows) {
+    @Command(desc = "List the public resource imports or exports of a nation or alliance to other nations or alliances over a period of time")
+    public String inflows(@Me IMessageIO channel, Set<NationOrAlliance> nationOrAlliances,
+                          @Arg("Date to start from")
+                          @Timestamp long cutoffMs,
+                          @Arg("Do not show inflows")
+                          @Switch("i") boolean hideInflows,
+                          @Arg("Do not show outflows")
+                          @Switch("o") boolean hideOutflows) {
         List<Transaction2> allTransfers = new ArrayList<>();
 
         String selfName = StringMan.join(nationOrAlliances.stream().map(f -> f.getName()).collect(Collectors.toList()), ",");
@@ -406,7 +418,8 @@ public class UnsortedCommands {
         }
     }
 
-    @Command(desc="Set your api and bot key\n" +
+    @Command(desc="Set your api and bot key for Locutus\n" +
+            "Your API key can be found on the account page: <https://politicsandwar.com/account/>\n" +
             "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
     public String addApiKey(@Me JSONObject command, String apiKey, @Default String verifiedBotKey) {
         PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(apiKey, verifiedBotKey).build());
@@ -423,9 +436,13 @@ public class UnsortedCommands {
         return "Set api key for " + PnwUtil.getName(nationId, false);
     }
 
-    @Command(desc="Login to allow locutus to run scripts through your account (Avoid using if possible)")
+    @Command(desc="Login to allow locutus to run scripts through your account\n" +
+            "(Avoid using this if possible)")
     @RankPermission(Rank.OFFICER)
-    public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me, String username, String password) {
+    public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me,
+                               @Arg("Your username (i.e. email) for Politics And War")
+                               String username,
+                               String password) {
         IMessageBuilder msg = io.getMessage();
         try {
             if (msg != null) io.delete(msg.getId());
@@ -473,7 +490,7 @@ public class UnsortedCommands {
         return "You are not logged in";
     }
 
-    @Command
+    @Command(desc = "List all in-game alliance members")
     @IsAlliance
     public String listAllianceMembers(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, int page) {
         Set<DBNation> nations = db.getAllianceList().getNations();
@@ -520,9 +537,11 @@ public class UnsortedCommands {
         UNREGISTERED
     }
 
-    @Command
+    @Command(desc = "Clear Locutus managed roles on discord")
     @RolePermission(Roles.ADMIN)
-    public String clearAllianceRoles(@Me GuildDB db, @Me Guild guild, ClearRolesEnum type) {
+    public String clearAllianceRoles(@Me GuildDB db, @Me Guild guild,
+                                     @Arg("What role types do you want to remove")
+                                     ClearRolesEnum type) {
         switch (type) {
             case UNUSED: {
                 Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
@@ -531,7 +550,7 @@ public class UnsortedCommands {
                         entry.getValue().delete().complete();
                     }
                 }
-                return "Cleared unused AA roles!";
+                return "Cleared unused Alliance roles!";
             }
             case ALLIANCE: {
                 Set<Integer> aaIds = db.getAllianceIds();
@@ -568,9 +587,11 @@ public class UnsortedCommands {
     private Map<Long, String> previous = new HashMap<>();
     private long previousNicksGuild = 0;
 
-    @Command
+    @Command(desc = "Clear all nicknames on discord")
     @RolePermission(Roles.ADMIN)
-    public synchronized String clearNicks(@Me Guild guild, @Default boolean undo) {
+    public synchronized String clearNicks(@Me Guild guild,
+                                          @Arg("Undo the last recent use of this command")
+                                          @Default boolean undo) {
         if (previousNicksGuild != guild.getIdLong()) {
             previousNicksGuild = guild.getIdLong();
             previous.clear();
@@ -607,12 +628,12 @@ public class UnsortedCommands {
         return "Cleared all nicknames (that I have permission to clear)!";
     }
 
-    @Command(desc = "Add or subtract from a nation, alliance or guild deposits\n" +
+    @Command(desc = "Add or subtract from a nation, alliance, guild or tax bracket's account balance\n" +
             "note: Mutated alliance deposits are only valid if your server is a bank/offshore\n" +
             "Use `#expire=30d` to have the amount expire after X days")
     @RolePermission(Roles.ECON)
     public String addBalance(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                             Set<NationOrAllianceOrGuild> accounts, Map<ResourceType, Double> amount, String note, @Switch("f") boolean force) throws Exception {
+                             Set<NationOrAllianceOrGuildOrTaxid> accounts, Map<ResourceType, Double> amount, String note, @Switch("f") boolean force) throws Exception {
 
         AddBalanceBuilder builder = db.addBalanceBuilder().add(accounts, amount, note);
         if (!force) {
@@ -623,10 +644,12 @@ public class UnsortedCommands {
         return builder.buildAndSend(me, hasEcon);
     }
 
-    @Command(desc = "Modify a nation, alliance or guild's deposits")
+    @Command(desc = "Add account balance using a google sheet of nation's and resource amounts\n" +
+            "The google sheet must have a column for nation (name, id or url) and a column named for each in-game resource")
     @RolePermission(Roles.ECON)
     public String addBalanceSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                                  SpreadSheet sheet, String note, @Switch("f") boolean force, @Switch("n") boolean negative) throws Exception {
+                                  SpreadSheet sheet, @Arg("The transaction note to use") String note, @Switch("f") boolean force,
+                                  @Arg("Subtract the amounts instead of add") @Switch("n") boolean negative) throws Exception {
         List<String> errors = new ArrayList<>();
         AddBalanceBuilder builder = db.addBalanceBuilder().addSheet(sheet, negative, errors::add, !force, note);
         if (!force) {
@@ -637,9 +660,13 @@ public class UnsortedCommands {
         return builder.buildAndSend(me, hasEcon);
     }
 
-    @Command
+    @Command(desc = "Get the revenue of nations or alliances")
     public String revenue(@Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User user, @Me DBNation me,
-                          NationList nations, @Switch("t") boolean includeUntaxable, @Switch("b") boolean excludeNationBonus) throws Exception {
+                          NationList nations,
+                          @Arg("Include the revenue of nations unable to be taxed")
+                          @Switch("t") boolean includeUntaxable,
+                          @Arg("Exclude the new nation bonus")
+                          @Switch("b") boolean excludeNationBonus) throws Exception {
         ArrayList<DBNation> filtered = new ArrayList<>(nations.getNations());
         if (!includeUntaxable) {
             filtered.removeIf(f -> f.getAlliance_id() == 0 || f.getVm_turns() != 0);
@@ -683,9 +710,15 @@ public class UnsortedCommands {
 
 //    double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
 
-    @Command
+    @Command(desc = "Get the revenue of a city or build json")
     public String cityRevenue(@Me Guild guild, @Me IMessageIO channel, @Me User user,
-                              CityBuild city, @Default("%user%") DBNation nation, @Switch("b") boolean excludeNationBonus) throws Exception {
+                              @Arg("The city url or build json")
+                              CityBuild city,
+                                @Arg("The nation to calculate the revenue for\n" +
+                                        "i.e. Projects, radiation, continent")
+                              @Default("%user%") DBNation nation,
+                              @Arg("Exclude the new nation bonus")
+                              @Switch("b") boolean excludeNationBonus) throws Exception {
         if (nation == null) return "Please use " + CM.register.cmd.toSlashMention();
         JavaCity jCity = new JavaCity(city);
 
@@ -721,7 +754,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Get the military unit count history (dates/times) for a nation")
     public String unitHistory(@Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
                               DBNation nation, MilitaryUnit unit, @Switch("p") Integer page) throws Exception {
         List<Map.Entry<Long, Integer>> history = nation.getUnitHistory(unit);
@@ -807,16 +840,25 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Get a ranking of alliances or nations by their resource production")
     public String findProducer(@Me IMessageIO channel, @Me JSONObject command, @Me Guild guild, @Me User author, @Me DBNation me,
-                               List<ResourceType> resources, @Default NationList nationList,
+                               @Arg("The resources to rank production of")
+                               List<ResourceType> resources,
+                               @Arg("Nations to include in the ranking")
+                               @Default NationList nationList,
                                @Switch("m") boolean ignoreMilitaryUpkeep,
+                               @Arg("Exclude color trade bloc bonus")
                                @Switch("t") boolean ignoreTradeBonus,
+                               @Arg("Exclude the new nation bonus")
                                @Switch("b") boolean ignoreNationBonus,
+                               @Arg("Include negative resource revenue")
                                @Switch("n") boolean includeNegative,
+                               @Arg("Rank by nation instead of alliances")
                                @Switch("a") boolean listByNation,
+                               @Arg("Rank by average per nation instead of total per alliance")
                                @Switch("s") boolean listAverage,
                                @Switch("u") boolean uploadFile,
+                               @Arg("Include inactive nations (2 days)")
                                @Switch("i") boolean includeInactive) throws Exception {
         if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getNations().values());
         ArrayList<DBNation> nations = new ArrayList<>(nationList.getNations());
@@ -833,10 +875,10 @@ public class UnsortedCommands {
             Map<Integer, DBCity> v3Cities = allCities.get(nation.getNation_id());
             if (v3Cities == null || v3Cities.isEmpty()) continue;
 
-            Map<Integer, JavaCity> cities = Locutus.imp().getNationDB().toJavaCity(v3Cities);
+//            Map<Integer, JavaCity> cities = Locutus.imp().getNationDB().toJavaCity(v3Cities);
 
             Arrays.fill(profitBuffer, 0);
-            double[] profit = nation.getRevenue();
+            double[] profit = nation.getRevenue(12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus, !ignoreNationBonus, false, false);
             double value;
             if (resources.size() == 1) {
                 value = profit[resources.get(0).ordinal()];
@@ -880,7 +922,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Estimate a nation's rebuy time based on unit purchase history")
     public String rebuy(@Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
                         DBNation nation) throws Exception {
         Map<Integer, Long> dcProb = nation.findDayChange();
@@ -909,13 +951,22 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "List the alliance rank changes of a nation or alliance members")
     public String leftAA(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
-                         NationOrAlliance nationOrAlliance, @Default @Timestamp Long time, @Default NationList filter,
+                         NationOrAlliance nationOrAlliance,
+                         @Arg("Date to start from")
+                         @Default @Timestamp Long time,
+                         @Arg("Only include these nations")
+                         @Default NationList filter,
+                         @Arg("Ignore inactive nations (7 days)")
                          @Switch("a") boolean ignoreInactives,
+                         @Arg("Ignore nations in vacation mode")
                          @Switch("v") boolean ignoreVM,
+                         @Arg("Ignore nations currently a member of an alliance")
                          @Switch("m") boolean ignoreMembers,
+                         @Arg("Attach a list of all nation ids found")
                          @Switch("i") boolean listIds) throws Exception {
+        if (time == null) time = 0L;
         StringBuilder response = new StringBuilder();
         Map<Integer, Map.Entry<Long, Rank>> removes;
         List<Map.Entry<Map.Entry<DBNation, DBAlliance>, Map.Entry<Long, Rank>>> toPrint = new ArrayList<>();
@@ -989,10 +1040,15 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Save or paste a stored message")
     @RolePermission(Roles.MEMBER)
     public String copyPasta(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me Member member, @Me User author, @Me DBNation me,
-                            @Default String key, @Default @TextArea String message, @Default Set<Role> requiredRolesAny, NationPlaceholders placeholders, ValueStore store) throws Exception {
+                            @Arg("What to name the saved message")
+                            @Default String key,
+                            @Default @TextArea String message,
+                            @Arg("Require roles to paste the message")
+                            @Default Set<Role> requiredRolesAny,
+                            NationPlaceholders placeholders, ValueStore store) throws Exception {
         if (key == null) {
 
             Map<String, String> copyPastas = db.getCopyPastas(member);
@@ -1062,10 +1118,21 @@ public class UnsortedCommands {
         return value;
     }
 
-    @Command
+    @Command(desc = "Generate an audit report of a list of nations")
     @RolePermission(Roles.MEMBER)
     public String checkCities(@Me GuildDB db, @Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
-                              NationList nationList, @Default Set<IACheckup.AuditType> audits, @Switch("u") boolean pingUser, @Switch("m") boolean mailResults, @Switch("c") boolean postInInterviewChannels, @Switch("s") boolean skipUpdate) throws Exception {
+                              @Arg("Nations to audit")
+                              NationList nationList,
+                              @Arg("Only perform these audits (default: all)")
+                              @Default Set<IACheckup.AuditType> audits,
+                              @Arg("Ping the user on discord with their audit")
+                              @Switch("u") boolean pingUser,
+                              @Arg("Mail the audit to each nation in-game")
+                              @Switch("m") boolean mailResults,
+                              @Arg("Post the audit in the interview channels (if exists)")
+                              @Switch("c") boolean postInInterviewChannels,
+                              @Arg("Skip updating nation info from the game")
+                              @Switch("s") boolean skipUpdate) throws Exception {
         Collection<DBNation> nations = nationList.getNations();
         Set<Integer> aaIds = nationList.getAllianceIds();
 
@@ -1096,11 +1163,12 @@ public class UnsortedCommands {
 
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
 
+        IACheckup.AuditType[] allowed = audits == null || audits.isEmpty() ? IACheckup.AuditType.values() : audits.toArray(new IACheckup.AuditType[0]);
         for (DBNation nation : nations) {
             StringBuilder output = new StringBuilder();
             int failed = 0;
 
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(nation, nations.size() == 1, skipUpdate);
+            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(nation, allowed, nations.size() == 1, skipUpdate);
             auditResults.put(nation, auditResult);
 
             if (auditResult != null) {
@@ -1161,20 +1229,28 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "Generate an optimal build for a city")
+    @Command(desc = "Transfer the missing resource amounts per city to a list of nations")
     @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     @HasOffshore
     @IsAlliance
     public static String warchest(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
-                           NationList nations, Map<ResourceType, Double> resourcesPerCity, @Default DepositType.DepositTypeInfo note,
+                           NationList nations,
+                          @Arg("The resources each nation needs for each city\n" +
+                                  "Only resources they are missing is sent")
+                          Map<ResourceType, Double> resourcesPerCity,
+                                  @Arg("The transfer note to use\n" +
+                                          "Defaults to `#WARCHEST`")
+                                  @Default DepositType.DepositTypeInfo note,
+                           @Arg("Do not check nation stockpile\n" +
+                               "Sends the full amount of resources to each nation")
                            @Switch("s") boolean skipStockpile,
-                           @Switch("n") DBNation depositsAccount,
-                           @Switch("a") DBAlliance useAllianceBank,
-                           @Switch("o") DBAlliance useOffshoreAccount,
-                           @Switch("t") TaxBracket taxAccount,
-                           @Switch("ta") boolean existingTaxAccount,
-                           @Switch("e") @Timediff Long expire,
-                           @Switch("m") boolean convertToMoney,
+                          @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
+                          @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
+                          @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
+                          @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
+                          @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+                          @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                          @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
                            @Switch("b") boolean bypassChecks,
                            @Switch("f") boolean force) throws Exception {
         if (existingTaxAccount) {
@@ -1269,7 +1345,7 @@ public class UnsortedCommands {
         return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, errors);
     }
 
-    @Command
+    @Command(desc = "Check if a nation is a reroll and print their reroll date")
     public static String reroll(@Me IMessageIO io, DBNation nation) {
         long date = nation.getRerollDate();
         if (date == Long.MAX_VALUE) {
@@ -1283,24 +1359,42 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "Generate an optimal build for a city")
+    @Command(desc = "Generate an optimal build json for a city")
     @RolePermission(Roles.MEMBER)
     public String optimalBuild(@Me JSONObject command, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
-                               CityBuild build, @Default Integer days,
+                               @Arg("A city url or build json to optimize")
+                               CityBuild build,
+                               @Arg("Set the days the build is expected to last before replacement (or destruction)")
+                               @Default Integer days,
+                               @Arg("Set the MMR (military building counts) of the city to optimize")
                                @Switch("x") @Filter("[0-9]{4}") String buildMMR,
+                               @Arg("Set the age of the city to optimize")
                                @Switch("a") Integer age,
+                               @Arg("Set the infrastructure level of buildings in the city to optimize")
                                @Switch("i") Integer infra,
+                               @Arg("Set the damaged infrastructure level of the city to optimize")
                                @Switch("b") Integer baseReducedInfra,
+                               @Arg("Set the land level of the city to optimize")
                                @Switch("l") Integer land,
+                               @Arg("Set the maximum disease allowed")
                                @Switch("d") Double diseaseCap,
+                               @Arg("Set the maximum crime allowed")
                                @Switch("c") Double crimeCap,
+                               @Arg("Set the minimum population allowed")
                                @Switch("p") Double minPopulation,
+                               @Arg("Set the radiation level")
                                @Switch("r") Double radiation,
+                               @Arg("Maximize untaxed revenue for a tax rate")
                                @Switch("t")TaxRate taxRate,
+                               @Arg("Require the city to produce all raw resources it uses for manufacturing")
                                @Switch("u") boolean useRawsForManu,
+                               @Arg("Return a result on discord in plain text")
                                @Switch("w") boolean writePlaintext,
+                               @Arg("Set the projects a city has access to")
                                @Switch("n") Set<Project> nationalProjects,
+                               @Arg("Require the city build to be cash positive")
                                @Switch("m") boolean moneyPositive,
+                               @Arg("Set the continent the city is in")
                                @Switch("g") Continent geographicContinent
     ) throws Exception {
         List<String> cmd = new ArrayList<>();
@@ -1335,10 +1429,17 @@ public class UnsortedCommands {
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
     }
 
-    @Command
+    @Command(desc = "Configure alliance or guild settings")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
     public String keyStore(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
-                           @Default GuildDB.Key key, @Default @TextArea String value, @Switch("s") boolean hideSheetList, @Switch("a") boolean showAll) throws Exception {
+                           @Arg("The setting to change or view")
+                           @Default GuildDB.Key key,
+                           @Arg("The value to set the setting to")
+                           @Default @TextArea String value,
+                           @Arg("Exclude created spreadsheets from any returned setting lists")
+                           @Switch("s") boolean hideSheetList,
+                           @Arg("Show all settings (or sub settings)")
+                           @Switch("a") boolean showAll) throws Exception {
         List<String> cmd = new ArrayList<>();
         if (key != null) cmd.add(key + "");
         if (value != null) cmd.add(value);

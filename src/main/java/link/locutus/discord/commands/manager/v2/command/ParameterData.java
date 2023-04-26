@@ -156,6 +156,7 @@ public class ParameterData {
     }
 
     public ParameterData setDescription(String value) {
+        this.desc = value;
         return this;
     }
 

@@ -36,4 +36,13 @@ public class SimpleValueStore<T> implements ValueStore<T> {
 
         return allowed.get(key);
     }
+
+    @Override
+    public Map<Key, Parser> getParsers() {
+        Map<Key, Parser> parsers = new LinkedHashMap<>();
+        for (Map<Key, Parser> value : bindings.values()) {
+            parsers.putAll(value);
+        }
+        return parsers;
+    }
 }
