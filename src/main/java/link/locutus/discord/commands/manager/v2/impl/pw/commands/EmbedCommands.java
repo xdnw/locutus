@@ -512,19 +512,23 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             " - All allies\n" +
             " - Underutilized allies")
     @RolePermission(Roles.ADMIN)
-    public void allianceWarSheets(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel,
+    public void allyEnemySheets(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel,
                                     @Default SpreadSheet allEnemiesSheet,
                                     @Default SpreadSheet priorityEnemiesSheet,
                                     @Default SpreadSheet allAlliesSheet,
-                                    @Default SpreadSheet underutilizedAlliesSheet,
-                                  @Switch("c") boolean create) throws GeneralSecurityException, IOException {
+                                    @Default SpreadSheet underutilizedAlliesSheet) throws GeneralSecurityException, IOException {
         if (allEnemiesSheet == null) {
-            if (create) allEnemiesSheet = SpreadSheet.createNew("All Enemies");
+            allEnemiesSheet = SpreadSheet.create(db, GuildDB.Key.ENEMY_SHEET);
         }
-
-//        @Locutus#7602 !embed
-//        "All enemies sheet" "press to update"
-//        "#output ~!nationsheet sheet:1d4I2MRtSFeYfcFdrVanrosEQBiACLUiCveyT5nz0iQU ~enemies,#position>1,#vm_turns=0,#active_m<10800 '=HYPERLINK("politicsandwar.com/nation/id={nation_id}", "{nation}")' {alliancename} {relativestrength} {cities} {score} {off} {def} '=MROUND({score}/1.75,1) & "-" & MROUND({score}/0.75,1)' '=MROUND({score}*0.75,1) & "-" & MROUND( {score}/1.75,1)' {soldiers} {tanks} {aircraft} {ships} {missiles} {nukes} {spies} ={active_m}/60 {avg_daily_login} '="{mmr}"' {dayssincelastdefensivewarloss} {dayssincelastoffensive} {dayssince3consecutivelogins} {dayssince4consecutivelogins} {dayssince5consecutivelogins}
+        if (priorityEnemiesSheet == null) {
+            priorityEnemiesSheet = SpreadSheet.create(db, GuildDB.Key.PRIORITY_ENEMY_SHEET);
+        }
+        if (allAlliesSheet == null) {
+            allAlliesSheet = SpreadSheet.create(db, GuildDB.Key.ALLY_SHEET);
+        }
+        if (underutilizedAlliesSheet == null) {
+            underutilizedAlliesSheet = SpreadSheet.create(db, GuildDB.Key.UNDERUTILIZED_ALLY_SHEET);
+        }
 
         Map.Entry<String, List<String>> allEnemies = Map.entry(
                 "~enemies,#position>1,#vm_turns=0,#active_m<10800",
@@ -580,40 +584,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "'=\"{mmr}\"'",
                         "{dayssincelastdefensivewarloss}",
                         "{dayssincelastoffensive}",
-                        "{dayssince3consecutivelogins}",
-                        "{dayssince4consecutivelogins}",
-                        "{dayssince5consecutivelogins}"
-                )
-        );
-
-        Map.Entry<String, List<String>> priorityEnemies = Map.entry(
-                "~allies,#position>1,#vm_turns=0,#active_m<10800",
-                Arrays.asList(
-                        "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
-                        "{alliancename}",
-                        "{relativestrength}",
-                        "{strongestenemyrelative}",
-                        "{cities}",
-                        "{score}",
-                        "{off}",
-                        "{def}",
-                        "'=MROUND({score}/1.75,1) & \"-\" & MROUND({score}/0.75,1)'",
-                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/1.75,1)'",
-                        "{soldiers}",
-                        "{tanks}",
-                        "{aircraft}",
-                        "{ships}",
-                        "{missiles}",
-                        "{nukes}",
-                        "{spies}",
-                        "={active_m}/60",
-                        "{avg_daily_login}",
-                        "'=\"{mmr}\"'",
-                        "{dayssincelastdefensivewarloss}",
-                        "{dayssincelastoffensive}",
-                        "{dayssince3consecutivelogins}",
-                        "{dayssince4consecutivelogins}",
-                        "{dayssince5consecutivelogins}"
+                        "{dayssince3consecutivelogins}"
                 )
         );
 
@@ -669,5 +640,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 )
         );
 
+        io.send("TODO");
     }
 }

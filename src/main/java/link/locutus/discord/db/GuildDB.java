@@ -5004,6 +5004,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         MMR_BY_SCORE_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
         WARCHEST_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
 
+        ENEMY_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        PRIORITY_ENEMY_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        ALLY_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+        UNDERUTILIZED_ALLY_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
+
 
         ;
 
