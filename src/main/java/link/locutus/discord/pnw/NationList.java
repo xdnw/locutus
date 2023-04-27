@@ -1,5 +1,6 @@
 package link.locutus.discord.pnw;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -38,6 +39,18 @@ public interface NationList {
 
     default DBNation getAverage() {
         return DBNation.createFromList(null, getNations(), true);
+    }
+
+    default Set<Integer> getNationIds() {
+        return getNations().stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+    }
+
+    default void updateCities(boolean events) {
+        if (events) {
+            Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateCitiesOfNations(getNationIds(), true, f));
+        } else {
+            Locutus.imp().getNationDB().updateCitiesOfNations(getNationIds(), true, null);
+        }
     }
 
 

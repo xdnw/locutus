@@ -143,23 +143,15 @@ public class CommandManager2 {
         this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertDtCSpySheet", "convertdtcspysheet");
         this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertDtCSpySheet", "convertdtc");
 
-        /*
-raid
-warWinning
-spyEnemy
-warContestedRange
-warGuerilla
-unblockadeRequests
-         */
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "raid", "raid");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warWinning", "war_winning");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spyEnemy", "spy_enemy");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warContestedRange", "war_contested_range");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warGuerilla", "guerilla");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "unblockadeRequests", "unblockade_requests");
-
-
-
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "allyEnemySheets", "ally_enemy_sheets");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spySheets", "spy_sheets");
+        this.commands.registerMethod(new WarCommands(), List.of("war", "room"), "warRoomSheet", "from_sheet");
 
 //        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "intel", "intel");
 

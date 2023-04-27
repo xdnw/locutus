@@ -161,7 +161,7 @@ public class WarRoom extends Command {
         return response.toString();
     }
 
-    public WarCategory.WarRoom createChannel(WarCategory warCat, User author, Guild guild, Consumer<String> errorOutput, boolean ping, boolean addMember, boolean addMessage, DBNation target, Collection<DBNation> attackers) {
+    public static WarCategory.WarRoom createChannel(WarCategory warCat, User author, Guild guild, Consumer<String> errorOutput, boolean ping, boolean addMember, boolean addMessage, DBNation target, Collection<DBNation> attackers) {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory.WarRoom room = warCat.get(target, true, true, true, true);
         TextChannel channel = room.getChannel(true, true);

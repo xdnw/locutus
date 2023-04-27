@@ -13,6 +13,7 @@ import link.locutus.discord.util.TimeUtil;
 import java.awt.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -116,7 +117,16 @@ public class PrimitiveBindings extends BindingHelper {
 
     @Binding(examples = {"a b c"}, value = "Multiple words or text separated by spaces")
     public List<String> all(@TextArea String string) {
-        return StringMan.split(string, ' ');
+        List<String> result = new ArrayList<>(StringMan.split(string, ' '));
+        // remove starting and ending quote if exist
+        for (int i = 0; i < result.size(); i++) {
+            String s = result.get(i);
+            if (s.length() <= 2) continue;
+             if (StringMan.isQuote(s.charAt(0)) && StringMan.isQuote(s.charAt(s.length() - 1))) {
+                result.set(i, s.substring(1, s.length() - 1));
+            }
+        }
+        return result;
     }
 
     @Binding(examples = {"8-4-4-4-12"}, value = "Universally Unique IDentifier")

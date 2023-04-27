@@ -87,7 +87,6 @@ public class Who extends Command {
             commands.add(Settings.commandPrefix(true) + "wars " + nation.getNation_id());
             commands.add(Settings.commandPrefix(true) + "revenue " + nation.getNation_id());
             commands.add(Settings.commandPrefix(true) + "unithistory " + nation.getNation_id() + " <unit>");
-
         } else {
             int allianceId = -1;
             for (DBNation nation : nations) {

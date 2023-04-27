@@ -85,7 +85,8 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 other.discord_link,
                 other.wiki_link,
                 other.dateCreated,
-                other.color);
+                other.color,
+                other.metaCache);
     }
 
     public void setLoot(LootEntry lootEntry) {
@@ -262,11 +263,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public static DBAlliance getOrCreate(int aaId) {
-        if (aaId == 0) return new DBAlliance(0, "None", "", "", "", "", "", 0, NationColor.GRAY);
+        if (aaId == 0) return new DBAlliance(0, "None", "", "", "", "", "", 0, NationColor.GRAY, null);
         return Locutus.imp().getNationDB().getOrCreateAlliance(aaId);
     }
 
-    public DBAlliance(int allianceId, String name, String acronym, String flag, String forum_link, String discord_link, String wiki_link, long dateCreated, NationColor color) {
+    public DBAlliance(int allianceId, String name, String acronym, String flag, String forum_link, String discord_link, String wiki_link, long dateCreated, NationColor color, Int2ObjectOpenHashMap<byte[]> metaCache) {
         this.allianceId = allianceId;
         this.dateCreated = dateCreated;
         this.name = name;
@@ -276,6 +277,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         this.forum_link = forum_link;
         this.discord_link = discord_link;
         this.wiki_link = wiki_link;
+        this.metaCache = metaCache;
     }
 
     @Command(desc = "Number of offensive and defensive wars since date")

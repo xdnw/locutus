@@ -68,6 +68,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -628,6 +629,7 @@ public class DiscordUtil {
     }
 
     public static Integer parseNationId(String arg) {
+        if (arg.isEmpty()) return null;
         if (arg.charAt(0) == '"' && arg.charAt(arg.length() - 1) == '"') {
             arg = arg.substring(1, arg.length() - 1);
         }
@@ -855,6 +857,7 @@ public class DiscordUtil {
 
                     List<DBNation> toAdd = new ArrayList<>();
                     Integer nationI = 0;
+                    boolean isLeader = false;
                     List<Object> header = rows.get(0);
                     for (int i = 0; i < header.size(); i++) {
                         if (header.get(i) == null) continue;
@@ -862,6 +865,12 @@ public class DiscordUtil {
                             nationI = i;
                             break;
                         }
+                        if (header.get(i).toString().toLowerCase(Locale.ROOT).contains("leader")) {
+                            nationI = i;
+                            isLeader = true;
+                            break;
+                        }
+
                     }
                     long start = System.currentTimeMillis();
                     for (int i = 1; i < rows.size(); i++) {
@@ -873,7 +882,13 @@ public class DiscordUtil {
                         String nationName = cell + "";
                         if (nationName.isEmpty()) continue;
 
-                        DBNation nation = DiscordUtil.parseNation(nationName);
+                        DBNation nation = null;
+                        if (isLeader) {
+                            nation = Locutus.imp().getNationDB().getNationByLeader(nationName);
+                        }
+                        if (nation == null) {
+                            nation = DiscordUtil.parseNation(nationName);
+                        }
                         if (nation != null) {
                             toAdd.add(nation);
                         } else {

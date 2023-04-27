@@ -11,7 +11,9 @@ import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.manager.dummy.DelegateMessage;
 import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
@@ -928,7 +930,7 @@ public final class Locutus extends ListenerAdapter {
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
             MessageChannel channel = event.getChannel();
 
-            DiscordHookIO io = new DiscordHookIO(event.getHook());
+            IMessageIO io = new DiscordHookIO(event.getHook());
 
             String id = button.getId();
             if (id == null) {
@@ -966,6 +968,8 @@ public final class Locutus extends ListenerAdapter {
                     io.send("Unknown channel: <#" + channelId + ">");
                     System.out.println("Unknown channel");
                     return;
+                } else {
+                    io = new DiscordChannelIO(channel);
                 }
                 id = id.substring(id.indexOf(' ') + 1);
             }

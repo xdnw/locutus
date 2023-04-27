@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -126,8 +127,9 @@ public class WarCommands {
 
     @Command(desc = "Set the types of nations to receive automatic beige alerts for", aliases = {"beigeAlertMode", "setBeigeAlertMode"})
     @WhitelistPermission
+    @RolePermission(value = {Roles.BEIGE_ALERT, Roles.BEIGE_ALERT_OPT_OUT}, any = true)
     @CoalitionPermission(Coalition.RAIDPERMS)
-    public String beigeAlertMode(@Me DBNation me, NationMeta.BeigeAlertMode mode) {
+    public static String beigeAlertMode(@Me User user, @Me DBNation me, NationMeta.BeigeAlertMode mode) {
         me.setMeta(NationMeta.BEIGE_ALERT_MODE, (byte) mode.ordinal());
         if (mode == NationMeta.BeigeAlertMode.NO_ALERTS) {
             Set<DBNation> reminders = Locutus.imp().getNationDB().getBeigeRemindersByAttacker(me);
@@ -135,7 +137,23 @@ public class WarCommands {
                 Locutus.imp().getNationDB().deleteBeigeReminder(me.getNation_id(), nation.getNation_id());
             }
         }
-        return "Set beige alert mode to " + mode;
+        StringBuilder response = new StringBuilder("Set beige alert mode to " + mode + " via " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention());
+        if (mode != NationMeta.BeigeAlertMode.NO_ALERTS) {
+            for (Guild guild : user.getMutualGuilds()) {
+                Role role = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
+                Member member = guild.getMember(user);
+                if (role != null && member != null && member.getRoles().contains(role)) {
+                    try {
+                        guild.removeRoleFromMember(user.getIdLong(), role).queue();
+                        response.append("\nRemoved ").append(role.getName()).append(" from ").append(guild.getName());
+                    } catch (Exception e) {
+                        response.append("\nFailed to remove ").append(role.getName()).append(" from ").append(guild.getName() + " (" + e.getMessage() + ")");
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        return response.toString();
     }
 
     @Command(desc = "Only get the automatic beige alerts if you have the online status on discord\n" +
@@ -1021,7 +1039,7 @@ public class WarCommands {
         return response.toString();
     }
 
-    @Command(desc="Find a war target that you can hit, who is in a specified alliance/coalition/none/*\n" +
+    @Command(desc="Find a war target that you can hit\n" +
             "Defaults to `enemies` coalition")
     @RolePermission(Roles.MEMBER)
     public String war(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
@@ -2308,6 +2326,10 @@ public class WarCommands {
         long dayCutoff = TimeUtil.getDay() - 2;
         Map<Integer, Integer> lastSpyCounts = Locutus.imp().getNationDB().getLastSpiesByNation(nationIds, dayCutoff);
 
+        if (forceUpdate) {
+            new SimpleNationList(nations).updateCities(true);
+        }
+
         for (Map.Entry<Integer, Set<DBNation>> entry : byAlliance.entrySet()) {
             int aaId = entry.getKey();
 
@@ -2326,7 +2348,7 @@ public class WarCommands {
 
                 List<Object> row = new ArrayList<>(header);
 
-                Map<Integer, JavaCity> cities = nation.getCityMap(forceUpdate, forceUpdate);
+                Map<Integer, JavaCity> cities = nation.getCityMap(false, false);
                 int i = 0;
                 for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
                     int cityBarracks = cityEntry.getValue().get(Buildings.BARRACKS);
@@ -2744,11 +2766,15 @@ public class WarCommands {
     @Command(desc = "Run checks on a spy blitz sheet.\n" +
             "Checks that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.\n" +
             "Add `true` for the day-change argument to double the offensive op limit")
-    public String validateSpyBlitzSheet(@Me GuildDB db, SpreadSheet sheet,
+    public String validateSpyBlitzSheet(@Me GuildDB db, @Default SpreadSheet sheet,
                                         @Arg("If the sheet is for attacks at day change")
                                         @Default("false") boolean dayChange,
                                         @Arg("Only allow attacking these nations")
-                                        @Default("*") Set<DBNation> filter) {
+                                        @Default("*") Set<DBNation> filter) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            db.getOrThrow(GuildDB.Key.SPYOP_SHEET);
+            sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+        }
         StringBuilder response = new StringBuilder();
 
         Function<DBNation, Integer> maxWarsFunc = new Function<DBNation, Integer>() {
@@ -2775,6 +2801,71 @@ public class WarCommands {
         return response.toString();
     }
 
+    @Command(desc = "Create war rooms from a blitz sheet")
+    @RolePermission(Roles.MILCOM)
+    public String warRoomSheet(@Me WarCategory warCat, @Me User author, @Me Guild guild, @Me JSONObject command, @Me IMessageIO io,
+                               SpreadSheet blitzSheet,
+                               @Arg("Custom message to send in each created war room")
+                               @Default String customMessage,
+                               @Arg("If the default counter message should be sent")
+                               @Switch("c") boolean addCounterMessage,
+                               @Arg("If the added member should be pinged in the channel")
+                               @Switch("p") boolean ping,
+                               @Arg("If the member should be added to the war room")
+                               @Switch("m") boolean addMember,
+                               @Arg("The nations from the blitz sheet to create war rooms for\n" +
+                                       "Defaults to everyone")
+                               @Switch("a") Set<DBNation> allowedNations,
+                               @Arg("The row the blitz sheet header is one\n" +
+                                       "Defaults to first row")
+                               @Switch("h") Integer headerRow,
+                               @Switch("f") boolean force) {
+        if (headerRow == null) headerRow = 0;
+
+        IMessageBuilder msg = io.create();
+
+        StringBuilder response = new StringBuilder();
+        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
+        if (response.length() != 0) {
+            msg = io.create().append("**Errors:**\n").append(response.toString());
+            if (!force) {
+                msg.embed("Force create?", "ignore errors and create channels anyway")
+                        .confirmation(command).send();
+                return null;
+            }
+        }
+
+        msg.append("Creating channels...").send();
+
+        if (allowedNations != null) {
+            for (Map.Entry<DBNation, Set<DBNation>> entry : targets.entrySet()) {
+                entry.getValue().removeIf(f -> !allowedNations.contains(f));
+            }
+        }
+        targets.entrySet().removeIf(f -> f.getValue().isEmpty());
+
+        Set<GuildMessageChannel> channels = new LinkedHashSet<>();
+        for (Map.Entry<DBNation, Set<DBNation>> entry : targets.entrySet()) {
+            DBNation target = entry.getKey();
+            Set<DBNation> attackers = entry.getValue();
+
+            WarCategory.WarRoom channel = WarRoom.createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
+
+            try {
+                if (customMessage != null) {
+                    RateLimitUtil.queue(channel.getChannel().sendMessage(customMessage));
+                }
+
+                channels.add(channel.getChannel());
+            } catch (Throwable e) {
+                e.printStackTrace();
+                response.append(e.getMessage());
+            }
+        }
+
+        return "Created " + channels.size() + " for " + targets.size() + " targets";
+    }
+
     @RolePermission(Roles.MILCOM)
     @Command(desc = "Send spy or war blitz sheets to individual nations")
     public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me IMessageIO channel, @Me DBNation me,
@@ -2789,6 +2880,8 @@ public class WarCommands {
 
                               @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount,
                               @Arg("The api key to use to send the mail") @Switch("a") String apiKey,
+                              @Arg("Hide the default blurb from the message")
+                              @Switch("b") boolean hideDefaultBlurb,
                               @Switch("f") boolean force,
                               @Arg("Send instructions as direct message on discord")
                               @Switch("d") boolean dm) throws IOException, GeneralSecurityException {
@@ -2818,7 +2911,7 @@ public class WarCommands {
         Map<DBNation, Set<DBNation>> spyDefAttMap = new HashMap<>();
         Map<DBNation, Set<Spyop>> spyOps = new HashMap<>();
 
-        if (dm && !Roles.ADMIN.hasOnRoot(author)) return "You do not have permission to dm users";
+        if (dm && !Roles.MAIL.hasOnRoot(author)) return "You do not have permission to dm users";
 
         if (blitzSheet != null) {
             warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, 1.75, true, true, false, f -> true, (a, b) -> {});
@@ -2846,7 +2939,7 @@ public class WarCommands {
         String blurb = "BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room\n" +
                 "\n" +
                 "This is an alliance war, not a counter. The goal is battlefield control:\n" +
-                "1. Try to declare raid wars just before day change (day change if possible)\n" +
+                "1. Try to raid wars just before day change (day change if possible)\n" +
                 "2. If you have ground control, further attacks with tanks kills aircraft\n" +
                 "3. If you have tanks and can get ground control, do ground attacks to kill planes\n" +
                 "4. Get air control to halve enemy tank strength\n" +
@@ -2876,7 +2969,9 @@ public class WarCommands {
             mail.append(header).append("\n");
 
             if (!myAttackOps.isEmpty()) {
-                mail.append(blurb + "\n");
+                if (!hideDefaultBlurb) {
+                    mail.append(blurb + "\n");
+                }
                 mail.append("\n");
 
                 mail.append("Your nation:\n");
