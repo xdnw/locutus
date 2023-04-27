@@ -141,6 +141,7 @@ public class TimeUtil {
         if (string.charAt(0) == 'f'  && string.equalsIgnoreCase("false")) {
             return 0;
         }
+        string = string.replaceAll("([a-zA-Z])([0-9])", "$1 $2");
         String[] split = string.indexOf(' ') != -1 ? string.split(" ") : new String[] {string};
         long time = 0;
         for (String value : split) {

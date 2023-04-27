@@ -138,13 +138,13 @@ public class BlitzGenerator {
             if (title.equalsIgnoreCase("nation") || (title.equalsIgnoreCase("link") && targetI == null)) {
                 targetI = i;
             }
-            if (title.equalsIgnoreCase("att1") || title.equalsIgnoreCase("Fighter #1")) {
+            if (title.equalsIgnoreCase("att1") || title.equalsIgnoreCase("Fighter #1") || title.equalsIgnoreCase("Attacker 1")) {
                 attI = i;
             }
-            if (title.equalsIgnoreCase("att2") || title.equalsIgnoreCase("Fighter #2")) {
+            if (title.equalsIgnoreCase("att2") || title.equalsIgnoreCase("Fighter #2") || title.equalsIgnoreCase("Attacker 2")) {
                 att2 = i;
             }
-            if (title.equalsIgnoreCase("att3") || title.equalsIgnoreCase("Fighter #2")) {
+            if (title.equalsIgnoreCase("att3") || title.equalsIgnoreCase("Fighter #3") || title.equalsIgnoreCase("Attacker 3")) {
                 att3 = i;
             }
             else if (title.equalsIgnoreCase("def1")) {

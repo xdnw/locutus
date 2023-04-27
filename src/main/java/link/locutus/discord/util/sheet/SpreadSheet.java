@@ -147,6 +147,28 @@ public class SpreadSheet {
         return instance;
     }
 
+    public static SpreadSheet createNew(String title) throws GeneralSecurityException, IOException {
+        Sheets api = null;
+        String sheetId = null;
+        if (credentialsExists()) {
+            Spreadsheet spreadsheet = new Spreadsheet()
+                    .setProperties(new SpreadsheetProperties()
+                            .setTitle(title)
+                    );
+            api = getServiceAPI();
+            spreadsheet = api.spreadsheets().create(spreadsheet)
+                    .setFields("spreadsheetId")
+                    .execute();
+            sheetId = spreadsheet.getSpreadsheetId();
+        } else {
+            sheetId = title;
+        }
+        SpreadSheet sheet = create(sheetId, api);
+
+        if (api != null) sheet.set(0, 0);
+        return sheet;
+    }
+
     public static SpreadSheet create(GuildDB db, GuildDB.Key key) throws GeneralSecurityException, IOException {
         String sheetId = db.getInfo(key, true);
 

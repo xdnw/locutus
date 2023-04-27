@@ -59,4 +59,15 @@ public enum Operation {
             };
         };
     }
+
+    public Operation opposite() {
+        return switch (this) {
+            case LESSER_EQUAL -> GREATER;
+            case GREATER_EQUAL -> LESSER;
+            case EQUAL -> NOT_EQUAL;
+            case GREATER -> LESSER_EQUAL;
+            case LESSER -> GREATER_EQUAL;
+            case NOT_EQUAL -> EQUAL;
+        };
+    }
 }

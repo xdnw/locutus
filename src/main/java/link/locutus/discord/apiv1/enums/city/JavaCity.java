@@ -671,7 +671,7 @@ public class JavaCity {
 
         // if any commerce buildings
 
-        int commerce = getMetrics(hasProject).commerce;
+        int commerce = powered ? getMetrics(hasProject).commerce : 0;
         if (commerce > 100) {
             if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
                 if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
@@ -697,11 +697,20 @@ public class JavaCity {
     }
 
     public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, double[] profitBuffer, int numCities, double grossModifier, int turns) {
+        return profit(continent, rads, date, hasProject, profitBuffer, numCities, grossModifier, false, turns);
+    }
+    public double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, double[] profitBuffer, int numCities, double grossModifier, boolean forceUnpowered, int turns) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
-        boolean powered = true;
-        if (metrics != null && metrics.powered != null) powered = metrics.powered;
-        if (powered && getPoweredInfra() < infra) powered = false;
+        boolean powered;
+        if (forceUnpowered) {
+            powered = false;
+        } else {
+            powered = true;
+            if (metrics != null && metrics.powered != null) powered = metrics.powered;
+            if (powered && getPoweredInfra() < infra) powered = false;
+        }
+
         int unpoweredInfra = (int) Math.ceil(infra);
         for (int ordinal = 0; ordinal < buildings.length; ordinal++) {
             int amt = buildings[ordinal];

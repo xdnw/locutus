@@ -126,7 +126,7 @@ public class PrimitiveBindings extends BindingHelper {
 
     @Timediff
     @Binding(types = {long.class}, examples = {"5d", "1w10h3m25s", "timestamp:1682013943000"}, value = "A time difference or unix timestamp which will resolve as a difference relative to the current date")
-    public Long timediff(String argument) {
+    public static Long timediff(String argument) {
         return TimeUtil.timeToSec(argument) * 1000;
     }
 

@@ -402,42 +402,54 @@ public class OptimalBuild extends Command {
             Double finalDiseaseLimit = diseaseLimit;
 
             double hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
-            double recyclingPct = (-Buildings.RECYCLING_CENTER.pollution(hasProject)) / 20d;
-            double subwayPct = (-Buildings.SUBWAY.pollution(hasProject)) / 20d;
-
+            double recyclingPct = (-Buildings.RECYCLING_CENTER.pollution(hasProject)) * 0.05;
+            double subwayPct = (-Buildings.SUBWAY.pollution(hasProject)) * 0.05;
 
             Function<JavaCity, Double> parent = valueFunc;
             valueFunc = city -> {
                 Double disease = city.getDisease(hasProject);
                 if (disease > finalDiseaseLimit) {
+
                     int remainingSlots = city.getFreeSlots();
                     if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
+
                     int latestBuilding = 0;
-                    for (int j = Buildings.SUBWAY.ordinal(); j < city.getBuildings().length; j++) {
+                    for (int j = Buildings.SUBWAY.ordinal(); j <= Buildings.RECYCLING_CENTER.ordinal(); j++) {
                         if (city.get(j) > 0) latestBuilding = j;
                     }
-                    double reduced = disease;
+
+                    double pollutionDisease = city.getPollution(hasProject) * 0.05;
+                    double diseaseInfra = disease - pollutionDisease;
 
                     if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
-                        int amt = Math.min(Buildings.RECYCLING_CENTER.cap(hasProject), remainingSlots);
-                        reduced -= recyclingPct * amt;
-                        if (reduced <= finalDiseaseLimit) return parent.apply(city);
-                        remainingSlots -= amt;
-                        if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
+                        int amt = (int) Math.min(Math.ceil(pollutionDisease / recyclingPct), Math.min(Buildings.RECYCLING_CENTER.cap(hasProject), remainingSlots));
+                        if (amt > 0) {
+                            pollutionDisease = Math.max(0, pollutionDisease - recyclingPct * amt);
+                            double reduced = pollutionDisease + diseaseInfra;
+                            if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                            remainingSlots -= amt;
+                            if (remainingSlots <= 0) return Double.NEGATIVE_INFINITY;
+                        }
                     }
 
                     if (latestBuilding <= Buildings.HOSPITAL.ordinal()) {
                         int amt = Math.min(Buildings.HOSPITAL.cap(hasProject), remainingSlots);
-                        reduced -= hospitalPct * amt;
-                        if (reduced <= finalDiseaseLimit) return parent.apply(city);
-                        remainingSlots -= amt;
-                        if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
+                        if (amt > 0) {
+                            diseaseInfra -= hospitalPct * amt;
+                            double reduced = pollutionDisease + diseaseInfra;
+                            if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                            remainingSlots -= amt;
+                            if (remainingSlots <= 0) return Double.NEGATIVE_INFINITY;
+                        }
                     }
 
                     if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
-                        int amt = Math.min(Buildings.SUBWAY.cap(hasProject), remainingSlots);
-                        reduced -= subwayPct * amt;
-                        if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                        int amt = (int) Math.min(Math.ceil(pollutionDisease / subwayPct), Math.min(Buildings.SUBWAY.cap(hasProject), remainingSlots));
+                        if (amt > 0) {
+                            pollutionDisease = Math.max(0, pollutionDisease - subwayPct * amt);
+                            double reduced = pollutionDisease + diseaseInfra;
+                            if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                        }
                     }
 
                     return Double.NEGATIVE_INFINITY;

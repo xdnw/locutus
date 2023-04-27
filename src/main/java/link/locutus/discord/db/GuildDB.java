@@ -2301,6 +2301,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public boolean isOffshore() {
+        return isOffshore(false);
+    }
+    public boolean isOffshore(boolean allowInvalid) {
         if (isDelegateServer()) return false;
 
         Set<Long> offshoring = getCoalitionRaw(Coalition.OFFSHORING);
@@ -2308,14 +2311,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<Long> offshore = getCoalitionRaw(Coalition.OFFSHORE);
         if (offshore.isEmpty()) return false;
 
-        if (getOrNull(Key.API_KEY) == null || !isValidAlliance()) {
+        if (getOrNull(Key.API_KEY) == null || (!allowInvalid && !isValidAlliance())) {
             return false;
         }
 
         Set<Integer> aaIds = getAllianceIds();
         if (aaIds.isEmpty()) return false;
         for (int aaId : aaIds) {
-            DBAlliance alliance = DBAlliance.get(aaId);
+            DBAlliance alliance = allowInvalid ? DBAlliance.getOrCreate(aaId) : DBAlliance.get(aaId);
             if (alliance == null) continue;
 
             // ensure offshore and offshoring contain this aaid
@@ -4210,6 +4213,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public Object parse(GuildDB db, String input) {
+                Role interviewerRole = Roles.INTERVIEWER.toRole(db.getGuild());
+                if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(db.getGuild());
+                if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(db.getGuild());
+                if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(db.getGuild());
+                if (interviewerRole == null) {
+                    throw new IllegalArgumentException("Please use: " + CM.role.setAlias.cmd.toSlashMention() + " to set one of the following:\n" +
+                     StringMan.join(Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS), ", "));
+                }
                 return DiscordUtil.getChannel(db.getGuild(), input);
             }
 

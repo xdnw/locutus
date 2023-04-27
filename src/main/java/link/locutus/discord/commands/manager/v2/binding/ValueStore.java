@@ -32,6 +32,10 @@ public interface ValueStore<T> {
     }
 
     default <V> V getProvided(Key<V> key) {
+        V parser = (V) get((Key) key);
+        if (parser == null) {
+            throw new IllegalArgumentException("No parser for " + key);
+        }
         return (V) get((Key) key).apply(this, null);
     }
 

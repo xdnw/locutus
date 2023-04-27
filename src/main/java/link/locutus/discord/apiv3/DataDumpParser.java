@@ -490,7 +490,7 @@ public class DataDumpParser {
                         boolean atWar = nationsAtWar.contains(nation.getId());
                         double rads = radsByContinent.get(nation.getContinent()) + globalRads;
 
-                        double[] revenue = PnwUtil.getRevenue(null, 1, gameTime, nation, nationCities.values(), true, true, true, true, false, rads, atWar);
+                        double[] revenue = PnwUtil.getRevenue(null, 1, gameTime, nation, nationCities.values(), true, true, true, false, false, rads, atWar);
                         if (nation.isTaxable()) {
                             tracker.getOrCreate(nation.getId()).addUnknownRevenue(tracker, nation.getId(), -1, turnTimestamp, revenue);
 //                            tracker.add(nation.getId(), turnTimestamp, EMPTY, revenue);

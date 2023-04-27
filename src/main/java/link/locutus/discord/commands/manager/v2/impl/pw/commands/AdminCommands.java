@@ -61,6 +61,7 @@ import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.jooq.meta.derby.sys.Sys;
 import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -382,7 +383,8 @@ public class AdminCommands {
 
     @Command(desc = "Add or remove a role from a set of members on discord")
     @RolePermission(Roles.ADMIN)
-    public String mask(@Me Member me, @Me GuildDB db, Set<Member> members, Role role, boolean value) {
+    public String mask(@Me Member me, @Me GuildDB db, Set<Member> members, Role role, boolean value, @Arg("If the role should be added or removed from all other members\n" +
+            "If `value` is true, the role will be removed, else added") @Switch("r") boolean toggleMaskFromOthers) {
         List<Role> myRoles = me.getRoles();
         List<String> response = new ArrayList<>();
         for (Member member : members) {
@@ -401,6 +403,23 @@ public class AdminCommands {
             } else {
                 RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
                 response.add(user.getName() + ": Removed role from member");
+            }
+        }
+        if (toggleMaskFromOthers) {
+            for (Member member : db.getGuild().getMembers()) {
+                if (members.contains(member)) continue;
+                List<Role> memberRoles = member.getRoles();
+                if (value) {
+                    if (memberRoles.contains(role)) {
+                        RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
+                        response.add(member.getUser().getName() + ": Removed role from member");
+                    }
+                } else {
+                    if (!memberRoles.contains(role)) {
+                        RateLimitUtil.queue(db.getGuild().addRoleToMember(member, role));
+                        response.add(member.getUser().getName() + ": Added role to member");
+                    }
+                }
             }
         }
         return StringMan.join(response, "\n").trim();

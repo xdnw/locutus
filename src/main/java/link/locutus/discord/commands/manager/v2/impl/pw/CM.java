@@ -2631,15 +2631,40 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="war")
             public static class enemy extends CommandRef {
                 public static final enemy cmd = new enemy();
-                public enemy create(String targets, String numResults, String attackerScore, String includeInactives, String includeApplicants, String onlyPriority, String onlyWeak, String onlyLessCities, String resultsInDm, String includeStrong) {
-                    return createArgs("targets", targets, "numResults", numResults, "attackerScore", attackerScore, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "onlyPriority", onlyPriority, "onlyWeak", onlyWeak, "onlyLessCities", onlyLessCities, "resultsInDm", resultsInDm, "includeStrong", includeStrong);
+                public enemy create(String targets, String numResults, String attackerScore, String includeInactives, String includeApplicants, String onlyPriority, String onlyWeak, String onlyEasy, String onlyLessCities, String resultsInDm, String includeStrong) {
+                    return createArgs("targets", targets, "numResults", numResults, "attackerScore", attackerScore, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "onlyPriority", onlyPriority, "onlyWeak", onlyWeak, "onlyEasy", onlyEasy, "onlyLessCities", onlyLessCities, "resultsInDm", resultsInDm, "includeStrong", includeStrong);
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="raidNone")
-            public static class none extends CommandRef {
-                public static final none cmd = new none();
-                public none create(String nations, String numResults, String score) {
-                    return createArgs("nations", nations, "numResults", numResults, "score", score);
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="raid")
+            public static class raid extends CommandRef {
+                public static final raid cmd = new raid();
+
+                public raid create(
+                        String targets,
+                        String numResults,
+                        String activeTimeCutoff,
+                        String topX,
+                        String weakground,
+                        String beigeTurns,
+                        String vmTurns,
+                        String nationScore,
+                        String defensiveSlots,
+                        String ignoreDNR,
+                        String ignoreBankLoot,
+                        String ignoreCityRevenue) {
+                        return createArgs(
+                            "targets", targets,
+                            "numResults", numResults,
+                            "activeTimeCutoff", activeTimeCutoff,
+                            "topX", topX,
+                            "weakground", weakground,
+                            "beigeTurns", beigeTurns,
+                            "vmTurns", vmTurns,
+                            "nationScore", nationScore,
+                            "defensiveSlots", defensiveSlots,
+                            "ignoreDNR", ignoreDNR,
+                            "ignoreBankLoot", ignoreBankLoot,
+                            "ignoreCityRevenue", ignoreCityRevenue);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="damage")

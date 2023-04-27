@@ -17,6 +17,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class TransferCommand extends Command {
     boolean disabled = false;
@@ -66,7 +68,7 @@ public class TransferCommand extends Command {
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         String expireStr = DiscordUtil.parseArg(args, "expire");
-        Long expire = expireStr == null ? null : PrimitiveBindings.Long(expireStr);
+        Long expire = expireStr == null ? null : PrimitiveBindings.timediff(expireStr);
 
         DBNation nationAccount = null;
         DBAlliance allianceAccount = null;
@@ -124,7 +126,7 @@ public class TransferCommand extends Command {
                 taxAccount != null ? taxAccount.getQualifiedName() : null,
                 null,
                 String.valueOf(onlyMissingFunds),
-                expire == null ? null : ("timestamp:" + expire),
+                expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                 token == null ? null : token.toString(),
                 String.valueOf(convertCash),
                 String.valueOf(bypassChecks),

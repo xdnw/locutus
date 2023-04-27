@@ -1605,6 +1605,14 @@ public class IACommands {
         GuildMessageChannel channel = iaCat.getOrCreate(user, true);
         if (channel == null) return "Unable to find or create channel (does a category called `interview` exist?)";
 
+        Role applicantRole = Roles.APPLICANT.toRole(db.getGuild());
+        if (applicantRole != null) {
+            Member member = db.getGuild().getMember(user);
+            if (member == null || !member.getRoles().contains(applicantRole)) {
+                db.getGuild().addRoleToMember(user.getIdLong(), applicantRole).queue();
+            }
+        }
+
         return channel.getAsMention();
     }
 

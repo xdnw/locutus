@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -76,6 +77,21 @@ public class PWBindings extends BindingHelper {
         if (index == -1) {
             json = null;
         } else {
+            if (input.startsWith("{city")) {
+                // in the form {city 1234}
+                index = input.indexOf('}');
+                if (index == -1) throw new IllegalArgumentException("No closing bracket found");
+                // parse number 1234
+                int cityId = input.contains(" ") ? Integer.parseInt(input.substring(6, index)) - 1 : 0;
+                Set<Map.Entry<Integer, JavaCity>> cities = nation.getCityMap(true, false).entrySet();
+                int i = 0;
+                for (Map.Entry<Integer, JavaCity> entry : cities) {
+                    if (++i == index) {
+                       return entry.getValue().toCityBuild();
+                    }
+                }
+                throw new IllegalArgumentException("City not found: " + index + " for natiion " + nation.getName());
+            }
             json = input.substring(index);
             input = input.substring(0, index);
         }

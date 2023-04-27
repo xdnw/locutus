@@ -203,9 +203,6 @@ public class WarCommand extends Command {
                         if (flags.contains('e')) {
                             value = BlitzGenerator.getAirStrength(nation, true);
                         } else {
-
-                            String mmrBuilding = nation.getMMRBuildingStr();
-
                             value = BlitzGenerator.getAirStrength(nation, true);
                             value *= 2 * (nation.getCities() / (double) me.getCities());
                             if (nation.getOff() > 0) value /= 4;

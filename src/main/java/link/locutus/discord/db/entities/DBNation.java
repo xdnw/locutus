@@ -2067,8 +2067,11 @@ public class DBNation implements NationOrAlliance {
             citiesNoRaws.put(cityEntry.getKey(), city);
         }
 
-        double[] daily = PnwUtil.getRevenue(null, 12, this, cityMap.values(), true, true, true, true, false);
-        double[] turn = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, false, true);
+        double[] daily = PnwUtil.getRevenue(null, 12, this, cityMap.values(), true, true, true, false, false);
+        double[] turn = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, false, false);
+        double[] turn2 = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, true, false);
+        turn[ResourceType.MONEY.ordinal()] = Math.min(turn[ResourceType.MONEY.ordinal()], turn2[ResourceType.MONEY.ordinal()]);
+        turn[ResourceType.FOOD.ordinal()] = Math.min(turn[ResourceType.FOOD.ordinal()], turn2[ResourceType.FOOD.ordinal()]);
 
 //        turn[0] = Math.min(daily[0], turn[0]);
 
@@ -2973,7 +2976,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double equilibriumTaxRate(boolean updateNewCities, boolean force) {
-        double[] revenue = getRevenue(12, true, false, true, updateNewCities, false, force);
+        double[] revenue = getRevenue(12, true, false, true, updateNewCities, false, false, force);
         double consumeCost = 0;
         double taxable = 0;
         for (ResourceType type : ResourceType.values) {
@@ -2995,12 +2998,12 @@ public class DBNation implements NationOrAlliance {
     }
     @Command
     public double[] getRevenue(int turns) {
-        return getRevenue(turns, true, true, true, true, false, false);
+        return getRevenue(turns, true, true, true, true, false, false, false);
     }
 
-    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean force) {
+    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, boolean force) {
         Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, false) : new HashMap<>();
-        double[] revenue = PnwUtil.getRevenue(null, turns, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, true, noFood);
+        double[] revenue = PnwUtil.getRevenue(null, turns, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower);
         return revenue;
     }
 
@@ -3098,31 +3101,44 @@ public class DBNation implements NationOrAlliance {
             int turnsPowered = isPowered() ? Integer.MAX_VALUE : 60;
             if (loot != null) {
                 turnsPowered = getTurnsPowered(loot.getTotal_rss());
-                double[] revenue = getRevenue(1, true, true, false, true, false, false);
-                if (revenue[ResourceType.FOOD.ordinal()] < 0) {
-                    turnsFed = (int) (loot.getTotal_rss()[ResourceType.FOOD.ordinal()] / -revenue[ResourceType.FOOD.ordinal()]);
+                double food = loot.getTotal_rss()[ResourceType.FOOD.ordinal()];
+                if (food <= 0) {
+                    turnsFed = 0;
                 } else {
-                    turnsFed = Integer.MAX_VALUE;
+                    double[] revenue = getRevenue(1, true, true, false, true, false, false, false);
+                    if (revenue[ResourceType.FOOD.ordinal()] < 0) {
+                        turnsFed = Math.max(0, (int) (food / Math.abs(revenue[ResourceType.FOOD.ordinal()])));
+                    } else {
+                        turnsFed = Integer.MAX_VALUE;
+                    }
                 }
             }
 
             double[] revenue = ResourceType.getBuffer();
             int turnsUnpowered = turnsOfRevenue - turnsPowered;
             if (turnsUnpowered > 0) {
-                revenue = getRevenue(turnsUnpowered, true, true, false, true, false, false);
+                int turnsFedUnpowered = Math.max(0, Math.min(turnsFed - turnsPowered, turnsUnpowered));
+                int turnsUnfedUnpowered = turnsPowered - turnsFedUnpowered;
+                if (turnsFedUnpowered > 0) {
+                    revenue = getRevenue(turnsFedUnpowered, true, true, false, true, false, true, false);
+                }
+                if (turnsUnfedUnpowered > 0) {
+                    revenue = getRevenue(turnsUnfedUnpowered, true, true, false, true, true, true, false);
+                }
                 revenue = PnwUtil.capManuFromRaws(revenue, ResourceType.getBuffer());
             }
-            {
-                revenue = PnwUtil.add(revenue, getRevenue(turnsPowered, true, true, false, true, false, false));
+            if (turnsPowered > 0) {
+                int turnsFedPowered = Math.min(turnsFed, turnsPowered);
+                int turnsUnfedPowered = turnsPowered - turnsFedPowered;
+                if (turnsFedPowered > 0) {
+                    revenue = PnwUtil.add(revenue, getRevenue(turnsFedPowered, true, true, false, true, false, false, false));
+                }
+                if (turnsUnfedPowered > 0) {
+                    revenue = PnwUtil.add(revenue, getRevenue(turnsUnfedPowered, true, true, false, true, true, false, false));
+                }
             }
             if (loot != null) {
                 revenue = PnwUtil.capManuFromRaws(revenue, loot.getTotal_rss());
-            }
-            if (turnsFed < turnsOfRevenue) {
-                double unfedRatio = 1d - (double) turnsFed / (turnsInactive + 24d);
-                double revenueCutWhenUnfed = 0.33;
-                double revenueRatio = 1 - (1 - revenueCutWhenUnfed) * unfedRatio;
-                revenue[ResourceType.MONEY.ordinal()] *= revenueRatio;
             }
             for (int i = 0; i < lootRevenue.length; i++) {
                 lootRevenue[i] += revenue[i] * lootFactor;
@@ -4726,6 +4742,17 @@ public class DBNation implements NationOrAlliance {
             return ((double) diff) / TimeUnit.DAYS.toMillis(1);
         }
         return Integer.MAX_VALUE;
+    }
+
+    @Command
+    public double daysSinceLastDefensiveWarLoss() {
+        long maxDate = 0;
+        for (DBWar war : Locutus.imp().getWarDb().getWarsByNation(nation_id)) {
+            if (war.defender_id == nation_id && war.status == WarStatus.ATTACKER_VICTORY) {
+                maxDate = Math.max(maxDate, war.date);
+            }
+        }
+        return maxDate == 0 ? Integer.MAX_VALUE : ((double) (System.currentTimeMillis() - maxDate)) / TimeUnit.DAYS.toMillis(1);
     }
 
     @Command

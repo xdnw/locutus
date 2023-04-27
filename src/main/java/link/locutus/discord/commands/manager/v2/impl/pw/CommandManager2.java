@@ -140,6 +140,31 @@ public class CommandManager2 {
         this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
         this.commands.registerMethod(new IACommands(), List.of("sheets_ia"), "dayChangeSheet", "daychange");
 
+        this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertDtCSpySheet", "convertdtcspysheet");
+        this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertDtCSpySheet", "convertdtc");
+
+        /*
+raid
+warWinning
+spyEnemy
+warContestedRange
+warGuerilla
+unblockadeRequests
+         */
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "raid", "raid");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warWinning", "war_winning");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spyEnemy", "spy_enemy");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warContestedRange", "war_contested_range");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warGuerilla", "guerilla");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "unblockadeRequests", "unblockade_requests");
+
+
+
+
+//        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "intel", "intel");
+
+//        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spyEnemy", "spy_enemy");
+
 //        this.commands.registerSubCommands(new BuildCommands(), "build");
 //        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
 //

@@ -461,7 +461,7 @@ public class IACheckup {
                 return stockpile == null || stockpile.isEmpty() ? null : checkWarchest(nation, stockpile, db);
             case BEIGE_LOOT:
                 if (nation.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) == null) {
-                    String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid * 15 -beige" : Settings.commandPrefix(false) + "raidNone *,#isbeige";
+                    String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid * 15 -beige" : Settings.commandPrefix(false) + "raid *,#isbeige";
                     String shortDesc = "`" + cmd + "`";
                     String longDesc = "At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +
                             "To list raid targets currently on beige, use e.g.:\n" +
@@ -812,7 +812,7 @@ public class IACheckup {
             }
         }
 
-        String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid * 15 -beige<12" : Settings.commandPrefix(false) + "raidNone *,#isbeige";
+        String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid * 15 -beige<12" : Settings.commandPrefix(false) + "raid *,#isbeige";
         String longDesc = "Let's declare on a target as they come off beige:\n" +
                 "1. Use e.g. `" + cmd + "` to find a target that ends beige in the next 12 turns\n" +
                 "2. Set a reminder on your phone, or on discord using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
@@ -869,7 +869,7 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkRevenue(DBNation nation) {
-        double[] revenue = nation.getRevenue(12, true, true, false, false, false, false);
+        double[] revenue = nation.getRevenue(12, true, true, false, false, false, false, false);
 
         double total = PnwUtil.convertedTotal(revenue, false);
         if (total < 0) {
@@ -1117,14 +1117,14 @@ public class IACheckup {
         if (nation.getOff() >= targets.size() || targets.isEmpty()) return null;
         StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
-            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, null, null, "true", null, null, null).toSlashCommand();
+            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, null, null, null, "true", null, null, null).toSlashCommand();
             resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention() + "");
         } else hasEnemies = false;
         if (hasRaids) {
             if (hasEnemies) resposnse.append("Please use ");
             else resposnse.append("or ");
 
-            String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid" : Settings.commandPrefix(false) + "raidNone *";
+            String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid" : Settings.commandPrefix(false) + "raid *";
             resposnse.append("`" + cmd + "` ");
         }
         resposnse.append("for some juicy targets");
@@ -1449,7 +1449,7 @@ public class IACheckup {
             response.append("The following cities are unpowered (insufficient power buildings) " + StringMan.getString(unpoweredInfra));
         }
         if (!unpoweredRss.isEmpty()) {
-            double[] revenue = PnwUtil.getRevenue(null, 12, nation, cities.values(), true, false, false, false, true);
+            double[] revenue = PnwUtil.getRevenue(null, 12, nation, cities.values(), true, false, false, true, false);
             for (int i = 0; i < revenue.length; i++) {
                 if (revenue[i] >= 0) revenue[i] = 0;
                 else revenue[i] = -revenue[i];

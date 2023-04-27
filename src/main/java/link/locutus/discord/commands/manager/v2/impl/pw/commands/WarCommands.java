@@ -254,68 +254,22 @@ public class WarCommands {
         return response.toString();
     }
 
-    @Command(desc = "Get a raw list of alliance-less nations in war range. This is NOT sorted by loot")
+    @Command(desc = "Find raid targets")
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
-    public String raidNone(@Me User author, @Me GuildDB db, @Me DBNation me,
-                           @Default("*") Set<DBNation> nations, @Default("5") Integer numResults,
-                           @Arg("The score to use for war range. Defaults to your score")
-                           @Switch("s") Double score) {
-        if (score == null) score = me.getScore();
-        Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
-
-        nations.removeIf(f -> (f.getAlliance_id() != 0 && !enemies.contains(f.getAlliance_id())) || f.getDef() >= 3 || f.getVm_turns() > 0);
-
-        Double finalScore = score;
-        nations.removeIf(f -> f.getScore() < finalScore * 0.75 || f.getScore() > finalScore * 1.75);
-
-        nations.removeIf(f -> f.getGroundStrength(true, false) > me.getGroundStrength(false, false) * 0.4 + 10000);
-
-        boolean hasNonBeige = false;
-        for (DBNation nation : nations) {
-            if (!nation.isBeige()) {
-                hasNonBeige = true;
-                break;
-            }
-        }
-        if (hasNonBeige) {
-            nations.removeIf(f -> f.isBeige());
-        }
-
-
-        if (nations.isEmpty()) return "No targets found";
-
-        List<DBNation> list = new ArrayList<>(nations);
-        list.sort(new Comparator<DBNation>() {
-            @Override
-            public int compare(DBNation o1, DBNation o2) {
-                double val1 = o1.getActive_m() * MathMan.sqr(o1.getAvg_infra());
-                double val2 = o2.getActive_m() * MathMan.sqr(o2.getAvg_infra());
-                return Double.compare(val2, val1);
-            }
-        });
-
-        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
-        int count = 0;
-        for (DBNation nation : list) {
-            if (count++ == numResults) break;
-            response.append(nation.toMarkdown(true, false, false, false));
-        }
-
-
-        StringBuilder warnings = new StringBuilder();
-        if (me.getSoldiers() == 0) {
-            warnings.append(" - You do not have any soldiers, which should be used for raiding as other units aren't cost effective.\n");
-        }
-        if (me.getTanks() != 0) {
-            warnings.append(" - We don't recommend raiding with tanks because they are unable to loot nations with any cost efficiency.\n");
-        }
-        if (me.getWarPolicy() != WarPolicy.PIRATE) {
-            warnings.append(" - Using the pirate policy will increase loot by 40%\n");
-        }
-        if (warnings.length() != 0) {
-            response.append("\n```").append(warnings.toString().trim()).append("```");
-        }
-        return response.toString();
+    public String raid(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me TextChannel channel,
+                       @Default("*") Set<DBNation> targets,
+                       @Switch("r") @Default("5") Integer numResults,
+                       @Switch("a") @Timediff Long activeTimeCutoff,
+//                       @Switch('t') Integer topX,
+                       @Switch("w") boolean weakground,
+                       @Switch("b") Integer beigeTurns,
+                       @Switch("v") Integer vmTurns,
+                       @Switch("n") Double nationScore,
+                       @Switch("s") Integer defensiveSlots,
+                       @Switch("d") boolean ignoreDNR,
+                       @Switch("l") boolean ignoreBankLoot,
+                       @Switch("c") boolean ignoreCityRevenue) {
+        throw new UnsupportedOperationException("This is a stub");
     }
 
     @Command(desc = "List your wars you are allowed to beige\n" +
@@ -1084,7 +1038,9 @@ public class WarCommands {
                       @Switch("p") boolean onlyPriority,
                       @Arg("Only list targets weaker than you")
                       @Switch("w") boolean onlyWeak,
-                        @Arg("Only list targets with less cities than you")
+                      @Arg("Sort targets by easiest first")
+                      @Switch("e") boolean onlyEasy,
+                      @Arg("Only list targets with less cities than you")
                       @Switch("c") boolean onlyLessCities,
                       @Arg("Return results in direct message")
                       @Switch("d") boolean resultsInDm,
@@ -1150,17 +1106,21 @@ public class WarCommands {
 
         for (DBNation nation : targetsStorted) {
             if (nation.isBeige()) continue;
+            double value;
+            if (onlyEasy) {
+                value = BlitzGenerator.getAirStrength(nation, true);
+            } else {
 //                        SimulatedWarNode origin = SimulatedWarNode.of(nation, me.getNation_id() + "", nation.getNation_id() + "", "raid");
-
-            double value = BlitzGenerator.getAirStrength(nation, true);
-            value *= 2 * (nation.getCities() / (double) me.getCities());
-            if (nation.getOff() > 0) value /= 4;
-            if (nation.getShips() > 1 && nation.getOff() > 0 && nation.isBlockader()) value /= 2;
-            if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
-            if (nation.getActive_m() > 1440) value *= 1 + Math.sqrt(nation.getActive_m() - 1440) / 250;
-            value /= (1 + nation.getOff() * 0.1);
-            if (nation.getScore() > attackerScore * 1.25) value /= 2;
-            if (nation.getOff() > 0) value /= nation.getRelativeStrength();
+                 value = BlitzGenerator.getAirStrength(nation, true);
+                value *= 2 * (nation.getCities() / (double) me.getCities());
+                if (nation.getOff() > 0) value /= 4;
+                if (nation.getShips() > 1 && nation.getOff() > 0 && nation.isBlockader()) value /= 2;
+                if (nation.getDef() <= 1) value /= (1.05 + (0.1 * nation.getDef()));
+                if (nation.getActive_m() > 1440) value *= 1 + Math.sqrt(nation.getActive_m() - 1440) / 250;
+                value /= (1 + nation.getOff() * 0.1);
+                if (nation.getScore() > attackerScore * 1.25) value /= 2;
+                if (nation.getOff() > 0) value /= nation.getRelativeStrength();
+            }
 
             nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, value));
         }
@@ -1968,7 +1928,27 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert hidude's sheet format to Locutus")
+    @Command(desc = "Convert dtc's spy sheet format to Locutus")
+    @RolePermission(Roles.MILCOM)
+    public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+                                        @Arg("If results (left column) are grouped by the attacker instead of the defender")
+                                        @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
+        Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsDTC(input, groupByAttacker, forceUpdate);
+
+        if (output == null) {
+            output = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+        }
+
+        generateSpySheet(output, spyOpsFiltered, groupByAttacker);
+
+        output.clearAll();
+        output.set(0, 0);
+
+        output.send(io, null, author.getAsMention()).send();
+        return null;
+    }
+
+    @Command(desc = "Convert hidude's spy sheet format to locutus")
     @RolePermission(Roles.MILCOM)
     public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
@@ -1988,7 +1968,7 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert TKR's sheet format to locutus")
+    @Command(desc = "Convert TKR's spy sheet format to locutus")
     @RolePermission(Roles.MILCOM)
     public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")

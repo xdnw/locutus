@@ -1010,14 +1010,14 @@ public class PnwUtil {
         return total;
     }
 
-    public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood) {
+    public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower) {
         double rads = nation.getRads();
         boolean atWar = nation.getNumWars() > 0;
         long date = -1L;
-        return getRevenue(profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, checkRpc, noFood, rads, atWar);
+        return getRevenue(profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar);
     }
 
-    public static double[] getRevenue(double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
+    public static double[] getRevenue(double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double rads, boolean atWar) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
         Continent continent = nation.getContinent();
@@ -1035,7 +1035,7 @@ public class PnwUtil {
 
         // city revenue
         for (JavaCity build : cities) {
-            profitBuffer = build.profit(continent, rads, date, nation::hasProject, profitBuffer, numCities, grossModifier, turns);
+            profitBuffer = build.profit(continent, rads, date, nation::hasProject, profitBuffer, numCities, grossModifier, noPower, 12);
         }
 
         // trade revenue
