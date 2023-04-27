@@ -61,6 +61,7 @@ import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.jooq.meta.derby.sys.Sys;
 import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;

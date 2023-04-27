@@ -1946,7 +1946,7 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert hidude's sheet format to Locutus")
+    @Command(desc = "Convert dtc's spy sheet format to Locutus")
     @RolePermission(Roles.MILCOM)
     public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
@@ -1966,7 +1966,7 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert hidude's sheet format to Locutus")
+    @Command(desc = "Convert hidude's spy sheet format to locutus")
     @RolePermission(Roles.MILCOM)
     public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
@@ -1986,7 +1986,7 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert TKR's sheet format to locutus")
+    @Command(desc = "Convert TKR's spy sheet format to locutus")
     @RolePermission(Roles.MILCOM)
     public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")
