@@ -878,7 +878,7 @@ public class UnsortedCommands {
 //            Map<Integer, JavaCity> cities = Locutus.imp().getNationDB().toJavaCity(v3Cities);
 
             Arrays.fill(profitBuffer, 0);
-            double[] profit = nation.getRevenue(12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus, !ignoreNationBonus, false, false);
+            double[] profit = nation.getRevenue(12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus, !ignoreNationBonus, false, false, false);
             double value;
             if (resources.size() == 1) {
                 value = profit[resources.get(0).ordinal()];
@@ -1441,7 +1441,7 @@ public class UnsortedCommands {
                            @Arg("Show all settings (or sub settings)")
                            @Switch("a") boolean showAll) throws Exception {
         List<String> cmd = new ArrayList<>();
-        if (key != null) cmd.add(key + "");
+        if (key != null) cmd.add(key.name() + "");
         if (value != null) cmd.add(value);
         Set<Character> flags = new HashSet<>();
         if (hideSheetList) flags.add('s');

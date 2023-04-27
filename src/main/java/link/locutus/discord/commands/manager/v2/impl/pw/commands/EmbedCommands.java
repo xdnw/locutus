@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -8,16 +9,21 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.task.mail.Mail;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
@@ -175,7 +181,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         @RolePermission(Roles.ADMIN)
         public void unblockadeRequests(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel) {
             if (db.getCoalition(Coalition.ALLIES).isEmpty()) {
-                throw new IllegalArgumentException("No `" + Coalition.ALLIES + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
+                throw new IllegalArgumentException("No `" + Coalition.ALLIES.name() + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
             }
             db.getOrThrow(GuildDB.Key.UNBLOCKADE_REQUESTS);
             db.getOrThrow(GuildDB.Key.UNBLOCKADED_ALERTS);
@@ -254,7 +260,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     @RolePermission(Roles.ADMIN)
     public void warGuerilla(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel) {
         if (db.getCoalition(Coalition.ENEMIES).isEmpty()) {
-            throw new IllegalArgumentException("No `" + Coalition.ENEMIES + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
+            throw new IllegalArgumentException("No `" + Coalition.ENEMIES.name() + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
         }
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
 
@@ -319,7 +325,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                                   double score, @Default MessageChannel outputChannel, @Switch("d") boolean resultsInDm) {
         if (greaterOrLess == Operation.EQUAL || greaterOrLess == Operation.NOT_EQUAL) {
             if (db.getCoalition(Coalition.ENEMIES).isEmpty()) {
-                throw new IllegalArgumentException("No " + Coalition.ENEMIES + " coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
+                throw new IllegalArgumentException("No " + Coalition.ENEMIES.name() + " coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
             }
             throw new IllegalArgumentException("Cannot use " + greaterOrLess + " in this command");
         }
@@ -457,7 +463,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     @RolePermission(Roles.ADMIN)
     public void warWinning(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Switch("d") boolean resultsInDm) {
         if (db.getCoalition(Coalition.ENEMIES).isEmpty()) {
-            throw new IllegalArgumentException("No " + Coalition.ENEMIES + " coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
+            throw new IllegalArgumentException("No " + Coalition.ENEMIES.name() + " coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
         }
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
 
@@ -506,25 +512,37 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             .send();
     }
 
-    @Command(desc="Generates sheets:" +
+    @Command(desc="Generates sheets for a coalition war:" +
             " - All enemies\n" +
             " - Priority enemies\n" +
             " - All allies\n" +
             " - Underutilized allies")
     @RolePermission(Roles.ADMIN)
-    public void allianceWarSheets(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel,
-                                    @Default SpreadSheet allEnemiesSheet,
-                                    @Default SpreadSheet priorityEnemiesSheet,
-                                    @Default SpreadSheet allAlliesSheet,
-                                    @Default SpreadSheet underutilizedAlliesSheet,
-                                  @Switch("c") boolean create) throws GeneralSecurityException, IOException {
-        if (allEnemiesSheet == null) {
-            if (create) allEnemiesSheet = SpreadSheet.createNew("All Enemies");
+    public void allyEnemySheets(ValueStore store, NationPlaceholders placeholders,
+            @Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel,
+                                @Default SpreadSheet allEnemiesSheet,
+                                @Default SpreadSheet priorityEnemiesSheet,
+                                @Default SpreadSheet allAlliesSheet,
+                                @Default SpreadSheet underutilizedAlliesSheet) throws GeneralSecurityException, IOException {
+        Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
+        if (db.getCoalition(Coalition.ALLIES).isEmpty()) {
+            throw new IllegalArgumentException("No `" + Coalition.ALLIES.name() + "` coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
         }
-
-//        @Locutus#7602 !embed
-//        "All enemies sheet" "press to update"
-//        "#output ~!nationsheet sheet:1d4I2MRtSFeYfcFdrVanrosEQBiACLUiCveyT5nz0iQU ~enemies,#position>1,#vm_turns=0,#active_m<10800 '=HYPERLINK("politicsandwar.com/nation/id={nation_id}", "{nation}")' {alliancename} {relativestrength} {cities} {score} {off} {def} '=MROUND({score}/1.75,1) & "-" & MROUND({score}/0.75,1)' '=MROUND({score}*0.75,1) & "-" & MROUND( {score}/1.75,1)' {soldiers} {tanks} {aircraft} {ships} {missiles} {nukes} {spies} ={active_m}/60 {avg_daily_login} '="{mmr}"' {dayssincelastdefensivewarloss} {dayssincelastoffensive} {dayssince3consecutivelogins} {dayssince4consecutivelogins} {dayssince5consecutivelogins}
+        if (db.getCoalition(Coalition.ENEMIES).isEmpty()) {
+            throw new IllegalArgumentException("No `" + Coalition.ENEMIES.name() + "` coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
+        }
+        if (allEnemiesSheet == null) {
+            allEnemiesSheet = SpreadSheet.create(db, GuildDB.Key.ENEMY_SHEET);
+        }
+        if (priorityEnemiesSheet == null) {
+            priorityEnemiesSheet = SpreadSheet.create(db, GuildDB.Key.PRIORITY_ENEMY_SHEET);
+        }
+        if (allAlliesSheet == null) {
+            allAlliesSheet = SpreadSheet.create(db, GuildDB.Key.ALLY_SHEET);
+        }
+        if (underutilizedAlliesSheet == null) {
+            underutilizedAlliesSheet = SpreadSheet.create(db, GuildDB.Key.UNDERUTILIZED_ALLY_SHEET);
+        }
 
         Map.Entry<String, List<String>> allEnemies = Map.entry(
                 "~enemies,#position>1,#vm_turns=0,#active_m<10800",
@@ -580,40 +598,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "'=\"{mmr}\"'",
                         "{dayssincelastdefensivewarloss}",
                         "{dayssincelastoffensive}",
-                        "{dayssince3consecutivelogins}",
-                        "{dayssince4consecutivelogins}",
-                        "{dayssince5consecutivelogins}"
-                )
-        );
-
-        Map.Entry<String, List<String>> priorityEnemies = Map.entry(
-                "~allies,#position>1,#vm_turns=0,#active_m<10800",
-                Arrays.asList(
-                        "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
-                        "{alliancename}",
-                        "{relativestrength}",
-                        "{strongestenemyrelative}",
-                        "{cities}",
-                        "{score}",
-                        "{off}",
-                        "{def}",
-                        "'=MROUND({score}/1.75,1) & \"-\" & MROUND({score}/0.75,1)'",
-                        "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/1.75,1)'",
-                        "{soldiers}",
-                        "{tanks}",
-                        "{aircraft}",
-                        "{ships}",
-                        "{missiles}",
-                        "{nukes}",
-                        "{spies}",
-                        "={active_m}/60",
-                        "{avg_daily_login}",
-                        "'=\"{mmr}\"'",
-                        "{dayssincelastdefensivewarloss}",
-                        "{dayssincelastoffensive}",
-                        "{dayssince3consecutivelogins}",
-                        "{dayssince4consecutivelogins}",
-                        "{dayssince5consecutivelogins}"
+                        "{dayssince3consecutivelogins}"
                 )
         );
 
@@ -669,5 +654,168 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 )
         );
 
+        String footer = "";
+        if (outputChannel != null) {
+            footer = "\n\n> Output in " + outputChannel.getAsMention();
+        }
+
+        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+
+        io.create()
+                .embed("All Enemies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
+                        CM.nation.sheet.NationSheet.cmd.create(
+                                allEnemies.getKey(),
+                                StringMan.join(allEnemies.getValue(), " "),
+                                null,
+                                "sheet:" + allEnemiesSheet.getSpreadsheetId(),
+                                null
+                        ), "update").send();
+
+        io.create().embed("All Allies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
+                CM.nation.sheet.NationSheet.cmd.create(
+                        allAllies.getKey(),
+                        StringMan.join(allAllies.getValue(), " "),
+                        null,
+                        "sheet:" + allAlliesSheet.getSpreadsheetId(),
+                        null
+
+                ), "update").send();
+        io.create().embed("Priority Enemies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
+                CM.nation.sheet.NationSheet.cmd.create(
+                        priorityEnemies.getKey(),
+                        StringMan.join(priorityEnemies.getValue(), " "),
+                        null,
+                        "sheet:" + priorityEnemiesSheet.getSpreadsheetId(),
+                        null
+
+                ), "update").send();
+
+        io.create().embed("Underutilized Allies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
+                CM.nation.sheet.NationSheet.cmd.create(
+                        underutilizedAllies.getKey(),
+                        StringMan.join(underutilizedAllies.getValue(), " "),
+                        null,
+                        "sheet:" + underutilizedAlliesSheet.getSpreadsheetId(),
+                        null
+
+                ), "update").send();
+//
+//        UtilityCommands.NationSheet(store, placeholders, io, db, DiscordUtil.parseNations(db.getGuild(), allEnemies.getKey()), allEnemies.getValue(), false, allEnemiesSheet);
+//        UtilityCommands.NationSheet(store, placeholders, io, db, DiscordUtil.parseNations(db.getGuild(), allAllies.getKey()), allAllies.getValue(), false, allAlliesSheet);
+//        UtilityCommands.NationSheet(store, placeholders, io, db, DiscordUtil.parseNations(db.getGuild(), priorityEnemies.getKey()), priorityEnemies.getValue(), false, priorityEnemiesSheet);
+//        UtilityCommands.NationSheet(store, placeholders, io, db, DiscordUtil.parseNations(db.getGuild(), underutilizedAllies.getKey()), underutilizedAllies.getValue(), false, underutilizedAlliesSheet);
+    }
+
+    @Command(desc = "Discord embed for sheet to update ally and enemy spy counts, generate and send spy blitz targets")
+    public void spySheets(@Me GuildDB db, @Me IMessageIO io, @Default("spyops") @GuildCoalition String allies, @Default MessageChannel outputChannel, @Default SpreadSheet spySheet) throws GeneralSecurityException, IOException {
+        if (allies == null) allies = Coalition.ALLIES.name();
+
+        if (db.getCoalition(allies).isEmpty()) {
+            throw new IllegalArgumentException("No `" + allies + "` coalition found (for enemy targets). See: " + CM.coalition.create.cmd.toSlashMention());
+        }
+        if (db.getCoalition(Coalition.ENEMIES).isEmpty()) {
+            throw new IllegalArgumentException("No `" + Coalition.ENEMIES.name() + "` coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
+        }
+//        1. Update active ally spy counts
+//        2. Update active enemy spy counts
+//        3. Spy blitz sheet (spyops coalition)
+//        4. Mail targets (spyops coalition)
+
+        String title = "Spy Sheets";
+
+        String footer = "\n\n(do not spam)";
+        if (outputChannel != null) {
+            footer += "\n\n> Output in " + outputChannel.getAsMention();
+        }
+
+        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
+
+        String columns = StringMan.join(Arrays.asList(
+                "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
+                "{alliancename}",
+                "{relativestrength}",
+                "{strongestenemyrelative}",
+                "{cities}",
+                "{score}",
+                "{off}",
+                "{def}",
+                "'=MROUND({score}/1.75,1) & \"-\" & MROUND({score}/0.75,1)'",
+                "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/1.75,1)'",
+                "{soldiers}",
+                "{tanks}",
+                "{aircraft}",
+                "{ships}",
+                "{missiles}",
+                "{nukes}",
+                "{spies}",
+                "={active_m}/60",
+                "{avg_daily_login}",
+                "'=\"{mmr}\"'"
+        ), " ");
+
+        String spySheetId = spySheet != null ? spySheet.getSpreadsheetId() : SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET).getSpreadsheetId();
+
+        io.create().embed("Update ally", "Press `allies` to update active ally spy counts" + footer)
+                .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.create(
+                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
+                        columns,
+                        "true",
+                        null,
+                        null
+                ), "allies").send();
+
+        io.create().embed("Update enemy", "Press `enemies` to update active enemy spy counts" + footer)
+                .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.create(
+                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
+                        columns,
+                        "true",
+                        null,
+                        null
+                ), "enemies").send();
+
+        io.create().embed("Blitz priority kills", "Press `blitz_kill` for a spy blitz sheet focusing spies/air" + footer)
+        .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.create(
+                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
+                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
+                        StringMan.join(Arrays.asList(SpyCount.Operation.SPIES.name(),SpyCount.Operation.AIRCRAFT.name()), ","),
+                        "true",
+                        "true",
+                        "true",
+                        "sheet:" + spySheetId,
+                        null,
+                        null
+                ), "blitz_kill").send();
+
+        io.create().embed("Blitz priority damage", "Press `blitz_dmg` for a spy blitz sheet focusing damage" + footer)
+                .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.create(
+                        "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
+                        "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
+                        null,
+                        "true",
+                        "true",
+                        "true",
+                        "sheet:" + spySheetId,
+                        null,
+                        null
+                ), "blitz_dmg").send();
+        io.create().embed("Validate and send", """
+                        Press `check` to validate spy blitz sheet
+                        Press `mail` to mail targets
+                        """ + footer)
+                .commandButton(behavior, channelId, CM.spy.sheet.validate.cmd.create(
+                        "sheet:" + spySheetId,
+                        null,
+                        "~" + allies
+                ), "validate")
+        .commandButton(behavior, channelId, CM.mail.targets.cmd.create(
+                        null,
+                        "sheet:" + spySheetId,
+                        "~" + allies,
+                        null,
+                        "true",
+                        null,
+                        null
+                ), "mail").send();
     }
 }

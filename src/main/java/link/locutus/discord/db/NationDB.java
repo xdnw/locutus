@@ -1346,7 +1346,7 @@ public class NationDB extends DBMainV2 {
             "",
             "",
             System.currentTimeMillis(),
-            NationColor.GRAY);
+            NationColor.GRAY, null);
         }
         return existing;
     }
@@ -1923,7 +1923,8 @@ public class NationDB extends DBMainV2 {
                 rs.getString("discord_link"),
                 rs.getString("wiki_link"),
                 rs.getLong("dateCreated"),
-                NationColor.values[rs.getInt("color")]
+                NationColor.values[rs.getInt("color")],
+                null
         );
     }
 
@@ -2589,19 +2590,21 @@ public class NationDB extends DBMainV2 {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt("id");
+                    int key = rs.getInt("key");
                     byte[] data = rs.getBytes("meta");
 
                     if (id > 0) {
                         DBNation nation = nationsById.get(id);
                         if (nation != null) {
-                            nation.setMetaRaw(id, data);
+                            nation.setMetaRaw(key, data);
                         } else {
                             toDelete.add(id);
                         }
                     } else {
-                        DBAlliance alliance = alliancesById.get(id);
+                        int idAbs = Math.abs(id);
+                        DBAlliance alliance = alliancesById.get(idAbs);
                         if (alliance != null) {
-                            alliance.setMetaRaw(id, data);
+                            alliance.setMetaRaw(key, data);
                         } else {
                             toDelete.add(id);
                         }

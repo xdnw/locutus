@@ -965,7 +965,7 @@ public class WarUpdateProcessor {
             boolean warring = isAtWar.getOrDefault(alliance, false);
             if (lastWarring && lastWarRatio > 0.2) warring = true;
 
-            if (currentRatio > lastWarRatio || warring != lastWarring) {
+            if (currentRatio != lastWarRatio || warring != lastWarring) {
                 alliance.setMeta(AllianceMeta.LAST_BLITZ_PCT, currentRatio);
             }
             if (warring != lastWarring) {

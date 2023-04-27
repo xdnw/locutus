@@ -351,9 +351,11 @@ public class IACommands {
 
     @Command(desc = "Opt out of beige alerts")
     @RolePermission(Roles.MEMBER)
-    public String beigeAlertOptOut(@Me Member member, @Me Guild guild) {
+    public String beigeAlertOptOut(@Me Member member, @Me DBNation me, @Me Guild guild) {
         Role role = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);
-        if (role == null) return "No opt out role found for " + Roles.BEIGE_ALERT_OPT_OUT;
+        if (role == null) {
+            return WarCommands.beigeAlertMode(member.getUser(), me, NationMeta.BeigeAlertMode.NO_ALERTS);
+        }
         RateLimitUtil.queue(guild.addRoleToMember(member, role));
         return "Opted out of beige alerts";
     }
@@ -882,7 +884,7 @@ public class IACommands {
         if (key == null) {
             if ((sendFromGuildAccount || myKey == null)) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.credentials.addApiKey.cmd.toSlashMention() + " to add your own key";
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.settings.cmd.toSlashMention() + " with `" + GuildDB.Key.API_KEY + "` to add your own key";
                 }
                 key = db.getMailKey();
             } else if (myKey != null) {
@@ -890,7 +892,11 @@ public class IACommands {
             }
         }
         if (key == null){
-            return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "";
+            if (sendFromGuildAccount) {
+                return "No api key found. Please use" + CM.settings.cmd.toSlashMention() + " with `" + GuildDB.Key.API_KEY + "`";
+            } else {
+                return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "";
+            }
         }
 
         if (!confirm) {

@@ -115,7 +115,7 @@ public class MailTargets extends Command {
         String blurb = "BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room\n" +
                 "\n" +
                 "This is an alliance war, not a counter. The goal is battlefield control:\n" +
-                "1. Try to declare raid wars just before day change (day change if possible)\n" +
+                "1. Try to declare wars just before day change (day change if possible)\n" +
                 "2. If you have ground control, further attacks with tanks kills aircraft\n" +
                 "3. If you have tanks and can get ground control, do ground attacks to kill planes\n" +
                 "4. Get air control to halve enemy tank strength\n" +

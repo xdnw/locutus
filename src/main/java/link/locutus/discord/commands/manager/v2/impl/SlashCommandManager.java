@@ -237,6 +237,9 @@ public class SlashCommandManager extends ListenerAdapter {
             if (getSize(cmd) > 4000) {
                 cmd = adaptCommands(callable, id, null, null, 100, 100, true, true, false, false, false, false);
             }
+            if (getSize(cmd) > 4000) {
+                cmd = adaptCommands(callable, id, null, null, 0, 0, true, true, false, false, false, false);
+            }
             toRegister.add(cmd);
         }
 
@@ -289,7 +292,6 @@ public class SlashCommandManager extends ListenerAdapter {
             current = root;
         }
         if (callable instanceof ICommandGroup group) {
-
             if (current == null) {
                 if (discGroup == null) {
                     discGroup = new SubcommandGroupData(id, desc);
@@ -343,9 +345,8 @@ public class SlashCommandManager extends ListenerAdapter {
         for (ParameterData param : cmd.getUserParameters()) {
             Type type = param.getType();
 
-            String id = param.getName().toLowerCase(Locale.ROOT);
-            String desc = param.getExpandedDescription(false, includeExample, includeDesc);
-            String simpleDesc = param.getDescription();
+            String desc = !includeDesc ? "" : param.getExpandedDescription(false, includeExample, includeDesc);
+            String simpleDesc = includeDesc ? param.getDescription() : "";
             if (desc.length() > maxOption && simpleDesc != null) {
                 desc = simpleDesc;
             }
@@ -355,14 +356,13 @@ public class SlashCommandManager extends ListenerAdapter {
                 desc = desc.substring(0, maxOption);
             }
             if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
+            if (desc.trim().isEmpty() && includeTypes) {
+                desc = param.getType().getTypeName().replaceAll("[a-z_A-Z0-9.]+\\.([a-z_A-Z0-9]+)", "$1").replaceAll("[a-z_A-Z0-9]+\\$([a-z_A-Z0-9]+)", "$1");
+            }
             if (!includeRepeatedTypes) {
-                if (paramTypes.add(param.getType())) {
+                if (!paramTypes.add(param.getType())) {
                     desc = "";
                 }
-            }
-            if (desc.trim().isEmpty() && includeTypes) {
-                String[] split = param.getType().getTypeName().split("\\.");
-                desc = split[split.length - 1];
             }
             if (desc.isEmpty()) {
                 desc = "_";
@@ -376,7 +376,7 @@ public class SlashCommandManager extends ListenerAdapter {
             ArgChoice choiceAnn = param.getAnnotation(ArgChoice.class);
 
             OptionType optionType = (timestamp != null || timediff != null) ? OptionType.STRING : createType(type);
-            OptionData option = new OptionData(optionType, id, desc);
+            OptionData option = new OptionData(optionType, param.getName().toLowerCase(Locale.ROOT), desc);
 
             option.setAutoComplete(false);
             if (optionType == OptionType.CHANNEL) {
@@ -394,7 +394,7 @@ public class SlashCommandManager extends ListenerAdapter {
                         if (values.length <= OptionData.MAX_CHOICES) {
                             isEnumChoice = true;
                             for (Object value : values) {
-                                String name = value.toString();
+                                String name = ((Enum) value).name();
                                 option.addChoice(name, name);
                             }
                         }
@@ -435,7 +435,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 double stepVal = 1;
                 if (step != null) stepVal = step.value();
                 long options = (long) Math.ceil((range.max() - range.min()) / stepVal);
-                if (options > 0 && options < OptionData.MAX_CHOICES) {
+                if (options > 0 && options < 16) {
                     for (double i = range.min(); i <= range.max(); i += stepVal) {
                         if (optionType == OptionType.INTEGER) {
                             option.addChoice(((int) i) + "", (int) i);

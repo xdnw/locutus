@@ -1446,9 +1446,9 @@ public class TradeCommands {
     @RolePermission(value = Roles.MEMBER)
     public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db,
                              ResourceType type,
-                             @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell,
                              @Arg("Date to start from")
                              @Timestamp long cutoff,
+                             @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell,
                              @Arg("Group rankings by each nation's current alliance")
                              @Switch("a") boolean groupByAlliance,
                              @Arg("Include trades done outside of standard market prices")

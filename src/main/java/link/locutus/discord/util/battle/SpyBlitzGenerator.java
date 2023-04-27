@@ -7,6 +7,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.SpyCount;
@@ -29,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -398,7 +400,7 @@ public class SpyBlitzGenerator {
             if (op1 == null) System.out.println("OP is null");
 
             if (op1 != null) allOps.add(op1);
-            if (op1 != null) allOps.add(op2);
+            if (op2 != null) allOps.add(op2);
         }
 
         Map<DBNation, List<Spyop>> spyOpsFiltered = new LinkedHashMap<>();
@@ -419,27 +421,107 @@ public class SpyBlitzGenerator {
         Set<DBNation> update = forceUpdate ? new HashSet<>() : null;
 
         System.out.println("Rows " + rows.size());
-        List<Object> header = rows.get(4);
-        for (int i = 5; i < rows.size(); i++) {
+
+        // Spy Slot 1
+        int SpySlot1Index = -1;
+        // OpType
+        int OpType1Index = -1;
+        // Att Safety
+        int AttSafety1Index = -1;
+        // Spy Slot 2
+        int SpySlot2Index = -1;
+        // OpType
+        int OpType2Index = -1;
+        // Att Safety
+        int AttSafety2Index = -1;
+
+        int nationIndex = 0;
+        int headerIndex = -1;
+        outer:
+        for (int i = 0; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
-            if (row.size() < 9) {
+            System.out.println("Row " + i + " | " + StringMan.getString(row));
+            if (row.isEmpty()) continue;
+            // Leader / Nation
+            for (int column = 0; column < row.size(); column++) {
+                if (row.get(column) != null && row.get(column).toString().toLowerCase(Locale.ROOT).equalsIgnoreCase("Leader / Nation")) {
+                    nationIndex = column;
+                    headerIndex = i;
+                    break outer;
+                }
+            }
+        }
+        if (headerIndex == -1) {
+            throw new IllegalArgumentException("No header found containing `Leader / Nation`");
+        }
+
+        List<Object> header = rows.get(headerIndex);
+        for (int i = 0; i < header.size(); i++) {
+            Object cell = header.get(i);
+            if (cell == null) continue;
+            String cellString = cell.toString().toLowerCase(Locale.ROOT);
+            if (cellString.equalsIgnoreCase("Spy Slot 1")) {
+                SpySlot1Index = i;
+            } else if (cellString.equalsIgnoreCase("OpType") && OpType1Index == -1) {
+                OpType1Index = i;
+            } else if (cellString.equalsIgnoreCase("Att Safety") && AttSafety1Index == -1) {
+                AttSafety1Index = i;
+            } else if (cellString.equalsIgnoreCase("Spy Slot 2")) {
+                SpySlot2Index = i;
+            } else if (cellString.equalsIgnoreCase("OpType") && OpType1Index != -1 && OpType2Index == -1) {
+                OpType2Index = i;
+            } else if (cellString.equalsIgnoreCase("Att Safety") && AttSafety1Index != -1 && AttSafety2Index == -1) {
+                AttSafety2Index = i;
+            }
+        }
+
+        if (SpySlot1Index == -1) {
+            throw new IllegalArgumentException("No header found containing `Spy Slot 1`");
+        }
+        if (OpType1Index == -1) {
+            throw new IllegalArgumentException("No header found containing `OpType`");
+        }
+        if (AttSafety1Index == -1) {
+            throw new IllegalArgumentException("No header found containing `Att Safety`");
+        }
+        if (SpySlot2Index == -1) {
+            throw new IllegalArgumentException("No header found containing `Spy Slot 2`");
+        }
+        if (OpType2Index == -1) {
+            throw new IllegalArgumentException("No header found containing `OpType`");
+        }
+        if (AttSafety2Index == -1) {
+            throw new IllegalArgumentException("No header found containing `Att Safety`");
+        }
+
+        for (int i = headerIndex + 1; i < rows.size(); i++) {
+            List<Object> row = rows.get(i);
+            if (row.size() < 9 || row.get(nationIndex) == null) {
                 System.out.println("Row incorrect size " + row.size() + " " + row);
                 continue;
             }
 
-            DBNation attacker = DiscordUtil.parseNation(row.get(0).toString());
+            System.out.println("Leadername " + row.get(nationIndex));
+            String[] leaderName = row.get(nationIndex).toString().split("( / )");
+            String nationName = leaderName[leaderName.length - 1];
+            DBNation attacker = DiscordUtil.parseNation(nationName);
             if (attacker == null) {
-                System.out.println("Attacker is null " + row.get(0));
+                System.out.println("Attacker is null " + row.get(nationIndex) + " | " + nationName);
                 continue;
             }
 
-            Spyop op1 = createOp(attacker, row.get(2) + "", row.get(3) + "", row.get(4) + "", update);
-            Spyop op2 = createOp(attacker, row.get(6) + "", row.get(7) + "", row.get(8) + "", update);
+            String[] targetSplit1 = row.get(SpySlot1Index).toString().split("( / )");
+            String[] targetSplit2 = row.get(SpySlot2Index).toString().split("( / )");
+            System.out.println("Target 1 " + StringMan.getString(row.get(SpySlot1Index).toString()));
+            System.out.println("Target 2 " + StringMan.getString(row.get(SpySlot2Index).toString()));
+            Spyop op1 = createOp(attacker, targetSplit1[targetSplit1.length - 1] + "", row.get(OpType1Index) + "", row.get(AttSafety1Index) + "", update);
+            Spyop op2 = createOp(attacker, targetSplit2[targetSplit2.length - 1] + "", row.get(OpType2Index) + "", row.get(AttSafety2Index) + "", update);
 
-            if (op1 == null) System.out.println("OP is null");
+            if (op1 == null) System.out.println("OP is null " + row.get(SpySlot1Index) + " | " + row.get(OpType1Index) + " | " + row.get(AttSafety1Index));
+            if (op2 == null) System.out.println("OP is null " + row.get(SpySlot2Index) + " | " + row.get(OpType2Index) + " | " + row.get(AttSafety2Index));
 
             if (op1 != null) allOps.add(op1);
-            if (op1 != null) allOps.add(op2);
+            if (op2 != null) allOps.add(op2);
         }
 
         Map<DBNation, List<Spyop>> spyOpsFiltered = new LinkedHashMap<>();
@@ -471,7 +553,7 @@ public class SpyBlitzGenerator {
             Spyop op2 = createOp(attacker, row.get(3) + "", row.get(4) + "", update);
 
             if (op1 != null) allOps.add(op1);
-            if (op1 != null) allOps.add(op2);
+            if (op2 != null) allOps.add(op2);
         }
 
         Map<DBNation, List<Spyop>> spyOpsFiltered = new LinkedHashMap<>();
@@ -500,7 +582,7 @@ public class SpyBlitzGenerator {
         if (target == null) return null;
 
         SpyCount.Operation op;
-        if (type.contains("spies")) {
+        if (type.contains("spies") || type.toLowerCase(Locale.ROOT).contains("vs spy")) {
             op = SpyCount.Operation.SPIES;
         } else if (type.contains("tank")) {
             op = SpyCount.Operation.TANKS;
@@ -517,6 +599,7 @@ public class SpyBlitzGenerator {
         } else if (type.contains("intel")) {
             op = SpyCount.Operation.INTEL;
         } else {
+            System.out.println("Invalid op type " + type + " | " + targetStr);
             return null;
         }
 

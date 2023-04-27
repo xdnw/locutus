@@ -3,6 +3,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -1325,9 +1327,8 @@ public class UtilityCommands {
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     @Command(desc = "A sheet of nations with customizable columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/Nation-Filters> for a list of placeholders")
-    public String NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me User author, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
-                              @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet,
-                              @Switch("t") boolean updateTimer) throws GeneralSecurityException, IOException {
+    public static void NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
+                              @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
         }
@@ -1340,13 +1341,16 @@ public class UtilityCommands {
 
         sheet.setHeader(header);
 
+        LocalValueStore locals = new LocalValueStore(store);
         for (DBNation nation : nations) {
             if (updateSpies) {
                 nation.updateSpies();
             }
+            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
+            locals.addProvider(Key.of(User.class, Me.class), nation.getUser());
             for (int i = 0; i < columns.size(); i++) {
                 String arg = columns.get(i);
-                String formatted = placeholders.format(store, arg);
+                String formatted = placeholders.format(locals, arg);
 
                 header.set(i, formatted);
             }
@@ -1358,7 +1362,6 @@ public class UtilityCommands {
         sheet.set(0, 0);
 
         sheet.attach(channel.create()).send();
-        return null;
     }
 
     @Command(desc = "Check if a nation shares networks with others\n" +
