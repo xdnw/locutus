@@ -578,7 +578,7 @@ public class UnsortedCommands {
                 case UNREGISTERED: {
                     Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
                     for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
-                        tasks.add(RateLimitUtil.queue(entry.getValue().delete());
+                        tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
                     }
                     return "Cleared all AA roles!";
                 }

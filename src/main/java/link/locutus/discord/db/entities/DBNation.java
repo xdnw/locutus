@@ -4571,7 +4571,7 @@ public class DBNation implements NationOrAlliance {
         if (user == null) return false;
 
         try {
-            Message result = RateLimitUtil.queue(RateLimitUtil.complete(user.openPrivateChannel()).sendMessage(msg));
+            RateLimitUtil.queue(RateLimitUtil.complete(user.openPrivateChannel()).sendMessage(msg));
         } catch (Throwable e) {
             e.printStackTrace();
             return false;
