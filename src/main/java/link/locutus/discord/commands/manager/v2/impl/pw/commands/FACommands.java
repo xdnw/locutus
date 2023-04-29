@@ -107,7 +107,7 @@ public class FACommands {
         return "Cancelled:\n - " + StringMan.join(changed, "\n - ");
     }
 
-    @Command(desc = "List the locutus coalitions")
+    @Command(desc = "List the bot coalitions")
     @RolePermission(Roles.MEMBER)
     public String listCoalition(@Me User user, @Me GuildDB db, @Arg("Only list alliances or guilds containing this filter") @Default String filter, @Arg("List the alliance and guild ids instead of names") @Switch("i") boolean listIds, @Arg("Ignore deleted alliances") @Switch("d") boolean ignoreDeleted) {
         Map<String, Set<Long>> coalitions = db.getCoalitionsRaw();

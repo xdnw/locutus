@@ -19,10 +19,10 @@ public class KeyStoreCommands {
     }
 
     private String setKey(GuildDB db, User author, GuildDB.Key key, String value) {
-        if (!key.hasPermission(db, author, value)) return "No permission to set " + key + " to `" + value + "`";
+        if (!key.hasPermission(db, author, value)) return "No permission to set " + key.name() + " to `" + value + "`";
         db.setInfo(key, value);
         if (key == GuildDB.Key.API_KEY) value = "<redacted>";
         else value = key.toString(db.getOrThrow(key));
-        return "Set " + key + " to `" + value + "`";
+        return "Set " + key.name() + " to `" + value + "`";
     }
 }

@@ -310,7 +310,7 @@ public class ParametricCallable implements ICommand {
         validatePermissions(store, stack.getPermissionHandler());
 
         ValueStore locals = store;
-        locals.addProvider(ParametricCallable.class, this);
+        locals.addProvider(Key.of(ParametricCallable.class, Me.class), this);
 
         Map<ParameterData, Map.Entry<String, Object>> argumentMap = new LinkedHashMap<>();
         ParameterData commandIndex = null;
@@ -482,7 +482,7 @@ public class ParametricCallable implements ICommand {
         validatePermissions(store, permisser);
 
         ValueStore locals = store;
-        locals.addProvider(ParametricCallable.class, this);
+        locals.addProvider(Key.of(ParametricCallable.class, Me.class), this);
 
         Map<String, ParameterData> paramsByName = new HashMap<>();
         Map<String, ParameterData> paramsByNameLower = new HashMap<>();

@@ -272,7 +272,9 @@ public class WarCommands {
         return response.toString();
     }
 
-    @Command(desc = "Find raid targets")
+    @Command(desc = "Find targets to raid\n" +
+            "Sorted by best nation loot\n" +
+            "Defaults to 7d inactive")
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
     public String raid(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me TextChannel channel,
                        @Default("*") Set<DBNation> targets,
@@ -551,7 +553,7 @@ public class WarCommands {
             if (milcom != null) response.append(milcom.getAsMention());
         } else {
             response.append("Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP);
-            response.append("\nNote: No blockade request channel set. Add one via " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.UNBLOCKADE_REQUESTS + "\n");
+            response.append("\nNote: No blockade request channel set. Add one via " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.UNBLOCKADE_REQUESTS.name() + "\n");
 
         }
         RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));
@@ -1946,7 +1948,7 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert dtc's spy sheet format to Locutus")
+    @Command(desc = "Convert dtc's spy sheet format to the bot's format")
     @RolePermission(Roles.MILCOM)
     public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
@@ -1966,7 +1968,7 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert hidude's spy sheet format to locutus")
+    @Command(desc = "Convert hidude's spy sheet format to the bot's format")
     @RolePermission(Roles.MILCOM)
     public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
@@ -1986,7 +1988,7 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Convert TKR's spy sheet format to locutus")
+    @Command(desc = "Convert TKR's spy sheet format to the bot's format")
     @RolePermission(Roles.MILCOM)
     public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")

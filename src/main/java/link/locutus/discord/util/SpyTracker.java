@@ -449,7 +449,7 @@ public class SpyTracker {
             MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
             if (channel == null && (!alert.exact.isEmpty() || unit == MilitaryUnit.SPIES)) {
                 channel = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL);
-                body.append("\nSpy kills are not enabled (only units). See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + "`");
+                body.append("\nSpy kills are not enabled (only units). See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL.name() + "`");
             }
             if (channel == null) continue;
 

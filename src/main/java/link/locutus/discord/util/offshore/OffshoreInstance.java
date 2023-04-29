@@ -547,7 +547,7 @@ public class OffshoreInstance {
             }
             if (senderDB.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) != Boolean.TRUE) {
                 return Map.entry(TransferStatus.INVALID_NOTE, "Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()) +
-                        "\nMembers do not have permission to convert resources to cash. See " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.RESOURCE_CONVERSION);
+                        "\nMembers do not have permission to convert resources to cash. See " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.RESOURCE_CONVERSION.name());
             }
             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
             if (allowedIds.isEmpty()) {
@@ -1475,11 +1475,11 @@ public class OffshoreInstance {
         if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
             String[] keys = getGuildDB().getOrNull(GuildDB.Key.API_KEY);
             if (keys == null) {
-                msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention();
+                msg += "\nEnsure " + GuildDB.Key.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention();
             } else {
                 Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
                 if (nation == null) {
-                    msg += "\nEnsure " + GuildDB.Key.API_KEY + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
+                    msg += "\nEnsure " + GuildDB.Key.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
                 } else {
                     msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + allianceId;
                 }

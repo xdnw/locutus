@@ -29,7 +29,7 @@ public class ReportCommands {
 //
 //    }
 
-    @Command(desc = "List the user reports made to Locutus for a nation or user")
+    @Command(desc = "List the user reports made to the bot for a nation or user")
     public String list(@Switch("n") DBNation nation, @Switch("u") User user) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
         if (nation == null || user == null) throw new IllegalArgumentException("Please specify a user or nation.");
         List<String> reportList = getReports().stream().filter(f -> f.nationId == nation.getId() && f.discordId == user.getIdLong()).map(Objects::toString).collect(Collectors.toList());
@@ -38,7 +38,7 @@ public class ReportCommands {
         return "**" + reportList.size() + " reports**:\n" + String.join("\n", reportList);
     }
 
-    @Command(desc = "Report a nation to Locutus")
+    @Command(desc = "Report a nation to the bot")
     public String create(@Me DBNation me, @Me User author, @Me GuildDB db,
                          ReportType type,
                          @Arg("Nation to report") DBNation target,

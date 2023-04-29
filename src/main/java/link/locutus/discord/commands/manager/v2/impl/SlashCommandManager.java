@@ -269,6 +269,12 @@ public class SlashCommandManager extends ListenerAdapter {
         }
     }
 
+    public String getSlashMention(String path) {
+        Long id = getCommandId(path);
+        if (id == -1) return null;
+        return "</" + path.toLowerCase(Locale.ROOT) + ":" + id + ">";
+    }
+
     public Long getCommandId(String path) {
         Long id = commandIds.get(path);
         if (id == null) id = commandIds.get(path.split(" ")[0]);

@@ -77,6 +77,9 @@ public class Settings extends Config {
     @Comment("The nation id of the admin. (generated from login or api key)")
     public int NATION_ID = 0; // generated
 
+    @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
+    public String OPENAI_API_KEY = "";
+
     ////////////////////////////////////////////////////////////////////////////
 
     @Create

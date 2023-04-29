@@ -123,7 +123,6 @@ public enum Roles {
 //    WAR_ALERT("Opt out of received war target alerts", GuildDB.Key.ENEMY_ALERT_CHANNEL),
     WAR_ALERT_OPT_OUT(25, "Opt out of received war target alerts", GuildDB.Key.ENEMY_ALERT_CHANNEL),
     AUDIT_ALERT_OPT_OUT(26, "Opt out of received audit alerts", GuildDB.Key.MEMBER_AUDIT_ALERTS),
-
     BLITZ_PARTICIPANT(27, "Opt in to blitz participation (clear this regularly)", GuildDB.Key.ALLIANCE_ID),
     BLITZ_PARTICIPANT_OPT_OUT(28, "Opt in to blitz participation (clear this regularly)", GuildDB.Key.ALLIANCE_ID),
 

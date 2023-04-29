@@ -220,7 +220,7 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command(desc = "Set the archive status of a Locutus announcement")
+    @Command(desc = "Set the archive status of the bot's announcement")
     @RolePermission(any = true, value = {Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ADMIN, Roles.FOREIGN_AFFAIRS, Roles.ECON})
     public String archiveAnnouncement(@Me GuildDB db, int announcementId, @Default Boolean archive) {
         if (archive == null) archive = true;
@@ -447,7 +447,7 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     public String editAlliance(@Me GuildDB db, @Me User author, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
         if (!db.isAllianceId(alliance.getAlliance_id())) {
-            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID.name();
         }
 
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
@@ -474,7 +474,7 @@ public class AdminCommands {
         return response.toString();
     }
 
-    @Command(desc = "Remove a discord role Locutus uses for command permissions")
+    @Command(desc = "Remove a discord role the bot uses for command permissions")
     @RolePermission(Roles.ADMIN)
     public String unregisterRole(@Me User user, @Me Guild guild, @Me GuildDB db, Roles locutusRole, @Arg("Only remove a role mapping for this alliance") @Default DBAlliance alliance) {
         return aliasRole(user, guild, db, locutusRole, null, alliance, true);
@@ -516,11 +516,11 @@ public class AdminCommands {
         return " - " + StringMan.join(response, "\n - ");
     }
 
-    @Command(desc = "Set the discord roles Locutus uses for command permissions")
+    @Command(desc = "Set the discord roles the bot uses for command permissions")
     @RolePermission(Roles.ADMIN)
     public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
         if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
-            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID;
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID.name();
         }
         StringBuilder response = new StringBuilder();
         boolean showGlobalMappingInfo = false;

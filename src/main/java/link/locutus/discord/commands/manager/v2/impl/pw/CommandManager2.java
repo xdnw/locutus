@@ -24,6 +24,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.gpt.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.test.TestCommands;
@@ -34,6 +35,7 @@ import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -46,6 +48,7 @@ public class CommandManager2 {
     private final PermissionHandler permisser;
     private final NationPlaceholders nationPlaceholders;
     private final AlliancePlaceholders alliancePlaceholders;
+    private PWGPTHandler pwgptHandler;
 
     public CommandManager2() {
         this.store = new SimpleValueStore<>();
@@ -65,6 +68,18 @@ public class CommandManager2 {
         this.alliancePlaceholders = new AlliancePlaceholders(store, validators, permisser);
 
         this.commands = CommandGroup.createRoot(store, validators);
+
+        if (!Settings.INSTANCE.OPENAI_API_KEY.isEmpty()) {
+            try {
+                pwgptHandler = new PWGPTHandler(this);
+            } catch (SQLException | ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public PWGPTHandler getPwgptHandler() {
+        return pwgptHandler;
     }
 
     public static Map<String, String> parseArguments(Set<String> params, String input, boolean checkUnbound) {
@@ -152,6 +167,17 @@ public class CommandManager2 {
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "allyEnemySheets", "ally_enemy_sheets");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spySheets", "spy_sheets");
         this.commands.registerMethod(new WarCommands(), List.of("war", "room"), "warRoomSheet", "from_sheet");
+        this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
+
+        if (pwgptHandler != null) {
+            HelpCommands help = new HelpCommands(pwgptHandler);
+            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
+            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
+
+            pwgptHandler.registerDefaults();
+        }
+
+
 
 //        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "intel", "intel");
 

@@ -69,6 +69,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
+    /*
+    JsonObject command
+    Key argument type
+
+     */
+
     @Binding(value = "City build json or url", examples = {"city/id=371923", "{city-json}", "city/id=1{json-modifiers}"})
     public CityBuild city(@Default @Me DBNation nation, @TextArea String input) {
         // {city X Nation}
@@ -735,7 +741,7 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "An in-game position")
     public static DBAlliancePosition position(@Me GuildDB db, @Default @Me DBNation nation, String name) {
         AllianceList alliances = db.getAllianceList();
-        if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.ALLIANCE_ID);
+        if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.ALLIANCE_ID.name());
 
         String[] split = name.split(":", 2);
         Integer aaId = split.length == 2 ? PnwUtil.parseAllianceId(split[0]) : null;
@@ -823,7 +829,7 @@ public class PWBindings extends BindingHelper {
     public AllianceList allianceList(ParameterData param, @Default @Me User user, @Me GuildDB db) {
         AllianceList list = db.getAllianceList();
         if (list == null) {
-            throw new IllegalArgumentException("This guild has no registered alliance. See " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.ALLIANCE_ID);
+            throw new IllegalArgumentException("This guild has no registered alliance. See " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.ALLIANCE_ID.name());
         }
         RolePermission perms = param.getAnnotation(RolePermission.class);
         if (perms != null) {
