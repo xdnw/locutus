@@ -161,7 +161,7 @@ public class WarCommand extends Command {
                     nations.remove(war.getNation(false));
                 }
 
-                CompletableFuture<Message> msg = event.getChannel().sendMessage("Please wait... ").submit();
+                CompletableFuture<Message> msg = RateLimitUtil.queue(event.getChannel().sendMessage("Please wait... "));
 
                 Set<Integer> allies = db.getAllies();
                 Set<Integer> enemies = db.getCoalitions().get("enemies");

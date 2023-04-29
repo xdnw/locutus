@@ -297,13 +297,12 @@ public class GuildHandler {
                 if (nation.getAlliance_id() != 0 && !aaIds.contains(nation.getAlliance_id())) {
                     body.append("\n\n**Already member of AA: " + nation.getAllianceName() + "**\n\n");
                     mentionInterviewer = false;
-                    RateLimitUtil.queueWhenFree(author.openPrivateChannel().complete().sendMessage("As you're already a member of another alliance, message or ping @" + interviewerRole.getName() + " to (proceed"));
+                    RateLimitUtil.queue(RateLimitUtil.complete(author.openPrivateChannel()).sendMessage("As you're already a member of another alliance, message or ping @" + interviewerRole.getName() + " to (proceed"));
                 } else {
-                    RateLimitUtil.queueWhenFree(author.openPrivateChannel().complete().sendMessage("Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are able."));
+                    RateLimitUtil.queue(RateLimitUtil.complete(author.openPrivateChannel()).sendMessage("Thank you for applying. People may be busy with irl things, so please be patient. An IA representative will proceed with your application as soon as they are able."));
                 }
             }
         }
-
 
         body.append("The first on the trigger, react with the " + emoji + " emoji");
 
@@ -312,10 +311,12 @@ public class GuildHandler {
                 "Assigned to %user% in {timediff}'\n" +
                 CM.interview.create.cmd.create(author.getAsMention()).toCommandArgs();
 
+        IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString()).commandButton(pending, emoji);
         DiscordUtil.createEmbedCommand(alertChannel, title, body.toString(), emoji, pending);
         if (mentionInterviewer) {
-            alertChannel.sendMessage("^ " + interviewerRole.getAsMention()).complete().delete();
+            msg.append("^ " + interviewerRole.getAsMention());
         }
+        msg.send();
         return true;
     }
 
@@ -386,7 +387,8 @@ public class GuildHandler {
                     }
                     title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
                 }
-                AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
+                String message = "**" + title + "**\n" + current.toString() + "\n";
+                RateLimitUtil.queueMessage(channel, message, true, 60);
             }
         }
     }
@@ -471,7 +473,7 @@ public class GuildHandler {
         if (!aaIds.isEmpty()) {
 
             // New applicant
-            if (current.getPositionEnum() == Rank.APPLICANT && aaIds.contains(current.getAlliance_id())) {
+            if (current.getPositionEnum() == Rank.APPLICANT && aaIds.contains(current.getAlliance_id()) && !aaIds.contains(current.getAlliance_id()) && current.active_m() < 2880) {
                 MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
                     String type = "New Applicant Ingame";
@@ -480,7 +482,9 @@ public class GuildHandler {
                         type += " | " + user.getAsMention();
                     }
                     String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
-                    AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
+
+                    String message = "**" + title + "**" + "\n" + current.toString() + "\n";
+                    RateLimitUtil.queueMessage(channel, message, true, 60);
                 }
             }
         }
@@ -540,34 +544,38 @@ public class GuildHandler {
             if (aaIds.contains(previous.getAlliance_id()) && current.getAlliance_id() != previous.getAlliance_id()) {
                 MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
-                    Rank rank = Rank.byId(previous.getPosition());
-                    String title = previous.getNation() + " (" + rank.name() + ") left";
-                    StringBuilder body = new StringBuilder();
-                    body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
-                    body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.getActive_m()));
-                    User user = current.getUser();
-                    if (user != null) {
-                        body.append("\nUser: " + user.getAsMention());
-                    }
-                    if (user != null && current.getActive_m() < 2880) {
-                        try {
-                            double[] depoTotal = current.getNetDeposits(db);
-                            body.append("\n\nPlease check the following:\n" +
-                                    " - Discord roles\n" +
-                                    " - Deposits: `" + PnwUtil.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(depoTotal)));
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        String emoji = "Claim";
-                        String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
-                                "\n" +
-                                "Assigned to %user% in {timediff}'";
-                        DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, pending);
-                    } else {
-                        DiscordUtil.createEmbedCommand(channel, title, body.toString());
-                    }
+                    addLeaveMessage(channel, previous, current);
                 }
             }
+        }
+    }
+
+    private void addLeaveMessage(MessageChannel channel, DBNation previous, DBNation current) {
+        Rank rank = Rank.byId(previous.getPosition());
+        String title = previous.getNation() + " (" + rank.name() + ") left";
+        StringBuilder body = new StringBuilder();
+        body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
+        body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.getActive_m()));
+        User user = current.getUser();
+        if (user != null) {
+            body.append("\nUser: " + user.getAsMention());
+        }
+        if (user != null && current.getActive_m() < 2880) {
+            try {
+                double[] depoTotal = current.getNetDeposits(db);
+                body.append("\n\nPlease check the following:\n" +
+                        " - Discord roles\n" +
+                        " - Deposits: `" + PnwUtil.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(depoTotal)));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            String emoji = "Claim";
+            String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
+                    "\n" +
+                    "Assigned to %user% in {timediff}'";
+            DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, pending);
+        } else {
+            DiscordUtil.createEmbedCommand(channel, title, body.toString());
         }
     }
 
@@ -2320,10 +2328,11 @@ public class GuildHandler {
         sendMail(event.getCurrent());
     }
 
+    private boolean sentNoIAMessage = false;
+
     private void sendMail(DBNation current) {
         if (!sentMail.contains(current.getNation_id())) {
             sentMail.add(current.getNation_id());
-
 
             if (db.isDelegateServer()) return;
             GuildMessageChannel output = db.getOrNull(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT, false);
@@ -2364,11 +2373,14 @@ public class GuildHandler {
                     return;
                 }
                 if (!allowed) {
-                    try {
-                        RateLimitUtil.queueWhenFree(output.sendMessage("No INTERNAL_AFFAIRS is currently online (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)"));
-                    } catch (Throwable e) {
-                        db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
-                        e.printStackTrace();
+                    if (!sentNoIAMessage) {
+                        try {
+                            sentNoIAMessage = true;
+                            RateLimitUtil.queueWhenFree(output.sendMessage("No INTERNAL_AFFAIRS is currently offline (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)\n"));
+                        } catch (Throwable e) {
+                            db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);
+                            e.printStackTrace();
+                        }
                     }
                     return;
                 }
@@ -2390,12 +2402,12 @@ public class GuildHandler {
                 public void runUnsafe() {
                     try {
                         JsonObject response = db.sendRecruitMessage(current);
-                        RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true);
+                        RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
                     } catch (Throwable e) {
                         try {
-                            if (guildsFailedMailSend.contains(db.getIdLong())) {
+                            if (!guildsFailedMailSend.contains(db.getIdLong())) {
                                 guildsFailedMailSend.add(db.getIdLong());
-                                RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + e.getMessage()), true);
+                                RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + e.getMessage()), true, 5 * 60);
                             }
                         } catch (Throwable e2) {
                             db.deleteInfo(GuildDB.Key.RECRUIT_MESSAGE_OUTPUT);

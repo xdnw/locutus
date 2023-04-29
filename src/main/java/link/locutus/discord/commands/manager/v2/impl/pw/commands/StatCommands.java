@@ -135,6 +135,8 @@ public class StatCommands {
                                  @Switch("status") Set<WarStatus> allowedWarStatuses,
                                  @Switch("attacks") Set<AttackType> allowedAttacks,
 
+                                 @Switch("a") boolean onlyRankCoalition1,
+
                                  @Arg("Rank the specific resource costs") @Switch("r") ResourceType resource,
                                  @Switch("f") boolean uploadFile
     ) {
@@ -204,12 +206,21 @@ public class StatCommands {
         GroupedRankBuilder<Integer, DBAttack> nationAllianceGroup = new RankBuilder<>(parser.getAttacks())
                 .group((attack, map) -> {
                     // Group attacks into attacker and defender
+                    DBWar war = groupByAlliance || onlyRankCoalition1 ? wars.get(attack.war_id) : null;
                     if (groupByAlliance) {
-                        map.put(wars.get(attack.war_id).attacker_aa, attack);
-                        map.put(wars.get(attack.war_id).defender_aa, attack);
+                        if (!onlyRankCoalition1 || parser.getIsPrimary().apply(war)) {
+                            map.put(war.attacker_aa, attack);
+                        }
+                        if (!onlyRankCoalition1 || !parser.getIsPrimary().apply(war)) {
+                            map.put(war.defender_aa, attack);
+                        }
                     } else {
-                        map.put(attack.attacker_nation_id, attack);
-                        map.put(attack.defender_nation_id, attack);
+                        if (!onlyRankCoalition1 || parser.getIsPrimary().apply(war)) {
+                            map.put(attack.attacker_nation_id, attack);
+                        }
+                        if (!onlyRankCoalition1 || !parser.getIsPrimary().apply(war)) {
+                            map.put(attack.defender_nation_id, attack);
+                        }
                     }
                 });
 
@@ -1396,13 +1407,9 @@ public class StatCommands {
 
         sheet.setHeader(header);
 
-        long start = System.currentTimeMillis();
         for (Map.Entry<DBNation, List<DBWar>> nationEntry : warsByNation.entrySet()) {
             DBNation nation = nationEntry.getKey();
             List<DBWar> wars = nationEntry.getValue();
-            if (System.currentTimeMillis() - start > 5000) {
-                start = System.currentTimeMillis();
-            }
             int nationId = nation.getNation_id();
 
             AttackCost activeCost = new AttackCost();

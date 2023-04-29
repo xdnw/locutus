@@ -164,7 +164,7 @@ public class Simulate extends Command {
 
         DiscordUtil.sendMessage(event.getChannel(), result.toString());
 
-        event.getChannel().sendMessageEmbeds(card).complete();
+        RateLimitUtil.queue(event.getChannel().sendMessageEmbeds(card));
 
         String totalMsg;
         String attName = origin.getAggressor().getNation().getNation();
@@ -173,8 +173,7 @@ public class Simulate extends Command {
         } else {
             totalMsg = "Fighting this war will net an estimated: $" + Math.abs((int) total) + " for " + attName + " (super inaccurate guess)";
         }
-        event.getChannel().sendMessage(totalMsg).complete();
 
-        return null;
+        return totalMsg;
     }
 }

@@ -168,7 +168,7 @@ public class IACategory {
 
             long channelId = channel.getIdLong();
             if (currentMessage == null || created > Math.max(currentMessage.date_created, currentMessage.date_updated)) {
-                CompletableFuture<List<Message>> future = channel.getHistory().retrievePast(15).submit();
+                CompletableFuture<List<Message>> future = RateLimitUtil.queue(channel.getHistory().retrievePast(15));
                 CompletableFuture<List<Message>> whenComplete = future.whenComplete(new BiConsumer<List<Message>, Throwable>() {
                     @Override
                     public void accept(List<Message> messages, Throwable throwable) {
@@ -196,7 +196,7 @@ public class IACategory {
         Member member = guild.getMember(user);
         if (member == null) {
             try {
-                member = guild.retrieveMemberById(user.getIdLong(), true).complete();
+                member = RateLimitUtil.complete(guild.retrieveMemberById(user.getIdLong(), true));
                 if (member == null) {
                     if (throwError) throw new IllegalArgumentException("Member is null");
                     return null;
@@ -264,7 +264,7 @@ public class IACategory {
                 return null;
             }
         }
-        channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL).complete();
+        RateLimitUtil.complete(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
 
         Role interviewer = Roles.INTERVIEWER.toRole(guild);
         if (interviewer != null) {
@@ -651,14 +651,14 @@ public class IACategory {
                         continue outer;
                     }
                     output.send("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName());
-                    channel.getManager().setParent(parent).complete();
+                    RateLimitUtil.complete(channel.getManager().setParent(parent));
                     continue outer;
                 }
             }
             Category parent = getFreeCategory(passedCategories);
             if (parent != null && !channel.getParentCategory().equals(parent)) {
                 output.send("Moving " + channel.getAsMention() + " from " + channel.getParentCategory().getName() + " to " + parent.getName());
-                channel.getManager().setParent(parent).complete();
+                RateLimitUtil.complete(channel.getManager().setParent(parent));
             }
         }
 

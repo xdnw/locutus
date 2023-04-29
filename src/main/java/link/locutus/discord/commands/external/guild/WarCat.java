@@ -66,7 +66,7 @@ public class WarCat extends Command {
             category = RateLimitUtil.complete(guild.createCategory(categoryName));
             Role milcomRole = Roles.MILCOM.toRole(guild);
             if (milcomRole != null) {
-                category.putPermissionOverride(milcomRole).grant(Permission.VIEW_CHANNEL, Permission.MANAGE_PERMISSIONS, Permission.MANAGE_CHANNEL, Permission.MESSAGE_MANAGE).complete();
+                RateLimitUtil.complete(category.putPermissionOverride(milcomRole).grant(Permission.VIEW_CHANNEL, Permission.MANAGE_PERMISSIONS, Permission.MANAGE_CHANNEL, Permission.MESSAGE_MANAGE));
             }
             RateLimitUtil.queue(category.putPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
                     .deny(net.dv8tion.jda.api.Permission.VIEW_CHANNEL));
@@ -80,7 +80,7 @@ public class WarCat extends Command {
             return "Already in category: " + categoryName;
         }
 
-        cc.getManager().setParent(category).complete();
+        RateLimitUtil.complete(cc.getManager().setParent(category));
 
         return "Set category for " + currentChannel.getAsMention() + " to " + categoryName;
     }

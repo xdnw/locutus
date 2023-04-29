@@ -556,6 +556,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "{def}",
                         "'=MROUND({score}/1.75,1) & \"-\" & MROUND({score}/0.75,1)'",
                         "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/1.75,1)'",
+                        "{color}",
+                        "{beigeturns}",
                         "{soldiers}",
                         "{tanks}",
                         "{aircraft}",

@@ -73,6 +73,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -925,13 +926,23 @@ public class IACommands {
             message += "\n\n<i>This message was sent by: " + author.getName() + "</i>";
         }
 
+        CompletableFuture<IMessageBuilder> msg = null;
+        if (nations.size() > 1) {
+            msg = channel.send("Sending to " + nations.size() + " (please wait)");
+        }
+        List<String> full = new ArrayList<>();
         for (DBNation nation : nations) {
-            String subjectF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, subject);
-            String messageF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, message);
-            channel.send(nation.sendMail(key, subjectF, messageF) + "");
+            try {
+                String subjectF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, subject);
+                String messageF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, message);
+                full.add(String.valueOf(nation.sendMail(key, subjectF, messageF)));
+            } catch (Throwable e) {
+                e.printStackTrace();
+                full.add("Error sending mail to " + nation.getName() + " (" + nation.getId() + "): " + e.getMessage());
+            }
         }
 
-        return "Done sending mail.";
+        return "Done sending mail:\n - " + String.join("\n - ", full);
     }
 
     @Command(desc = "List or set your tax bracket.\n" +
@@ -1615,7 +1626,7 @@ public class IACommands {
         if (applicantRole != null) {
             Member member = db.getGuild().getMember(user);
             if (member == null || !member.getRoles().contains(applicantRole)) {
-                db.getGuild().addRoleToMember(user.getIdLong(), applicantRole).queue();
+                RateLimitUtil.queue(db.getGuild().addRoleToMember(user.getIdLong(), applicantRole));
             }
         }
 

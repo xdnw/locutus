@@ -97,7 +97,7 @@ public class SyncTaxes extends Command {
                         throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + StringMan.getString(ids));
                     }
 
-                    CompletableFuture<Message> msgFuture = event.getChannel().sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait...").submit();
+                    CompletableFuture<Message> msgFuture = RateLimitUtil.queue(event.getChannel().sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait..."));
 
                     int taxesCount = aa.updateTaxesLegacy(latestDate);
 

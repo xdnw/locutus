@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
@@ -260,7 +261,7 @@ public class SlashCommandManager extends ListenerAdapter {
             JDA api = Locutus.imp().getDiscordApi(guild.getIdLong());
 
 
-            List<net.dv8tion.jda.api.interactions.commands.Command> commands = api.updateCommands().addCommands(toRegister).complete();
+            List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(api.updateCommands().addCommands(toRegister));
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
                 String path = command.getName();
                 commandIds.put(path, command.getIdLong());
@@ -568,14 +569,14 @@ public class SlashCommandManager extends ListenerAdapter {
             }
         }
         if (!choices.isEmpty()) {
-            event.replyChoices(choices).queue();
+            RateLimitUtil.queue(event.replyChoices(choices));
         }
     }
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
         try {
-            event.deferReply(false).queue();
+            RateLimitUtil.queue(event.deferReply(false));
 
             MessageChannel channel = event.getChannel();
             InteractionHook hook = event.getHook();

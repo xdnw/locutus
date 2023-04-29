@@ -54,7 +54,7 @@ public class IAChannel {
         if (user == null) return;
         Member member = db.getGuild().getMember(user);
         if (member == null) return;
-        channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL).complete();
+        RateLimitUtil.complete(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
 
         String expected = DiscordUtil.toDiscordChannelString(nation.getNation()) + "-" + nation.getNation_id();
         String name = channel.getName();
@@ -102,7 +102,7 @@ public class IAChannel {
     public DBNation getLastActiveGov(boolean rankChange) {
         GuildMessageChannel channel = getChannel();
         if (channel != null) {
-            List<Message> history = channel.getHistory().retrievePast(20).complete();
+            List<Message> history = RateLimitUtil.complete(channel.getHistory().retrievePast(20));
 
             Map<DBNation, Double> numMessage = new HashMap<>();
             DBNation lastGov = null;

@@ -9,7 +9,9 @@ import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Future;
 
 public class ImportEmoji extends Command {
     public ImportEmoji() {
@@ -34,6 +36,7 @@ public class ImportEmoji extends Command {
         String arg = args.get(0);
         if (arg.startsWith("https://discord.com/channels/")) {
         } else if (arg.startsWith("http")) {
+            List<Future<?>> tasks = new ArrayList<>();
             byte[] bytes = FileUtil.readBytesFromUrl(arg);
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
@@ -42,7 +45,10 @@ public class ImportEmoji extends Command {
                 if (name.lastIndexOf('.') != -1) {
                     name = name.substring(0, name.lastIndexOf('.'));
                 }
-                event.getGuild().createEmote(name, icon).complete();
+                tasks.add(RateLimitUtil.queue(event.getGuild().createEmote(name, icon)));
+            }
+            for (Future<?> task : tasks) {
+                task.get();
             }
             return "Added: `" + arg + "`";
         }
@@ -55,6 +61,7 @@ public class ImportEmoji extends Command {
 
 
         Guild guild = event.getGuild();
+        List<Future<?>> tasks = new ArrayList<>();
         for (Emote emote : emotes) {
             if (emote.isManaged() || !emote.isAvailable()) {
                 continue;
@@ -66,8 +73,11 @@ public class ImportEmoji extends Command {
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
-                guild.createEmote(emote.getName(), icon).complete();
+                tasks.add(RateLimitUtil.queue(guild.createEmote(emote.getName(), icon)));
             }
+        }
+        for (Future<?> task : tasks) {
+            task.get();
         }
         return "Done!";
     }

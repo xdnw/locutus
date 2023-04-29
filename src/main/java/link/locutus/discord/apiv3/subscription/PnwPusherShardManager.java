@@ -34,16 +34,6 @@ public class PnwPusherShardManager {
     private SpyTracker spyTracker;
 
     public PnwPusherShardManager() {
-//        this.allianceHandlers = new ConcurrentHashMap<>();
-
-
-        /**
-         * Spy tracker in Locutus class
-         * on pusher update, update spy tracker
-         *
-         * run spy tracker at interval
-         *
-         */
     }
 
     public void load() {

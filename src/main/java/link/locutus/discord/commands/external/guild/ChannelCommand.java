@@ -138,7 +138,7 @@ public class ChannelCommand extends Command {
                     }
                 }
                 if (pings.length() > 0) {
-                    RateLimitUtil.queue(createdChannel.sendMessage(pings).complete().delete());
+                    RateLimitUtil.queue(createdChannel.sendMessage(pings));
                 }
             }
             if (flags.contains('a')) {
@@ -150,14 +150,14 @@ public class ChannelCommand extends Command {
     }
 
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
-        channel.putPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
-                .deny(Permission.VIEW_CHANNEL).complete();
-        channel.putPermissionOverride(holder).grant(Permission.VIEW_CHANNEL).complete();
+        RateLimitUtil.complete(channel.putPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
+                .deny(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.putPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
 
         for (Roles dept : depts) {
             Role role = dept.toRole(channel.getGuild());
             if (role != null) {
-                channel.putPermissionOverride(role).grant(Permission.VIEW_CHANNEL).complete();
+                RateLimitUtil.complete(channel.putPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
             }
         }
         return channel;

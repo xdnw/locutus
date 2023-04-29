@@ -134,12 +134,13 @@ public class MailCommand extends Command implements Noformat {
 
             Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Sending to..."));
             StringBuilder response = new StringBuilder();
+            long start = System.currentTimeMillis();
             for (DBNation nation : nations) {
-                RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Sending to " + nation.getNation()));
-
-
+                if (System.currentTimeMillis() - start > 10000) {
+                    RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Sending to " + nation.getNation()));
+                    start = System.currentTimeMillis();
+                }
                 response.append(nation.sendMail(key, subject, message)).append("\n");
-//                response.append(new MailTask(auth, nation, subject, message).call()).append('\n');
             }
 
             RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));

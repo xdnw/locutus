@@ -104,7 +104,7 @@ public class WarRoom extends Command {
                 }
             }
 
-            event.getChannel().sendMessage("Generating channels...").complete();
+            RateLimitUtil.queue(event.getChannel().sendMessage("Generating channels..."));
 
             if (filterArg != null) {
                 Set<DBNation> nations = DiscordUtil.parseNations(guild, filterArg);
@@ -201,7 +201,7 @@ public class WarRoom extends Command {
                 }
 
                 if (!contains) {
-                    channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL).complete();
+                    RateLimitUtil.complete(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
                     if (ping) {
                         String msg = author.getName() + " added " + user.getAsMention();
 
