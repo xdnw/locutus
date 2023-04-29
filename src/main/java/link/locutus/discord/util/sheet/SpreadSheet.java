@@ -179,7 +179,7 @@ public class SpreadSheet {
             if (sheetId == null) {
                 Spreadsheet spreadsheet = new Spreadsheet()
                         .setProperties(new SpreadsheetProperties()
-                                .setTitle(db.getGuild().getId() + "." + key)
+                                .setTitle(db.getGuild().getId() + "." + key.name())
                         );
                 api = getServiceAPI();
                 spreadsheet = api.spreadsheets().create(spreadsheet)

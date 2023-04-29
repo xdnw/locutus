@@ -105,7 +105,7 @@ public class DiscordCommands {
         return response.toString();
     }
 
-    @Command(desc = "Have locutus say the provided message, with placeholders replaced.")
+    @Command(desc = "Have the bot say the provided message, with placeholders replaced.")
     public String say(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation me, @TextArea String msg) {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
@@ -272,7 +272,7 @@ public class DiscordCommands {
         return channel;
     }
 
-    @Command(desc = "Get info about a locutus embed")
+    @Command(desc = "Get info about a bot embed")
     @RolePermission(value = Roles.ADMIN)
     public String embedInfo(Message message) {
         List<MessageEmbed> embeds = message.getEmbeds();
@@ -314,7 +314,7 @@ public class DiscordCommands {
         return "```" + cmd + "```";
     }
 
-    @Command(desc = "Update a locutus embed")
+    @Command(desc = "Update a bot embed")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String updateEmbed(@Me Guild guild, @Me User user, @Me IMessageIO io, @Switch("r") @RegisteredRole Roles requiredRole, @Switch("c") Color color, @Switch("t") String title, @Switch("d") String desc) {
         IMessageBuilder message = io.getMessage();
@@ -359,7 +359,7 @@ public class DiscordCommands {
         return arg;
     }
 
-    @Command(desc = "Return the discord invite link for Locutus")
+    @Command(desc = "Return the discord invite link for the bot")
     public String invite() {
         return "<https://docs.google.com/document/d/1Qq6Qe7KtCy-Dlqktz8bhNfrUpcbf7oM8F6gRVNR28Dw/edit?usp=sharing>";
     }

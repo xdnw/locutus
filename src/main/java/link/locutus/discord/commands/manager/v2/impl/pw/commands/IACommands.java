@@ -156,7 +156,7 @@ public class IACommands {
         }
         return "Added " + amt + " roles to members (note: it may take a few minutes to update)";
     }
-    @Command(desc = "View a list of reactions on a message sent by or mentioning Locutus")
+    @Command(desc = "View a list of reactions on a message sent by or mentioning the bot")
     @RolePermission(Roles.ADMIN)
     public String msgInfo(@Me IMessageIO channel, Message message, @Arg("List the ids of users who reacted")@Switch("i") boolean useIds) {
         StringBuilder response = new StringBuilder();
@@ -221,7 +221,7 @@ public class IACommands {
         return null;
     }
 
-    @Command(desc = "List the self roles that you can assign yourself via Locutus")
+    @Command(desc = "List the self roles that you can assign yourself via the bot")
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildDB.Key.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
@@ -884,7 +884,7 @@ public class IACommands {
         if (key == null) {
             if ((sendFromGuildAccount || myKey == null)) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.settings.cmd.toSlashMention() + " with `" + GuildDB.Key.API_KEY + "` to add your own key";
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.settings.cmd.toSlashMention() + " with `" + GuildDB.Key.API_KEY.name() + "` to add your own key";
                 }
                 key = db.getMailKey();
             } else if (myKey != null) {
@@ -893,7 +893,7 @@ public class IACommands {
         }
         if (key == null){
             if (sendFromGuildAccount) {
-                return "No api key found. Please use" + CM.settings.cmd.toSlashMention() + " with `" + GuildDB.Key.API_KEY + "`";
+                return "No api key found. Please use" + CM.settings.cmd.toSlashMention() + " with `" + GuildDB.Key.API_KEY.name() + "`";
             } else {
                 return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "";
             }
@@ -1216,7 +1216,7 @@ public class IACommands {
         return "Moved " + tc.getAsMention() + " to " + category.getName();
     }
 
-    @Command(desc = "Bulk send the result of a Locutus command to a list of nations")
+    @Command(desc = "Bulk send the result of a bot command to a list of nations")
     @RolePermission(value=Roles.ADMIN)
     public String mailCommandOutput(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me User author, @Me IMessageIO channel,
                                     @Arg("Nations to mail command results to") Set<DBNation> nations,

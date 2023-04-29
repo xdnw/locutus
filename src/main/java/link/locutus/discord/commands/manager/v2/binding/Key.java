@@ -168,6 +168,6 @@ public class Key<T> {
         if (!annotationTypes.isEmpty()) {
             name.append("[" + annotationTypes.stream().map(Class::getSimpleName).collect(Collectors.joining(",")) + "]");
         }
-        return name.toString().replaceAll("[a-z_A-Z0-9.]+\\.([a-z_A-Z0-9]+)", "$1").replaceAll("[a-z_A-Z0-9]+\\$([a-z_A-Z0-9]+)", "$1");
+        return StringMan.classNameToSimple(name.toString());
     }
 }

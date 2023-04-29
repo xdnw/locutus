@@ -55,7 +55,7 @@ public class IASheet extends Command {
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
-                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID + "`";
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID.name() + "`";
             }
         }
         nations.removeIf(f -> f.getPosition() <= 1 || f.getVm_turns() != 0);

@@ -999,7 +999,8 @@ public class UtilityCommands {
         return response.toString();
     }
 
-    @Command(desc = "Get nation or bank loot history")
+    @Command(desc = "Get nation or bank loot history\n" +
+            "Shows how much you will receive if you defeat a nation")
     @RolePermission(Roles.MEMBER)
     public static String loot(@Me IMessageIO output, @Me DBNation me, NationOrAlliance nationOrAlliance,
                               @Arg("Score of the defeated nation\n" +
@@ -1325,9 +1326,13 @@ public class UtilityCommands {
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
-    @Command(desc = "A sheet of nations with customizable columns\n" +
+    @Command(desc = "A sheet of nations stats with customizable columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/Nation-Filters> for a list of placeholders")
-    public static void NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations, List<String> columns,
+    public static void NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations,
+                                   @Arg("A space separated list of columns to use in the sheet\n" +
+                                           "Can include NationAttribute as placeholders in columns\n" +
+                                           "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
+                                   List<String> columns,
                               @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);

@@ -32,6 +32,17 @@ public class ArrayUtil {
     public static final DoubleBinaryOperator DOUBLE_SUBTRACT = (x, y) -> x - y;
     public static final IntBinaryOperator INT_ADD = (x, y) -> x + y;
 
+    public static double cosineSimilarity(double[] vectorA, double[] vectorB) {
+        double dotProduct = 0.0;
+        double normA = 0.0;
+        double normB = 0.0;
+        for (int i = 0; i < vectorA.length; i++) {
+            dotProduct += vectorA[i] * vectorB[i];
+            normA += Math.pow(vectorA[i], 2);
+            normB += Math.pow(vectorB[i], 2);
+        }
+        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
     private static <T> void getSubsets(List<T> superSet, int k, int idx, Set<T> current, List<Set<T>> solution) {
         //successful stop clause
         if (current.size() == k) {

@@ -176,7 +176,7 @@ public class BankCommands {
                 if (Roles.ECON.has(user, db.getGuild())) {
                     int[] taxBase = db.getOrNull(GuildDB.Key.TAX_BASE);
                     if (taxBase == null || ((internal.money == -1 && internal.resources == -1))) {
-                        responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.cmd.toSlashMention() + "` and key: " + GuildDB.Key.TAX_BASE + "`");
+                        responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.cmd.toSlashMention() + "` and key: " + GuildDB.Key.TAX_BASE.name() + "`");
                     }
                     responses.add("\nTo view alliance wide bracket tax totals, use: " +
                         CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null));
@@ -200,7 +200,7 @@ public class BankCommands {
     }
 
 
-    @Command(desc = "Send the funds in the alliance bank to an alliance added to the `offshore` coalition in Locutus\n" +
+    @Command(desc = "Send the funds in the alliance bank to an alliance added to the `offshore` coalition in the bot\n" +
             "Optionally specify warchest and offshoring account")
     @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_STAFF}, alliance = true, any=true)
     @HasOffshore
@@ -220,7 +220,7 @@ public class BankCommands {
                 msg.append(". You do not have permission to specify an alternative account.");
             }
             if (!memberCanOffshore) {
-                msg.append(". See also: " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.MEMBER_CAN_OFFSHORE);
+                msg.append(". See also: " + CM.settings.cmd.toSlashMention() + " with key " + GuildDB.Key.MEMBER_CAN_OFFSHORE.name());
             }
             throw new IllegalArgumentException(msg.toString());
         }
@@ -1973,7 +1973,7 @@ public class BankCommands {
     }
 
     @Command(aliases = {"acceptTrades", "acceptTrade"}, desc = "Deposit your pending trades into your nation's holdings for this guild\n" +
-            "The receiver must be authenticated with locutus and have bank access in an alliance\n" +
+            "The receiver must be authenticated with the bot and have bank access in an alliance\n" +
             "Only resources sold for $0 or food bought for cash are accepted")
     @RolePermission(value = Roles.MEMBER)
     public String acceptTrades(@Me GuildDB db, @Me DBNation me, DBNation receiver, @Switch("f") boolean force) throws Exception {
@@ -2599,7 +2599,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Set the Locutus managed offshore for this guild\n" +
+    @Command(desc = "Set the bot managed offshore for this guild\n" +
             "The alliance must use a guild with locutus settings `ALLIANCE_ID` and `API_KEY` set, and the coalitions `offshore` and `offshoring` set to include the offshore alliance")
     @RolePermission(value = Roles.ADMIN)
     public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, DBAlliance offshoreAlliance, @Switch("f") boolean force) throws IOException {

@@ -35,11 +35,15 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         List<NationAttribute> result = new ArrayList<>();
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
-            Map.Entry<Type, Function<DBNation, Object>> typeFunction = getPlaceholderFunction(store, id);
-            if (typeFunction == null) continue;
+            try {
+                Map.Entry<Type, Function<DBNation, Object>> typeFunction = getPlaceholderFunction(store, id);
+                if (typeFunction == null) continue;
 
-            NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getKey(), typeFunction.getValue());
-            result.add(metric);
+                NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getKey(), typeFunction.getValue());
+                result.add(metric);
+            } catch (IllegalStateException | CommandUsageException ignore) {
+                continue;
+            }
         }
         return result;
     }

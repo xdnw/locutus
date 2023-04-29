@@ -418,7 +418,7 @@ public class UnsortedCommands {
         }
     }
 
-    @Command(desc="Set your api and bot key for Locutus\n" +
+    @Command(desc="Set your api and bot key for the bot\n" +
             "Your API key can be found on the account page: <https://politicsandwar.com/account/>\n" +
             "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
     public String addApiKey(@Me JSONObject command, String apiKey, @Default String verifiedBotKey) {
@@ -436,7 +436,7 @@ public class UnsortedCommands {
         return "Set api key for " + PnwUtil.getName(nationId, false);
     }
 
-    @Command(desc="Login to allow locutus to run scripts through your account\n" +
+    @Command(desc="Login to allow the bot to run scripts through your account\n" +
             "(Avoid using this if possible)")
     @RankPermission(Rank.OFFICER)
     public static String login(@Me IMessageIO io, DiscordDB discordDB, @Me DBNation me,
@@ -473,7 +473,7 @@ public class UnsortedCommands {
         return "Login successful.";
     }
 
-    @Command(desc = "Remove your login details from locutus")
+    @Command(desc = "Remove your login details from the bot")
     public String logout(@Me DBNation me, @Me User author) {
         if (Locutus.imp().getDiscordDB().getUserPass2(author.getIdLong()) != null || (me != null && Locutus.imp().getDiscordDB().getUserPass2(me.getNation_id()) != null)) {
             Locutus.imp().getDiscordDB().logout(author.getIdLong());
@@ -537,7 +537,7 @@ public class UnsortedCommands {
         UNREGISTERED
     }
 
-    @Command(desc = "Clear Locutus managed roles on discord")
+    @Command(desc = "Clear the bot managed roles on discord")
     @RolePermission(Roles.ADMIN)
     public String clearAllianceRoles(@Me GuildDB db, @Me Guild guild,
                                      @Arg("What role types do you want to remove")
@@ -1148,7 +1148,7 @@ public class UnsortedCommands {
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
-                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID + "`";
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID.name() + "`";
             }
         }
 

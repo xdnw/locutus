@@ -308,7 +308,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public <T> T getOrThrow(Key key) {
         T value = getOrNull(key);
         if (value == null) {
-            throw new UnsupportedOperationException("No " + key + " registered. Use " + CM.settings.cmd.create(key.name(), null, null, null));
+            throw new UnsupportedOperationException("No " + key.name() + " registered. Use " + CM.settings.cmd.create(key.name(), null, null, null));
         }
         return value;
     }
@@ -1539,7 +1539,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (getOrNull(Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                 if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
                     if (throwError) {
-                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + Key.MEMBER_CAN_WITHDRAW_WARTIME + "` is false (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true", null, null) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
+                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + Key.MEMBER_CAN_WITHDRAW_WARTIME.name() + "` is false (see " + CM.settings.cmd.create(GuildDB.Key.MEMBER_CAN_WITHDRAW.name(), "true", null, null) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
                     }
                 } else if (aaIds.isEmpty()) {
                     if (channelWithdrawAccounts.isEmpty() || !channelWithdrawAccounts.contains(getIdLong())) {
@@ -1610,7 +1610,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             String msg = "The channel: <#" + messageChannelIdOrNull + ">" +
                     " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
                     " and  the server is registered to the following alliances: " + StringMan.getString(aaIds) +
-                    "\nSee Also: " + CM.settings.cmd.toSlashMention() + " with keys: " + Key.ALLIANCE_ID + " and " + Key.RESOURCE_REQUEST_CHANNEL;
+                    "\nSee Also: " + CM.settings.cmd.toSlashMention() + " with keys: " + Key.ALLIANCE_ID.name() + " and " + Key.RESOURCE_REQUEST_CHANNEL;
 
             if (defaultChannel != null || channelForAA != null) {
                 msg += "\n";
@@ -3294,7 +3294,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             @Override
             public String help() {
-                return "The number of top alliances to include in the DNR defaults to `0`";
+                return "The number of top alliances to include in the Do Not Raid (DNR) list\n" +
+                        "Members are not permitted to declare on members of these alliances or their direct allies\n" +
+                        "Results in the DNR will be excluded from commands, and will alert Foreign Affairs if violated\n" +
+                        "Defaults to `0`";
             }
         },
 
@@ -3579,7 +3582,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public String help() {
-                return "";
+                return "If members should expect to receive interest on their deposits\n" +
+                        "You must manually run: " + CM.deposits.interest.cmd.toSlashMention();
             }
         },
 

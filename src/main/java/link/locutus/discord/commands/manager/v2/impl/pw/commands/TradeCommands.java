@@ -62,7 +62,7 @@ public class TradeCommands {
 
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "List the Locutus trade offers you have on discord")
+    @Command(desc = "List the bot trade offers you have on discord")
     public String myOffers(TradeManager tMan, @Me DBNation me) {
         Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(f -> f.nation == me.getNation_id());
         if (offers.isEmpty()) {
@@ -77,7 +77,7 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "List the Locutus offers nations have on discord for you selling a given resource")
+    @Command(desc = "List the bot offers nations have on discord for you selling a given resource")
     public String sellList(TradeManager tMan,
                            ResourceType youSell,
                            @Default("MONEY") ResourceType youReceive,
@@ -122,7 +122,7 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "List the Locutus offers nations have on discord for you buying a given resource")
+    @Command(desc = "List the bot offers nations have on discord for you buying a given resource")
     public String buyList(TradeManager tMan, ResourceType youBuy, @Default("MONEY") ResourceType youProvide, @Default Set<DBNation> allowedTraders,
                           @Arg("Sort the offers by the lowest minimum offer price\n" +
                                   "Comparison prices for resources are converted to weekly average cash equivalent")
@@ -160,7 +160,7 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "Update one of your Locutus trade offers on discord")
+    @Command(desc = "Update one of your bot trade offers on discord")
     public String updateOffer(@Me JSONObject command, TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
                               @Arg("The id of your trade offer")
                               int offerId,
@@ -250,7 +250,7 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "View the details of a Locutus trade offer on discord")
+    @Command(desc = "View the details of a bot trade offer on discord")
     public String offerInfo(@Me JSONObject command, TradeManager tMan, @Me IMessageIO io, 
                             @Arg("The id of a trade offer")
                             int offerId) {
@@ -266,7 +266,7 @@ public class TradeCommands {
 
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "Delete one of your Locutus trade offers on discord")
+    @Command(desc = "Delete one of your bot trade offers on discord")
     public String deleteOffer(TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
                               @Arg("The resource you want to remove all your offers of")
                               @Default ResourceType deleteResource,
@@ -302,7 +302,7 @@ public class TradeCommands {
 
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "Create a Locutus trade offer on discord for buying a resource")
+    @Command(desc = "Create a bot trade offer on discord for buying a resource")
     public String buyOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
                            @Arg("The quantity of the resource you are receiving")
                                Long quantity,
@@ -390,7 +390,7 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "Create a Locutus trade offer on discord for selling a resource")
+    @Command(desc = "Create a bot trade offer on discord for selling a resource")
     public String sellOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
                             @Arg("The quantity of the resource you are sending")
                             Long quantity,

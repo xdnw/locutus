@@ -94,7 +94,7 @@ public class PnwPusherShardManager {
                 MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
                 if (channel != null && channel.canTalk()) {
                     try {
-                        RateLimitUtil.queueMessage(channel, "Disabling " + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL + " (invalid key)", false);
+                        RateLimitUtil.queueMessage(channel, "Disabling " + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL.name() + " (invalid key)", false);
                     } catch (Throwable ignore2) {}
                 }
                 db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);

@@ -13,7 +13,7 @@ import link.locutus.discord.user.Roles;
 import net.dv8tion.jda.api.entities.User;
 
 public class PlayerSettingCommands {
-    @Command(desc = "Mark an announcement by Locutus as read/unread")
+    @Command(desc = "Mark an announcement by the bot as read/unread")
     @RolePermission(Roles.MEMBER)
     public String readAnnouncement(@Me GuildDB db, @Me DBNation nation, int ann_id, @Default Boolean markRead) {
         if (markRead == null) markRead = true;

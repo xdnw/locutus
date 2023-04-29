@@ -143,7 +143,7 @@ public class KeyStore extends Command implements Noformat {
 
             db.setInfo(key, args.get(1));
         }
-        return "Set " + key + " to " + value + " for " + guild.getName();
+        return "Set " + key.name() + " to " + value + " for " + guild.getName();
     }
 
     private Map<CommandCategory, Map<GuildDB.Key, String>> getSheets(GuildDB db) {

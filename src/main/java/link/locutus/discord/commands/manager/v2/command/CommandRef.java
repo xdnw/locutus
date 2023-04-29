@@ -51,9 +51,12 @@ public class CommandRef {
     }
 
     public String toSlashMention() {
-        long id = getSlashId();
-        if (id == -1) return toSlashCommand();
-        return "</" + path.toLowerCase(Locale.ROOT) + ":" + id + ">";
+        SlashCommandManager slashManager = Locutus.imp().getSlashCommands();
+        if (slashManager != null) {
+            String mention = slashManager.getSlashMention(path);
+            if (mention != null) return mention;
+        }
+        return toSlashCommand();
     }
 
     public String toSlashCommand() {
