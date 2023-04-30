@@ -1190,7 +1190,7 @@ public class StatCommands {
         }
     }
 
-    @Command(desc = "Generate a graph of num nation by city count")
+    @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions")
     public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, NationList coalition1, NationList coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));

@@ -4,6 +4,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -42,6 +43,28 @@ public class DiscordMessageBuilder implements IMessageBuilder {
 
     public DiscordMessageBuilder(MessageChannel channel, Message message) {
         this(new DiscordChannelIO(channel, () -> message), message);
+    }
+
+    @Override
+    public void sendWhenFree(IMessageIO io) {
+        RateLimitUtil.queueMessage(parent, new Function<IMessageBuilder, Boolean>() {
+            @Override
+            public Boolean apply(IMessageBuilder msg) {
+                if (embeds.isEmpty() && images.isEmpty() && files.isEmpty() && buttons.isEmpty() && content.length() == 0) return false;
+                if (msg instanceof DiscordMessageBuilder discMsg) {
+                    discMsg.content.append(content);
+                    discMsg.buttons.addAll(buttons);
+                    discMsg.embeds.addAll(embeds);
+                    discMsg.images.putAll(images);
+                    discMsg.files.putAll(files);
+                    discMsg.remapLongCommands.putAll(remapLongCommands);
+                    return true;
+                }
+                else {
+                    throw new IllegalStateException("Cannot send a DiscordMessageBuilder to a non-Discord channel");
+                }
+            }
+        }, true, null);
     }
 
     public DiscordMessageBuilder(IMessageIO parent, @Nullable Message message) {

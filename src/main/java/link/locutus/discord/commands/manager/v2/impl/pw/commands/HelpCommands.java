@@ -33,14 +33,12 @@ public class HelpCommands {
         this.handler = handler;
     }
 
-    @Command
-    public void use_command(@Me IMessageIO io, ValueStore store, ParametricCallable command, String query) {
-        StringBuilder prompt = new StringBuilder();
-
-        OpenAiService service = handler.getHandler().getService();
-
-
-    }
+//    @Command
+//    public void use_command(@Me IMessageIO io, ValueStore store, ParametricCallable command, String query) {
+//        StringBuilder prompt = new StringBuilder();
+//
+//        OpenAiService service = handler.getHandler().getService();
+//    }
 //    @Command
 //    public void find_placeholders(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("3") int num_results) {
 //

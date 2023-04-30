@@ -743,7 +743,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 "{off}",
                 "{def}",
                 "'=MROUND({score}/1.75,1) & \"-\" & MROUND({score}/0.75,1)'",
-                "'=MROUND({score}*0.75,1) & \"-\" & MROUND( {score}/1.75,1)'",
+                "'=MROUND({score}/0.4,1) & \"-\" & MROUND({score}/2.5,1)'",
                 "{soldiers}",
                 "{tanks}",
                 "{aircraft}",
@@ -751,6 +751,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 "{missiles}",
                 "{nukes}",
                 "{spies}",
+                "{war_policy}",
                 "={active_m}/60",
                 "{avg_daily_login}",
                 "'=\"{mmr}\"'"

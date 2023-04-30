@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.command;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
@@ -204,6 +205,9 @@ public interface IMessageBuilder {
 
     CompletableFuture<IMessageBuilder> send();
 
+    default void sendWhenFree(IMessageIO io) {
+        send();
+    }
 
     User getAuthor();
 

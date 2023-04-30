@@ -37,6 +37,7 @@ import java.lang.reflect.Type;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SlashCommandManager extends ListenerAdapter {
@@ -491,9 +492,14 @@ public class SlashCommandManager extends ListenerAdapter {
         return OptionType.STRING;
     }
 
+    private Map<Long, Long> userIdToAutoCompleteTimeNs = new ConcurrentHashMap<>();
+
     @Override
     public void onCommandAutoCompleteInteraction(@Nonnull CommandAutoCompleteInteractionEvent event) {
-        long start = System.currentTimeMillis();
+        long startNanos = System.nanoTime();
+        User user = event.getUser();
+        userIdToAutoCompleteTimeNs.put(user.getIdLong(), startNanos);
+
         String path = event.getCommandPath();
         AutoCompleteQuery option = event.getFocusedOption();
         String optionName = option.getName();
@@ -520,68 +526,93 @@ public class SlashCommandManager extends ListenerAdapter {
             return;
         }
 
-        boolean autoParse = true;
-        Parser binding = param.getBinding();
-        Key key = binding.getKey();
-        Key parserKey = key.append(Autoparse.class);
-        Parser parser = commands.getStore().get(parserKey);
-
-        if (parser == null) {
-            autoParse = false;
-            Key completerKey = key.append(Autocomplete.class);
-            parser = commands.getStore().get(completerKey);
+        if (event.getUser().getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) {
+            System.out.println("remove:||Admin runs complete " + path + " | " + option.getValue());
         }
 
-        if (parser == null) {
-            System.out.println("remove:||No completer found for " + key);
-            return;
-        }
+        /*
+        Dont post if they have run the command
+        Dont post if they have typed something else since then
+         */
+        ExecutorService executor = Locutus.imp().getExecutor();
+        executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                boolean autoParse = true;
+                Parser binding = param.getBinding();
+                Key key = binding.getKey();
+                Key parserKey = key.append(Autoparse.class);
+                Parser parser = commands.getStore().get(parserKey);
 
-        LocalValueStore<Object> locals = new LocalValueStore<>(commands.getStore());
-        locals.addProvider(Key.of(User.class, Me.class), event.getUser());
-        locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
-        locals.addProvider(Key.of(MessageChannel.class, Me.class), event.getMessageChannel());
-
-        // Option with current value
-        List<String> args = new ArrayList<>(List.of(option.getValue()));
-        ArgumentStack stack = new ArgumentStack(args, locals, commands.getValidators(), commands.getPermisser());
-        locals.addProvider(stack);
-
-        List<Choice> choices = new ArrayList<>();
-        if (autoParse) {
-            binding.apply(stack);
-        } else {
-            Object result = parser.apply(stack);
-            if (!(result instanceof List) || ((List) result).isEmpty()) {
-                long diff = System.currentTimeMillis() - start;
-                System.out.println("remove:||No results for " + option.getValue() + " | " + diff);
-                return;
-            }
-            List<Object> resultList = (List<Object>) result;
-            if (resultList.size() > OptionData.MAX_CHOICES) {
-                resultList = resultList.subList(0, OptionData.MAX_CHOICES);
-            }
-            for (Object o : resultList) {
-                String name;
-                String value;
-                if (o instanceof Map.Entry<?, ?> entry) {
-                    name = entry.getKey().toString();
-                    value = entry.getKey().toString();
-                } else {
-                    name = o.toString();
-                    value = o.toString();
+                if (parser == null) {
+                    autoParse = false;
+                    Key completerKey = key.append(Autocomplete.class);
+                    parser = commands.getStore().get(completerKey);
                 }
-                choices.add(new Choice(name, value));
+
+                if (parser == null) {
+                    System.out.println("remove:||No completer found for " + key);
+                    return;
+                }
+
+                LocalValueStore<Object> locals = new LocalValueStore<>(commands.getStore());
+                locals.addProvider(Key.of(User.class, Me.class), event.getUser());
+                locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
+                locals.addProvider(Key.of(MessageChannel.class, Me.class), event.getMessageChannel());
+
+                // Option with current value
+                List<String> args = new ArrayList<>(List.of(option.getValue()));
+                ArgumentStack stack = new ArgumentStack(args, locals, commands.getValidators(), commands.getPermisser());
+                locals.addProvider(stack);
+
+                List<Choice> choices = new ArrayList<>();
+                if (autoParse) {
+                    binding.apply(stack);
+                } else {
+                    Object result = parser.apply(stack);
+                    if (!(result instanceof List) || ((List) result).isEmpty()) {
+                        long diff = System.currentTimeMillis() - (startNanos / 1_000_000);
+                        System.out.println("remove:||No results for " + option.getValue() + " | " + diff);
+                        return;
+                    }
+                    List<Object> resultList = (List<Object>) result;
+                    if (resultList.size() > OptionData.MAX_CHOICES) {
+                        resultList = resultList.subList(0, OptionData.MAX_CHOICES);
+                    }
+                    for (Object o : resultList) {
+                        String name;
+                        String value;
+                        if (o instanceof Map.Entry<?, ?> entry) {
+                            name = entry.getKey().toString();
+                            value = entry.getKey().toString();
+                        } else {
+                            name = o.toString();
+                            value = o.toString();
+                        }
+                        choices.add(new Choice(name, value));
+                    }
+                }
+                if (!choices.isEmpty()) {
+                    double diff = (System.nanoTime() - startNanos) / 1_000_000d;
+                    if (diff > 15) {
+                        System.out.println("remove:||results for " + option.getValue() + " | " + key + " | " + MathMan.format(diff));
+                    }
+                    long newCompleteTime = userIdToAutoCompleteTimeNs.get(user.getIdLong());
+                    if (newCompleteTime != startNanos) {
+                        return;
+                    }
+                    RateLimitUtil.queue(event.replyChoices(choices));
+                }
             }
-        }
-        if (!choices.isEmpty()) {
-            RateLimitUtil.queue(event.replyChoices(choices));
-        }
+        });
     }
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
         try {
+            long start = System.currentTimeMillis();
+            userIdToAutoCompleteTimeNs.put(event.getUser().getIdLong(), System.nanoTime());
+
             RateLimitUtil.queue(event.deferReply(false));
 
             MessageChannel channel = event.getChannel();
@@ -602,6 +633,10 @@ public class SlashCommandManager extends ListenerAdapter {
             DiscordHookIO io = new DiscordHookIO(hook);
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
             Locutus.imp().getCommandManager().getV2().run(guild, hookChannel, event.getUser(), null, io, path.replace("/", " "), combined, true);
+            long end = System.currentTimeMillis();
+            if (end - start > 15) {
+                System.out.println("remove:||Slash command took " + (end - start) + "ms");
+            }
         } catch (Throwable e) {
             e.printStackTrace();
         }

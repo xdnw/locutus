@@ -1116,8 +1116,6 @@ public class WarCommands {
             targetsStorted.remove(war.getNation(false));
         }
 
-        CompletableFuture<IMessageBuilder> msg = channel.send("Please wait... ");
-
         int mySoldierRebuy = me.getCities() * Buildings.BARRACKS.max() * 5 * 2;
 
         long currentTurn = TimeUtil.getTurn();

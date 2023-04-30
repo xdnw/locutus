@@ -7,6 +7,8 @@ import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.config.Settings;
@@ -933,11 +935,16 @@ public class OffshoreInstance {
                             body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
                             body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
                             body.append("To set the default " + CM.settings.cmd.create(GuildDB.Key.BANKER_WITHDRAW_LIMIT.name(), "<amount>", null, null) + "");
-                            DiscordUtil.createEmbedCommand(alertChannel, "Banker withdraw limit exceeded", body.toString());
+
                             Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
-                            if (adminRole != null) {
-                                RateLimitUtil.queue(alertChannel.sendMessage("^ " + adminRole.getAsMention()));
-                            }
+
+                            RateLimitUtil.queueMessage(new DiscordChannelIO(alertChannel), msg -> {
+                                msg.embed("Banker withdraw limit exceeded", body.toString());
+                                if (adminRole != null) {
+                                    msg.append(("^ " + adminRole.getAsMention()));
+                                }
+                                return true;
+                            }, true, null);
                         }
                         return Map.entry(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit ($" + MathMan.format(withdrawLimit) + ")");
                     }
@@ -1196,7 +1203,7 @@ public class OffshoreInstance {
 
             MessageChannel logChannel = getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
-                RateLimitUtil.queue(logChannel.sendMessage(msg));
+                RateLimitUtil.queueMessage(logChannel, msg, true);
             }
             return result;
         }
@@ -1301,7 +1308,7 @@ public class OffshoreInstance {
 
             MessageChannel logChannel = getGuildDB().getResourceChannel(0);
             if (logChannel != null) {
-                RateLimitUtil.queue(logChannel.sendMessage(msg));
+                RateLimitUtil.queueMessage(logChannel, (msg), true);
             }
             return result;
         }

@@ -1,6 +1,9 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.jooby.adapter.JoobyChannel;
@@ -14,6 +17,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 public class RateLimitUtil {
@@ -60,7 +65,12 @@ public class RateLimitUtil {
                 new Exception().printStackTrace();
 
                 StringBuilder response = new StringBuilder("\n\n----------- RATE LIMIT: " + requestsThisMinute.size() + " -------------");
-                for (Map.Entry<Class, Map<Long, Exception>> entry : rateLimitByClass.entrySet()) {
+                // sort the map
+                Map<Class, Map<Long, Exception>> sorted = rateLimitByClass.entrySet().stream()
+                        .sorted(Map.Entry.comparingByValue(Comparator.comparingInt(value -> -value.keySet().stream().filter(f -> f > cutoff).mapToInt(f -> 1).sum())))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+                for (Map.Entry<Class, Map<Long, Exception>> entry : sorted.entrySet()) {
                     category = entry.getValue();
                     if (category.size() > 1) category.entrySet().removeIf(f -> f.getKey() < cutoff);
                     if (category.size() > 1) {
@@ -71,6 +81,10 @@ public class RateLimitUtil {
                             int amt = exceptionStrings.getOrDefault(key, 0) + 1;
                             exceptionStrings.put(key, amt);
                         }
+                        // sort exceptionStrings
+                        exceptionStrings = exceptionStrings.entrySet().stream()
+                                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
                         for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
                             response.append("\n - " + entry2.getValue() + ": " + entry2.getKey());
                         }
@@ -85,7 +99,7 @@ public class RateLimitUtil {
         return action;
     }
 
-    private static final Map<Long, List<Map.Entry<UUID, String>>> messageQueue = new ConcurrentHashMap<>();
+    private static final Map<Long, List<Function<IMessageBuilder, Boolean>>> messageQueue = new ConcurrentHashMap<>();
     private static final Map<Long, Long> messageQueueLastSent = new ConcurrentHashMap<>();
 
     public static void queueMessage(MessageChannel channel, String message, boolean condense) {
@@ -95,8 +109,25 @@ public class RateLimitUtil {
         if (channel instanceof JoobyChannel) {
             condense = false;
         }
-        if (!condense || requestsThisMinute.size() < 10) {
-            queue(channel.sendMessage(message));
+        if (message.isBlank()) return;
+
+        DiscordChannelIO io = new DiscordChannelIO(channel);
+        queueMessage(io, new Function<IMessageBuilder, Boolean>() {
+            @Override
+            public Boolean apply(IMessageBuilder msg) {
+                msg.append(message + "\n");
+                return true;
+            }
+        }, condense, bufferSeconds);
+    }
+
+    public static void queueMessage(IMessageIO io, Function<IMessageBuilder, Boolean> apply, boolean condense, Integer bufferSeconds) {
+        long channelId = io.getIdLong();
+        if (!condense || requestsThisMinute.size() < 10 || channelId <= 0) {
+            IMessageBuilder msg = io.create();
+            if (apply.apply(msg)) {
+                msg.send();
+            }
             return;
         }
 
@@ -108,10 +139,8 @@ public class RateLimitUtil {
             else bufferSeconds = 60;
         }
 
-        UUID id = UUID.randomUUID();
-        long channelId = channel.getIdLong();
         synchronized (messageQueueLastSent) {
-            messageQueue.computeIfAbsent(channelId, f -> new ArrayList<>()).add(new AbstractMap.SimpleEntry<>(id, message));
+            messageQueue.computeIfAbsent(channelId, f -> new ArrayList<>()).add(apply);
         }
         Integer finalBufferSeconds = bufferSeconds;
         Locutus.imp().getCommandManager().getExecutor().schedule(new CaughtRunnable() {
@@ -123,14 +152,14 @@ public class RateLimitUtil {
                 long now = System.currentTimeMillis();
                 long last = messageQueueLastSent.getOrDefault(channelId, 0L);
 
-                List<Map.Entry<UUID, String>> toSend = null;
+                List<Function<IMessageBuilder, Boolean>> toSend = null;
 
                 synchronized (messageQueueLastSent) {
 
-                    List<Map.Entry<UUID, String>> messages = messageQueue.get(channelId);
+                    List<Function<IMessageBuilder, Boolean>> messages = messageQueue.get(channelId);
                     if (messages == null || messages.isEmpty()) return;
 
-                    boolean isMyMessageLatest = messages.get(messages.size() - 1).getKey() == id;
+                    boolean isMyMessageLatest = messages.get(messages.size() - 1) == apply;
 
                     if (now - last < finalBufferSeconds * 1000L || isMyMessageLatest) {
                         toSend = messageQueue.remove(channelId);
@@ -138,9 +167,19 @@ public class RateLimitUtil {
                     }
                 }
                 if (toSend != null) {
-                    List<String> messages = toSend.stream().map(Map.Entry::getValue).collect(Collectors.toList());
-                    String combined = StringMan.join(messages, "\n");
-                    DiscordUtil.sendMessage(channel, combined);
+                    boolean modified = false;
+                    IMessageBuilder msg = io.create();
+                    for (int i = 0; i < toSend.size() - 1; i++) {
+                        if (toSend.get(i).apply(msg)) {
+                            modified = true;
+                            if (i < toSend.size() - 1) {
+                                msg.append("\n");
+                            }
+                        }
+                    }
+                    if (modified) {
+                        msg.send();
+                    }
                 }
             }
         }, bufferSeconds, TimeUnit.SECONDS);

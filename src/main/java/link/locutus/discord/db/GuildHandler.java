@@ -539,8 +539,6 @@ public class GuildHandler {
         onNewApplicant(current);
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
-
-            // member leave
             if (aaIds.contains(previous.getAlliance_id()) && current.getAlliance_id() != previous.getAlliance_id()) {
                 MessageChannel channel = db.getOrNull(GuildDB.Key.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
@@ -551,15 +549,23 @@ public class GuildHandler {
     }
 
     private void addLeaveMessage(MessageChannel channel, DBNation previous, DBNation current) {
+        // Ignore if inactive and no user in discord
+        User user = current.getUser();
+        Member member = user == null ? null : db.getGuild().getMember(user);
+        if (member == null && current.active_m() > 7200) return;
+
         Rank rank = Rank.byId(previous.getPosition());
         String title = previous.getNation() + " (" + rank.name() + ") left";
         StringBuilder body = new StringBuilder();
         body.append(MarkupUtil.markdownUrl(current.getNation(), current.getNationUrl()));
+
         body.append("\nActive: " + TimeUtil.secToTime(TimeUnit.MINUTES, current.getActive_m()));
-        User user = current.getUser();
         if (user != null) {
             body.append("\nUser: " + user.getAsMention());
         }
+
+        DiscordChannelIO io = new DiscordChannelIO(channel);
+
         if (user != null && current.getActive_m() < 2880) {
             try {
                 double[] depoTotal = current.getNetDeposits(db);
@@ -573,9 +579,23 @@ public class GuildHandler {
             String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                     "\n" +
                     "Assigned to %user% in {timediff}'";
-            DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, pending);
+
+            RateLimitUtil.queueMessage(io, new Function<IMessageBuilder, Boolean>() {
+                @Override
+                public Boolean apply(IMessageBuilder msg) {
+                    msg.embed(title, body.toString())
+                    .commandButton(pending, emoji);
+                    return true;
+                }
+            }, true, 60);
         } else {
-            DiscordUtil.createEmbedCommand(channel, title, body.toString());
+            RateLimitUtil.queueMessage(io, new Function<IMessageBuilder, Boolean>() {
+                @Override
+                public Boolean apply(IMessageBuilder msg) {
+                    msg.embed(title, body.toString());
+                    return true;
+                }
+            }, true, 60);
         }
     }
 
