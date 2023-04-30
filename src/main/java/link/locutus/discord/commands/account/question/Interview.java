@@ -101,7 +101,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
         if (applicantRole != null) {
             Member member = guild.getMember(user);
             if (member == null || !member.getRoles().contains(applicantRole)) {
-                db.getGuild().addRoleToMember(user.getIdLong(), applicantRole).queue();
+                RateLimitUtil.queue(db.getGuild().addRoleToMember(user.getIdLong(), applicantRole));
             }
         }
 

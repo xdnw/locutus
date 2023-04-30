@@ -48,7 +48,17 @@ import java.util.function.Consumer;
 
 public class SpyTracker {
     public SpyTracker() {
-
+        long delay = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
+        Locutus.imp().getCommandManager().getExecutor().schedule(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    processQueue();
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        }, delay, TimeUnit.MILLISECONDS);
     }
 
     public void loadCasualties(Integer allianceId) {
@@ -113,8 +123,6 @@ public class SpyTracker {
     private final Map<Integer, Map<MilitaryUnit, Integer>> killTracker = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<SpyActivity> queue = new ConcurrentLinkedQueue<>();
 
-    private AtomicLong lastRun = new AtomicLong();
-
     public void updateCasualties(List<Nation> nations) throws IOException {
         System.out.println("Called update casualties " + nations.size());
         long timestamp = System.currentTimeMillis();
@@ -123,35 +131,6 @@ public class SpyTracker {
         }
         System.out.println(" queue1 " + queue.size());
         checkActive();
-        System.out.println(" queue2 " + queue.size());
-        if (queue.isEmpty()) return;
-
-        long now = System.currentTimeMillis();
-        synchronized (lastRun) {
-            long lastRunMs = lastRun.get();
-            if (lastRunMs - TimeUnit.MINUTES.toMillis(1) < now) {
-                long timeToRun = lastRunMs + TimeUnit.MINUTES.toMillis(1);
-                long delay = timeToRun - now;
-                lastRun.set(timeToRun);
-                Locutus.imp().getCommandManager().getExecutor().schedule(new Runnable() {
-                    @Override
-                    public void run() {
-                        System.out.println("Process queue start");
-                        long start = System.currentTimeMillis();
-                        try {
-                            processQueue();
-                        } catch (Throwable e) {
-                            e.printStackTrace();
-                        }
-                        long diff= System.currentTimeMillis() - start;
-                        System.out.println("SpyTracker took " + diff + "ms to process queue");
-                    }
-                }, delay, TimeUnit.MILLISECONDS);
-            }
-        }
-        // run every 1m
-
-        // todo post alerts
     }
 
     public class SpyActivity {

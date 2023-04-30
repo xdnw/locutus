@@ -1017,9 +1017,6 @@ public class BankCommands {
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
             throw new IllegalArgumentException("Alliance: " + receiver.getUrl() + " has no receivable nations");
         }
-        if (!receiver.isNation() && depositType.type != DepositType.IGNORE) {
-            return "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to alliances";
-        }
         List<String> forceErrors = new ArrayList<>();
         if (receiver.isNation()) {
             DBNation nation = receiver.asNation();
@@ -2348,7 +2345,7 @@ public class BankCommands {
             }
         }
 
-        IMessageIO output = replyInDMs ? new DiscordChannelIO(author.openPrivateChannel().complete(), null) : channel;
+        IMessageIO output = replyInDMs ? new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null) : channel;
         CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
 
         if (me != null && nationOrAllianceOrGuild.isNation() && nationOrAllianceOrGuild.asNation().getPosition() > 1 && db.isWhitelisted() && db.getOrNull(GuildDB.Key.API_KEY) != null && db.getAllianceIds(true).contains(nationOrAllianceOrGuild.asNation().getAlliance_id())) {

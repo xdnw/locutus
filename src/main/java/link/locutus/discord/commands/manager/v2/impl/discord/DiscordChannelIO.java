@@ -49,7 +49,7 @@ public class DiscordChannelIO implements IMessageIO {
 
     @Deprecated
     public IMessageBuilder getMessage(long id) {
-        Message message = channel.retrieveMessageById(id).complete();
+        Message message = RateLimitUtil.complete(channel.retrieveMessageById(id));
         return new DiscordMessageBuilder(this, message);
     }
 
@@ -80,7 +80,7 @@ public class DiscordChannelIO implements IMessageIO {
                     Message result = null;
                     if (!discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
                         message = discMsg.build(false);
-                        result = channel.sendMessage(message).complete();
+                        result = RateLimitUtil.complete(channel.sendMessage(message));
                     }
                     CompletableFuture<Message> future = DiscordUtil.sendMessage(channel, discMsg.content.toString());
                     if (result != null) {
@@ -88,7 +88,7 @@ public class DiscordChannelIO implements IMessageIO {
                         msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                     }
                 } else {
-                    CompletableFuture<Message> future = channel.sendMessage(message).submit();
+                    CompletableFuture<Message> future =RateLimitUtil.queue(channel.sendMessage(message));
                     msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                 }
 
@@ -99,7 +99,7 @@ public class DiscordChannelIO implements IMessageIO {
                 allFiles.putAll(discMsg.images);
                 Message result = null;
                 for (Map.Entry<String, byte[]> entry : allFiles.entrySet()) {
-                    result = channel.sendFile(entry.getValue(), entry.getKey()).complete();
+                    result = RateLimitUtil.complete(channel.sendFile(entry.getValue(), entry.getKey()));
                 }
                 if (result != null && msgFuture == null)
                     msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
@@ -123,7 +123,7 @@ public class DiscordChannelIO implements IMessageIO {
 
     @Override
     public IMessageIO delete(long id) {
-        channel.deleteMessageById(id).queue();
+        RateLimitUtil.queue(channel.deleteMessageById(id));
         return this;
     }
 

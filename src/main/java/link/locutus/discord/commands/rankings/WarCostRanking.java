@@ -65,7 +65,7 @@ public class WarCostRanking extends Command {
                 Add `death:<unit>` to only include unit losses
                 Add `attack:<attack_type>` to sum attack types
                 Add `resource:<resource>` to sum specific resource losses
-                Add `-f` to not attach the full ranking File""";
+                Add `-f` to attach the full ranking File""";
     }
 
     @Override
@@ -250,7 +250,7 @@ public class WarCostRanking extends Command {
         // Embed the rank list
         ranks.build(event2, title);
 
-        if (ranks.get().size() > 25 && !flags.contains('f')) {
+        if (ranks.get().size() > 25 && flags.contains('f')) {
             DiscordUtil.upload(event2.getChannel(), title, ranks.toString());
         }
         return null;

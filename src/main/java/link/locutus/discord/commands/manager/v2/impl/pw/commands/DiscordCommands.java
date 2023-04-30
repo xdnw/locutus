@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -29,6 +30,8 @@ import java.awt.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -41,7 +44,7 @@ public class DiscordCommands {
                                             @Switch("r") boolean removeOthers,
                                             @Arg("Log the changes to user permissions that are made")
                                             @Switch("l") boolean listChanges,
-                                            @Switch("p") boolean pingAddedUsers) {
+                                            @Switch("p") boolean pingAddedUsers) throws ExecutionException, InterruptedException {
         if (!author.hasPermission(channel, Permission.MANAGE_PERMISSIONS))
             throw new IllegalArgumentException("You do not have " + Permission.MANAGE_PERMISSIONS + " in " + channel.getAsMention());
 
@@ -80,6 +83,7 @@ public class DiscordCommands {
             nameFuc = IMentionable::getAsMention;
         }
 
+        List<Future<?>> tasks = new ArrayList<>();
         for (Member member : members) {
             PermissionOverrideAction override = channel.createPermissionOverride(member);
             PermissionOverrideAction action;
@@ -88,14 +92,18 @@ public class DiscordCommands {
             } else {
                 action = override.grant(permission);
             }
-            action.complete();
+            tasks.add(RateLimitUtil.queue(action));
 
             changes.add("Set " + permission + "=" + !negate + " for " + nameFuc.apply(member));
         }
 
         for (Member member : toRemove) {
-            channel.putPermissionOverride(member).clear(permission).complete();
+            tasks.add(RateLimitUtil.queue(channel.putPermissionOverride(member).clear(permission)));
             changes.add("Clear " + permission + " for " + nameFuc.apply(member));
+        }
+
+        for (Future<?> task : tasks) {
+            task.get();
         }
 
         StringBuilder response = new StringBuilder("Done.");
@@ -118,7 +126,7 @@ public class DiscordCommands {
 
     @Command(desc = "Import all emojis from another guild", aliases = {"importEmoji", "importEmojis"})
     @RolePermission(Roles.ADMIN)
-    public String importEmojis(@Me IMessageIO channel, Guild guild) {
+    public String importEmojis(@Me IMessageIO channel, Guild guild) throws ExecutionException, InterruptedException {
         if (!Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
             throw new IllegalStateException("Please enable DISCORD.CACHE.EMOTE in " + Settings.INSTANCE.getDefaultFile());
         }
@@ -127,6 +135,7 @@ public class DiscordCommands {
         }
         List<Emote> emotes = guild.getEmotes();
 
+        List<Future<?>> tasks = new ArrayList<>();
         for (Emote emote : emotes) {
             if (emote.isManaged() || !emote.isAvailable()) {
                 continue;
@@ -139,8 +148,11 @@ public class DiscordCommands {
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
-                guild.createEmote(emote.getName(), icon).complete();
+                tasks.add(RateLimitUtil.queue(guild.createEmote(emote.getName(), icon)));
             }
+        }
+        for (Future<?> task : tasks) {
+            task.get();
         }
         return "Done!";
     }
@@ -192,7 +204,7 @@ public class DiscordCommands {
                           @Switch("p") boolean pingRoles,
                           @Switch("a") boolean pingAuthor
 
-    ) {
+    ) throws ExecutionException, InterruptedException {
         channelName = placeholders.format(store, channelName);
 
         Member member = guild.getMember(author);
@@ -235,38 +247,44 @@ public class DiscordCommands {
         }
         if (createdChannel == null) {
             createdChannel = updateChannel(RateLimitUtil.complete(category.createTextChannel(channelName)), member, roles);
+            DiscordChannelIO io = new DiscordChannelIO(createdChannel);
+            IMessageBuilder toSend = null;
             if (copypasta != null && !copypasta.isEmpty()) {
                 String key = "copypasta." + copypasta;
                 String copyPasta = db.getInfo(key, true);
                 if (copyPasta != null) {
-                    RateLimitUtil.queue(createdChannel.sendMessage(copyPasta));
+                    if (toSend == null) toSend = io.create();
+                    toSend.append(copyPasta);
                 }
             }
             if (pingRoles) {
                 for (Roles dept : roles) {
                     Role role = dept.toRole(guild);
                     if (role != null) {
-                        createdChannel.sendMessage(role.getAsMention()).complete();
+                        if (toSend == null) toSend = io.create();
+                        toSend.append("\n" + role.getAsMention());
                     }
                 }
             }
             if (pingAuthor) {
-                RateLimitUtil.queue(createdChannel.sendMessage(author.getAsMention()));
+                if (toSend == null) toSend = io.create();
+                toSend.append("\n" + author.getAsMention());
             }
+            if (toSend != null) toSend.send();
         }
 
         return "Channel: " + createdChannel.getAsMention();
     }
 
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
-        channel.putPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
-                .deny(Permission.VIEW_CHANNEL).complete();
-        channel.putPermissionOverride(holder).grant(Permission.VIEW_CHANNEL).complete();
+        RateLimitUtil.complete(channel.putPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
+                .deny(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.putPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
 
         for (Roles dept : depts) {
             Role role = dept.toRole(channel.getGuild());
             if (role != null) {
-                channel.putPermissionOverride(role).grant(Permission.VIEW_CHANNEL).complete();
+                RateLimitUtil.complete(channel.putPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
             }
         }
         return channel;

@@ -108,7 +108,7 @@ public class WarCostByResourceSheet extends Command {
 
         long start = System.currentTimeMillis();
         for (DBNation nation : nations) {
-            if (System.currentTimeMillis() - start > 5000) {
+            if (System.currentTimeMillis() - start > 10000) {
                 RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
                 start = System.currentTimeMillis();
             }

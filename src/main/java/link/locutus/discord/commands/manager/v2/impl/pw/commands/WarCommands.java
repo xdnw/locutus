@@ -144,7 +144,7 @@ public class WarCommands {
                 Member member = guild.getMember(user);
                 if (role != null && member != null && member.getRoles().contains(role)) {
                     try {
-                        guild.removeRoleFromMember(user.getIdLong(), role).queue();
+                        RateLimitUtil.queue(guild.removeRoleFromMember(user.getIdLong(), role));
                         response.append("\nRemoved ").append(role.getName()).append(" from ").append(guild.getName());
                     } catch (Exception e) {
                         response.append("\nFailed to remove ").append(role.getName()).append(" from ").append(guild.getName() + " (" + e.getMessage() + ")");
@@ -4091,7 +4091,7 @@ public class WarCommands {
             return "Already in category: " + category.getName();
         }
 
-        channel.getManager().setParent(category).complete();
+        RateLimitUtil.complete(channel.getManager().setParent(category));
 
         return "Set category for " + channel.getAsMention() + " to " + category.getName();
     }

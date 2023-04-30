@@ -352,7 +352,7 @@ public class ExchangeCommands {
         Role role = roles.get(rank);
         if (role == null)
             return "No role found for: `" + rank + "`. Valid roles are: " + StringMan.getString(roles.keySet());
-        role.getManager().setColor(color).complete();
+        RateLimitUtil.complete(role.getManager().setColor(color));
         return "Set " + role.getName() + " to " + color;
 
     }

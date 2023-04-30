@@ -3,6 +3,7 @@ package link.locutus.discord.util.update;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
@@ -451,11 +452,15 @@ public class NationUpdateProcessor {
                     if (!inRange) return;
 
                     String cardInfo = current.toEmbedString(true);
-                    DiscordUtil.createEmbedCommand(channel, title, cardInfo);
+                    DiscordChannelIO io = new DiscordChannelIO(channel);
+
+                    IMessageBuilder msg = io.create();
+                    msg = msg.embed(title, cardInfo);
 
                     Guild guild = guildDB.getGuild();
                     Role bountyRole = Roles.BEIGE_ALERT.toRole(guild);
                     if (bountyRole == null) {
+                        msg.send();
                         return;
                     }
 
@@ -515,20 +520,21 @@ public class NationUpdateProcessor {
                     }
                     if (!priority1.isEmpty()) {
                         String mentions = StringMan.join(priority1.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                        channel.sendMessage("^ priority1: " + mentions + "(see pins to opt out)").complete();
+                        msg.append("^ priority1: " + mentions + "(see pins to opt out)");
                     }
                     if (!priority2.isEmpty()) {
                         String mentions = StringMan.join(priority2.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                        channel.sendMessage("^ priority2: " + mentions + "(see pins to opt out)").complete();
+                        msg.append("^ priority2: " + mentions + "(see pins to opt out)");
                     }
                     if (!priority3.isEmpty()) {
                         String mentions = StringMan.join(priority3.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                        channel.sendMessage("^ priority3: " + mentions + "(see pins to opt out)").complete();
+                        msg.append("^ priority3: " + mentions + "(see pins to opt out)");
                     }
                     if (!priority4.isEmpty()) {
                         String mentions = StringMan.join(priority4.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                        channel.sendMessage("^ priority4: " + mentions + "(see pins to opt out)").complete();
+                        msg.append("^ priority4: " + mentions + "(see pins to opt out)");
                     }
+                    msg.send();
                 }
             }
         });

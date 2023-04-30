@@ -1,11 +1,13 @@
 package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonSyntaxException;
+import com.politicsandwar.graphql.model.Bounty;
 import com.politicsandwar.graphql.model.Nation;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord._test._Custom;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -360,7 +362,7 @@ public class DBNation implements NationOrAlliance {
                 try {
                     Member member = db.getGuild().getMember(user);
                     if (member != null) {
-                        db.getGuild().addRoleToMember(user.getIdLong(), role).complete();
+                        RateLimitUtil.complete(db.getGuild().addRoleToMember(user.getIdLong(), role));
                         output.append("You have been assigned the role: " + role.getName());
                         db.getAutoRoleTask().autoRole(member, s -> {
                             output.append("\n").append(s);
@@ -4571,7 +4573,7 @@ public class DBNation implements NationOrAlliance {
         if (user == null) return false;
 
         try {
-            Message result = RateLimitUtil.complete(user.openPrivateChannel().complete().sendMessage(msg));
+            RateLimitUtil.queue(RateLimitUtil.complete(user.openPrivateChannel()).sendMessage(msg));
         } catch (Throwable e) {
             e.printStackTrace();
             return false;
@@ -4985,5 +4987,59 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Their gross income (GNI)")
     public double getGNI() {
         return gni;
+    }
+
+    @Command(desc = "Has any bounties placed on them to defeat them in war or detonate a nuke")
+    public boolean hasBounty() {
+        return !Locutus.imp().getWarDb().getBounties(nation_id).isEmpty();
+    }
+
+    @Command(desc = "Has any bounties placed on them to defeat them in war")
+    public boolean hasWarBounty() {
+        return !Locutus.imp().getWarDb().getBounties(nation_id).isEmpty();
+    }
+
+    @Command(desc = "Has any bounties placed on them to detonate a nuke")
+    public boolean hasNukeBounty() {
+        return Locutus.imp().getWarDb().getBounties(nation_id).stream().anyMatch(f -> f.getType() == WarType.NUCLEAR);
+    }
+
+    @Command(desc = "Maximum total bounty placed on them of any type")
+    public double maxBountyValue() {
+        Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(nation_id);
+        if (bounties.isEmpty()) return 0;
+        if (bounties.size() == 1) return bounties.iterator().next().getAmount();
+        Map<WarType, Double> sumByType = bounties.stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingDouble(DBBounty::getAmount)));
+        return sumByType.values().stream().max(Double::compareTo).orElse(0D);
+    }
+
+    @Command(desc = "Maximum total bounty placed on them of any war type")
+    public double maxWarBountyValue() {
+        Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(nation_id);
+        bounties.removeIf(f -> f.getType() == WarType.NUCLEAR);
+        if (bounties.isEmpty()) return 0;
+        if (bounties.size() == 1) return bounties.iterator().next().getAmount();
+        Map<WarType, Double> sumByType = bounties.stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingDouble(DBBounty::getAmount)));
+        return sumByType.values().stream().max(Double::compareTo).orElse(0D);
+    }
+
+    @Command(desc = "Sum of all nuke bounties placed on them")
+    public double nukeBountyValue() {
+        return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.NUCLEAR).mapToLong(DBBounty::getAmount).sum();
+    }
+
+    @Command(desc = "Sum of all nuke bounties placed on them")
+    public double raidBountyValue() {
+        return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.RAID).mapToLong(DBBounty::getAmount).sum();
+    }
+
+    @Command(desc = "Sum of all nuke bounties placed on them")
+    public double ordinaryBountyValue() {
+        return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.ORD).mapToLong(DBBounty::getAmount).sum();
+    }
+
+    @Command(desc = "Sum of all nuke bounties placed on them")
+    public double attritionBountyValue() {
+        return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.ATT).mapToLong(DBBounty::getAmount).sum();
     }
 }

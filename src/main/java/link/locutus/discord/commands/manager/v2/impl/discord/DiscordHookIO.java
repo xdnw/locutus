@@ -24,7 +24,7 @@ public class DiscordHookIO implements IMessageIO {
     @Override
     @Deprecated
     public IMessageBuilder getMessage() {
-        return new DiscordMessageBuilder(this, hook.retrieveOriginal().complete());
+        return new DiscordMessageBuilder(this, RateLimitUtil.complete(hook.retrieveOriginal()));
     }
 
     @Override
@@ -51,7 +51,7 @@ public class DiscordHookIO implements IMessageIO {
                     Message result = null;
                     if (!discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
                         message = discMsg.build(false);
-                        result = hook.sendMessage(message).complete();
+                        result = RateLimitUtil.complete(hook.sendMessage(message));
                     }
                     CompletableFuture<Message> future = DiscordUtil.sendMessage(hook, discMsg.content.toString());
                     if (result != null) {
@@ -59,7 +59,7 @@ public class DiscordHookIO implements IMessageIO {
                         msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                     }
                 } else {
-                    CompletableFuture<Message> future = hook.sendMessage(message).submit();
+                    CompletableFuture<Message> future = RateLimitUtil.queue(hook.sendMessage(message));
                     msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                 }
             }
@@ -68,7 +68,7 @@ public class DiscordHookIO implements IMessageIO {
                 allFiles.putAll(discMsg.images);
                 Message result = null;
                 for (Map.Entry<String, byte[]> entry : allFiles.entrySet()) {
-                    result = hook.sendFile(entry.getValue(), entry.getKey()).complete();
+                    result = RateLimitUtil.complete(hook.sendFile(entry.getValue(), entry.getKey()));
                 }
                 if (result != null && msgFuture == null)
                     msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));

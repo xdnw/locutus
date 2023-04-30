@@ -211,7 +211,7 @@ public class ROI extends Command {
                 }
             }
         }
-        event.getChannel().editMessageById(message.getIdLong(), "Results:").complete();
+        RateLimitUtil.complete(event.getChannel().editMessageById(message.getIdLong(), "Results:"));
 
         roiMap.removeIf(roi -> roi.roi <= 0);
 

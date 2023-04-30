@@ -3,15 +3,18 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 
 public class ClearNicks extends Command {
     private final Map<Long, String> previous = new HashMap<>();
@@ -34,6 +37,7 @@ public class ClearNicks extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         int failed = 0;
         String msg = null;
+        List<Future<?>> tasks = new ArrayList<>();
         for (Member member : event.getGuild().getMembers()) {
             if (member.getNickname() != null) {
                 try {
@@ -50,12 +54,15 @@ public class ClearNicks extends Command {
                             nick = nick.substring(nick.indexOf(' ') + 1);
                         }
                     }
-                    member.modifyNickname(nick).complete();
+                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick)));
                 } catch (Throwable e) {
                     msg = e.getMessage();
                     failed++;
                 }
             }
+        }
+        for (Future<?> task : tasks) {
+            task.get();
         }
         if (failed != 0) {
             return "Failed to clear " + failed + " nicknames for reason: " + msg;

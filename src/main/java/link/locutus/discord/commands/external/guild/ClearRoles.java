@@ -14,9 +14,11 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 
 public class ClearRoles extends Command {
     public ClearRoles() {
@@ -37,20 +39,28 @@ public class ClearRoles extends Command {
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
         if (args.size() != 1) return usage();
 
+        List<Future<?>> tasks = new ArrayList<>();
         if (args.get(0).equalsIgnoreCase("UNUSED")) {
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(event.getGuild().getRoles());
             Guild guild = event.getGuild();
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                 if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
-                    entry.getValue().delete().complete();
+                    tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
                 }
+            }
+            // complete tasks
+            for (Future<?> task : tasks) {
+                task.get();
             }
             return "Cleared unused AA roles!";
         }
         if (args.get(0).equalsIgnoreCase("ALLIANCE")) {
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(event.getGuild().getRoles());
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
-                entry.getValue().delete().complete();
+                tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+            }
+            for (Future<?> task : tasks) {
+                task.get();
             }
             return "Cleared all AA roles!";
         } else if (args.get(0).equalsIgnoreCase("UNREGISTERED")) {

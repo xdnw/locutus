@@ -735,7 +735,7 @@ public class DiscordUtil {
                 if (buffer.length() + 1 + line.length() > 2000) {
                     String str = buffer.toString().trim();
                     if (!str.isEmpty()) {
-                        hook.sendMessage(str).complete();
+                        RateLimitUtil.complete(hook.sendMessage(str));
                     }
                     buffer.setLength(0);
                 }
@@ -743,10 +743,10 @@ public class DiscordUtil {
             }
             String finalMsg = buffer.toString().trim();
             if (finalMsg.length() != 0) {
-                return hook.sendMessage(finalMsg).submit();
+                return RateLimitUtil.queue(hook.sendMessage(finalMsg));
             }
         } else if (!message.isEmpty()) {
-            return hook.sendMessage(message).submit();
+            return RateLimitUtil.queue(hook.sendMessage(message));
         }
         return null;
     }
@@ -773,17 +773,17 @@ public class DiscordUtil {
                 if (buffer.length() + 1 + line.length() > 2000) {
                     String str = buffer.toString().trim();
                     if (!str.isEmpty()) {
-                        channel.sendMessage(str).complete();
+                        RateLimitUtil.complete(channel.sendMessage(str));
                     }
                     buffer.setLength(0);
                 }
                 buffer.append('\n').append(line);
             }
             if (buffer.length() != 0) {
-                return channel.sendMessage(buffer).submit();
+                return RateLimitUtil.queue(channel.sendMessage(buffer));
             }
         } else if (!message.isEmpty()) {
-            return channel.sendMessage(message).submit();
+            return RateLimitUtil.queue(channel.sendMessage(message));
         }
         return null;
     }

@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -115,7 +116,7 @@ public class Revenue extends Command {
             if (nations.size() == 0) {
                 return "Invalid nation or alliance: `" + args.get(0) + "` (add `-i` if they are inactive/vm/gray/app/beige)";
             } else {
-                event.getChannel().sendMessage("Fetching cities (please wait)...").complete();
+                RateLimitUtil.queue(event.getChannel().sendMessage("Fetching cities (please wait)..."));
                 for (DBNation aaMember : nations) {
                     if (!force && (aaMember.isGray() || aaMember.getVm_turns() != 0)) {
                         continue;

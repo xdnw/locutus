@@ -146,9 +146,13 @@ public class WarCategory {
                 targetId = to.defender_id;
             } else if (allianceIds.contains(to.defender_aa)) {
                 targetId = to.attacker_id;
+            } else if (warRoomMap.containsKey(to.attacker_id)) {
+                targetId = to.attacker_id;
             } else {
                 return;
             }
+
+
             int participantId = to.attacker_id == targetId ? to.defender_id : to.attacker_id;
             DBNation target = Locutus.imp().getNationDB().getNation(targetId);
             DBNation participant = Locutus.imp().getNationDB().getNation(participantId);
@@ -517,7 +521,7 @@ public class WarCategory {
                 }
 
                 if (!contains) {
-                    channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL).complete();
+                    RateLimitUtil.complete(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
                     if (ping) {
                         String msg = (author != null ? author.getName() : "null") + " added " + user.getAsMention();
 

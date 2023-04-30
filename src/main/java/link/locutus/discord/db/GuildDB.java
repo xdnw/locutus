@@ -167,7 +167,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             iaCat = delegate.getIACategory(false, false, throwError);
         }
         if (iaCat == null && create) {
-            Category category = guild.createCategory("interview").complete();
+            Category category = RateLimitUtil.complete(guild.createCategory("interview"));
             this.iaCat = new IACategory(this);
             this.iaCat.load();
         }

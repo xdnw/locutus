@@ -100,6 +100,8 @@ import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -541,46 +543,52 @@ public class UnsortedCommands {
     @RolePermission(Roles.ADMIN)
     public String clearAllianceRoles(@Me GuildDB db, @Me Guild guild,
                                      @Arg("What role types do you want to remove")
-                                     ClearRolesEnum type) {
-        switch (type) {
-            case UNUSED: {
-                Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
-                for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
-                    if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
-                        entry.getValue().delete().complete();
-                    }
-                }
-                return "Cleared unused Alliance roles!";
-            }
-            case ALLIANCE: {
-                Set<Integer> aaIds = db.getAllianceIds();
-
-                Role memberRole = Roles.MEMBER.toRole(guild);
-
-                StringBuilder response = new StringBuilder();
-
-                for (Member member : guild.getMembers()) {
-                    DBNation nation = DiscordUtil.getNation(member.getIdLong());
-                    List<Role> roles = member.getRoles();
-                    if (roles.contains(memberRole)) {
-                        if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
-                            response.append("\nRemove member from " + member.getEffectiveName());
-                            RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, memberRole));
+                                     ClearRolesEnum type) throws ExecutionException, InterruptedException {
+        List<Future<?>> tasks = new ArrayList<>();
+        try {
+            switch (type) {
+                case UNUSED: {
+                    Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
+                    for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
+                        if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
+                            tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
                         }
                     }
+                    return "Cleared unused Alliance roles!";
                 }
-                response.append("\nDone!");
-                return response.toString();
-            }
-            case UNREGISTERED: {
-                Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
-                for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
-                    entry.getValue().delete().complete();
+                case ALLIANCE: {
+                    Set<Integer> aaIds = db.getAllianceIds();
+
+                    Role memberRole = Roles.MEMBER.toRole(guild);
+
+                    StringBuilder response = new StringBuilder();
+                    for (Member member : guild.getMembers()) {
+                        DBNation nation = DiscordUtil.getNation(member.getIdLong());
+                        List<Role> roles = member.getRoles();
+                        if (roles.contains(memberRole)) {
+                            if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
+                                response.append("\nRemove member from " + member.getEffectiveName());
+                                tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, memberRole)));
+                            }
+                        }
+                    }
+                    response.append("\nDone!");
+                    return response.toString();
                 }
-                return "Cleared all AA roles!";
+                case UNREGISTERED: {
+                    Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
+                    for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
+                        tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                    }
+                    return "Cleared all AA roles!";
+                }
+                default:
+                    throw new IllegalArgumentException("Unknown type " + type);
             }
-            default:
-                throw new IllegalArgumentException("Unknown type " + type);
+        } finally {
+            for (Future<?> task : tasks) {
+                task.get();
+            }
         }
     }
 
@@ -591,13 +599,14 @@ public class UnsortedCommands {
     @RolePermission(Roles.ADMIN)
     public synchronized String clearNicks(@Me Guild guild,
                                           @Arg("Undo the last recent use of this command")
-                                          @Default boolean undo) {
+                                          @Default boolean undo) throws ExecutionException, InterruptedException {
         if (previousNicksGuild != guild.getIdLong()) {
             previousNicksGuild = guild.getIdLong();
             previous.clear();
         }
         int failed = 0;
         String msg = null;
+        List<Future<?>> tasks = new ArrayList<>();
         for (Member member : guild.getMembers()) {
             if (member.getNickname() != null) {
                 try {
@@ -615,12 +624,15 @@ public class UnsortedCommands {
 //                            nick = nick.substring(nick.indexOf(' ') + 1);
 //                        }
                     }
-                    member.modifyNickname(nick).complete();
+                    tasks.add(RateLimitUtil.queue(member.modifyNickname(nick)));
                 } catch (Throwable e) {
                     msg = e.getMessage();
                     failed++;
                 }
             }
+        }
+        for (Future<?> task : tasks) {
+            task.get();
         }
         if (failed != 0) {
             return "Failed to clear " + failed + " nicknames for reason: " + msg;

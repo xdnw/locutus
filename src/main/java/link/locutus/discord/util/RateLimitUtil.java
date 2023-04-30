@@ -65,16 +65,14 @@ public class RateLimitUtil {
                     if (category.size() > 1) category.entrySet().removeIf(f -> f.getKey() < cutoff);
                     if (category.size() > 1) {
                         response.append("\n\n" + entry.getKey().getSimpleName() + " = " + category.size());
-                        if (category.size() > 5) {
-                            Map<String, Integer> exceptionStrings = new HashMap<>();
-                            for (Exception value : category.values()) {
-                                String key = StringMan.stacktraceToString(value.getStackTrace());
-                                int amt = exceptionStrings.getOrDefault(key, 0) + 1;
-                                exceptionStrings.put(key, amt);
-                            }
-                            for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
-                                response.append("\n - " + entry2.getValue() + ": " + entry2.getKey());
-                            }
+                        Map<String, Integer> exceptionStrings = new HashMap<>();
+                        for (Exception value : category.values()) {
+                            String key = StringMan.stacktraceToString(value.getStackTrace());
+                            int amt = exceptionStrings.getOrDefault(key, 0) + 1;
+                            exceptionStrings.put(key, amt);
+                        }
+                        for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
+                            response.append("\n - " + entry2.getValue() + ": " + entry2.getKey());
                         }
                     }
                 }
@@ -91,6 +89,9 @@ public class RateLimitUtil {
     private static final Map<Long, Long> messageQueueLastSent = new ConcurrentHashMap<>();
 
     public static void queueMessage(MessageChannel channel, String message, boolean condense) {
+        queueMessage(channel, message, condense, null);
+    }
+    public static void queueMessage(MessageChannel channel, String message, boolean condense, Integer bufferSeconds) {
         if (channel instanceof JoobyChannel) {
             condense = false;
         }
@@ -99,18 +100,20 @@ public class RateLimitUtil {
             return;
         }
 
-        int bufferSeconds;
-        int requests = requestsThisMinute.size();
-        if (requests < 20) bufferSeconds = 10;
-        else if (requests < 30) bufferSeconds = 30;
-        else if (requests < 50) bufferSeconds = 45;
-        else bufferSeconds = 60;
+        if (bufferSeconds == null) {
+            int requests = requestsThisMinute.size();
+            if (requests < 20) bufferSeconds = 10;
+            else if (requests < 30) bufferSeconds = 30;
+            else if (requests < 50) bufferSeconds = 45;
+            else bufferSeconds = 60;
+        }
 
         UUID id = UUID.randomUUID();
         long channelId = channel.getIdLong();
         synchronized (messageQueueLastSent) {
             messageQueue.computeIfAbsent(channelId, f -> new ArrayList<>()).add(new AbstractMap.SimpleEntry<>(id, message));
         }
+        Integer finalBufferSeconds = bufferSeconds;
         Locutus.imp().getCommandManager().getExecutor().schedule(new CaughtRunnable() {
             @Override
             public void runUnsafe() {
@@ -129,7 +132,7 @@ public class RateLimitUtil {
 
                     boolean isMyMessageLatest = messages.get(messages.size() - 1).getKey() == id;
 
-                    if (now - last < bufferSeconds * 1000L || isMyMessageLatest) {
+                    if (now - last < finalBufferSeconds * 1000L || isMyMessageLatest) {
                         toSend = messageQueue.remove(channelId);
                         messageQueueLastSent.put(channelId, now);
                     }

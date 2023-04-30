@@ -2187,13 +2187,6 @@ public class CM {
                 return createArgs();
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="testAlert")
-        public static class testAlert extends CommandRef {
-            public static final testAlert cmd = new testAlert();
-            public testAlert create(String channel) {
-                return createArgs("channel", channel);
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="dm")
         public static class dm extends CommandRef {
             public static final dm cmd = new dm();

@@ -84,7 +84,7 @@ public class Spyops extends Command {
             channel = event.getGuildChannel();
         }
 
-        CompletableFuture<Message> msg = channel.sendMessage("Please wait... ").submit();
+        CompletableFuture<Message> msg = RateLimitUtil.queue(channel.sendMessage("Please wait... "));
         GuildDB db = Locutus.imp().getGuildDB(event);
 
         try {

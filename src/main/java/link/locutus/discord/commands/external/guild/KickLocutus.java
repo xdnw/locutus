@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -21,8 +22,8 @@ public class KickLocutus extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        event.getChannel().sendMessage("Goodbye.").complete();
-        event.getGuild().leave().complete();
+        RateLimitUtil.complete(event.getChannel().sendMessage("Goodbye."));
+        RateLimitUtil.queue(event.getGuild().leave());
         return null;
     }
 }

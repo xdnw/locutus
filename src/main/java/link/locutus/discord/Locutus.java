@@ -990,7 +990,7 @@ public final class Locutus extends ListenerAdapter {
             System.out.println("ID 3 " + id + " " + behavior);
 
 //            event.deferReply(false).queue();
-            event.deferEdit().queue();
+            RateLimitUtil.queue(event.deferEdit());
 
             System.out.println("Id new " + id + " | " + behavior);
             if (id.startsWith(Settings.commandPrefix(true)) || id.startsWith(Settings.commandPrefix(false))) {
@@ -1005,7 +1005,7 @@ public final class Locutus extends ListenerAdapter {
             } else if (id.startsWith("{")){
                 getCommandManager().getV2().run(guild, channel, user, message, io, id, true);
             } else if (!id.isEmpty()) {
-                event.reply("Unknown command: " + id).queue();
+                RateLimitUtil.queue(event.reply("Unknown command: " + id));
                 return;
             }
 

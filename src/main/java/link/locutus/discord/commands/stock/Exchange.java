@@ -24,6 +24,7 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -33,6 +34,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public class Exchange {
     public ExchangeCategory category;
@@ -314,6 +318,7 @@ public class Exchange {
             if (channelName.equalsIgnoreCase(id + "")) return GuildMessageChannel;
         }
 
+        List<Future<?>> tasks = new ArrayList<>();
         // Fix category
         for (Long otherCategoryId : categories) {
             if (otherCategoryId == categoryId) continue;
@@ -324,14 +329,22 @@ public class Exchange {
                 String channelName = channel.getName();
                 channelName = channelName.split("-")[0];
                 if (channelName.equalsIgnoreCase(id + "")) {
-                    channel.getManager().setParent(jdaCategory).complete();
+                    tasks.add(RateLimitUtil.queue(channel.getManager().setParent(jdaCategory)));
                     return channel;
                 }
             }
         }
 
-        TextChannel channel = RateLimitUtil.complete(jdaCategory.createTextChannel(id + "-" + symbol));
-        return channel;
+        CompletableFuture<TextChannel> channelFuture = RateLimitUtil.queue(jdaCategory.createTextChannel(id + "-" + symbol));
+        tasks.add(channelFuture);
+        for (Future<?> task : tasks) {
+            try {
+                task.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+        return channelFuture.getNow(null);
     }
 
     public void setChannelInvite() {
@@ -474,11 +487,11 @@ public class Exchange {
             if (roles.containsKey(rank)) continue;
 
             String name = "EX " + id + " " + symbol + " " + rank.name();
-            Role role = guild.createRole()
+            Role role = RateLimitUtil.complete(guild.createRole()
                     .setName(name)
                     .setMentionable(false)
                     .setHoisted(true)
-                    .complete();
+                    );
 
             if (positionRole == null) positionRole = guild.getRoleById(807944560176529440L);
             if (positionRole != null) {

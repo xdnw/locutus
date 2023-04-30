@@ -665,12 +665,6 @@ public class AdminCommands {
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String testAlert(MessageChannel channel) {
-        return channel.sendMessage("Hello World").complete() + "";
-    }
-
-    @Command()
-    @RolePermission(value = Roles.ADMIN, root = true)
     public String rootApiUsageStats() {
         PoliticsAndWarV2 api = Locutus.imp().getRootPnwApi();
         System.out.println(printApiStats(api));
@@ -859,7 +853,7 @@ public class AdminCommands {
         GuildDB db = Locutus.imp().getGuildDB(guildId);
         if (db == null) return "Server not found " + guildId;
         Guild guild = db.getGuild();
-        guild.leave().queue();
+        RateLimitUtil.queue(guild.leave());
         return "Leaving " + guild.getName();
     }
 

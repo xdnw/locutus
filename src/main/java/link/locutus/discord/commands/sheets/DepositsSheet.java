@@ -139,7 +139,7 @@ public class DepositsSheet extends Command {
 
         long last = System.currentTimeMillis();
         for (DBNation nation : nations) {
-            if (System.currentTimeMillis() - last > 5000) {
+            if (System.currentTimeMillis() - last > 10000) {
                 RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), "calculating for: " + nation.getNation()));
                 last = System.currentTimeMillis();
             }

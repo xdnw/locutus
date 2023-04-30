@@ -161,6 +161,8 @@ public class AutoRoleTask implements IAutoRoleTask {
             Set<Integer> allies = db.getAllies();
             if (allies.isEmpty()) return;
 
+            List<Future<?>> tasks = new ArrayList<>();
+
             if (thisHasRoles) {
                 Map<Member, List<Role>> memberRoles = new HashMap<>();
 
@@ -217,7 +219,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                                 if (memberRole != null) {
                                     memberRoles.computeIfAbsent(member, f -> new ArrayList<>()).add(memberRole);
                                     if (!roles.contains(memberRole)) {
-                                        guild.addRoleToMember(member, memberRole).complete();
+                                        tasks.add(RateLimitUtil.queue(guild.addRoleToMember(member, memberRole)));
                                     }
                                 }
                                 for (int i = 0; i < allyDiscordRoles.length; i++) {
@@ -231,7 +233,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                                     if (allyRoles.contains(allyRole)) {
                                         memberRoles.computeIfAbsent(member, f -> new ArrayList<>()).add(thisRole);
                                         if (!roles.contains(thisRole)) {
-                                            guild.addRoleToMember(member, thisRole).complete();
+                                            tasks.add(RateLimitUtil.queue(guild.addRoleToMember(member, thisRole)));
                                         }
                                     }
                                 }
@@ -250,24 +252,33 @@ public class AutoRoleTask implements IAutoRoleTask {
                             if (allies.contains(nation.getAlliance_id()) && nation.getPosition() > 1) {
                                 isMember = true;
                                 if (!roles.contains(memberRole)) {
-                                    guild.addRoleToMember(member, memberRole).complete();
+                                    tasks.add(RateLimitUtil.queue(guild.addRoleToMember(member, memberRole)));
                                 }
                             }
                         }
                     }
                     if (!isMember && roles.contains(memberRole)) {
-                        guild.removeRoleFromMember(member, memberRole).complete();
+                        tasks.add(RateLimitUtil.queue(guild.removeRoleFromMember(member, memberRole)));
                     }
 
                     List<Role> allowed = memberRoles.getOrDefault(member, new ArrayList<>());
 
                     for (Role role : thisDiscordRoles) {
                         if (roles.contains(role) && !allowed.contains(role)) {
-                            guild.removeRoleFromMember(member, role).complete();
+                            tasks.add(RateLimitUtil.queue(guild.removeRoleFromMember(member, role)));
                         }
                     }
                 }
+
             }
+            for (Future<?> task : tasks) {
+                try {
+                    task.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
+
         }
     }
 
@@ -311,7 +322,7 @@ public class AutoRoleTask implements IAutoRoleTask {
             List<Member> withRole = guild.getMembersWithRoles(role);
             if (withRole.isEmpty()) {
                 allianceRoles.remove(entry.getKey());
-                tasks.add(role.delete().submit());
+                tasks.add(RateLimitUtil.queue(role.delete()));
             }
         }
         while (!tasks.isEmpty()) {
@@ -374,7 +385,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         if (setName) {
             output.accept("Set " + member.getEffectiveName() + "  to " + name);
             try {
-                tasks.accept(member.modifyNickname(name).submit());
+                tasks.accept(RateLimitUtil.queue(member.modifyNickname(name)));
             } catch (HierarchyException ignore) {
                 output.accept(member.getEffectiveName() + " " + ignore.getMessage());
             }
@@ -407,7 +418,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         if (!isRegistered && registeredRole != null) {
             if (nationSup.get() != null) {
-                guild.addRoleToMember(user.getIdLong(), registeredRole).complete();
+                RateLimitUtil.complete(guild.addRoleToMember(user.getIdLong(), registeredRole));
                 isRegistered = true;
             }
         }
@@ -530,7 +541,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                     }
                     if (alliance_id == 0) {
                         for (Map.Entry<Integer, Role> entry : myRoles.entrySet()) {
-                            tasks.accept(guild.removeRoleFromMember(member, entry.getValue()).submit());
+                            tasks.accept(RateLimitUtil.queue(guild.removeRoleFromMember(member, entry.getValue())));
                         }
                         return;
                     }
@@ -538,13 +549,13 @@ public class AutoRoleTask implements IAutoRoleTask {
                         if (entry.getValue().getIdLong() != role.getIdLong()) {
                             if (!autoAll)
                                 output.accept("Remove " + entry.getValue().getName() + " to " + member.getEffectiveName());
-                            tasks.accept(guild.removeRoleFromMember(member, entry.getValue()).submit());
+                            tasks.accept(RateLimitUtil.queue(guild.removeRoleFromMember(member, entry.getValue())));
                         }
                     }
                     if (!myRoles.containsKey(alliance_id)) {
                         if (!autoAll)
                             output.accept("Add " + role.getName() + " to " + member.getEffectiveName());
-                        tasks.accept(guild.addRoleToMember(member, role).submit());
+                        tasks.accept(RateLimitUtil.queue(guild.addRoleToMember(member, role)));
                     }
                 } else {
                     if (!autoAll) output.accept("No nation found for " + pnwUser.getNationId());
@@ -558,7 +569,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                 if (!memberAARoles.isEmpty()) {
                     for (Map.Entry<Integer, Role> entry : memberAARoles.entrySet()) {
                         output.accept("Remove " + entry.getValue().getName() + " from " + member.getEffectiveName());
-                        tasks.accept(guild.removeRoleFromMember(member, entry.getValue()).submit());
+                        tasks.accept(RateLimitUtil.queue(guild.removeRoleFromMember(member, entry.getValue())));
                     }
                 }
             }
@@ -591,12 +602,12 @@ public class AutoRoleTask implements IAutoRoleTask {
                 if (cityRole == null) continue;
 
                 output.accept("Remove " + role.getName() + " from " + member.getEffectiveName());
-                tasks.accept(guild.removeRoleFromMember(member, role).submit());
+                tasks.accept(RateLimitUtil.queue(guild.removeRoleFromMember(member, role)));
             }
 
             for (Role role : allowed) {
                 output.accept("Add " + role.getName() + " to " + member.getEffectiveName());
-                tasks.accept(guild.addRoleToMember(member, role).submit());
+                tasks.accept(RateLimitUtil.queue(guild.addRoleToMember(member, role)));
             }
         }
     }
@@ -627,12 +638,12 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
 
         String roleName = "AA " + allianceId + " " + allianceName;
-        Role role = guild.createRole()
+        Role role = RateLimitUtil.complete(guild.createRole()
                 .setName(roleName)
                 .setColor(color)
                 .setMentionable(false)
                 .setHoisted(true)
-                .complete();
+                );
 
         if (role == null) {
             List<Role> roles = guild.getRolesByName(roleName, false);
@@ -643,7 +654,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
 
         if (position != -1) {
-            guild.modifyRolePositions().selectPosition(role).moveTo(position).complete();
+            RateLimitUtil.complete(guild.modifyRolePositions().selectPosition(role).moveTo(position));
         }
         return role;
     }
