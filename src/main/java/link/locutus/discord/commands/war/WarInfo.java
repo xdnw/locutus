@@ -65,7 +65,7 @@ public class WarInfo extends Command {
             String body = nation.getWarInfoEmbed(flags.contains('l'));
             DiscordUtil.createEmbedCommand(event.getChannel(), title, body);
         } else {
-            new WarCard(warId).embed(new DiscordChannelIO(event), true);
+            new WarCard(warId).embed(new DiscordChannelIO(event), true, false);
         }
         return null;
     }

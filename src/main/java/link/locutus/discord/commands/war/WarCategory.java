@@ -372,8 +372,8 @@ public class WarCategory {
                             if (!defLosses.isEmpty()) message += "\nDefender unit losses: " + StringMan.getString(defLosses);
                         }
 
-                        if (RateLimitUtil.getCurrentUsed() > 25) {
-                            DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message);
+                        if (RateLimitUtil.getCurrentUsed() > 10) {
+                            new DiscordChannelIO(room.getChannel()).create().embed(attack.attack_type.toString(), message).sendWhenFree();
                         } else {
                             String emoji = "War Info";
                             String cmd = "_" + Settings.commandPrefix(true) + "WarInfo " + attack.war_id;

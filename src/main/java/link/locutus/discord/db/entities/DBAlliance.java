@@ -1230,4 +1230,8 @@ public class DBAlliance implements NationList, NationOrAlliance {
         com.politicsandwar.graphql.model.Treaty result = api.cancelTreaty(id);
         return new Treaty(result);
     }
+
+    public double getCities() {
+        return getMemberDBNations().stream().mapToDouble(DBNation::getCities).sum();
+    }
 }

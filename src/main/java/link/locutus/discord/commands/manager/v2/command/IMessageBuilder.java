@@ -205,7 +205,7 @@ public interface IMessageBuilder {
 
     CompletableFuture<IMessageBuilder> send();
 
-    default void sendWhenFree(IMessageIO io) {
+    default void sendWhenFree() {
         send();
     }
 

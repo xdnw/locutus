@@ -830,7 +830,7 @@ public class WarUpdateProcessor {
                     AlertUtil.forEachChannel(f -> true, GuildDB.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                         @Override
                         public void accept(MessageChannel channel, GuildDB guildDB) {
-                            card.embed(new DiscordChannelIO(channel, null));
+                            card.embed(new DiscordChannelIO(channel), false, true);
                         }
                     });
                 } else if (defender.getOff() > 0 && stat.type != CounterType.UNCONTESTED) {
@@ -851,7 +851,7 @@ public class WarUpdateProcessor {
                         AlertUtil.forEachChannel(f -> true, GuildDB.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                             @Override
                             public void accept(MessageChannel channel, GuildDB guildDB) {
-                                card.embed(new DiscordChannelIO(channel, null));
+                                card.embed(new DiscordChannelIO(channel), false, true);
                             }
                         });
                     }

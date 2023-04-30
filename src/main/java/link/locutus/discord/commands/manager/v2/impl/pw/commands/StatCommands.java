@@ -239,7 +239,7 @@ public class StatCommands {
                         DBWar war = wars.get(attack.war_id);
                         int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
                         DBNation nation = DBNation.byId(nationId);
-                        return scale(nation, sign * valueFunc.apply(attack.attacker_nation_id == nationId, attack), scalePerCity);
+                        return scale(nation, sign * valueFunc.apply(attack.attacker_nation_id == nationId, attack), scalePerCity, groupByAlliance);
                     });
         } else {
             byGroupMap = nationAllianceGroup.map(groupBy,
@@ -253,7 +253,7 @@ public class StatCommands {
                         if (netTotal) {
                             totalVal -= valueFunc.apply(!primary, attack);
                         }
-                        return scale(nation, totalVal, scalePerCity);
+                        return scale(nation, totalVal, scalePerCity, groupByAlliance);
                     });
         }
 

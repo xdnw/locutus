@@ -46,7 +46,7 @@ public class DiscordMessageBuilder implements IMessageBuilder {
     }
 
     @Override
-    public void sendWhenFree(IMessageIO io) {
+    public void sendWhenFree() {
         RateLimitUtil.queueMessage(parent, new Function<IMessageBuilder, Boolean>() {
             @Override
             public Boolean apply(IMessageBuilder msg) {
@@ -188,7 +188,11 @@ public class DiscordMessageBuilder implements IMessageBuilder {
     public IMessageBuilder embed(String title, String body, String footer) {
         EmbedBuilder builder = new EmbedBuilder().setTitle(title);
         if (body != null && !body.isEmpty()) {
-            builder = builder.appendDescription(body);
+            try {
+                builder = builder.appendDescription(body);
+            } catch (IllegalArgumentException e) {
+                return file(title + ".txt", body);
+            }
         }
         return embed(builder.setFooter(footer == null || footer.isEmpty() ? null : footer).build());
     }

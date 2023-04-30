@@ -1,6 +1,8 @@
 package link.locutus.discord.util.update;
 
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.event.treaty.*;
@@ -46,8 +48,11 @@ public class TreatyUpdateProcessor {
         Treaty current = event.getCurrent();
 
         Treaty existing = previous == null ? current : previous;
-        DBAlliance fromAA = DBAlliance.getOrCreate(existing.getFromId());
-        DBAlliance toAA = DBAlliance.getOrCreate(existing.getToId());
+        DBAlliance fromAA = DBAlliance.get(existing.getFromId());
+        DBAlliance toAA = DBAlliance.get(existing.getToId());
+
+        // Ignore treaty changes from alliance deletion
+        if (fromAA == null || toAA == null) return;
 
         if (previous == null) {
             title += " " + current.getType();
@@ -74,17 +79,25 @@ public class TreatyUpdateProcessor {
                 {
                     Set<Integer> tracked = guildDB.getAllies(true);
                     if (!tracked.isEmpty()) {
+                        finalBody.append("\n\n**IN SPHERE**");
+
                         tracked.addAll(guildDB.getCoalition("enemies"));
+                        tracked.addAll(guildDB.getCoalition(Coalition.DNR));
+                        tracked.addAll(guildDB.getCoalition(Coalition.DNR_MEMBER));
+                        tracked.addAll(guildDB.getCoalition(Coalition.MASKEDALLIANCES));
+                        tracked.addAll(guildDB.getCoalition(Coalition.COUNTER));
+                        tracked.addAll(guildDB.getCoalition(Coalition.FA_FIRST));
+                        tracked.addAll(guildDB.getCoalition(Coalition.OFFSHORE));
+                        tracked.addAll(guildDB.getCoalition(Coalition.OFFSHORING));
+                        tracked.addAll(guildDB.getCoalition(Coalition.TRACK_DEPOSITS));
+
                         if (!tracked.contains(existing.getFromId()) && !tracked.contains(existing.getToId())) {
-                            if (fromAA.getRank() > 50 && toAA.getRank() > 50) {
-                                return;
-                            }
-                        } else {
-                            finalBody.append("\n\n**IN SPHERE**");
+                            return;
                         }
                     }
                 }
-                DiscordUtil.createEmbedCommand(channel, finalTitle, finalBody.toString());
+                DiscordChannelIO io = new DiscordChannelIO(channel);
+                io.create().embed(finalTitle, finalBody.toString()).sendWhenFree();
             }
         });
     }

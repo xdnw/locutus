@@ -580,14 +580,8 @@ public class GuildHandler {
                     "\n" +
                     "Assigned to %user% in {timediff}'";
 
-            RateLimitUtil.queueMessage(io, new Function<IMessageBuilder, Boolean>() {
-                @Override
-                public Boolean apply(IMessageBuilder msg) {
-                    msg.embed(title, body.toString())
-                    .commandButton(pending, emoji);
-                    return true;
-                }
-            }, true, 60);
+            io.create().embed(title, body.toString())
+                    .commandButton(pending, emoji).send();
         } else {
             RateLimitUtil.queueMessage(io, new Function<IMessageBuilder, Boolean>() {
                 @Override
@@ -1628,26 +1622,29 @@ public class GuildHandler {
             @Override
             public void run() {
                 try {
-                    if (rateLimit && wars.size() > 1) {
-                        if (!dnrViolations.isEmpty() && db.isWhitelisted()) {
-                            for (DBWar war : dnrViolations) {
-                                DBNation nation = war.getNation(true);
-                                if (nation == null) continue;
-                                User user = nation.getUser();
-                                if ((!aaIds.contains(war.attacker_aa)) && (user == null || guild.getMember(user) == null))
-                                    continue;
+                    if (!dnrViolations.isEmpty()) {
+                        Locutus.imp().getExecutor().submit(() -> {
+                            try {
+                                ApiKeyPool key = db.getMailKey();
+                                for (DBWar war : dnrViolations) {
+                                    DBNation nation = war.getNation(true);
+                                    if (nation == null) continue;
+                                    User user = nation.getUser();
+                                    if ((!aaIds.contains(war.attacker_aa)) && (user == null || guild.getMember(user) == null))
+                                        continue;
 
-                                String title = "Do Not Raid/" + channel.getIdLong();
-                                String message = MarkupUtil.htmlUrl(war.toUrl(), war.toUrl()) + " violates the `Do Not Raid` list. If you were not asked to attack, please offer peace\n\nNote: This is an automated message";
-                                try {
-                                    new MailTask(Locutus.imp().getRootAuth(), nation, title, message, channel).call();
-                                } catch (Throwable e) {
-                                    e.printStackTrace();
+                                    String title = "Do Not Raid/" + channel.getIdLong();
+                                    String message = MarkupUtil.htmlUrl(war.toUrl(), war.toUrl()) + " violates the `Do Not Raid` list. If you were not asked to attack, please offer peace\n\nNote: This is an automated message";
+
+                                    nation.sendMail(key, title, message);
                                 }
+                            } catch (Throwable e) {
+                                e.printStackTrace();
                             }
-                        }
+                        });
+                    }
 
-
+                    if (rateLimit && wars.size() > 1) {
                         String title = wars.size() + " new " + (offensive ? "Offensive" : "Defensive") + " wars";
                         StringBuilder body = new StringBuilder();
                         StringBuilder footer = new StringBuilder();
@@ -1751,38 +1748,43 @@ public class GuildHandler {
                         }
 
                         if (!dnrViolations.isEmpty()) {
-                            footer.append("^ violates the `Do Not Raid` list. If you were not asked to attack (e.g. as a counter), please offer peace (Note: This is an automated message)\n");
+                            footer.append("To modify the `Do Not Raid` see: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.DO_NOT_RAID_TOP_X.name() + "`\n");
                         }
 
-                        RateLimitUtil.queueWhenFree(() -> {
-                            if (title.length() + 10 + body.length() < 2000) {
-                                DiscordUtil.createEmbedCommand(channel, title, body.toString());
+                        RateLimitUtil.queueMessage(new DiscordChannelIO(channel), new Function<IMessageBuilder, Boolean>() {
+                            @Override
+                            public Boolean apply(IMessageBuilder msg) {
+                                if (title.length() + 10 + body.length() < 2000) {
+                                    msg.embed(title, body.toString());
 
-                                Set<String> allMentions = new HashSet<>();
-                                for (Set<String> pings : pingUserOrRoles.values()) allMentions.addAll(pings);
-                                if (!allMentions.isEmpty()) {
-                                    footer.append(StringMan.join(allMentions, " "));
-                                }
+                                    Set<String> allMentions = new HashSet<>();
+                                    for (Set<String> pings : pingUserOrRoles.values()) allMentions.addAll(pings);
+                                    if (!allMentions.isEmpty()) {
+                                        footer.append(StringMan.join(allMentions, " "));
+                                    }
 
-                                if (footer.length() > 0) {
-                                    RateLimitUtil.complete(channel.sendMessage(footer.toString()));
+                                    if (footer.length() > 0) {
+                                        msg.append(footer.toString());
+                                    }
+                                } else {
+                                    String full = "__**" + title + "**__\n" + bodyRaw.toString();
+                                    msg.append(full);
                                 }
-                            } else {
-                                String full = "__**" + title + "**__\n" + bodyRaw.toString();
-                                DiscordUtil.sendMessage(channel, full);
+                                return true;
                             }
-                        });
+                        }, true, null);
                     } else {
                         for (Map.Entry<DBWar, DBWar> entry : wars) {
                             DBWar war = entry.getValue();
                             WarCard card = new WarCard(war.warId);
                             CounterStat stat = card.getCounterStat();
-                            card.embed(new DiscordChannelIO(channel, null), false);
+                            IMessageBuilder msg = card.embed(new DiscordChannelIO(channel).create(), false, true, false);
 
 
                             StringBuilder footer = new StringBuilder();
                             if (dnrViolations.contains(war)) {
-                                footer.append("^ violates the `Do Not Raid` list. If you were not asked to attack (e.g. as a counter), please offer peace (Note: This is an automated message)\n");
+                                footer.append("^ violates the `Do Not Raid` (DNR) list. If you were not asked to attack (e.g. as a counter), please offer peace (Note: This is an automated message)\n");
+                                footer.append("(To modify the DNR: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.DO_NOT_RAID_TOP_X.name() + "`\n");
                             }
                             List<String> tips = new ArrayList<>();
 
@@ -1839,12 +1841,13 @@ public class GuildHandler {
                             }
 
                             if (footer.length() > 0 || !tips.isEmpty()) {
-                                String msg = footer.toString().trim();
+                                String footerMsg = footer.toString().trim();
                                 if (!tips.isEmpty()) {
-                                    msg += " ``` - " + StringMan.join(tips, "\n - ") + "```";
+                                    footerMsg += " ``` - " + StringMan.join(tips, "\n - ") + "```";
                                 }
-                                RateLimitUtil.complete(channel.sendMessage(msg));
+                                msg.append(footerMsg);
                             }
+                            msg.send();
                         }
                     }
                 } catch (InsufficientPermissionException e) {

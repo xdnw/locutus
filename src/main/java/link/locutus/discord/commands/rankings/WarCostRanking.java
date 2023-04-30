@@ -4,10 +4,12 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.*;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -30,9 +32,20 @@ public class WarCostRanking extends Command {
         super(CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.MILCOM);
     }
 
-    public static double scale(DBNation nation, double value, boolean enabled) {
+    public static double scale(DBNation nation, double value, boolean enabled, boolean groupByAlliance) {
         if (enabled) {
-            value /= nation.getCities();
+            if (groupByAlliance) {
+                DBAlliance alliance = nation.getAlliance(false);
+                if (alliance == null) return 0;
+                int total = 0;
+                for (DBNation n : alliance.getNations()) {
+                    if (n != nation && (n.getPositionEnum().id <= Rank.APPLICANT.id || n.getVm_turns() > 0)) continue;
+                    total += n.getCities();
+                }
+                return value / total;
+            } else {
+                value /= nation.getCities();
+            }
         }
         return value;
     }
@@ -199,7 +212,7 @@ public class WarCostRanking extends Command {
                     // Convert attack to profit value
                     (nationdId, attack) -> {
                         DBNation nation = nationMap.get(nationdId);
-                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.attacker_nation_id == nationdId, attack), scale) : 0;
+                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.attacker_nation_id == nationdId, attack), scale, isAA) : 0;
                     });
         } else {
             byNationMap = attackGroup.map((i, a) -> a.war_id,
@@ -212,7 +225,7 @@ public class WarCostRanking extends Command {
                         if (net) {
                             total -= valueFunc.apply(!primary, attack);
                         }
-                        return scale(nation, total, scale);
+                        return scale(nation, total, scale, isAA);
                     });
         }
 

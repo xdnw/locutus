@@ -137,14 +137,6 @@ public class CommandManager2 {
         return result;
     }
 
-    public static void main(String[] args) {
-        boolean checkUnbound = true;
-        Set<String> params = new HashSet<>(Arrays.asList("hello", "world"));
-        String input = "hello: test testing world: blah something.";
-        Map<String, String> result = parseArguments(params, input, checkUnbound);
-        System.out.println("Result " + StringMan.getString(result));
-    }
-
     public CommandManager2 registerDefaults() {
         // nap command  - UtilityCommands
 
@@ -170,9 +162,9 @@ public class CommandManager2 {
         this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
 
         if (pwgptHandler != null) {
-            HelpCommands help = new HelpCommands(pwgptHandler);
-            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
-            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
+            HelpCommands help = new HelpCommands();
+//            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
+//            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
             pwgptHandler.registerDefaults();
         }

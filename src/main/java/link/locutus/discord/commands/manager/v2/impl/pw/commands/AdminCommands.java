@@ -264,11 +264,11 @@ public class AdminCommands {
             }
             if (!force) {
                 if (nation.getActive_m() > 20000)
-                    return "The " + nations.size() + " receivers includes inactive for >2 weeks. use `-f` to confirm";
+                    return "The " + nations.size() + " receivers includes inactive for >2 weeks. Use `" + sendTo.getFilter() + ",#active_m<20000` or set `force` to confirm";
                 if (nation.getVm_turns() > 0)
-                    return "The " + nations.size() + " receivers includes vacation mode nations. use `-f` to confirm";
+                    return "The " + nations.size() + " receivers includes vacation mode nations. Use `" + sendTo.getFilter() + ",#vm_turns=0` or set `force` to confirm";
                 if (nation.getPosition() < 1) {
-                    return "The " + nations.size() + " receivers includes applicants. use `-f` to confirm";
+                    return "The " + nations.size() + " receivers includes applicants. Use `" + sendTo.getFilter() + ",#position>1` or set `force` to confirm";
                 }
             }
         }

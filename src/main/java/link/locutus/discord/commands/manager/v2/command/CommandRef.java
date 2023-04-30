@@ -51,10 +51,13 @@ public class CommandRef {
     }
 
     public String toSlashMention() {
-        SlashCommandManager slashManager = Locutus.imp().getSlashCommands();
-        if (slashManager != null) {
-            String mention = slashManager.getSlashMention(path);
-            if (mention != null) return mention;
+        Locutus locutus = Locutus.imp();
+        if (locutus != null) {
+            SlashCommandManager slashManager = Locutus.imp().getSlashCommands();
+            if (slashManager != null) {
+                String mention = slashManager.getSlashMention(path);
+                if (mention != null) return mention;
+            }
         }
         return toSlashCommand();
     }

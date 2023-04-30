@@ -3720,7 +3720,7 @@ public class WarCommands {
 
     @Command(desc = "Show a war card embed on discord for a war by id")
     public String warcard(@Me IMessageIO channel, int warId) throws IOException {
-        new WarCard(warId).embed(channel, false);
+        new WarCard(warId).embed(channel, true, false);
         return null;
     }
 

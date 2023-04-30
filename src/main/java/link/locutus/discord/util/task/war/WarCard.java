@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.CounterStat;
@@ -416,11 +417,11 @@ public class WarCard {
     private static final String counterEmoji = "Counter";
     public static final String spyEmoji = "Spies";
 
-    public void embed(IMessageIO channel) {
-        embed(channel, false);
+    public void embed(IMessageIO channel, boolean addReactions, boolean condense) {
+        embed(channel.create(), addReactions, condense, true);
     }
 
-    public void embed(IMessageIO channel, boolean addReactions) {
+    public IMessageBuilder embed(IMessageBuilder builder, boolean addReactions, boolean condense, boolean send) {
         String warUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
         String cmd = Settings.commandPrefix(true) + "WarInfo " + warUrl;
         String sim = "~" + Settings.commandPrefix(true) + "simulate " + warUrl;
@@ -432,20 +433,27 @@ public class WarCard {
                 "\n" +
                 "Assigned to %user% in {timediff}'";
 
+        IMessageBuilder msg;
         if (addReactions) {
             String desc = getDescription();
             desc += "\n\nPress `" + pendingEmoji + "` to assign";
 
-            channel.create().embed(getTitle(), desc)
+            msg = builder.embed(getTitle(), desc)
                     .commandButton(pending, pendingEmoji)
                     .commandButton(cmd, cmdEmoji)
                     .commandButton(counter, counterEmoji)
-                    .commandButton(counterSpy, spyEmoji)
-                    .send();
-
+                    .commandButton(counterSpy, spyEmoji);
         } else {
-            channel.create().embed(getTitle(), getDescription()).send();
+            msg = builder.embed(getTitle(), getDescription());
         }
+        if (send) {
+            if (condense) {
+                msg.sendWhenFree();
+            } else {
+                msg.send();
+            }
+        }
+        return msg;
     }
 
     private String getSquare(int resistance) {
