@@ -133,17 +133,17 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
         }
 
         CM.war.find.raid app = CM.war.find.raid.cmd.create(
-                null, "10", null, null, null, null, null, null, null, null, null, null);
+                null, "10", null, null, null, null, null, null, null, null, null);
         CM.war.find.raid members = CM.war.find.raid.cmd.create(
-                "*", "25", null, null, null, null, null, null, null, null, null, null);
+                "*", "25", null, null, null, null, null, null, null, null, null);
         CM.war.find.raid beige = CM.war.find.raid.cmd.create(
-                "*", "25", null, null, null, "24", null, null, null, null, null, null);
+                "*", "25", null, null, "24", null, null, null, null, null, null);
         CM.war.find.raid ground = CM.war.find.raid.cmd.create(
-                "#tank%<20,#soldier%<40,*", "25", "0d", null, "true", null, null, null, null, null, null, null);
+                "#tank%<20,#soldier%<40,*", "25", "0d", "true", null, null, null, null, null, null, null);
         CM.war.find.raid ground_2d = CM.war.find.raid.cmd.create(
-                "#tank%<20,#soldier%<40,*", "25", "2d", null, "true", null, null, null, null, null, null, null);
+                "#tank%<20,#soldier%<40,*", "25", "2d",  "true", null,null, null, null, null, null, null);
         CM.war.find.raid losing = CM.war.find.raid.cmd.create(
-                "#def>0,#strength<1,*", "25", "0d", null, "true", null, null, null, null, null, null, null);
+                "#def>0,#strength<1,*", "25", "0d", "true", null, null, null, null, null, null, null);
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(
                 "*", "25", null, "true", null,  null, "90", null, null);
 
@@ -667,8 +667,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                                 allEnemies.getKey(),
                                 StringMan.join(allEnemies.getValue(), " "),
                                 null,
-                                "sheet:" + allEnemiesSheet.getSpreadsheetId(),
-                                null
+                                "sheet:" + allEnemiesSheet.getSpreadsheetId()
                         ), "update").send();
 
         io.create().embed("All Allies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
@@ -676,8 +675,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         allAllies.getKey(),
                         StringMan.join(allAllies.getValue(), " "),
                         null,
-                        "sheet:" + allAlliesSheet.getSpreadsheetId(),
-                        null
+                        "sheet:" + allAlliesSheet.getSpreadsheetId()
 
                 ), "update").send();
         io.create().embed("Priority Enemies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
@@ -685,8 +683,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         priorityEnemies.getKey(),
                         StringMan.join(priorityEnemies.getValue(), " "),
                         null,
-                        "sheet:" + priorityEnemiesSheet.getSpreadsheetId(),
-                        null
+                        "sheet:" + priorityEnemiesSheet.getSpreadsheetId()
 
                 ), "update").send();
 
@@ -695,8 +692,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         underutilizedAllies.getKey(),
                         StringMan.join(underutilizedAllies.getValue(), " "),
                         null,
-                        "sheet:" + underutilizedAlliesSheet.getSpreadsheetId(),
-                        null
+                        "sheet:" + underutilizedAlliesSheet.getSpreadsheetId()
 
                 ), "update").send();
 //
@@ -761,7 +757,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
                         columns,
                         "true",
-                        null,
                         null
                 ), "allies").send();
 
@@ -770,7 +765,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10",
                         columns,
                         "true",
-                        null,
                         null
                 ), "enemies").send();
 
@@ -814,6 +808,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "~" + allies,
                         null,
                         "true",
+                        null,
+                        null,
                         null,
                         null
                 ), "mail").send();

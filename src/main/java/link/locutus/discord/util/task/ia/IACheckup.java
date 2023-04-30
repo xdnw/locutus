@@ -530,7 +530,7 @@ public class IACheckup {
             case LOOT_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_LOOT) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.loot.cmd.create("https://politicsandwar.com/nation/id=6").toSlashCommand() + "\n";
+                        "" + CM.nation.loot.cmd.create("https://politicsandwar.com/nation/id=6", null, null).toSlashCommand() + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case GENERATE_CITY_BUILDS: {
