@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.copilot;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -14,6 +15,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class CopilotApi implements ICopilotApi{
+    public static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
     private final ICopilotAuthentication _copilotAuthentication;
     private final CopilotConfiguration _configuration;
     private final HttpClientWrapper _httpClient;
@@ -44,7 +47,7 @@ public class CopilotApi implements ICopilotApi{
 
         _httpClient.AddOrReplaceHeader("OpenAI-Intent", parameters.OpenAiIntent);
 
-        String parametersJson = Program.JSON_MAPPER.writeValueAsString(parameters);
+        String parametersJson = CopilotApi.JSON_MAPPER.writeValueAsString(parameters);
         return GetRawCompletionsAsync(parametersJson).thenApply(new Function<String, List<CopilotResult>>() {
             @Override
             public List<CopilotResult> apply(String rawResult) {
@@ -59,7 +62,7 @@ public class CopilotApi implements ICopilotApi{
                         System.out.println("Line " + line);
 
                         var content = line.replace("data: ", "");
-                        CopilotResult resultObject = Program.JSON_MAPPER.readValue(content, CopilotResult.class);
+                        CopilotResult resultObject = CopilotApi.JSON_MAPPER.readValue(content, CopilotResult.class);
                         results.add(resultObject);
                     }
 

@@ -162,9 +162,9 @@ public class CommandManager2 {
         this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
 
         if (pwgptHandler != null) {
-            HelpCommands help = new HelpCommands(pwgptHandler);
-            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
-            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
+            HelpCommands help = new HelpCommands();
+//            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
+//            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
             pwgptHandler.registerDefaults();
         }

@@ -27,17 +27,18 @@ import java.util.Map;
 import java.util.Set;
 
 public class HelpCommands {
-    private final PWGPTHandler handler;
+    public HelpCommands() {
+    }
 
-    public HelpCommands(PWGPTHandler handler) {
-        this.handler = handler;
+    public PWGPTHandler getGPT() {
+        return Locutus.imp().getCommandManager().getV2().getPwgptHandler();
     }
 
     @Command
     public void use_command(@Me IMessageIO io, ValueStore store, ParametricCallable command, String query) {
         StringBuilder prompt = new StringBuilder();
 
-        OpenAiService service = handler.getHandler().getService();
+        OpenAiService service = getGPT().getHandler().getService();
 
 
     }
@@ -54,7 +55,7 @@ public class HelpCommands {
             msg.append("\n - More Info: " + CM.settings.cmd.create("YOUR_KEY_HERE", null, null, null).toSlashCommand() + "\n");
             msg.append(" - To set " + CM.settings.cmd.create("YOUR_KEY_HERE", "Your Value Here", null, null).toSlashCommand() + "\n\n");
 
-            List<Map.Entry<PWEmbedding, Double>> closest = handler.getClosest(store, query, num_results, Set.of(EmbeddingType.Configuration));
+            List<Map.Entry<PWEmbedding, Double>> closest = getGPT().getClosest(store, query, num_results, Set.of(EmbeddingType.Configuration));
             for (int i = 0; i < closest.size(); i++) {
                 Map.Entry<PWEmbedding, Double> entry = closest.get(i);
                 SettingEmbedding embed = (SettingEmbedding) entry.getKey();
@@ -87,7 +88,7 @@ public class HelpCommands {
     public void find_command(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
         try {
             IMessageBuilder msg = io.create();
-            List<Map.Entry<PWEmbedding, Double>> closest = handler.getClosest(store, query, num_results, Set.of(EmbeddingType.Command));
+            List<Map.Entry<PWEmbedding, Double>> closest = getGPT().getClosest(store, query, num_results, Set.of(EmbeddingType.Command));
             System.out.println("Results " + num_results + " " + closest.size());
             for (int i = 0; i < closest.size(); i++) {
                 Map.Entry<PWEmbedding, Double> entry = closest.get(i);

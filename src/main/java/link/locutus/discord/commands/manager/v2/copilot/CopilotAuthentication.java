@@ -41,7 +41,7 @@ public abstract class CopilotAuthentication implements ICopilotAuthentication {
                     CopilotAuthenticationData authenticationData = new CopilotAuthenticationData();
 
                     if (rawToken != null && !rawToken.isEmpty()) {
-                        authenticationData = Program.JSON_MAPPER.readValue(rawToken, CopilotAuthenticationData.class);
+                        authenticationData = CopilotApi.JSON_MAPPER.readValue(rawToken, CopilotAuthenticationData.class);
                     }
 
                     if (authenticationData != null && authenticationData.AccessToken != null && System.currentTimeMillis() < authenticationData.AccessTokenValidTo.getTime()) {
@@ -55,13 +55,13 @@ public abstract class CopilotAuthentication implements ICopilotAuthentication {
                     _httpClient.AddOrReplaceHeader("Authorization", "token " + authenticationData.GithubToken);
                     var response = _httpClient.GetAsync("https://api.github.com/copilot_internal/v2/token").get();
                     var jsonResult = response.body();
-                    JsonNode jsonObject = Program.JSON_MAPPER.readTree(jsonResult);
+                    JsonNode jsonObject = CopilotApi.JSON_MAPPER.readTree(jsonResult);
                     authenticationData.AccessToken = jsonObject.get("token").asText();
 
                     long expires_at = jsonObject.get("expires_at").asLong();
 
                     authenticationData.AccessTokenValidTo = new Date(expires_at);
-                    _dataStore.SaveAsync(Program.JSON_MAPPER.writeValueAsString(authenticationData));
+                    _dataStore.SaveAsync(CopilotApi.JSON_MAPPER.writeValueAsString(authenticationData));
 
                     return authenticationData.AccessToken;
                 } catch (ExecutionException | InterruptedException | URISyntaxException | IOException e) {
@@ -102,7 +102,7 @@ public abstract class CopilotAuthentication implements ICopilotAuthentication {
 
                         var response = _httpClient.PostAsync(url, "").get();
                         var jsonResult = response.body();
-                        JsonNode jsonObject = Program.JSON_MAPPER.readTree(jsonResult);
+                        JsonNode jsonObject = CopilotApi.JSON_MAPPER.readTree(jsonResult);
 
                         if (!jsonObject.has("error")) {
                             authenticationData.GithubToken = jsonObject.get("access_token").asText();
@@ -134,7 +134,7 @@ public abstract class CopilotAuthentication implements ICopilotAuthentication {
 
                     JsonNode jsonObject = null;
                     try {
-                        jsonObject = Program.JSON_MAPPER.readTree(jsonResult);
+                        jsonObject = CopilotApi.JSON_MAPPER.readTree(jsonResult);
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
