@@ -161,8 +161,10 @@ public class CommandManager2 {
         this.commands.registerMethod(new WarCommands(), List.of("war", "room"), "warRoomSheet", "from_sheet");
         this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
 
+        this.commands.registerMethod(new UnsortedCommands(), List.of("spy", "sheet"), "freeSpyOpsSheet", "free_ops");
+
         if (pwgptHandler != null) {
-            HelpCommands help = new HelpCommands();
+//            HelpCommands help = new HelpCommands();
 //            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
 //            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
@@ -275,7 +277,8 @@ public class CommandManager2 {
     }
 
     public void run(MessageReceivedEvent event, boolean async) {
-        Guild guild = event.isFromGuild() ? event.getGuild() : null;
+        Guild guild = event.isFromGuild() ? event.getGuild() : event.getMessage().isFromGuild() ? event.getMessage().getGuild() : null;
+        System.out.println("Guild " + guild);
         DiscordChannelIO io = new DiscordChannelIO(event.getChannel(), event::getMessage);
         User user = event.getAuthor();
         String fullCmdStr = DiscordUtil.trimContent(event.getMessage().getContentRaw()).trim();
@@ -400,15 +403,19 @@ public class CommandManager2 {
                 Map<String, String> finalArguments = new LinkedHashMap<>(arguments);
                 finalArguments.remove("");
 
-                LocalValueStore<Object> locals = createLocals(existingLocals, null, null, null, null, io, argsAndCmd);
+                LocalValueStore<Object> finalLocals = createLocals(existingLocals, null, null, null, null, io, argsAndCmd);
                 if (callable instanceof ParametricCallable parametric) {
                     handleCall(io, () -> {
-                        Object[] parsed = parametric.parseArgumentMap(finalArguments, locals, validators, permisser);
-                        return parametric.call(null, locals, parsed);
+                        Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
+                        System.out.println("Run cmd " + path + " with " + Arrays.toString(parsed) + " and " + finalLocals);
+                        return parametric.call(null, finalLocals, parsed);
                     });
                 } else if (callable instanceof CommandGroup group) {
-                    handleCall(io, group, locals);
-                } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+                    handleCall(io, group, finalLocals);
+                } else {
+                    System.out.println("Invalid command class " + callable.getClass());
+                    throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+                }
             } catch (Throwable e) {
                 e.printStackTrace();
             }
