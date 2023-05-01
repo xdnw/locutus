@@ -610,6 +610,7 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public void initRepeatingTasks() {
+        Object warUpdateLock = new Object();
         if ((Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS > 0 || Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS > 0 || Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS > 0) && nationDB.getNations().isEmpty()) {
             logger.info("No nations found. Updating all nations");
             if (Settings.USE_V2) {
@@ -661,7 +662,8 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
 
             addTaskSeconds(() -> {
-                synchronized (warDb) {
+                synchronized (warUpdateLock)
+                {
                     System.out.println("Start update wars 1");
                     long start = System.currentTimeMillis();
                     runEventsAsync(warDb::updateAllWarsV2);
@@ -702,7 +704,7 @@ public final class Locutus extends ListenerAdapter {
             }
 
             addTaskSeconds(() -> {
-                synchronized (warDb) {
+                synchronized (warUpdateLock) {
                     System.out.println("Start update wars 1");
                     long start = System.currentTimeMillis();
                     runEventsAsync(warDb::updateActiveWars);
@@ -713,7 +715,7 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
 
             addTaskSeconds(() -> {
-                synchronized (warDb) {
+                synchronized (warUpdateLock) {
                     System.out.println("Start update wars");
                     long start1 = System.currentTimeMillis();
                     runEventsAsync(warDb::updateAllWarsV2);
@@ -927,7 +929,7 @@ public final class Locutus extends ListenerAdapter {
 
 
             User user = event.getUser();
-            Guild guild = event.isFromGuild() ? event.getGuild() : null;
+            Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
             MessageChannel channel = event.getChannel();
 
             IMessageIO io = new DiscordHookIO(event.getHook());

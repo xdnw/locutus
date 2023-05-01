@@ -272,7 +272,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     public String getSlashMention(String path) {
         Long id = getCommandId(path);
-        if (id == -1) return null;
+        if (id == null || id == -1) return null;
         return "</" + path.toLowerCase(Locale.ROOT) + ":" + id + ">";
     }
 
@@ -557,8 +557,12 @@ public class SlashCommandManager extends ListenerAdapter {
 
                 LocalValueStore<Object> locals = new LocalValueStore<>(commands.getStore());
                 locals.addProvider(Key.of(User.class, Me.class), event.getUser());
-                locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
-                locals.addProvider(Key.of(MessageChannel.class, Me.class), event.getMessageChannel());
+                if (event.isFromGuild()) {
+                    locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
+                }
+                if (event.getMessageChannel() != null) {
+                    locals.addProvider(Key.of(MessageChannel.class, Me.class), event.getMessageChannel());
+                }
 
                 // Option with current value
                 List<String> args = new ArrayList<>(List.of(option.getValue()));
