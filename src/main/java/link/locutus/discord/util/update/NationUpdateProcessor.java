@@ -443,7 +443,7 @@ public class NationUpdateProcessor {
 
                 double strength = BlitzGenerator.getAirStrength(current, false);
                 Set<Integer> enemies = guildDB.getCoalition(Coalition.ENEMIES);
-                if (!enemies.isEmpty() && (enemies.contains(0) || (enemies.contains(current.getAlliance_id())))) {
+                if (!enemies.isEmpty() && (enemies.contains(current.getAlliance_id()))) {
                     boolean inRange = false;
                     Set<DBNation> nations = guildDB.getMemberDBNations();
                     for (DBNation nation : nations) {

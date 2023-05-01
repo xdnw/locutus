@@ -4070,12 +4070,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         ENEMY_ALERT_CHANNEL_MODE(true, ENEMY_ALERT_CHANNEL, CommandCategory.MILCOM) {
             @Override
             public String validate(GuildDB db, String value) {
-                return EnemyAlertChannelMode.valueOf(value).name();
+                return StringMan.parseUpper(EnemyAlertChannelMode.class, value.toUpperCase()).name();
             }
 
             @Override
             public Object parse(GuildDB db, String input) {
-                return EnemyAlertChannelMode.valueOf(input);
+                return EnemyAlertChannelMode.valueOf(input.toUpperCase(Locale.ROOT));
             }
 
             @Override

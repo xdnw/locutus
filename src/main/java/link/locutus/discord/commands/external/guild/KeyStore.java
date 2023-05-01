@@ -141,6 +141,9 @@ public class KeyStore extends Command implements Noformat {
             Object obj = key.parse(db, newVal);
             if (!key.hasPermission(db, author, obj)) return "No permission to set that key to `" + args.get(1) + "`";
 
+            if (key.requires != null && db.getOrThrow(key.requires) == null) {
+                throw new IllegalArgumentException("Please set `" + key.requires.name() + "` first.");
+            }
             db.setInfo(key, args.get(1));
         }
         return "Set " + key.name() + " to " + value + " for " + guild.getName();
