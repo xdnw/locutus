@@ -152,6 +152,13 @@ public class ParametricCallable implements ICommand {
 
         //        desc.append(ICommand.formatDescription(definition));
         this.desc = definition.desc();
+        if (!definition.descMethod().isBlank()) {
+            try {
+                this.desc = object.getClass().getMethod(definition.descMethod()).invoke(object).toString();
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public static List<ParametricCallable> generateFromClass(CommandCallable parent, Object object, ValueStore store) {

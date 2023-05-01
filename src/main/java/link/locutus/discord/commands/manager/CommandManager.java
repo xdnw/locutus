@@ -235,24 +235,9 @@ public class CommandManager {
             Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
         }
 
-        Guild msgGuild = event.isFromGuild() ? event.getGuild() : null;
+        Guild msgGuild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
         // Channel blacklisting / whitelisting
         MessageChannel channel = event.getChannel();
-        if (msgGuild != null && channel instanceof TextChannel && !(channel instanceof JoobyChannel)) {
-            GuildDB db = Locutus.imp().getGuildDB(msgGuild);
-            if (db != null) {
-                Set<MessageChannel> blacklist = db.getOrNull(GuildDB.Key.CHANNEL_BLACKLIST);
-                Set<MessageChannel> whitelist = db.getOrNull(GuildDB.Key.CHANNEL_WHITELIST);
-                if (blacklist != null && blacklist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_BLACKLIST.name(), null, null, null) + ")"));
-                    return false;
-                }
-                if (whitelist != null && !whitelist.isEmpty() && !whitelist.contains(channel) && !Roles.ADMIN.has(event.getMember())) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use the member bot channel (" + CM.settings.cmd.create(GuildDB.Key.CHANNEL_WHITELIST.name(), null, null, null) + ")"));
-                    return false;
-                }
-            }
-        }
 
         if (char0 == prefix2 || jsonCommand) {
             try {
@@ -260,7 +245,7 @@ public class CommandManager {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            return false;
+            return true;
         }
 
         Runnable task = () -> {

@@ -1044,7 +1044,7 @@ public class WarCommands {
     @Command(desc="Find a war target that you can hit\n" +
             "Defaults to `enemies` coalition")
     @RolePermission(Roles.MEMBER)
-    public String war(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
+    public void war(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
                       @Arg("Score to search for targets within war range of\n" +
                               "Defaults to your score")
                       @Switch("r") Double attackerScore,
@@ -1068,7 +1068,6 @@ public class WarCommands {
                               "Defaults to false")
                       @Switch("s") boolean includeStrong) throws IOException, ExecutionException, InterruptedException {
         if (resultsInDm) {
-            IMessageIO parent = channel;
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
         if (attackerScore == null) attackerScore = me.getScore();
@@ -1162,7 +1161,7 @@ public class WarCommands {
                             " - Add `-a` to include applicants";
                 }
                 channel.send(message);
-                return null;
+                return;
             }
         }
 
@@ -1219,10 +1218,10 @@ public class WarCommands {
         }
 
         if (count == 0) {
-            return "No results. Please ping a target (advisor";
+            channel.send("No results. Please ping a target (advisor)");
+        } else {
+            channel.send(response.toString());
         }
-
-        return response.toString();
     }
 
 

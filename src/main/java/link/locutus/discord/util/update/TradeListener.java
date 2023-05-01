@@ -4,6 +4,8 @@ import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
@@ -302,7 +304,10 @@ public class TradeListener {
 
             // get trade alert channel
             MessageChannel channel = db.getOrNull(GuildDB.Key.TRADE_ALERT_CHANNEL);
-            if (channel == null) continue;
+            if (channel == null || subscriptionsForGuild.isEmpty()) continue;
+
+            Set<String> allPings = new LinkedHashSet<>();
+            IMessageBuilder msg = new DiscordChannelIO(channel).create();
 
             for (Map.Entry<ResourceType, List<TradeSubscription>> rssEntry : subscriptionsForGuild.entrySet()) {
                 ResourceType resource = rssEntry.getKey();
@@ -343,11 +348,11 @@ public class TradeListener {
                     pings.add(ping);
                 }
 
-                Message message = new MessageBuilder()
-                        .setEmbeds(new EmbedBuilder().setTitle(title).appendDescription(body.toString()).build())
-                        .setContent(StringMan.join(pings, "\n")).build();
-                RateLimitUtil.queue(channel.sendMessage(message));
+                allPings.addAll(pings);
+
+                msg.append("**__## " + title + " ##__**\n" + body + "\n - " + StringMan.join(pings, "\n - ") + "\n---------\n");
             }
+            msg.send();
         }
     }
 

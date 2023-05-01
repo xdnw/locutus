@@ -261,11 +261,7 @@ public class WarCostRanking extends Command {
         }
 
         // Embed the rank list
-        ranks.build(event2, title);
-
-        if (ranks.get().size() > 25 && flags.contains('f')) {
-            DiscordUtil.upload(event2.getChannel(), title, ranks.toString());
-        }
+        ranks.build(event2.getAuthor(), event2.getChannel(), DiscordUtil.trimContent(event2.getMessage().getContentRaw()), title, flags.contains('f'));
         return null;
     }
 }

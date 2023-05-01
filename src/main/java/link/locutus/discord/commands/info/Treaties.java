@@ -52,11 +52,12 @@ public class Treaties extends Command {
         for (Integer alliance : alliances) {
             DBAlliance.getOrCreate(alliance).getTreaties(alliances.size() == 1 && aaIds.contains(alliance));
             treaties.putAll(Locutus.imp().getNationDB().getTreaties(alliance));
-            allTreaties.addAll(treaties.values());
         }
         for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
             Treaty treaty = entry.getValue();
             if (allTreaties.contains(treaty)) continue;
+            allTreaties.add(entry.getValue());
+
             String from = PnwUtil.getMarkdownUrl(treaty.getFromId(), true);
             String to = PnwUtil.getMarkdownUrl(treaty.getToId(), true);
             TreatyType type = treaty.getType();

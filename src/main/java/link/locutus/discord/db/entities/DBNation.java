@@ -1694,6 +1694,14 @@ public class DBNation implements NationOrAlliance {
         setMeta(NationMeta.LOGIN_NOTIFY, buffer.array());
     }
 
+    @Command(desc = "Total offensive espionage spy slots")
+    public int getOffSpySlots() {
+        if (hasProject(Projects.INTELLIGENCE_AGENCY)) {
+            return 2;
+        }
+        return 1;
+    }
+
     public static class LoginFactor {
         private final Function<DBNation, Double> function;
         public final String name;

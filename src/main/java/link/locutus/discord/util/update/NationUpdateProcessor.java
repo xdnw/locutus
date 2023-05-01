@@ -438,6 +438,8 @@ public class NationUpdateProcessor {
         AlertUtil.forEachChannel(GuildDB::isValidAlliance, GuildDB.Key.ENEMY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
+                EnemyAlertChannelMode mode = guildDB.getOrNull(GuildDB.Key.ENEMY_ALERT_CHANNEL_MODE);
+                if (mode == null) mode = EnemyAlertChannelMode.PING_USERS_IN_RANGE;
 
                 double strength = BlitzGenerator.getAirStrength(current, false);
                 Set<Integer> enemies = guildDB.getCoalition(Coalition.ENEMIES);
@@ -449,7 +451,7 @@ public class NationUpdateProcessor {
                             inRange = true;
                         }
                     }
-                    if (!inRange) return;
+                    if (!inRange && mode.requireInRange()) return;
 
                     String cardInfo = current.toEmbedString(true);
                     DiscordChannelIO io = new DiscordChannelIO(channel);
@@ -464,75 +466,84 @@ public class NationUpdateProcessor {
                         return;
                     }
 
-                    List<Member> members = guild.getMembersWithRoles(bountyRole);
+                    if (mode.pingUsers()) {
+                        List<Member> members = guild.getMembersWithRoles(bountyRole);
 
-                    Role optOut = Roles.WAR_ALERT_OPT_OUT.toRole(guild);
+                        Role optOut = Roles.WAR_ALERT_OPT_OUT.toRole(guild);
 
-                    List<Map.Entry<DBNation, Member>> priority1 = new ArrayList<>(); // stronger with more cities no wars
-                    List<Map.Entry<DBNation, Member>> priority2 = new ArrayList<>(); // stronger with no wars
-                    List<Map.Entry<DBNation, Member>> priority3 = new ArrayList<>(); // stronger
-                    List<Map.Entry<DBNation, Member>> priority4 = new ArrayList<>(); // weaker
+                        List<Map.Entry<DBNation, Member>> priority1 = new ArrayList<>(); // stronger with more cities no wars
+                        List<Map.Entry<DBNation, Member>> priority2 = new ArrayList<>(); // stronger with no wars
+                        List<Map.Entry<DBNation, Member>> priority3 = new ArrayList<>(); // stronger
+                        List<Map.Entry<DBNation, Member>> priority4 = new ArrayList<>(); // weaker
 
-                    for (Member member : members) {
-                        PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
-                        if (pnwUser == null) continue;
+                        for (Member member : members) {
+                            PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
+                            if (pnwUser == null) continue;
 
-                        DBNation attacker = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
-                        if (attacker == null) continue;
+                            DBNation attacker = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
+                            if (attacker == null) continue;
 
-                        OnlineStatus status = member.getOnlineStatus();
-                        if (attacker.getActive_m() > 15 && (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE)) continue;
-                        if (optOut != null && member.getRoles().contains(optOut)) continue;
+                            OnlineStatus status = member.getOnlineStatus();
+                            if (attacker.getActive_m() > 15 && (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE))
+                                continue;
+                            if (optOut != null && member.getRoles().contains(optOut)) continue;
 
-                        if (/* attacker.getActive_m() > 1440 || */attacker.getDef() >= 3 || attacker.getVm_turns() != 0 || attacker.isBeige()) continue;
-                        if (attacker.getScore() < minScore || attacker.getScore() > maxScore) continue;
-                        if (attacker.getOff() > 4) continue;
-                        if (attacker.hasUnsetMil() || current.hasUnsetMil()) continue;
-                        int planeCap = Buildings.HANGAR.cap(attacker::hasProject) * Buildings.HANGAR.max() * attacker.getCities();
-                        if (attacker.getAircraft() < planeCap * 0.8) continue;
+                            if (/* attacker.getActive_m() > 1440 || */attacker.getDef() >= 3 || attacker.getVm_turns() != 0 || attacker.isBeige())
+                                continue;
+                            if (attacker.getScore() < minScore || attacker.getScore() > maxScore) continue;
+                            if (attacker.getOff() > 4) continue;
+                            if (attacker.hasUnsetMil() || current.hasUnsetMil()) continue;
+                            int planeCap = Buildings.HANGAR.cap(attacker::hasProject) * Buildings.HANGAR.max() * attacker.getCities();
+                            if (attacker.getAircraft() < planeCap * 0.8) continue;
 
-                        double attStr = BlitzGenerator.getAirStrength(attacker, true, true);
-                        double defStr = BlitzGenerator.getAirStrength(current, false, true);
+                            double attStr = BlitzGenerator.getAirStrength(attacker, true, true);
+                            double defStr = BlitzGenerator.getAirStrength(current, false, true);
 
-                        AbstractMap.SimpleEntry<DBNation, Member> entry = new AbstractMap.SimpleEntry<>(attacker, member);
+                            AbstractMap.SimpleEntry<DBNation, Member> entry = new AbstractMap.SimpleEntry<>(attacker, member);
 
-                        if (attacker.getCities() < current.getCities() * 0.66 && (current.getActive_m() < 3000)) continue;
-                        if (attacker.getCities() < current.getCities() * 0.70 && (current.getActive_m() < 2440)) continue;
-                        if (attacker.getCities() < current.getCities() * 0.75 && (current.getSoldiers() > attacker.getSoldiers() * 0.33 || current.getAircraft() > attacker.getAircraft() * 0.66)) continue;
-                        if (attacker.getNumWars() == 0) {
-                            if (attStr > defStr) {
-                                if (attacker.getCities() > current.getCities()) {
-                                    priority1.add(entry);
-                                    continue;
-                                } else {
-                                    priority2.add(entry);
-                                    continue;
+                            if (attacker.getCities() < current.getCities() * 0.66 && (current.getActive_m() < 3000))
+                                continue;
+                            if (attacker.getCities() < current.getCities() * 0.70 && (current.getActive_m() < 2440))
+                                continue;
+                            if (attacker.getCities() < current.getCities() * 0.75 && (current.getSoldiers() > attacker.getSoldiers() * 0.33 || current.getAircraft() > attacker.getAircraft() * 0.66))
+                                continue;
+                            if (attacker.getNumWars() == 0) {
+                                if (attStr > defStr) {
+                                    if (attacker.getCities() > current.getCities()) {
+                                        priority1.add(entry);
+                                        continue;
+                                    } else {
+                                        priority2.add(entry);
+                                        continue;
+                                    }
                                 }
                             }
-                        }
-                        if (attStr > defStr && attacker.getShips() > current.getShips() && attacker.getSoldiers() > current.getSoldiers()) {
-                            priority3.add(entry);
-                            continue;
+                            if (attStr > defStr && attacker.getShips() > current.getShips() && attacker.getSoldiers() > current.getSoldiers()) {
+                                priority3.add(entry);
+                                continue;
 //                                    } else if (defStr * 0.66 >= defStr) {
 //                                        priority4.add(entry);
 //                                        continue;
+                            }
                         }
-                    }
-                    if (!priority1.isEmpty()) {
-                        String mentions = StringMan.join(priority1.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                        msg.append("^ priority1: " + mentions + "(see pins to opt out)");
-                    }
-                    if (!priority2.isEmpty()) {
-                        String mentions = StringMan.join(priority2.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                        msg.append("^ priority2: " + mentions + "(see pins to opt out)");
-                    }
-                    if (!priority3.isEmpty()) {
-                        String mentions = StringMan.join(priority3.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                        msg.append("^ priority3: " + mentions + "(see pins to opt out)");
-                    }
-                    if (!priority4.isEmpty()) {
-                        String mentions = StringMan.join(priority4.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                        msg.append("^ priority4: " + mentions + "(see pins to opt out)");
+                        if (!priority1.isEmpty()) {
+                            String mentions = StringMan.join(priority1.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
+                            msg.append("priority1: " + mentions + "(see pins to opt out)");
+                        }
+                        if (!priority2.isEmpty()) {
+                            String mentions = StringMan.join(priority2.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
+                            msg.append("priority2: " + mentions + "(see pins to opt out)");
+                        }
+                        if (!priority3.isEmpty()) {
+                            String mentions = StringMan.join(priority3.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
+                            msg.append("priority3: " + mentions + "(see pins to opt out)");
+                        }
+                        if (!priority4.isEmpty()) {
+                            String mentions = StringMan.join(priority4.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
+                            msg.append("priority4: " + mentions + "(see pins to opt out)");
+                        }
+                    } else if (mode.pingRole()) {
+                        msg.append(bountyRole.getAsMention());
                     }
                     msg.send();
                 }

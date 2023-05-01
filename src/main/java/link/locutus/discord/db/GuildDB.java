@@ -4009,6 +4009,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
                 Map<CityRanges, Set<BeigeReason>> result = new HashMap<>();
                 String[] split = input.trim().split("\\r?\\n");
+                if (split.length == 1) split = StringMan.split(input.trim(), ' ').toArray(new String[0]);
                 for (String s : split) {
                     String[] pair = s.split(":");
                     if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
@@ -4063,6 +4064,28 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             @Override
             public String help() {
                 return "The #channel to receive alerts when an enemy nation leaves beige";
+            }
+        },
+
+        ENEMY_ALERT_CHANNEL_MODE(true, ENEMY_ALERT_CHANNEL, CommandCategory.MILCOM) {
+            @Override
+            public String validate(GuildDB db, String value) {
+                return EnemyAlertChannelMode.valueOf(value).name();
+            }
+
+            @Override
+            public Object parse(GuildDB db, String input) {
+                return EnemyAlertChannelMode.valueOf(input);
+            }
+
+            @Override
+            public String toString(Object value) {
+                return ((EnemyAlertChannelMode) value).name();
+            }
+            @Override
+            public String help() {
+                return "The mode for the enemy alert channel to determine what alerts are posted and who is pinged\n" +
+                        "Options:\n - " + StringMan.join(EnemyAlertChannelMode.values(), "\n - ");
             }
         },
 
@@ -4857,48 +4880,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        CHANNEL_BLACKLIST(false, null, CommandCategory.GUILD_MANAGEMENT) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                Set<MessageChannel> channels = (Set<MessageChannel>) parse(db, value);
-                return channels.stream().map(f -> f.getAsMention()).collect(Collectors.joining("\n"));
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                Set<MessageChannel> channels = new LinkedHashSet<>();
-                for (String channelStr : input.split("[ ,\n]")) {
-                    MessageChannel channel = DiscordUtil.getChannel(db.getGuild(), channelStr);
-                    if (channel == null) throw new IllegalArgumentException("Invalid channel: `" + channelStr + "`");
-                    channels.add(channel);
-                }
-                return channels;
-            }
-
-            @Override
-            public String help() {
-                return "List of channels to disable Locutus in";
-            }
-        },
-
-        CHANNEL_WHITELIST(false, null, CommandCategory.GUILD_MANAGEMENT) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                Set<MessageChannel> channels = (Set<MessageChannel>) parse(db, value);
-                return channels.stream().map(f -> f.getAsMention()).collect(Collectors.joining("\n"));
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return CHANNEL_BLACKLIST.parse(db, input);
-            }
-
-            @Override
-            public String help() {
-                return "List of channels to whitelist Locutus in";
-            }
-        },
-
         MEMBER_REWARDS(false, ALLIANCE_ID, CommandCategory.ECON) {
 
             @Override
@@ -4923,7 +4904,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public <T> boolean hasPermission(GuildDB db, User author, T value) {
-                return super.hasPermission(db, author, value) && db.getOrNull(Key.RESOURCE_REQUEST_CHANNEL) != null;
+                return false && super.hasPermission(db, author, value) && db.getOrNull(Key.RESOURCE_REQUEST_CHANNEL) != null;
             }
 
             @Override

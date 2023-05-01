@@ -24,6 +24,8 @@ import link.locutus.discord.commands.info.Reroll;
 import link.locutus.discord.commands.info.Revenue;
 import link.locutus.discord.commands.info.UnitHistory;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -38,6 +40,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasKey;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
@@ -107,6 +110,88 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class UnsortedCommands {
+
+    @Command(desc = "Generate a sheet of guild member nations that have free espionage spy operations\n" +
+            "Useful for finding who can participate in a spy blitz")
+    @IsAlliance
+    @HasApi
+    public void freeSpyOpsSheet(
+            @Me GuildDB db,
+            ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel,
+            @Arg("Nations to list in the sheet\n" +
+                    "Defaults to the guild alliance")
+            @Default NationList nations,
+            @Default @Arg("A space separated list of columns to add to the sheet\n" +
+                    "Can include NationAttribute as placeholders in columns\n" +
+                    "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
+            List<String> addColumns,
+            @Arg("Number of free espionage ops required") @Switch("r") Integer requireXFreeOps,
+            @Arg("Number of spies required")
+            @Switch("s") Integer requireSpies,
+            @Switch("sheet") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+
+        List<DBNation> invalidNations = new ArrayList<>();
+        AllianceList aaList = db.getAllianceList();
+        Set<DBNation> aaNations = aaList.getNations(f -> f.getPositionEnum().id >= Rank.APPLICANT.id && f.getVm_turns() == 0 && nations.contains(f));
+        if (aaNations.isEmpty()) {
+            throw new IllegalArgumentException("No nations in alliances " + StringMan.getString(aaList.getIds()) + " matched `nations` (vacation mode or applicants are ignored)");
+        }
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+        }
+
+        aaList = aaList.subList(aaNations);
+        Map<DBNation, Integer> opsUsed = aaList.updateOffSpyOps();
+
+        List<String> columns = new ArrayList<>(
+                Arrays.asList(
+                        "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")",
+                        "=HYPERLINK(\"politicsandwar.com/alliance/id={alliance_id}\", \"{alliancename}\")",
+                        "{score}",
+                        "{cities}",
+                        "{spies}",
+                        "{free_spy_ops}"
+                )
+        );
+        if (addColumns != null) columns.addAll(addColumns);
+        List<String> header = new ArrayList<>(columns);
+        for (int i = 0; i < header.size(); i++) {
+            String arg = header.get(i);
+            arg = arg.replace("{", "").replace("}", "").replace("=", "");
+            header.set(i, arg);
+        }
+
+        sheet.setHeader(header);
+
+        LocalValueStore locals = new LocalValueStore(store);
+        for (Map.Entry<DBNation, Integer> entry : opsUsed.entrySet()) {
+            DBNation nation = entry.getKey();
+            if (!aaNations.contains(nation)) continue;
+            int offSlots = nation.getOffSpySlots();
+            int usedSlots = entry.getValue();
+            int free = offSlots - usedSlots;
+            if (requireXFreeOps != null && free < requireXFreeOps) continue;
+            if (requireSpies != null && nation.getSpies() < requireSpies) continue;
+
+            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
+            locals.addProvider(Key.of(User.class, Me.class), nation.getUser());
+            for (int i = 0; i < columns.size(); i++) {
+                String arg = columns.get(i);
+                arg = arg.replace("{free_spy_ops}", String.valueOf(free));
+                arg = arg.replace("{used_spy_ops}", String.valueOf(usedSlots));
+                String formatted = placeholders.format(locals, arg);
+
+                header.set(i, formatted);
+            }
+
+            sheet.addRow(new ArrayList<>(header));
+        }
+
+        sheet.clear("A:ZZ");
+        sheet.set(0, 0);
+
+        sheet.attach(channel.create()).send();
+    }
 
     @Command(desc = "Get an alert on discord when a target logs in within the next 5 days\n" +
             "Useful if you want to know when they might defeat you in war or perform an attack")

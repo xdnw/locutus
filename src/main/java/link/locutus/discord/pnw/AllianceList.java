@@ -277,4 +277,12 @@ public class AllianceList {
     public int size() {
         return ids.size();
     }
+
+    public Map<DBNation, Integer> updateOffSpyOps() {
+        Map<DBNation, Integer> ops = new LinkedHashMap<>();
+        for (DBAlliance alliance : getAlliances()) {
+            ops.putAll(alliance.updateOffSpyOps());
+        }
+        return ops;
+    }
 }

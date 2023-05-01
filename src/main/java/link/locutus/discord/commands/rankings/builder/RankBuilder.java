@@ -3,6 +3,7 @@ package link.locutus.discord.commands.rankings.builder;
 import com.google.common.base.Function;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.MessageChannel;
@@ -120,6 +121,10 @@ public class RankBuilder<T> {
     }
 
     public void build(User author, MessageChannel channel, String cmd, String title) {
+        build(author, channel, cmd, title, false);
+    }
+
+    public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
         List<String> items = toItems(25);
         String emoji = "Refresh";
         String itemsStr = StringMan.join(items, "\n") + "\n";
@@ -127,7 +132,16 @@ public class RankBuilder<T> {
         if (author != null) itemsStr += "\n" + author.getAsMention();
 
         String[] args = cmd == null ? new String[0] : new String[]{emoji, cmd};
-        DiscordUtil.createEmbedCommand(channel, title, itemsStr, args);
+
+        DiscordChannelIO io = new DiscordChannelIO(channel);
+        IMessageBuilder msg = io.create().embed(title, itemsStr);
+        if (cmd != null && !cmd.isBlank()) msg = msg.commandButton(cmd, emoji);
+
+        if (upload && values.size() > 25) {
+            msg.file(title, toString());
+        }
+
+        msg.send();
     }
 
     public List<String> toItems(int limit) {

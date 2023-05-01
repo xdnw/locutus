@@ -3,6 +3,8 @@ package link.locutus.discord.db.entities;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.NationResponseProjection;
+import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2ByteArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ByteArrayMap;
@@ -1233,5 +1235,37 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     public double getCities() {
         return getMemberDBNations().stream().mapToDouble(DBNation::getCities).sum();
+    }
+
+    public Map<DBNation, Integer> updateOffSpyOps() {
+        Map<DBNation, Integer> ops = new HashMap<>();
+        // get api
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.SEE_SPIES);
+        for (Nation nation : api.fetchNations(new Consumer<NationsQueryRequest>() {
+            @Override
+            public void accept(NationsQueryRequest request) {
+                request.setAlliance_id(List.of(allianceId));
+                request.setVmode(false);
+            }
+        }, new Consumer<NationResponseProjection>() {
+            @Override
+            public void accept(NationResponseProjection proj) {
+                proj.id();
+                proj.spies();
+                proj.spy_attacks();
+                proj.espionage_available();
+            }
+        })) {
+            DBNation dbNation = DBNation.byId(nation.getId());
+            if (dbNation == null) continue;
+            DBNation copy = new DBNation(dbNation);
+
+            dbNation.setSpies(nation.getSpies(), false);
+            if (nation.getEspionage_available() != (dbNation.isEspionageAvailable())) {
+                dbNation.setEspionageFull(!nation.getEspionage_available());
+            }
+            ops.put(dbNation, nation.getSpy_attacks());
+        }
+        return ops;
     }
 }

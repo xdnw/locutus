@@ -172,4 +172,8 @@ public interface NationList {
         }
         return updated;
     }
+
+    default boolean contains(DBNation f) {
+        return getNations().contains(f);
+    }
 }

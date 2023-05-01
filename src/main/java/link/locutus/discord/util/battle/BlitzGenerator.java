@@ -135,7 +135,7 @@ public class BlitzGenerator {
             if (title.equalsIgnoreCase("alliance") && allianceI == null) {
                 allianceI = i;
             }
-            if (title.equalsIgnoreCase("nation") || (title.equalsIgnoreCase("link") && targetI == null)) {
+            if (title.equalsIgnoreCase("nation") || title.equalsIgnoreCase("nation name") || (title.equalsIgnoreCase("link") && targetI == null)) {
                 targetI = i;
             }
             if (title.equalsIgnoreCase("att1") || title.equalsIgnoreCase("Fighter #1") || title.equalsIgnoreCase("Attacker 1")) {
