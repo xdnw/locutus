@@ -20,8 +20,11 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DiscordBindings extends BindingHelper {
@@ -156,6 +159,30 @@ public class DiscordBindings extends BindingHelper {
         if (!(channel instanceof TextChannel))
             throw new IllegalArgumentException("Channel " + channel + " is not a " + TextChannel.class.getSimpleName() + " but is instead of type " + channel.getClass().getSimpleName());
         return (TextChannel) channel;
+    }
+
+    @Binding(value = "A map of a discord role to a set of roles (comma separated)",
+            examples = "@Role1=@Role2,@Role3\n" +
+                        "@role4=@role5,@role6"
+    )
+    public Map<Role, Set<Role>> roleSetMap(@Me Guild guild, String input) {
+        Map<Role, Set<Role>> result = new LinkedHashMap<>();
+        for (String line : input.split("[\n|\\n|;]")) {
+            String[] split = line.split("[:=]");
+            String key = split[0].trim();
+            Role roleKey = DiscordUtil.getRole(guild, key);
+            if (roleKey != null) {
+                for (String roleId : split[1].split(",")) {
+                    roleId = roleId.trim();
+                    Role roleValue = DiscordUtil.getRole(guild, roleId);
+
+                    if (roleValue != null) {
+                        result.computeIfAbsent(roleKey, f -> new HashSet<>()).add(roleValue);
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     @Binding(examples = "#channel", value = "A categorized discord guild channel name or mention")

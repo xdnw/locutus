@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.SpyCount;
@@ -165,7 +166,7 @@ public class IntelOpSheet extends Command {
         if (sheetUrl != null) {
             sheet = SpreadSheet.create(sheetUrl);
         } else {
-            sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
 
         sheet.clearAll();

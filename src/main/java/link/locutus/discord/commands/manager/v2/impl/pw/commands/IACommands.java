@@ -30,6 +30,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -87,7 +88,7 @@ public class IACommands {
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     public void dayChangeSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
         }
         Set<Integer> aaIdsProvided = nations.getAllianceIds();
         AllianceList subList = db.getAllianceList().subList(aaIdsProvided);
@@ -255,11 +256,12 @@ public class IACommands {
 
         assignable.computeIfAbsent(requireRole, f -> new HashSet<>()).addAll(assignableRoles);
 
-        String value = GuildDB.Key.ASSIGNABLE_ROLES.toString(assignable);
-        db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
+        StringBuilder result = new StringBuilder();
+        result.append(GuildDB.Key.ASSIGNABLE_ROLES.set(db, assignable)).append("\n");
 
-        return StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
-                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "";
+        result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
+                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "");
+        return result.toString();
     }
 
     @Command(desc = "Remove a role from adding/removing specified roles\n" +
@@ -285,8 +287,7 @@ public class IACommands {
             }
         }
 
-        String value = GuildDB.Key.ASSIGNABLE_ROLES.toString(assignable);
-        db.setInfo(GuildDB.Key.ASSIGNABLE_ROLES, value);
+        response.append("\n" + GuildDB.Key.ASSIGNABLE_ROLES.set(db, assignable));
 
         return response.toString() + "\n" +
                 " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildDB.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "";
@@ -379,7 +380,7 @@ public class IACommands {
 
 //        db.deleteMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR);
 
-        GuildMessageChannel alertChannel = db.getOrNull(GuildDB.Key.INTERVIEW_PENDING_ALERTS);
+        MessageChannel alertChannel = db.getOrNull(GuildDB.Key.INTERVIEW_PENDING_ALERTS);
         if (alertChannel != null) {
             String message = "Mentor (" + nation.getNation() + " | " + nation.getUserDiscriminator() +
                     ") unassigned Mentee (" + mentee.getNation() + " | " + mentee.getUserDiscriminator() + ")"
@@ -812,7 +813,7 @@ public class IACommands {
         attackers.removeIf(f -> f.getVm_turns() > 0);
         if (attackers.size() > 200) return "Too many nations";
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.CURRENT_LOOT_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.CURRENT_LOOT_SHEET);
         }
 
         List<String> header = new ArrayList<>(Arrays.asList("nation", "cities", "avg_infra", "mmr (build)", "soldiers", "tanks", "aircraft", "ships", "off", "off_inactive", "beiged", "lootInactive", "daysSinceDeposit"));
@@ -1236,7 +1237,7 @@ public class IACommands {
                                     @Arg("Message to send along with the command result")
                                     @TextArea String body, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.MAIL_RESPONSES_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.MAIL_RESPONSES_SHEET);
         }
 
         List<String> header = new ArrayList<>(Arrays.asList(

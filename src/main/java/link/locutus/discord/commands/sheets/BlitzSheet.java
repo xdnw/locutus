@@ -8,6 +8,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -136,7 +137,7 @@ public class BlitzSheet extends Command {
         if (sheetUrl != null) {
             sheet = SpreadSheet.create(sheetUrl);
         } else {
-            sheet = SpreadSheet.create(guildDB, GuildDB.Key.ACTIVITY_SHEET);
+            sheet = SpreadSheet.create(guildDB, SheetKeys.ACTIVITY_SHEET);
         }
 
         List<RowData> rowData = new ArrayList<RowData>();

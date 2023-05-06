@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -60,7 +61,7 @@ public class StockpileSheet extends Command {
             header.add(value.name().toLowerCase());
         }
 
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.STOCKPILE_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.STOCKPILE_SHEET);
         sheet.setHeader(header);
 
         double[] aaTotal = ResourceType.getBuffer();

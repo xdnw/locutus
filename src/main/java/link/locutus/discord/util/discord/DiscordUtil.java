@@ -1502,6 +1502,30 @@ public class DiscordUtil {
         if (MathMan.isInteger(categoryStr)) {
             Category category = guild.getCategoryById(Long.parseLong(categoryStr));
             if (category != null) return category;
+
+            if (guild != null) {
+                GuildDB db = Locutus.imp().getGuildDB(guild);
+                GuildDB faServer = db.getOrNull(GuildDB.Key.FA_SERVER);
+                Guild maServer = db.getOrNull(GuildDB.Key.WAR_SERVER);
+                Set<Guild> guilds = new HashSet<>();
+                if (faServer != null) {
+                    guilds.add(faServer.getGuild());
+                }
+                if (maServer != null) {
+                    guilds.add(maServer);
+                }
+                for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
+                    Map.Entry<Integer, Long> delegate = otherDB.getOrNull(GuildDB.Key.DELEGATE_SERVER);
+                    if (delegate != null && delegate.getValue() == guild.getIdLong()) {
+                        guilds.add(otherDB.getGuild());
+                    }
+                }
+                for (Guild other : guilds) {
+                    if (other == guild) continue;
+                    category = other.getCategoryById(Long.parseLong(categoryStr));
+                    if (category != null) return category;
+                }
+            }
         }
         List<Category> categories = guild.getCategoriesByName(categoryStr, true);
         if (categories.size() == 1) {

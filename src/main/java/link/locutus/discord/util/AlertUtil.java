@@ -5,6 +5,7 @@ import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -38,15 +39,15 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class AlertUtil {
-    public static void forEachChannel(Class permission, GuildDB.Key key, BiConsumer<MessageChannel, GuildDB> channelConsumer) {
+    public static void forEachChannel(Class permission, GuildSetting<MessageChannel> key, BiConsumer<MessageChannel, GuildDB> channelConsumer) {
         forEachChannel(f -> f.getPermission(permission) > 0, key, channelConsumer);
     }
 
-    public static void forEachChannel(Function<GuildDB, Boolean> hasPerm, GuildDB.Key key, BiConsumer<MessageChannel, GuildDB> channelConsumer) {
+    public static void forEachChannel(Function<GuildDB, Boolean> hasPerm, GuildSetting<MessageChannel> key, BiConsumer<MessageChannel, GuildDB> channelConsumer) {
         for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
             try {
                 if (!hasPerm.apply(guildDB)) continue;
-                GuildMessageChannel channel = guildDB.getOrNull(key, false);
+                MessageChannel channel = guildDB.getOrNull(key, false);
                 if (channel == null) {
                     continue;
                 }
@@ -63,11 +64,11 @@ public class AlertUtil {
         auditAlert(nation, null, f -> msg);
     }
 
-    public static void auditAlert(DBNation nation, AuditType type, String msg) {
+    public static void auditAlert(DBNation nation, AutoAuditType type, String msg) {
         auditAlert(nation, type, f -> msg);
     }
 
-    public static void auditAlert(DBNation nation, AuditType type, Function<GuildDB, String> messageSuplier) {
+    public static void auditAlert(DBNation nation, AutoAuditType type, Function<GuildDB, String> messageSuplier) {
         if (nation.getPosition() <= 1) return;
         GuildDB guildDb = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
         if (guildDb == null || !guildDb.isWhitelisted()) return;
@@ -84,7 +85,7 @@ public class AlertUtil {
         if (message == null) return;
 
         if (type != null) {
-            Set<AuditType> optOut = guildDb.getOrNull(GuildDB.Key.DISABLED_MEMBER_AUDITS);
+            Set<AutoAuditType> optOut = guildDb.getOrNull(GuildDB.Key.DISABLED_MEMBER_AUDITS);
             if (optOut != null && optOut.contains(type)) return;
         }
 
@@ -98,11 +99,11 @@ public class AlertUtil {
         RateLimitUtil.queueWhenFree(channel.sendMessage(message));
     }
 
-    public static void alertNation(Class permission, GuildDB.Key channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
+    public static void alertNation(Class permission, GuildSetting channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
         alertNation(f -> f.getPermission(permission) > 0, channelKey, nation, channelConsumer);
     }
 
-    public static void alertNation(Function<GuildDB, Boolean> hasPerm, GuildDB.Key channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
+    public static void alertNation(Function<GuildDB, Boolean> hasPerm, GuildSetting<MessageChannel> channelKey, DBNation nation, BiConsumer<Map.Entry<Guild, MessageChannel>, Member> channelConsumer) {
         if (nation.getAlliance_id() == 0 || nation.getPosition() <= 1) return;
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
         if (user != null) {
@@ -123,7 +124,7 @@ public class AlertUtil {
         }
     }
 
-    public static void forEachChannel(Class permission, GuildDB.Key key, Set<Long> mentions, BiConsumer<Map.Entry<Guild, MessageChannel>, Set<Member>> channelConsumer) {
+    public static void forEachChannel(Class permission,GuildSetting key, Set<Long> mentions, BiConsumer<Map.Entry<Guild, MessageChannel>, Set<Member>> channelConsumer) {
         forEachChannel(permission, key, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDb) {

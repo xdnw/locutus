@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
+import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -25,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -156,9 +158,10 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={GuildDB.Key.class})
+    @Binding(types={GuildSetting.class})
     public List<String> setting(String input) {
-        return StringMan.completeEnum(input, GuildDB.Key.class);
+        List<String> options = Arrays.asList(GuildDB.Key.values()).stream().map(f -> f.name()).collect(Collectors.toList());
+        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 
     @Autocomplete
@@ -176,128 +179,94 @@ public class PWCompleter extends BindingHelper {
         return StringMan.completeEnum(input, UnsortedCommands.ClearRolesEnum.class);
     }
 
-    public final List<ResourceType> RESOURCE_LIST_KEY = null;
     public final Set<DBAlliance> ALLIANCES_KEY = null;
-    public final Set<WarStatus> WARSTATUSES_KEY = null;
-    public final Set<WarType> WARTYPES_KEY = null;
-    public final Set<AttackType> ATTACKTYPES_KEY = null;
-    public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
-    public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
-    public final Map<MilitaryUnit, Long> UNIT_MAP_KEY = null;
-
-
-
-
+    public final Set<DBAlliance> NATIONS_KEY = null;
     public final Set<NationOrAllianceOrGuild> NATIONS_OR_ALLIANCE_OR_GUILD_KEY = null;
     public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
-    public final Set<DBNation> NATIONS_KEY = null;
     public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
     public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
 
-    public final Set<IACheckup.AuditType> AUDIT_TYPES_KEY = null;
-    public final Set<Continent> CONTINENT_TYPES_KEY = null;
 
     {
-        try {
-            {
-                Type type = getClass().getDeclaredField("SPYCOUNT_OPERATIONS_KEY").getGenericType();
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, SpyCount.Operation.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(SpyCount.Operation.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Continent.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(Continent.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, WarStatus.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(WarStatus.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, WarType.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(WarType.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, AttackType.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(AttackType.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(List.class, ResourceType.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    List<ResourceType> options = new ArrayList<>(ResourceType.valuesList);
+                    return StringMan.autocompleteComma(input.toString(), options, ResourceType::valueOf, ResourceType::getName, ResourceType::getName, OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Map.class, MilitaryUnit.class, Long.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    List<String> options = Arrays.asList(MilitaryUnit.values).stream().map(Enum::name).collect(Collectors.toList());
+                    return StringMan.completeMap(options, null, input.toString());
+                }));
+            });
+        }
+        {
+            Type type = TypeToken.getParameterized(Map.class, ResourceType.class, Double.class).getType();
+            Consumer<ValueStore<?>> binding = store -> {
                 Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        return StringMan.autocompleteCommaEnum(SpyCount.Operation.class, input.toString(), OptionData.MAX_CHOICES);
-                    }));
+                FunctionConsumerParser parser = new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    List<String> options = ResourceType.valuesList.stream().map(Enum::name).collect(Collectors.toList());
+                    return StringMan.completeMap(options, null, input.toString());
                 });
-            }
-            {
-                Type type = getClass().getDeclaredField("AUDIT_TYPES_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("CONTINENT_TYPES_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        return StringMan.autocompleteCommaEnum(Continent.class, input.toString(), OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("SPYCOUNT_OPERATIONS_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        return StringMan.autocompleteCommaEnum(SpyCount.Operation.class, input.toString(), OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("WARSTATUSES_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        return StringMan.autocompleteCommaEnum(WarStatus.class, input.toString(), OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("WARTYPES_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        return StringMan.autocompleteCommaEnum(WarType.class, input.toString(), OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("ATTACKTYPES_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        return StringMan.autocompleteCommaEnum(AttackType.class, input.toString(), OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("RESOURCE_LIST_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        List<ResourceType> options = new ArrayList<>(ResourceType.valuesList);
-                        return StringMan.autocompleteComma(input.toString(), options, ResourceType::valueOf, ResourceType::getName, ResourceType::getName, OptionData.MAX_CHOICES);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("UNIT_MAP_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        List<String> options = Arrays.asList(MilitaryUnit.values).stream().map(Enum::name).collect(Collectors.toList());
-                        return StringMan.completeMap(options, null, input.toString());
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("RESOURCE_MAP_KEY").getGenericType();
-                Consumer<ValueStore<?>> binding = store -> {
-                    Key key = Key.of(type, Autocomplete.class);
-                    FunctionConsumerParser parser = new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                        List<String> options = ResourceType.valuesList.stream().map(Enum::name).collect(Collectors.toList());
-                        return StringMan.completeMap(options, null, input.toString());
-                    });
-                    store.addParser(key, parser);
-                    store.addParser(Key.of(type, Autocomplete.class, AllianceDepositLimit.class), parser);
-                    store.addParser(Key.of(type, Autocomplete.class, NationDepositLimit.class), parser);
-                };
-                addBinding(binding);
-            }
-        } catch (NoSuchFieldException e) {
-            throw new RuntimeException(e);
+                store.addParser(key, parser);
+                store.addParser(Key.of(type, Autocomplete.class, AllianceDepositLimit.class), parser);
+                store.addParser(Key.of(type, Autocomplete.class, NationDepositLimit.class), parser);
+            };
+            addBinding(binding);
         }
     }
 }

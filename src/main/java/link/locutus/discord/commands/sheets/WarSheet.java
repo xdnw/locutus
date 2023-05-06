@@ -9,6 +9,7 @@ import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -79,7 +80,7 @@ public class WarSheet extends Command {
             }
         }
         if (sheet == null) {
-            sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), GuildDB.Key.WAR_SHEET);
+            sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKeys.WAR_SHEET);
         }
 
         List<Object> headers = new ArrayList<>(Arrays.asList(

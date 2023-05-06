@@ -21,6 +21,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -127,8 +128,9 @@ public class PermissionBinding extends BindingHelper {
         if (perm.value() == null || perm.value().length == 0) {
             throw new IllegalArgumentException("No key provided");
         }
-        for (GuildDB.Key key : perm.value()) {
-            Object value = db.getOrNull(key);
+        for (String keyName : perm.value()) {
+            GuildSetting key = GuildDB.Key.valueOf(keyName.toUpperCase());
+            Object value = key.getOrNull(db);
             if (value == null) {
                 throw new IllegalArgumentException("Key " + key.name() + " is not set in " + db.getGuild());
             }

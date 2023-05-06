@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -78,7 +79,7 @@ public class IASheet extends Command {
                 individual
         );
 
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.IA_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.IA_SHEET);
 
         IACheckup.AuditType[] audits = IACheckup.AuditType.values();
         int headerLength = audits.length + 5;

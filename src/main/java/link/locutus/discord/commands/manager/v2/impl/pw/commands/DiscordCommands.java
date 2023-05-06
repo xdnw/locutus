@@ -250,8 +250,7 @@ public class DiscordCommands {
             DiscordChannelIO io = new DiscordChannelIO(createdChannel);
             IMessageBuilder toSend = null;
             if (copypasta != null && !copypasta.isEmpty()) {
-                String key = "copypasta." + copypasta;
-                String copyPasta = db.getInfo(key, true);
+                String copyPasta = db.getCopyPasta(copypasta, true);
                 if (copyPasta != null) {
                     if (toSend == null) toSend = io.create();
                     toSend.append(copyPasta);

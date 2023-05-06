@@ -8,6 +8,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -68,7 +69,7 @@ public class WarCostByAASheet extends Command {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
-        SpreadSheet sheet = SpreadSheet.create(guildDb, GuildDB.Key.WAR_COST_BY_ALLIANCE_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_ALLIANCE_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "alliance",
                 "score",

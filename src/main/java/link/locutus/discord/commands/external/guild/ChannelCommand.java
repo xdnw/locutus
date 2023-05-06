@@ -122,8 +122,7 @@ public class ChannelCommand extends Command {
                     MessageReceivedEvent finalEvent = new DelegateMessageEvent(event.isFromGuild() ? event.getGuild() : null, event.getResponseNumber(), msg);
                     Locutus.imp().getCommandManager().run(finalEvent);
                 } else {
-                    String key = "copypasta." + arg;
-                    String copyPasta = Locutus.imp().getGuildDB(event).getInfo(key, true);
+                    String copyPasta = Locutus.imp().getGuildDB(event).getCopyPasta(arg, true);
                     if (copyPasta != null) {
                         RateLimitUtil.queue(createdChannel.sendMessage(copyPasta));
                     }

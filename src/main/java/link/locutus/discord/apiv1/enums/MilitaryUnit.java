@@ -235,7 +235,7 @@ public enum MilitaryUnit {
         try {
             return valueOf(arg);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid MilitaryUnit type: `" + arg + "`. options: " + StringMan.getString(values()));
+            throw new IllegalArgumentException("Invalid MilitaryUnit type: `" + arg + "`. Options: " + StringMan.getString(values()));
         }
     }
 }

@@ -9,6 +9,7 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -75,7 +76,7 @@ public class AllianceSheet extends Command implements Noformat {
             totals.put(id, total);
         }
 
-        SpreadSheet sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), GuildDB.Key.ALLIANCES_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKeys.ALLIANCES_SHEET);
 
         sheet.setHeader(header);
 

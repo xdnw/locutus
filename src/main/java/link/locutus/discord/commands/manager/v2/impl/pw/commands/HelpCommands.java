@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.CommandEmbedding;
 import link.locutus.discord.gpt.EmbeddingType;
 import link.locutus.discord.gpt.PWEmbedding;
@@ -59,7 +60,7 @@ public class HelpCommands {
             for (int i = 0; i < closest.size(); i++) {
                 Map.Entry<PWEmbedding, Double> entry = closest.get(i);
                 SettingEmbedding embed = (SettingEmbedding) entry.getKey();
-                GuildDB.Key obj = embed.getObj();
+                GuildSetting obj = embed.getObj();
 
                 msg.append("__**" + (i + 1) + ".**__ ");
                 msg.append("**" + obj.name() + "**: \n");

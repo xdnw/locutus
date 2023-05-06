@@ -5,10 +5,11 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildSetting;
 import net.dv8tion.jda.api.entities.User;
 
-public class SettingEmbedding extends PWEmbedding<GuildDB.Key>{
-    public SettingEmbedding(GuildDB.Key obj) {
+public class SettingEmbedding extends PWEmbedding<GuildSetting>{
+    public SettingEmbedding(GuildSetting obj) {
         super(EmbeddingType.Configuration, obj.name().replace("_", " "), obj, false);
     }
 

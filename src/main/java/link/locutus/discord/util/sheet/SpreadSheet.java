@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.StringMan;
@@ -169,7 +170,7 @@ public class SpreadSheet {
         return sheet;
     }
 
-    public static SpreadSheet create(GuildDB db, GuildDB.Key key) throws GeneralSecurityException, IOException {
+    public static SpreadSheet create(GuildDB db, SheetKeys key) throws GeneralSecurityException, IOException {
         String sheetId = db.getInfo(key, true);
 
         Sheets api = null;

@@ -27,6 +27,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
@@ -82,6 +84,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class AdminCommands {
 
@@ -95,7 +98,7 @@ public class AdminCommands {
     @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range")
     public String loginTimes(@Me GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
         }
         // time cutoff < 30d
         if (System.currentTimeMillis() - cutoff > TimeUnit.DAYS.toMillis(30)) {
@@ -165,11 +168,11 @@ public class AdminCommands {
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String deleteAllInaccessibleChannels(@Switch("f") boolean force) {
-        Map<GuildDB, List<GuildDB.Key>> toUnset = new LinkedHashMap<>();
+        Map<GuildDB, List<GuildSetting>> toUnset = new LinkedHashMap<>();
 
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (force) {
-                List<GuildDB.Key> keys = db.listInaccessibleChannelKeys();
+                List<GuildSetting> keys = db.listInaccessibleChannelKeys();
                 if (!keys.isEmpty()) {
                     toUnset.put(db, keys);
                 }
@@ -182,9 +185,9 @@ public class AdminCommands {
             return "No keys to unset";
         }
         StringBuilder response = new StringBuilder();
-        for (Map.Entry<GuildDB, List<GuildDB.Key>> entry : toUnset.entrySet()) {
+        for (Map.Entry<GuildDB, List<GuildSetting>> entry : toUnset.entrySet()) {
             response.append(entry.getKey().getGuild().toString() + ":\n");
-            List<GuildDB.Key> keys = entry.getValue();
+            List<String> keys = entry.getValue().stream().map(f -> f.name()).collect(Collectors.toList());
             response.append(" - " + StringMan.join(keys, "\n - "));
             response.append("\n");
         }
@@ -685,7 +688,8 @@ public class AdminCommands {
     public String importGuildKeys() {
         StringBuilder response = new StringBuilder();
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            String[] keys = db.getOrNull(GuildDB.Key.API_KEY);
+            List<String> keys = db.getOrNull(GuildDB.Key.API_KEY);
+            if (keys == null) return "No keys found for guild " + db.getGuild().getName() + " (" + db.getGuild().getId() + ")";
             for (String key : keys) {
                 try {
                     ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();

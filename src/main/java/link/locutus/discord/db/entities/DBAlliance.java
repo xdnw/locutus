@@ -91,6 +91,16 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 other.metaCache);
     }
 
+    @Override
+    public String getFilter() {
+        return getTypePrefix() + ":" + allianceId;
+    }
+
+    @Override
+    public boolean test(DBNation dbNation) {
+        return dbNation.getAlliance_id() == allianceId;
+    }
+
     public void setLoot(LootEntry lootEntry) {
         this.lootEntry = lootEntry;
         cachedLootEntry = true;
@@ -742,10 +752,10 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public ApiKeyPool getApiKeys(AlliancePermission... permissions) {
         GuildDB db = getGuildDB();
         if (db != null) {
-            String[] apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
+            List<String> apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
 
-            if (apiKeys != null) {
-                List<String> newKeys = new ArrayList<>(Arrays.asList(apiKeys));
+            if (apiKeys != null && !apiKeys.isEmpty()) {
+                List<String> newKeys = new ArrayList<>(apiKeys);
                 for (String key : apiKeys) {
                     try {
                         Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
@@ -759,7 +769,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                         if (newKeys.isEmpty()) {
                             db.deleteInfo(GuildDB.Key.API_KEY);
                         } else {
-                            db.setInfo(GuildDB.Key.API_KEY, StringMan.join(newKeys, ","));
+                            GuildDB.Key.API_KEY.set(db, newKeys);
                         }
                     } catch (Throwable e) {
                         throw e;

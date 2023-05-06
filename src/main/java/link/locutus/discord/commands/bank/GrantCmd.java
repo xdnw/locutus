@@ -14,6 +14,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.db.entities.DBNation;
@@ -175,7 +176,7 @@ public class GrantCmd extends Command {
             if (nations.isEmpty()) return "Invalid nation: `" + args.get(0) + "`";
             if (!Roles.ECON.has(author, guild)) return "No permission (econ)";
 
-            SpreadSheet sheet = SpreadSheet.create(guildDb, GuildDB.Key.GRANT_SHEET);
+            SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.GRANT_SHEET);
             sheet.clearAll();
             List<String> header = new ArrayList<>(Arrays.asList(
                     "nation",

@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.Permission;
@@ -146,7 +147,7 @@ public enum Roles {
 
     public static Roles[] values = values();
     private final String desc;
-    private final GuildDB.Key key;
+    private final GuildSetting key;
 
     private final int id;
     private final String legacy_name;
@@ -172,10 +173,10 @@ public enum Roles {
     Roles(int id, String desc) {
         this(id, desc, null);
     }
-    Roles(int id, String desc, GuildDB.Key key) {
+    Roles(int id, String desc, GuildSetting key) {
         this(id, desc, key, null);
     }
-    Roles(int id, String desc, GuildDB.Key key, String legacy_name) {
+    Roles(int id, String desc, GuildSetting key, String legacy_name) {
         this.desc = desc;
         this.key = key;
         this.id = id;
@@ -221,7 +222,7 @@ public enum Roles {
         return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.create(name(), null, null, null);
     }
 
-    public GuildDB.Key getKey() {
+    public GuildSetting getKey() {
         return key;
     }
 

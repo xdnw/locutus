@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -44,7 +45,7 @@ public class NoteSheet extends Command {
         GuildDB db = Locutus.imp().getGuildDB(event);
         if (db == null) return "Not in guild";
 
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.NOTE_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.NOTE_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList("nation", "cities", "active_m", "note1", "note2", "note3"));
         sheet.setHeader(header);

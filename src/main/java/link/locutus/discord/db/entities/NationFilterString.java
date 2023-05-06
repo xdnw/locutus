@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 
@@ -7,17 +8,18 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class NationFilterString implements Predicate<DBNation> {
+public class NationFilterString implements NationFilter {
     private final String filter;
     private final Guild guild;
     private Set<Integer> cachedNations;
     private long dateCached;
 
     public NationFilterString(String filter, Guild guild) {
-        this.filter =filter;
+        this.filter = filter;
         this.guild = guild;
     }
 
+    @Override
     public String getFilter() {
         return filter;
     }

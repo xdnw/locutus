@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBCity;
@@ -35,7 +36,9 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -44,6 +47,7 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
@@ -58,6 +62,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
@@ -69,11 +74,116 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
-    /*
-    JsonObject command
-    Key argument type
 
-     */
+    @Binding(value = """
+            A map of city ranges to a list of beige reasons
+            Priority is first to last (so put defaults at the bottom)""",
+            examples = """
+            c1-9:*
+            c10+:INACTIVE,VACATION_MODE,APPLICANT""")
+        public Map<CityRanges, Set<BeigeReason>> beigeReasonMap(GuildDB db, String input) {
+            input = input.replace("=", ":");
+
+            Map<CityRanges, Set<BeigeReason>> result = new HashMap<>();
+            String[] split = input.trim().split("\\r?\\n");
+            if (split.length == 1) split = StringMan.split(input.trim(), ' ').toArray(new String[0]);
+            for (String s : split) {
+                String[] pair = s.split(":");
+                if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
+                CityRanges range = CityRanges.parse(pair[0]);
+                List<BeigeReason> list = StringMan.parseEnumList(BeigeReason.class, pair[1]);
+                result.put(range, new HashSet<>(list));
+            }
+            return result;
+        }
+
+    @Binding(value = """
+            A map of nation filters to MMR
+            Use X for any military building
+            All nation filters are supported (e.g. roles)
+            Priority is first to last (so put defaults at the bottom)""",
+            examples = """
+            #cities<10:505X
+            #cities>=10:0250""")
+        public Map<NationFilterString, MMRMatcher> mmrMathcerMap(GuildDB db, String input) {
+            Map<NationFilterString, MMRMatcher> filterToMMR = new LinkedHashMap<>();
+            for (String line : input.split("\n")) {
+                String[] split = line.split("[:]");
+                if (split.length != 2) continue;
+
+                String filterStr = split[0].trim();
+
+                boolean containsNation = false;
+                for (String arg : filterStr.split(",")) {
+                    if (!arg.startsWith("#")) containsNation = true;
+                }
+                if (!containsNation) filterStr += ",*";
+                DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
+                NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+                MMRMatcher mmr = new MMRMatcher(split[1]);
+                filterToMMR.put(filter, mmr);
+            }
+
+            return filterToMMR;
+        }
+
+    @Binding(value = """
+            A map of nation filters to tax rates
+            All nation filters are supported (e.g. roles)
+            Priority is first to last (so put defaults at the bottom)""",
+            examples = """
+            #cities<10:100/100
+            #cities>=10:25/25""")
+    public Map<NationFilterString, TaxRate> taxRateMap(GuildDB db, String input) {
+        Map<NationFilterString, TaxRate> filterToTaxRate = new LinkedHashMap<>();
+        for (String line : input.split("\n")) {
+            String[] split = line.split("[:]");
+            if (split.length != 2) continue;
+
+            String filterStr = split[0].trim();
+
+            boolean containsNation = false;
+            for (String arg : filterStr.split(",")) {
+                if (!arg.startsWith("#")) containsNation = true;
+            }
+            if (!containsNation) filterStr += ",*";
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            TaxRate rate = new TaxRate(split[1]);
+            filterToTaxRate.put(filter, rate);
+        }
+        if (filterToTaxRate.isEmpty()) throw new IllegalArgumentException("No valid nation filters provided");
+
+        return filterToTaxRate;
+    }
+
+    @Binding(value = """
+            A map of nation filters to tax ids
+            All nation filters are supported (e.g. roles)
+            Priority is first to last (so put defaults at the bottom)""",
+    examples = """
+            #cities<10:1
+            #cities>=10:2""")
+    public Map<NationFilterString, Integer> taxIdMap(@Me GuildDB db, String input) {
+        Map<NationFilterString, Integer> filterToBracket = new LinkedHashMap<>();
+        for (String line : input.split("[\n|;]")) {
+            String[] split = line.split("[:]");
+            if (split.length != 2) continue;
+
+            String filterStr = split[0].trim();
+
+            boolean containsNation = false;
+            for (String arg : filterStr.split(",")) {
+                if (!arg.startsWith("#")) containsNation = true;
+            }
+            if (!containsNation) filterStr += ",*";
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            int bracket = Integer.parseInt(split[1]);
+            filterToBracket.put(filter, bracket);
+        }
+        if (filterToBracket.isEmpty()) throw new IllegalArgumentException("No valid nation filters provided");
+
+        return filterToBracket;
+    }
 
     @Binding(value = "City build json or url", examples = {"city/id=371923", "{city-json}", "city/id=1{json-modifiers}"})
     public CityBuild city(@Default @Me DBNation nation, @TextArea String input) {
@@ -308,6 +418,11 @@ public class PWBindings extends BindingHelper {
         return emumSet(IACheckup.AuditType.class, input);
     }
 
+    @Binding(value = "A comma separated list of auto audit types")
+    public Set<AutoAuditType> autoAuditType(String input) {
+        return emumSet(AutoAuditType.class, input);
+    }
+
     @Binding(value = "A comma separated list of continents, or `*`")
     public Set<Continent> continentTypes(String input) {
         if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
@@ -361,6 +476,12 @@ public class PWBindings extends BindingHelper {
     @Binding(examples = "borg,AA:Cataclysm,#position>1", value = "A comma separated list of nations, alliances and filters")
     public NationList nationList(@Default @Me Guild guild, String input) {
         return new SimpleNationList(nations(guild, input)).setFilter(input);
+    }
+
+    @Binding(examples = "#position>1,#cities<=5", value = "A comma separated list of filters (can include nations and alliances)")
+    public NationFilter nationFilter(@Default @Me Guild guild, String input) {
+        nations(guild, input + "||*");
+        return new NationFilterString(input, guild);
     }
 
     @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes")
@@ -648,6 +769,16 @@ public class PWBindings extends BindingHelper {
         return emum(AttackType.class, input);
     }
 
+    @Binding(value = "Mode for automatically giving discord roles")
+    public GuildDB.AutoRoleOption roleOption(String input) {
+        return emum(GuildDB.AutoRoleOption.class, input);
+    }
+
+    @Binding(value = "Mode for automatically giving discord nicknames")
+    public GuildDB.AutoNickOption nickOption(String input) {
+        return emum(GuildDB.AutoNickOption.class, input);
+    }
+
     @Binding
     public WarDB warDB() {
         return Locutus.imp().getWarDb();
@@ -772,8 +903,15 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Locutus guild settings")
-    public GuildDB.Key key(String input) {
-        return emum(GuildDB.Key.class, input);
+    public GuildSetting key(String input) {
+        input = input.replaceAll("_", " ").toLowerCase();
+        GuildSetting[] constants = GuildDB.Key.values();
+        for (GuildSetting constant : constants) {
+            String name = constant.name().replaceAll("_", " ").toLowerCase();
+            if (name.equals(input)) return constant;
+        }
+        List<String> options = Arrays.asList(constants).stream().map(GuildSetting::name).collect(Collectors.toList());
+        throw new IllegalArgumentException("Invalid category: `" + input + "`. Options: " + StringMan.getString(options));
     }
 
     @Binding(value = "Types of users to clear roles of")

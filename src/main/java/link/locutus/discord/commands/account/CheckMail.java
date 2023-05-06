@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -54,7 +55,7 @@ public class CheckMail extends Command {
         RateLimitUtil.queue(channel.sendMessage("Please wait..."));
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.MAIL_RESPONSES_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.MAIL_RESPONSES_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",

@@ -857,12 +857,11 @@ public class NationUpdateProcessor {
                     GuildDB guildDB = entry.getValue();
                     Integer perm = guildDB.getPermission(BankAlerts.class);
                     if (perm == null || perm <= 0) continue;
-                    GuildMessageChannel channel = guildDB.getOrNull(GuildDB.Key.BANK_ALERT_CHANNEL, false);
-                    Guild guild = guildDB.getGuild();
+                    MessageChannel channel = guildDB.getOrNull(GuildDB.Key.BANK_ALERT_CHANNEL, false);
                     if (channel == null) {
                         continue;
                     }
-                    DiscordUtil.createEmbedCommand((MessageChannel) channel, title, body.substring(0, Math.min(body.length(), 2000)));
+                    DiscordUtil.createEmbedCommand(channel, title, body.substring(0, Math.min(body.length(), 2000)));
                 }
 
             } catch (Throwable e) {

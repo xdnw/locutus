@@ -35,7 +35,6 @@ public class DBAttack {
     public int defcas1;
     public int defcas2;
     public int defcas3;
-//    public int city_id; // Not used
     public double infra_destroyed;
     public int improvements_destroyed;
     public double money_looted;

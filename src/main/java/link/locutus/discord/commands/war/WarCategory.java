@@ -185,7 +185,7 @@ public class WarCategory {
                 }
             }
         } catch (InsufficientPermissionException e) {
-            db.setInfo(GuildDB.Key.ENABLE_WAR_ROOMS, "false");
+            GuildDB.Key.ENABLE_WAR_ROOMS.set(db, false);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -532,7 +532,7 @@ public class WarCategory {
                             Role econRole = Roles.ECON.toRole(guild);
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
                             MessageChannel rssChannel = db.getResourceChannel(attacker.getAlliance_id());
-                            GuildMessageChannel grantChannel = db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL);
+                            MessageChannel grantChannel = db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL);
 
                             if (rssChannel != null) {
                                 if (Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {

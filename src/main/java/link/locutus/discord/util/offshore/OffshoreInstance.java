@@ -927,7 +927,7 @@ public class OffshoreInstance {
                         total += transaction.convertedTotal();
                     }
                     if (total > withdrawLimit) {
-                        GuildMessageChannel alertChannel = senderDB.getOrNull(GuildDB.Key.WITHDRAW_ALERT_CHANNEL);
+                        MessageChannel alertChannel = senderDB.getOrNull(GuildDB.Key.WITHDRAW_ALERT_CHANNEL);
                         if (alertChannel != null) {
                             StringBuilder body = new StringBuilder();
                             body.append(banker.getNationUrlMarkup(true) + " | " + banker.getAllianceUrlMarkup(true)).append("\n");
@@ -1480,15 +1480,17 @@ public class OffshoreInstance {
         }
         boolean whitelistedError = msg.contains("The API key you provided does not allow whitelisted access.");
         if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
-            String[] keys = getGuildDB().getOrNull(GuildDB.Key.API_KEY);
-            if (keys == null) {
+            List<String> keys = getGuildDB().getOrNull(GuildDB.Key.API_KEY);
+            if (keys == null || keys.isEmpty()) {
                 msg += "\nEnsure " + GuildDB.Key.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention();
             } else {
-                Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(keys[0]);
-                if (nation == null) {
-                    msg += "\nEnsure " + GuildDB.Key.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
-                } else {
-                    msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + allianceId;
+                for (String key : keys) {
+                    Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
+                    if (nation == null) {
+                        msg += "\nEnsure " + GuildDB.Key.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
+                    } else {
+                        msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + allianceId;
+                    }
                 }
             }
             if (whitelistedError) {

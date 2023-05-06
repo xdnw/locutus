@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 
@@ -22,9 +23,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public interface NationList {
+public interface NationList extends NationFilter {
+    @Override
     default String getFilter() {
         return null;
+    }
+
+    @Override
+    default boolean test(DBNation dbNation){
+        return getNations().contains(dbNation);
     }
 
     Collection<DBNation> getNations();

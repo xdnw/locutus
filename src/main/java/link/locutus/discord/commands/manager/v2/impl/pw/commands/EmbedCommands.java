@@ -17,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
@@ -532,16 +533,16 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             throw new IllegalArgumentException("No `" + Coalition.ENEMIES.name() + "` coalition found. See: " + CM.coalition.create.cmd.toSlashMention());
         }
         if (allEnemiesSheet == null) {
-            allEnemiesSheet = SpreadSheet.create(db, GuildDB.Key.ENEMY_SHEET);
+            allEnemiesSheet = SpreadSheet.create(db, SheetKeys.ENEMY_SHEET);
         }
         if (priorityEnemiesSheet == null) {
-            priorityEnemiesSheet = SpreadSheet.create(db, GuildDB.Key.PRIORITY_ENEMY_SHEET);
+            priorityEnemiesSheet = SpreadSheet.create(db, SheetKeys.PRIORITY_ENEMY_SHEET);
         }
         if (allAlliesSheet == null) {
-            allAlliesSheet = SpreadSheet.create(db, GuildDB.Key.ALLY_SHEET);
+            allAlliesSheet = SpreadSheet.create(db, SheetKeys.ALLY_SHEET);
         }
         if (underutilizedAlliesSheet == null) {
-            underutilizedAlliesSheet = SpreadSheet.create(db, GuildDB.Key.UNDERUTILIZED_ALLY_SHEET);
+            underutilizedAlliesSheet = SpreadSheet.create(db, SheetKeys.UNDERUTILIZED_ALLY_SHEET);
         }
 
         Map.Entry<String, List<String>> allEnemies = Map.entry(
@@ -753,7 +754,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 "'=\"{mmr}\"'"
         ), " ");
 
-        String spySheetId = spySheet != null ? spySheet.getSpreadsheetId() : SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET).getSpreadsheetId();
+        String spySheetId = spySheet != null ? spySheet.getSpreadsheetId() : SpreadSheet.create(db, SheetKeys.SPYOP_SHEET).getSpreadsheetId();
 
         io.create().embed("Update ally", "Press `allies` to update active ally spy counts" + footer)
                 .commandButton(behavior, channelId, CM.nation.sheet.NationSheet.cmd.create(

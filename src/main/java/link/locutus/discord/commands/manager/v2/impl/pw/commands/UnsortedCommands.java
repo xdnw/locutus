@@ -67,6 +67,8 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -137,7 +139,7 @@ public class UnsortedCommands {
             throw new IllegalArgumentException("No nations in alliances " + StringMan.getString(aaList.getIds()) + " matched `nations` (vacation mode or applicants are ignored)");
         }
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
         }
 
         aaList = aaList.subList(aaNations);
@@ -258,7 +260,7 @@ public class UnsortedCommands {
         if (brackets.isEmpty()) {
             throw new IllegalArgumentException("No tax brackets found.");
         }
-        if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.TAX_BRACKET_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "ID",
@@ -1182,7 +1184,7 @@ public class UnsortedCommands {
             return "Missing role: " + Roles.INTERNAL_AFFAIRS;
         }
 
-        String value = db.getInfo("copypasta." + key, true);
+        String value = db.getCopyPasta(key, true);
 
         Set<String> missingRoles = null;
         if (value == null) {
@@ -1530,7 +1532,7 @@ public class UnsortedCommands {
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
     public String keyStore(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                            @Arg("The setting to change or view")
-                           @Default GuildDB.Key key,
+                           @Default GuildSetting key,
                            @Arg("The value to set the setting to")
                            @Default @TextArea String value,
                            @Arg("Exclude created spreadsheets from any returned setting lists")

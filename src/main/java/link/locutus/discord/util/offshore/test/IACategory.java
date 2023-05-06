@@ -291,8 +291,7 @@ public class IACategory {
         IMessageIO io = new DiscordChannelIO(channel);
         IMessageBuilder msg = io.create();
 
-        String key = "copypasta.interview";
-        String body = db.getInfo(key, true);
+        String body = db.getCopyPasta("interview", true);
         if (body != null) {
             String title = "Welcome to " + guild.getName() + " " + user.getName();
             msg.embed(title, body);

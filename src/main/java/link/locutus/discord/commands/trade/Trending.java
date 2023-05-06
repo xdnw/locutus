@@ -8,6 +8,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -86,7 +87,7 @@ public class Trending extends Command {
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TRADE_VOLUME_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TRADE_VOLUME_SHEET);
 
         List<Object> header = new ArrayList<>();
         header.add("PPU (adjusted)");

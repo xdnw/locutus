@@ -8,6 +8,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -55,7 +56,7 @@ public class KDRSheet extends Command {
 
         Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Clearing sheet..."));
 
-        SpreadSheet sheet = SpreadSheet.create(guildDb, GuildDB.Key.WAR_COST_BY_RESOURCE_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_RESOURCE_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
                 "raids",

@@ -38,6 +38,7 @@ import net.dv8tion.jda.api.entities.Role;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TradeListener {
@@ -226,7 +227,7 @@ public class TradeListener {
 
                         for (DBTreasure treasure : treasuresToAlert) {
                             if (treasure.getColor() == null || nation.getColor() == treasure.getColor()) continue;
-                            NationFilter filter = treasure.getFilter(maxNationScore, false, true);
+                            Predicate<DBNation> filter = treasure.getFilter(maxNationScore, false, true);
                             // not in score range or continent
                             if (!filter.test(nation)) continue;
 

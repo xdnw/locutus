@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 public class DBTreasure {
     private int id = -1;
@@ -42,7 +43,7 @@ public class DBTreasure {
         return this;
     }
 
-    public NationFilter getFilter(boolean checkColor, boolean checkContinent) {
+    public Predicate<DBNation> getFilter(boolean checkColor, boolean checkContinent) {
 
         return getFilter(getMaxNationScore(), checkColor, checkContinent);
     }
@@ -76,7 +77,7 @@ public class DBTreasure {
         return Locutus.imp().getNationDB().getNationsMatching(getFilter(true, true));
     }
 
-    public NationFilter getFilter(double maxNationScore, boolean checkColor, boolean checkContinent) {
+    public Predicate<DBNation> getFilter(double maxNationScore, boolean checkColor, boolean checkContinent) {
         double maxScore = maxNationScore * 0.65;
         double minScore = maxNationScore * 0.15;
         return (f -> {

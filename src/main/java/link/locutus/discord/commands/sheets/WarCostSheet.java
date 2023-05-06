@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -74,7 +75,7 @@ public class WarCostSheet extends Command {
 
         Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Clearing sheet..."));
 
-        SpreadSheet sheet = SpreadSheet.create(guildDb, GuildDB.Key.WAR_COST_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 // Raids	Raid profit	Raid Ratio	Def	Def Loss	Def Dmg	Def Ratio	Off	Off Loss	Off Dmg	Off Ratio	Wars	War Loss	War Dmg	War Ratio
             "nation",

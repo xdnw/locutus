@@ -11,15 +11,12 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.nation.NationBlockadedEvent;
-import link.locutus.discord.event.nation.NationUnblockadedEvent;
 import link.locutus.discord.event.war.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -40,7 +37,6 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import rocker.grant.nation;
 
 import java.awt.Desktop;
 import java.io.IOException;
@@ -298,8 +294,8 @@ public class WarUpdateProcessor {
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (!db.isValidAlliance() && !db.isWhitelisted() && !db.isOwnerActive() || db.isDelegateServer()) continue;
 
-            GuildMessageChannel defChan = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL, false);
-            GuildMessageChannel offChan = db.getOrNull(GuildDB.Key.OFFENSIVE_WAR_CHANNEL, false);
+            MessageChannel defChan = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL, false);
+            MessageChannel offChan = db.getOrNull(GuildDB.Key.OFFENSIVE_WAR_CHANNEL, false);
 
             GuildHandler handler = db.getHandler();
 
@@ -867,21 +863,21 @@ public class WarUpdateProcessor {
         if (defender.getActive_m() < 10000) return;
         if (attacker.getWarPolicy() == WarPolicy.PIRATE) return;
 
-        String message = AuditType.WAR_POLICY.message.replace("{war}", current.toUrl());
-        AlertUtil.auditAlert(attacker,AuditType.WAR_POLICY, f -> message);
+        String message = AutoAuditType.WAR_POLICY.message.replace("{war}", current.toUrl());
+        AlertUtil.auditAlert(attacker, AutoAuditType.WAR_POLICY, f -> message);
     }
 
     private static void checkWarType(DBWar current, DBNation attacker, DBNation defender, PNWUser user, GuildDB guildDb, Guild guild, Member member) {
         if (current.warType == WarType.RAID) return;
         if (defender.getAvg_infra() > 1700 && defender.getActive_m() < 10000) return;
 
-        AlertUtil.auditAlert(attacker, AuditType.WAR_TYPE_NOT_RAID, f -> {
+        AlertUtil.auditAlert(attacker, AutoAuditType.WAR_TYPE_NOT_RAID, f -> {
             Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(defender.getNation_id());
             for (DBBounty bounty : bounties) {
                 if (bounty.getType() == current.warType) return null;
             }
 
-            String message = AuditType.WAR_TYPE_NOT_RAID.message.replace("{war}",  current.toUrl())
+            String message = AutoAuditType.WAR_TYPE_NOT_RAID.message.replace("{war}",  current.toUrl())
                     .replace("{type}", current.warType + "");
             if (defender.getActive_m() > 10000) message += " as the enemy is inactive";
             else if (defender.getAvg_infra() <= 1000) message += " as the enemy already has reduced infra";

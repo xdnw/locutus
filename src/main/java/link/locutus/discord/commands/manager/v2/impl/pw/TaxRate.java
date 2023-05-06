@@ -3,8 +3,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw;
 import link.locutus.discord.util.MathMan;
 
 public class TaxRate {
-    public final int money;
-    public final int resources;
+    public int money;
+    public int resources;
 
     public TaxRate(String parse) {
         String[] split = parse.split("/");

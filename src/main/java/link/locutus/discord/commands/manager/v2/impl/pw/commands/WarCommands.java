@@ -27,6 +27,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -65,6 +66,7 @@ import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
@@ -448,7 +450,7 @@ public class WarCommands {
         me.deleteMeta(NationMeta.UNBLOCKADE_REASON);
         if (existing == null) return "No unblockade request founds";
 
-        TextChannel unblockadeChannel = db.getOrNull(GuildDB.Key.UNBLOCKADE_REQUESTS);
+        MessageChannel unblockadeChannel = db.getOrNull(GuildDB.Key.UNBLOCKADE_REQUESTS);
         if (unblockadeChannel != null) {
             StringBuilder response = new StringBuilder();
 
@@ -487,7 +489,7 @@ public class WarCommands {
                     "\nAdd `-f` to ignore this check";
         }
 
-        TextChannel unblockadeChannel = db.getOrNull(GuildDB.Key.UNBLOCKADE_REQUESTS);
+        MessageChannel unblockadeChannel = db.getOrNull(GuildDB.Key.UNBLOCKADE_REQUESTS);
         StringBuilder response = new StringBuilder();
         if (unblockadeChannel != null) {
 
@@ -1843,7 +1845,7 @@ public class WarCommands {
 
         if (ignoreWithLootHistory) time = 0;
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
         int maxOps = 2;
 
@@ -1953,7 +1955,7 @@ public class WarCommands {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsDTC(input, groupByAttacker, forceUpdate);
 
         if (output == null) {
-            output = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            output = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
@@ -1973,7 +1975,7 @@ public class WarCommands {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsHidude(input, groupByAttacker, forceUpdate);
 
         if (output == null) {
-            output = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            output = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
@@ -1993,7 +1995,7 @@ public class WarCommands {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsTKR(input, groupByAttacker, forceUpdate);
 
         if (output == null) {
-            output = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            output = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
@@ -2026,7 +2028,7 @@ public class WarCommands {
         Map<DBNation, Set<Spyop>> spyOps = SpyBlitzGenerator.getTargets(spySheet, headerRow, false);
 
         if (output == null) {
-            output = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            output = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
 
         List<Spyop> allOps = new ArrayList<>();
@@ -2078,7 +2080,7 @@ public class WarCommands {
                            @Arg("Prioritize defenders in these alliances")
                            @Switch("p") Set<DBAlliance> prioritizeAlliances) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
 
         SpyBlitzGenerator generator = new SpyBlitzGenerator(attackers, defenders, allowedTypes, forceUpdate, maxDef, checkEspionageSlots, 0, prioritizeKills);
@@ -2091,7 +2093,7 @@ public class WarCommands {
         Map<DBNation, List<Spyop>> targets = generator.assignTargets();
 
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
 
         generateSpySheet(sheet, targets);
@@ -2204,7 +2206,7 @@ public class WarCommands {
                                 @Arg("Date to start from")
                                 @Default("2w") @Timestamp long trackTime, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVITY_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.ACTIVITY_SHEET);
         }
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -2270,7 +2272,7 @@ public class WarCommands {
                            @Switch("f") boolean forceUpdate,
                            @Arg("List the military building count of each city instead of each nation")
                            @Switch("c") boolean showCities) throws GeneralSecurityException, IOException {
-        if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.MMR_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.MMR_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "city",
                 "nation",
@@ -2510,7 +2512,7 @@ public class WarCommands {
         if (ignoreMembers) nations.removeIf(n -> n.getKey().getPosition() > 1);
         if (nations.isEmpty()) return "No nations find over the specified timeframe";
 
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.DESERTER_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.DESERTER_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "AA-before",
                 "AA-now",
@@ -2614,7 +2616,7 @@ public class WarCommands {
 
             Map.Entry<Map<DBNation, DBNation>, Map<DBNation, DBNation>> kdMap = simulateWarsKD(warMap.values());
 
-            SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVE_COMBATANT_SHEET);
+            SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.ACTIVE_COMBATANT_SHEET);
 
             List<Object> header = new ArrayList<>(Arrays.asList(
                     "nation",
@@ -2771,8 +2773,8 @@ public class WarCommands {
                                         @Arg("Only allow attacking these nations")
                                         @Default("*") Set<DBNation> filter) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            db.getOrThrow(GuildDB.Key.SPYOP_SHEET);
-            sheet = SpreadSheet.create(db, GuildDB.Key.SPYOP_SHEET);
+            db.getOrThrow(SheetKeys.SPYOP_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
         StringBuilder response = new StringBuilder();
 
@@ -3248,7 +3250,7 @@ public class WarCommands {
             targets = blitz.assignTargets();
         }
 
-        if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVITY_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.ACTIVITY_SHEET);
 
         List<RowData> rowData = new ArrayList<RowData>();
 
@@ -3372,7 +3374,7 @@ public class WarCommands {
             sheet = SpreadSheet.create(sheetId);
         }
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.WAR_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.WAR_SHEET);
         }
 
         List<Object> headers = new ArrayList<>(Arrays.asList(
@@ -3559,7 +3561,7 @@ public class WarCommands {
         if (sheetUrl != null) {
             sheet = SpreadSheet.create(sheetUrl);
         } else {
-            sheet = SpreadSheet.create(db, GuildDB.Key.COUNTER_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.COUNTER_SHEET);
         }
 
         WarCategory warCat = db.getWarChannel();

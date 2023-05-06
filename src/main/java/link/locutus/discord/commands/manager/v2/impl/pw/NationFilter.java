@@ -5,4 +5,5 @@ import link.locutus.discord.db.entities.DBNation;
 import java.util.function.Predicate;
 
 public interface NationFilter extends Predicate<DBNation> {
+    String getFilter();
 }

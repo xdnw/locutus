@@ -213,7 +213,7 @@ public class WarRoom extends Command {
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
 
                             MessageChannel rssChannel = db.getResourceChannel(attacker.getAlliance_id());
-                            GuildMessageChannel grantChannel = db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL);
+                            MessageChannel grantChannel = db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL);
 
                             if (rssChannel != null) {
                                 if (Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {

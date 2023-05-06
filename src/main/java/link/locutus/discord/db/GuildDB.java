@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import com.google.common.eventbus.AsyncEventBus;
+import com.google.gson.reflect.TypeToken;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -9,27 +10,38 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
-import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
-import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.GuildBooleanSetting;
+import link.locutus.discord.db.guild.GuildCategorySetting;
+import link.locutus.discord.db.guild.GuildChannelSetting;
+import link.locutus.discord.db.guild.GuildEnumSetSetting;
+import link.locutus.discord.db.guild.GuildEnumSetting;
+import link.locutus.discord.db.guild.GuildIntegerSetting;
+import link.locutus.discord.db.guild.GuildLongSetting;
+import link.locutus.discord.db.guild.GuildNationFilterSetting;
+import link.locutus.discord.db.guild.GuildResourceSetting;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildSettingCategory;
+import link.locutus.discord.db.guild.GuildStringSetting;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
-import link.locutus.discord.util.AuditType;
-import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -43,6 +55,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.roles.AutoRoleTask;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
 import com.google.common.eventbus.EventBus;
@@ -55,8 +68,9 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -64,7 +78,6 @@ import java.sql.Statement;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -94,7 +107,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         super("guilds/" + guild.getId());
         this.roleToAccountToDiscord  = new ConcurrentHashMap<>();
         this.guild = guild;
-        System.out.println(guild + " | AA:" + StringMan.getString(getOrNull(Key.ALLIANCE_ID, false)));
+        System.out.println(guild + " | AA:" + StringMan.getString(getInfo("ALLIANCE_ID", false)));
         importLegacyRoles();
     }
 
@@ -220,8 +233,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public ApiKeyPool getApiKey(int allianceId, AlliancePermission... perms) {
-        String[] keys = getOrNull(Key.API_KEY);
-        if (keys != null) {
+        List<String> keys = getOrNull(Key.API_KEY);
+        if (keys != null && !keys.isEmpty()) {
             for (String key : keys) {
                 Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                 if (nationIdFromKey != null) {
@@ -251,8 +264,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
 
         Map.Entry<Integer, String> mailKeysBackup = null;
-        String[] apiKeys = getOrNull(Key.API_KEY);
-        if (apiKeys != null) {
+        List<String> apiKeys = getOrNull(Key.API_KEY);
+        if (apiKeys != null && !apiKeys.isEmpty()) {
             for (String key : apiKeys) {
                 Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                 if (nationId != null) {
@@ -305,15 +318,27 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return false;
     }
 
-    public <T> T getOrThrow(Key key) {
-        T value = getOrNull(key);
+    public String getOrThrow(SheetKeys key) {
+        String value = getInfo(key, true);
         if (value == null) {
-            throw new UnsupportedOperationException("No " + key.name() + " registered. Use " + CM.settings.cmd.create(key.name(), null, null, null));
+            throw new UnsupportedOperationException("No `" + key.name() + "` has been set.");
         }
         return value;
     }
 
-    public <T> T getOrNull(Key key, boolean allowDelegate) {
+    public <T> T getOrThrow(GuildSetting<T> key) {
+        return getOrThrow(key, true);
+    }
+
+    public <T> T getOrThrow(GuildSetting<T> key, boolean allowDelegate) {
+        T value = getOrNull(key, allowDelegate);
+        if (value == null) {
+            throw new UnsupportedOperationException("No " + key.name() + " registered. Use " + key.getCommand(null));
+        }
+        return value;
+    }
+
+    public <T> T getOrNull(GuildSetting<T> key, boolean allowDelegate) {
         Object parsed;
         synchronized (infoParsed) {
             parsed = infoParsed.getOrDefault(key, nullInstance);
@@ -321,11 +346,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         if (parsed != nullInstance) return (T) parsed;
 
         boolean isDelegate = false;
-        String value = getInfo(key, false);
+        String value = getInfoRaw(key, false);
         if (value == null) {
             isDelegate = true;
             if (allowDelegate) {
-                value = getInfo(key, true);
+                value = getInfoRaw(key, true);
             }
         }
         if (value == null) return null;
@@ -342,7 +367,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
     }
 
-    public <T> T getOrNull(Key key) {
+    public <T> T getOrNull(GuildSetting<T> key) {
         return getOrNull(key, true);
     }
 
@@ -673,7 +698,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         String sql = tx.createInsert("INTERNAL_TRANSACTIONS2", false, false);
         update(sql, (ThrowingConsumer<PreparedStatement>) tx::setNoID);
 
-        GuildMessageChannel output = getOrNull(Key.ADDBALANCE_ALERT_CHANNEL);
+        MessageChannel output = getOrNull(Key.ADDBALANCE_ALERT_CHANNEL);
         if (output != null) {
             try {
                 RateLimitUtil.queueWhenFree(output.sendMessage(tx.toString()));
@@ -683,10 +708,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
     }
 
-    public List<Key> listInaccessibleChannelKeys() {
-        List<Key> inaccessible = new ArrayList<>();
-        for (Key key : Key.values()) {
-            String valueStr = getInfo(key, false);
+    public List<GuildSetting> listInaccessibleChannelKeys() {
+        List<GuildSetting> inaccessible = new ArrayList<>();
+        for (GuildSetting key : Key.values()) {
+            String valueStr = getInfoRaw(key, false);
             if (valueStr == null) continue;
             Object value = key.parse(this, valueStr);
             if (value == null) {
@@ -703,7 +728,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return inaccessible;
     }
     public void unsetInaccessibleChannels() {
-        for (Key key : listInaccessibleChannelKeys()) {
+        for (GuildSetting key : listInaccessibleChannelKeys()) {
             deleteInfo(key);
         }
     }
@@ -1307,16 +1332,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         double[] deposits = ResourceType.getBuffer();
         double[] taxes = ResourceType.getBuffer();
 
-        int[] aaBase = getOrNull(GuildDB.Key.TAX_BASE);
-        if (aaBase == null) aaBase = new int[]{100, 100};
+        TaxRate aaBase = getOrNull(GuildDB.Key.TAX_BASE);
+        if (aaBase == null) aaBase = new TaxRate(100, 100);
         int[] baseBuffer = new int[2];
 
         for (BankDB.TaxDeposit record : records) {
             if (!allowedAAIds.contains(record.allianceId)) {
                 throw new IllegalArgumentException("Cannot view taxes for another alliance: " + record.allianceId + ". Guild is registered to: " + StringMan.getString(allowedAAIds));
             }
-            baseBuffer[0] = record.internalMoneyRate >= 0 ? record.internalMoneyRate : aaBase[0];
-            baseBuffer[1] = record.internalResourceRate >= 0 ? record.internalResourceRate : aaBase[1];
+            baseBuffer[0] = record.internalMoneyRate >= 0 ? record.internalMoneyRate : aaBase.money;
+            baseBuffer[1] = record.internalResourceRate >= 0 ? record.internalResourceRate : aaBase.resources;
             double[] totalCopy = record.resources.clone();
             record.multiplyBase(baseBuffer);
 
@@ -2127,7 +2152,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private WarCategory warChannel;
-    private boolean warChannelInit = false;
+    public boolean warChannelInit = false;
 
     public boolean isAllyOfRoot() {
         return isAllyOfRoot(true);
@@ -2378,23 +2403,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //        }
 //    }
 
-    public enum Key {
-        ALLIANCE_ID() {
-            @Override
-            public String validate(GuildDB db, String value) {
-                if (db.getInfo(Key.DELEGATE_SERVER, false) != null) throw new IllegalArgumentException("Cannot set alliance id of delegate server (please unset DELEGATE_SERVER first)");
+    public static class Key {
+        public static final GuildSetting<Set<Integer>> ALLIANCE_ID = new GuildSetting<Set<Integer>>(GuildSettingCategory.DEFAULT, Set.class, Integer.class) {
+            @link.locutus.discord.commands.manager.v2.binding.annotation.Command(
+                    descMethod = "help"
+            )
+            @RolePermission(Roles.ADMIN)
+            public String registerAlliance(@Me GuildDB db, @Me User user, DBAlliance alliance) {
+                Set<Integer> existing = ALLIANCE_ID.getOrNull(db);
+                if (existing == null) existing = new LinkedHashSet<>();
+                else existing = new LinkedHashSet<>(existing);
+                return setAndValidate(db, user, existing);
+            }
 
-                Set<Integer> aaIds = PnwUtil.parseAlliances(db, value);
+            @Override
+            public Set<Integer> validate(GuildDB db, Set<Integer> aaIds) {
+                if (GuildDB.Key.DELEGATE_SERVER.has(db, false))
+                    throw new IllegalArgumentException("Cannot set alliance id of delegate server (please unset DELEGATE_SERVER first)");
+
                 if (aaIds.isEmpty()) {
-                    throw new IllegalArgumentException("Invalid alliance: " + value);
-                }
-                if (aaIds.size() > 1) {
-                    throw new IllegalArgumentException("Multiple alliances not supported (yet): " + value);
+                    throw new IllegalArgumentException("No alliance provided");
                 }
 
                 for (int aaId : aaIds) {
                     if (aaId == 0) {
-                        throw new IllegalArgumentException("Invalid alliance: " + value);
+                        throw new IllegalArgumentException("None alliance (id=0) cannot be registered: " + aaIds);
                     }
                     DBAlliance alliance = DBAlliance.getOrCreate(aaId);
                     GuildDB otherDb = alliance.getGuildDB();
@@ -2405,12 +2438,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         boolean isValid = Roles.ADMIN.hasOnRoot(owner.getUser());
                         try {
                             try {
-                                List<Invite> invites = RateLimitUtil.complete(db.guild.retrieveInvites());
+                                List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites());
                                 for (Invite invite : invites) {
                                     String inviteCode = invite.getCode();
                                     inviteCodes.add(inviteCode);
                                 }
-                            } catch (InsufficientPermissionException ignore) {}
+                            } catch (InsufficientPermissionException ignore) {
+                            }
 
                             if (!inviteCodes.isEmpty() && alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
                                 for (String code : inviteCodes) {
@@ -2422,9 +2456,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                             }
 
                             if (!isValid) {
-                                String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
+                                String url = Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
                                 String content = FileUtil.readStringFromURL(url);
-                                String idStr = db.guild.getId();
+                                String idStr = db.getGuild().getId();
 
                                 if (!content.contains(idStr)) {
                                     for (String inviteCode : inviteCodes) {
@@ -2443,7 +2477,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                                         "2. Scroll down to where it says Alliance Description:\n" +
                                         "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
                                         "4. Click save\n" +
-                                        "5. Run the command " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "" + value + "", null, null) + " again\n" +
+                                        "5. Run the command " + getCommandObj(aaIds) + " again\n" +
                                         "(note: you can remove the id after setup)";
                                 throw new IllegalArgumentException(msg);
                             }
@@ -2453,7 +2487,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     }
 
                     if (otherDb != null && otherDb != db) {
-                        otherDb.deleteInfo(Key.ALLIANCE_ID);
+                        otherDb.deleteInfo(GuildDB.Key.ALLIANCE_ID);
 
                         String msg = "Only 1 root server per Alliance is permitted. The ALLIANCE_ID in the other guild: " + otherDb.getGuild() + " has been removed.\n" +
                                 "To have multiple servers, set the ALLIANCE_ID on your primary server, and then set " + CM.settings.cmd.create(GuildDB.Key.DELEGATE_SERVER.name(), "<guild-id>", null, null) + " on your other servers\n" +
@@ -2462,47 +2496,28 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         throw new IllegalArgumentException(msg);
                     }
                 }
-                return StringMan.join(aaIds, ",");
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                String[] split = input.split(",");
-                Set<Integer> parsed = new LinkedHashSet<>(split.length);
-                for (String arg : split) {
-                    Integer id = PnwUtil.parseAllianceId(arg);
-                    if (id == null) {
-                        throw new IllegalArgumentException("Invalid alliance: " + arg);
-                    }
-                    parsed.add(id);
-                }
-                return parsed;
+                return aaIds;
             }
 
             @Override
             public String help() {
-                return "Your alliance id. `null` if no alliance";
+                return "Your alliance id";
             }
 
             @Override
-            public String toString(Object value) {
-                return StringMan.join((Set<Integer>) value, ",");
+            public String toString(Set<Integer> value) {
+                return StringMan.join(value, ",");
             }
-        },
+        };
 
-        API_KEY() {
+        public static final GuildSetting<List<String>> API_KEY = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, List.class, String.class) {
             @Override
-            public String[] parse(GuildDB db, String input) {
-                return input.split(",");
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
+            public List<String> validate(GuildDB db, List<String> keys) {
+                keys = new ArrayList<>(new LinkedHashSet<>(keys));
                 Set<Integer> aaIds = db.getAllianceIds();
                 if (aaIds.isEmpty()) {
-                    throw new IllegalArgumentException("Please first use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance>", null, null) + "");
+                    throw new IllegalArgumentException("Please first use " + CM.settings.cmd.create(Key.ALLIANCE_ID.name(), "<alliance>", null, null));
                 }
-
-                String[] keys = value.split(",");
                 for (String key : keys) {
                     try {
                         Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
@@ -2530,45 +2545,51 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                                 }
                                 throw new IllegalArgumentException("API key is not from a nation in the alliance (nation: " + nation + "): " + e.getMessage());
                             }
-                            System.out.println("Record " + details);
                         } catch (Throwable ignore) {
                             ignore.printStackTrace();
                         }
                         throw new IllegalArgumentException("Key was rejected: " + e.getMessage());
                     }
                 }
-
-
-                return value;
+                return keys;
             }
 
             @Override
-            public String toString(Object value) {
+            public String toString(List<String> value) {
+                return StringMan.join(value, ",");
+            }
+
+            @Override
+            public String toReadableString(List<String> value) {
                 return "<redacted>";
             }
 
             @Override
             public String help() {
-                return "APi key found on: <https://politicsandwar.com/account/>.";
+                return "APi key found on: <https://politicsandwar.com/account/>\n" +
+                        "Needed for alliance functions and information";
             }
-        },
+        }.requires(ALLIANCE_ID);
 
-        ESPIONAGE_ALERT_CHANNEL(false, API_KEY, CommandCategory.MILCOM) {
+        public static GuildSetting<MessageChannel> ESPIONAGE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
             @Override
-            public String validate(GuildDB db, String value) {
-                db.getOrThrow(Key.ALLIANCE_ID);
+            public MessageChannel validate(GuildDB db, MessageChannel channel) {
+                db.getOrThrow(GuildDB.Key.ALLIANCE_ID);
                 Set<Integer> aaIds = db.getAllianceIds(true);
                 if (aaIds.isEmpty()) {
                     throw new IllegalArgumentException("Guild not registered to an alliance. See: " + CM.settings.cmd.toSlashMention() + " with key `" + ALLIANCE_ID.name() + "`");
                 }
                 String msg = "Invalid api key set. See " + CM.settings.cmd.toSlashMention() + " with key `" + API_KEY.name() + "`";
-                for (String key : ((String[]) db.getOrThrow(Key.API_KEY))) {
+                for (String key : db.getOrThrow(GuildDB.Key.API_KEY)) {
                     Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                     if (nationId == null) throw new IllegalArgumentException(msg);
                     DBNation nation = DBNation.byId(nationId);
-                    if (nation.getAlliancePosition() == null) throw new IllegalArgumentException(msg + " (no position found for nation: " + nationId + ")");
-                    if (!nation.getAlliancePosition().hasPermission(AlliancePermission.SEE_SPIES)) throw new IllegalArgumentException(msg + " (nation: " + nationId + " does not have permission " + AlliancePermission.SEE_SPIES + ")");
-                    if (!aaIds.contains(nation.getAlliance_id())) throw new IllegalArgumentException(msg + " (nation: " + nationId + " is not in your alliance: " + StringMan.getString(aaIds) + ")");
+                    if (nation.getAlliancePosition() == null)
+                        throw new IllegalArgumentException(msg + " (no position found for nation: " + nationId + ")");
+                    if (!nation.getAlliancePosition().hasPermission(AlliancePermission.SEE_SPIES))
+                        throw new IllegalArgumentException(msg + " (nation: " + nationId + " does not have permission " + AlliancePermission.SEE_SPIES + ")");
+                    if (!aaIds.contains(nation.getAlliance_id()))
+                        throw new IllegalArgumentException(msg + " (nation: " + nationId + " is not in your alliance: " + StringMan.getString(aaIds) + ")");
 
                     PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.create(nationId, key));
                     try {
@@ -2581,1280 +2602,88 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (pusher == null) {
                     throw new IllegalArgumentException("Pusher is not enabled. Please contact the bot owner.");
                 }
-                String channelName = Key.validateChannel(db, value);
+
+                channel = validateChannel(db, channel);
+
                 for (int aaId : aaIds) {
-                    pusher.setupSpySubscriptions(db, DBAlliance.getOrCreate(aaId));
+                    DBAlliance aa = DBAlliance.get(aaId);
+                    if (aa != null) {
+                        pusher.setupSpySubscriptions(db, aa);
+                    }
                 }
 
-                return channelName;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
+                return channel;
             }
 
             @Override
             public String help() {
                 return "The channel to get alerts when a member is spied";
             }
-        },
-
-        EMBASSY_CATEGORY(true, ALLIANCE_ID, CommandCategory.FOREIGN_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                Guild guild = db.getGuild();
-                Category category = DiscordUtil.getCategory(guild, value);
-                if (category == null) {
-                    throw new IllegalArgumentException("Invalid category: " + value);
-                }
-                if (!category.getGuild().equals(guild)) {
-                    throw new IllegalArgumentException("Invalid guild for: " + value);
-                }
-                return category.getId();
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getCategory(db.getGuild(), input);
-            }
-
+        }.requires(API_KEY).requires(ALLIANCE_ID);
+        public static GuildSetting<Boolean> MEMBER_CAN_SET_BRACKET = new GuildBooleanSetting(GuildSettingCategory.TAX) {
             @Override
             public String help() {
-                return "The name or id of the CATEGORY you would like embassy channels created in (for " + CM.embassy.cmd.toSlashMention() + ")";
+                return "Whether members can use " + CM.nation.set.taxbracket.cmd.toSlashMention();
             }
-        },
-
-        ASSIGNABLE_ROLES(true, null, CommandCategory.INTERNAL_AFFAIRS) {
+        }.requires(ALLIANCE_ID).requires(API_KEY);
+        public static GuildSetting<Boolean> MEMBER_CAN_OFFSHORE = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
             @Override
-            public Object parse(GuildDB db, String input) {
-                Guild guild = db.getGuild();
-                Map<Role, Set<Role>> result = new LinkedHashMap<>();
-                for (String line : input.split("\n")) {
-                    String[] split = line.split("[:=]");
-                    String key = split[0].trim();
-                    Role roleKey = DiscordUtil.getRole(guild, key);
-                    if (roleKey != null) {
-                        for (String roleId : split[1].split(",")) {
-                            roleId = roleId.trim();
-                            Role roleValue = DiscordUtil.getRole(guild, roleId);
-
-                            if (roleValue != null) {
-                                result.computeIfAbsent(roleKey, f -> new HashSet<>()).add(roleValue);
-                            }
+            public boolean allowed(GuildDB db, boolean throwError) {
+                if (super.allowed(db, throwError)) {
+                    if (db.getOffshoreDB() == null) {
+                        if (throwError) {
+                            throw new IllegalArgumentException("No offshore is set. See " + CM.offshore.add.cmd.toSlashMention());
                         }
+                        return false;
                     }
                 }
-
-                return result;
+                return false;
             }
 
-            @Override
-            public String toString(Object parsed) {
-                Map<Role, Set<Role>> map = (Map<Role, Set<Role>>) parsed;
-                List<String> lines = new ArrayList<>();
-                for (Map.Entry<Role, Set<Role>> entry : map.entrySet()) {
-                    String key = entry.getKey().getAsMention();
-                    List<String> valueStrings = entry.getValue().stream().map(f -> f.getAsMention()).collect(Collectors.toList());
-                    String value = StringMan.join(valueStrings, ",");
-
-                    lines.add(key +":" + value);
-                }
-                return StringMan.join(lines, "\n");
-            }
-
-            @Override
-            public String help() {
-                return "Map roles that can be assigned (or removed). See `" +  CM.self.create.cmd.toSlashMention() + "` " + CM.role.removeAssignableRole.cmd.toSlashMention() + " " + CM.role.add.cmd.toSlashMention() + " " + CM.role.remove.cmd.toSlashMention() + "";
-            }
-        },
-
-        DEFENSE_WAR_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
-            @Override
-            public String help() {
-                return "The #channel to receive alerts for defensive wars";
-            }
-        },
-
-        OFFENSIVE_WAR_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts for offensive wars";
-            }
-        },
-
-        WAR_PEACE_ALERTS(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts for changes to any war peace offers";
-            }
-        },
-
-        UNBLOCKADE_REQUESTS(true, null, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts for unblockade requests";
-            }
-        },
-
-        BLOCKADED_ALERTS(true, DEFENSE_WAR_CHANNEL, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts for blockades";
-            }
-        },
-
-        UNBLOCKADED_ALERTS(true, BLOCKADED_ALERTS, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts for unblockades";
-            }
-        },
-
-        SHOW_ALLY_OFFENSIVE_WARS(true, OFFENSIVE_WAR_CHANNEL, CommandCategory.MILCOM) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOrNull(ALLIANCE_ID) != null && !db.getCoalition("allies").isEmpty();
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether to show offensive war alerts for allies (true/false)";
-            }
-        },
-
-        SHOW_ALLY_DEFENSIVE_WARS(true, DEFENSE_WAR_CHANNEL, CommandCategory.MILCOM) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOrNull(ALLIANCE_ID) != null && !db.getCoalition("allies").isEmpty();
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether to show offensive war alerts for allies (true/false)";
-            }
-        },
-
-        HIDE_APPLICANT_WARS(true, OFFENSIVE_WAR_CHANNEL, CommandCategory.MILCOM) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOrNull(ALLIANCE_ID) != null;
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether to hide war alerts for applicants";
-            }
-        },
-
-        MEMBER_CAN_SET_BRACKET(false, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether members can use " + CM.nation.set.taxbracket.cmd.toSlashMention() + "";
-            }
-        },
-
-        MEMBER_CAN_OFFSHORE(false, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOrNull(ALLIANCE_ID) != null && !db.getCoalition("offshore").isEmpty();
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
             @Override
             public String help() {
                 return "Whether members can use " + CM.offshore.send.cmd.toSlashMention() + " (true/false)";
             }
-        },
-
-        MEMBER_CAN_WITHDRAW(false, null, CommandCategory.ECON) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOffshore() != null;
-            }
-
+        }.requires(ALLIANCE_ID).requires(API_KEY).requiresCoalition(Coalition.OFFSHORE).requiresOffshore();
+        public static GuildSetting<String> RECRUIT_MESSAGE_SUBJECT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
             @Override
             public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether members can use " + CM.transfer.resources.cmd.toSlashMention() + " or " + Settings.commandPrefix(true) + "grant` to access their own funds (true/false)";
-            }
-        },
-
-        MEMBER_CAN_WITHDRAW_WARTIME(false, MEMBER_CAN_WITHDRAW, CommandCategory.ECON) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOffshore() != null;
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether members can withdraw during wartime (true/false)";
-            }
-        },
-
-        MEMBER_CAN_WITHDRAW_IGNORES_GRANTS(false, MEMBER_CAN_WITHDRAW, CommandCategory.ECON) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOffshore() != null;
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether members's withdraw limit ignores their grants (true/false)";
-            }
-        },
-
-        DISPLAY_ITEMIZED_DEPOSITS(false, null, CommandCategory.ECON) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return Roles.MEMBER.toRole(db) != null;
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether members's deposits are displayed by default with a breakdown of each category (true/false)";
-            }
-        },
-
-//        MEMBER_CAN_GRANT_SELF(false, MEMBER_CAN_WITHDRAW, CommandCategory.ECON) {
-//            @Override
-//            public boolean allowed(GuildDB db) {
-//                return db.getOffshore() != null;
-//            }
-//
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Boolean.valueOf(value) + "";
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return Boolean.parseBoolean(input);
-//            }
-//            @Override
-//            public String help() {
-//                return "Whether members can send themselves grants (Not recommended)";
-//            }
-//        },
-
-        LOST_WAR_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
-            @Override
-            public String help() {
-                return "The #channel to post wars when our side loses a war";
-            }
-        },
-
-        WON_WAR_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
-            @Override
-            public String help() {
-                return "The #channel to post wars when our side wins a war (only includes actives)";
-            }
-        },
-
-//        UNCOUNTERED_TASKS(true, ALLIANCE_ID, null) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Key.validateChannel(db, value);
-//            }
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return DiscordUtil.getChannel(db.getGuild(), input);
-//            }
-//
-//            @Override
-//            public String help() {
-//                return "The channel for uncountered war tasks";
-//            }
-//        },
-//
-//        COUNTERING_TASKS(true, ALLIANCE_ID, null) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Key.validateChannel(db, value);
-//            }
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return DiscordUtil.getChannel(db.getGuild(), input);
-//            }
-//
-//            @Override
-//            public String help() {
-//                return "The channel for countering war tasks";
-//            }
-//        },
-
-        DEPOSIT_ALERT_CHANNEL(true, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts when a nation makes a deposit (this will no longer reliably alert)";
-            }
-        },
-
-        WITHDRAW_ALERT_CHANNEL(false, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts when a nation requests a transfer";
-            }
-        },
-
-        ADDBALANCE_ALERT_CHANNEL(false, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts when balance is added";
-            }
-        },
-
-        BANK_ALERT_CHANNEL(false, null, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getPermission(BankAlerts.class) > 0;
-            }
-
-            @Override
-            public String help() {
-                return "The #channel to receive alerts e.g. for custom `" + Settings.commandPrefix(true) + "BankAlerts`";
-            }
-        },
-
-        REROLL_ALERT_CHANNEL(false, null, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
-            @Override
-            public String help() {
-                return "The #channel to receive alerts for nation rerolls";
-            }
-        },
-
-        DELETION_ALERT_CHANNEL(false, null, CommandCategory.GAME_INFO_AND_TOOLS) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getPermission(BankAlerts.class) > 0;
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The channel to receive alerts when a nation deletes (in all of orbis)";
-            }
-        },
-        AUTONICK() {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return StringMan.parseUpper(AutoNickOption.class, value.toUpperCase()).name();
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return StringMan.parseUpper(AutoNickOption.class, input);
-            }
-            @Override
-            public String help() {
-                return "Options: " + StringMan.getString(AutoNickOption.values()) + "\n" +
-                        "See also: " + CM.role.clearNicks.cmd.toSlashMention() + "";
-            }
-        },
-
-        AUTOROLE() {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return StringMan.parseUpper(AutoRoleOption.class, value.toUpperCase()).name();
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return AutoRoleOption.valueOf(input.toUpperCase());
-            }
-            @Override
-            public String help() {
-                return "Options: " + StringMan.getString(AutoRoleOption.values()) + "\n" +
-                        "See also:\n" +
-                        " - " + CM.coalition.create.cmd.create(null, Coalition.MASKEDALLIANCES.name()) + "\n" +
-                        " - " + CM.role.clearAllianceRoles.cmd.toSlashMention() + "\n" +
-                        " - " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE_ALLIANCE_RANK.name(), null, null, null).toSlashCommand() + "\n" +
-                        " - " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE_TOP_X.name(), null, null, null).toSlashCommand();
-            }
-        },
-
-        AUTOROLE_ALLIANCE_RANK(true, AUTOROLE, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return StringMan.parseUpper(Rank.class, value.toUpperCase()).name();
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return StringMan.parseUpper(Rank.class, input.toUpperCase());
-            }
-            @Override
-            public String help() {
-                return "The ingame rank required to get an alliance role. (default: member) Options: " + StringMan.getString(Rank.values());
-            }
-        },
-
-        AUTOROLE_TOP_X(true, AUTOROLE, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Integer.parseInt(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Integer.parseInt(input);
-            }
-            @Override
-            public String help() {
-                return "The number of top alliances to provide roles for, defaults to `0`";
-            }
-        },
-
-        DO_NOT_RAID_TOP_X(true, ALLIANCE_ID, CommandCategory.FOREIGN_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Integer.parseInt(value) + "";
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Integer.parseInt(input);
-            }
-            @Override
-            public String help() {
-                return "The number of top alliances to include in the Do Not Raid (DNR) list\n" +
-                        "Members are not permitted to declare on members of these alliances or their direct allies\n" +
-                        "Results in the DNR will be excluded from commands, and will alert Foreign Affairs if violated\n" +
-                        "Defaults to `0`";
-            }
-        },
-
-        AUTOROLE_ALLY_GOV() {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether to give gov/member roles to allies (this is intended for coalition servers), `true` or `false`";
-            }
-        },
-
-        AUTOROLE_ALLY_ROLES(false, AUTOROLE_ALLY_GOV, CommandCategory.GUILD_MANAGEMENT) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return toString(parse(db, value));
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                Set<Roles> roles = new HashSet<>();
-                for (String arg : input.split(",")) {
-                    roles.add(Roles.parse(arg));
-                }
-                return roles;
-            }
-
-            @Override
-            public String toString(Object value) {
-                return StringMan.join(((Set<Roles>) value).stream().map(f -> f.name()).collect(Collectors.toList()), ",");
-            }
-
-            @Override
-            public String help() {
-                return "List of roles to autorole from ally servers\n" +
-                        "(this is intended for coalition servers to give gov roles to allies)";
-            }
-        },
-
-        MENTION_MILCOM_FILTER(false, DEFENSE_WAR_CHANNEL, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                Set<DBNation> nations = DiscordUtil.parseNations(db.getGuild(), value);
+                if (value.length() >= 50)
+                    throw new IllegalArgumentException("Your subject line cannot be longer than 50 characters.");
                 return value;
-            }
-
-            @Override
-            public Set<DBNation> parse(GuildDB db, String input) {
-                return DiscordUtil.parseNations(db.getGuild(), input);
-            }
-            @Override
-            public String help() {
-                return "A nation filter to apply to limit what wars milcom gets pinged for. ";
-            }
-        },
-
-        WAR_ALERT_FOR_OFFSHORES(true, DEFENSE_WAR_CHANNEL, CommandCategory.MILCOM) {
-            @Override
-            public <T> boolean hasPermission(GuildDB db, User author, T value) {
-                return super.hasPermission(db, author, value) && !db.getCoalition(Coalition.OFFSHORE).isEmpty();
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "Whether to do war alerts for offshore alliances";
-            }
-        },
-
-        ENABLE_WAR_ROOMS(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                db.warChannelInit = false;
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "If war rooms should be enabled (i.e. auto generate a channel for wars against active nations)\n" +
-                        "Note: Defensive war channels must be enabled to have auto war room creation";
-            }
-        },
-
-        WAR_SERVER(false, ENABLE_WAR_ROOMS, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                value = Key.validateGuild(value);
-                Guild guild = Locutus.imp().getDiscordApi().getGuildById(Long.parseLong(value));
-                GuildDB otherDb = Locutus.imp().getGuildDB(guild);
-                if (guild.getIdLong() == db.getGuild().getIdLong()) throw new IllegalArgumentException("Use " + CM.settings.cmd.create(GuildDB.Key.WAR_SERVER.name(), "null", null, null) + " to unset the war server");
-                if (otherDb.getOrNull(Key.WAR_SERVER) != null) throw new IllegalArgumentException("Circular reference. The server you have set already defers its war room");
-                return value;
-            }
-
-            @Override
-            public boolean hasPermission(GuildDB db, User author, Object value) {
-                if (!super.hasPermission(db, author, value)) return false;
-                if (value == null) return true;
-                Guild guild = (Guild) value;
-                if (!Roles.ADMIN.has(author, guild)) throw new IllegalArgumentException("You do not have ADMIN on " + guild);
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Locutus.imp().getDiscordApi().getGuildById(Long.parseLong(input));
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((Guild) value).getName();
-            }
-            @Override
-            public String help() {
-                return "The guild to defer war rooms to";
-            }
-        },
-
-        DELEGATE_SERVER(false, null, CommandCategory.ADMIN) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                Map<Integer, Long> ids = (Map<Integer, Long>) parse(db, value);
-                if (db.getOrNull(Key.ALLIANCE_ID) != null) {
-                    throw new IllegalArgumentException("You cannot delegate a server with an alliance id set");
-                }
-                // loop over ids
-                for (Map.Entry<Integer, Long> entry : ids.entrySet()) {
-                    Guild guild = Locutus.imp().getDiscordApi().getGuildById(entry.getValue());
-                    if (guild == null) throw new IllegalArgumentException("Invalid guild: `" + entry.getValue() + "` (are you sure locutus is in that server?)");
-                    GuildDB otherDb = Locutus.imp().getGuildDB(guild);
-                    if (guild.getIdLong() == db.getIdLong()) throw new IllegalArgumentException("You cannot set the delegate as this guild");
-                    if (otherDb.getInfo(Key.DELEGATE_SERVER, false) != null) throw new IllegalArgumentException("Circular reference. The server you have set already delegates its DELEGATE_SERVER");
-                }
-                if (db.getOrNull(Key.ALLIANCE_ID) != null) throw new IllegalArgumentException("Cannot delegate alliance guilds (please unset ALLIANCE_ID first)");
-                return value;
-            }
-
-            @Override
-            public boolean hasPermission(GuildDB db, User author, Object value) {
-                if (!super.hasPermission(db, author, value)) return false;
-                if (value == null) return true;
-                Map.Entry<Integer, Long> entry = (Map.Entry<Integer, Long>) value;
-                GuildDB otherDB = Locutus.imp().getGuildDB(entry.getValue());
-                if (otherDB == null) {
-                    throw new IllegalArgumentException("Invalid guild: `" + entry.getValue() + "` (are you sure locutus is in that server?)");
-                }
-                if (!Roles.ADMIN.has(author, otherDB.getGuild())) throw new IllegalArgumentException("You do not have ADMIN on " + otherDB.getGuild());
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                String[] split2 = input.trim().split("[:|=]", 2);
-                if (split2.length == 2) {
-                    return Map.entry(Integer.parseInt(split2[0]), Long.parseLong(split2[1]));
-                } else {
-                    return Map.entry(0, Long.parseLong(input));
-                }
-            }
-
-            @Override
-            public String toString(Object value) {
-                Map.Entry<Integer, Long> pair = (Map.Entry<Integer, Long>) value;
-                if (pair.getKey() == 0) return pair.getValue() + "";
-                return pair.getKey() + ":" + pair.getValue();
-            }
-            @Override
-            public String help() {
-                return "The guild to delegate unset settings to";
-            }
-        },
-
-        FA_SERVER(false, null, CommandCategory.FOREIGN_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                value = Key.validateGuild(value);
-                Guild guild = Locutus.imp().getDiscordApi().getGuildById(Long.parseLong(value));
-                GuildDB otherDb = Locutus.imp().getGuildDB(guild);
-                if (guild.getIdLong() == db.getGuild().getIdLong()) throw new IllegalArgumentException("Use " + CM.settings.cmd.create(GuildDB.Key.FA_SERVER.name(), "null", null, null) + " to unset the FA_SERVER");
-                if (otherDb.getInfo(Key.FA_SERVER, false) != null) throw new IllegalArgumentException("Circular reference. The server you have set already defers its FA_SERVER");
-                return value;
-            }
-
-            @Override
-            public boolean hasPermission(GuildDB db, User author, Object value) {
-                if (!super.hasPermission(db, author, value)) return false;
-                if (value == null) return true;
-                GuildDB otherDB = (GuildDB) value;
-                if (!Roles.ADMIN.has(author, otherDB.getGuild())) throw new IllegalArgumentException("You do not have ADMIN on " + otherDB.getGuild());
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Locutus.imp().getGuildDB(Long.parseLong(input));
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((Guild) value).getName();
-            }
-            @Override
-            public String help() {
-                return "The guild to defer coalitions to";
-            }
-        },
-
-        RESOURCE_CONVERSION(true, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-            @Override
-            public String help() {
-                return "If the alliance can convert resources to cash.\n" +
-                        "This is done virtually in " + CM.deposits.check.cmd.toSlashMention() + "" +
-                        "Resources are converted using market average\n" +
-                        "Use `#cash` as the note when depositing or transferring funds";
-            }
-        },
-
-//        DISABLE_CHANNEL_MOVING(false, null, CommandCategory.INTERNAL_AFFAIRS) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Boolean.valueOf(value) + "";
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return Boolean.parseBoolean(input);
-//            }
-//            @Override
-//            public String help() {
-//                return "If channel moving should be prevented";
-//            }
-//
-//            @Override
-//            public boolean hasPermission(GuildDB db, User author) {
-//                return Roles.hasAny(author, db.getGuild(), Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS);
-//            }
-//        },
-
-        DEPOSIT_INTEREST(true, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.isWhitelisted();
-            }
-
-            @Override
-            public String help() {
-                return "If members should expect to receive interest on their deposits\n" +
-                        "You must manually run: " + CM.deposits.interest.cmd.toSlashMention();
-            }
-        },
-
-//        WARCHEST_INCLUDES_DEPOSITS(true, ALLIANCE_ID, CommandCategory.ECON) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Boolean.valueOf(value) + "";
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return Boolean.parseBoolean(input);
-//            }
-//            @Override
-//            public String help() {
-//                return "Whether to include warchest in deposits, `true` or `false`";
-//            }
-//        },
-
-        TRADE_ALERT_CHANNEL(true, null, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.isWhitelisted();
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts for trades";
-            }
-        },
-
-        RECRUIT_MESSAGE_SUBJECT(true, API_KEY, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                if (value.length() >= 50) throw new IllegalArgumentException("Your subject line cannot be longer than 50 characters.");
-                return value;
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                if (db.getIdLong() == 940788925209923584L) return true;
-                AllianceList aaList = db.getAllianceList();
-                return aaList != null && !aaList.isEmpty();
             }
 
             @Override
             public String help() {
                 return "The recruit message subject";
             }
-        },
-
-        RECRUIT_MESSAGE_CONTENT(true, RECRUIT_MESSAGE_SUBJECT, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                if (db.getIdLong() == 940788925209923584L) return true;
-                AllianceList aaList = db.getAllianceList();
-                return aaList != null && !aaList.isEmpty();
-            }
-
+        }.requireValidAlliance().requires(API_KEY).requires(ALLIANCE_ID);
+        public static GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
             @Override
             public String help() {
                 return "The recruit message body";
             }
-        },
-
-        RECRUIT_MESSAGE_OUTPUT(true, RECRUIT_MESSAGE_CONTENT, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
+        }.requireValidAlliance().requires(RECRUIT_MESSAGE_SUBJECT).requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> RECRUIT_MESSAGE_OUTPUT = new GuildChannelSetting(GuildSettingCategory.RECRUIT) {
             @Override
             public String help() {
                 return "The #channel to receive recruitment message output";
             }
-
+        }.requireValidAlliance().requires(RECRUIT_MESSAGE_CONTENT).requireValidAlliance();
+        public static GuildSetting<Long> RECRUIT_MESSAGE_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT) {
             @Override
-            public boolean allowed(GuildDB db) {
-                AllianceList aaList = db.getAllianceList();
-                return aaList != null && !aaList.isEmpty();
-            }
-        },
-
-        RECRUIT_MESSAGE_DELAY(true, RECRUIT_MESSAGE_OUTPUT, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                if (TimeUtil.timeToSec(value) <= 60) throw new IllegalArgumentException("please use a time format e.g. 3m");
-                return value;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return TimeUtil.timeToSec(input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return value.toString();
+            public String toReadableString(Long value) {
+                return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
             }
 
             @Override
             public String help() {
                 return "The amount of time to delay recruitment messages by";
             }
-
+        }.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID);
+        public static GuildSetting<Map<NationFilterString, TaxRate>> REQUIRED_INTERNAL_TAXRATE = new GuildSetting<Map<NationFilterString, TaxRate>>(GuildSettingCategory.TAX, Map.class, NationFilterString.class, TaxRate.class) {
             @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-        },
-
-        BEIGE_ALERT_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
-            @Override
-            public String help() {
-                return "The #channel to receive alerts when a raid target leaves beige.\n" +
-                        "" + CM.role.setAlias.cmd.create(Roles.BEIGE_ALERT.name(), null, null, null) + " must also be set and have members in range";
-            }
-        },
-
-        ENEMY_BEIGED_ALERT(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts when an enemy gets beiged";
-            }
-        },
-
-        ENEMY_BEIGED_ALERT_VIOLATIONS(true, ALLIANCE_ID, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The #channel to receive alerts when an enemy gets beiged (without reason)";
-            }
-        },
-
-//        NO_BEIGE_RANGE(false, ENEMY_BEIGED_ALERT_VIOLATIONS, CommandCategory.MILCOM) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                CityRanges range = CityRanges.parse(value);
-//                return range.toString();
-//            }
-//
-//            @Override
-//            public boolean allowed(GuildDB db) {
-//                return db.isWhitelisted();
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return CityRanges.parse(input);
-//            }
-//
-//            @Override
-//            public String toString(Object value) {
-//                return ((CityRanges) value).toString();
-//            }
-//
-//            @Override
-//            public String help() {
-//                return "The list of city ranges to avoid beiging in (in the form `c5-10,c20+`)";
-//            }
-//        },
-
-        REQUIRED_INTERNAL_TAXRATE(false, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public Object parse(GuildDB db, String input) {
-                Map<NationFilterString, TaxRate> filterToTaxRate = new LinkedHashMap<>();
-                for (String line : input.split("\n")) {
-                    String[] split = line.split("[:]");
-                    if (split.length != 2) continue;
-
-                    String filterStr = split[0].trim();
-
-                    boolean containsNation = false;
-                    for (String arg : filterStr.split(",")) {
-                        if (!arg.startsWith("#")) containsNation = true;
-                    }
-                    if (!containsNation) filterStr += ",*";
-                    NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
-                    TaxRate rate = new TaxRate(split[1]);
-                    filterToTaxRate.put(filter, rate);
-                }
-                if (filterToTaxRate.isEmpty()) throw new IllegalArgumentException("No valid nation filters provided");
-
-                return filterToTaxRate;
-            }
-
-            @Override
-            public String toString(Object value) {
-                Map<NationFilterString, TaxRate> filterToTaxRate = (Map<NationFilterString, TaxRate>) value;
+            public String toString(Map<NationFilterString, TaxRate> filterToTaxRate) {
                 StringBuilder result = new StringBuilder();
                 for (Map.Entry<NationFilterString, TaxRate> entry : filterToTaxRate.entrySet()) {
                     result.append(entry.getKey().getFilter() + ":" + entry.getValue() + "\n");
@@ -3864,7 +2693,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public String help() {
-                StringBuilder response = new StringBuilder("This setting maps nation filters to internal tax rate for bulk automation.\n" +
+                String response = "This setting maps nation filters to internal tax rate for bulk automation.\n" +
                         "To list nations current rates: " + CM.tax.listBracketAuto.cmd.toSlashMention() + "\n" +
                         "To bulk move nations: " + CM.nation.set.taxinternal.cmd.toSlashMention() + "\n" +
                         "Tax rate is in the form: `money/rss`\n" +
@@ -3874,59 +2703,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         "#cities>=10:25/25" +
                         "\n```\n" +
                         "All nation filters are supported (e.g. roles)\n" +
-                        "Priority is first to last (so put defaults at the bottom)");
+                        "Priority is first to last (so put defaults at the bottom)";
 
-                return response.toString();
+                return response;
             }
-        },
-
-        REQUIRED_TAX_BRACKET(false, ALLIANCE_ID, CommandCategory.ECON) {
+        }.requires(ALLIANCE_ID).requires(API_KEY);
+        public static GuildSetting<Map<NationFilterString, Integer>> REQUIRED_TAX_BRACKET = new GuildSetting<Map<NationFilterString, Integer>>(GuildSettingCategory.TAX, Map.class, NationFilterString.class, Integer.class) {
             @Override
-            public String validate(GuildDB db, String value) {
-                Map<NationFilterString, Integer> parsed = (Map<NationFilterString, Integer>) parse(db, value);
-
-                AllianceList alliance = db.getAllianceList();
-                if (alliance == null || alliance.isEmpty()) throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
-
-                Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
-                if (brackets.isEmpty()) throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
-
-                for (Map.Entry<NationFilterString, Integer> entry : parsed.entrySet()) {
-                    if (!brackets.containsKey(entry.getValue())) {
-                        throw new IllegalArgumentException("No tax bracket founds for id: " + entry.getValue());
-                    }
-                }
-
-                return value;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                Map<NationFilterString, Integer> filterToTaxId = new LinkedHashMap<>();
-                for (String line : input.split("\n")) {
-                    String[] split = line.split("[:]");
-                    if (split.length != 2) continue;
-
-                    String filterStr = split[0].trim();
-
-                    boolean containsNation = false;
-                    for (String arg : filterStr.split(",")) {
-                        if (!arg.startsWith("#")) containsNation = true;
-                    }
-                    if (!containsNation) filterStr += ",*";
-                    NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
-                    int taxId = Integer.parseInt(split[1]);
-                    filterToTaxId.put(filter, taxId);
-                }
-
-                return filterToTaxId;
-            }
-
-            @Override
-            public String toString(Object value) {
-                Map<NationFilterString, Integer> filterToTaxId = (Map<NationFilterString, Integer>) value;
+            public String toString(Map<NationFilterString, Integer> filterToBracket) {
                 StringBuilder result = new StringBuilder();
-                for (Map.Entry<NationFilterString, Integer> entry : filterToTaxId.entrySet()) {
+                for (Map.Entry<NationFilterString, Integer> entry : filterToBracket.entrySet()) {
                     result.append(entry.getKey().getFilter() + ":" + entry.getValue() + "\n");
                 }
                 return result.toString().trim();
@@ -3934,95 +2720,459 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             @Override
             public String help() {
-                StringBuilder response = new StringBuilder("This setting maps nation filters to ingame tax id for bulk automation.\n" +
+                String response = "This setting maps nation filters to tax bracket for bulk automation.\n" +
                         "To list nations current rates: " + CM.tax.listBracketAuto.cmd.toSlashMention() + "\n" +
-                        "To bulk move nations: " + CM.nation.set.taxbracketAuto.cmd.toSlashMention() + "\n" +
-                        "In the form:\n" +
+                        "To bulk move nations: " + CM.nation.set.taxbracket.cmd.toSlashMention() + "\n" +
+                        "In the form: \n" +
                         "```\n" +
-                        "#cities<10:1234\n" +
-                        "#cities>=10:5678\n" +
-                        "```\n" +
-                        "All nation filters are supported\n" +
-                        "Priority is first to last (so put defaults at the bottom)");
+                        "#cities<10:1\n" +
+                        "#cities>=10:2" +
+                        "\n```\n" +
+                        "All nation filters are supported (e.g. roles)\n" +
+                        "Priority is first to last (so put defaults at the bottom)";
 
-                return response.toString();
+                return response;
             }
-        },
 
-        REQUIRED_MMR(false, ALLIANCE_ID, CommandCategory.MILCOM) {
             @Override
-            public Object parse(GuildDB db, String input) {
-                Map<NationFilterString, MMRMatcher> filterToMMR = new LinkedHashMap<>();
-                for (String line : input.split("\n")) {
-                    String[] split = line.split("[:]");
-                    if (split.length != 2) continue;
+            public Map<NationFilterString, Integer> validate(GuildDB db, Map<NationFilterString, Integer> parsed) {
 
-                    String filterStr = split[0].trim();
+                AllianceList alliance = db.getAllianceList();
+                if (alliance == null || alliance.isEmpty())
+                    throw new IllegalArgumentException("No valid `!KeyStore ALLIANCE_ID` set");
 
-                    boolean containsNation = false;
-                    for (String arg : filterStr.split(",")) {
-                        if (!arg.startsWith("#")) containsNation = true;
+                Map<Integer, TaxBracket> brackets = alliance.getTaxBrackets(false);
+                if (brackets.isEmpty())
+                    throw new IllegalArgumentException("Could not fetch tax brackets. Is `!KeyStore API_KEY` correct?");
+
+                for (Map.Entry<NationFilterString, Integer> entry : parsed.entrySet()) {
+                    if (!brackets.containsKey(entry.getValue())) {
+                        throw new IllegalArgumentException("No tax bracket founds for id: " + entry.getValue());
                     }
-                    if (!containsNation) filterStr += ",*";
-                    DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
-                    NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
-                    MMRMatcher mmr = new MMRMatcher(split[1]);
-                    filterToMMR.put(filter, mmr);
                 }
 
-                return filterToMMR;
+                return parsed;
             }
-
+        }.requires(ALLIANCE_ID).requires(API_KEY);
+        public static GuildSetting<Map<ResourceType, Double>> WARCHEST_PER_CITY = new GuildResourceSetting(GuildSettingCategory.AUDIT) {
             @Override
-            public String toString(Object value) {
-                Map<NationFilterString, MMRMatcher> filterToMMR = (Map<NationFilterString, MMRMatcher>) value;
-                StringBuilder result = new StringBuilder();
-                for (Map.Entry<NationFilterString, MMRMatcher> entry : filterToMMR.entrySet()) {
-                    result.append(entry.getKey().getFilter() + ":" + entry.getValue().getRequired() + "\n");
+            public String help() {
+                return "Amount of warchest to recommend per city in form `{steel=1234,aluminum=5678,gasoline=69,munitions=420}`";
+            }
+        }.requires(ALLIANCE_ID).requireValidAlliance().requires(API_KEY);
+        public static GuildSetting<Category> EMBASSY_CATEGORY = new GuildCategorySetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
+            @Override
+            public String help() {
+                return "The name or id of the CATEGORY you would like embassy channels created in (for " + CM.embassy.cmd.toSlashMention() + ")";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<Map<Role, Set<Role>>> ASSIGNABLE_ROLES = new GuildSetting<Map<Role, Set<Role>>>(GuildSettingCategory.ROLE, Map.class, TypeToken.getParameterized(Set.class, Role.class).getType()) {
+            public String toString(Map<Role, Set<Role>> map) {
+                List<String> lines = new ArrayList<>();
+                for (Map.Entry<Role, Set<Role>> entry : map.entrySet()) {
+                    String key = entry.getKey().getAsMention();
+                    List<String> valueStrings = entry.getValue().stream().map(f -> f.getAsMention()).collect(Collectors.toList());
+                    String value = StringMan.join(valueStrings, ",");
+
+                    lines.add(key + ":" + value);
                 }
-                return result.toString().trim();
+                return StringMan.join(lines, "\n");
             }
 
             @Override
             public String help() {
-                StringBuilder response = new StringBuilder("A list of filters to required MMR.\n" +
-                        "In the form:\n" +
-                        "```\n" +
-                        "#cities<10:505X\n" +
-                        "#cities>=10:0250\n" +
-                        "```\n" +
-                        "All nation filters are supported");
-
-                return response.toString();
+                return "Map roles that can be assigned (or removed). See `" + CM.self.create.cmd.toSlashMention() + "` " + CM.role.removeAssignableRole.cmd.toSlashMention() + " " + CM.role.add.cmd.toSlashMention() + " " + CM.role.remove.cmd.toSlashMention();
             }
-        },
+        };
+        public static GuildSetting<MessageChannel> DEFENSE_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
 
-        ALLOWED_BEIGE_REASONS(false, ENEMY_BEIGED_ALERT_VIOLATIONS, CommandCategory.MILCOM) {
             @Override
-            public boolean allowed(GuildDB db) {
+            public String help() {
+                return "The #channel to receive alerts for defensive wars";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<Boolean> SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+            @Override
+            public String help() {
+                return "Whether to show offensive war alerts for allies (true/false)";
+            }
+        }.requires(ALLIANCE_ID).requires(DEFENSE_WAR_CHANNEL).requiresCoalition(Coalition.ALLIES);
+        public static GuildSetting<NationFilter> MENTION_MILCOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ALERTS) {
+            @Override
+            public String help() {
+                return "A nation filter to apply to limit what wars milcom gets pinged for. ";
+            }
+        }.requires(DEFENSE_WAR_CHANNEL);
+        public static GuildSetting<Boolean> WAR_ALERT_FOR_OFFSHORES = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+            @Override
+            public String help() {
+                return "Whether to do war alerts for offshore alliances";
+            }
+        }.requiresCoalition(Coalition.OFFSHORE).requires(DEFENSE_WAR_CHANNEL);
+        public static GuildSetting<MessageChannel> OFFENSIVE_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+
+            @Override
+            public String help() {
+                return "The #channel to receive alerts for offensive wars";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<Boolean> SHOW_ALLY_OFFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+            @Override
+            public String help() {
+                return "Whether to show offensive war alerts for allies (true/false)";
+            }
+        }.requires(ALLIANCE_ID).requires(OFFENSIVE_WAR_CHANNEL).requiresCoalition(Coalition.ALLIES);
+        public static GuildSetting<Boolean> HIDE_APPLICANT_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+            @Override
+            public String help() {
+                return "Whether to hide war alerts for applicants";
+            }
+        }.requires(OFFENSIVE_WAR_CHANNEL);
+        public static GuildSetting<MessageChannel> WAR_PEACE_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+
+            @Override
+            public String help() {
+                return "The #channel to receive alerts for changes to any war peace offers";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> UNBLOCKADE_REQUESTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+
+            @Override
+            public String help() {
+                return "The #channel to receive alerts for unblockade requests";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> BLOCKADED_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+
+            @Override
+            public String help() {
+                return "The #channel to receive alerts for blockades";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> UNBLOCKADED_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+
+            @Override
+            public String help() {
+                return "The #channel to receive alerts for unblockades";
+            }
+        }.requires(BLOCKADED_ALERTS);
+        public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+            @Override
+            public String help() {
+                return "Whether members can use " + CM.transfer.resources.cmd.toSlashMention() + " or " + Settings.commandPrefix(true) + "grant` to access their own funds (true/false)";
+            }
+        }.requiresCoalition(Coalition.OFFSHORE).requiresOffshore();
+        public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_WARTIME = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+            @Override
+            public String help() {
+                return "Whether members can withdraw during wartime (true/false)";
+            }
+        }.requiresCoalition(Coalition.OFFSHORE).requiresOffshore();
+        public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_IGNORES_GRANTS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+            @Override
+            public String help() {
+                return "Whether members's withdraw limit ignores their grants (true/false)";
+            }
+        }.requiresCoalition(Coalition.OFFSHORE).requiresOffshore();
+        public static GuildSetting<Boolean> DISPLAY_ITEMIZED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+            @Override
+            public String help() {
+                return "Whether members's deposits are displayed by default with a breakdown of each category (true/false)";
+            }
+
+        }.requiresRole(Roles.MEMBER, true);
+        public static GuildSetting<MessageChannel> LOST_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+
+            @Override
+            public String help() {
+                return "The #channel to post wars when our side loses a war";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> WON_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+            @Override
+            public String help() {
+                return "The #channel to post wars when our side wins a war (only includes actives)";
+            }
+
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> DEPOSIT_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+
+
+            @Override
+            public String help() {
+                return "The #channel to receive alerts when a nation makes a deposit (this will no longer reliably alert)";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> WITHDRAW_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+            @Override
+            public String help() {
+                return "The #channel to receive alerts when a nation requests a transfer";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> ADDBALANCE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+            @Override
+            public String help() {
+                return "The #channel to receive alerts when balance is added";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> BANK_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+
+            @Override
+            public String help() {
+                return "The #channel to receive alerts e.g. for custom `" + Settings.commandPrefix(true) + "BankAlerts`";
+            }
+        }.requireValidAlliance().requires(ALLIANCE_ID).requiresWhitelisted();
+        public static GuildSetting<MessageChannel> REROLL_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+            @Override
+            public boolean allowed(GuildDB db, boolean throwException) {
+                throw new IllegalArgumentException("Please use the public channels for this (this is to reduce unnecessary discord calls)");
+            }
+
+            @Override
+            public String help() {
+                return "The #channel to receive alerts for nation rerolls";
+            }
+        }.nonPublic();
+        public static GuildSetting<MessageChannel> DELETION_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+            @Override
+            public String help() {
+                return "The channel to receive alerts when a nation deletes (in all of orbis)";
+            }
+        }.nonPublic();
+        public static GuildSetting<GuildDB.AutoNickOption> AUTONICK = new GuildEnumSetting<AutoNickOption>(GuildSettingCategory.ROLE, GuildDB.AutoNickOption.class) {
+            @Override
+            public String help() {
+                return "Options: " + StringMan.getString(GuildDB.AutoNickOption.values()) + "\n" +
+                        "See also: " + CM.role.clearNicks.cmd.toSlashMention();
+            }
+        };
+        public static GuildSetting<GuildDB.AutoRoleOption> AUTOROLE = new GuildEnumSetting<GuildDB.AutoRoleOption>(GuildSettingCategory.ROLE, GuildDB.AutoRoleOption.class) {
+            @Override
+            public String help() {
+                return "Options: " + StringMan.getString(GuildDB.AutoRoleOption.values()) + "\n" +
+                        "See also:\n" +
+                        " - " + CM.coalition.create.cmd.create(null, Coalition.MASKEDALLIANCES.name()) + "\n" +
+                        " - " + CM.role.clearAllianceRoles.cmd.toSlashMention() + "\n" +
+                        " - " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE_ALLIANCE_RANK.name(), null, null, null).toSlashCommand() + "\n" +
+                        " - " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE_TOP_X.name(), null, null, null).toSlashCommand();
+            }
+        };
+        public static GuildSetting<Rank> AUTOROLE_ALLIANCE_RANK = new GuildEnumSetting<Rank>(GuildSettingCategory.ROLE, Rank.class) {
+            @Override
+            public String help() {
+                return "The ingame rank required to get an alliance role. (default: member) Options: " + StringMan.getString(Rank.values());
+            }
+        }.requires(AUTOROLE);
+        public static GuildSetting<Integer> AUTOROLE_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ROLE) {
+            @Override
+            public String help() {
+                return "The number of top alliances to provide roles for, defaults to `0`";
+            }
+        }.requires(AUTOROLE);
+        public static GuildSetting<Integer> DO_NOT_RAID_TOP_X = new GuildIntegerSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
+            @Override
+            public String help() {
+                return "The number of top alliances to include in the Do Not Raid (DNR) list\n" +
+                        "Members are not permitted to declare on members of these alliances or their direct allies\n" +
+                        "Results in the DNR will be excluded from commands, and will alert Foreign Affairs if violated\n" +
+                        "Defaults to `0`";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<Boolean> AUTOROLE_ALLY_GOV = new GuildBooleanSetting(GuildSettingCategory.ROLE) {
+            @Override
+            public String help() {
+                return "Whether to give gov/member roles to allies (this is intended for coalition servers), `true` or `false`";
+            }
+        }.requires(AUTOROLE).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID);
+        public static GuildSetting<Set<Roles>> AUTOROLE_ALLY_ROLES = new GuildEnumSetSetting<Roles>(GuildSettingCategory.ROLE, Roles.class) {
+            @Override
+            public String toString(Set<Roles> value) {
+                return StringMan.join(value.stream().map(f -> f.name()).collect(Collectors.toList()), ",");
+            }
+
+            @Override
+            public String help() {
+                return "List of roles to autorole from ally servers\n" +
+                        "(this is intended for coalition servers to give gov roles to allies)";
+            }
+        }.requires(AUTOROLE_ALLY_GOV).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID);
+        public static GuildSetting<Boolean> ENABLE_WAR_ROOMS = new GuildBooleanSetting(GuildSettingCategory.WAR_ROOM) {
+
+
+            @Override
+            public Boolean parse(GuildDB db, String input) {
+                db.warChannelInit = false;
+                return super.parse(db, input);
+            }
+
+            @Override
+            public String help() {
+                return "If war rooms should be enabled (i.e. auto generate a channel for wars against active nations)\n" +
+                        "Note: Defensive war channels must be enabled to have auto war room creation";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<Guild> WAR_SERVER = new GuildSetting<Guild>(GuildSettingCategory.WAR_ROOM, Guild.class) {
+
+
+            @Override
+            public String toString(Guild value) {
+                return value.getId();
+            }
+
+            @Override
+            public String toReadableString(Guild value) {
+                return value.toString();
+            }
+
+            @Override
+            public Guild validate(GuildDB db, Guild guild) {
+                GuildDB otherDb = Locutus.imp().getGuildDB(guild);
+                if (guild.getIdLong() == db.getGuild().getIdLong())
+                    throw new IllegalArgumentException("Use " + CM.settings.cmd.create(Key.WAR_SERVER.name(), "null", null, null) + " to unset the war server");
+                if (otherDb.getOrNull(Key.WAR_SERVER) != null)
+                    throw new IllegalArgumentException("Circular reference. The server you have set already defers its war room");
+                return guild;
+            }
+
+            @Override
+            public boolean hasPermission(GuildDB db, User author, Guild guild) {
+                if (!super.hasPermission(db, author, guild)) return false;
+                if (guild == null) return true;
+                if (!Roles.ADMIN.has(author, guild))
+                    throw new IllegalArgumentException("You do not have ADMIN on " + guild);
                 return true;
             }
 
             @Override
-            public Object parse(GuildDB db, String input) {
-                input = input.replace("=", ":");
-
-                Map<CityRanges, Set<BeigeReason>> result = new HashMap<>();
-                String[] split = input.trim().split("\\r?\\n");
-                if (split.length == 1) split = StringMan.split(input.trim(), ' ').toArray(new String[0]);
-                for (String s : split) {
-                    String[] pair = s.split(":");
-                    if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
-                    CityRanges range = CityRanges.parse(pair[0]);
-                    List<BeigeReason> list = StringMan.parseEnumList(BeigeReason.class, pair[1]);
-                    result.put(range, new HashSet<>(list));
+            public String help() {
+                return "The guild to defer war rooms to";
+            }
+        }.requires(ENABLE_WAR_ROOMS).requires(ALLIANCE_ID);
+        public static GuildSetting<Map.Entry<Integer, Long>> DELEGATE_SERVER = new GuildSetting<Map.Entry<Integer, Long>>(GuildSettingCategory.DEFAULT, Map.class, Long.class) {
+            @Override
+            public Map.Entry<Integer, Long> validate(GuildDB db, Map.Entry<Integer, Long> ids) {
+                if (db.getOrNull(GuildDB.Key.ALLIANCE_ID) != null) {
+                    throw new IllegalArgumentException("You cannot delegate a server with an alliance id set");
                 }
-                return result;
+                Guild guild = Locutus.imp().getDiscordApi().getGuildById(ids.getValue());
+                if (guild == null)
+                    throw new IllegalArgumentException("Invalid guild: `" + ids.getValue() + "` (are you sure locutus is in that server?)");
+                GuildDB otherDb = Locutus.imp().getGuildDB(guild);
+                if (guild.getIdLong() == db.getIdLong())
+                    throw new IllegalArgumentException("You cannot set the delegate as this guild");
+                if (GuildDB.Key.DELEGATE_SERVER.has(otherDb, false)) {
+                    throw new IllegalArgumentException("Circular reference. The server you have set already delegates its DELEGATE_SERVER");
+                }
+                return ids;
             }
 
             @Override
-            public String toString(Object value) {
-                Map<CityRanges, Set<BeigeReason>> obj = (Map<CityRanges, Set<BeigeReason>>) value;
+            public boolean hasPermission(GuildDB db, User author, Map.Entry<Integer, Long> entry) {
+                if (!super.hasPermission(db, author, entry)) return false;
+                if (entry == null) return true;
+                GuildDB otherDB = Locutus.imp().getGuildDB(entry.getValue());
+                if (otherDB == null) {
+                    throw new IllegalArgumentException("Invalid guild: `" + entry.getValue() + "` (are you sure locutus is in that server?)");
+                }
+                if (!Roles.ADMIN.has(author, otherDB.getGuild()))
+                    throw new IllegalArgumentException("You do not have ADMIN on " + otherDB.getGuild());
+                return true;
+            }
+
+            @Override
+            public Map.Entry<Integer, Long> parse(GuildDB db, String input) {
+                String[] split2 = input.trim().split("[:|=]", 2);
+                Map.Entry<Integer, Long> entry;
+                if (split2.length == 2) {
+                    return Map.entry(Integer.parseInt(split2[0]), Long.parseLong(split2[1]));
+                } else {
+                    return Map.entry(0, Long.parseLong(input));
+                }
+            }
+
+            @Override
+            public String toString(Map.Entry<Integer, Long> value) {
+                Map.Entry<Integer, Long> pair = value;
+                if (pair.getKey() == 0) return String.valueOf(pair.getValue());
+                return pair.getKey() + ":" + pair.getValue();
+            }
+
+            @Override
+            public String help() {
+                return "The guild to delegate unset settings to";
+            }
+        };
+        public static GuildSetting<GuildDB> FA_SERVER = new GuildSetting<GuildDB>(GuildSettingCategory.FOREIGN_AFFAIRS, GuildDB.class) {
+            @Override
+            public GuildDB validate(GuildDB db, GuildDB otherDb) {
+                if (otherDb.getIdLong() == db.getGuild().getIdLong())
+                    throw new IllegalArgumentException("Use " + CM.settings.cmd.create(GuildDB.Key.FA_SERVER.name(), "null", null, null) + " to unset the FA_SERVER");
+                if (GuildDB.Key.FA_SERVER.has(otherDb, false))
+                    throw new IllegalArgumentException("Circular reference. The server you have set already defers its FA_SERVER");
+                return otherDb;
+            }
+
+            @Override
+            public boolean hasPermission(GuildDB db, User author, GuildDB otherDB) {
+                if (!super.hasPermission(db, author, otherDB)) return false;
+                if (!Roles.ADMIN.has(author, otherDB.getGuild()))
+                    throw new IllegalArgumentException("You do not have ADMIN on " + otherDB.getGuild());
+                return true;
+            }
+
+            @Override
+            public String toString(GuildDB value) {
+                return value.getName();
+            }
+
+            @Override
+            public String help() {
+                return "The guild to defer coalitions to";
+            }
+        };
+        public static GuildSetting<Boolean> RESOURCE_CONVERSION = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+            @Override
+            public String help() {
+                return "If the alliance can convert resources to cash.\n" +
+                        "This is done virtually in " + CM.deposits.check.cmd.toSlashMention() +
+                        "Resources are converted using market average\n" +
+                        "Use `#cash` as the note when depositing or transferring funds";
+            }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<Boolean> DEPOSIT_INTEREST = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+            @Override
+            public String help() {
+                return "If members should expect to receive interest on their deposits\n" +
+                        "You must manually run: " + CM.deposits.interest.cmd.toSlashMention();
+            }
+        }.requiresWhitelisted();
+        public static GuildSetting<MessageChannel> TRADE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.TRADE) {
+            @Override
+            public String help() {
+                return "The #channel to receive alerts for trades";
+            }
+        }.requiresWhitelisted();
+        public static GuildSetting<MessageChannel> BEIGE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
+            @Override
+            public String help() {
+                return "The #channel to receive alerts when a raid target leaves beige.\n" + CM.role.setAlias.cmd.create(Roles.BEIGE_ALERT.name(), null, null, null) + " must also be set and have members in range";
+            }
+        }.requireValidAlliance().requires(ALLIANCE_ID).requiresWhitelisted();
+        public static GuildSetting<MessageChannel> ENEMY_BEIGED_ALERT = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
+            @Override
+            public String help() {
+                return "The #channel to receive alerts when an enemy gets beiged";
+            }
+        }.requireValidAlliance().requiresCoalition(Coalition.ENEMIES);
+        public static GuildSetting<MessageChannel> ENEMY_BEIGED_ALERT_VIOLATIONS = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
+            @Override
+            public String help() {
+                return "The #channel to receive alerts when an enemy gets beiged (without reason)";
+            }
+        }.requiresCoalition(Coalition.ENEMIES).requires(ALLIANCE_ID).requireValidAlliance();
+        public static GuildSetting<Map<CityRanges, Set<BeigeReason>>> ALLOWED_BEIGE_REASONS = new GuildSetting<Map<CityRanges, Set<BeigeReason>>>(GuildSettingCategory.BEIGE_ALERTS, Map.class, CityRanges.class, Set.class) {
+            @Override
+            public String toString(Map<CityRanges, Set<BeigeReason>> obj) {
                 StringBuilder result = new StringBuilder();
                 for (Map.Entry<CityRanges, Set<BeigeReason>> entry : obj.entrySet()) {
                     result.append(entry.getKey().toString() + ":" + StringMan.join(entry.getValue(), ",")).append("\n");
@@ -4044,323 +3194,124 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 response.append("\nAlso set: " + CM.coalition.create.cmd.toSlashMention() + " with " + Coalition.ENEMIES);
                 return response.toString();
             }
-        },
-
-        ENEMY_ALERT_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
+        }.requires(ENEMY_BEIGED_ALERT_VIOLATIONS).requireValidAlliance();
+        public static GuildSetting<Map<NationFilterString, MMRMatcher>> REQUIRED_MMR = new GuildSetting<Map<NationFilterString, MMRMatcher>>(GuildSettingCategory.AUDIT, Map.class, NationFilterString.class, MMRMatcher.class) {
             @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
+            public String toString(Map<NationFilterString, MMRMatcher> filterToMMR) {
+                StringBuilder result = new StringBuilder();
+                for (Map.Entry<NationFilterString, MMRMatcher> entry : filterToMMR.entrySet()) {
+                    result.append(entry.getKey().getFilter() + ":" + entry.getValue() + "\n");
+                }
+                return result.toString().trim();
             }
 
             @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
+            public String help() {
+                String response = "A list of filters to required MMR.\n" +
+                        "In the form:\n" +
+                        "```\n" +
+                        "#cities<10:505X\n" +
+                        "#cities>=10:0250\n" +
+                        "```\n" +
+                        "All nation filters are supported";
 
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
+                return response;
             }
+        }.requires(ALLIANCE_ID);
+        public static GuildSetting<MessageChannel> ENEMY_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts when an enemy nation leaves beige";
             }
-        },
-
-        ENEMY_ALERT_CHANNEL_MODE(true, ENEMY_ALERT_CHANNEL, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return EnemyAlertChannelMode.valueOf(value).name();
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return EnemyAlertChannelMode.valueOf(input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((EnemyAlertChannelMode) value).name();
-            }
+        }.requires(ALLIANCE_ID).requiresCoalition(Coalition.ENEMIES).requireValidAlliance();
+        public static GuildSetting<EnemyAlertChannelMode> ENEMY_ALERT_CHANNEL_MODE = new GuildEnumSetSetting(GuildSettingCategory.BEIGE_ALERTS, EnemyAlertChannelMode.class) {
             @Override
             public String help() {
                 return "The mode for the enemy alert channel to determine what alerts are posted and who is pinged\n" +
                         "Options:\n - " + StringMan.join(EnemyAlertChannelMode.values(), "\n - ");
             }
-        },
-
-        BOUNTY_ALERT_CHANNEL(true, null, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        }.requires(ENEMY_ALERT_CHANNEL);
+        public static GuildSetting<MessageChannel> BOUNTY_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY) {
             @Override
             public String help() {
                 return "The channel to receive alerts when a bounty is placed";
             }
-        },
-
-
-        TREASURE_ALERT_CHANNEL(true, null, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
-            @Override
-            public <T> boolean hasPermission(GuildDB db, User author, T value) {
-                return true;
-            }
-
+        }.requireValidAlliance();
+        public static GuildSetting<MessageChannel> TREASURE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY) {
             @Override
             public String help() {
                 return "The channel to receive alerts when a bounty is placed";
             }
-        },
-
-        MEMBER_REBUY_INFRA_ALERT(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        }.requireValidAlliance();
+        public static GuildSetting<MessageChannel> MEMBER_REBUY_INFRA_ALERT = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
             @Override
             public String help() {
                 return "The channel to receive alerts when a member buys infra";
             }
-        },
-
-        MEMBER_LEAVE_ALERT_CHANNEL(true, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        }.requireValidAlliance();
+        public static GuildSetting<MessageChannel> MEMBER_LEAVE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
             @Override
             public String help() {
                 return "The channel to receive alerts when a member leaves";
             }
-        },
-
-        LOW_TIER_BUY_CITY_ALERTS(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "The channel to receive alerts when a <c10 member buys a city";
-            }
-        },
-
-        INTERVIEW_INFO_SPAM(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        }.requireValidAlliance();
+//        public static GuildSetting<MessageChannel> LOW_TIER_BUY_CITY_ALERTS = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
+//            @Override
+//            public String help() {
+//                return "The channel to receive alerts when a <c10 member buys a city";
+//            }
+//        }.requireValidAlliance();
+        public static GuildSetting<MessageChannel> INTERVIEW_INFO_SPAM = new GuildChannelSetting(GuildSettingCategory.INTERVIEW) {
             @Override
             public String help() {
                 return "The channel to receive info spam about expired interview channels";
             }
-        },
-
-        INTERVIEW_PENDING_ALERTS(true, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                Role interviewerRole = Roles.INTERVIEWER.toRole(db.getGuild());
-                if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(db.getGuild());
-                if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(db.getGuild());
-                if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(db.getGuild());
-                if (interviewerRole == null) {
-                    throw new IllegalArgumentException("Please use: " + CM.role.setAlias.cmd.toSlashMention() + " to set one of the following:\n" +
-                     StringMan.join(Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS), ", "));
-                }
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        }.requireValidAlliance();
+        public static GuildSetting<MessageChannel> INTERVIEW_PENDING_ALERTS = new GuildChannelSetting(GuildSettingCategory.INTERVIEW) {
             @Override
             public String help() {
                 return "The channel to receive alerts when a member requests an interview";
             }
-        },
-
-        ARCHIVE_CATEGORY(true, INTERVIEW_PENDING_ALERTS, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                Guild guild = db.getGuild();
-                Category category = DiscordUtil.getCategory(guild, value);
-                if (category == null) {
-                    throw new IllegalArgumentException("Invalid category: " + value);
-                }
-                if (!category.getGuild().equals(guild)) {
-                    throw new IllegalArgumentException("Invalid guild for: " + value);
-                }
-                return category.getId();
+        }.requireValidAlliance().requireFunction(db -> {
+            Role interviewerRole = Roles.INTERVIEWER.toRole(db.getGuild());
+            if (interviewerRole == null) interviewerRole = Roles.MENTOR.toRole(db.getGuild());
+            if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(db.getGuild());
+            if (interviewerRole == null) interviewerRole = Roles.INTERNAL_AFFAIRS.toRole(db.getGuild());
+            if (interviewerRole == null) {
+                throw new IllegalArgumentException("Please use: " + CM.role.setAlias.cmd.toSlashMention() + " to set one of the following:\n" +
+                        StringMan.join(Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS), ", "));
             }
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getCategory(db.getGuild(), input);
-            }
-
+        });
+        public static GuildSetting<Category> ARCHIVE_CATEGORY = new GuildCategorySetting(GuildSettingCategory.INTERVIEW) {
             @Override
             public String help() {
                 return "The name or id of the CATEGORY you would like " + CM.channel.close.current.cmd.toSlashMention() + " to move channels to";
             }
-        },
-
-//        INTERVIEW_CATEGORY(true, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                Guild guild = db.getGuild();
-//                Category category = DiscordUtil.getCategory(guild, value);
-//                if (category == null) {
-//                    throw new IllegalArgumentException("Invalid category: " + value);
-//                }
-//                if (!category.getGuild().equals(guild)) {
-//                    throw new IllegalArgumentException("Invalid guild for: " + value);
-//                }
-//                return category.getId();
-//            }
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return DiscordUtil.getCategory(db.getGuild(), input);
-//            }
-//
-//            @Override
-//            public String help() {
-//                return "The name or id of the category you would like interviews created in";
-//            }
-//        },
-
-//        BOUNTY_DEANONYMIZED_ALERT_CHANNEL(true, null, CommandCategory.MILCOM) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Key.validateChannel(db, value);
-//            }
-//
-//            @Override
-//            public boolean allowed(GuildDB db) {
-//                return false;
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return DiscordUtil.getChannel(db.getGuild(), input);
-//            }
-//            @Override
-//            public String help() {
-//                return "The channel to receive alerts when a bounty is placed (deanonymized)";
-//            }
-//        },
-
-        RESOURCE_REQUEST_CHANNEL(true, null, CommandCategory.ECON) {
+        }.requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS);
+        public static GuildSetting<Map<Long, MessageChannel>> RESOURCE_REQUEST_CHANNEL = new GuildSetting<Map<Long, MessageChannel>>(GuildSettingCategory.BANK_ACCESS, Map.class, Long.class, MessageChannel.class) {
             @Override
-            public String validate(GuildDB db, String value) {
-                Map<Long, MessageChannel> parsed = (Map<Long, MessageChannel>) parse(db, value);
-                if (!parsed.containsKey(0L)) throw new IllegalArgumentException("You must specify a default channel (e.g. `0:#channel`)");
-                return toString(parsed);
-
+            public Map<Long, MessageChannel> validate(GuildDB db, Map<Long, MessageChannel> parsed) {
+                if (!parsed.containsKey(0L))
+                    throw new IllegalArgumentException("You must first specify a default channel (e.g. `0:#channel`)");
+                return parsed;
             }
 
             @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOffshore() != null;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
+            public Map<Long, MessageChannel> parse(GuildDB db, String input) {
                 Map<Long, MessageChannel> parsed = new HashMap<>();
                 for (String line : input.split("[\n;,]")) {
                     String[] split = line.split("[:=]", 2);
                     long id = split.length == 1 ? 0 : Long.parseLong(split[0]);
                     MessageChannel channel = DiscordUtil.getChannel(db.getGuild(), split[split.length - 1]);
                     if (channel != null) {
-                        parsed.put((long) id, channel);
+                        parsed.put(id, channel);
                     }
                 }
                 return parsed.isEmpty() ? null : parsed;
             }
 
             @Override
-            public String toString(Object value) {
-                Map<Long, MessageChannel> parsed = (Map<Long, MessageChannel>)value;
+            public String toString(Map<Long, MessageChannel> parsed) {
                 List<String> mentions = new ArrayList<>();
                 for (Map.Entry<Long, MessageChannel> entry : parsed.entrySet()) {
                     if (entry.getKey() == 0) mentions.add(entry.getValue().getAsMention());
@@ -4368,6 +3319,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 }
                 return StringMan.join(mentions, "\n");
             }
+
             @Override
             public String help() {
                 return "The #channel for users to request resources in.\n" +
@@ -4376,718 +3328,153 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         "alliance1:#channel\n" +
                         "```\n";
             }
-        },
-
-        GRANT_REQUEST_CHANNEL(true, MEMBER_CAN_WITHDRAW, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.getOffshore() != null && Roles.ECON_GRANT_SELF.toRole(db.getGuild()) != null;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        }.requiresCoalition(Coalition.OFFSHORE).requiresOffshore().requireValidAlliance();
+        public static GuildSetting<MessageChannel> GRANT_REQUEST_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
             @Override
             public String help() {
                 return "The #channel for users to request grants in";
             }
-        },
-
-        TREATY_ALERTS(false, null, CommandCategory.FOREIGN_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
+        }.requireValidAlliance().requiresWhitelisted().requiresRole(Roles.ECON_GRANT_SELF, true).requiresOffshore();
+        public static GuildSetting<MessageChannel> TREATY_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts for treaty changes";
             }
-        },
-
-        ORBIS_LEADER_CHANGE_ALERT(false, null, CommandCategory.FOREIGN_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        };
+        public static GuildSetting<MessageChannel> ORBIS_LEADER_CHANGE_ALERT = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts when a nation is promoted to leader in an alliance (top 80)";
             }
-        },
-
-        ORBIS_OFFICER_LEAVE_ALERTS(false, null, CommandCategory.FOREIGN_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        };
+        public static GuildSetting<MessageChannel> ORBIS_OFFICER_LEAVE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts when officers leave an alliance  (top 50)";
             }
-        },
-
-//        ORBIS_OFFICER_DELETE_ALERTS(false, null, CommandCategory.FOREIGN_AFFAIRS) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Key.validateChannel(db, value);
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return DiscordUtil.getChannel(db.getGuild(), input);
-//            }
-//
-//            @Override
-//            public String toString(Object value) {
-//                return ((IMentionable) value).getAsMention();
-//            }
-//            @Override
-//            public String help() {
-//                return "The #channel to receive alerts when officers delete (top 50)";
-//            }
-//        },
-
-        ORBIS_ALLIANCE_EXODUS_ALERTS(false, null, CommandCategory.FOREIGN_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        };
+        public static GuildSetting<MessageChannel> ORBIS_ALLIANCE_EXODUS_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts when multiple 5+ members leave an alliance  (top 80)";
             }
-        },
-
-        ORBIS_OFFICER_MMR_CHANGE_ALERTS(false, null, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
+        };
+        public static GuildSetting<MessageChannel> ORBIS_OFFICER_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts when gov members increase MMR (top 80)";
             }
-        },
-
-        ENEMY_MMR_CHANGE_ALERTS(false, null, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
+        };
+        public static GuildSetting<MessageChannel> ENEMY_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts when a member in `enemies` coalitions changes MMR";
             }
-        },
-
-        ESCALATION_ALERTS(false, null, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
+        }.requireValidAlliance();
+        public static GuildSetting<MessageChannel> ESCALATION_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts for war escalation alerts in orbis";
             }
-        },
-
-        ACTIVITY_ALERTS(false, null, CommandCategory.MILCOM) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-
+        };
+        public static GuildSetting<MessageChannel> ACTIVITY_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
             @Override
             public String help() {
                 return "The #channel to receive alerts for activity (e.g. pre blitz)";
             }
-        },
-
-        BANKER_WITHDRAW_LIMIT(true, null, CommandCategory.ECON) {
-            public boolean allowed(GuildDB db) {
-                return db.getOffshore() != null;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return PrimitiveBindings.Double(input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return MathMan.format((Double) value);
-            }
-
+        };
+        public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
             @Override
             public String help() {
                 return "The daily withdraw limit (from the offshore) of non admins";
             }
-        },
-
-        BANKER_WITHDRAW_LIMIT_INTERVAL(true, BANKER_WITHDRAW_LIMIT, CommandCategory.ECON) {
-            public boolean allowed(GuildDB db) {
-                return db.getOffshore() != null;
-            }
-
+        }.requiresOffshore();
+        public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT_INTERVAL = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS, Timediff.class) {
             @Override
-            public Object parse(GuildDB db, String input) {
-                return TimeUtil.timeToSec(input) * 1000L;
-            }
-
-            @Override
-            public String toString(Object value) {
-                return TimeUtil.secToTime(TimeUnit.MILLISECONDS, (Long) value);
+            public String toReadableString(Long value) {
+                return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
             }
 
             @Override
             public String help() {
                 return "The time period the withdraw limit applies to (defaults to 1 day)";
             }
-        },
-
-        TAX_BASE(true, ALLIANCE_ID, CommandCategory.ECON) {
+        }.requires(BANKER_WITHDRAW_LIMIT).requiresOffshore();
+        public static GuildSetting<TaxRate> TAX_BASE = new GuildSetting<TaxRate>(GuildSettingCategory.TAX, TaxRate.class) {
             @Override
-            public String validate(GuildDB db, String value) {
-                if (parse(null, value) != null) {
-                    return value;
-                }
-                return null;
-            }
-
-            @Override
-            public int[] parse(GuildDB db, String value) {
-                String[] split = value.split("/");
-                if (split.length != 2) {
-                    throw new IllegalArgumentException("Invalid tax rate: `" + value + "`. Must be in the form 25/25.");
-                }
-                int moneyTax = Integer.parseInt(split[0]);
-                int rssTax = Integer.parseInt(split[1]);
-                if (moneyTax < 0 || moneyTax > 100 || rssTax < 0 || rssTax > 100) {
-                    throw new IllegalArgumentException("Tax rates must be between 0 and 100");
-                }
-                return new int[]{moneyTax, rssTax};
-            }
-
-            @Override
-            public String toString(Object value) {
-                int[] parsed = (int[]) value;
-                return parsed[0] + "/" + parsed[1];
+            public String toString(TaxRate value) {
+                return value.toString();
             }
 
             @Override
             public String help() {
                 return "The internal tax amount ($/rss) in the format e.g. `25/25` to be excluded in deposits.\n" +
                         "Defaults to `100/100` (i.e. no taxes are included in depos).\n" +
-                        "Setting is retroactive. See also: " + CM.nation.set.taxinternal.cmd.toSlashMention() + "";
+                        "Setting is retroactive. See also: " + CM.nation.set.taxinternal.cmd.toSlashMention();
             }
-        },
-
-        MEMBER_AUDIT_ALERTS(true, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
+        }.requires(ALLIANCE_ID).requireValidAlliance();
+        public static GuildSetting<MessageChannel> MEMBER_AUDIT_ALERTS = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
             @Override
             public String help() {
                 return "The #channel to ping members about audits";
             }
-        },
-
-        DISABLED_MEMBER_AUDITS(true, MEMBER_AUDIT_ALERTS, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return toString(parse(db, value));
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return MEMBER_AUDIT_ALERTS.allowed(db);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return new HashSet<>(BindingHelper.emumList(AuditType.class, input));
-            }
-
-            @Override
-            public String toString(Object value) {
-                return StringMan.join((Collection) value, ",");
-            }
+        }.requires(ALLIANCE_ID).requireValidAlliance();
+        public static GuildSetting<Set<AutoAuditType>> DISABLED_MEMBER_AUDITS = new GuildEnumSetSetting<AutoAuditType>(GuildSettingCategory.AUDIT, AutoAuditType.class) {
             @Override
             public String help() {
-                return "A comma separated list of audit types to ignore: " + StringMan.getString(AuditType.values());
+                return "A comma separated list of audit types to ignore: " + StringMan.getString(AutoAuditType.values());
             }
-        },
-
-//        BLOCKADE_ALERTS(true, null, CommandCategory.MILCOM) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Key.validateChannel(db, value);
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return DiscordUtil.getChannel(db.getGuild(), input);
-//            }
-//            @Override
-//            public String help() {
-//                return "The channel to post counter alerts in";
-//            }
-//        },
-//
-//        RAID_INFO_CHANNEL(false, ALLIANCE_ID, CommandCategory.MILCOM) {
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return Key.validateChannel(db, value);
-//            }
-//
-//            @Override
-//            public boolean allowed(GuildDB db) {
-//                return db.isWhitelisted();
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return DiscordUtil.getChannel(db.getGuild(), input);
-//            }
-//            @Override
-//            public String help() {
-//                return "A channel for members with general server info";
-//            }
-//        },
-
-        GRANT_ALERT_CHANNEL(false, ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Key.validateChannel(db, value);
-            }
-
-            @Override
-            public boolean allowed(GuildDB db) {
-                return db.isWhitelisted();
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return DiscordUtil.getChannel(db.getGuild(), input);
-            }
-
-            @Override
-            public String toString(Object value) {
-                return ((IMentionable) value).getAsMention();
-            }
-            @Override
-            public String help() {
-                return "A #channel to alert when a member's timer expires";
-            }
-        },
-
-        WARCHEST_PER_CITY(true, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS) {
-            @Override
-            public String validate(GuildDB db, String value) {
-                Map<ResourceType, Double> rss = PnwUtil.parseResources(value);
-                if (rss == null) {
-                    throw new IllegalArgumentException("Invalid resources: `" + value + "`");
-                }
-                double[] arr = PnwUtil.resourcesToArray(rss);
-
-                byte[] bytes = ArrayUtil.toByteArray(arr);
-
-                return new String(bytes, StandardCharsets.ISO_8859_1);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return PnwUtil.resourcesToMap(ArrayUtil.toDoubleArray(input.getBytes(StandardCharsets.ISO_8859_1)));
-            }
-            @Override
-            public String help() {
-                return "Amount of warchest to recommend per city in form `{steel=1234,aluminum=5678,gasoline=69,munitions=420}`";
-            }
-        },
-
-        REWARD_REFERRAL(false, MEMBER_LEAVE_ALERT_CHANNEL, CommandCategory.ECON) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return validateResources(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return PnwUtil.resourcesToMap(ArrayUtil.toDoubleArray(input.getBytes(StandardCharsets.ISO_8859_1)));
-            }
+        }.requires(MEMBER_AUDIT_ALERTS).requireValidAlliance();
+        public static GuildSetting<Map<ResourceType, Double>> REWARD_REFERRAL = new GuildResourceSetting(GuildSettingCategory.REWARD) {
             @Override
             public String help() {
                 return "The reward (resources) for referring a nation in the form `{food=1,money=3.2}`";
             }
-        },
-
-        REWARD_MENTOR(false, Key.INTERVIEW_PENDING_ALERTS, CommandCategory.ECON) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                return true;
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return validateResources(db, value);
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return PnwUtil.resourcesToMap(ArrayUtil.toDoubleArray(input.getBytes(StandardCharsets.ISO_8859_1)));
-            }
+        }.requires(ALLIANCE_ID).requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS);
+        public static GuildSetting<Map<ResourceType, Double>> REWARD_MENTOR = new GuildResourceSetting(GuildSettingCategory.REWARD) {
             @Override
             public String help() {
                 return "The reward (resources) for mentoring a nation in the form `{food=1,money=3.2}`";
             }
-        },
-
-        PUBLIC_OFFSHORING(false, Key.ALLIANCE_ID, CommandCategory.ECON) {
-            @Override
-            public boolean allowed(GuildDB db) {
-                Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
-                return offshoreDb != null && offshoreDb.getKey().getIdLong() == db.getIdLong();
-            }
-
-            @Override
-            public String validate(GuildDB db, String value) {
-                return Boolean.valueOf(value) + "";
-            }
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                return Boolean.parseBoolean(input);
-            }
+        }.requires(ALLIANCE_ID).requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS);
+        public static GuildSetting<Boolean> PUBLIC_OFFSHORING = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
             @Override
             public String help() {
                 return "Public offshores allow other alliances to see and register to use this alliance as an offshore without approval";
             }
-        },
-
-        MEMBER_REWARDS(false, ALLIANCE_ID, CommandCategory.ECON) {
-
-            @Override
-            public Object parse(GuildDB db, String input) {
-                Map<NationFilterString, double[]> result = new LinkedHashMap<>();
-                for (String line : input.trim().split("[\n|;]")) {
-                    String[] split = line.split("[:=]", 2);
-                    String filterStr = split[0];
-                    boolean containsNation = false;
-                    for (String arg : filterStr.split(",")) {
-                        if (!arg.startsWith("#")) containsNation = true;
-                    }
-                    if (!containsNation) filterStr += ",*";
-                    DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
-                    NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
-
-                    double[] resources = PnwUtil.resourcesToArray(PnwUtil.parseResources(split[1]));
-                    result.put(filter, resources);
-                }
-                return result;
+        }.requires(ALLIANCE_ID).requireValidAlliance().requiresOffshore().requireFunction(db -> {
+            Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
+            if (offshoreDb == null || offshoreDb.getKey().getIdLong() != db.getIdLong()) {
+                throw new IllegalArgumentException("This guild is not an offshore. See: " + CM.offshore.add.cmd.toSlashMention());
             }
+        });
 
-            @Override
-            public <T> boolean hasPermission(GuildDB db, User author, T value) {
-                return false && super.hasPermission(db, author, value) && db.getOrNull(Key.RESOURCE_REQUEST_CHANNEL) != null;
-            }
-
-            @Override
-            public String toString(Object value) {
-                Map<NationFilterString, double[]> filterToResources = (Map<NationFilterString, double[]>) value;
-                StringBuilder result = new StringBuilder();
-                for (Map.Entry<NationFilterString, double[]> entry : filterToResources.entrySet()) {
-                    result.append(entry.getKey().getFilter() + ":" + PnwUtil.resourcesToString(entry.getValue()) + "\n");
-                }
-                return result.toString().trim();
-            }
-
-            @Override
-            public String help() {
-                return "A map of rewards to give members e.g.\n" +
-                        "```\n" +
-                        "#wars_won>50:{food=5,munitions=1}\n" +
-                        "#cities>5,#correctalliancemmr=1:{coal=1}\n" +
-                        "```\n";
-            }
-        },
-
-//        REWARD_ECON(false, Key.GRANT_REQUEST_CHANNEL, CommandCategory.ECON) {
-//            @Override
-//            public boolean allowed(GuildDB db) {
-//                return db.isWhitelisted();
-//            }
-//
-//            @Override
-//            public String validate(GuildDB db, String value) {
-//                return validateResources(db, value);
-//            }
-//
-//            @Override
-//            public Object parse(GuildDB db, String input) {
-//                return PnwUtil.resourcesToMap(ArrayUtil.toDoubleArray(input.getBytes()));
-//            }
-//            @Override
-//            public String help() {
-//                return "The reward (resources) for completing a nation grant `{food=1,money=3.2}";
-//            }
-//        },
-
-        FA_CONTACT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TRANSFER_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        BANK_TRANSACTION_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        NOTE_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        IA_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        WAR_BUILDUP_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        GRANT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        COALITION_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        NATION_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        DESERTER_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        MAIL_RESPONSES_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        ALLIANCES_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        ROI_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TAX_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TAX_RECORD_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TAX_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        WAR_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        ACTIVE_COMBATANT_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        COUNTER_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        MMR_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        SPYOP_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        DEPOSITS_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TAX_BRACKET_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        STOCKPILE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        WAR_COST_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        CURRENT_LOOT_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        WAR_COST_BY_ALLIANCE_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        WAR_COST_BY_RESOURCE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        ACTIVITY_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        CITY_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        WAR_COST_BY_CITY_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        MILITARY_GRAPH_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        REVENUE_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        PROJECT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        INTERVIEW_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        NATION_META_SHEET(false, ALLIANCE_ID, CommandCategory.INTERNAL_AFFAIRS),
-        TRADE_PROFIT_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        TRADE_VOLUME_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        MMR_BY_SCORE_SHEET(false, ALLIANCE_ID, CommandCategory.MILCOM),
-        WARCHEST_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-
-        ENEMY_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        PRIORITY_ENEMY_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        ALLY_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-        UNDERUTILIZED_ALLY_SHEET(false, ALLIANCE_ID, CommandCategory.ECON),
-
-
-        ;
-
-        public final Key requires;
-        public final boolean requiresSetup;
-        public final CommandCategory category;
-
-        Key() {
-            this(true, null, null);
-        }
-
-        Key(boolean requiresSetup, Key dependsOn, CommandCategory perm) {
-            this.requiresSetup = requiresSetup;
-            this.requires = dependsOn;
-            this.category = perm;
-        }
-
-        @Override
-        public String toString() {
-            return name() + "\n> " + help() + "\n";
-        }
-
-        public <T> boolean hasPermission(GuildDB db, User author, T value) {
-            return Roles.ADMIN.has(author, db.getGuild());
-        }
-
-        public boolean allowed(GuildDB db) {
-            return true;
-        }
-
-        public String toString(Object value) {
-            return value == null ? "NULL" : StringMan.getString(value);
-        }
-
-        public String validate(GuildDB db, String value) {
-            parse(db, value);
-            return value;
-        };
-
-        public Object parse(GuildDB db, String input) {
-            return input;
-        }
-
-        public String help() {
-            return "";
-        }
-
-        private static String validateGuild(String value) {
-            Long id = null;
-            if (value.toLowerCase().contains("/alliance/")) {
-                Integer aaId = PnwUtil.parseAllianceId(value);
-                if (aaId != null) {
-                    GuildDB db = Locutus.imp().getGuildDBByAA(aaId);
-                    if (db == null) throw new IllegalArgumentException("No Locutus on " + value);
-                    id = db.getGuild().getIdLong();
+        private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
+        static {
+            // add by field names
+            for (Field field : GuildDB.Key.class.getFields()) {
+                if (!Modifier.isStatic(field.getModifiers())) continue;
+                if (!GuildSetting.class.isAssignableFrom(field.getType())) continue;
+                try {
+                    GuildSetting setting = (GuildSetting) field.get(null);
+                    BY_NAME.put(field.getName(), setting);
+                    setting.setName(field.getName());
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
                 }
             }
-            else if (!MathMan.isInteger(value)) {
-                for (Guild guild : Locutus.imp().getDiscordApi().getGuilds()) {
-                    if (guild.getName().equalsIgnoreCase(value)) {
-                        id = guild.getIdLong();
-                        break;
-                    }
-                }
-            } else {
-                Guild guild = Locutus.imp().getDiscordApi().getGuildById(Long.parseLong(value));
-                if (guild == null) throw new IllegalArgumentException("Locutus is not in: " + value);
-                id = guild.getIdLong();
-            }
-            if (id == null) throw new IllegalArgumentException("Invalid guild id: " + value);
-            return id + "";
         }
 
-        private static String validateChannel(GuildDB db, String value) {
-            Guild guild = db.getGuild();
-            MessageChannel channel = DiscordUtil.getChannel(guild, value);
-            if (channel == null) {
-                throw new IllegalArgumentException("Invalid channel: " + value);
-            }
-//            channel = Locutus.imp().getDiscordApi().getGuildChannelById(channel.getIdLong());
-//            if (channel == null) {
-//                throw new IllegalArgumentException("Invalid guild text channel: " + value);
-//            }
-            return channel.getId();
+        public static GuildSetting[] values() {
+            return BY_NAME.values().toArray(new GuildSetting[0]);
         }
 
-        private static String validateResources(GuildDB db, String value) {
-            Map<ResourceType, Double> rss = PnwUtil.parseResources(value);
-            if (rss == null) {
-                throw new IllegalArgumentException("Invalid resources: `" + value + "`");
+        public static GuildSetting valueOf(String name) {
+            GuildSetting result = BY_NAME.get(name);
+            if (result == null) {
+                throw new IllegalArgumentException("No such setting: " + name + ". Options:\n - " + StringMan.join(BY_NAME.keySet(), "\n - "));
             }
-            double[] arr = PnwUtil.resourcesToArray(rss);
-            byte[] bytes = ArrayUtil.toByteArray(arr);
-            return new String(bytes, StandardCharsets.ISO_8859_1);
+            return result;
         }
     }
 
@@ -5141,16 +3528,40 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public enum AutoNickOption {
-        FALSE,
-        LEADER,
-        NATION,
-        DISCORD
+        FALSE("No nickname given"),
+        LEADER("Set to leader name"),
+        NATION("Set to nation name"),
+        DISCORD("Set to discord name")
+        ;
+
+        private final String description;
+
+        AutoNickOption(String description) {
+            this.description = description;
+        }
+
+        @Override
+        public String toString() {
+            return name() + ": `" + description + "`";
+        }
     }
 
     public enum AutoRoleOption {
-        FALSE,
-        ALL,
-        ALLIES,
+        FALSE("No roles given"),
+        ALL("Roles for the alliance"),
+        ALLIES("Roles for allies (e.g. if a coalition server)"),
+        ;
+
+        private final String description;
+
+        AutoRoleOption(String description) {
+            this.description = description;
+        }
+
+        @Override
+        public String toString() {
+            return name() + ": `" + description + "`";
+        }
     }
 
     public Function<DBNation, Boolean> getCanRaid() {
@@ -5294,23 +3705,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return info;
     }
 
-    @Deprecated
-    public String getInfo(Key key, boolean allowDelegate) {
+    public String getInfo(SheetKeys key, boolean allowDelegate) {
+        return getInfo(key.name(), allowDelegate);
+    }
+
+    public String getInfoRaw(GuildSetting key, boolean allowDelegate) {
         if (key == Key.ALLIANCE_ID) {
             String result = getInfo(key.name(), false);
+            return result;
         }
         return getInfo(key.name(), allowDelegate);
     }
 
-    public void setInfo(Key key, String value) {
+    public <T> void setInfo(GuildSetting<T> key, T value) {
+        checkNotNull(key);
+        checkNotNull(value);
+        value = key.validate(this, value);
+        String toSave = key.toString(value);
         synchronized (infoParsed) {
-            setInfo(key.name(), key.validate(this, value));
-            infoParsed.remove(key);
+            setInfo(key.name(), toSave);
+            infoParsed.put(key, value);
         }
     }
 
     private Map<String, String> info;
-    private final Map<Key, Object> infoParsed = new HashMap<>();
+    private final Map<GuildSetting, Object> infoParsed = new HashMap<>();
     private final Object nullInstance = new Object();
 
     public MessageChannel getResourceChannel(Integer allianceId) {
@@ -5321,7 +3740,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return channel;
     }
 
-    public String getInfo(String key, boolean allowDelegate) {
+    public String getCopyPasta(String key, boolean allowDelegate) {
+        return getInfo("copypasta." + key, allowDelegate);
+    }
+
+    private String getInfo(String key, boolean allowDelegate) {
         if (info == null) {
             initInfo();
         }
@@ -5338,21 +3761,33 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return value;
     }
 
-    public void deleteInfo(Key key) {
+    public void deleteInfo(GuildSetting key) {
         synchronized (infoParsed) {
             deleteInfo(key.name());
             infoParsed.remove(key);
         }
     }
 
-    public void deleteInfo(String key) {
+    public void deleteCopyPasta(String key) {
+        deleteInfo("copypasta." + key);
+    }
+
+    private void deleteInfo(String key) {
         info.remove(key.toLowerCase());
         update("DELETE FROM `INFO` where `key` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, key.toLowerCase());
         });
     }
 
-    public void setInfo(String key, String value) {
+    public void setCopyPasta(String key, String value) {
+        setInfo("copypasta." + key, value);
+    }
+
+    public void setInfo(SheetKeys key, String value) {
+        setInfo(key.name(), value);
+    }
+
+    private void setInfo(String key, String value) {
         checkNotNull(key);
         checkNotNull(value);
         initInfo();

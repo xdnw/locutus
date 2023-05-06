@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -49,7 +50,7 @@ public class ActivitySheet extends Command {
         if (sheetUrl != null) {
             sheet = SpreadSheet.create(sheetUrl);
         } else {
-            sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVITY_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.ACTIVITY_SHEET);
         }
 
         List<Object> header = new ArrayList<>(Arrays.asList(
