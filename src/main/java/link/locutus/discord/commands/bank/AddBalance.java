@@ -91,7 +91,7 @@ public class AddBalance extends Command {
             builder.addSheet(sheet, negative, invalid::add, true, note);
         } else {
             boolean isGuild = arg.toLowerCase().startsWith("guild:");
-            DBNation nation = DiscordUtil.parseNation(arg);
+            DBNation nation = DiscordUtil.parseNation(arg, true);
             if (nation == null) {
                 if (isGuild || (MathMan.isInteger(arg) && Long.parseLong(arg) > Integer.MAX_VALUE)) {
                     if (isGuild) arg = arg.toLowerCase().replace("guild:", "");

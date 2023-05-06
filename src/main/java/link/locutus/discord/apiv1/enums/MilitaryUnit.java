@@ -84,6 +84,14 @@ public enum MilitaryUnit {
             true,
             ResourceType.MONEY.toArray(3500)
     ),
+
+    INFRASTRUCTURE(null, 1 / 40d,
+            // Is a unit type because you can airstrike infra
+            ResourceType.MONEY.toArray(0),
+            ResourceType.MONEY.toArray(0),
+            false,
+            ResourceType.getBuffer()
+    ),
     ;
 
     public static double NUKE_RADIATION = 5;
@@ -238,4 +246,8 @@ public enum MilitaryUnit {
             throw new IllegalArgumentException("Invalid MilitaryUnit type: `" + arg + "`. options: " + StringMan.getString(values()));
         }
     }
+
+
+
+
 }

@@ -130,12 +130,12 @@ public class DBWar {
                 case GROUND:
                     damage = 10;
                     break;
-                case AIRSTRIKE1:
-                case AIRSTRIKE2:
-                case AIRSTRIKE3:
-                case AIRSTRIKE4:
-                case AIRSTRIKE5:
-                case AIRSTRIKE6:
+                case AIRSTRIKE_INFRA:
+                case AIRSTRIKE_SOLDIER:
+                case AIRSTRIKE_TANK:
+                case AIRSTRIKE_MONEY:
+                case AIRSTRIKE_SHIP:
+                case AIRSTRIKE_AIRCRAFT:
                     damage = 12;
                     break;
                 case NAVAL:
@@ -211,12 +211,12 @@ public class DBWar {
                 case GROUND:
                     mapUsed = 3;
                     break;
-                case AIRSTRIKE1:
-                case AIRSTRIKE2:
-                case AIRSTRIKE3:
-                case AIRSTRIKE4:
-                case AIRSTRIKE5:
-                case AIRSTRIKE6:
+                case AIRSTRIKE_INFRA:
+                case AIRSTRIKE_SOLDIER:
+                case AIRSTRIKE_TANK:
+                case AIRSTRIKE_MONEY:
+                case AIRSTRIKE_SHIP:
+                case AIRSTRIKE_AIRCRAFT:
                 case NAVAL:
                     mapUsed = 4;
                     break;

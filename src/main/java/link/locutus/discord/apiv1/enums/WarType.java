@@ -51,4 +51,30 @@ public enum WarType {
             throw e;
         }
     }
+
+    public double lootModifier() {
+        switch (this) {
+            case RAID:
+                return 1;
+            case ORD:
+                return 0.5;
+            case ATT:
+                return 0.25;
+            default:
+                throw new UnsupportedOperationException("Unknown war type: " + this);
+        }
+    }
+
+    public double infraModifier() {
+            switch (this) {
+            case RAID:
+                return 0.25;
+            case ORD:
+                return 0.5;
+            case ATT:
+                return 1;
+            default:
+                throw new UnsupportedOperationException("Unknown war type: " + this);
+        }
+    }
 }

@@ -3215,7 +3215,7 @@ public class WarCommands {
                              @Default("0") double defActivity,
                              @Arg("Factor in existing wars of attackers and defenders\n" +
                                      "i.e. To determine slots available and nation strength")
-                             @Switch("w") boolean processActiveWars,
+                             @Switch("w") @Default("true") boolean processActiveWars,
                              @Arg("Only assign down declares")
                              @Switch("e") boolean onlyEasyTargets,
                              @Arg("Maximum ratio of defender cities to attacker\n" +

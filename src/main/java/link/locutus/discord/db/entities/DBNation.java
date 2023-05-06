@@ -1,11 +1,9 @@
 package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonSyntaxException;
-import com.politicsandwar.graphql.model.Bounty;
 import com.politicsandwar.graphql.model.Nation;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord._test._Custom;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
@@ -64,7 +62,6 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -87,7 +84,6 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -249,6 +245,9 @@ public class DBNation implements NationOrAlliance {
         cities = 1;
         date = System.currentTimeMillis();
         spies = -1;
+        rank = Rank.BAN;
+        continent = Continent.ANTARCTICA;
+        leaving_vm = Long.MAX_VALUE;
     }
 
     public DBNation(DBNation other) {
@@ -2732,6 +2731,7 @@ public class DBNation implements NationOrAlliance {
                 setShips(amt);
                 break;
             case MONEY:
+            case INFRASTRUCTURE:
                 // TODO
                 return;
             case MISSILE:
@@ -2759,6 +2759,8 @@ public class DBNation implements NationOrAlliance {
                 return getAircraft();
             case SHIP:
                 return getShips();
+            case INFRASTRUCTURE:
+                return (int) maxCityInfra();
             case MONEY:
                 // TODO
                 return 0;
@@ -4982,6 +4984,57 @@ public class DBNation implements NationOrAlliance {
             return 1.2;
         }
         return 1;
+    }
+
+    @Command(desc = "The modifier for loot given when they defeat an enemy in war")
+    public double looterModifier() {
+        return switch (getWarPolicy()) {
+            case PIRATE -> 1.4;
+            case ATTRITION ->  0.8;
+            default -> 1;
+        };
+    }
+
+    /*
+        // blitzkrieg = For the first 12 turns (24 hours) after switching, your nation does 10% more infrastructure damage and casualties in Ground Battles, Airstrikes, and Naval Battles.
+     */
+
+    @Command(desc = "Whether their war policy is blitzkrieg and within the first 12 turns of switching to it")
+    public boolean isBlitzkrieg() {
+        return getWarPolicy() == WarPolicy.BLITZKRIEG && getWarPolicyTurns() > GameTimers.WAR_POLICY.getTurns() - 12;
+    }
+
+    @Command(desc = "The modifier for infra damage")
+    public double infraAttackModifier(AttackType type) {
+        boolean isGroundAirOrNaval = switch (type) {
+            case GROUND, AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT, NAVAL -> true;
+            default -> false;
+        };
+        return switch (getWarPolicy()) {
+            case ATTRITION -> isGroundAirOrNaval ? 1.1 : 1;
+            case BLITZKRIEG -> {
+                if (isGroundAirOrNaval && getWarPolicyTurns() > GameTimers.WAR_POLICY.getTurns() - 12) {
+                    yield 1.1;
+                } else {
+                    yield 1;
+                }
+            }
+            default -> 1;
+        };
+    }
+
+    @Command(desc = "The modifier for infra damage")
+    public double infraDefendModifier(AttackType type) {
+        boolean isGroundAirOrNaval = switch (type) {
+            case GROUND, AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT, NAVAL -> true;
+            default -> false;
+        };
+        return switch (getWarPolicy()) {
+            case TURTLE -> isGroundAirOrNaval ? 0.9 : 1;
+            case MONEYBAGS -> 1.05;
+            case COVERT, ARCANE -> isGroundAirOrNaval ? 1.05 : 1;
+            default -> 1;
+        };
     }
 
     public boolean isInWarRange(DBNation target) {

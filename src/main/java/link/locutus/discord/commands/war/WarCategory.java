@@ -2,7 +2,6 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -12,7 +11,6 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.db.entities.DBNation;
@@ -45,7 +43,6 @@ import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import net.dv8tion.jda.api.exceptions.MissingAccessException;
 
 import java.io.IOException;
 import java.util.*;
@@ -243,148 +240,139 @@ public class WarCategory {
         if (roomTmp == null || roomTmp.channel == null) return;
         WarRoom room = roomTmp;
 
-        RateLimitUtil.queueWhenFree(new Runnable() {
-            @Override
-            public void run() {
-                boolean value = room.target.getNation_id() == attack.attacker_nation_id;
-                boolean change = attack.success == 3 || (attack.success > 0 && !value);
+        boolean value = room.target.getNation_id() == attack.attacker_nation_id;
+        boolean change = attack.success == 3 || (attack.success > 0 && !value);
 
-                if (change) {
-                    switch (attack.attack_type) {
-                        case GROUND:
-                            room.setGC(value);
-                            break;
-                        case AIRSTRIKE1:
-                        case AIRSTRIKE2:
-                        case AIRSTRIKE3:
-                        case AIRSTRIKE4:
-                        case AIRSTRIKE5:
-                        case AIRSTRIKE6:
-                            room.setAC(value);
-                            break;
-                        case NAVAL:
-                            room.setBlockade(value);
-                            break;
-                    }
-                }
+        DBNation attacker = Locutus.imp().getNationDB().getNation(attackerId);
+        DBNation defender = Locutus.imp().getNationDB().getNation(defenderId);
 
-                if (attack.attacker_nation_id == room.target.getNation_id() || true) {
+        String name1 = attacker.getNationUrlMarkup(true) + (attacker.getAlliance_id() != 0 ? (" of " + attacker.getAllianceUrlMarkup(true)) : "");
+        String name2 = defender.getNationUrlMarkup(true) + (defender.getAlliance_id() != 0 ? (" of " + defender.getAllianceUrlMarkup(true)) : "");
 
-                    DBNation attacker = Locutus.imp().getNationDB().getNation(attackerId);
-                    DBNation defender = Locutus.imp().getNationDB().getNation(defenderId);
+        String message;
+        boolean showLoot = false;
+        boolean showInfra = false;
+        boolean showCasualties = false;
+        boolean showSuccess = false;
 
-                    String name1 = attacker.getNationUrlMarkup(true) + (attacker.getAlliance_id() != 0 ? (" of " + attacker.getAllianceUrlMarkup(true)) : "");
-                    String name2 = defender.getNationUrlMarkup(true) + (defender.getAlliance_id() != 0 ? (" of " + defender.getAllianceUrlMarkup(true)) : "");
+        switch (attack.attack_type) {
+            case AIRSTRIKE_INFRA:
+                message = name1 + " issued " + attack.attack_type + " INFRA against " + name2;
+                showCasualties = true;
+                showInfra = true;
+                showSuccess = true;
+                break;
+            case AIRSTRIKE_SOLDIER:
+            case AIRSTRIKE_TANK:
+            case AIRSTRIKE_MONEY:
+            case AIRSTRIKE_SHIP:
+                String typeStr = attack.attack_type + " " + attack.attack_type.getUnits()[1].getName();
+                message = name1 + " issued " + typeStr + " against " + name2;
+                showCasualties = true;
+                showInfra = true;
+                showSuccess = true;
+                break;
+            case AIRSTRIKE_AIRCRAFT:
+                message = name1 + " issued " + attack.attack_type + " AIRCRAFT against " + name2;
+                showCasualties = true;
+                showInfra = true;
+                showSuccess = true;
+                break;
+            case GROUND:
+                showCasualties = true;
+                showLoot = true;
+            case NAVAL:
+                message = name1 + " issued a " + attack.attack_type + " attack against " + name2;
+                showInfra = true;
+                showSuccess = true;
+                showCasualties = true;
+                break;
+            case MISSILE:
+            case NUKE:
+                message = name1 + " launched a " + attack.attack_type + " against " + name2;
+                showInfra = true;
+                showSuccess = true;
+                break;
+            case FORTIFY:
+                message = name1 + " fortified against " + name2;
+                break;
+            case VICTORY:
+                room.setPlanning(false);
+                message = name1 + "looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + name2;
+                break;
+            case A_LOOT:
+                message = name1 + "looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getLooted(), true);
+                break;
+            case PEACE:
+                message = name1 + " agreed to peace with " + name2;
+                break;
+            default:
+                message = null;
+                break;
+        }
 
-                    String message;
-                    boolean showLoot = false;
-                    boolean showInfra = false;
-                    boolean showCasualties = false;
-                    boolean showSuccess = false;
-
-                    switch (attack.attack_type) {
-                        case AIRSTRIKE1:
-                            message = name1 + " issued " + attack.attack_type + " INFRA against " + name2;
-                            showCasualties = true;
-                            showInfra = true;
-                            showSuccess = true;
-                            break;
-                        case AIRSTRIKE2:
-                        case AIRSTRIKE3:
-                        case AIRSTRIKE4:
-                        case AIRSTRIKE5:
-                            String typeStr = attack.attack_type + " " + attack.attack_type.getUnits()[1].getName();
-                            message = name1 + " issued " + typeStr + " against " + name2;
-                            showCasualties = true;
-                            showInfra = true;
-                            showSuccess = true;
-                            break;
-                        case AIRSTRIKE6:
-                            message = name1 + " issued " + attack.attack_type + " AIRCRAFT against " + name2;
-                            showCasualties = true;
-                            showInfra = true;
-                            showSuccess = true;
-                            break;
-                        case GROUND:
-                            showCasualties = true;
-                            showLoot = true;
-                        case NAVAL:
-                            message = name1 + " issued a " + attack.attack_type + " attack against " + name2;
-                            showInfra = true;
-                            showSuccess = true;
-                            showCasualties = true;
-                            break;
-                        case MISSILE:
-                        case NUKE:
-                            message = name1 + " launched a " + attack.attack_type + " against " + name2;
-                            showInfra = true;
-                            showSuccess = true;
-                            break;
-                        case FORTIFY:
-                            message = name1 + " fortified against " + name2;
-                            break;
-                        case VICTORY:
-                            room.setPlanning(false);
-                            message = name1 + "looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + name2;
-                            break;
-                        case A_LOOT:
-                            message = name1 + "looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getLooted(), true);
-                            break;
-                        case PEACE:
-                            message = name1 + " agreed to peace with " + name2;
-                            break;
-                        default:
-                            message = null;
-                            break;
-                    }
-
-                    if (message != null) {
-                        if (showSuccess) {
-                            String successType;
-                            switch (attack.success) {
-                                default:
-                                case 0:
-                                    successType = "UTTER_FAILURE";
-                                    break;
-                                case 1:
-                                    successType = "PYRRHIC_VICTORY";
-                                    break;
-                                case 2:
-                                    successType = "MODERATE_SUCCESS";
-                                    break;
-                                case 3:
-                                    successType = "IMMENSE_TRIUMPH";
-                                    break;
-                            }
-                            message += ". It was a " + successType;
-                        }
-                        if (showLoot && attack.money_looted != 0) {
-                            message += " and looted $" + MathMan.format(attack.money_looted);
-                        }
-                        if (showInfra && attack.infra_destroyed != 0) {
-                            double worth = PnwUtil.calculateInfra(attack.city_infra_before - attack.infra_destroyed, attack.city_infra_before);
-                            message += ". " + attack.infra_destroyed + " infra worth $" + MathMan.format(worth) + " was destroyed";
-                        }
-                        if (showCasualties) {
-                            Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses(true);
-                            if (!attLosses.isEmpty()) message += "\nAttacker unit losses: " + StringMan.getString(attLosses);
-                            Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses(false);
-                            if (!defLosses.isEmpty()) message += "\nDefender unit losses: " + StringMan.getString(defLosses);
-                        }
-
-                        if (RateLimitUtil.getCurrentUsed() > 10) {
-                            new DiscordChannelIO(room.getChannel()).create().embed(attack.attack_type.toString(), message).sendWhenFree();
-                        } else {
-                            String emoji = "War Info";
-                            String cmd = "_" + Settings.commandPrefix(true) + "WarInfo " + attack.war_id;
-                            message += "\n\nPress `" + emoji + "` to view the war card";
-                            DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message, emoji, cmd);
-                        }
-                    }
-
-                }
+        if (change) {
+            switch (attack.attack_type) {
+                case GROUND:
+                    RateLimitUtil.queueWhenFree(() -> room.setGC(value));
+                    break;
+                case AIRSTRIKE_INFRA:
+                case AIRSTRIKE_SOLDIER:
+                case AIRSTRIKE_TANK:
+                case AIRSTRIKE_MONEY:
+                case AIRSTRIKE_SHIP:
+                case AIRSTRIKE_AIRCRAFT:
+                    RateLimitUtil.queueWhenFree(() -> room.setAC(value));
+                    break;
+                case NAVAL:
+                    RateLimitUtil.queueWhenFree(() -> room.setBlockade(value));
+                    break;
             }
-        });
+        }
+
+        if (message != null) {
+            if (showSuccess) {
+                String successType;
+                switch (attack.success) {
+                    default:
+                    case 0:
+                        successType = "UTTER_FAILURE";
+                        break;
+                    case 1:
+                        successType = "PYRRHIC_VICTORY";
+                        break;
+                    case 2:
+                        successType = "MODERATE_SUCCESS";
+                        break;
+                    case 3:
+                        successType = "IMMENSE_TRIUMPH";
+                        break;
+                }
+                message += ". It was a " + successType;
+            }
+            if (showLoot && attack.money_looted != 0) {
+                message += " and looted $" + MathMan.format(attack.money_looted);
+            }
+            if (showInfra && attack.infra_destroyed != 0) {
+                double worth = PnwUtil.calculateInfra(attack.city_infra_before - attack.infra_destroyed, attack.city_infra_before);
+                message += ". " + attack.infra_destroyed + " infra worth $" + MathMan.format(worth) + " was destroyed";
+            }
+            if (showCasualties) {
+                Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses(true);
+                if (!attLosses.isEmpty()) message += "\nAttacker unit losses: " + StringMan.getString(attLosses);
+                Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses(false);
+                if (!defLosses.isEmpty()) message += "\nDefender unit losses: " + StringMan.getString(defLosses);
+            }
+
+            if (RateLimitUtil.getCurrentUsed() > 10) {
+                new DiscordChannelIO(room.getChannel()).create().embed(attack.attack_type.toString(), message).sendWhenFree();
+            } else {
+                String emoji = "War Info";
+                String cmd = "_" + Settings.commandPrefix(true) + "WarInfo " + attack.war_id;
+                message += "\n\nPress `" + emoji + "` to view the war card";
+                DiscordUtil.createEmbedCommand(room.getChannel(), attack.attack_type.toString(), message, emoji, cmd);
+            }
+        }
     }
 
     public void update(DBNation previous, DBNation current) {

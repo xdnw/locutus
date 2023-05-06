@@ -2673,7 +2673,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        DEFENSE_WAR_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
+        DEFENSE_WAR_CHANNEL(true, null, CommandCategory.MILCOM) {
             @Override
             public String validate(GuildDB db, String value) {
                 return Key.validateChannel(db, value);
@@ -2694,7 +2694,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         },
 
-        OFFENSIVE_WAR_CHANNEL(true, ALLIANCE_ID, CommandCategory.MILCOM) {
+        OFFENSIVE_WAR_CHANNEL(true, null, CommandCategory.MILCOM) {
             @Override
             public String validate(GuildDB db, String value) {
                 return Key.validateChannel(db, value);

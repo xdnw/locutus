@@ -247,6 +247,76 @@ public class DataDumpParser {
         }
     }
 
+    public void backCalculateNukesAndMissiles() throws IOException, ParseException {
+        load();
+        for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
+            File cityFile = cityFilesByDay.get(entry.getKey());
+            if (cityFile == null) continue;
+
+            Map<Integer, Long> nukeTotal = new Int2LongOpenHashMap();
+            Map<Integer, Long> missileTotal = new Int2LongOpenHashMap();
+            Map<Integer, Integer> numCities = new Int2IntOpenHashMap();
+
+            Map<Integer, Integer> nationAlliances = new Int2IntOpenHashMap();
+
+            // nation, non vm, position >1, infra
+            readAll(entry.getValue(), (headerList, rows) -> {
+                NationHeader header = loadHeader(new NationHeader(), headerList);
+                while (rows.hasNext()) {
+                    CsvRow row = rows.next();
+
+
+                    int alliance = Integer.parseInt(row.getField(header.alliance_id));
+                    if (alliance == 0) continue;
+                    int vm = Integer.parseInt(row.getField(header.vm_turns));
+                    if (vm > 0) continue;
+                    int pos = Integer.parseInt(row.getField(header.alliance_position));
+                    if (pos <= Rank.APPLICANT.id) continue;
+
+                    int nationId = Integer.parseInt(row.getField(header.nation_id));
+                    nationAlliances.put(nationId, alliance);
+
+                    int missile = Integer.parseInt(row.getField(header.missiles));
+                    int nuke = Integer.parseInt(row.getField(header.nukes));
+                    int num = Integer.parseInt(row.getField(header.cities));
+                    missileTotal.put(alliance, missileTotal.getOrDefault(alliance, 0L) + missile);
+                    nukeTotal.put(alliance, nukeTotal.getOrDefault(alliance, 0L) + nuke);
+                    numCities.put(alliance, numCities.getOrDefault(alliance, 0) + num);
+                }
+            });
+
+            long day = entry.getKey();
+            long turnStart = TimeUtil.getTurn(TimeUtil.getTimeFromDay(day));
+            long turnEnd = turnStart + 12;
+
+            List<MetricValue> values = new ArrayList<>();
+            for (long turn = turnStart; turn < turnEnd; turn++) {
+                for (Map.Entry<Integer, Long> entry2 : missileTotal.entrySet()) {
+                    int aaId = entry2.getKey();
+                    double total = entry2.getValue();
+                    double average = total / numCities.get(aaId);
+
+                    values.add(new MetricValue(aaId, AllianceMetric.MISSILE, turn, total));
+                    values.add(new MetricValue(aaId, AllianceMetric.MISSILE_AVG, turn, average));
+                }
+                for (Map.Entry<Integer, Long> entry2 : nukeTotal.entrySet()) {
+                    int aaId = entry2.getKey();
+                    double total = entry2.getValue();
+                    double average = total / numCities.get(aaId);
+
+                    values.add(new MetricValue(aaId, AllianceMetric.NUKE, turn, total));
+                    values.add(new MetricValue(aaId, AllianceMetric.NUKE_AVG, turn, average));
+                }
+            }
+            Locutus.imp().getNationDB().executeBatch(values, "INSERT OR IGNORE INTO `ALLIANCE_METRICS`(`alliance_id`, `metric`, `turn`, `value`) VALUES(?, ?, ?, ?)", (ThrowingBiConsumer<MetricValue, PreparedStatement>) (value, stmt) -> {
+                stmt.setInt(1, value.alliance);
+                stmt.setInt(2, value.metric.ordinal());
+                stmt.setLong(3, value.turn);
+                stmt.setDouble(4, value.value);
+            });
+        }
+    }
+
     public Map<Continent, Double> getRadsAt(long currentTurn, List<DBAttack> attacks, Map<Long, Map<Integer, Continent>> continentInfo) {
         double radsBase = MilitaryUnit.NUKE_RADIATION;
 

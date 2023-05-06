@@ -11,15 +11,12 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.nation.NationBlockadedEvent;
-import link.locutus.discord.event.nation.NationUnblockadedEvent;
 import link.locutus.discord.event.war.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -40,7 +37,6 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import rocker.grant.nation;
 
 import java.awt.Desktop;
 import java.io.IOException;
@@ -418,25 +414,25 @@ public class WarUpdateProcessor {
                 return null;
             case A_LOOT:
                 return null;
-            case AIRSTRIKE1:
+            case AIRSTRIKE_INFRA:
                 return AttackTypeSubCategory.AIRSTRIKE_INFRA;
-            case AIRSTRIKE4:
+            case AIRSTRIKE_MONEY:
                 return AttackTypeSubCategory.AIRSTRIKE_MONEY;
-            case AIRSTRIKE2:
-            case AIRSTRIKE3:
-            case AIRSTRIKE5:
+            case AIRSTRIKE_SOLDIER:
+            case AIRSTRIKE_TANK:
+            case AIRSTRIKE_SHIP:
                 int attAir = (int) (root.att_gas_used * 4);
                 if (attAir <= 3) {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
                 }
                 if (root.defcas2 == 0) {
-                    if (root.attack_type == AIRSTRIKE2) {
+                    if (root.attack_type == AIRSTRIKE_SOLDIER) {
                         return AttackTypeSubCategory.AIRSTRIKE_SOLDIERS_NONE;
                     }
-                    else if (root.attack_type == AIRSTRIKE3) {
+                    else if (root.attack_type == AIRSTRIKE_TANK) {
                         return AttackTypeSubCategory.AIRSTRIKE_TANKS_NONE;
                     }
-                    else if (root.attack_type == AIRSTRIKE5) {
+                    else if (root.attack_type == AIRSTRIKE_SHIP) {
                         return AttackTypeSubCategory.AIRSTRIKE_SHIP_NONE;
                     }
                 }
@@ -444,7 +440,7 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.AIRSTRIKE_NOT_DOGFIGHT_UNSUCCESSFUL;
                 }
                 return AttackTypeSubCategory.AIRSTRIKE_UNIT;
-            case AIRSTRIKE6:
+            case AIRSTRIKE_AIRCRAFT:
                 attAir = (int) (root.att_gas_used * 4);
                 if (attAir <= 3) {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
@@ -487,13 +483,13 @@ public class WarUpdateProcessor {
                 case MISSILE:
                 case NUKE:
                     break;
-                case AIRSTRIKE1:
-                case AIRSTRIKE2:
-                case AIRSTRIKE3:
-                case AIRSTRIKE4:
-                case AIRSTRIKE5:
+                case AIRSTRIKE_INFRA:
+                case AIRSTRIKE_SOLDIER:
+                case AIRSTRIKE_TANK:
+                case AIRSTRIKE_MONEY:
+                case AIRSTRIKE_SHIP:
                     //
-                case AIRSTRIKE6:
+                case AIRSTRIKE_AIRCRAFT:
 
 
                 default:
@@ -575,8 +571,8 @@ public class WarUpdateProcessor {
                 break;
             case A_LOOT:
                 break;
-            case AIRSTRIKE2:
-                if (root.attack_type == AIRSTRIKE2 && root.defcas2 == 0) {
+            case AIRSTRIKE_SOLDIER:
+                if (root.attack_type == AIRSTRIKE_SOLDIER && root.defcas2 == 0) {
                     String message = "You performed an airstrike against enemy soldiers when the enemy has none";
                     return Map.entry(AttackTypeSubCategory.AIRSTRIKE_SOLDIERS_NONE, message);
                 }
@@ -611,17 +607,17 @@ public class WarUpdateProcessor {
                     }
                 }
                 // if you have more soldiers than the enemy does
-            case AIRSTRIKE3:
-                if (root.attack_type == AIRSTRIKE3 && root.defcas2 == 0 && defender.getTanks() == 0) {
+            case AIRSTRIKE_TANK:
+                if (root.attack_type == AIRSTRIKE_TANK && root.defcas2 == 0 && defender.getTanks() == 0) {
                     return AttackTypeSubCategory.AIRSTRIKE_TANKS_NONE.toPair();
                 }
-            case AIRSTRIKE1:
-            case AIRSTRIKE4:
-            case AIRSTRIKE5:
-                if (root.attack_type == AIRSTRIKE5 && root.defcas2 == 0 && defender.getShips() == 0) {
+            case AIRSTRIKE_INFRA:
+            case AIRSTRIKE_MONEY:
+            case AIRSTRIKE_SHIP:
+                if (root.attack_type == AIRSTRIKE_SHIP && root.defcas2 == 0 && defender.getShips() == 0) {
                     return AttackTypeSubCategory.AIRSTRIKE_SHIP_NONE.toPair();
                 }
-            case AIRSTRIKE6: {
+            case AIRSTRIKE_AIRCRAFT: {
                 int attAir = (int) (root.att_gas_used * 4);
                 int defAir = defender.getAircraft() + root.defcas1;
 
@@ -639,11 +635,11 @@ public class WarUpdateProcessor {
                     }
                 }
 
-                if (((defender.getAircraft() > attacker.getAircraft() * 0.6 && root.defcas1 < root.attcas1) || root.success < 3) && root.attack_type != AttackType.AIRSTRIKE6) {
+                if (((defender.getAircraft() > attacker.getAircraft() * 0.6 && root.defcas1 < root.attcas1) || root.success < 3) && root.attack_type != AttackType.AIRSTRIKE_AIRCRAFT) {
                     return AttackTypeSubCategory.AIRSTRIKE_FAILED_NOT_DOGFIGHT.toPair();
                 }
 
-                if (root.attcas1 < root.defcas1 / 4 && root.attack_type == AttackType.AIRSTRIKE6 && attAir > 3) {
+                if (root.attcas1 < root.defcas1 / 4 && root.attack_type == AttackType.AIRSTRIKE_AIRCRAFT && attAir > 3) {
                     if (defender.getAircraft() == 0 && root.defcas1 == 0) {
                         String message = AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_NONE.message;
                         if (defender.getActive_m() > 10000) {
@@ -675,7 +671,7 @@ public class WarUpdateProcessor {
                     break;
                 }
 
-                if (root.attack_type == AttackType.AIRSTRIKE1 && attAir > 3) {
+                if (root.attack_type == AttackType.AIRSTRIKE_INFRA && attAir > 3) {
 
                     String message = AttackTypeSubCategory.AIRSTRIKE_INFRA.message.replace("{amount}", attAir + "");
 
@@ -689,7 +685,7 @@ public class WarUpdateProcessor {
                     return Map.entry(AttackTypeSubCategory.AIRSTRIKE_INFRA, message);
                 }
 
-                if (root.attack_type == AttackType.AIRSTRIKE4 && attAir > 3) {
+                if (root.attack_type == AttackType.AIRSTRIKE_MONEY && attAir > 3) {
                     String message = AttackTypeSubCategory.AIRSTRIKE_MONEY.message.replace("{amount}", attAir + "") + "\n";
                     if (defender.getActive_m() > 2880) {
                         message += " They are inactive, so you are destroying your own loot";

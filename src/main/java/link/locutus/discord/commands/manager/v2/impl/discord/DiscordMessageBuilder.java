@@ -61,6 +61,7 @@ public class DiscordMessageBuilder implements IMessageBuilder {
                     return true;
                 }
                 else {
+                    System.out.println(":||Remove Cannot send a DiscordMessageBuilder to a non-Discord channel");
                     throw new IllegalStateException("Cannot send a DiscordMessageBuilder to a non-Discord channel");
                 }
             }

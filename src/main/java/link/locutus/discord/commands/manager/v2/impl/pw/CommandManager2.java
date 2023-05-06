@@ -163,6 +163,8 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new UnsortedCommands(), List.of("spy", "sheet"), "freeSpyOpsSheet", "free_ops");
 
+        this.commands.registerMethod(new AttackCommands(), List.of("simulate"), "casualties", "casualties");
+
         if (pwgptHandler != null) {
 //            HelpCommands help = new HelpCommands();
 //            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
@@ -407,7 +409,6 @@ public class CommandManager2 {
                 if (callable instanceof ParametricCallable parametric) {
                     handleCall(io, () -> {
                         Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
-                        System.out.println("Run cmd " + path + " with " + Arrays.toString(parsed) + " and " + finalLocals);
                         return parametric.call(null, finalLocals, parsed);
                     });
                 } else if (callable instanceof CommandGroup group) {

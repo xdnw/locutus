@@ -8,9 +8,7 @@ import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.event.bank.LootInfoEvent;
 import link.locutus.discord.event.bank.TransactionEvent;
@@ -34,8 +32,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.scheduler.TriConsumer;
-import org.checkerframework.checker.units.qual.min;
-import rocker.grant.nation;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,10 +40,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class LootEstimateTracker {
     private final Map<Integer, LootEstimate> nationLootMap = new Int2ObjectOpenHashMap<>();
@@ -610,7 +604,7 @@ public class LootEstimateTracker {
         double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true));
 
         // Handle airstrike money (since it comes under unit losses, which we are excluding)
-        if (attack.attack_type == AttackType.AIRSTRIKE4 && attack.defcas1 > 0) {
+        if (attack.attack_type == AttackType.AIRSTRIKE_MONEY && attack.defcas1 > 0) {
             defLoss[ResourceType.MONEY.ordinal()] += attack.defcas1;
         }
         if (attack.success > 0 && hasSalvage) {
