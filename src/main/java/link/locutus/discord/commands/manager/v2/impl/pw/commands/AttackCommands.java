@@ -1,13 +1,22 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import net.dv8tion.jda.api.entities.User;
+
+import java.util.Map;
+import java.util.Set;
 
 public class AttackCommands {
     @Command(aliases = "groundsim", desc = "Simulate a ground attack with the given attacker and defender troops\n" +
@@ -62,6 +71,128 @@ public class AttackCommands {
         }
 
         response.append("\n\nNote: For a guaranteed IT, you need 2.5x enemy strength.");
+
+        return response.toString();
+    }
+
+    // TODO muni/gas usage
+    @Command(desc = "Simulate an attack between two nations and return the odds and casualties")
+    public String casualties(AttackType attack, WarType warType,
+                             DBNation enemy, @Default("%user%") DBNation me,
+                             @Default Map<MilitaryUnit, Long> attackerMilitary,
+                             @Default Map<MilitaryUnit, Long> defenderMilitary,
+                             @Switch("att_policy") WarPolicy attackerPolicy,
+                             @Switch("def_policy") WarPolicy defenderPolicy,
+                             @Switch("f") boolean defFortified,
+                             @Switch("ac") boolean attAirControl,
+                             @Switch("dac") boolean defAirControl,
+                             @Switch("s") boolean selfIsDefender,
+                             @Switch("ua") boolean unequipAttackerSoldiers,
+                             @Switch("ud") boolean unequipDefenderSoldiers,
+                             @Switch("ap") Set<Project> attackerProjects,
+                             @Switch("dp") Set<Project> defenderProjects) {
+        DBNation attacker = new DBNation(selfIsDefender ? enemy : me);
+        DBNation defender = new DBNation(selfIsDefender ? me : enemy);
+        if (attackerMilitary != null) {
+            for (Map.Entry<MilitaryUnit, Long> entry : attackerMilitary.entrySet()) {
+                attacker.setUnits(entry.getKey(), entry.getValue().intValue());
+            }
+        }
+        if (defenderMilitary != null) {
+            for (Map.Entry<MilitaryUnit, Long> entry : defenderMilitary.entrySet()) {
+                defender.setUnits(entry.getKey(), entry.getValue().intValue());
+            }
+        }
+        if (attackerPolicy != null) {
+            attacker.setWarPolicy(attackerPolicy);
+        }
+        if (defenderPolicy != null) {
+            defender.setWarPolicy(defenderPolicy);
+        }
+        if (attackerProjects != null) {
+            attacker.setProjectsRaw(0L);
+            for (Project project : attackerProjects) {
+                attacker.setProject(project);
+            }
+        }
+        if (defenderProjects != null) {
+            defender.setProjectsRaw(0L);
+            for (Project project : defenderProjects) {
+                defender.setProject(project);
+            }
+        }
+
+        StringBuilder response = new StringBuilder();
+        response.append("**" + attack.name() + "**: ");
+
+        switch (attack) {
+            case MISSILE, NUKE: {
+                response.append("\n");
+                Project project = attack == AttackType.NUKE ? Projects.VITAL_DEFENSE_SYSTEM : Projects.IRON_DOME;
+                if (defender.hasProject(project)) {
+                    response.append("Defender has project " + Projects.IRON_DOME.name() + " (50% interception)\n");
+                }
+                Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> casualties
+                        = attack.getCasualties(attacker, defender, SuccessType.IMMENSE_TRIUMPH, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers);
+                response.append("Attacker losses: ");
+                for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
+                    response.append(" - " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append(" - ").append(entry.getValue().getValue()).append("]`\n");
+                }
+                response.append("Defender losses: ");
+                for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getValue().entrySet()) {
+                    response.append(" - " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append(" - ").append(entry.getValue().getValue()).append("]`\n");
+                }
+                break;
+            }
+            case GROUND:
+            case AIRSTRIKE_INFRA:
+            case AIRSTRIKE_SOLDIER:
+            case AIRSTRIKE_TANK:
+            case AIRSTRIKE_MONEY:
+            case AIRSTRIKE_SHIP:
+            case AIRSTRIKE_AIRCRAFT:
+            case NAVAL: {
+                double attStr = 0;
+                double defStr = 0;
+                if (attack == AttackType.GROUND) {
+                    response.append(" (soldier: " + attacker.getSoldiers() + ", tanks: " + attacker.getTanks() +") -> (soldier: " + defender.getSoldiers() + ", tanks: " + defender.getTanks() + ")");
+                    attStr = attacker.getGroundStrength(!unequipAttackerSoldiers, defAirControl);
+                    defStr = defender.getGroundStrength(!unequipDefenderSoldiers, attAirControl);
+                } else {
+                    MilitaryUnit unit = attack.getUnits()[0];
+                    response.append(attacker.getUnits(unit) + " -> " + defender.getUnits(unit));
+                    attStr = attacker.getUnits(unit);
+                    defStr = defender.getUnits(unit);
+                }
+                response.append("\n");
+
+                for (SuccessType success : SuccessType.values) {
+                    double odds = PnwUtil.getOdds(attStr, defStr, success.ordinal());
+                    if (odds <= 0) continue;
+                    odds = Math.min(1, odds);
+                    String pctStr = MathMan.format(odds * 100) + "%";
+                    response.append("\n").append(success.name()).append("=").append(pctStr).append("\n");
+
+                    Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> casualties
+                            = attack.getCasualties(attacker, defender, success, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers);
+                    response.append("Attacker losses: ");
+                    for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
+                        long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
+                        response.append(" - " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append(" - ").append(entry.getValue().getValue()).append("] (avg:" + avg + ")`\n");
+                    }
+                    response.append("Defender losses: ");
+                    for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getValue().entrySet()) {
+                        long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
+                        response.append(" - " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append(" - ").append(entry.getValue().getValue()).append("] (avg:" + avg + ")`\n");
+                    }
+                    response.append("\n");
+                }
+                break;
+            }
+
+            default:
+                throw new IllegalArgumentException("Invalid attack type: " + attack);
+        }
 
         return response.toString();
     }

@@ -312,7 +312,6 @@ public class GuildHandler {
                 CM.interview.create.cmd.create(author.getAsMention()).toCommandArgs();
 
         IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString()).commandButton(pending, emoji);
-        DiscordUtil.createEmbedCommand(alertChannel, title, body.toString(), emoji, pending);
         if (mentionInterviewer) {
             msg.append("^ " + interviewerRole.getAsMention());
         }

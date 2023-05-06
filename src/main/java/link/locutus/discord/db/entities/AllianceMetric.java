@@ -408,6 +408,45 @@ public enum AllianceMetric {
         }
     },
 
+    NUKE(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            return alliance.getMembersTotal().getNukes();
+        }
+    },
+    NUKE_AVG(true) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            Set<DBNation> nations = alliance.getNations(true, 0, true);
+            long total = 0;
+            int num = 0;
+            for (DBNation nation : nations) {
+                total += nation.getNukes();
+                num += nation.getCities();
+            }
+            return total / num;
+        }
+    },
+
+    MISSILE(false) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            return alliance.getMembersTotal().getMissiles();
+        }
+    },
+    MISSILE_AVG(true) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            Set<DBNation> nations = alliance.getNations(true, 0, true);
+            long total = 0;
+            int num = 0;
+            for (DBNation nation : nations) {
+                total += nation.getMissiles();
+                num += nation.getCities();
+            }
+            return total / num;
+        }
+    },
 
     ;
 

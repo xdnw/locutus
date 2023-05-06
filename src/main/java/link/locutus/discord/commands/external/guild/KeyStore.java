@@ -11,9 +11,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildChannelSetting;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildSettingCategory;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -60,7 +60,7 @@ public class KeyStore extends Command implements Noformat {
         if (db == null) return "Command must run in a guild.";
         if (args.size() != 2) {
             if (args.size() == 1) {
-                GuildSetting key = GuildDB.Key.valueOf(args.get(0).toUpperCase());
+                GuildSetting key = GuildSettings.Key.valueOf(args.get(0).toUpperCase());
                 String result = "Usage: `" + key.getCommand("YOUR_VALUE_HERE") + "`\n" + key.help().trim();
 
                 String rawValue = key.getRaw(db, false);
@@ -122,12 +122,12 @@ public class KeyStore extends Command implements Noformat {
 
             return null;
         }
-        GuildSetting key = GuildDB.Key.valueOf(args.get(0));
+        GuildSetting key = GuildSettings.Key.valueOf(args.get(0));
         if (!key.hasPermission(db, author, null)) return "No permission for modify that key.";
-        if (!key.allowed(db)) return "This guild does not have permission to set this key.";
+        if (!key.allowed(db, true)) return "This guild does not have permission to set this key.";
 
         String value = args.get(1);
-        if (key == GuildDB.Key.API_KEY) {
+        if (key == GuildSettings.Key.API_KEY) {
             if (!value.equalsIgnoreCase("null")) {
                 try {
                     IMessageBuilder msg = io.getMessage();
@@ -147,7 +147,6 @@ public class KeyStore extends Command implements Noformat {
             Object newVal = key.parse(db, args.get(1));
             newVal = key.validate(db, newVal);
             if (!key.hasPermission(db, author, newVal)) return "No permission to set that key to `" + args.get(1) + "`";
-
             return key.set(db, newVal) + " (in guild " + guild.getName() + ")";
         }
     }
@@ -168,7 +167,7 @@ public class KeyStore extends Command implements Noformat {
 
     private Map<GuildSettingCategory, Map<GuildSetting, Object>> getKeys(GuildDB db, boolean listAll) {
         Map<GuildSettingCategory, Map<GuildSetting, Object>> map = new LinkedHashMap<>();
-        for (GuildSetting key : GuildDB.Key.values()) {
+        for (GuildSetting key : GuildSettings.Key.values()) {
             if (!key.allowed(db) && !listAll) continue;
             map.computeIfAbsent(key.getCategory(), f -> new LinkedHashMap<>()).put(key, db.getOrNull(key, false));
         }

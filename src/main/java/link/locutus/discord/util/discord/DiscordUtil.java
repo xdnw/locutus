@@ -611,10 +611,19 @@ public class DiscordUtil {
     }
 
     public static DBNation parseNation(String arg) {
+        return parseNation(arg, false);
+    }
+
+    public static DBNation parseNation(String arg, boolean allowDeleted) {
         if (arg.toLowerCase().contains("/alliance/") || arg.toLowerCase().startsWith("aa:")) return null;
         Integer id = parseNationId(arg);
         if (id != null) {
-            return Locutus.imp().getNationDB().getNation(id);
+            DBNation nation = Locutus.imp().getNationDB().getNation(id);
+            if (nation == null && allowDeleted) {
+                nation = new DBNation();
+                nation.setNation_id(id);
+            }
+            return nation;
         }
         return null;
     }
@@ -815,6 +824,10 @@ public class DiscordUtil {
     }
 
     public static Set<DBNation> parseNations(Guild guild, String aa, boolean noApplicants, boolean starIsSelf, boolean ignoreErrors) {
+        return parseNations(guild, aa, noApplicants, starIsSelf, ignoreErrors, false);
+    }
+
+    public static Set<DBNation> parseNations(Guild guild, String aa, boolean noApplicants, boolean starIsSelf, boolean ignoreErrors, boolean allowDeleted) {
         if (aa.equalsIgnoreCase("*")) return new HashSet<>(Locutus.imp().getNationDB().getNations().values());
         Set<DBNation> orNations = null;
 
@@ -938,7 +951,7 @@ public class DiscordUtil {
                     continue;
                 }
 
-                DBNation nation = name.contains("/alliance/") ? null : parseNation(name);
+                DBNation nation = name.contains("/alliance/") ? null : parseNation(name, allowDeleted);
                 if (nation == null || name.contains("/alliance/")) {
                     Set<Integer> alliances = parseAlliances(guild, name);
                     if (alliances == null) {

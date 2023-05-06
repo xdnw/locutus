@@ -57,7 +57,7 @@ public class RateLimitUtil {
         if (category.size() > 1) category.entrySet().removeIf(f -> f.getKey() < cutoff);
         if (requestsThisMinute.size() > 1) requestsThisMinute.removeIf(f -> f < cutoff);
 
-        if (requestsThisMinute.size() > 20) {
+        if (requestsThisMinute.size() > 50) {
             if (lastLimitTime < cutoff || requestsThisMinute.size() > lastLimitTotal + 10) {
                 lastLimitTime = now;
                 lastLimitTotal = requestsThisMinute.size();
@@ -150,18 +150,17 @@ public class RateLimitUtil {
                 if (channel == null) return;
 
                 long now = System.currentTimeMillis();
-                long last = messageQueueLastSent.getOrDefault(channelId, 0L);
 
                 List<Function<IMessageBuilder, Boolean>> toSend = null;
 
                 synchronized (messageQueueLastSent) {
-
+                    long last = messageQueueLastSent.getOrDefault(channelId, 0L);
                     List<Function<IMessageBuilder, Boolean>> messages = messageQueue.get(channelId);
                     if (messages == null || messages.isEmpty()) return;
 
                     boolean isMyMessageLatest = messages.get(messages.size() - 1) == apply;
 
-                    if (now - last < finalBufferSeconds * 1000L || isMyMessageLatest) {
+                    if (now - last > finalBufferSeconds * 1000L || isMyMessageLatest) {
                         toSend = messageQueue.remove(channelId);
                         messageQueueLastSent.put(channelId, now);
                     }
@@ -169,7 +168,7 @@ public class RateLimitUtil {
                 if (toSend != null) {
                     boolean modified = false;
                     IMessageBuilder msg = io.create();
-                    for (int i = 0; i < toSend.size() - 1; i++) {
+                    for (int i = 0; i < toSend.size(); i++) {
                         if (toSend.get(i).apply(msg)) {
                             modified = true;
                             if (i < toSend.size() - 1) {
@@ -208,7 +207,7 @@ public class RateLimitUtil {
                         @Override
                         public void runUnsafe() throws InterruptedException {
                             while (true) {
-                                if (queuedActions.isEmpty() || getCurrentUsed() >= getLimitPerMinute()) {
+                                if (queuedActions.isEmpty() || getCurrentUsed(true) >= getLimitPerMinute()) {
                                     Thread.sleep(10000);
                                     continue;
                                 }

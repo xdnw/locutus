@@ -439,6 +439,7 @@ public class GrantCmd extends Command {
                     case MISSILE:
                         if (!flags.contains('f')) throw new IllegalArgumentException("We do not approve grants for missiles/nukes");
                     case MONEY:
+                    case INFRASTRUCTURE:
                         break;
                 }
                 if (amt + me.getUnits(unit) > max) {

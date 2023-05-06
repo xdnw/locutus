@@ -8,7 +8,6 @@ import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -18,7 +17,6 @@ import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
-import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.util.List;
 import java.util.Map;
@@ -324,12 +322,12 @@ public class WarCard {
                             if (groundControl != attack.attacker_nation_id) groundControl = 0;
                     }
                     break;
-                case AIRSTRIKE1:
-                case AIRSTRIKE2:
-                case AIRSTRIKE3:
-                case AIRSTRIKE4:
-                case AIRSTRIKE5:
-                case AIRSTRIKE6:
+                case AIRSTRIKE_INFRA:
+                case AIRSTRIKE_SOLDIER:
+                case AIRSTRIKE_TANK:
+                case AIRSTRIKE_MONEY:
+                case AIRSTRIKE_SHIP:
+                case AIRSTRIKE_AIRCRAFT:
                     switch (attack.success) {
                         case 3:
                             acDate = attack.epoch;

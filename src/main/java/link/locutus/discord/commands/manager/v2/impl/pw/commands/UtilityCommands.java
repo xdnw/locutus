@@ -1043,6 +1043,27 @@ public class UtilityCommands {
             revenueFactor *= nation.lootModifier();
 
             LootEntry lootInfo = Locutus.imp().getNationDB().getLoot(nationOrAlliance.getId());
+
+            revenueTurns = nation.getTurnsInactive(lootInfo);
+            if (revenueTurns > 0) {
+                revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false, false);
+                if (lootInfo != null) {
+                    revenue = PnwUtil.capManuFromRaws(revenue, lootInfo.getTotal_rss());
+                }
+                revenue = PnwUtil.multiply(revenue, revenueFactor);
+
+                // cap revenue at loot total
+                if (lootInfo != null) {
+                    for (ResourceType type : ResourceType.values) {
+                        double revenueAmt = revenue[type.ordinal()];
+                        double stockAmt = lootInfo.getTotal_rss()[type.ordinal()];
+                        if (stockAmt + revenueAmt < 0) {
+                            revenue[type.ordinal()] = -stockAmt;
+                        }
+                    }
+                }
+            }
+
             if (lootInfo != null) {
                 totalStored = lootInfo.getTotal_rss();
                 nationLoot = PnwUtil.multiply(totalStored.clone(), revenueFactor);
@@ -1058,15 +1079,6 @@ public class UtilityCommands {
                 extraInfo.add(info.toString());
             } else {
                 extraInfo.add("No spy or beige loot found");
-            }
-
-            revenueTurns = nation.getTurnsInactive(lootInfo);
-            if (revenueTurns > 0) {
-                revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false, false);
-                if (lootInfo != null) {
-                    revenue = PnwUtil.capManuFromRaws(revenue, lootInfo.getTotal_rss());
-                }
-                revenue = PnwUtil.multiply(revenue, revenueFactor);
             }
 
             if (nation.active_m() > 1440 && nation.active_m() < 10080) {

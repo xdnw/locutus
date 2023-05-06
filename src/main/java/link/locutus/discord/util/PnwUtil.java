@@ -558,7 +558,7 @@ public class PnwUtil {
         if (arg.equalsIgnoreCase("none")) {
             return 0;
         }
-        if (arg.startsWith(Settings.INSTANCE.PNW_URL() + "/alliance/id=") || arg.startsWith("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=")) {
+        if (arg.startsWith(Settings.INSTANCE.PNW_URL() + "/alliance/id=") || arg.startsWith(Settings.INSTANCE.PNW_URL() + "//alliance/id=") || arg.startsWith("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=")) {
             String[] split = arg.split("=");
             if (split.length == 2) {
                 arg = split[1].replaceAll("/", "");

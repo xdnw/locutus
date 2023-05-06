@@ -326,7 +326,7 @@ public class BlitzGenerator {
     }
 
     public void removeSlotted() {
-        colB.removeIf(n -> n.getDef() >= 3);
+        colB.removeIf(n -> n.getDef() >= 3 || n.isBeige() || n.getVm_turns() > 0);
     }
 
     BiFunction<Double, Double, Integer> attScores;

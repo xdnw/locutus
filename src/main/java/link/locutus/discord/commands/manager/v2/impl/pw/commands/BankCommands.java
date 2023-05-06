@@ -1828,7 +1828,6 @@ public class BankCommands {
             }
 
         }
-
         if (alliance.isGuild()) {
             offshore.disabledGuilds.remove(alliance.asGuild().getIdLong());
         } else if (alliance.isAlliance()) {
@@ -2629,6 +2628,8 @@ public class BankCommands {
 
             outer:
             for (GuildDB other : Locutus.imp().getGuildDatabases().values()) {
+                if (other.isDelegateServer()) continue outer;
+
                 Set<Long> offshoreIds = other.getCoalitionRaw(Coalition.OFFSHORE);
                 if (offshoreIds.isEmpty()) continue;
 

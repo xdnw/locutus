@@ -352,32 +352,32 @@ public class ExportSim {
             for (double planes = minRatio; planes <= maxRatio; planes += Math.max(stepSize, planes / factor)) {
                 warNation1.setAircraft((int) (airMax * planes));
 
-                iterateAttack(AttackType.AIRSTRIKE6, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
+                iterateAttack(AttackType.AIRSTRIKE_AIRCRAFT, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
                         true,
                         (a, b) -> a.airstrikeAir(b, a.getAircraft(), true));
 
-                iterateAttack(AttackType.AIRSTRIKE1, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
+                iterateAttack(AttackType.AIRSTRIKE_INFRA, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
                         true,
                         (a, b) -> a.airstrikeInfra(b, a.getAircraft(), true));
 
                 for (double ships = minRatio; ships <= maxRatio; ships += Math.max(stepSize, ships / factor)) {
                     warNation1.setShips((int) (shipMax * ships));
 
-                    iterateAttack(AttackType.AIRSTRIKE5, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
+                    iterateAttack(AttackType.AIRSTRIKE_SHIP, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
                             true,
                             (a, b) -> a.airstrikeShips(b, a.getAircraft(), true));
                 }
                 for (double soldiers = minRatio; soldiers <= maxRatio; soldiers += Math.max(stepSize, soldiers / factor)) {
                     warNation1.setSoldiers((int) (soldierMax * soldiers));
 
-                    iterateAttack(AttackType.AIRSTRIKE2, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
+                    iterateAttack(AttackType.AIRSTRIKE_SOLDIER, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
                             true,
                             (a, b) -> a.airstrikeSoldiers(b, a.getAircraft(), true));
                 }
                 for (double tanks = minRatio; tanks <= maxRatio; tanks += Math.max(stepSize, tanks / factor)) {
                     warNation1.setTanks((int) (tankMax * tanks));
 
-                    iterateAttack(AttackType.AIRSTRIKE3, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
+                    iterateAttack(AttackType.AIRSTRIKE_TANK, warNation1, warNation1Tmp, warNation2, warNation2Tmp,
                             true,
                             (a, b) -> a.airstrikeTanks(b, a.getAircraft(), true));
                 }

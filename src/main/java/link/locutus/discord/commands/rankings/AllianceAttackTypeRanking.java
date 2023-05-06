@@ -52,7 +52,7 @@ public class AllianceAttackTypeRanking extends Command {
         String arg = args.get(0);
         if (MathMan.isInteger(arg)) arg = arg + "d";
         long cutoffMs = System.currentTimeMillis() - TimeUtil.timeToSec(arg) * 1000L;
-        AttackType type = AttackType.valueOf(args.get(1).toUpperCase());
+        AttackType type = AttackType.get(args.get(1).toUpperCase());
 
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
 //            Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWars();

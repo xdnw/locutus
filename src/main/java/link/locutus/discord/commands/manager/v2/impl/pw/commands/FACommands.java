@@ -178,7 +178,12 @@ public class FACommands {
         for (NationOrAllianceOrGuild aaOrGuild : alliances) {
             if (aaOrGuild.isNation()) {
                 DBAlliance alliance = Locutus.imp().getNationDB().getAllianceByName(aaOrGuild.getName());
-                if (alliance == null) throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
+                if (alliance == null) {
+                    alliance = Locutus.imp().getNationDB().getAllianceByName(aaOrGuild.asNation().getLeader());
+                }
+                if (alliance == null) {
+                    throw new IllegalArgumentException("Invalid alliance: " + aaOrGuild.getName());
+                }
                 aaOrGuild = alliance;
             }
             db.addCoalition(aaOrGuild.getIdLong(), coalitionName);
