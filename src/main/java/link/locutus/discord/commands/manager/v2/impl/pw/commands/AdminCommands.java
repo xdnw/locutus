@@ -28,7 +28,7 @@ import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
@@ -448,7 +448,7 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     public String editAlliance(@Me GuildDB db, @Me User author, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
         if (!db.isAllianceId(alliance.getAlliance_id())) {
-            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildSettings.Key.ALLIANCE_ID.name();
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
         }
 
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
@@ -521,7 +521,7 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
         if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
-            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildSettings.Key.ALLIANCE_ID.name();
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
         }
         StringBuilder response = new StringBuilder();
         boolean showGlobalMappingInfo = false;
@@ -686,7 +686,7 @@ public class AdminCommands {
     public String importGuildKeys() {
         StringBuilder response = new StringBuilder();
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            List<String> keys = db.getOrNull(GuildSettings.Key.API_KEY);
+            List<String> keys = db.getOrNull(GuildKey.API_KEY);
             if (keys == null) return "No keys found for guild " + db.getGuild().getName() + " (" + db.getGuild().getId() + ")";
             for (String key : keys) {
                 try {

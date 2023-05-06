@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -447,7 +447,7 @@ public class TaxRecordCategorizer2 {
         this.incomeByBracket = new Int2ObjectOpenHashMap<>();
         this.incomeByNation = new Int2ObjectOpenHashMap<>();
 
-        TaxRate taxBase = db.getOrNull(GuildSettings.Key.TAX_BASE);
+        TaxRate taxBase = db.getOrNull(GuildKey.TAX_BASE);
         if (taxBase == null) taxBase = new TaxRate(100, 100);
         else {
             taxBase = new TaxRate(taxBase.money, taxBase.resources);

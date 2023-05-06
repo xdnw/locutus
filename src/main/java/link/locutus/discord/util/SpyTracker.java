@@ -15,7 +15,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.io.IOException;
@@ -435,10 +435,10 @@ public class SpyTracker {
 
             GuildDB db = defender.getGuildDB();
             if (db == null) continue;
-            MessageChannel channel = db.getOrNull(GuildSettings.Key.ESPIONAGE_ALERT_CHANNEL);
+            MessageChannel channel = db.getOrNull(GuildKey.ESPIONAGE_ALERT_CHANNEL);
             if (channel == null && (!alert.exact.isEmpty() || unit == MilitaryUnit.SPIES)) {
-                channel = db.getOrNull(GuildSettings.Key.DEFENSE_WAR_CHANNEL);
-                body.append("\nSpy kills are not enabled (only units). See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildSettings.Key.ESPIONAGE_ALERT_CHANNEL.name() + "`");
+                channel = db.getOrNull(GuildKey.DEFENSE_WAR_CHANNEL);
+                body.append("\nSpy kills are not enabled (only units). See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildKey.ESPIONAGE_ALERT_CHANNEL.name() + "`");
             }
             if (channel == null) continue;
 

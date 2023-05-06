@@ -10,7 +10,7 @@ import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.nation.NationBlockadedEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.nation.NationUnblockadedEvent;
@@ -233,7 +233,7 @@ public class NationUpdateProcessor {
                     body.append("Online: " + active).append("\n");
                     body.append("Avg Military: " + MathMan.format(100 * avgMMR) + "%").append("\n");
 
-                    AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ACTIVITY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                    AlertUtil.forEachChannel(f -> true, GuildKey.ACTIVITY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                         @Override
                         public void accept(MessageChannel channel, GuildDB guildDB) {
                             DiscordUtil.createEmbedCommand(channel, title, body.toString());
@@ -327,7 +327,7 @@ public class NationUpdateProcessor {
                     body.append("\nReroll of: " + PnwUtil.getNationUrl(rerollId));
                 }
 
-                AlertUtil.forEachChannel(f -> true, GuildSettings.Key.REROLL_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+                AlertUtil.forEachChannel(f -> true, GuildKey.REROLL_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
                         DiscordUtil.createEmbedCommand(channel, title, body.toString());
@@ -357,7 +357,7 @@ public class NationUpdateProcessor {
         {
             String title = current.getNation() + " (" + Rank.byId(previous.getPosition()) + ") leaves " + previous.getAllianceName();
             String body = current.toEmbedString(false);
-            AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+            AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     DiscordUtil.createEmbedCommand(channel, title, body);
@@ -431,10 +431,10 @@ public class NationUpdateProcessor {
         double minScore = current.getScore() / 1.75;
         double maxScore = current.getScore() / 0.75;
 
-        AlertUtil.forEachChannel(GuildDB::isValidAlliance, GuildSettings.Key.ENEMY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(GuildDB::isValidAlliance, GuildKey.ENEMY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
-                EnemyAlertChannelMode mode = guildDB.getOrNull(GuildSettings.Key.ENEMY_ALERT_CHANNEL_MODE);
+                EnemyAlertChannelMode mode = guildDB.getOrNull(GuildKey.ENEMY_ALERT_CHANNEL_MODE);
                 if (mode == null) mode = EnemyAlertChannelMode.PING_USERS_IN_RANGE;
 
                 double strength = BlitzGenerator.getAirStrength(current, false);
@@ -565,7 +565,7 @@ public class NationUpdateProcessor {
         }
 
         String finalMsg = msg;
-        AlertUtil.forEachChannel(f -> f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildSettings.Key.BEIGE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildKey.BEIGE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 if (!guildDB.isWhitelisted() || !guildDB.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) return;
@@ -644,7 +644,7 @@ public class NationUpdateProcessor {
         if (alliance.getRank() < 50) {
             String title = previous.getNation() + " (" + Rank.byId(previous.getPosition()) + ") deleted from " + previous.getAllianceName();
             String body = previous.toEmbedString(false);
-            AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+            AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     DiscordUtil.createEmbedCommand(channel, title, body);
@@ -681,7 +681,7 @@ public class NationUpdateProcessor {
                 Member member = guild.getMember(user);
                 if (member == null) continue;
 
-                if (db.getOrNull(GuildSettings.Key.AUTONICK) == GuildDB.AutoNickOption.NATION) {
+                if (db.getOrNull(GuildKey.AUTONICK) == GuildDB.AutoNickOption.NATION) {
                     try {
                         db.getAutoRoleTask().autoRole(member, System.out::println);
                     } catch (Throwable e) {
@@ -702,7 +702,7 @@ public class NationUpdateProcessor {
                 Member member = guild.getMember(user);
                 if (member == null) continue;
 
-                if (db.getOrNull(GuildSettings.Key.AUTONICK) == GuildDB.AutoNickOption.LEADER) {
+                if (db.getOrNull(GuildKey.AUTONICK) == GuildDB.AutoNickOption.LEADER) {
                     try {
                         db.getAutoRoleTask().autoRole(member, System.out::println);
                     } catch (Throwable e) {
@@ -771,7 +771,7 @@ public class NationUpdateProcessor {
             String body = PnwUtil.getMarkdownUrl(alliance.getId(), true) +
                     "(-" + MathMan.format(scoreDrop) + " score)" +
                     "\n" + StringMan.join(departureInfo, "\n");
-            AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ORBIS_ALLIANCE_EXODUS_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+            AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_ALLIANCE_EXODUS_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     DiscordUtil.createEmbedCommand(channel, title, body);
@@ -853,7 +853,7 @@ public class NationUpdateProcessor {
                     GuildDB guildDB = entry.getValue();
                     Integer perm = guildDB.getPermission(BankAlerts.class);
                     if (perm == null || perm <= 0) continue;
-                    MessageChannel channel = guildDB.getOrNull(GuildSettings.Key.BANK_ALERT_CHANNEL, false);
+                    MessageChannel channel = guildDB.getOrNull(GuildKey.BANK_ALERT_CHANNEL, false);
                     if (channel == null) {
                         continue;
                     }
@@ -878,7 +878,7 @@ public class NationUpdateProcessor {
                 || (current.getAlliance_id() != 0 && current.getAlliance_id() != previous.getAlliance_id() && aa2.getRank() < 80);
 
         if (isRelevant) {
-            AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ORBIS_LEADER_CHANGE_ALERT, new BiConsumer<MessageChannel, GuildDB>() {
+            AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_LEADER_CHANGE_ALERT, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     String title = current.getNation() + " | " + Rank.byId(previous.getPosition()) + "->" + Rank.byId(current.getPosition());
@@ -936,7 +936,7 @@ public class NationUpdateProcessor {
             String finalType = type;
             String finalBody = body;
             String title = "Detected " + finalType + ": " + previous.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAllianceName();
-            AlertUtil.forEachChannel(BankAlerts.class, GuildSettings.Key.DELETION_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+            AlertUtil.forEachChannel(BankAlerts.class, GuildKey.DELETION_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB db) {
                     AlertUtil.displayChannel(title, finalBody, channel.getIdLong());

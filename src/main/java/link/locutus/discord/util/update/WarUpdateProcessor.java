@@ -10,7 +10,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.war.*;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -56,7 +56,7 @@ public class WarUpdateProcessor {
     @Subscribe
     public void onBountyCreate(BountyCreateEvent event) {
         DBBounty bounty = event.bounty;
-        AlertUtil.forEachChannel(SyncBounties.class, GuildSettings.Key.BOUNTY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(SyncBounties.class, GuildKey.BOUNTY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 Guild guild = guildDB.getGuild();
@@ -295,8 +295,8 @@ public class WarUpdateProcessor {
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (!db.isValidAlliance() && !db.isWhitelisted() && !db.isOwnerActive() || db.isDelegateServer()) continue;
 
-            MessageChannel defChan = db.getOrNull(GuildSettings.Key.DEFENSE_WAR_CHANNEL, false);
-            MessageChannel offChan = db.getOrNull(GuildSettings.Key.OFFENSIVE_WAR_CHANNEL, false);
+            MessageChannel defChan = db.getOrNull(GuildKey.DEFENSE_WAR_CHANNEL, false);
+            MessageChannel offChan = db.getOrNull(GuildKey.OFFENSIVE_WAR_CHANNEL, false);
 
             GuildHandler handler = db.getHandler();
 
@@ -824,7 +824,7 @@ public class WarUpdateProcessor {
 
             if (lastWarringBuf == null || TimeUtil.getTurn() - lastWarringBuf.getLong() > 24) {
                 if (stat != null && stat.type == CounterType.ESCALATION) {
-                    AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                    AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                         @Override
                         public void accept(MessageChannel channel, GuildDB guildDB) {
                             card.embed(new DiscordChannelIO(channel), false, true);
@@ -845,7 +845,7 @@ public class WarUpdateProcessor {
                         }
                     }
                     if (escalatedWars != null) {
-                        AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                        AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                             @Override
                             public void accept(MessageChannel channel, GuildDB guildDB) {
                                 card.embed(new DiscordChannelIO(channel), false, true);
@@ -985,7 +985,7 @@ public class WarUpdateProcessor {
 
             if (body != null && !lastWarring && warring && currentTurn - lastWarTurn > warTurnThresheld) {
                 String title = alliance.getName() + " is being Attacked";
-                AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
                         DiscordUtil.createEmbedCommand(channel, title, body);

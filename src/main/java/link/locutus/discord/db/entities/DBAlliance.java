@@ -20,7 +20,7 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.*;
 import link.locutus.discord.pnw.NationList;
@@ -750,7 +750,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public ApiKeyPool getApiKeys(AlliancePermission... permissions) {
         GuildDB db = getGuildDB();
         if (db != null) {
-            List<String> apiKeys = db.getOrNull(GuildSettings.Key.API_KEY);
+            List<String> apiKeys = db.getOrNull(GuildKey.API_KEY);
 
             if (apiKeys != null && !apiKeys.isEmpty()) {
                 List<String> newKeys = new ArrayList<>(apiKeys);
@@ -765,9 +765,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
                     } catch (HttpClientErrorException.Unauthorized e) {
                         newKeys.remove(key);
                         if (newKeys.isEmpty()) {
-                            db.deleteInfo(GuildSettings.Key.API_KEY);
+                            db.deleteInfo(GuildKey.API_KEY);
                         } else {
-                            GuildSettings.Key.API_KEY.set(db, newKeys);
+                            GuildKey.API_KEY.set(db, newKeys);
                         }
                     } catch (Throwable e) {
                         throw e;

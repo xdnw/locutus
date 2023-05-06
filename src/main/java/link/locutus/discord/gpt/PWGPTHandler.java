@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.lang.reflect.Method;
@@ -64,7 +64,7 @@ public class PWGPTHandler {
     }
 
     private void registerSettingEmbeddings() {
-        for (GuildSetting key : GuildSettings.Key.values()) {
+        for (GuildSetting key : GuildKey.values()) {
             if (key.help().isEmpty()) continue;
             registerEmbedding(new SettingEmbedding(key), true, "");
         }

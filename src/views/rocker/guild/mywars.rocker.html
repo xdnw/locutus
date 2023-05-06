@@ -1,4 +1,5 @@
 @import java.util.*
+@import link.locutus.discord.db.guild.GuildKey
 @import link.locutus.discord.apiv1.enums.MilitaryUnit
 @import link.locutus.discord.apiv1.enums.city.project.Projects
 @import link.locutus.discord.apiv1.enums.city.project.Project
@@ -87,7 +88,7 @@
     @if (!offensives.isEmpty()) {
     <h4 class="">Offensives</h4>
         @for (Map.Entry<DBWar, DBNation> entry : offensives.entrySet()) {
-            @if (db.getOrNull(GuildDB.Key.ENEMY_BEIGED_ALERT_VIOLATIONS) != null && db.isEnemyAlliance(entry.getKey().defender_aa)) {
+            @if (db.getOrNull(GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS) != null && db.isEnemyAlliance(entry.getKey().defender_aa)) {
                 @rocker.guild.mywartr.template(db, nation, author, entry.getKey(), entry.getValue(), warCards.get(entry.getKey()), recommendedAttacks.get(entry.getKey()), true, BeigeReason.getAllowedBeigeReasons(db, nation, entry.getKey(), null))
             } else {
                 @rocker.guild.mywartr.template(db, nation, author, entry.getKey(), entry.getValue(), warCards.get(entry.getKey()), recommendedAttacks.get(entry.getKey()), true, null)

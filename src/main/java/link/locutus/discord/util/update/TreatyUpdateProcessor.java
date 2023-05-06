@@ -5,7 +5,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -69,7 +69,7 @@ public class TreatyUpdateProcessor {
         body.append("To: " + PnwUtil.getMarkdownUrl(existing.getToId(), true)).append("\n");
 
         String finalTitle = title;
-        AlertUtil.forEachChannel(f -> true, GuildSettings.Key.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> true, GuildKey.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 StringBuilder finalBody = new StringBuilder(body);

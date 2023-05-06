@@ -15,7 +15,7 @@ import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
@@ -279,9 +279,9 @@ public class FACommands {
     public String embassy(@Me GuildDB db, @Me Guild guild, @Me User user, @Me DBNation me, @Arg("The nation to create an embassy for") @Default("%user%") DBNation nation) {
         if (nation == null) nation = me;
         if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You do not have FOREIGN_AFFAIRS";
-        Category category = db.getOrThrow(GuildSettings.Key.EMBASSY_CATEGORY);
+        Category category = db.getOrThrow(GuildKey.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildSettings.Key.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
+            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildKey.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
         }
         if (nation.getPosition() < Rank.OFFICER.id && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You are not an officer";
         User nationUser = nation.getUser();
@@ -293,9 +293,9 @@ public class FACommands {
         Role role = aaRoles.get(nation.getAlliance_id());
         if (role == null) {
             db.addCoalition(nation.getAlliance_id(), Coalition.MASKEDALLIANCES);
-            GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildSettings.Key.AUTOROLE);
+            GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildKey.AUTOROLE);
             if (autoRoleValue == null || autoRoleValue == GuildDB.AutoRoleOption.FALSE) {
-                return "AutoRole is disabled. See " + CM.settings.cmd.create(GuildSettings.Key.AUTOROLE.name(), null, null, null).toSlashCommand() + "";
+                return "AutoRole is disabled. See " + CM.settings.cmd.create(GuildKey.AUTOROLE.name(), null, null, null).toSlashCommand() + "";
             }
             db.getAutoRoleTask().syncDB();
             db.getAutoRoleTask().autoRole(member, f -> {});

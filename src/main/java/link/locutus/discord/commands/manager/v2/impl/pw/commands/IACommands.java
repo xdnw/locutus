@@ -30,7 +30,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
@@ -225,7 +225,7 @@ public class IACommands {
 
     @Command(desc = "List the self roles that you can assign yourself via the bot")
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
-        Map<Role, Set<Role>> assignable = db.getOrNull(GuildSettings.Key.ASSIGNABLE_ROLES);
+        Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
             return "No roles found. See `" +  CM.self.create.cmd.toSlashMention() + "`";
         }
@@ -251,16 +251,16 @@ public class IACommands {
     @Command(desc = "Allow a role to add/remove roles from users")
     @RolePermission(Roles.ADMIN)
     public String addAssignableRole(@Me GuildDB db, @Arg("Require this role in order to use the specified self roles") Role requireRole, Set<Role> assignableRoles) {
-        Map<Role, Set<Role>> assignable = db.getOrNull(GuildSettings.Key.ASSIGNABLE_ROLES);
+        Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null) assignable = new HashMap<>();
 
         assignable.computeIfAbsent(requireRole, f -> new HashSet<>()).addAll(assignableRoles);
 
         StringBuilder result = new StringBuilder();
-        result.append(GuildSettings.Key.ASSIGNABLE_ROLES.set(db, assignable)).append("\n");
+        result.append(GuildKey.ASSIGNABLE_ROLES.set(db, assignable)).append("\n");
 
         result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
-                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildSettings.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "");
+                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null, null) + "");
         return result.toString();
     }
 
@@ -268,7 +268,7 @@ public class IACommands {
             "(having manage roles perm on discord overrides this)")
     @RolePermission(Roles.ADMIN)
     public String removeAssignableRole(@Me GuildDB db, Role requireRole, Set<Role> assignableRoles) {
-        Map<Role, Set<Role>> assignable = db.getOrNull(GuildSettings.Key.ASSIGNABLE_ROLES);
+        Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null) assignable = new HashMap<>();
 
         if (!assignable.containsKey(requireRole)) {
@@ -287,16 +287,16 @@ public class IACommands {
             }
         }
 
-        response.append("\n" + GuildSettings.Key.ASSIGNABLE_ROLES.set(db, assignable));
+        response.append("\n" + GuildKey.ASSIGNABLE_ROLES.set(db, assignable));
 
         return response.toString() + "\n" +
-                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildSettings.Key.ASSIGNABLE_ROLES.name(), null, null, null) + "";
+                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null, null) + "";
     }
 
     @Command(desc = "Add discord role to a user\n" +
             "See: `{prefix}self list`")
     public String addRole(@Me GuildDB db, @Me Member author, Member member, Role addRole) {
-        Map<Role, Set<Role>> assignable = db.getOrNull(GuildSettings.Key.ASSIGNABLE_ROLES);
+        Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null) return "`!KeyStore ASSIGNABLE_ROLES` is not set`";
         boolean canAssign = Roles.ADMIN.has(author);
         if (!canAssign) {
@@ -330,7 +330,7 @@ public class IACommands {
             Roles.FOREIGN_AFFAIRS_STAFF,
     }, any = true)
     public String removeRole(@Me GuildDB db, @Me Member author, Member member, Role addRole) {
-        Map<Role, Set<Role>> assignable = db.getOrNull(GuildSettings.Key.ASSIGNABLE_ROLES);
+        Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null) return "`!KeyStore ASSIGNABLE_ROLES` is not set`";
         boolean canAssign = Roles.ADMIN.has(author);
         if (!canAssign) {
@@ -380,7 +380,7 @@ public class IACommands {
 
 //        db.deleteMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR);
 
-        MessageChannel alertChannel = db.getOrNull(GuildSettings.Key.INTERVIEW_PENDING_ALERTS);
+        MessageChannel alertChannel = db.getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel != null) {
             String message = "Mentor (" + nation.getNation() + " | " + nation.getUserDiscriminator() +
                     ") unassigned Mentee (" + mentee.getNation() + " | " + mentee.getUserDiscriminator() + ")"
@@ -886,7 +886,7 @@ public class IACommands {
         if (key == null) {
             if ((sendFromGuildAccount || myKey == null)) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.settings.cmd.toSlashMention() + " with `" + GuildSettings.Key.API_KEY.name() + "` to add your own key";
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.settings.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "` to add your own key";
                 }
                 key = db.getMailKey();
             } else if (myKey != null) {
@@ -895,7 +895,7 @@ public class IACommands {
         }
         if (key == null){
             if (sendFromGuildAccount) {
-                return "No api key found. Please use" + CM.settings.cmd.toSlashMention() + " with `" + GuildSettings.Key.API_KEY.name() + "`";
+                return "No api key found. Please use" + CM.settings.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "`";
             } else {
                 return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "";
             }
@@ -959,7 +959,7 @@ public class IACommands {
 
         boolean isGov = Roles.ECON_STAFF.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
         if (!isGov) {
-            if (db.getOrNull(GuildSettings.Key.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + CM.settings.cmd.create(GuildSettings.Key.MEMBER_CAN_SET_BRACKET.name(), null, null, null) + ")";
+            if (db.getOrNull(GuildKey.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + CM.settings.cmd.create(GuildKey.MEMBER_CAN_SET_BRACKET.name(), null, null, null) + ")";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
         }
         if (internalTaxRate != null && !isGov) {
@@ -974,7 +974,7 @@ public class IACommands {
 
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.contains(aaId)) {
-            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), aaId + "", null, null) + " to register it.";
+            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), aaId + "", null, null) + " to register it.";
         }
         DBAlliance alliance = DBAlliance.getOrCreate(aaId);
 
@@ -1576,7 +1576,7 @@ public class IACommands {
                 return "Marked channel as closed. Auto deletion in >24h. Use " + CM.channel.open.cmd.toSlashMention() + " to reopen. Use " + CM.channel.close.current.cmd.toSlashMention() + " again to force close";
             }
 
-            Category archiveCategory = db.getOrNull(GuildSettings.Key.ARCHIVE_CATEGORY);
+            Category archiveCategory = db.getOrNull(GuildKey.ARCHIVE_CATEGORY);
             if (archiveCategory != null) {
                 if (true || archiveCategory.equals(tc.getParentCategory()) || forceDelete) {
                     RateLimitUtil.queue(tc.delete());
@@ -1681,7 +1681,7 @@ public class IACommands {
             Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, filter);
 
             Set<Integer> aaIds = db.getAllianceIds();
-            if (aaIds.isEmpty()) return "No alliance set " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "";
+            if (aaIds.isEmpty()) return "No alliance set " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "";
 
             IACategory cat = db.getIACategory();
             if (cat.getCategories().isEmpty()) return "No `interview` categories found";

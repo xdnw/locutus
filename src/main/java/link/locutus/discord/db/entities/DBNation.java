@@ -24,7 +24,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.event.nation.*;
@@ -2178,7 +2178,7 @@ public class DBNation implements NationOrAlliance {
         taxes.removeIf(f -> !finalTracked.contains((long) f.allianceId));
         int[] defTaxBase = new int[]{100, 100};
         if (useTaxBase) {
-            TaxRate defTaxBaseTmp = db.getOrNull(GuildSettings.Key.TAX_BASE);
+            TaxRate defTaxBaseTmp = db.getOrNull(GuildKey.TAX_BASE);
             if (defTaxBaseTmp != null) defTaxBase = new int[]{defTaxBaseTmp.money, defTaxBaseTmp.resources};
 //            defTaxBase[0] = myTaxRate.money >= 0 ? 100 : myTaxRate.money;
 //            defTaxBase[1] = myTaxRate.resources >= 0 ? 100 : myTaxRate.resources;
@@ -3325,7 +3325,7 @@ public class DBNation implements NationOrAlliance {
     public boolean isInMilcomGuild() {
         GuildDB db = Locutus.imp().getGuildDBByAA(alliance_id);
         if (db != null) {
-            Guild warGuild = db.getOrNull(GuildSettings.Key.WAR_SERVER);
+            Guild warGuild = db.getOrNull(GuildKey.WAR_SERVER);
             if (warGuild == null) warGuild = db.getGuild();
             User user = getUser();
             if (user != null) {
@@ -3890,7 +3890,7 @@ public class DBNation implements NationOrAlliance {
     public double getAllianceDepositValue() throws IOException {
         GuildDB db = Locutus.imp().getGuildDBByAA(alliance_id);
         if (db == null) return 0;
-        boolean includeGrants = db.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
+        boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
         double[] depo = getNetDeposits(db, includeGrants, -1);
         return PnwUtil.convertedTotal(depo);
     }

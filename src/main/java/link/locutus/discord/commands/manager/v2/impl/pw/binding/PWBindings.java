@@ -38,7 +38,7 @@ import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -903,7 +903,7 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "An in-game position")
     public static DBAlliancePosition position(@Me GuildDB db, @Default @Me DBNation nation, String name) {
         AllianceList alliances = db.getAllianceList();
-        if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.cmd.toSlashMention() + " with key " + GuildSettings.Key.ALLIANCE_ID.name());
+        if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
 
         String[] split = name.split(":", 2);
         Integer aaId = split.length == 2 ? PnwUtil.parseAllianceId(split[0]) : null;
@@ -936,7 +936,7 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "Locutus guild settings")
     public GuildSetting key(String input) {
         input = input.replaceAll("_", " ").toLowerCase();
-        GuildSetting[] constants = GuildSettings.Key.values();
+        GuildSetting[] constants = GuildKey.values();
         for (GuildSetting constant : constants) {
             String name = constant.name().replaceAll("_", " ").toLowerCase();
             if (name.equals(input)) return constant;
@@ -998,7 +998,7 @@ public class PWBindings extends BindingHelper {
     public AllianceList allianceList(ParameterData param, @Default @Me User user, @Me GuildDB db) {
         AllianceList list = db.getAllianceList();
         if (list == null) {
-            throw new IllegalArgumentException("This guild has no registered alliance. See " + CM.settings.cmd.toSlashMention() + " with key " + GuildSettings.Key.ALLIANCE_ID.name());
+            throw new IllegalArgumentException("This guild has no registered alliance. See " + CM.settings.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
         }
         RolePermission perms = param.getAnnotation(RolePermission.class);
         if (perms != null) {
@@ -1033,7 +1033,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     public WarCategory warChannelBinding(@Me GuildDB db) {
         WarCategory warChannel = db.getWarChannel(true);
-        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + CM.settings.cmd.create(GuildSettings.Key.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + "");
+        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + CM.settings.cmd.create(GuildKey.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + "");
         return warChannel;
     }
 

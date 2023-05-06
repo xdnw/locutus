@@ -30,7 +30,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
@@ -706,7 +706,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= GuildSetting.class)
     public String GuildSetting(@Me GuildDB db, @Me Guild guild, @Me User author, ParameterData param) {
-        ArrayList<GuildSetting> options = new ArrayList<>(Arrays.asList(GuildSettings.Key.values()));
+        ArrayList<GuildSetting> options = new ArrayList<>(Arrays.asList(GuildKey.values()));
         options.removeIf(key -> {
             if (!key.allowed(db)) return true;
             if (!key.hasPermission(db, author, null)) return true;

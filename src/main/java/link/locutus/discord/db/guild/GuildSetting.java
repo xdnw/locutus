@@ -270,7 +270,7 @@ public abstract class GuildSetting<T> {
     public GuildSetting<T> requireValidAlliance() {
         requiresFunction.add((db, throwError) -> {
             if (!db.isValidAlliance()) {
-                throw new IllegalArgumentException("No valid alliance is setup (see: " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), null, null, null) + ")");
+                throw new IllegalArgumentException("No valid alliance is setup (see: " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null) + ")");
             }
             return true;
         });

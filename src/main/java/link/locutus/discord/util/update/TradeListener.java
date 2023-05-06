@@ -14,7 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.db.entities.TradeSubscription;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.trade.BulkTradeSubscriptionEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
@@ -74,7 +74,7 @@ public class TradeListener {
             body.append("\nCan be attacked by: " + MathMan.format(currentNation.getScore() / 1.75) + "-" + MathMan.format(currentNation.getScore() / 0.75));
         }
 
-        AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildSettings.Key.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildKey.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
                 DiscordUtil.createEmbedCommand(channel, title, body.toString());
@@ -177,7 +177,7 @@ public class TradeListener {
         message.append("\n - All Colors: <https://politicsandwar.com/leaderboards/display=color>");
         message.append("\n - Edit Color: <https://politicsandwar.com/nation/edit/>");
 
-        AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildSettings.Key.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildKey.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
                 AllianceList allianceList = db.getAllianceList();
@@ -272,7 +272,7 @@ public class TradeListener {
         for (TradeSubscription subscription : subscriptions) {
             if (subscription.isRole()) {
                 for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-                    MessageChannel channel = db.getOrNull(GuildSettings.Key.TRADE_ALERT_CHANNEL);
+                    MessageChannel channel = db.getOrNull(GuildKey.TRADE_ALERT_CHANNEL);
                     if (channel == null) continue;
                     Role role = subscription.toRole(db);
                     if (role != null) {
@@ -300,7 +300,7 @@ public class TradeListener {
             Map<ResourceType, List<TradeSubscription>> subscriptionsForGuild = guildEntry.getValue();
 
             // get trade alert channel
-            MessageChannel channel = db.getOrNull(GuildSettings.Key.TRADE_ALERT_CHANNEL);
+            MessageChannel channel = db.getOrNull(GuildKey.TRADE_ALERT_CHANNEL);
             if (channel == null || subscriptionsForGuild.isEmpty()) continue;
 
             Set<String> allPings = new LinkedHashSet<>();

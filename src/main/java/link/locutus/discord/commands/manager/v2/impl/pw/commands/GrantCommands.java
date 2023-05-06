@@ -8,8 +8,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -931,9 +931,9 @@ public class GrantCommands {
         Member: Can only send funds in their deposits
          */
 
-        boolean memberCanApprove = db.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
+        boolean memberCanApprove = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
         boolean checkDepoValue = !Roles.ECON_STAFF.has(author, db.getGuild());
-        boolean checkDepoResource = db.getOrNull(GuildSettings.Key.RESOURCE_CONVERSION) != Boolean.TRUE;
+        boolean checkDepoResource = db.getOrNull(GuildKey.RESOURCE_CONVERSION) != Boolean.TRUE;
         boolean allowExtra = Roles.ECON.has(author, db.getGuild());
 
         double[] expectedDeposits = PnwUtil.resourcesToArray(deposits);

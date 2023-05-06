@@ -8,7 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
@@ -85,7 +85,7 @@ public class IACategory {
 
     public IACategory(GuildDB db) {
         this.db = db;
-        MessageChannel outputChannel = db.getOrNull(GuildSettings.Key.INTERVIEW_INFO_SPAM);
+        MessageChannel outputChannel = db.getOrNull(GuildKey.INTERVIEW_INFO_SPAM);
         if (outputChannel != null) {
             this.output = new DiscordChannelIO(outputChannel);
         } else {
@@ -93,7 +93,7 @@ public class IACategory {
         }
         this.guild = db.getGuild();
         this.alliance = db.getAllianceList();
-        if (this.alliance == null || this.alliance.isEmpty()) throw new IllegalArgumentException("No ALLIANCE_ID set. See: " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), null, null, null));
+        if (this.alliance == null || this.alliance.isEmpty()) throw new IllegalArgumentException("No ALLIANCE_ID set. See: " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null));
         fetchChannels();
     }
 
@@ -629,7 +629,7 @@ public class IACategory {
 
                         if (previousMaxStage != -1 && previousMaxStage < sort.ordinal()) {
                             int times = sort.ordinal() - previousMaxStage;
-                            Map<ResourceType, Double> amtMap = db.getOrNull(GuildSettings.Key.REWARD_MENTOR);
+                            Map<ResourceType, Double> amtMap = db.getOrNull(GuildKey.REWARD_MENTOR);
                             if (amtMap != null) {
                                 double[] amt = PnwUtil.resourcesToArray(PnwUtil.multiply(amtMap, (double) times));
                                 String msg = "Mentoring from " + currentSort.name() + " -> " + sort.name();
@@ -795,7 +795,7 @@ public class IACategory {
                 DBNation nation = iaChan.getNation();
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null) return true;
-                if (db.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
+                if (db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                     List<Transaction2> transactions = nation.getTransactions(-1);
                     for (Transaction2 transaction : transactions) {
                         if(transaction.receiver_id == nation.getNation_id() && transaction.note.contains("#deposit")) {

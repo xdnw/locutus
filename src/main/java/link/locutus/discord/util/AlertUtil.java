@@ -6,7 +6,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -80,13 +80,13 @@ public class AlertUtil {
         if (member == null) return;
 
         Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole(guild);
-        MessageChannel channel = guildDb.getOrNull(GuildSettings.Key.MEMBER_AUDIT_ALERTS);
+        MessageChannel channel = guildDb.getOrNull(GuildKey.MEMBER_AUDIT_ALERTS);
         if (channel == null) return;
         String message = messageSuplier.apply(guildDb);
         if (message == null) return;
 
         if (type != null) {
-            Set<AutoAuditType> optOut = guildDb.getOrNull(GuildSettings.Key.DISABLED_MEMBER_AUDITS);
+            Set<AutoAuditType> optOut = guildDb.getOrNull(GuildKey.DISABLED_MEMBER_AUDITS);
             if (optOut != null && optOut.contains(type)) return;
         }
 

@@ -8,7 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -65,7 +65,7 @@ public class IntelOp extends Command {
         if (args.size() == 1) {
             topX = Integer.parseInt(args.get(0));
         } else {
-            Integer dnr = db.getOrNull(GuildSettings.Key.DO_NOT_RAID_TOP_X);
+            Integer dnr = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
             if (dnr != null) topX = dnr;
         }
 

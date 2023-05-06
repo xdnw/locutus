@@ -11,7 +11,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -42,13 +42,13 @@ public class SetBracket extends Command {
                 "or to also set internal: `" + Settings.commandPrefix(true) + "SetTaxes @user 100/100 25/25`\n" +
                 "Notes:\n" +
                 " - Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
-                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildSettings.Key.TAX_BASE.name(), null, null, null) + " (retroactive)\n" +
+                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildKey.TAX_BASE.name(), null, null, null) + " (retroactive)\n" +
                 " - This command is not retroactive and overrides the alliance internal taxrate";
     }
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Roles.ECON_STAFF.has(user, server) || (Locutus.imp().getGuildDB(server).getOrNull(GuildSettings.Key.MEMBER_CAN_SET_BRACKET) == Boolean.TRUE && Roles.MEMBER.has(user, server));
+        return Roles.ECON_STAFF.has(user, server) || (Locutus.imp().getGuildDB(server).getOrNull(GuildKey.MEMBER_CAN_SET_BRACKET) == Boolean.TRUE && Roles.MEMBER.has(user, server));
     }
 
     @Override

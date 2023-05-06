@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -110,13 +110,13 @@ public class AutoRole extends Command {
 
         response.append("Done!");
 
-        if (db.getOrNull(GuildSettings.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: ").append(CM.settings.cmd.create(GuildSettings.Key.AUTOROLE.name(), null, null, null).toSlashCommand());
-        } else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildSettings.Key.AUTOROLE) + "");
-        if (db.getOrNull(GuildSettings.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildSettings.Key.AUTONICK.name(), null, null, null).toSlashCommand() + "");
+        if (db.getOrNull(GuildKey.AUTOROLE) == null) {
+            response.append("\n - AutoRole disabled. To enable it use: ").append(CM.settings.cmd.create(GuildKey.AUTOROLE.name(), null, null, null).toSlashCommand());
+        } else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildKey.AUTOROLE) + "");
+        if (db.getOrNull(GuildKey.AUTONICK) == null) {
+            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildKey.AUTONICK.name(), null, null, null).toSlashCommand() + "");
         }
-        else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildSettings.Key.AUTONICK) + "");
+        else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildKey.AUTONICK) + "");
         if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
 
         return response.toString();

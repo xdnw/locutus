@@ -27,7 +27,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -160,7 +160,7 @@ public class PWCompleter extends BindingHelper {
     @Autocomplete
     @Binding(types={GuildSetting.class})
     public List<String> setting(String input) {
-        List<String> options = Arrays.asList(GuildSettings.Key.values()).stream().map(f -> f.name()).collect(Collectors.toList());
+        List<String> options = Arrays.asList(GuildKey.values()).stream().map(f -> f.name()).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 

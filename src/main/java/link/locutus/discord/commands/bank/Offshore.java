@@ -9,7 +9,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -48,7 +48,7 @@ public class Offshore extends Command {
         DBNation nation = DiscordUtil.getNation(user);
         GuildDB db = Locutus.imp().getGuildDB(server);
         if (db != null && nation != null) {
-            if (db.getOrNull(GuildSettings.Key.MEMBER_CAN_OFFSHORE) == Boolean.TRUE && Roles.MEMBER.has(user, server)) return true;
+            if (db.getOrNull(GuildKey.MEMBER_CAN_OFFSHORE) == Boolean.TRUE && Roles.MEMBER.has(user, server)) return true;
 
             Set<Integer> aaIds = db.getAllianceIds();
             return (!aaIds.isEmpty() && nation.getPosition() >= Rank.OFFICER.id && aaIds.contains(nation.getAlliance_id()));

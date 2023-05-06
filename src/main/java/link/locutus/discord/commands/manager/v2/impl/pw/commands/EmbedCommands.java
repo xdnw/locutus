@@ -15,7 +15,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -176,8 +176,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             if (db.getCoalition(Coalition.ALLIES).isEmpty()) {
                 throw new IllegalArgumentException("No `" + Coalition.ALLIES.name() + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
             }
-            db.getOrThrow(GuildSettings.Key.UNBLOCKADE_REQUESTS);
-            db.getOrThrow(GuildSettings.Key.UNBLOCKADED_ALERTS);
+            db.getOrThrow(GuildKey.UNBLOCKADE_REQUESTS);
+            db.getOrThrow(GuildKey.UNBLOCKADED_ALERTS);
             if (Roles.UNBLOCKADED_ALERT.toRole(db) == null) {
                 throw new IllegalArgumentException(Roles.UNBLOCKADED_ALERT.toDiscordRoleNameElseInstructions(db.getGuild()));
             }

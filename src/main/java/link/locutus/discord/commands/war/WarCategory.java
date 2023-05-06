@@ -12,7 +12,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -183,7 +183,7 @@ public class WarCategory {
                 }
             }
         } catch (InsufficientPermissionException e) {
-            GuildSettings.Key.ENABLE_WAR_ROOMS.set(db, false);
+            GuildKey.ENABLE_WAR_ROOMS.set(db, false);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -468,7 +468,7 @@ public class WarCategory {
     public WarCategory.WarRoom createChannel(User author, Consumer<String> errorOutput, boolean ping, boolean addMember, boolean addMessage, DBNation target, Collection<DBNation> attackers) {
         ApiKeyPool mailKey = db.getMailKey();
         if (addMessage && mailKey == null) {
-            errorOutput.accept("No mail key available. See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildSettings.Key.API_KEY.name() + "`");
+            errorOutput.accept("No mail key available. See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildKey.API_KEY.name() + "`");
             addMessage = false;
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -521,10 +521,10 @@ public class WarCategory {
                             Role econRole = Roles.ECON.toRole(guild);
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
                             MessageChannel rssChannel = db.getResourceChannel(attacker.getAlliance_id());
-                            MessageChannel grantChannel = db.getOrNull(GuildSettings.Key.GRANT_REQUEST_CHANNEL);
+                            MessageChannel grantChannel = db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL);
 
                             if (rssChannel != null) {
-                                if (Boolean.TRUE.equals(db.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW))) {
+                                if (Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
                                     msg += " Withdraw funds from: " + rssChannel.getAsMention() + "  **BEFORE** you declare.";
                                 } else {
                                     msg += " Ping " + econRoleName + " in " + rssChannel.getAsMention() + " to withdraw funds **BEFORE** you declare.";
@@ -1134,7 +1134,7 @@ public class WarCategory {
         for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
             aaIds = otherDB.getAllianceIds();
             if (!aaIds.isEmpty()) {
-                Guild warServer = otherDB.getOrNull(GuildSettings.Key.WAR_SERVER);
+                Guild warServer = otherDB.getOrNull(GuildKey.WAR_SERVER);
                 if (warServer != null && warServer.getIdLong() == this.db.getIdLong()) {
                     allianceIds.addAll(aaIds);
                 }

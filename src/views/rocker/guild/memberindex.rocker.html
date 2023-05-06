@@ -17,6 +17,7 @@
 @import net.dv8tion.jda.api.entities.GuildMessageChannel
 @import link.locutus.discord.util.PnwUtil
 @import java.util.Collection
+@import link.locutus.discord.db.guild.GuildKey
 @import link.locutus.discord.db.entities.DBWar
 @import link.locutus.discord.util.task.war.WarCard
 @import link.locutus.discord.config.Settings
@@ -139,8 +140,8 @@
     <p class="lead">
         Grants are funds provided by the alliance to help you grow your nation. Debt from grants can expire after a period of time (typically 60 days, see the note when accepting a grant)<br><br>
         <b>note: </b>This interface can only approve <i>some</i> grants.
-        @if (db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL) != null) {
-        If you would like more general assistance or advice, please <a href="https://discord.com/channels/@db.getIdLong()/@(((GuildMessageChannel) db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL)).getIdLong())">open a ticket on discord.</a>
+        @if (db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL) != null) {
+        If you would like more general assistance or advice, please <a href="https://discord.com/channels/@db.getIdLong()/@(((GuildMessageChannel) db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL)).getIdLong())">open a ticket on discord.</a>
         }
     </p>
     <div class="list-group">

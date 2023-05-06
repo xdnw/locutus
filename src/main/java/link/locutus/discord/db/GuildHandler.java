@@ -13,7 +13,7 @@ import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.CityBuildingChangeEvent;
 import link.locutus.discord.event.city.CityCreateEvent;
@@ -140,7 +140,7 @@ public class GuildHandler {
     }
 
     public void setupApplicants() {
-        MessageChannel alertChannel = getDb().getOrNull(GuildSettings.Key.INTERVIEW_PENDING_ALERTS);
+        MessageChannel alertChannel = getDb().getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return;
 
         Role appRole = Roles.APPLICANT.toRole(getGuild());
@@ -165,7 +165,7 @@ public class GuildHandler {
     }
 
     public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Consumer<String> responses) throws Exception {
-        return setNationTaxBrackets(nations, db.getOrThrow(GuildSettings.Key.REQUIRED_TAX_BRACKET), responses);
+        return setNationTaxBrackets(nations, db.getOrThrow(GuildKey.REQUIRED_TAX_BRACKET), responses);
     }
 
     public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Map<NationFilterString, Integer> requiredTaxBracket, Consumer<String> responses) throws Exception {
@@ -212,7 +212,7 @@ public class GuildHandler {
     }
 
     public Map<DBNation, Map.Entry<TaxRate, String>> setNationInternalTaxRate(Set<DBNation> nations, Consumer<String> responses) throws Exception {
-        return setNationInternalTaxRate(nations, db.getOrThrow(GuildSettings.Key.REQUIRED_INTERNAL_TAXRATE), responses);
+        return setNationInternalTaxRate(nations, db.getOrThrow(GuildKey.REQUIRED_INTERNAL_TAXRATE), responses);
     }
 
     public Map<DBNation, Map.Entry<TaxRate, String>> setNationInternalTaxRate(Set<DBNation> nations, Map<NationFilterString, TaxRate> requiredTaxRates, Consumer<String> responses) throws Exception {
@@ -245,7 +245,7 @@ public class GuildHandler {
         Guild guild = event.getGuild();
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
-        MessageChannel alertChannel = db.getOrNull(GuildSettings.Key.INTERVIEW_PENDING_ALERTS);
+        MessageChannel alertChannel = db.getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return;
 
         List<Role> roles = event.getRoles();
@@ -266,7 +266,7 @@ public class GuildHandler {
         GuildDB db = getDb();
         Set<Integer> aaIds = db.getAllianceIds();
 
-        MessageChannel alertChannel = db.getOrNull(GuildSettings.Key.INTERVIEW_PENDING_ALERTS);
+        MessageChannel alertChannel = db.getOrNull(GuildKey.INTERVIEW_PENDING_ALERTS);
         if (alertChannel == null) return false;
 
         db.setMeta(author.getIdLong(), NationMeta.DISCORD_APPLICANT, new byte[]{1});
@@ -350,7 +350,7 @@ public class GuildHandler {
         DBNation current = event.getCurrent();
 
         if (current.getPositionEnum() == Rank.APPLICANT && (previous.isGray() || previous.isBeige()) && !current.isGray() && !current.isBeige()) {
-            MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_LEAVE_ALERT_CHANNEL);
+            MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
             if (channel != null) {
                 String type = "Applicant changed color from " + previous.getColor() + " to " + current.getColor();
                 User user = current.getUser();
@@ -372,7 +372,7 @@ public class GuildHandler {
                 previous.getPositionEnum().id > Rank.APPLICANT.id &&
                 current.getPositionEnum() == Rank.APPLICANT) {
 
-            MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_LEAVE_ALERT_CHANNEL);
+            MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
             if (channel != null) {
                 String type;
                 String title;
@@ -431,7 +431,7 @@ public class GuildHandler {
         DBNation current = event.getCurrent();
 
         if (previous.getVm_turns() == 0 && current.getVm_turns() > 0) {
-            MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_LEAVE_ALERT_CHANNEL);
+            MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
             if (channel != null) {
                 Rank rank = Rank.byId(previous.getPosition());
                 String title = previous.getNation() + " (" + rank.name() + ") VM";
@@ -453,7 +453,7 @@ public class GuildHandler {
         DBNation current = event.getCurrent();
         if (current != null && current.getActive_m() > 10000) return;
 
-        MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_LEAVE_ALERT_CHANNEL);
+        MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
         if (channel != null) {
             Rank rank = Rank.byId(previous.getPosition());
             String title = previous.getNation() + " (" + rank.name() + ") left VM";
@@ -474,7 +474,7 @@ public class GuildHandler {
 
             // New applicant
             if (current.getPositionEnum() == Rank.APPLICANT && aaIds.contains(current.getAlliance_id()) && !aaIds.contains(current.getAlliance_id()) && current.active_m() < 2880) {
-                MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_LEAVE_ALERT_CHANNEL);
+                MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
                     String type = "New Applicant Ingame";
                     User user = current.getUser();
@@ -540,7 +540,7 @@ public class GuildHandler {
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
             if (aaIds.contains(previous.getAlliance_id()) && current.getAlliance_id() != previous.getAlliance_id()) {
-                MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_LEAVE_ALERT_CHANNEL);
+                MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
                 if (channel != null) {
                     addLeaveMessage(channel, previous, current);
                 }
@@ -596,7 +596,7 @@ public class GuildHandler {
     @Subscribe
     public void onNationDelete(NationDeleteEvent event) {
         DBNation previous = event.getPrevious();
-        MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_LEAVE_ALERT_CHANNEL);
+        MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
         if (channel != null) {
             Rank rank = Rank.byId(previous.getPosition());
             String title = previous.getNation() + " (" + rank.name() + ") deleted";
@@ -612,19 +612,19 @@ public class GuildHandler {
     }
 
     public Map.Entry<String, String> getRecruitMessagePair(DBNation to) {
-        String subject = getDb().getOrThrow(GuildSettings.Key.RECRUIT_MESSAGE_SUBJECT);
-        String message = getDb().getOrThrow(GuildSettings.Key.RECRUIT_MESSAGE_CONTENT);
+        String subject = getDb().getOrThrow(GuildKey.RECRUIT_MESSAGE_SUBJECT);
+        String message = getDb().getOrThrow(GuildKey.RECRUIT_MESSAGE_CONTENT);
         return new AbstractMap.SimpleEntry<>(subject, message);
     }
 
     public JsonObject sendRecruitMessage(DBNation to) throws IOException {
-        MessageChannel output = getDb().getOrThrow(GuildSettings.Key.RECRUIT_MESSAGE_OUTPUT);
+        MessageChannel output = getDb().getOrThrow(GuildKey.RECRUIT_MESSAGE_OUTPUT);
         Map.Entry<String, String> pair = getRecruitMessagePair(to);
         String subject = pair.getKey();
         String message = pair.getValue();
         ApiKeyPool keys = getDb().getMailKey();
         if (keys == null) {
-            boolean hasKey = getDb().getOrNull(GuildSettings.Key.API_KEY) != null;
+            boolean hasKey = getDb().getOrNull(GuildKey.API_KEY) != null;
             if (!hasKey) {
                 throw new IllegalArgumentException("Please set `API_KEY` with " + CM.settings.cmd.toSlashMention());
             }
@@ -646,7 +646,7 @@ public class GuildHandler {
         if (nationLimitBytes != null) {
             return nationLimitBytes.getDouble();
         }
-        Long defaultWithdrawLimit = getDb().getOrNull(GuildSettings.Key.BANKER_WITHDRAW_LIMIT);
+        Long defaultWithdrawLimit = getDb().getOrNull(GuildKey.BANKER_WITHDRAW_LIMIT);
         if (defaultWithdrawLimit != null) {
             return defaultWithdrawLimit.doubleValue();
         }
@@ -667,7 +667,7 @@ public class GuildHandler {
             moneyRate = taxRate.get();
             resourceRate = taxRate.get();
         }
-        TaxRate taxBase = db.getOrNull(GuildSettings.Key.TAX_BASE);
+        TaxRate taxBase = db.getOrNull(GuildKey.TAX_BASE);
         if (taxBase != null) {
             if (moneyRate == -1) moneyRate = taxBase.money;
             if (resourceRate == -1) resourceRate = taxBase.resources;
@@ -681,7 +681,7 @@ public class GuildHandler {
         DBNation current = event.getCurrent();
 
         if (previous.active_m() > 7200 && previous.getPositionEnum() == Rank.APPLICANT && current.getVm_turns() == 0 && current.active_m() < 15) {
-            MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_LEAVE_ALERT_CHANNEL);
+            MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
             if (channel != null) {
                 String title = "Inactive Applicant " + current.getNation() + " logged in (just now)";
                 StringBuilder body = new StringBuilder();
@@ -1386,7 +1386,7 @@ public class GuildHandler {
 
     private void handleWonWars(DBNation enemy, Set<Integer> aaIds, DBAttack root, DBNation memberNation) {
         if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
-        MessageChannel channel = db.getOrNull(GuildSettings.Key.WON_WAR_CHANNEL);
+        MessageChannel channel = db.getOrNull(GuildKey.WON_WAR_CHANNEL);
         if (enemy.getActive_m() > 1440 || enemy.getVm_turns() > 0) return;
 
         if (channel == null) return;
@@ -1399,7 +1399,7 @@ public class GuildHandler {
 
     private void handleLostWars(DBNation enemy, Set<Integer> aaIds, DBAttack root, DBNation memberNation) {
         if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
-        MessageChannel channel = db.getOrNull(GuildSettings.Key.LOST_WAR_CHANNEL);
+        MessageChannel channel = db.getOrNull(GuildKey.LOST_WAR_CHANNEL);
 
         if (channel == null) return;
         DBWar war = Locutus.imp().getWarDb().getWar(root.war_id);
@@ -1460,13 +1460,13 @@ public class GuildHandler {
     }
 
     public void onDefensiveWarAlert(List<Map.Entry<DBWar, DBWar>> wars, boolean rateLimit) {
-        MessageChannel channel = getDb().getOrNull(GuildSettings.Key.DEFENSE_WAR_CHANNEL);
+        MessageChannel channel = getDb().getOrNull(GuildKey.DEFENSE_WAR_CHANNEL);
         if (channel == null) return;
         onWarAlert(channel, wars, rateLimit, false);
     }
 
     public void onOffensiveWarAlert(List<Map.Entry<DBWar, DBWar>> wars, boolean rateLimit) {
-        MessageChannel channel = getDb().getOrNull(GuildSettings.Key.OFFENSIVE_WAR_CHANNEL);
+        MessageChannel channel = getDb().getOrNull(GuildKey.OFFENSIVE_WAR_CHANNEL);
         if (channel == null) return;
         onWarAlert(channel, wars, rateLimit, true);
 
@@ -1567,7 +1567,7 @@ public class GuildHandler {
                             pingMilcom = false;
                         }
                         if (pingMilcom) {
-                            NationFilter allowedMentions = db.getOrNull(GuildSettings.Key.MENTION_MILCOM_FILTER);
+                            NationFilter allowedMentions = db.getOrNull(GuildKey.MENTION_MILCOM_FILTER);
                             if (allowedMentions != null) {
                                 if (!allowedMentions.test(attacker) && !allowedMentions.test(defender)) {
                                     pingMilcom = false;
@@ -1748,7 +1748,7 @@ public class GuildHandler {
                         }
 
                         if (!dnrViolations.isEmpty()) {
-                            footer.append("To modify the `Do Not Raid` see: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.cmd.toSlashMention() + " with key `" + GuildSettings.Key.DO_NOT_RAID_TOP_X.name() + "`\n");
+                            footer.append("To modify the `Do Not Raid` see: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
                         }
 
                         RateLimitUtil.queueMessage(new DiscordChannelIO(channel), new Function<IMessageBuilder, Boolean>() {
@@ -1784,7 +1784,7 @@ public class GuildHandler {
                             StringBuilder footer = new StringBuilder();
                             if (dnrViolations.contains(war)) {
                                 footer.append("^ violates the `Do Not Raid` (DNR) list. If you were not asked to attack (e.g. as a counter), please offer peace (Note: This is an automated message)\n");
-                                footer.append("(To modify the DNR: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.cmd.toSlashMention() + " with key `" + GuildSettings.Key.DO_NOT_RAID_TOP_X.name() + "`\n");
+                                footer.append("(To modify the DNR: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
                             }
                             List<String> tips = new ArrayList<>();
 
@@ -1852,9 +1852,9 @@ public class GuildHandler {
                     }
                 } catch (InsufficientPermissionException e) {
                     if (offensive) {
-                        db.deleteInfo(GuildSettings.Key.OFFENSIVE_WAR_CHANNEL);
+                        db.deleteInfo(GuildKey.OFFENSIVE_WAR_CHANNEL);
                     } else {
-                        db.deleteInfo(GuildSettings.Key.DEFENSE_WAR_CHANNEL);
+                        db.deleteInfo(GuildKey.DEFENSE_WAR_CHANNEL);
                     }
                 }
             }
@@ -1876,7 +1876,7 @@ public class GuildHandler {
                 if (defender.getActive_m() > 10000 && defender.getAlliance_id() == 0) {
                     return false;
                 }
-                Boolean hideApps = db.getOrNull(GuildSettings.Key.HIDE_APPLICANT_WARS);
+                Boolean hideApps = db.getOrNull(GuildKey.HIDE_APPLICANT_WARS);
                 if (hideApps == null && !db.hasAlliance()) {
                     hideApps = true;
                 }
@@ -1896,7 +1896,7 @@ public class GuildHandler {
 
     public Set<Integer> getTrackedWarAlliances(boolean offensive) {
         Set<Integer> tracked = new HashSet<>();
-        if (db.getOrNull(GuildSettings.Key.WAR_ALERT_FOR_OFFSHORES) != Boolean.FALSE) {
+        if (db.getOrNull(GuildKey.WAR_ALERT_FOR_OFFSHORES) != Boolean.FALSE) {
             tracked.addAll(db.getCoalition("offshore"));
         }
 
@@ -1907,10 +1907,10 @@ public class GuildHandler {
             }
         }
 
-        if (offensive && (aaIds.isEmpty() || db.getOrNull(GuildSettings.Key.SHOW_ALLY_OFFENSIVE_WARS) == Boolean.TRUE)) {
+        if (offensive && (aaIds.isEmpty() || db.getOrNull(GuildKey.SHOW_ALLY_OFFENSIVE_WARS) == Boolean.TRUE)) {
             tracked.addAll(db.getCoalition(Coalition.ALLIES));
         }
-        if (!offensive && (aaIds.isEmpty() || db.getOrNull(GuildSettings.Key.SHOW_ALLY_DEFENSIVE_WARS) == Boolean.TRUE)) {
+        if (!offensive && (aaIds.isEmpty() || db.getOrNull(GuildKey.SHOW_ALLY_DEFENSIVE_WARS) == Boolean.TRUE)) {
             tracked.addAll(db.getCoalition(Coalition.ALLIES));
         }
 
@@ -2044,7 +2044,7 @@ public class GuildHandler {
     }
 
     public Set<BeigeReason> getAllowedReasons(int cityCount) {
-        Map<CityRanges, Set<BeigeReason>> allowedReasonsMap = db.getOrNull(GuildSettings.Key.ALLOWED_BEIGE_REASONS);
+        Map<CityRanges, Set<BeigeReason>> allowedReasonsMap = db.getOrNull(GuildKey.ALLOWED_BEIGE_REASONS);
         Set<BeigeReason> allowedReasons = null;
         if (allowedReasonsMap != null) {
             for (Map.Entry<CityRanges, Set<BeigeReason>> entry : allowedReasonsMap.entrySet()) {
@@ -2067,8 +2067,8 @@ public class GuildHandler {
         Set<Integer> enemies = db.getCoalition("enemies");
         if (enemies.isEmpty()) return;
 
-        MessageChannel channelAllowed = db.getOrNull(GuildSettings.Key.ENEMY_BEIGED_ALERT);
-        MessageChannel channelViolation = db.getOrNull(GuildSettings.Key.ENEMY_BEIGED_ALERT_VIOLATIONS);
+        MessageChannel channelAllowed = db.getOrNull(GuildKey.ENEMY_BEIGED_ALERT);
+        MessageChannel channelViolation = db.getOrNull(GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS);
         if (channelAllowed == null && channelViolation == null) return;
 
         DBNation attacker = Locutus.imp().getNationDB().getNation(root.attacker_nation_id);
@@ -2258,7 +2258,7 @@ public class GuildHandler {
 
     public void onInfraPurchase(DBNation nation, CityInfraLand existing, CityInfraLand newCity) {
 
-        MessageChannel channel = db.getOrNull(GuildSettings.Key.MEMBER_REBUY_INFRA_ALERT);
+        MessageChannel channel = db.getOrNull(GuildKey.MEMBER_REBUY_INFRA_ALERT);
         if (channel != null) {
             if (existing.infra > 100 && Math.round(existing.infra) % 50 != 0 && newCity.infra > 1000) {
                 JavaCity cityBuild = nation.getCityMap(false).get(existing.cityId);
@@ -2322,8 +2322,8 @@ public class GuildHandler {
     }
 
     public void handleInactiveAudit() {
-        if (GuildSettings.Key.MEMBER_AUDIT_ALERTS.get(db) == null) return;
-        Set<AutoAuditType> disabledAudits = db.getOrNull(GuildSettings.Key.DISABLED_MEMBER_AUDITS);
+        if (GuildKey.MEMBER_AUDIT_ALERTS.get(db) == null) return;
+        Set<AutoAuditType> disabledAudits = db.getOrNull(GuildKey.DISABLED_MEMBER_AUDITS);
         if (disabledAudits != null && disabledAudits.contains(AutoAuditType.INACTIVE)) return;
 
         AllianceList alliance = db.getAllianceList();
@@ -2358,7 +2358,7 @@ public class GuildHandler {
             sentMail.add(current.getNation_id());
 
             if (db.isDelegateServer()) return;
-            MessageChannel output = db.getOrNull(GuildSettings.Key.RECRUIT_MESSAGE_OUTPUT, false);
+            MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
             if (output == null) return;
 
             Set<Integer> aaIds = db.getAllianceIds();
@@ -2389,7 +2389,7 @@ public class GuildHandler {
                 if (membersWithRoles.isEmpty()) {
                     try {
                         RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null, null, null) + " and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
-                        db.deleteInfo(GuildSettings.Key.RECRUIT_MESSAGE_OUTPUT);
+                        db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
@@ -2401,7 +2401,7 @@ public class GuildHandler {
                             sentNoIAMessage = true;
                             RateLimitUtil.queueWhenFree(output.sendMessage("No INTERNAL_AFFAIRS is currently offline (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)\n"));
                         } catch (Throwable e) {
-                            db.deleteInfo(GuildSettings.Key.RECRUIT_MESSAGE_OUTPUT);
+                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                             e.printStackTrace();
                         }
                     }
@@ -2409,17 +2409,17 @@ public class GuildHandler {
                 }
             }
 
-            if (!GuildSettings.Key.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
+            if (!GuildKey.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
                 try {
                     RateLimitUtil.queueWhenFree(output.sendMessage("Only existant alliances can send messages (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
-                    db.deleteInfo(GuildSettings.Key.RECRUIT_MESSAGE_OUTPUT);
+                    db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
                 return;
             }
 
-            Long delay = db.getOrNull(GuildSettings.Key.RECRUIT_MESSAGE_DELAY);
+            Long delay = db.getOrNull(GuildKey.RECRUIT_MESSAGE_DELAY);
             Runnable task = new CaughtRunnable() {
                 @Override
                 public void runUnsafe() {
@@ -2433,7 +2433,7 @@ public class GuildHandler {
                                 RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + e.getMessage()), true, 5 * 60);
                             }
                         } catch (Throwable e2) {
-                            db.deleteInfo(GuildSettings.Key.RECRUIT_MESSAGE_OUTPUT);
+                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                         }
                     }
                 }
@@ -2456,7 +2456,7 @@ public class GuildHandler {
 
         Set<Integer> aaIds = getDb().getAllianceIds();
         if (!aaIds.isEmpty() && nation != null && aaIds.contains(nation.getAlliance_id()) && nation.getPosition() > Rank.APPLICANT.id) {
-            Map<ResourceType, Double> amtMap = getDb().getOrNull(GuildSettings.Key.REWARD_REFERRAL);
+            Map<ResourceType, Double> amtMap = getDb().getOrNull(GuildKey.REWARD_REFERRAL);
             if (amtMap == null) return;
             double[] amt = PnwUtil.resourcesToArray(amtMap);
 
@@ -2495,7 +2495,7 @@ public class GuildHandler {
     @Subscribe
     public void onBlockade(NationBlockadedEvent event) {
         DBNation nation = event.getBlockadedNation();
-        MessageChannel channel = getDb().getOrNull(GuildSettings.Key.BLOCKADED_ALERTS);
+        MessageChannel channel = getDb().getOrNull(GuildKey.BLOCKADED_ALERTS);
         Role role = Roles.BLOCKADED_ALERT.toRole(guild);
         blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, "blockaded");
     }
@@ -2544,7 +2544,7 @@ public class GuildHandler {
         } else {
             title = "Unblockaded";
         }
-        MessageChannel channel = getDb().getOrNull(GuildSettings.Key.UNBLOCKADED_ALERTS);
+        MessageChannel channel = getDb().getOrNull(GuildKey.UNBLOCKADED_ALERTS);
         Role role = blockaded ? null : Roles.UNBLOCKADED_ALERT.toRole(guild);
         Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERT.toRole(guild);
         blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, title);
@@ -2613,7 +2613,7 @@ public class GuildHandler {
 
     @Subscribe
     public void onPeaceChange(WarPeaceStatusEvent event) {
-        MessageChannel channel = db.getOrNull(GuildSettings.Key.WAR_PEACE_ALERTS);
+        MessageChannel channel = db.getOrNull(GuildKey.WAR_PEACE_ALERTS);
         if (channel == null) return;
 
         DBWar previous = event.getPrevious();

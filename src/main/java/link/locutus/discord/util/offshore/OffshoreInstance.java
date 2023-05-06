@@ -18,7 +18,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
@@ -176,7 +176,7 @@ public class OffshoreInstance {
                 if (ResourceType.isEmpty(stockpile)) {
                     throw new IllegalArgumentException("No bank records & stockpile found for " + allianceId);
                 }
-                if (getGuildDB().getOrNull(GuildSettings.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
+                if (getGuildDB().getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                     throw new IllegalArgumentException("No bank records found for " + allianceId + " | " + alliance.getId() + " | " + PnwUtil.resourcesToString(stockpile));
                 }
             } else {
@@ -546,9 +546,9 @@ public class OffshoreInstance {
             if (!receiver.isNation()) {
                 return Map.entry(TransferStatus.INVALID_DESTINATION, "Cash conversion is only to alliances");
             }
-            if (senderDB.getOrNull(GuildSettings.Key.RESOURCE_CONVERSION) != Boolean.TRUE) {
+            if (senderDB.getOrNull(GuildKey.RESOURCE_CONVERSION) != Boolean.TRUE) {
                 return Map.entry(TransferStatus.INVALID_NOTE, "Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()) +
-                        "\nMembers do not have permission to convert resources to cash. See " + CM.settings.cmd.toSlashMention() + " with key: " + GuildSettings.Key.RESOURCE_CONVERSION.name());
+                        "\nMembers do not have permission to convert resources to cash. See " + CM.settings.cmd.toSlashMention() + " with key: " + GuildKey.RESOURCE_CONVERSION.name());
             }
             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
             if (allowedIds.isEmpty()) {
@@ -590,8 +590,8 @@ public class OffshoreInstance {
             }
         }
 
-        boolean rssConversion = senderDB.getOrNull(GuildSettings.Key.RESOURCE_CONVERSION) == Boolean.TRUE;
-        boolean ignoreGrants = senderDB.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.TRUE;
+        boolean rssConversion = senderDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
+        boolean ignoreGrants = senderDB.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.TRUE;
         double txValue = PnwUtil.convertedTotal(amount);
 
         double[] myDeposits = null;
@@ -639,7 +639,7 @@ public class OffshoreInstance {
                         String msg = nationAccount.getNation() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
                                 CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null, null, null) +
                                 " ). RESOURCE_CONVERSION is disabled (see " +
-                                CM.settings.cmd.create(GuildSettings.Key.RESOURCE_CONVERSION.name(), "true", null, null) +
+                                CM.settings.cmd.create(GuildKey.RESOURCE_CONVERSION.name(), "true", null, null) +
                                 ")";
                         allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                         if (allowedIds.isEmpty()) {
@@ -690,7 +690,7 @@ public class OffshoreInstance {
                     String msg = taxAccount.getQualifiedName() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
                             CM.deposits.check.cmd.create(taxAccount.getQualifiedName(), null, null, null, null, null, null, null, null) +
                             " ). RESOURCE_CONVERSION is disabled (see " +
-                            CM.settings.cmd.create(GuildSettings.Key.RESOURCE_CONVERSION.name(), "true", null, null) +
+                            CM.settings.cmd.create(GuildKey.RESOURCE_CONVERSION.name(), "true", null, null) +
                             ")";
                     allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                     if (allowedIds.isEmpty()) {
@@ -913,7 +913,7 @@ public class OffshoreInstance {
                 Double withdrawLimit = senderDB.getHandler().getWithdrawLimit(banker.getNation_id());
                 if (withdrawLimit != null) {
                     long cutoff = System.currentTimeMillis();
-                    Long interval = senderDB.getOrNull(GuildSettings.Key.BANKER_WITHDRAW_LIMIT_INTERVAL);
+                    Long interval = senderDB.getOrNull(GuildKey.BANKER_WITHDRAW_LIMIT_INTERVAL);
                     if (interval != null) {
                         cutoff -= interval;
                     } else {
@@ -926,14 +926,14 @@ public class OffshoreInstance {
                         total += transaction.convertedTotal();
                     }
                     if (total > withdrawLimit) {
-                        MessageChannel alertChannel = senderDB.getOrNull(GuildSettings.Key.WITHDRAW_ALERT_CHANNEL);
+                        MessageChannel alertChannel = senderDB.getOrNull(GuildKey.WITHDRAW_ALERT_CHANNEL);
                         if (alertChannel != null) {
                             StringBuilder body = new StringBuilder();
                             body.append(banker.getNationUrlMarkup(true) + " | " + banker.getAllianceUrlMarkup(true)).append("\n");
                             body.append("Transfer: " + PnwUtil.resourcesToString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
                             body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
                             body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
-                            body.append("To set the default " + CM.settings.cmd.create(GuildSettings.Key.BANKER_WITHDRAW_LIMIT.name(), "<amount>", null, null) + "");
+                            body.append("To set the default " + CM.settings.cmd.create(GuildKey.BANKER_WITHDRAW_LIMIT.name(), "<amount>", null, null) + "");
 
                             Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
 
@@ -1479,14 +1479,14 @@ public class OffshoreInstance {
         }
         boolean whitelistedError = msg.contains("The API key you provided does not allow whitelisted access.");
         if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
-            List<String> keys = getGuildDB().getOrNull(GuildSettings.Key.API_KEY);
+            List<String> keys = getGuildDB().getOrNull(GuildKey.API_KEY);
             if (keys == null || keys.isEmpty()) {
-                msg += "\nEnsure " + GuildSettings.Key.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention();
+                msg += "\nEnsure " + GuildKey.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention();
             } else {
                 for (String key : keys) {
                     Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                     if (nation == null) {
-                        msg += "\nEnsure " + GuildSettings.Key.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
+                        msg += "\nEnsure " + GuildKey.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
                     } else {
                         msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + allianceId;
                     }

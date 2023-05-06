@@ -16,7 +16,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
@@ -210,7 +210,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public ApiKeyPool getApiKey(int allianceId, AlliancePermission... perms) {
-        List<String> keys = getOrNull(GuildSettings.Key.API_KEY);
+        List<String> keys = getOrNull(GuildKey.API_KEY);
         if (keys != null && !keys.isEmpty()) {
             for (String key : keys) {
                 Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
@@ -241,7 +241,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
 
         Map.Entry<Integer, String> mailKeysBackup = null;
-        List<String> apiKeys = getOrNull(GuildSettings.Key.API_KEY);
+        List<String> apiKeys = getOrNull(GuildKey.API_KEY);
         if (apiKeys != null && !apiKeys.isEmpty()) {
             for (String key : apiKeys) {
                 Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
@@ -628,7 +628,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public boolean hasAlliance() {
-        return getOrNull(GuildSettings.Key.ALLIANCE_ID) != null;
+        return getOrNull(GuildKey.ALLIANCE_ID) != null;
     }
 
     /**
@@ -675,7 +675,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         String sql = tx.createInsert("INTERNAL_TRANSACTIONS2", false, false);
         update(sql, (ThrowingConsumer<PreparedStatement>) tx::setNoID);
 
-        MessageChannel output = getOrNull(GuildSettings.Key.ADDBALANCE_ALERT_CHANNEL);
+        MessageChannel output = getOrNull(GuildKey.ADDBALANCE_ALERT_CHANNEL);
         if (output != null) {
             try {
                 RateLimitUtil.queueWhenFree(output.sendMessage(tx.toString()));
@@ -687,7 +687,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public List<GuildSetting> listInaccessibleChannelKeys() {
         List<GuildSetting> inaccessible = new ArrayList<>();
-        for (GuildSetting key : GuildSettings.Key.values()) {
+        for (GuildSetting key : GuildKey.values()) {
             String valueStr = getInfoRaw(key, false);
             if (valueStr == null) continue;
             Object value = key.parse(this, valueStr);
@@ -1309,7 +1309,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         double[] deposits = ResourceType.getBuffer();
         double[] taxes = ResourceType.getBuffer();
 
-        TaxRate aaBase = getOrNull(GuildSettings.Key.TAX_BASE);
+        TaxRate aaBase = getOrNull(GuildKey.TAX_BASE);
         if (aaBase == null) aaBase = new TaxRate(100, 100);
         int[] baseBuffer = new int[2];
 
@@ -1483,7 +1483,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public Map<ResourceType, Double> getPerCityWarchest() {
-        Map<ResourceType, Double> warchest = getOrNull(GuildSettings.Key.WARCHEST_PER_CITY);
+        Map<ResourceType, Double> warchest = getOrNull(GuildKey.WARCHEST_PER_CITY);
         if (warchest == null) warchest = new HashMap<>();
         warchest.putIfAbsent(ResourceType.MONEY, 1000000d);
         warchest.putIfAbsent(ResourceType.GASOLINE, 360d);
@@ -1497,7 +1497,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public Set<Long> getResourceChannelAccounts(Long messageChannelIdOrNull) {
         if (messageChannelIdOrNull == null) return null;
-        Map<Long, MessageChannel> channels = getOrNull(GuildSettings.Key.RESOURCE_REQUEST_CHANNEL);
+        Map<Long, MessageChannel> channels = getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL);
         if (channels != null) {
             if (messageChannelIdOrNull == 0) {
                 MessageChannel channel = channels.get(0L);
@@ -1538,17 +1538,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<Integer> aaIds = getAllianceIds();
         DBNation bankerNation = DiscordUtil.getNation(banker);
         if (bankerNation != null) {
-            if (getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
-                if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
+            if (getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
+                if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
                     if (throwError) {
-                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + GuildSettings.Key.MEMBER_CAN_WITHDRAW_WARTIME.name() + "` is false (see " + CM.settings.cmd.create(GuildSettings.Key.MEMBER_CAN_WITHDRAW.name(), "true", null, null) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
+                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + GuildKey.MEMBER_CAN_WITHDRAW_WARTIME.name() + "` is false (see " + CM.settings.cmd.create(GuildKey.MEMBER_CAN_WITHDRAW.name(), "true", null, null) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
                     }
                 } else if (aaIds.isEmpty()) {
                     if (channelWithdrawAccounts.isEmpty() || !channelWithdrawAccounts.contains(getIdLong())) {
                         MessageChannel defaultChannel = getResourceChannel(0);
                         if (defaultChannel == null) {
                             String channelMention = messageChannelIdOrNull == null ? null : "<#" + messageChannelIdOrNull + ">";
-                            throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings.cmd.create(GuildSettings.Key.RESOURCE_REQUEST_CHANNEL.name(), channelMention, null, null));
+                            throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings.cmd.create(GuildKey.RESOURCE_REQUEST_CHANNEL.name(), channelMention, null, null));
                         } else {
                             throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
                         }
@@ -1592,7 +1592,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         boolean isResourceChannel = channelAccountIds != null;
         boolean requireAdmin = false;
         if (channelAccountIds == null || channelAccountIds.isEmpty()) {
-            requireAdmin = getOrNull(GuildSettings.Key.RESOURCE_REQUEST_CHANNEL) != null;
+            requireAdmin = getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL) != null;
             channelAccountIds = new HashSet<>();
             if (!aaIds.isEmpty()) {
                 for (Integer aaId : aaIds) channelAccountIds.add(aaId.longValue());
@@ -1612,7 +1612,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             String msg = "The channel: <#" + messageChannelIdOrNull + ">" +
                     " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
                     " and  the server is registered to the following alliances: " + StringMan.getString(aaIds) +
-                    "\nSee Also: " + CM.settings.cmd.toSlashMention() + " with keys: " + GuildSettings.Key.ALLIANCE_ID.name() + " and " + GuildSettings.Key.RESOURCE_REQUEST_CHANNEL;
+                    "\nSee Also: " + CM.settings.cmd.toSlashMention() + " with keys: " + GuildKey.ALLIANCE_ID.name() + " and " + GuildKey.RESOURCE_REQUEST_CHANNEL;
 
             if (defaultChannel != null || channelForAA != null) {
                 msg += "\n";
@@ -1883,8 +1883,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (!hasEcon && senderNation.getNation_id() != bankerNation.getNation_id()) {
                 throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention() + "). You do not have permission to send from other nations");
             }
-            if (!hasEcon && senderDB.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW) != Boolean.TRUE) {
-                throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention() + "). Member withdrawals are not enabled, see: " + CM.settings.cmd.create(GuildSettings.Key.MEMBER_CAN_WITHDRAW.name(), null, null, null));
+            if (!hasEcon && senderDB.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) != Boolean.TRUE) {
+                throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention() + "). Member withdrawals are not enabled, see: " + CM.settings.cmd.create(GuildKey.MEMBER_CAN_WITHDRAW.name(), null, null, null));
             }
 
             // if sender nation does not have member role
@@ -1938,7 +1938,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
 //        if (senderChannel == null) throw new IllegalArgumentException("Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in " + senderDB);
             if (receiverChannel == null)
-                throw new IllegalArgumentException("Please have an admin set: " + CM.settings.cmd.create(GuildSettings.Key.RESOURCE_REQUEST_CHANNEL.name(), null, null, null) + " in receiving " + receiverDB.getGuild());
+                throw new IllegalArgumentException("Please have an admin set: " + CM.settings.cmd.create(GuildKey.RESOURCE_REQUEST_CHANNEL.name(), null, null, null) + " in receiving " + receiverDB.getGuild());
 
 
             String accountName;
@@ -2174,28 +2174,28 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return getWarChannel(throwException, false);
     }
     public WarCategory getWarChannel(boolean throwException, boolean isWarServer) {
-        Boolean enabled = getOrNull(GuildSettings.Key.ENABLE_WAR_ROOMS, false);
+        Boolean enabled = getOrNull(GuildKey.ENABLE_WAR_ROOMS, false);
         if (enabled == Boolean.FALSE || enabled == null) {
-            if (throwException) throw new IllegalArgumentException("War rooms are not enabled " + CM.settings.cmd.create(GuildSettings.Key.ENABLE_WAR_ROOMS.name(), "true", null, null) + "");
+            if (throwException) throw new IllegalArgumentException("War rooms are not enabled " + CM.settings.cmd.create(GuildKey.ENABLE_WAR_ROOMS.name(), "true", null, null) + "");
             return null;
         }
         if (!isWhitelisted() && !isValidAlliance()) {
             if (throwException) {
-                throw new IllegalArgumentException("Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), "<id>", null, null) + " is set");
+                throw new IllegalArgumentException("Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), "<id>", null, null) + " is set");
             }
             return null;
         }
         try {
-            Guild warServer = getOrNull(GuildSettings.Key.WAR_SERVER, false);
+            Guild warServer = getOrNull(GuildKey.WAR_SERVER, false);
             if (warServer != null && warServer.getIdLong() != guild.getIdLong()) {
                 GuildDB db = Locutus.imp().getGuildDB(warServer);
                 // circular reference
                 if (db == null) {
-                    if (throwException) throw new IllegalArgumentException("There is a null war server set (or delegated to) " + CM.settings.cmd.create(GuildSettings.Key.WAR_SERVER.name(), "null", null, null) + "");
+                    if (throwException) throw new IllegalArgumentException("There is a null war server set (or delegated to) " + CM.settings.cmd.create(GuildKey.WAR_SERVER.name(), "null", null, null) + "");
                     return null;
                 }
-                if (db.getOrNull(GuildSettings.Key.WAR_SERVER, false) != null) {
-                    if (throwException) throw new IllegalArgumentException("There is a null war server set " + CM.settings.cmd.create(GuildSettings.Key.WAR_SERVER.name(), "null", null, null) + "");
+                if (db.getOrNull(GuildKey.WAR_SERVER, false) != null) {
+                    if (throwException) throw new IllegalArgumentException("There is a null war server set " + CM.settings.cmd.create(GuildKey.WAR_SERVER.name(), "null", null, null) + "");
                     return null;
                 }
                 return db.getWarChannel(throwException, true);
@@ -2216,7 +2216,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                                 if (warCatError != null) {
                                     message += warCatError.getMessage() + "\n```" + StringMan.stacktraceToString(warCatError) + "```";
                                 }
-                                message += "\nTry setting " + CM.settings.cmd.create(GuildSettings.Key.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + " and attempting this command again once the issue has been resolved.";
+                                message += "\nTry setting " + CM.settings.cmd.create(GuildKey.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + " and attempting this command again once the issue has been resolved.";
                                 throw new IllegalArgumentException(message);
                             }
                             throw new IllegalArgumentException("This guild does not have permission to use war channels");
@@ -2226,13 +2226,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //            } else if (isWhitelisted()) {
 //                warChannel = new DebugWarChannel(guild, "warcat", "");
             } else if (warChannel == null) {
-                if (throwException) throw new IllegalArgumentException("Please set " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), "<id>", null, null) + " in " + guild);
+                if (throwException) throw new IllegalArgumentException("Please set " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), "<id>", null, null) + " in " + guild);
             }
             return warChannel;
         } catch (Throwable e) {
             warCatError = e;
             if (throwException) throw new IllegalArgumentException("There was an error creating war channels: " + e.getMessage() + "\n```" + StringMan.stacktraceToString(e) + "```\n" +
-                    "\nTry setting " + CM.settings.cmd.create(GuildSettings.Key.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + " and attempting this command again once the issue has been resolved.");
+                    "\nTry setting " + CM.settings.cmd.create(GuildKey.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + " and attempting this command again once the issue has been resolved.");
             return null;
         }
     }
@@ -2259,7 +2259,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return getDelegateServer(false);
     }
     public GuildDB getDelegateServer(boolean getParent) {
-        Map.Entry<Integer, Long> delegate = getOrNull(GuildSettings.Key.DELEGATE_SERVER, false);
+        Map.Entry<Integer, Long> delegate = getOrNull(GuildKey.DELEGATE_SERVER, false);
         if (delegate != null && delegate.getValue() != getIdLong()) {
             return Locutus.imp().getGuildDB(delegate.getValue());
         }
@@ -2271,7 +2271,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public boolean isValidAlliance() {
-        Set<Integer> aaIds = getOrNull(GuildSettings.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = getOrNull(GuildKey.ALLIANCE_ID);
         if (aaIds == null || aaIds.isEmpty()) return false;
         for (int aaId : aaIds) {
             if (DBAlliance.get(aaId) != null) return true;
@@ -2280,12 +2280,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public boolean hasRequiredMMR(DBNation nation) {
-        if (getOrNull(GuildSettings.Key.REQUIRED_MMR) == null) return true;
+        if (getOrNull(GuildKey.REQUIRED_MMR) == null) return true;
         return getRequiredMMR(nation).values().stream().anyMatch(f -> f);
     }
 
     public Map<String, Boolean> getRequiredMMR(DBNation nation) {
-        Map<NationFilterString, MMRMatcher> requiredMmrMap = getOrNull(GuildSettings.Key.REQUIRED_MMR);
+        Map<NationFilterString, MMRMatcher> requiredMmrMap = getOrNull(GuildKey.REQUIRED_MMR);
         if (requiredMmrMap == null) return null;
         Map<String, Boolean> allowedMMr = new LinkedHashMap<>();
         String myMMR = null;
@@ -2313,7 +2313,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<Long> offshore = getCoalitionRaw(Coalition.OFFSHORE);
         if (offshore.isEmpty()) return false;
 
-        if (getOrNull(GuildSettings.Key.API_KEY) == null || (!allowInvalid && !isValidAlliance())) {
+        if (getOrNull(GuildKey.API_KEY) == null || (!allowInvalid && !isValidAlliance())) {
             return false;
         }
 
@@ -2467,7 +2467,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public Function<DBNation, Boolean> getCanRaid() {
-        Integer topX = getOrNull(GuildSettings.Key.DO_NOT_RAID_TOP_X);
+        Integer topX = getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (topX == null) topX = 0;
         return getCanRaid(topX, true);
     }
@@ -2612,7 +2612,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public String getInfoRaw(GuildSetting key, boolean allowDelegate) {
-        if (key == GuildSettings.Key.ALLIANCE_ID) {
+        if (key == GuildKey.ALLIANCE_ID) {
             String result = getInfo(key.name(), false);
             return result;
         }
@@ -2635,7 +2635,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private final Object nullInstance = new Object();
 
     public MessageChannel getResourceChannel(Integer allianceId) {
-        Map<Long, MessageChannel> channels = getOrNull(GuildSettings.Key.RESOURCE_REQUEST_CHANNEL);
+        Map<Long, MessageChannel> channels = getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL);
         if (channels == null) return null;
         MessageChannel channel = channels.get(allianceId.longValue());
         if (channel == null) channel = channels.get(0L);
@@ -2652,7 +2652,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
         String value = info.get(key.toLowerCase());
         if (value == null && allowDelegate) {
-            Map.Entry<Integer, Long> delegate = getOrNull(GuildSettings.Key.DELEGATE_SERVER, false);
+            Map.Entry<Integer, Long> delegate = getOrNull(GuildKey.DELEGATE_SERVER, false);
             if (delegate != null && delegate.getValue() != getIdLong()) {
                 GuildDB delegateDb = Locutus.imp().getGuildDB(delegate.getValue());
                 if (delegateDb != null) {
@@ -2846,7 +2846,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void addCoalition(long allianceId, String coalition) {
-        GuildDB faServer = getOrNull(GuildSettings.Key.FA_SERVER);
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null && faServer.getIdLong() != getIdLong()) {
             faServer.addCoalition(allianceId, coalition);
             return;
@@ -2868,7 +2868,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void removeCoalition(long allianceId, String coalition) {
-        GuildDB faServer = getOrNull(GuildSettings.Key.FA_SERVER);
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null && faServer.getIdLong() != getIdLong()) {
             faServer.removeCoalition(allianceId, coalition);
             return;
@@ -2921,7 +2921,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public Set<Integer> getAllies(boolean fetchTreaties) {
         Set<Integer> allies = getCoalition("allies");
-        if (getOrNull(GuildSettings.Key.WAR_ALERT_FOR_OFFSHORES) != Boolean.FALSE) {
+        if (getOrNull(GuildKey.WAR_ALERT_FOR_OFFSHORES) != Boolean.FALSE) {
             allies.addAll(getCoalition("offshore"));
         }
         Set<Integer> aaIds = getAllianceIds();
@@ -2968,7 +2968,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public Map<String, Set<Long>> getCoalitionsRaw() {
-        GuildDB faServer = getOrNull(GuildSettings.Key.FA_SERVER);
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionsRaw();
         loadCoalitions();
         return Collections.unmodifiableMap(coalitions);
@@ -2996,7 +2996,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
     }
     public Map<String, Set<Integer>> getCoalitions() {
-        GuildDB faServer = getOrNull(GuildSettings.Key.FA_SERVER);
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null) return faServer.getCoalitions();
         loadCoalitions();
         return coalitionToAlliances(coalitions);
@@ -3019,7 +3019,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return tracked;
     }
     public Set<Long> getCoalitionRaw(String coalition) {
-        GuildDB faServer = getOrNull(GuildSettings.Key.FA_SERVER);
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionRaw(coalition);
         synchronized (this) {
             loadCoalitions();
@@ -3049,7 +3049,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public boolean isAllianceId(int id) {
-        Set<Integer> aaIds = getOrNull(GuildSettings.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = getOrNull(GuildKey.ALLIANCE_ID);
         return aaIds != null && aaIds.contains(id);
     }
 
@@ -3058,7 +3058,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
      * @return the alliance ids associated with the guild
      */
     public Set<Integer> getAllianceIds(boolean onlyVerified) {
-        Set<Integer> aaIds = getOrNull(GuildSettings.Key.ALLIANCE_ID);
+        Set<Integer> aaIds = getOrNull(GuildKey.ALLIANCE_ID);
         if (onlyVerified) {
             if (aaIds == null) return Collections.emptySet();
             return aaIds;
@@ -3096,7 +3096,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //    }
 
     public Set<BeigeReason> getAllowedBeigeReasons(DBNation defender) {
-        Map<CityRanges, Set<BeigeReason>> allowedReasonsMap = getOrNull(GuildSettings.Key.ALLOWED_BEIGE_REASONS);
+        Map<CityRanges, Set<BeigeReason>> allowedReasonsMap = getOrNull(GuildKey.ALLOWED_BEIGE_REASONS);
         Set<BeigeReason> allowedReasons = null;
         if (allowedReasonsMap != null) {
             for (Map.Entry<CityRanges, Set<BeigeReason>> entry : allowedReasonsMap.entrySet()) {
@@ -3116,7 +3116,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void removeCoalition(String coalition) {
-        GuildDB faServer = getOrNull(GuildSettings.Key.FA_SERVER);
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null && faServer.getIdLong() != getIdLong()) {
             faServer.removeCoalition(coalition);
             return;

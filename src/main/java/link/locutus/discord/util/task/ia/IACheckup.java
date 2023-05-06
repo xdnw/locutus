@@ -7,7 +7,7 @@ import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.guild.GuildSettings;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -378,7 +378,7 @@ public class IACheckup {
                 return new AbstractMap.SimpleEntry<>(nation.getMMR(), desc);
             }
             case INCORRECT_MMR:
-                Map<NationFilterString, MMRMatcher> requiredMmrMap = db.getOrNull(GuildSettings.Key.REQUIRED_MMR);
+                Map<NationFilterString, MMRMatcher> requiredMmrMap = db.getOrNull(GuildKey.REQUIRED_MMR);
                 return requiredMmrMap != null ? checkMMR(nation, cities, requiredMmrMap) : null;
             case BUY_SOLDIERS:
                 return checkSoldierBuy(nation, cities);
@@ -672,7 +672,7 @@ public class IACheckup {
     private Map.Entry<Object, String> checkWarchest(DBNation nation, Map<ResourceType, Double> stockpile, GuildDB db) {
         if (nation.getCities() < 10) return null;
         if (!db.getCoalition("enemies").isEmpty()) return null;
-        Map<ResourceType, Double> perCity = db.getOrNull(GuildSettings.Key.WARCHEST_PER_CITY);
+        Map<ResourceType, Double> perCity = db.getOrNull(GuildKey.WARCHEST_PER_CITY);
         if (perCity == null) return null;
         int airCap = nation.getCities() * Buildings.HANGAR.cap(nation::hasProject) * Buildings.HANGAR.max();
         double airPct = (double) nation.getAircraft() / airCap;
