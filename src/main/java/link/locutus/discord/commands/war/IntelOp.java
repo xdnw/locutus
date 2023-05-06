@@ -6,9 +6,9 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -18,7 +18,6 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,7 +65,7 @@ public class IntelOp extends Command {
         if (args.size() == 1) {
             topX = Integer.parseInt(args.get(0));
         } else {
-            Integer dnr = db.getOrNull(GuildDB.Key.DO_NOT_RAID_TOP_X);
+            Integer dnr = db.getOrNull(GuildSettings.Key.DO_NOT_RAID_TOP_X);
             if (dnr != null) topX = dnr;
         }
 

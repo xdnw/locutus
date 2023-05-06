@@ -4,27 +4,18 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.apiv3.subscription.PnwPusherEvent;
-import link.locutus.discord.apiv3.subscription.PnwPusherFilter;
-import link.locutus.discord.apiv3.subscription.PnwPusherHandler;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.db.guild.GuildSettings;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.io.IOException;
@@ -35,7 +26,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class SpyTracker {
@@ -446,10 +435,10 @@ public class SpyTracker {
 
             GuildDB db = defender.getGuildDB();
             if (db == null) continue;
-            MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
+            MessageChannel channel = db.getOrNull(GuildSettings.Key.ESPIONAGE_ALERT_CHANNEL);
             if (channel == null && (!alert.exact.isEmpty() || unit == MilitaryUnit.SPIES)) {
-                channel = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL);
-                body.append("\nSpy kills are not enabled (only units). See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL.name() + "`");
+                channel = db.getOrNull(GuildSettings.Key.DEFENSE_WAR_CHANNEL);
+                body.append("\nSpy kills are not enabled (only units). See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildSettings.Key.ESPIONAGE_ALERT_CHANNEL.name() + "`");
             }
             if (channel == null) continue;
 

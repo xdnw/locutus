@@ -5,12 +5,9 @@ import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
-import it.unimi.dsi.fastutil.ints.Int2ByteArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ByteArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.Alliance;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
@@ -23,6 +20,7 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.*;
 import link.locutus.discord.pnw.NationList;
@@ -752,7 +750,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public ApiKeyPool getApiKeys(AlliancePermission... permissions) {
         GuildDB db = getGuildDB();
         if (db != null) {
-            List<String> apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
+            List<String> apiKeys = db.getOrNull(GuildSettings.Key.API_KEY);
 
             if (apiKeys != null && !apiKeys.isEmpty()) {
                 List<String> newKeys = new ArrayList<>(apiKeys);
@@ -767,9 +765,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
                     } catch (HttpClientErrorException.Unauthorized e) {
                         newKeys.remove(key);
                         if (newKeys.isEmpty()) {
-                            db.deleteInfo(GuildDB.Key.API_KEY);
+                            db.deleteInfo(GuildSettings.Key.API_KEY);
                         } else {
-                            GuildDB.Key.API_KEY.set(db, newKeys);
+                            GuildSettings.Key.API_KEY.set(db, newKeys);
                         }
                     } catch (Throwable e) {
                         throw e;

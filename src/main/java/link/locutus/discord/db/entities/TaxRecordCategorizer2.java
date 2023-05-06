@@ -1,16 +1,15 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -24,7 +23,6 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -449,7 +447,7 @@ public class TaxRecordCategorizer2 {
         this.incomeByBracket = new Int2ObjectOpenHashMap<>();
         this.incomeByNation = new Int2ObjectOpenHashMap<>();
 
-        TaxRate taxBase = db.getOrNull(GuildDB.Key.TAX_BASE);
+        TaxRate taxBase = db.getOrNull(GuildSettings.Key.TAX_BASE);
         if (taxBase == null) taxBase = new TaxRate(100, 100);
         else {
             taxBase = new TaxRate(taxBase.money, taxBase.resources);

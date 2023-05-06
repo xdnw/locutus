@@ -129,11 +129,11 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
-import link.locutus.discord.web.jooby.adapter.JoobyChannel;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -350,7 +350,7 @@ public class CommandManager {
         if (!category.getName().startsWith("warcat")) return;
         GuildDB db = Locutus.imp().getGuildDB(msgGuild);
         if (db == null) return;
-        if (!db.isWhitelisted() && db.getOrNull(GuildDB.Key.ENABLE_WAR_ROOMS) != Boolean.TRUE) return;
+        if (!db.isWhitelisted() && db.getOrNull(GuildSettings.Key.ENABLE_WAR_ROOMS) != Boolean.TRUE) return;
 
         if (!db.hasAlliance()) return;
 

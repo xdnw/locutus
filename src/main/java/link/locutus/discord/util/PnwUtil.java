@@ -7,6 +7,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.util.offshore.Auth;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
@@ -161,7 +162,7 @@ public class PnwUtil {
     public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
         Map<DepositType, double[]> result = new HashMap<>();
 
-        boolean allowExpiryDefault = (guildDB.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) == Boolean.TRUE) || guildDB.getIdLong() == 790253684537688086L;
+        boolean allowExpiryDefault = (guildDB.getOrNull(GuildSettings.Key.RESOURCE_CONVERSION) == Boolean.TRUE) || guildDB.getIdLong() == 790253684537688086L;
         long allowExpiryCutoff = 1635910300000L;
         Predicate<Transaction2> allowExpiry = transaction2 ->
                 allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;

@@ -9,6 +9,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -55,7 +56,7 @@ public class Bank extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (!db.hasAlliance())
-            return "No alliance set for this server. See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID.name();
+            return "No alliance set for this server. See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildSettings.Key.ALLIANCE_ID.name();
 
         Integer alliance;
         DBNation nation = DiscordUtil.parseNation(args.get(0));

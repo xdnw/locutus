@@ -270,7 +270,7 @@ public abstract class GuildSetting<T> {
     public GuildSetting<T> requireValidAlliance() {
         requiresFunction.add((db, throwError) -> {
             if (!db.isValidAlliance()) {
-                throw new IllegalArgumentException("No valid alliance is setup (see: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null) + ")");
+                throw new IllegalArgumentException("No valid alliance is setup (see: " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), null, null, null) + ")");
             }
             return true;
         });
@@ -326,5 +326,16 @@ public abstract class GuildSetting<T> {
 
     public GuildSettingCategory getCategory() {
         return category;
+    }
+
+    public String setAndValidate(GuildDB db, User user, T value) {
+        if (!allowed(db, true)) {
+            throw new IllegalArgumentException("This setting is not allowed in this server (you may be missing some prerequisite settings)");
+        }
+        if (!hasPermission(db, user, value)) {
+            throw new IllegalArgumentException("You do not have permission to set " + name() + " to `" + toReadableString(value) + "`");
+        }
+        value = validate(db, value);
+        return set(db, value);
     }
 }

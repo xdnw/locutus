@@ -6,7 +6,6 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -15,6 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.db.entities.TradeSubscription;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.trade.BulkTradeSubscriptionEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
@@ -23,15 +23,11 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 
@@ -78,7 +74,7 @@ public class TradeListener {
             body.append("\nCan be attacked by: " + MathMan.format(currentNation.getScore() / 1.75) + "-" + MathMan.format(currentNation.getScore() / 0.75));
         }
 
-        AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildDB.Key.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildSettings.Key.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
                 DiscordUtil.createEmbedCommand(channel, title, body.toString());
@@ -181,7 +177,7 @@ public class TradeListener {
         message.append("\n - All Colors: <https://politicsandwar.com/leaderboards/display=color>");
         message.append("\n - Edit Color: <https://politicsandwar.com/nation/edit/>");
 
-        AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildDB.Key.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildSettings.Key.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
                 AllianceList allianceList = db.getAllianceList();
@@ -276,7 +272,7 @@ public class TradeListener {
         for (TradeSubscription subscription : subscriptions) {
             if (subscription.isRole()) {
                 for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-                    MessageChannel channel = db.getOrNull(GuildDB.Key.TRADE_ALERT_CHANNEL);
+                    MessageChannel channel = db.getOrNull(GuildSettings.Key.TRADE_ALERT_CHANNEL);
                     if (channel == null) continue;
                     Role role = subscription.toRole(db);
                     if (role != null) {
@@ -304,7 +300,7 @@ public class TradeListener {
             Map<ResourceType, List<TradeSubscription>> subscriptionsForGuild = guildEntry.getValue();
 
             // get trade alert channel
-            MessageChannel channel = db.getOrNull(GuildDB.Key.TRADE_ALERT_CHANNEL);
+            MessageChannel channel = db.getOrNull(GuildSettings.Key.TRADE_ALERT_CHANNEL);
             if (channel == null || subscriptionsForGuild.isEmpty()) continue;
 
             Set<String> allPings = new LinkedHashSet<>();

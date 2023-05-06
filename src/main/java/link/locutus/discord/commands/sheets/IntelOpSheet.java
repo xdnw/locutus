@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
@@ -24,7 +25,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,7 +69,7 @@ public class IntelOpSheet extends Command {
         long cutOff = System.currentTimeMillis() - millis;
         Set<DBNation> attackers = DiscordUtil.parseNations(guild, args.get(1));
         attackers.removeIf(f -> f.getPosition() <= 1 || f.getActive_m() > 1440 || f.getVm_turns() > 0);
-        Integer topX = db.getOrNull(GuildDB.Key.DO_NOT_RAID_TOP_X);
+        Integer topX = db.getOrNull(GuildSettings.Key.DO_NOT_RAID_TOP_X);
         if (args.size() > 2) topX = Integer.parseInt(args.get(2));
         if (topX == null) return usage(event);
 

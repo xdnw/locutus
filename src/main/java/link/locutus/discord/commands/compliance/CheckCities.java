@@ -11,8 +11,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -84,7 +84,7 @@ public class CheckCities extends Command {
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
-                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID.name() + "`";
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildSettings.Key.ALLIANCE_ID.name() + "`";
             }
             if (!aaIds.contains(nation.getAlliance_id())) {
                 return "Nation is not in the same alliance: " + nation.getNation() + " != " + StringMan.getString(aaIds);

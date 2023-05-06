@@ -1,13 +1,11 @@
 package link.locutus.discord.gpt;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.lang.reflect.Method;
@@ -66,7 +64,7 @@ public class PWGPTHandler {
     }
 
     private void registerSettingEmbeddings() {
-        for (GuildSetting key : GuildDB.Key.values()) {
+        for (GuildSetting key : GuildSettings.Key.values()) {
             if (key.help().isEmpty()) continue;
             registerEmbedding(new SettingEmbedding(key), true, "");
         }

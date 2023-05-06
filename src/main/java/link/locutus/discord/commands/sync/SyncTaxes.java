@@ -10,6 +10,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -78,7 +79,7 @@ public class SyncTaxes extends Command {
                 }
                 case "legacy": {
                     Set<Integer> ids = db.getAllianceIds();
-                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null);
+                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), null, null, null);
                     int aaId;
                     int offset = 0;
                     if (ids.size() > 1) {

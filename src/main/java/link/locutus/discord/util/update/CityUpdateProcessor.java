@@ -11,6 +11,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.event.city.CityBuildingChangeEvent;
 import link.locutus.discord.event.city.CityInfraBuyEvent;
 import link.locutus.discord.util.*;
@@ -164,7 +165,7 @@ public class CityUpdateProcessor {
 
             Set<MessageChannel> channels = new HashSet<>();
             if (isGov) {
-                AlertUtil.forEachChannel(f -> true, GuildDB.Key.ORBIS_OFFICER_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                AlertUtil.forEachChannel(f -> true, GuildSettings.Key.ORBIS_OFFICER_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
                         DiscordUtil.createEmbedCommand(channel, title, body.toString());
@@ -173,7 +174,7 @@ public class CityUpdateProcessor {
             }
 
             if (nation.getAlliance_id() != 0 && nation.getPositionEnum().id > Rank.APPLICANT.id) {
-                AlertUtil.forEachChannel(f -> f.isValidAlliance() && f.isEnemyAlliance(nation.getAlliance_id()), GuildDB.Key.ENEMY_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                AlertUtil.forEachChannel(f -> f.isValidAlliance() && f.isEnemyAlliance(nation.getAlliance_id()), GuildSettings.Key.ENEMY_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
                         DiscordUtil.createEmbedCommand(channel, title, body.toString());

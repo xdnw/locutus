@@ -27,6 +27,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -37,7 +38,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepos
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.util.task.ia.IACheckup;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.lang.reflect.Type;
@@ -160,7 +160,7 @@ public class PWCompleter extends BindingHelper {
     @Autocomplete
     @Binding(types={GuildSetting.class})
     public List<String> setting(String input) {
-        List<String> options = Arrays.asList(GuildDB.Key.values()).stream().map(f -> f.name()).collect(Collectors.toList());
+        List<String> options = Arrays.asList(GuildSettings.Key.values()).stream().map(f -> f.name()).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 

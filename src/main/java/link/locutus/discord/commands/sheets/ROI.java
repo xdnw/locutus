@@ -10,6 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -149,13 +150,13 @@ public class ROI extends Command {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
         if (guildDb == null || !guildDb.hasAlliance()) {
-            return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<value>", null, null) + "";
+            return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), "<value>", null, null) + "";
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
 
         Set<Integer> aaIds = guildDb.getAllianceIds();
-        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>", null, null) + "";
+        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildSettings.Key.ALLIANCE_ID.name(), "<alliance-id>", null, null) + "";
 
         List<ROIResult> roiMap = new ArrayList<>();
         boolean useSheet = false;

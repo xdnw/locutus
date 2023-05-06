@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -9,22 +8,18 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.util.offshore.Grant;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.User;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class GrantCommands {
 
@@ -936,9 +931,9 @@ public class GrantCommands {
         Member: Can only send funds in their deposits
          */
 
-        boolean memberCanApprove = db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
+        boolean memberCanApprove = db.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
         boolean checkDepoValue = !Roles.ECON_STAFF.has(author, db.getGuild());
-        boolean checkDepoResource = db.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) != Boolean.TRUE;
+        boolean checkDepoResource = db.getOrNull(GuildSettings.Key.RESOURCE_CONVERSION) != Boolean.TRUE;
         boolean allowExtra = Roles.ECON.has(author, db.getGuild());
 
         double[] expectedDeposits = PnwUtil.resourcesToArray(deposits);

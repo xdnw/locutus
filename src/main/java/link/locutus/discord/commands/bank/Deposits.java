@@ -1,22 +1,20 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -31,7 +29,6 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -259,7 +256,7 @@ public class Deposits extends Command {
 
         footers.add("value is based on current market prices");
 
-        if (flags.contains('t') || db.getOrNull(GuildDB.Key.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE) {
+        if (flags.contains('t') || db.getOrNull(GuildSettings.Key.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE) {
             if (categorized.containsKey(DepositType.DEPOSIT)) {
                 response.append("#DEPOSIT: (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
@@ -302,10 +299,10 @@ public class Deposits extends Command {
         }
         if (requiredUser != null && me != null && requiredUser.getNation_id() == me.getNation_id()) {
             footers.add("Funds default to #deposit if no other note is used.");
-            if (Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.RESOURCE_CONVERSION))) {
+            if (Boolean.TRUE.equals(guildDb.getOrNull(GuildSettings.Key.RESOURCE_CONVERSION))) {
                 footers.add("You can sell resources to the alliance by depositing with the note #cash.");
             }
-            if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {
+            if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(guildDb.getOrNull(GuildSettings.Key.MEMBER_CAN_WITHDRAW))) {
                 Role role = Roles.ECON_WITHDRAW_SELF.toRole(guild);
                 if (guild.getMember(author).getRoles().contains(role)) {
                     footers.add("To withdraw, use: `" + CM.transfer.self.cmd.toSlashMention() + "` ");
@@ -334,7 +331,7 @@ public class Deposits extends Command {
                             Map<ResourceType, Double> excess = finalNation.checkExcessResources(guildDb, stockpile);
                             if (!excess.isEmpty()) {
                                 tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
-                                if (Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.DEPOSIT_INTEREST))) {
+                                if (Boolean.TRUE.equals(guildDb.getOrNull(GuildSettings.Key.DEPOSIT_INTEREST))) {
                                     List<Transaction2> transactions = finalNation.getTransactions(-1);
                                     long last = 0;
                                     for (Transaction2 transaction : transactions) last = Math.max(transaction.tx_datetime, last);
@@ -350,7 +347,7 @@ public class Deposits extends Command {
                         }
                     }
 
-                    if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(guildDb.getOrNull(GuildDB.Key.MEMBER_CAN_OFFSHORE)) && guildDb.isValidAlliance()) {
+                    if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(guildDb.getOrNull(GuildSettings.Key.MEMBER_CAN_OFFSHORE)) && guildDb.isValidAlliance()) {
                         AllianceList alliance = db.getAllianceList();
                         if (alliance != null && !alliance.isEmpty() && alliance.contains(me.getAlliance_id())) {
                             try {

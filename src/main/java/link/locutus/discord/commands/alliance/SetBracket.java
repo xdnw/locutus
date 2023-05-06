@@ -1,8 +1,6 @@
 package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -13,12 +11,12 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.offshore.Auth;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -44,13 +42,13 @@ public class SetBracket extends Command {
                 "or to also set internal: `" + Settings.commandPrefix(true) + "SetTaxes @user 100/100 25/25`\n" +
                 "Notes:\n" +
                 " - Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
-                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildDB.Key.TAX_BASE.name(), null, null, null) + " (retroactive)\n" +
+                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildSettings.Key.TAX_BASE.name(), null, null, null) + " (retroactive)\n" +
                 " - This command is not retroactive and overrides the alliance internal taxrate";
     }
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Roles.ECON_STAFF.has(user, server) || (Locutus.imp().getGuildDB(server).getOrNull(GuildDB.Key.MEMBER_CAN_SET_BRACKET) == Boolean.TRUE && Roles.MEMBER.has(user, server));
+        return Roles.ECON_STAFF.has(user, server) || (Locutus.imp().getGuildDB(server).getOrNull(GuildSettings.Key.MEMBER_CAN_SET_BRACKET) == Boolean.TRUE && Roles.MEMBER.has(user, server));
     }
 
     @Override

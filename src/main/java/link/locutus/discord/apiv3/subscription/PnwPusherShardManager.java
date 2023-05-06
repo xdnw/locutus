@@ -1,7 +1,5 @@
 package link.locutus.discord.apiv3.subscription;
 
-import com.politicsandwar.graphql.model.Alliance;
-import com.politicsandwar.graphql.model.City;
 import com.politicsandwar.graphql.model.Nation;
 import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
@@ -15,19 +13,15 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyTracker;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
-import java.io.IOException;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class PnwPusherShardManager {
     private PnwPusherHandler root;
@@ -81,13 +75,13 @@ public class PnwPusherShardManager {
                 key = getAllianceKey(allianceId);
             } catch (IllegalArgumentException ignore) {}
             if (key == null) {
-                MessageChannel channel = db.getOrNull(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
+                MessageChannel channel = db.getOrNull(GuildSettings.Key.ESPIONAGE_ALERT_CHANNEL);
                 if (channel != null && channel.canTalk()) {
                     try {
-                        RateLimitUtil.queueMessage(channel, "Disabling " + GuildDB.Key.ESPIONAGE_ALERT_CHANNEL.name() + " (invalid key)", false);
+                        RateLimitUtil.queueMessage(channel, "Disabling " + GuildSettings.Key.ESPIONAGE_ALERT_CHANNEL.name() + " (invalid key)", false);
                     } catch (Throwable ignore2) {}
                 }
-                db.deleteInfo(GuildDB.Key.ESPIONAGE_ALERT_CHANNEL);
+                db.deleteInfo(GuildSettings.Key.ESPIONAGE_ALERT_CHANNEL);
                 return false;
             }
             System.out.println("Enabling pusher for " + allianceId);

@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -35,9 +36,9 @@ public class Embassy extends Command {
             return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
         GuildDB db = Locutus.imp().getGuildDB(event);
-        Category category = db.getOrThrow(GuildDB.Key.EMBASSY_CATEGORY);
+        Category category = db.getOrThrow(GuildSettings.Key.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildDB.Key.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
+            return "Embassies are disabled. To set it up, use " + CM.settings.cmd.create(GuildSettings.Key.EMBASSY_CATEGORY.name(), "", null, null).toSlashCommand() + "";
         }
         DBNation nation = me;
         if (args.size() == 1 && args.get(0).equalsIgnoreCase("*")) {

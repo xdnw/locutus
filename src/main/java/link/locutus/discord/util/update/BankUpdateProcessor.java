@@ -2,7 +2,6 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
@@ -29,9 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static link.locutus.discord.db.GuildDB.Key.BANK_ALERT_CHANNEL;
-import static link.locutus.discord.db.GuildDB.Key.DEPOSIT_ALERT_CHANNEL;
-import static link.locutus.discord.db.GuildDB.Key.WITHDRAW_ALERT_CHANNEL;
+import static link.locutus.discord.db.guild.GuildSettings.Key.BANK_ALERT_CHANNEL;
+import static link.locutus.discord.db.guild.GuildSettings.Key.DEPOSIT_ALERT_CHANNEL;
+import static link.locutus.discord.db.guild.GuildSettings.Key.WITHDRAW_ALERT_CHANNEL;
 
 public class BankUpdateProcessor {
     @Subscribe

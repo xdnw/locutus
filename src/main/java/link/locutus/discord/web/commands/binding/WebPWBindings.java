@@ -5,7 +5,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -16,8 +15,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.RegisteredRole;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
@@ -33,6 +30,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
@@ -41,7 +39,6 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.scheduler.QuadConsumer;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -50,22 +47,14 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
-import com.google.gson.JsonArray;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildChannel;
-import net.dv8tion.jda.api.entities.ICategorizableChannel;
-import net.dv8tion.jda.api.entities.IPositionableChannel;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.awt.Color;
@@ -75,7 +64,6 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static link.locutus.discord.web.WebUtil.createInput;
 import static link.locutus.discord.web.WebUtil.generateSearchableDropdown;
@@ -718,7 +706,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= GuildSetting.class)
     public String GuildSetting(@Me GuildDB db, @Me Guild guild, @Me User author, ParameterData param) {
-        ArrayList<GuildSetting> options = new ArrayList<>(Arrays.asList(GuildDB.Key.values()));
+        ArrayList<GuildSetting> options = new ArrayList<>(Arrays.asList(GuildSettings.Key.values()));
         options.removeIf(key -> {
             if (!key.allowed(db)) return true;
             if (!key.hasPermission(db, author, null)) return true;

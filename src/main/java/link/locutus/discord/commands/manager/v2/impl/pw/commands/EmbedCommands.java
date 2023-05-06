@@ -8,8 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.CommandRef;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -17,25 +15,19 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.guild.GuildSettings;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.mail.Mail;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
-import org.kefirsf.bb.conf.If;
-import rocker.grant.cities;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -184,8 +176,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             if (db.getCoalition(Coalition.ALLIES).isEmpty()) {
                 throw new IllegalArgumentException("No `" + Coalition.ALLIES.name() + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
             }
-            db.getOrThrow(GuildDB.Key.UNBLOCKADE_REQUESTS);
-            db.getOrThrow(GuildDB.Key.UNBLOCKADED_ALERTS);
+            db.getOrThrow(GuildSettings.Key.UNBLOCKADE_REQUESTS);
+            db.getOrThrow(GuildSettings.Key.UNBLOCKADED_ALERTS);
             if (Roles.UNBLOCKADED_ALERT.toRole(db) == null) {
                 throw new IllegalArgumentException(Roles.UNBLOCKADED_ALERT.toDiscordRoleNameElseInstructions(db.getGuild()));
             }
