@@ -42,7 +42,7 @@ public class SetBracket extends Command {
                 "or to also set internal: `" + Settings.commandPrefix(true) + "SetTaxes @user 100/100 25/25`\n" +
                 "Notes:\n" +
                 " - Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
-                " - Set the alliance internal tax rate with: " + CM.settings.cmd.create(GuildKey.TAX_BASE.name(), null, null, null) + " (retroactive)\n" +
+                " - Set the alliance internal tax rate with: " + GuildKey.TAX_BASE.getCommandMention() + " (retroactive)\n" +
                 " - This command is not retroactive and overrides the alliance internal taxrate";
     }
 

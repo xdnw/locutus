@@ -1229,11 +1229,11 @@ public class UtilityCommands {
         }
 
         if (db.getOrNull(GuildKey.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildKey.AUTOROLE.name(), null, null, null).toSlashCommand() + "");
+            response.append("\n - AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
         }
         else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildKey.AUTOROLE) + "");
         if (db.getOrNull(GuildKey.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildKey.AUTONICK.name(), null, null, null).toSlashCommand() + "");
+            response.append("\n - AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
         }
         else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildKey.AUTONICK) + "");
         if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
@@ -1253,11 +1253,11 @@ public class UtilityCommands {
         StringBuilder response = new StringBuilder("Done!");
 
         if (db.getOrNull(GuildKey.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildKey.AUTOROLE.name(), null, null, null).toSlashCommand() + "");
+            response.append("\n - AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
         }
         else response.append("\n - AutoRole Mode: ").append((Object) db.getOrNull(GuildKey.AUTOROLE));
         if (db.getOrNull(GuildKey.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildKey.AUTONICK.name(), null, null, null).toSlashCommand() + "");
+            response.append("\n - AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
         }
         else response.append("\n - AutoNick Mode: ").append((Object) db.getOrNull(GuildKey.AUTONICK));
         if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");

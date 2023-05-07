@@ -114,7 +114,7 @@ public class DepositsSheet extends Command {
                 }
             } else {
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null, null) + " set");
+                if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null, null) + " set");
                 nations = new HashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());

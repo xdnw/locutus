@@ -260,7 +260,7 @@ public class IACommands {
         result.append(GuildKey.ASSIGNABLE_ROLES.set(db, assignable)).append("\n");
 
         result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
-                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null, null) + "");
+                " - To see a list of current mappings, use " + CM.settings.info.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null) + "");
         return result.toString();
     }
 
@@ -290,7 +290,7 @@ public class IACommands {
         response.append("\n" + GuildKey.ASSIGNABLE_ROLES.set(db, assignable));
 
         return response.toString() + "\n" +
-                " - To see a list of current mappings, use " + CM.settings.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null, null) + "";
+                " - To see a list of current mappings, use " + GuildKey.ASSIGNABLE_ROLES.getCommandMention() + "";
     }
 
     @Command(desc = "Add discord role to a user\n" +
@@ -401,7 +401,7 @@ public class IACommands {
 
         Set<Integer> result = new SimpleNationList(nations).updateSpies(false);
         if (result.isEmpty()) {
-            return "Could not update spies (see " + CM.settings.cmd.create("API_KEY", null, null, null).toSlashCommand() + ")";
+            return "Could not update spies (see " + GuildKey.API_KEY.getCommandMention() + ")";
         }
 
         long dayCutoff = TimeUtil.getDay() - 2;
@@ -886,7 +886,7 @@ public class IACommands {
         if (key == null) {
             if ((sendFromGuildAccount || myKey == null)) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.settings.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "` to add your own key";
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.info.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "` to add your own key";
                 }
                 key = db.getMailKey();
             } else if (myKey != null) {
@@ -895,7 +895,7 @@ public class IACommands {
         }
         if (key == null){
             if (sendFromGuildAccount) {
-                return "No api key found. Please use" + CM.settings.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "`";
+                return "No api key found. Please use" + CM.info.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "`";
             } else {
                 return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "";
             }
@@ -959,7 +959,7 @@ public class IACommands {
 
         boolean isGov = Roles.ECON_STAFF.has(author, db.getGuild()) || Roles.INTERNAL_AFFAIRS.has(author, db.getGuild());
         if (!isGov) {
-            if (db.getOrNull(GuildKey.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + CM.settings.cmd.create(GuildKey.MEMBER_CAN_SET_BRACKET.name(), null, null, null) + ")";
+            if (db.getOrNull(GuildKey.MEMBER_CAN_SET_BRACKET) != Boolean.TRUE) return "Only ECON can set member brackets. (See also " + GuildKey.MEMBER_CAN_SET_BRACKET.getCommandMention() + ")";
             if (!me.equals(single)) return "You are only allowed to set your own tax rate";
         }
         if (internalTaxRate != null && !isGov) {
@@ -974,7 +974,7 @@ public class IACommands {
 
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.contains(aaId)) {
-            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), aaId + "", null, null) + " to register it.";
+            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + GuildKey.ALLIANCE_ID.getCommandObj(Collections.singleton(aaId)) + " to register it.";
         }
         DBAlliance alliance = DBAlliance.getOrCreate(aaId);
 
@@ -1681,7 +1681,7 @@ public class IACommands {
             Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, filter);
 
             Set<Integer> aaIds = db.getAllianceIds();
-            if (aaIds.isEmpty()) return "No alliance set " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "";
+            if (aaIds.isEmpty()) return "No alliance set " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
 
             IACategory cat = db.getIACategory();
             if (cat.getCategories().isEmpty()) return "No `interview` categories found";

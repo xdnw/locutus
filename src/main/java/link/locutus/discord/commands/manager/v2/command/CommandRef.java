@@ -41,25 +41,8 @@ public class CommandRef {
         }
     }
 
-    public long getSlashId() {
-        Locutus locutus = Locutus.imp();
-        if (locutus == null) return -1;
-        SlashCommandManager slashManager = Locutus.imp().getSlashCommands();
-        if (slashManager == null) return -1;
-        Long id = slashManager.getCommandId(path);
-        return id == null ? -1 : id;
-    }
-
     public String toSlashMention() {
-        Locutus locutus = Locutus.imp();
-        if (locutus != null) {
-            SlashCommandManager slashManager = Locutus.imp().getSlashCommands();
-            if (slashManager != null) {
-                String mention = slashManager.getSlashMention(path);
-                if (mention != null) return mention;
-            }
-        }
-        return toSlashCommand();
+        return SlashCommandManager.getSlashMention(path);
     }
 
     public String toSlashCommand() {
@@ -67,17 +50,7 @@ public class CommandRef {
     }
 
     public String toSlashCommand(boolean backTicks) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("/").append(getPath());
-        if (!arguments.isEmpty()) {
-            // join on " "
-            for (Map.Entry<String, String> entry : arguments.entrySet()) {
-                if (entry.getValue() == null) continue;
-                builder.append(" ").append(entry.getKey()).append(": ").append(entry.getValue());
-            }
-        }
-        if (backTicks) return "`" + builder + "`";
-        return builder.toString();
+        return SlashCommandManager.getSlashCommand(path, arguments, backTicks);
     }
 
 

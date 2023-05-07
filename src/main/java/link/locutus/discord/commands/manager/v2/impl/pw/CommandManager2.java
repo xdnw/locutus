@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
@@ -24,6 +25,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -35,6 +38,7 @@ import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Supplier;
@@ -165,10 +169,37 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new AttackCommands(), List.of("simulate"), "casualties", "casualties");
 
+        this.commands.registerMethod(new SettingCommands(), List.of("settings"), "delete", "delete");
+        this.commands.registerMethod(new SettingCommands(), List.of("settings"), "sheets", "sheets");
+        this.commands.registerMethod(new SettingCommands(), List.of("settings"), "info", "info");
+
+        for (GuildSetting setting : GuildKey.values()) {
+            List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
+
+            Method[] methods = setting.getClass().getDeclaredMethods();
+            Map<String, String> methodNameToCommandName = new HashMap<>();
+            for (Method method : methods) {
+                if (method.getAnnotation(Command.class) != null) {
+                    Command command = method.getAnnotation(Command.class);
+
+                    String[] aliases = command.aliases();
+                    String commandName = aliases.length == 0 ? method.getName() : aliases[0];
+                    methodNameToCommandName.put(method.getName(), commandName);
+                }
+            }
+
+            for (Map.Entry<String, String> entry : methodNameToCommandName.entrySet()) {
+                String methodName = entry.getKey();
+                String commandName = entry.getValue();
+                this.commands.registerMethod(setting, path, methodName, commandName);
+            }
+        }
+
+
         if (pwgptHandler != null) {
-//            HelpCommands help = new HelpCommands();
-//            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
-//            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
+            HelpCommands help = new HelpCommands();
+            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
+            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
             pwgptHandler.registerDefaults();
         }

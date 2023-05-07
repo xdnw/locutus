@@ -3,7 +3,6 @@ package link.locutus.discord.commands.sync;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -79,7 +78,7 @@ public class SyncTaxes extends Command {
                 }
                 case "legacy": {
                     Set<Integer> ids = db.getAllianceIds();
-                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null);
+                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + GuildKey.ALLIANCE_ID.getCommandMention();
                     int aaId;
                     int offset = 0;
                     if (ids.size() > 1) {

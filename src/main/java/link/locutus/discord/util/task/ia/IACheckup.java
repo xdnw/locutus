@@ -3,6 +3,7 @@ package link.locutus.discord.util.task.ia;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -378,7 +379,7 @@ public class IACheckup {
                 return new AbstractMap.SimpleEntry<>(nation.getMMR(), desc);
             }
             case INCORRECT_MMR:
-                Map<NationFilterString, MMRMatcher> requiredMmrMap = db.getOrNull(GuildKey.REQUIRED_MMR);
+                Map<NationFilter, MMRMatcher> requiredMmrMap = db.getOrNull(GuildKey.REQUIRED_MMR);
                 return requiredMmrMap != null ? checkMMR(nation, cities, requiredMmrMap) : null;
             case BUY_SOLDIERS:
                 return checkSoldierBuy(nation, cities);
@@ -1247,13 +1248,13 @@ public class IACheckup {
 //        return null;
 //    }
 
-    public Map.Entry<Object, String> checkMMR(DBNation nation, Map<Integer, JavaCity> cities, Map<NationFilterString, MMRMatcher> requiredMmrMap) {
+    public Map.Entry<Object, String> checkMMR(DBNation nation, Map<Integer, JavaCity> cities, Map<NationFilter, MMRMatcher> requiredMmrMap) {
 
         Set<String> allowedMMr = new HashSet<>();
 
         String myMMR = null;
-        for (Map.Entry<NationFilterString, MMRMatcher> entry : requiredMmrMap.entrySet()) {
-            NationFilterString nationMatcher = entry.getKey();
+        for (Map.Entry<NationFilter, MMRMatcher> entry : requiredMmrMap.entrySet()) {
+            NationFilter nationMatcher = entry.getKey();
             if (myMMR == null) {
                 myMMR = nation.getMMRBuildingStr();
             }

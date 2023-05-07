@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Predicate;
@@ -299,15 +300,28 @@ public class CommandGroup implements ICommandGroup {
     private void register(Class<?> clazz, List<String> path, Map<Class<?>, Object> instanceCache, boolean isRoot) {
         AutoRegister methodInfo = clazz.getAnnotation(AutoRegister.class);
         if (methodInfo != null) {
-            Object instance = instanceCache.computeIfAbsent(methodInfo.clazz(), f -> {
+            String field = methodInfo.field();
+            Object instance;
+            if (!field.isEmpty()) {
                 try {
-                    return f.newInstance();
-                } catch (InstantiationException | IllegalAccessException e) {
+                    Class<?> infoClazz = Class.forName(methodInfo.clazz().getName());
+                    Field declaredField = infoClazz.getDeclaredField(field);
+                    declaredField.setAccessible(true);
+                    instance = declaredField.get(null);
+                } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException e) {
                     throw new RuntimeException(e);
                 }
-            });
+            } else {
+                instance = instanceCache.computeIfAbsent(methodInfo.clazz(), f -> {
+                    try {
+                        return f.newInstance();
+                    } catch (InstantiationException | IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }
             Method found = null;
-            for (Method method : methodInfo.clazz().getDeclaredMethods()) {
+            for (Method method : instance.getClass().getDeclaredMethods()) {
                 if (method.getName().equalsIgnoreCase(methodInfo.method()) && method.getAnnotation(Command.class) != null) {
                     if (found != null)
                         throw new IllegalStateException("Duplicate method found in " + methodInfo.clazz().getName() + " for " + methodInfo.method());
@@ -316,7 +330,6 @@ public class CommandGroup implements ICommandGroup {
             }
             if (found == null) {
                 throw new IllegalStateException("No method found " + clazz + " | " + methodInfo.method());
-                // TODO no method found
             }
             ParametricCallable callable = ParametricCallable.generateFromMethod(this, instance, found, store);
             if (callable == null) {

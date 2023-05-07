@@ -4,7 +4,9 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.StringMan;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -115,8 +117,33 @@ public interface CommandCallable {
             String typeArgs = params.stream().map(f -> "String " + f).collect(Collectors.joining(", "));
             String args = params.stream().map(f -> "\"" + f + "\", " + f).collect(Collectors.joining(", "));
 
+            Class<?> clazz = method.getDeclaringClass();
+            String className = clazz.getName();
+            String fieldExt = "";
+            if (className.contains("$")) {
+                String[] split = className.split("\\$");
+                try {
+                    for (Field field : Class.forName(split[0]).getDeclaredFields()) {
+                        if (!Modifier.isStatic(field.getModifiers())) {
+                            continue;
+                        }
+                        Object instance = instance = field.get(null);
+                        if (instance == callable.getObject()) {
+                            fieldExt = ", field=\"" + field.getName() + "\"";
+                            className = split[0];
+                            break;
+                        }
+                    }
+                } catch (IllegalAccessException | ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                if (fieldExt.isEmpty()) {
+                    throw new IllegalArgumentException("Cannot find class " + className + " for " + method.getName() + " in " + clazz.getName());
+                }
+            }
+
             output.append(String.format("""
-                            %1$s@AutoRegister(clazz=%2$s.class,method="%3$s")
+                            %1$s@AutoRegister(clazz=%2$s.class,method="%3$s"%7$s)
                             %1$spublic static class %4$s extends CommandRef {
                             %1$s    public static final %4$s cmd = new %4$s();
                             %1$s    public %4$s create(%5$s) {
@@ -124,7 +151,7 @@ public interface CommandCallable {
                             %1$s    }
                             %1$s}
                             """,
-                    indentStr, method.getDeclaringClass().getName(), method.getName(), name, typeArgs, args));
+                    indentStr, className, method.getName(), name, typeArgs, args, fieldExt));
         } else {
             throw new IllegalArgumentException("Unknown callable type: " + this.getClass().getSimpleName());
         }

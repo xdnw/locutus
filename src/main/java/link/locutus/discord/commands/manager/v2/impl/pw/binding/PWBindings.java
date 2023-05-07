@@ -77,7 +77,7 @@ import java.util.stream.Collectors;
 public class PWBindings extends BindingHelper {
 
     @Binding(value = """
-            A map of city ranges to a list of beige reasons
+            A map of city ranges to a list of beige reasons for defeating an enemy in war
             Priority is first to last (so put defaults at the bottom)""",
             examples = """
             c1-9:*
@@ -98,6 +98,28 @@ public class PWBindings extends BindingHelper {
             return result;
         }
 
+    @Binding(value = "A comma separated list of beige reasons for defeating an enemy in war")
+    public Set<BeigeReason> BeigeReasons(String input) {
+        return emumSet(BeigeReason.class, input);
+    }
+
+    @Binding(value = "A reason beiging and defeating an enemy in war")
+    public BeigeReason BeigeReason(String input) {
+        return emum(BeigeReason.class, input);
+    }
+
+    @Binding(value = "An alert mode for the ENEMY_ALERT_CHANNEL when enemies leave beige")
+    public EnemyAlertChannelMode EnemyAlertChannelMode(String input) {
+        return emum(EnemyAlertChannelMode.class, input);
+    }
+
+
+    @Binding("An string matching for a nation's military buildings (MMR)\n" +
+            "In the form `505X` where `X` is any military building")
+    public MMRMatcher mmrMatcher(String input) {
+        return new MMRMatcher(input);
+    }
+
     @Binding(value = """
             A map of nation filters to MMR
             Use X for any military building
@@ -106,8 +128,8 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:505X
             #cities>=10:0250""")
-        public Map<NationFilterString, MMRMatcher> mmrMathcerMap(GuildDB db, String input) {
-            Map<NationFilterString, MMRMatcher> filterToMMR = new LinkedHashMap<>();
+        public Map<NationFilter, MMRMatcher> mmrMathcerMap(GuildDB db, String input) {
+            Map<NationFilter, MMRMatcher> filterToMMR = new LinkedHashMap<>();
             for (String line : input.split("\n")) {
                 String[] split = line.split("[:]");
                 if (split.length != 2) continue;
@@ -135,8 +157,8 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:100/100
             #cities>=10:25/25""")
-    public Map<NationFilterString, TaxRate> taxRateMap(GuildDB db, String input) {
-        Map<NationFilterString, TaxRate> filterToTaxRate = new LinkedHashMap<>();
+    public Map<NationFilter, TaxRate> taxRateMap(GuildDB db, String input) {
+        Map<NationFilter, TaxRate> filterToTaxRate = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             String[] split = line.split("[:]");
             if (split.length != 2) continue;
@@ -164,8 +186,8 @@ public class PWBindings extends BindingHelper {
     examples = """
             #cities<10:1
             #cities>=10:2""")
-    public Map<NationFilterString, Integer> taxIdMap(@Me GuildDB db, String input) {
-        Map<NationFilterString, Integer> filterToBracket = new LinkedHashMap<>();
+    public Map<NationFilter, Integer> taxIdMap(@Me GuildDB db, String input) {
+        Map<NationFilter, Integer> filterToBracket = new LinkedHashMap<>();
         for (String line : input.split("[\n|;]")) {
             String[] split = line.split("[:]");
             if (split.length != 2) continue;
@@ -903,7 +925,7 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "An in-game position")
     public static DBAlliancePosition position(@Me GuildDB db, @Default @Me DBNation nation, String name) {
         AllianceList alliances = db.getAllianceList();
-        if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
+        if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.info.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
 
         String[] split = name.split(":", 2);
         Integer aaId = split.length == 2 ? PnwUtil.parseAllianceId(split[0]) : null;
@@ -998,7 +1020,7 @@ public class PWBindings extends BindingHelper {
     public AllianceList allianceList(ParameterData param, @Default @Me User user, @Me GuildDB db) {
         AllianceList list = db.getAllianceList();
         if (list == null) {
-            throw new IllegalArgumentException("This guild has no registered alliance. See " + CM.settings.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
+            throw new IllegalArgumentException("This guild has no registered alliance. See " + CM.info.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
         }
         RolePermission perms = param.getAnnotation(RolePermission.class);
         if (perms != null) {
@@ -1033,7 +1055,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     public WarCategory warChannelBinding(@Me GuildDB db) {
         WarCategory warChannel = db.getWarChannel(true);
-        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + CM.settings.cmd.create(GuildKey.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + "");
+        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + "");
         return warChannel;
     }
 

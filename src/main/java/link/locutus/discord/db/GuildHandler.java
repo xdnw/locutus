@@ -168,7 +168,7 @@ public class GuildHandler {
         return setNationTaxBrackets(nations, db.getOrThrow(GuildKey.REQUIRED_TAX_BRACKET), responses);
     }
 
-    public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Map<NationFilterString, Integer> requiredTaxBracket, Consumer<String> responses) throws Exception {
+    public Map<DBNation, Map.Entry<TaxBracket, String>> setNationTaxBrackets(Set<DBNation> nations, Map<NationFilter, Integer> requiredTaxBracket, Consumer<String> responses) throws Exception {
         Set<Integer> aaIds = db.getAllianceIds();
         nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
 
@@ -192,7 +192,7 @@ public class GuildHandler {
 
             String reason = null;
             TaxBracket required = null;
-            for (Map.Entry<NationFilterString, Integer> entry : requiredTaxBracket.entrySet()) {
+            for (Map.Entry<NationFilter, Integer> entry : requiredTaxBracket.entrySet()) {
                 if (entry.getKey().test(nation)) {
                     Integer requiredId = entry.getValue();
                     reason = entry.getKey().getFilter();
@@ -215,7 +215,7 @@ public class GuildHandler {
         return setNationInternalTaxRate(nations, db.getOrThrow(GuildKey.REQUIRED_INTERNAL_TAXRATE), responses);
     }
 
-    public Map<DBNation, Map.Entry<TaxRate, String>> setNationInternalTaxRate(Set<DBNation> nations, Map<NationFilterString, TaxRate> requiredTaxRates, Consumer<String> responses) throws Exception {
+    public Map<DBNation, Map.Entry<TaxRate, String>> setNationInternalTaxRate(Set<DBNation> nations, Map<NationFilter, TaxRate> requiredTaxRates, Consumer<String> responses) throws Exception {
         Set<Integer> aaIds = db.getAllianceIds();
         nations.removeIf(f -> f.isGray() || f.getPosition() <= 1 || f.isBeige() || !aaIds.contains(f.getAlliance_id()) || f.getVm_turns() > 0);
 
@@ -226,7 +226,7 @@ public class GuildHandler {
 
             String reason = null;
             TaxRate required = null;
-            for (Map.Entry<NationFilterString, TaxRate> entry : requiredTaxRates.entrySet()) {
+            for (Map.Entry<NationFilter, TaxRate> entry : requiredTaxRates.entrySet()) {
                 if (entry.getKey().test(nation)) {
                     reason = entry.getKey().getFilter();
                     required = entry.getValue();
@@ -626,9 +626,9 @@ public class GuildHandler {
         if (keys == null) {
             boolean hasKey = getDb().getOrNull(GuildKey.API_KEY) != null;
             if (!hasKey) {
-                throw new IllegalArgumentException("Please set `API_KEY` with " + CM.settings.cmd.toSlashMention());
+                throw new IllegalArgumentException("Please set `API_KEY` with " + CM.info.cmd.toSlashMention());
             }
-            throw new IllegalArgumentException("No valid `API_KEY` was found. Please ensure a valid one is set with " + CM.settings.cmd.toSlashMention());
+            throw new IllegalArgumentException("No valid `API_KEY` was found. Please ensure a valid one is set with " + CM.info.cmd.toSlashMention());
         }
 
         if (message.contains("%") || message.contains("{")) {
@@ -1748,7 +1748,7 @@ public class GuildHandler {
                         }
 
                         if (!dnrViolations.isEmpty()) {
-                            footer.append("To modify the `Do Not Raid` see: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
+                            footer.append("To modify the `Do Not Raid` see: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
                         }
 
                         RateLimitUtil.queueMessage(new DiscordChannelIO(channel), new Function<IMessageBuilder, Boolean>() {
@@ -1784,7 +1784,7 @@ public class GuildHandler {
                             StringBuilder footer = new StringBuilder();
                             if (dnrViolations.contains(war)) {
                                 footer.append("^ violates the `Do Not Raid` (DNR) list. If you were not asked to attack (e.g. as a counter), please offer peace (Note: This is an automated message)\n");
-                                footer.append("(To modify the DNR: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
+                                footer.append("(To modify the DNR: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
                             }
                             List<String> tips = new ArrayList<>();
 
@@ -2322,7 +2322,7 @@ public class GuildHandler {
     }
 
     public void handleInactiveAudit() {
-        if (GuildKey.MEMBER_AUDIT_ALERTS.get(db) == null) return;
+        if (!GuildKey.MEMBER_AUDIT_ALERTS.has(db, true)) return;
         Set<AutoAuditType> disabledAudits = db.getOrNull(GuildKey.DISABLED_MEMBER_AUDITS);
         if (disabledAudits != null && disabledAudits.contains(AutoAuditType.INACTIVE)) return;
 

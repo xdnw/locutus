@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -9,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -20,6 +22,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -100,6 +103,11 @@ public class DiscordBindings extends BindingHelper {
     @Binding(value = "A discord user online status")
     public OnlineStatus onlineStatus(String input) {
         return StringMan.parseUpper(OnlineStatus.class, input);
+    }
+
+    @Binding(value = "A comma separated list of bot Roles")
+    public Set<Roles> botRoles(String input) {
+        return emumSet(Roles.class, input);
     }
 
     @Binding(examples = {"@member1,@member2", "`*`"}, value = "A comma separated list of discord user mentions, or if a nation name, id or url if they are registered")

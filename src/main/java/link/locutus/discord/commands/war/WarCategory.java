@@ -468,7 +468,7 @@ public class WarCategory {
     public WarCategory.WarRoom createChannel(User author, Consumer<String> errorOutput, boolean ping, boolean addMember, boolean addMessage, DBNation target, Collection<DBNation> attackers) {
         ApiKeyPool mailKey = db.getMailKey();
         if (addMessage && mailKey == null) {
-            errorOutput.accept("No mail key available. See: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildKey.API_KEY.name() + "`");
+            errorOutput.accept("No mail key available. See: " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.API_KEY.name() + "`");
             addMessage = false;
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);

@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -79,6 +80,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private volatile IAutoRoleTask autoRoleTask;
     private GuildHandler handler;
     private IACategory iaCat;
+
+
+    private volatile boolean cachedRoleAliases = false;
+    private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
 
     public GuildDB(Guild guild) throws SQLException, ClassNotFoundException {
         super("guilds/" + guild.getId());
@@ -310,7 +315,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public <T> T getOrThrow(GuildSetting<T> key, boolean allowDelegate) {
         T value = getOrNull(key, allowDelegate);
         if (value == null) {
-            throw new UnsupportedOperationException("No " + key.name() + " registered. Use " + key.getCommand(null));
+            throw new UnsupportedOperationException("No " + key.name() + " registered. Use " + key.getCommandMention());
         }
         return value;
     }
@@ -1541,14 +1546,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                 if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
                     if (throwError) {
-                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + GuildKey.MEMBER_CAN_WITHDRAW_WARTIME.name() + "` is false (see " + CM.settings.cmd.create(GuildKey.MEMBER_CAN_WITHDRAW.name(), "true", null, null) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
+                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + GuildKey.MEMBER_CAN_WITHDRAW_WARTIME.name() + "` is false (see " + GuildKey.MEMBER_CAN_WITHDRAW.getCommandObj(true) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
                     }
                 } else if (aaIds.isEmpty()) {
                     if (channelWithdrawAccounts.isEmpty() || !channelWithdrawAccounts.contains(getIdLong())) {
                         MessageChannel defaultChannel = getResourceChannel(0);
                         if (defaultChannel == null) {
-                            String channelMention = messageChannelIdOrNull == null ? null : "<#" + messageChannelIdOrNull + ">";
-                            throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings.cmd.create(GuildKey.RESOURCE_REQUEST_CHANNEL.name(), channelMention, null, null));
+                            throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
                         } else {
                             throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
                         }
@@ -1571,7 +1575,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             } else {
                 if (throwError) {
-                    throw new IllegalArgumentException("MEMBER_CAN_WITHDRAW is disabled. See " + CM.settings.cmd.toSlashMention());
+                    throw new IllegalArgumentException("MEMBER_CAN_WITHDRAW is disabled. See " + CM.info.cmd.toSlashMention());
                 }
             }
         } else if (bankerNation == null) {
@@ -1612,7 +1616,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             String msg = "The channel: <#" + messageChannelIdOrNull + ">" +
                     " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
                     " and  the server is registered to the following alliances: " + StringMan.getString(aaIds) +
-                    "\nSee Also: " + CM.settings.cmd.toSlashMention() + " with keys: " + GuildKey.ALLIANCE_ID.name() + " and " + GuildKey.RESOURCE_REQUEST_CHANNEL;
+                    "\nSee Also: " + CM.info.cmd.toSlashMention() + " with keys: " + GuildKey.ALLIANCE_ID.name() + " and " + GuildKey.RESOURCE_REQUEST_CHANNEL;
 
             if (defaultChannel != null || channelForAA != null) {
                 msg += "\n";
@@ -1884,7 +1888,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention() + "). You do not have permission to send from other nations");
             }
             if (!hasEcon && senderDB.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) != Boolean.TRUE) {
-                throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention() + "). Member withdrawals are not enabled, see: " + CM.settings.cmd.create(GuildKey.MEMBER_CAN_WITHDRAW.name(), null, null, null));
+                throw new IllegalArgumentException("Lacking role: " + Roles.ECON + " (see " + CM.role.setAlias.cmd.toSlashMention() + "). Member withdrawals are not enabled, see: " + GuildKey.MEMBER_CAN_WITHDRAW.getCommandMention());
             }
 
             // if sender nation does not have member role
@@ -1938,7 +1942,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
 //        if (senderChannel == null) throw new IllegalArgumentException("Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in " + senderDB);
             if (receiverChannel == null)
-                throw new IllegalArgumentException("Please have an admin set: " + CM.settings.cmd.create(GuildKey.RESOURCE_REQUEST_CHANNEL.name(), null, null, null) + " in receiving " + receiverDB.getGuild());
+                throw new IllegalArgumentException("Please have an admin set: " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention() + " in receiving " + receiverDB.getGuild());
 
 
             String accountName;
@@ -2173,15 +2177,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public WarCategory getWarChannel(boolean throwException) {
         return getWarChannel(throwException, false);
     }
+
     public WarCategory getWarChannel(boolean throwException, boolean isWarServer) {
         Boolean enabled = getOrNull(GuildKey.ENABLE_WAR_ROOMS, false);
         if (enabled == Boolean.FALSE || enabled == null) {
-            if (throwException) throw new IllegalArgumentException("War rooms are not enabled " + CM.settings.cmd.create(GuildKey.ENABLE_WAR_ROOMS.name(), "true", null, null) + "");
+            if (throwException) throw new IllegalArgumentException("War rooms are not enabled " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + "");
             return null;
         }
         if (!isWhitelisted() && !isValidAlliance()) {
             if (throwException) {
-                throw new IllegalArgumentException("Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), "<id>", null, null) + " is set");
+                throw new IllegalArgumentException("Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings_default.registerAlliance.cmd.toSlashMention() + " is set");
             }
             return null;
         }
@@ -2191,11 +2196,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 GuildDB db = Locutus.imp().getGuildDB(warServer);
                 // circular reference
                 if (db == null) {
-                    if (throwException) throw new IllegalArgumentException("There is a null war server set (or delegated to) " + CM.settings.cmd.create(GuildKey.WAR_SERVER.name(), "null", null, null) + "");
+                    if (throwException) throw new IllegalArgumentException("There is a null war server set (or delegated to) " + GuildKey.WAR_SERVER.getCommandMention() + "");
                     return null;
                 }
                 if (db.getOrNull(GuildKey.WAR_SERVER, false) != null) {
-                    if (throwException) throw new IllegalArgumentException("There is a null war server set " + CM.settings.cmd.create(GuildKey.WAR_SERVER.name(), "null", null, null) + "");
+                    if (throwException) throw new IllegalArgumentException("There is a null war server set " + GuildKey.WAR_SERVER.getCommandMention() + "");
                     return null;
                 }
                 return db.getWarChannel(throwException, true);
@@ -2216,7 +2221,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                                 if (warCatError != null) {
                                     message += warCatError.getMessage() + "\n```" + StringMan.stacktraceToString(warCatError) + "```";
                                 }
-                                message += "\nTry setting " + CM.settings.cmd.create(GuildKey.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + " and attempting this command again once the issue has been resolved.";
+                                message += "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + " and attempting this command again once the issue has been resolved.";
                                 throw new IllegalArgumentException(message);
                             }
                             throw new IllegalArgumentException("This guild does not have permission to use war channels");
@@ -2226,13 +2231,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //            } else if (isWhitelisted()) {
 //                warChannel = new DebugWarChannel(guild, "warcat", "");
             } else if (warChannel == null) {
-                if (throwException) throw new IllegalArgumentException("Please set " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), "<id>", null, null) + " in " + guild);
+                if (throwException) throw new IllegalArgumentException("Please set " + CM.settings_default.registerAlliance.cmd.toSlashMention() + " in " + guild);
             }
             return warChannel;
         } catch (Throwable e) {
             warCatError = e;
             if (throwException) throw new IllegalArgumentException("There was an error creating war channels: " + e.getMessage() + "\n```" + StringMan.stacktraceToString(e) + "```\n" +
-                    "\nTry setting " + CM.settings.cmd.create(GuildKey.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + " and attempting this command again once the issue has been resolved.");
+                    "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + " and attempting this command again once the issue has been resolved.");
             return null;
         }
     }
@@ -2254,11 +2259,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public JsonObject sendRecruitMessage(DBNation to) throws IOException {
         return getHandler().sendRecruitMessage(to);
     }
-
     public GuildDB getDelegateServer() {
-        return getDelegateServer(false);
-    }
-    public GuildDB getDelegateServer(boolean getParent) {
         Map.Entry<Integer, Long> delegate = getOrNull(GuildKey.DELEGATE_SERVER, false);
         if (delegate != null && delegate.getValue() != getIdLong()) {
             return Locutus.imp().getGuildDB(delegate.getValue());
@@ -2285,12 +2286,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public Map<String, Boolean> getRequiredMMR(DBNation nation) {
-        Map<NationFilterString, MMRMatcher> requiredMmrMap = getOrNull(GuildKey.REQUIRED_MMR);
+        Map<NationFilter, MMRMatcher> requiredMmrMap = getOrNull(GuildKey.REQUIRED_MMR);
         if (requiredMmrMap == null) return null;
         Map<String, Boolean> allowedMMr = new LinkedHashMap<>();
         String myMMR = null;
-        for (Map.Entry<NationFilterString, MMRMatcher> entry : requiredMmrMap.entrySet()) {
-            NationFilterString nationMatcher = entry.getKey();
+        for (Map.Entry<NationFilter, MMRMatcher> entry : requiredMmrMap.entrySet()) {
+            NationFilter nationMatcher = entry.getKey();
             if (nationMatcher.test(nation)) {
                 if (myMMR == null) {
                     myMMR = nation.getMMRBuildingStr();
@@ -3130,9 +3131,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             stmt.setString(1, coalition);
         });
     }
-
-    private volatile boolean cachedRoleAliases = false;
-    private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
 
     public void addRole(Roles locutusRole, Role discordRole, long allianceId) {
         addRole(locutusRole, discordRole.getIdLong(), allianceId);

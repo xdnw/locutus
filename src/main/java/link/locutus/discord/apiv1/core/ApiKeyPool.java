@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.core;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.PoliticsAndWarAPIException;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.db.guild.GuildKey;
 
 import java.util.*;
 
@@ -39,7 +39,7 @@ public class ApiKeyPool {
             this.nextIndex = 0;
         }
         if (this.apiKeyPool.isEmpty())
-            throw new IllegalArgumentException("No API key found: " + CM.settings.cmd.create("API_KEY", null, null, null).toSlashCommand() + "`)");
+            throw new IllegalArgumentException("No API key found: " + GuildKey.API_KEY.getCommandMention() + "`)");
         ApiKey key = this.apiKeyPool.get(this.nextIndex++);
         key.use();
         return key;

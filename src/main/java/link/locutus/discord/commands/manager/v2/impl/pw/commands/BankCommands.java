@@ -21,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffsh
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -176,7 +177,7 @@ public class BankCommands {
                 if (Roles.ECON.has(user, db.getGuild())) {
                     TaxRate taxBase = db.getOrNull(GuildKey.TAX_BASE);
                     if (taxBase == null || ((internal.money == -1 && internal.resources == -1))) {
-                        responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.cmd.toSlashMention() + "` and key: " + GuildKey.TAX_BASE.name() + "`");
+                        responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.info.cmd.toSlashMention() + "` and key: " + GuildKey.TAX_BASE.name() + "`");
                     }
                     responses.add("\nTo view alliance wide bracket tax totals, use: " +
                         CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null));
@@ -220,7 +221,7 @@ public class BankCommands {
                 msg.append(". You do not have permission to specify an alternative account.");
             }
             if (!memberCanOffshore) {
-                msg.append(". See also: " + CM.settings.cmd.toSlashMention() + " with key " + GuildKey.MEMBER_CAN_OFFSHORE.name());
+                msg.append(". See also: " + CM.info.cmd.toSlashMention() + " with key " + GuildKey.MEMBER_CAN_OFFSHORE.name());
             }
             throw new IllegalArgumentException(msg.toString());
         }
@@ -368,7 +369,7 @@ public class BankCommands {
             return "You do not have permisssion to send to other nations";
         }
         if (db.getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL) == null) {
-            return "No resource request channel set. See " + CM.settings.cmd.create(GuildKey.RESOURCE_REQUEST_CHANNEL.name(), null, null, null) + "";
+            return "No resource request channel set. See " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention() + "";
         }
         if (!receiver.isBlockaded()) return "You are not currently blockaded";
 
@@ -418,7 +419,7 @@ public class BankCommands {
                 throw new IllegalArgumentException("This guild is registered to: " + StringMan.getString(allianceList.getIds()) +
                         " but you are trying to disburse to a nation in " + nation.getAlliance_id() +
                         "\nConsider using a different list of nations or registering the alliance to this guild (" +
-                        CM.settings.cmd.toSlashMention() + " with key `" +  GuildKey.ALLIANCE_ID.name() + "`)");
+                        CM.info.cmd.toSlashMention() + " with key `" +  GuildKey.ALLIANCE_ID.name() + "`)");
             }
         }
 
@@ -542,7 +543,7 @@ public class BankCommands {
             return "You do not have permisssion to disburse to other nations";
         }
         if (db.getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL) == null) {
-            return "No resource request channel set. See " + CM.settings.cmd.create(GuildKey.RESOURCE_REQUEST_CHANNEL.name(), null, null, null) + "";
+            return "No resource request channel set. See " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention() + "";
         }
         if (!receiver.isBlockaded()) return "You are not currently blockaded";
 
@@ -1186,7 +1187,8 @@ public class BankCommands {
     }
 
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
-            "Get a list of nations and their deposits.\n" +
+            "Get a sheet with member nations and their deposits\n" +
+                    "Each nation's safekeep should match the total balance given by deposits command" +
                     "Add `-b` to \n" +
                     "Add `-o` to not include any manual deposit offsets\n" +
                     "Add `-d` to not include deposits\n" +
@@ -1255,7 +1257,7 @@ public class BankCommands {
                     throw new IllegalArgumentException("usePastDepositors is only implemented for alliances (ping borg)");
                 }
                 Role role = Roles.MEMBER.toRole(guild);
-                if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " +
+                if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
                         "" + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null, null) + " set");
                 nations = new LinkedHashSet<>();
                 for (Member member : guild.getMembersWithRoles(role)) {
@@ -1896,8 +1898,8 @@ public class BankCommands {
 
         Set<DBNation> nations = alliances.getNations();
 
-        Map<NationFilterString, Integer> requiredBrackets = db.getOrNull(GuildKey.REQUIRED_TAX_BRACKET);
-        Map<NationFilterString, TaxRate> requiredInternalRates = db.getOrNull(GuildKey.REQUIRED_INTERNAL_TAXRATE);
+        Map<NationFilter, Integer> requiredBrackets = db.getOrNull(GuildKey.REQUIRED_TAX_BRACKET);
+        Map<NationFilter, TaxRate> requiredInternalRates = db.getOrNull(GuildKey.REQUIRED_INTERNAL_TAXRATE);
 
         if (requiredBrackets == null) requiredBrackets = Collections.emptyMap();
         if (requiredInternalRates == null) requiredInternalRates = Collections.emptyMap();
@@ -1908,8 +1910,8 @@ public class BankCommands {
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
             header.set(1, nation.getCities() + "");
 
-            Map.Entry<NationFilterString, Integer> requiredBracket = requiredBrackets.entrySet().stream().filter(f -> f.getKey().test(nation)).findFirst().orElse(null);
-            Map.Entry<NationFilterString, TaxRate> requiredInternal = requiredInternalRates.entrySet().stream().filter(f -> f.getKey().test(nation)).findFirst().orElse(null);
+            Map.Entry<NationFilter, Integer> requiredBracket = requiredBrackets.entrySet().stream().filter(f -> f.getKey().test(nation)).findFirst().orElse(null);
+            Map.Entry<NationFilter, TaxRate> requiredInternal = requiredInternalRates.entrySet().stream().filter(f -> f.getKey().test(nation)).findFirst().orElse(null);
 
             header.set(2, requiredBracket != null ? requiredBracket.getKey().getFilter() : "");
             int taxId = requiredBracket != null ? requiredBracket.getValue() : -1;
@@ -2606,11 +2608,11 @@ public class BankCommands {
 
         if (offshoreDB != null) {
             if (!offshoreDB.hasAlliance()) {
-                return "Please set the key " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " in " + offshoreDB.getGuild();
+                return "Please set the key " + GuildKey.ALLIANCE_ID.getCommandMention() + " in " + offshoreDB.getGuild();
             }
             PoliticsAndWarV3 api = offshoreAlliance.getApi(AlliancePermission.WITHDRAW_BANK, AlliancePermission.VIEW_BANK);
             if (api == null) {
-                return "Please set the key " + CM.settings.cmd.create(GuildKey.API_KEY.name(), null, null, null).toSlashCommand() + " in " + offshoreDB.getGuild();
+                return "Please set the key " + GuildKey.API_KEY.getCommandMention() + " in " + offshoreDB.getGuild();
             }
         }
 
@@ -2661,7 +2663,7 @@ public class BankCommands {
                 StringBuilder body = new StringBuilder();
                 body.append("The alliances to this guild will be unregistered: `" + StringMan.getString(toUnregister) + "`\n");
 
-                body.append("The new alliance: `" + offshoreAlliance.getId() + " will be set ` (See: " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null) + ")\n");
+                body.append("The new alliance: `" + offshoreAlliance.getId() + " will be set ` (See: " + GuildKey.ALLIANCE_ID.getCommandMention() + ")\n");
                 body.append("All other guilds using the prior alliance `" + StringMan.getString(toUnregister) + "` will be changed to use the new offshore");
 
                 confirmButton.embed(title, body.toString()).send();
@@ -2721,7 +2723,7 @@ public class BankCommands {
         }
 
         if (offshoreDB == null) {
-            return "No guild found for alliance: " + offshoreAlliance.getAlliance_id() + ". To register a guild to an alliance: " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), offshoreAlliance.getAlliance_id() + "", null, null);
+            return "No guild found for alliance: " + offshoreAlliance.getAlliance_id() + ". To register a guild to an alliance: " + CM.settings_default.registerAlliance.cmd.create(offshoreAlliance.getAlliance_id() + "");
         }
 
         OffshoreInstance currentOffshore = root.getOffshore();
@@ -2778,7 +2780,7 @@ public class BankCommands {
         if (enabled != Boolean.TRUE && !Roles.ECON.has(user, offshoreDB.getGuild())) {
             Role role = Roles.ECON.toRole(offshoreDB);
             String roleName = role == null ? "ECON" : role.getName();
-            return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + CM.settings.cmd.create(GuildKey.PUBLIC_OFFSHORING.name(), null, null, null) + " is not enabled on that guild.";
+            return "You do not have " + roleName + " on " + offshoreDB.getGuild() + ". Alternatively " + GuildKey.PUBLIC_OFFSHORING.getCommandMention() + " is not enabled on that guild.";
         }
 
         StringBuilder response = new StringBuilder();
@@ -2836,9 +2838,9 @@ public class BankCommands {
                     if (root.getOrNull(GuildKey.WAR_ALERT_FOR_OFFSHORES) == null) {
                         if (offshoreDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                             GuildKey.WAR_ALERT_FOR_OFFSHORES.set(root, false);
-                            response.append("\nNote: Offshore War alerts are disabled. Enable using: " + CM.settings.cmd.create(GuildKey.WAR_ALERT_FOR_OFFSHORES.name(), "true", null, null));
+                            response.append("\nNote: Offshore War alerts are disabled. Enable using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(true));
                         } else {
-                            response.append("\nNote: Disable offshore war alerts using: " + CM.settings.cmd.create(GuildKey.WAR_ALERT_FOR_OFFSHORES.name(), "false", null, null));
+                            response.append("\nNote: Disable offshore war alerts using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(false));
                         }
                     }
                 }

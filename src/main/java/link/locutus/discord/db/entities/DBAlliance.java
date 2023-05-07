@@ -348,6 +348,17 @@ public class DBAlliance implements NationList, NationOrAlliance {
             if (!isOutdated) return BRACKETS_CACHED;
         }
         PoliticsAndWarV3 api = getApi(AlliancePermission.TAX_BRACKETS);
+        if (api == null) {
+            Map<Integer, TaxBracket> result = new HashMap<>();
+            for (DBNation nation : getNations()) {
+                if (nation.getTax_id() == 0 || result.containsKey(nation.getTax_id())) continue;
+                TaxBracket bracket = nation.getTaxBracket();
+                if (bracket == null) continue;
+                result.put(nation.getTax_id(), bracket);
+            }
+            return result;
+        }
+
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
         BRACKETS_TURN_UPDATED = TimeUtil.getTurn();

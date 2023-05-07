@@ -31,6 +31,7 @@ public class NationFilterString implements NationFilter {
         return nations != null && nations.contains(nation);
     }
 
+    @Override
     public Predicate<DBNation> toCached(long expireAfter) {
         return nation -> {
             if (cachedNations == null || System.currentTimeMillis() - dateCached > expireAfter) {

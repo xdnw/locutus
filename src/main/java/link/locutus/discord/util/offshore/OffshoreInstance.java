@@ -548,7 +548,7 @@ public class OffshoreInstance {
             }
             if (senderDB.getOrNull(GuildKey.RESOURCE_CONVERSION) != Boolean.TRUE) {
                 return Map.entry(TransferStatus.INVALID_NOTE, "Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(senderDB.getGuild()) +
-                        "\nMembers do not have permission to convert resources to cash. See " + CM.settings.cmd.toSlashMention() + " with key: " + GuildKey.RESOURCE_CONVERSION.name());
+                        "\nMembers do not have permission to convert resources to cash. See " + CM.info.cmd.toSlashMention() + " with key: " + GuildKey.RESOURCE_CONVERSION.name());
             }
             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
             if (allowedIds.isEmpty()) {
@@ -639,7 +639,7 @@ public class OffshoreInstance {
                         String msg = nationAccount.getNation() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
                                 CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null, null, null) +
                                 " ). RESOURCE_CONVERSION is disabled (see " +
-                                CM.settings.cmd.create(GuildKey.RESOURCE_CONVERSION.name(), "true", null, null) +
+                                GuildKey.RESOURCE_CONVERSION.getCommandObj(true) +
                                 ")";
                         allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                         if (allowedIds.isEmpty()) {
@@ -690,7 +690,7 @@ public class OffshoreInstance {
                     String msg = taxAccount.getQualifiedName() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
                             CM.deposits.check.cmd.create(taxAccount.getQualifiedName(), null, null, null, null, null, null, null, null) +
                             " ). RESOURCE_CONVERSION is disabled (see " +
-                            CM.settings.cmd.create(GuildKey.RESOURCE_CONVERSION.name(), "true", null, null) +
+                            GuildKey.RESOURCE_CONVERSION.getCommandObj(true) +
                             ")";
                     allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                     if (allowedIds.isEmpty()) {
@@ -933,7 +933,7 @@ public class OffshoreInstance {
                             body.append("Transfer: " + PnwUtil.resourcesToString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
                             body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
                             body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
-                            body.append("To set the default " + CM.settings.cmd.create(GuildKey.BANKER_WITHDRAW_LIMIT.name(), "<amount>", null, null) + "");
+                            body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention() + "");
 
                             Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
 
@@ -1481,12 +1481,12 @@ public class OffshoreInstance {
         if (whitelistedError || msg.contains("The API key you provided is not valid.")) {
             List<String> keys = getGuildDB().getOrNull(GuildKey.API_KEY);
             if (keys == null || keys.isEmpty()) {
-                msg += "\nEnsure " + GuildKey.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention();
+                msg += "\nEnsure " + GuildKey.API_KEY.name() + " is set: " + CM.info.cmd.toSlashMention();
             } else {
                 for (String key : keys) {
                     Integer nation = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                     if (nation == null) {
-                        msg += "\nEnsure " + GuildKey.API_KEY.name() + " is set: " + CM.settings.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
+                        msg += "\nEnsure " + GuildKey.API_KEY.name() + " is set: " + CM.info.cmd.toSlashMention() + " to a valid key in the alliance (with bank access)";
                     } else {
                         msg += "\nEnsure " + PnwUtil.getNationUrl(nation) + " is a valid nation in the alliance with bank access in " + allianceId;
                     }

@@ -93,7 +93,7 @@ public class IACategory {
         }
         this.guild = db.getGuild();
         this.alliance = db.getAllianceList();
-        if (this.alliance == null || this.alliance.isEmpty()) throw new IllegalArgumentException("No ALLIANCE_ID set. See: " + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null, null));
+        if (this.alliance == null || this.alliance.isEmpty()) throw new IllegalArgumentException("No ALLIANCE_ID set. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
         fetchChannels();
     }
 

@@ -109,6 +109,8 @@ public class SlashCommandManager extends ListenerAdapter {
     private final Map<String, Long> commandIds = new HashMap<>();
     private final Set<Key> bindingKeys = new HashSet<>();
 
+    private Map<ParametricCallable, String> commandNames = new HashMap<>();
+
     public SlashCommandManager(Locutus locutus) {
         this.root = locutus;
         this.commands = root.getCommandManager().getV2();
@@ -223,24 +225,24 @@ public class SlashCommandManager extends ListenerAdapter {
             CommandCallable callable = entry.getValue();
             String id = entry.getKey();
             AtomicInteger size = new AtomicInteger();
-            SlashCommandData cmd = adaptCommands(callable, id, null, null, 100, 100, false, true, true, true, true, true);
+            SlashCommandData cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, true, true, true);
             if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(callable, id, null, null, 100, 100, false, true, true, false, true, true);
+                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, false, true, true);
             }
             if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(callable, id, null, null, 100, 100, false, true, true, false, false, true);
+                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, true, false, false, true);
             }
             if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(callable, id, null, null, 100, 100, false, true, false, false, false, true);
+                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, false, true, false, false, false, true);
             }
             if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(callable, id, null, null, 100, 100, true, true, false, false, false, true);
+                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, true, true, false, false, false, true);
             }
             if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(callable, id, null, null, 100, 100, true, true, false, false, false, false);
+                cmd = adaptCommands(commandNames, callable, id, null, null, 100, 100, true, true, false, false, false, false);
             }
             if (getSize(cmd) > 4000) {
-                cmd = adaptCommands(callable, id, null, null, 0, 0, true, true, false, false, false, false);
+                cmd = adaptCommands(commandNames, callable, id, null, null, 0, 0, true, true, false, false, false, false);
             }
             toRegister.add(cmd);
         }
@@ -270,25 +272,64 @@ public class SlashCommandManager extends ListenerAdapter {
         }
     }
 
-    public String getSlashMention(String path) {
-        Long id = getCommandId(path);
-        if (id == null || id == -1) return null;
-        return "</" + path.toLowerCase(Locale.ROOT) + ":" + id + ">";
+    private static String getCommandPath(ParametricCallable callable) {
+        SlashCommandManager slash = Locutus.imp().getSlashCommands();
+        return slash == null ? null : slash.commandNames.get(callable);
     }
 
-    public Long getCommandId(String path) {
+    public static String getSlashMention(ParametricCallable callable) {
+        String path = getCommandPath(callable);
+        if (path == null) {
+            return "/" + callable.getFullPath();
+        }
+        return getSlashMention(path);
+    }
+
+    public static String getSlashCommand(ParametricCallable callable, Map<String, String> arguments, boolean backTicks) {
+        String path = getCommandPath(callable);
+        if (path == null) {
+            path = callable.getFullPath();
+        }
+        return getSlashCommand(path, arguments, backTicks);
+    }
+
+    public static String getSlashCommand(String path, Map<String, String> arguments, boolean backTicks) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("/").append(path.toLowerCase(Locale.ROOT));
+        if (!arguments.isEmpty()) {
+            // join on " "
+            for (Map.Entry<String, String> entry : arguments.entrySet()) {
+                if (entry.getValue() == null) continue;
+                builder.append(" ").append(entry.getKey()).append(": ").append(entry.getValue());
+            }
+        }
+        if (backTicks) return "`" + builder + "`";
+        return builder.toString();
+    }
+
+    public static String getSlashMention(String path) {
+        SlashCommandManager slash = Locutus.imp().getSlashCommands();
+        if (slash != null) {
+            Long id = slash.getCommandId(path);
+            if (id != null && id > 0) {
+                return "</" + path.toLowerCase(Locale.ROOT) + ":" + id + ">";
+            }
+        }
+        return getSlashCommand(path, Collections.emptyMap(), true);
+    }
+
+    private Long getCommandId(String path) {
         Long id = commandIds.get(path);
         if (id == null) id = commandIds.get(path.split(" ")[0]);
         return id;
     }
 
-    public SlashCommandData adaptCommands(CommandCallable callable, String id, SlashCommandData root, SubcommandGroupData discGroup, int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
+    public SlashCommandData adaptCommands(Map<ParametricCallable, String> finalMappings, CommandCallable callable, String id, SlashCommandData root, SubcommandGroupData discGroup, int maxDescription, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeOptionDesc) {
         String desc = callable.simpleDesc();
         if (desc.length() >= maxDescription) {
             desc = desc.split("\n")[0];
         }
         if (desc.length() >= maxDescription) {
-            System.out.println("Long desc2 " + desc);
             desc = desc.substring(0, maxDescription);
         }
         if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
@@ -314,10 +355,17 @@ public class SlashCommandManager extends ListenerAdapter {
             for (Map.Entry<String, CommandCallable> entry : group.getSubcommands().entrySet()) {
                 String subId = entry.getKey();
                 CommandCallable subCmd = entry.getValue();
-                adaptCommands(subCmd, subId, root, discGroup, maxDescription, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
+                adaptCommands(finalMappings, subCmd, subId, root, discGroup, maxDescription, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
             }
         } else if (callable instanceof ParametricCallable parametric) {
             List<OptionData> options = createOptions(parametric, maxOption, breakNewlines, includeTypes, includeExample, includeRepeatedTypes, includeDescForChoices, includeOptionDesc);
+
+            String fullPath = "";
+            fullPath += root.getName() + " ";
+            if (discGroup != null) fullPath += discGroup.getName() + " ";
+            if (root != current) fullPath += id;
+            fullPath = fullPath.trim();
+
             if (current == null) {
                 SubcommandData discSub = new SubcommandData(id, desc);
                 current = discSub;
@@ -339,10 +387,10 @@ public class SlashCommandManager extends ListenerAdapter {
                 for (OptionData option : options) {
                     System.out.println(" - option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
                 }
-
                 e.printStackTrace();
                 throw e;
             }
+            finalMappings.put(parametric, fullPath);
         }
         return root;
     }
@@ -360,7 +408,6 @@ public class SlashCommandManager extends ListenerAdapter {
             }
             if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
             if (desc.length() > maxOption) {
-                System.out.println("Long option desc2 " + desc);
                 desc = desc.substring(0, maxOption);
             }
             if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
@@ -428,7 +475,6 @@ public class SlashCommandManager extends ListenerAdapter {
                             Key completerKey = binding.getKey().append(Autocomplete.class);
                             parser = commands.getStore().get(completerKey);
                             if (parser != null && !parser.getKey().equals(emptyKey)) {
-                                System.out.println("Enable auto complete for " + completerKey);
                                 option.setAutoComplete(true);
                             } else {
                                 if (bindingKeys.add(completerKey)) {

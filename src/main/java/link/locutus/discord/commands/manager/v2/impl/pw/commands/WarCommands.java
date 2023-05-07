@@ -554,7 +554,7 @@ public class WarCommands {
             if (milcom != null) response.append(milcom.getAsMention());
         } else {
             response.append("Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP);
-            response.append("\nNote: No blockade request channel set. Add one via " + CM.settings.cmd.toSlashMention() + " with key: " + GuildKey.UNBLOCKADE_REQUESTS.name() + "\n");
+            response.append("\nNote: No blockade request channel set. Add one via " + CM.info.cmd.toSlashMention() + " with key: " + GuildKey.UNBLOCKADE_REQUESTS.name() + "\n");
 
         }
         RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));
@@ -3852,7 +3852,7 @@ public class WarCommands {
             if (aaIds.isEmpty()) {
                 Set<Integer> allies = db.getAllies(true);
                 if (allies.isEmpty()) {
-                    if (me.getAlliance_id() == 0) return "No alliance or allies are set.\n" + CM.settings.cmd.create(GuildKey.ALLIANCE_ID.name(), "<alliance>", null, null) + "\nOR\n " + CM.coalition.create.cmd.create(null, Coalition.ALLIES.name()) + "";
+                    if (me.getAlliance_id() == 0) return "No alliance or allies are set.\n" + GuildKey.ALLIANCE_ID.getCommandMention() + "\nOR\n " + CM.coalition.create.cmd.create(null, Coalition.ALLIES.name()) + "";
                     aaIds = new HashSet<>(Arrays.asList(me.getAlliance_id()));
                     counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 10000, true));
                 } else {

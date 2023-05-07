@@ -9,5 +9,6 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 public @interface AutoRegister {
     Class clazz();
+    String field() default "";
     String method();
 }

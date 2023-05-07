@@ -35,6 +35,10 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
         return taxId;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public TaxBracket(int taxId, int allianceId, String name, int moneyRate, int rssRate, long date) {
         this.taxId = taxId;
         this.allianceId = allianceId;

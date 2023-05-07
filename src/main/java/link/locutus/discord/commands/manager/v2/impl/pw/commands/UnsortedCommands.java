@@ -11,7 +11,6 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.external.guild.KeyStore;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -53,7 +52,6 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
@@ -1230,7 +1228,7 @@ public class UnsortedCommands {
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
-                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildKey.ALLIANCE_ID.name() + "`";
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.ALLIANCE_ID.name() + "`";
             }
         }
 
@@ -1510,25 +1508,4 @@ public class UnsortedCommands {
 
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
     }
-
-    @Command(desc = "Configure alliance or guild settings")
-    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String keyStore(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
-                           @Arg("The setting to change or view")
-                           @Default GuildSetting key,
-                           @Arg("The value to set the setting to")
-                           @Default @TextArea String value,
-                           @Arg("Exclude created spreadsheets from any returned setting lists")
-                           @Switch("s") boolean hideSheetList,
-                           @Arg("Show all settings (or sub settings)")
-                           @Switch("a") boolean showAll) throws Exception {
-        List<String> cmd = new ArrayList<>();
-        if (key != null) cmd.add(key.name() + "");
-        if (value != null) cmd.add(value);
-        Set<Character> flags = new HashSet<>();
-        if (hideSheetList) flags.add('s');
-        if (showAll) flags.add('a');
-        return new KeyStore().onCommand(io, guild, author, me, cmd, flags);
-    }
-
 }
